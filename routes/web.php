@@ -1,380 +1,307 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Route;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+// ==================== PUBLIC ROUTES ====================
+Route::get('/', fn() => view('landing'))->name('home');
+Route::get('/coming-soon', fn() => view('coming-soon'))->name('coming-soon');
 
+// Dev Helper (hanya local)
 Route::get('/login-as-admin', function () {
-    if (! app()->isLocal()) {
-        abort(404);
-    }
-
-    $user = User::where('email', 'admin@example.com')->first();
-    if (! $user) {
-        abort(404);
-    }
-
+    if (! app()->isLocal()) abort(404);
+    
+    $user = User::where('email', 'admin@example.com')->firstOrFail();
     Auth::login($user);
-    return redirect()->route('isp.service-profiles.create');
+    return redirect()->route('dashboard');
 })->name('login-as-admin');
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/test', \App\Livewire\Test::class)->name('test');
-    Route::get('/test-counter', \App\Livewire\TestCounter::class)->name('test-counter');
-    Route::get('/dashboard', \App\Livewire\Dashboard\Index::class)->name('dashboard');
+// ==================== PLACEHOLDER HELPER ====================
+$cs = fn() => view('coming-soon');
 
-    // AAA - PPPoE Users
-    Route::prefix('aaa/pppoe-users')->name('aaa.pppoe-users.')->group(function () {
-        Route::get('/', \App\Livewire\AAA\PppoeUser\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\AAA\PppoeUser\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\AAA\PppoeUser\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\AAA\PppoeUser\Show::class)->name('show');
+// ==================== AUTHENTICATED ROUTES ====================
+Route::middleware(['auth'])->group(function () use ($cs) {
+
+    // ==================== STAFF / ADMIN AREA ====================
+    Route::middleware(['role:super_admin,admin,staff'])->group(function () use ($cs) {
+
+        // ==================== 1. DASHBOARD (TANPA SUBMENU SESUAI SSOT v2.0) ====================
+        Route::get('/dashboard', \App\Livewire\Dashboard\Index::class)->name('dashboard');
+
+        // ==================== 2. PROFILE PAKET ====================
+        Route::prefix('profile-paket')->name('profile-paket.')->group(function () {
+            Route::get('/grup', \App\Livewire\ProfilePaket\GrupProfile::class)->name('grup');
+            Route::get('/bandwidth', \App\Livewire\ProfilePaket\Bandwidth::class)->name('bandwidth');
+            Route::get('/hotspot', \App\Livewire\ProfilePaket\ProfileHotspot::class)->name('hotspot');
+        });
+
+        // ==================== ISP CORE CRUD (EXISTING) ====================
+        Route::prefix('isp')->name('isp.')->group(function () {
+            // Service Profile = Profile PPPoE (referenced dari Profile Paket > Profile PPPoE
+            Route::get('/service-profiles', \App\Livewire\ISP\ServiceProfile\Index::class)->name('service-profiles.index');
+            Route::get('/service-profiles/create', \App\Livewire\ISP\ServiceProfile\Create::class)->name('service-profiles.create');
+            Route::get('/service-profiles/{id}/edit', \App\Livewire\ISP\ServiceProfile\Edit::class)->name('service-profiles.edit');
+            Route::get('/service-profiles/{id}', \App\Livewire\ISP\ServiceProfile\Show::class)->name('service-profiles.show');
+
+            // User Online = List Pelanggan > User Online (tabs PPPoE/Hotspot/Voucher + Kick)
+            Route::get('/user-online', \App\Livewire\ISP\UserOnline\Index::class)->name('user-online.index');
+
+            // PPPoE = List Pelanggan > User PPPoE
+            Route::get('/pppoe-users', \App\Livewire\ISP\PPPoEUser\Index::class)->name('pppoe-users.index');
+            Route::get('/pppoe-users/create', \App\Livewire\ISP\PPPoEUser\Create::class)->name('pppoe-users.create');
+            Route::get('/pppoe-users/{id}/edit', \App\Livewire\ISP\PPPoEUser\Edit::class)->name('pppoe-users.edit');
+            Route::get('/pppoe-users/{id}', \App\Livewire\ISP\PPPoEUser\Show::class)->name('pppoe-users.show');
+
+            // Hotspot = List Pelanggan > User Hotspot
+            Route::get('/hotspot-users', \App\Livewire\ISP\HotspotUser\Index::class)->name('hotspot-users.index');
+            Route::get('/hotspot-users/create', \App\Livewire\ISP\HotspotUser\Create::class)->name('hotspot-users.create');
+            Route::get('/hotspot-users/{id}/edit', \App\Livewire\ISP\HotspotUser\Edit::class)->name('hotspot-users.edit');
+            Route::get('/hotspot-users/{id}', \App\Livewire\ISP\HotspotUser\Show::class)->name('hotspot-users.show');
+
+            // Voucher (existing CRUD, List Pelanggan > User Voucher tabs biasa/E-Voucher
+            Route::get('/vouchers', \App\Livewire\ISP\Voucher\Index::class)->name('vouchers.index');
+            Route::get('/vouchers/create', \App\Livewire\ISP\Voucher\Create::class)->name('vouchers.create');
+            Route::get('/vouchers/{id}/edit', \App\Livewire\ISP\Voucher\Edit::class)->name('vouchers.edit');
+            Route::get('/vouchers/{id}', \App\Livewire\ISP\Voucher\Show::class)->name('vouchers.show');
+
+            // Router & NAS = Jaringan > Router & NAS
+            Route::get('/routers', \App\Livewire\ISP\Router\Index::class)->name('routers.index');
+            Route::get('/routers/create', \App\Livewire\ISP\Router\Create::class)->name('routers.create');
+            Route::get('/routers/{id}/edit', \App\Livewire\ISP\Router\Edit::class)->name('routers.edit');
+            Route::get('/routers/{id}', \App\Livewire\ISP\Router\Show::class)->name('routers.show');
+
+            // Fiber Infrastructure = Jaringan > Fiber & ONU
+            Route::get('/olts', \App\Livewire\ISP\Olt\Index::class)->name('olts.index');
+            Route::get('/olts/create', \App\Livewire\ISP\Olt\Create::class)->name('olts.create');
+            Route::get('/olts/{id}/edit', \App\Livewire\ISP\Olt\Edit::class)->name('olts.edit');
+            Route::get('/olts/{id}', \App\Livewire\ISP\Olt\Show::class)->name('olts.show');
+
+            Route::get('/onus', \App\Livewire\ISP\Onu\Index::class)->name('onus.index');
+            Route::get('/onus/create', \App\Livewire\ISP\Onu\Create::class)->name('onus.create');
+            Route::get('/onus/{id}/edit', \App\Livewire\ISP\Onu\Edit::class)->name('onus.edit');
+            Route::get('/onus/{id}', \App\Livewire\ISP\Onu\Show::class)->name('onus.show');
+
+            Route::get('/odps', \App\Livewire\ISP\Odp\Index::class)->name('odps.index');
+            Route::get('/odps/create', \App\Livewire\ISP\Odp\Create::class)->name('odps.create');
+            Route::get('/odps/{id}/edit', \App\Livewire\ISP\Odp\Edit::class)->name('odps.edit');
+            Route::get('/odps/{id}', \App\Livewire\ISP\Odp\Show::class)->name('odps.show');
+
+            Route::get('/odcs', \App\Livewire\ISP\Odc\Index::class)->name('odcs.index');
+            Route::get('/odcs/create', \App\Livewire\ISP\Odc\Create::class)->name('odcs.create');
+            Route::get('/odcs/{id}/edit', \App\Livewire\ISP\Odc\Edit::class)->name('odcs.edit');
+            Route::get('/odcs/{id}', \App\Livewire\ISP\Odc\Show::class)->name('odcs.show');
+
+            Route::get('/pops', \App\Livewire\ISP\Pop\Index::class)->name('pops.index');
+            Route::get('/pops/create', \App\Livewire\ISP\Pop\Create::class)->name('pops.create');
+            Route::get('/pops/{id}/edit', \App\Livewire\ISP\Pop\Edit::class)->name('pops.edit');
+            Route::get('/pops/{id}', \App\Livewire\ISP\Pop\Show::class)->name('pops.show');
+
+            Route::get('/towers', \App\Livewire\ISP\Tower\Index::class)->name('towers.index');
+            Route::get('/towers/create', \App\Livewire\ISP\Tower\Create::class)->name('towers.create');
+            Route::get('/towers/{id}/edit', \App\Livewire\ISP\Tower\Edit::class)->name('towers.edit');
+            Route::get('/towers/{id}', \App\Livewire\ISP\Tower\Show::class)->name('towers.show');
+
+            Route::get('/vendors', \App\Livewire\ISP\Vendor\Index::class)->name('vendors.index');
+            Route::get('/vendors/create', \App\Livewire\ISP\Vendor\Create::class)->name('vendors.create');
+            Route::get('/vendors/{id}/edit', \App\Livewire\ISP\Vendor\Edit::class)->name('vendors.edit');
+            Route::get('/vendors/{id}', \App\Livewire\ISP\Vendor\Show::class)->name('vendors.show');
+        });
+
+        // ==================== 3. LIST PELANGGAN ====================
+        Route::prefix('pelanggan')->name('pelanggan.')->group(function () use ($cs) {
+            // User Voucher: tabs Aktif | Terpakai | Expired | Semua
+            Route::get('/voucher', \App\Livewire\Pelanggan\Voucher\Index::class)->name('voucher');
+            // Isolir: daftar user ter-isolir + aktivasi kembali
+            Route::get('/isolir', \App\Livewire\Pelanggan\Isolir\Index::class)->name('isolir');
+        });
+
+        // ==================== 4. DATA TAGIHAN ====================
+        Route::prefix('tagihan')->name('tagihan.')->group(function () use ($cs) {
+            // Periode Tagihan: Summary (Total/Unpaid/Paid/Overdue) + Filter Periode/Status/Router/Sales/Reseller/Paket
+            Route::get('/periode', \App\Livewire\Billing\PeriodeTagihan\Index::class)->name('periode');
+        });
+
+        // === Billing / Semua Tagihan (create: dropdown Tipe Service PPPoE / Hotspot Member) ===
+        Route::prefix('billing')->name('billing.')->group(function () {
+            Route::get('/invoices', \App\Livewire\Billing\Invoice\Index::class)->name('invoices.index');
+            Route::get('/invoices/create', \App\Livewire\Billing\Invoice\Create::class)->name('invoices.create');
+            Route::get('/invoices/{id}/edit', \App\Livewire\Billing\Invoice\Edit::class)->name('invoices.edit');
+            Route::get('/invoices/{id}', \App\Livewire\Billing\Invoice\Show::class)->name('invoices.show');
+
+            Route::get('/payments', \App\Livewire\Billing\Payment\Index::class)->name('payments.index');
+            Route::get('/payments/create', \App\Livewire\Billing\Payment\Create::class)->name('payments.create');
+            Route::get('/payments/{id}/edit', \App\Livewire\Billing\Payment\Edit::class)->name('payments.edit');
+            Route::get('/payments/{id}', \App\Livewire\Billing\Payment\Show::class)->name('payments.show');
+        });
+
+        // ==================== 5. DATA KEUANGAN ====================
+        Route::prefix('keuangan')->name('keuangan.')->group(function () use ($cs) {
+            // Topup Reseller: Summary | Riwayat | Approval | Bukti Transfer | Export
+            Route::get('/topup-reseller', \App\Livewire\Keuangan\TopupReseller\Index::class)->name('topup-reseller');
+            // Income Harian: Chart | Top Customer | Top Sales | Payment Method | Cash Flow
+            Route::get('/income-harian', \App\Livewire\Keuangan\IncomeHarian\Index::class)->name('income-harian');
+            // Income Periode: Comparison | Growth | Export Excel | Export PDF
+            Route::get('/income-periode', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('income-periode');
+            // Pengeluaran: Kategori | Approval | Attachment | Status
+            Route::get('/pengeluaran', \App\Livewire\Keuangan\Pengeluaran\Index::class)->name('pengeluaran');
+            // Laba Rugi: Income Statement | Cash Flow | Expense | Top Revenue | AR Aging
+            Route::get('/laba-rugi', \App\Livewire\Keuangan\LabaRugi\Index::class)->name('laba-rugi');
+            // BHP | USO: persentase dari revenue
+            Route::get('/bhp-uso', \App\Livewire\Keuangan\BhpUso\Index::class)->name('bhp-uso');
+        });
+
+        // ==================== 6. JARINGAN ====================
+        Route::prefix('jaringan')->name('jaringan.')->group(function () use ($cs) {
+            // Fiber & ONU: tabs Map | ODC | ODP | OLT | ONU | LOS Alarm
+            Route::get('/fiber', \App\Livewire\Jaringan\Fiber\Index::class)->name('fiber');
+            // Monitoring: Realtime | PPPoE Online | Hotspot Online | Bandwidth | CPU | Memory | Traffic
+            Route::get('/monitoring', \App\Livewire\Jaringan\Monitoring\Index::class)->name('monitoring');
+        });
+
+        // ==================== 7. SUPPORT ====================
+        Route::prefix('support')->name('support.')->group(function () use ($cs) {
+            // Tiket Support: Kanban | Table | Timeline | Priority | Assignment
+            Route::get('/ticket', \App\Livewire\Support\Ticket\Index::class)->name('ticket');
+            // Instalasi: Work Order | Schedule | Technician | Map | Checklist
+            Route::get('/installation', \App\Livewire\Support\Installation\Index::class)->name('installation');
+            // Maintenance: Calendar | History | Technician | Material
+            Route::get('/maintenance', \App\Livewire\Support\Maintenance\Index::class)->name('maintenance');
+        });
+
+        // ==================== 8. LAPORAN ====================
+        Route::prefix('laporan')->name('laporan.')->group(function () use ($cs) {
+            // Pendapatan: Chart | Comparison | Top Package
+            Route::get('/pendapatan', \App\Livewire\Laporan\Pendapatan\Index::class)->name('pendapatan');
+            // Pelanggan: Customer Growth | Activation | Suspension | Termination
+            Route::get('/pelanggan', \App\Livewire\Laporan\Pelanggan\Index::class)->name('pelanggan');
+            // Jaringan: Availability | Downtime | LOS | Router Health
+            Route::get('/jaringan', \App\Livewire\Laporan\Jaringan\Index::class)->name('jaringan');
+        });
+
+        // ==================== 9. PENGATURAN SESUAI SSOT v2.0 ====================
+        Route::prefix('pengaturan')->name('pengaturan.')->group(function () use ($cs) {
+            // Perusahaan: Konfigurasi nama, alamat, logo perusahaan
+            Route::get('/perusahaan', \App\Livewire\Pengaturan\Perusahaan\Index::class)->name('perusahaan');
+            // Koneksi Perangkat: tabs Router API | Radius | GenieACS
+            Route::get('/koneksi', \App\Livewire\Pengaturan\Koneksi\Index::class)->name('koneksi');
+            // Telegram Bot: Bot Token, Webhook, Chat ID Notification
+            Route::get('/telegram', \App\Livewire\Pengaturan\Telegram\Index::class)->name('telegram');
+            // WhatsApp Gateway: API Key WhatsApp untuk Tagihan & Notifikasi Pelanggan
+            Route::get('/whatsapp', \App\Livewire\Pengaturan\WhatsApp\Index::class)->name('whatsapp');
+            // Payment Gateway: Midtrans, Xendit, BCA VA, dll
+            Route::get('/payment-gateway', \App\Livewire\Pengaturan\PaymentGateway\Index::class)->name('payment-gateway');
+        });
+
+        // === GenieACS (BACKEND ONLY —- Koneksi Perangkat
+        Route::prefix('acs')->name('acs.')->group(function () use ($cs) {
+            Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
+            Route::get('/devices', \App\Livewire\ACS\Device\Index::class)->name('devices.index');
+            Route::get('/devices/create', \App\Livewire\ACS\Device\Create::class)->name('devices.create');
+            Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
+            Route::get('/devices/{id}', \App\Livewire\ACS\Device\Show::class)->name('devices.show');
+            Route::get('/tasks', \App\Livewire\ACS\Task\Index::class)->name('tasks.index');
+            Route::get('/alarms', \App\Livewire\ACS\Alarm\Index::class)->name('alarms.index');
+            Route::get('/firmware', \App\Livewire\ACS\Firmware\Index::class)->name('firmware.index');
+            Route::get('/firmware/create', \App\Livewire\ACS\Firmware\Create::class)->name('firmware.create');
+            Route::get('/firmware/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('firmware.edit');
+        });
+
+        // === GIS (Peta Pelanggan) ===
+        Route::prefix('gis')->name('gis.')->group(function () use ($cs) {
+            Route::get('/', \App\Livewire\Gis\GisDashboard::class)->name('index');
+            Route::get('/map', \App\Livewire\Gis\GisMap::class)->name('map');
+            Route::get('/analytics', \App\Livewire\Gis\GisAnalytics::class)->name('analytics');
+            // Peta Pelanggan (List Pelanggan > Peta Pelanggan) → redirect ke GIS Map (SUDAH ADA)
+            Route::get('/customer-map', fn() => redirect()->route('gis.map'))->name('customer-map');
+        });
+
+        // === Inventory (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
+        Route::prefix('inventory')->name('inventory.')->group(function () {
+            Route::get('/assets', \App\Livewire\Inventory\AssetList::class)->name('assets.index');
+        });
+
+        // === NOC (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
+        Route::prefix('noc')->name('noc.')->group(function () {
+            Route::get('/alerts', \App\Livewire\NOC\AlertList::class)->name('alerts.index');
+        });
+
+        // === Reports (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/trial-balance', \App\Livewire\Reports\TrialBalance::class)->name('trial-balance.index');
+        });
+
+        // === CRM (BACKWARD COMPAT - TIDAK DI SIDEBAR SSOT - HANYA URL LANGSUNG) ===
+        Route::prefix('crm')->name('crm.')->group(function () {
+            Route::get('/customers', \App\Livewire\Crm\Customer\Index::class)->name('customers.index');
+            Route::get('/customers/create', \App\Livewire\Crm\Customer\Create::class)->name('customers.create');
+            Route::get('/customers/{id}/edit', \App\Livewire\Crm\Customer\Edit::class)->name('customers.edit');
+            Route::get('/customers/{id}', \App\Livewire\Crm\Customer\Show::class)->name('customers.show');
+            
+            Route::get('/leads', \App\Livewire\Crm\Lead\Index::class)->name('leads.index');
+            Route::get('/leads/create', \App\Livewire\Crm\Lead\Create::class)->name('leads.create');
+            Route::get('/leads/{id}/edit', \App\Livewire\Crm\Lead\Edit::class)->name('leads.edit');
+            Route::get('/leads/{id}', \App\Livewire\Crm\Lead\Show::class)->name('leads.show');
+            
+            Route::get('/surveys', \App\Livewire\Crm\Survey\Index::class)->name('surveys.index');
+            Route::get('/surveys/create', \App\Livewire\Crm\Survey\Create::class)->name('surveys.create');
+            Route::get('/surveys/{id}/edit', \App\Livewire\Crm\Survey\Edit::class)->name('surveys.edit');
+            Route::get('/surveys/{id}', \App\Livewire\Crm\Survey\Show::class)->name('surveys.show');
+            
+            Route::get('/quotations', \App\Livewire\Crm\Quotation\Index::class)->name('quotations.index');
+            Route::get('/quotations/create', \App\Livewire\Crm\Quotation\Create::class)->name('quotations.create');
+            Route::get('/quotations/{id}/edit', \App\Livewire\Crm\Quotation\Edit::class)->name('quotations.edit');
+            Route::get('/quotations/{id}', \App\Livewire\Crm\Quotation\Show::class)->name('quotations.show');
+            
+            Route::get('/contracts', \App\Livewire\Crm\Contract\Index::class)->name('contracts.index');
+            Route::get('/contracts/create', \App\Livewire\Crm\Contract\Create::class)->name('contracts.create');
+            Route::get('/contracts/{id}/edit', \App\Livewire\Crm\Contract\Edit::class)->name('contracts.edit');
+            Route::get('/contracts/{id}', \App\Livewire\Crm\Contract\Show::class)->name('contracts.show');
+            
+            Route::get('/installations', \App\Livewire\Crm\Installation\Index::class)->name('installations.index');
+            Route::get('/installations/create', \App\Livewire\Crm\Installation\Create::class)->name('installations.create');
+            Route::get('/installations/{id}/edit', \App\Livewire\Crm\Installation\Edit::class)->name('installations.edit');
+            Route::get('/installations/{id}', \App\Livewire\Crm\Installation\Show::class)->name('installations.show');
+            
+            Route::get('/activations', \App\Livewire\Crm\Activation\Index::class)->name('activations.index');
+            Route::get('/activations/create', \App\Livewire\Crm\Activation\Create::class)->name('activations.create');
+            Route::get('/activations/{id}/edit', \App\Livewire\Crm\Activation\Edit::class)->name('activations.edit');
+            Route::get('/activations/{id}', \App\Livewire\Crm\Activation\Show::class)->name('activations.show');
+        });
+
+        // === Workflow (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
+        Route::prefix('workflow')->name('workflow.')->group(function () {
+            Route::get('/list', \App\Livewire\Workflow\WorkflowList::class)->name('list.index');
+        });
+
+        // === Administration (Pengaturan > Pengguna Akses & Sistem) ===
+        Route::prefix('admin')->name('admin.')->group(function () {
+            Route::get('/users', \App\Livewire\Admin\User\Index::class)->name('users.index');
+            Route::get('/users/create', \App\Livewire\Admin\User\Create::class)->name('users.create');
+            Route::get('/users/{id}/edit', \App\Livewire\Admin\User\Edit::class)->name('users.edit');
+            Route::get('/users/{id}', \App\Livewire\Admin\User\Show::class)->name('users.show');
+            
+            Route::get('/audit-trail', \App\Livewire\Admin\AuditTrail\Index::class)->name('audit-trail.index');
+            Route::get('/settings', \App\Livewire\Admin\Settings\Index::class)->name('settings.index');
+        });
     });
 
-    // AAA - Hotspot Users
-    Route::prefix('aaa/hotspot-users')->name('aaa.hotspot-users.')->group(function () {
-        Route::get('/', \App\Livewire\AAA\HotspotUser\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\AAA\HotspotUser\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\AAA\HotspotUser\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\AAA\HotspotUser\Show::class)->name('show');
-    });
-
-    // AAA - Vouchers
-    Route::prefix('aaa/vouchers')->name('aaa.vouchers.')->group(function () {
-        Route::get('/', \App\Livewire\AAA\Voucher\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\AAA\Voucher\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\AAA\Voucher\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\AAA\Voucher\Show::class)->name('show');
-    });
-
-    // CRM - Leads
-    Route::prefix('crm/leads')->name('crm.leads.')->group(function () {
-        Route::get('/', \App\Livewire\Crm\Lead\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Crm\Lead\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Crm\Lead\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Crm\Lead\Show::class)->name('show');
-    });
-
-    // CRM - Surveys
-    Route::prefix('crm/surveys')->name('crm.surveys.')->group(function () {
-        Route::get('/', \App\Livewire\Crm\Survey\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Crm\Survey\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Crm\Survey\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Crm\Survey\Show::class)->name('show');
-    });
-
-    // CRM - Quotations
-    Route::prefix('crm/quotations')->name('crm.quotations.')->group(function () {
-        Route::get('/', \App\Livewire\Crm\Quotation\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Crm\Quotation\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Crm\Quotation\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Crm\Quotation\Show::class)->name('show');
-    });
-
-    // CRM - Contracts
-    Route::prefix('crm/contracts')->name('crm.contracts.')->group(function () {
-        Route::get('/', \App\Livewire\Crm\Contract\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Crm\Contract\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Crm\Contract\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Crm\Contract\Show::class)->name('show');
-    });
-
-    // CRM - Installations
-    Route::prefix('crm/installations')->name('crm.installations.')->group(function () {
-        Route::get('/', \App\Livewire\Crm\Installation\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Crm\Installation\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Crm\Installation\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Crm\Installation\Show::class)->name('show');
-    });
-
-    // CRM - Activations
-    Route::prefix('crm/activations')->name('crm.activations.')->group(function () {
-        Route::get('/', \App\Livewire\Crm\Activation\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Crm\Activation\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Crm\Activation\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Crm\Activation\Show::class)->name('show');
-    });
-
-    // CRM - Customers
-    Route::prefix('crm/customers')->name('crm.customers.')->group(function () {
-        Route::get('/', \App\Livewire\Crm\Customer\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Crm\Customer\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Crm\Customer\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Crm\Customer\Show::class)->name('show');
-        Route::get('/{id}/360', \App\Livewire\Crm\Customer\Customer360::class)->name('360');
-    });
-
-    // Billing - Invoices
-    Route::prefix('billing/invoices')->name('billing.invoices.')->group(function () {
-        Route::get('/', \App\Livewire\Billing\Invoice\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Billing\Invoice\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Billing\Invoice\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Billing\Invoice\Show::class)->name('show');
-    });
-
-    // Billing - Payments
-    Route::prefix('billing/payments')->name('billing.payments.')->group(function () {
-        Route::get('/', \App\Livewire\Billing\Payment\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Billing\Payment\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Billing\Payment\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Billing\Payment\Show::class)->name('show');
-    });
-
-    // Service Profiles (Paket Internet)
-    Route::prefix('isp/service-profiles')->name('isp.service-profiles.')->group(function () {
-        Route::get('/', \App\Livewire\ISP\ServiceProfile\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\ISP\ServiceProfile\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\ISP\ServiceProfile\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\ISP\ServiceProfile\Show::class)->name('show');
-    });
-
-    // PPPoE Users
-    Route::prefix('isp/pppoe-users')->name('isp.pppoe-users.')->group(function () {
-        Route::get('/', \App\Livewire\ISP\PppoeUser\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\ISP\PppoeUser\Create::class)->name('create');
-    });
-
-    // Hotspot Users
-    Route::prefix('isp/hotspot-users')->name('isp.hotspot-users.')->group(function () {
-        Route::get('/', \App\Livewire\ISP\HotspotUser\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\ISP\HotspotUser\Create::class)->name('create');
-    });
-
-    // Vouchers
-    Route::prefix('isp/vouchers')->name('isp.vouchers.')->group(function () {
-        Route::get('/', \App\Livewire\ISP\Voucher\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\ISP\Voucher\Create::class)->name('create');
-    });
-
-    // Route::resource('members', \App\Http\Controllers\MemberController::class);
-    // Route::resource('income-categories', \App\Http\Controllers\IncomeCategoryController::class);
-    // Route::resource('expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
-    // Route::resource('cash-accounts', \App\Http\Controllers\CashAccountController::class);
-    // Route::resource('member-incomes', \App\Http\Controllers\MemberIncomeController::class);
-    // Route::resource('cash-transactions', \App\Http\Controllers\CashTransactionController::class);
-    // Route::resource('internet-packages', \App\Http\Controllers\InternetPackageController::class);
-    
-    // Network Management
-    Route::get('/vendors', function () {
-        return redirect()->route('isp.vendors.index');
-    })->name('vendors.index');
-
-    // Service Profile Management
-        // Route::get('/service-profiles', [\App\Http\Controllers\ISP\ServiceProfileController::class, 'index'])->name('service-profiles.index');
-        // Route::get('/service-profiles/export/excel', [\App\Http\Controllers\ISP\ServiceProfileController::class, 'exportExcel'])->name('service-profiles.export.excel');
-        // Route::get('/service-profiles/export/pdf', [\App\Http\Controllers\ISP\ServiceProfileController::class, 'exportPdf'])->name('service-profiles.export.pdf');
-        // Route::get('/service-profiles/export/csv', [\App\Http\Controllers\ISP\ServiceProfileController::class, 'exportCsv'])->name('service-profiles.export.csv');
-    // Route::get('expense-sharing', [\App\Http\Controllers\CashTransactionController::class, 'expenseSharingIndex'])->name('expense-sharing.index');
-    // Route::get('expense-sharing/create', [\App\Http\Controllers\CashTransactionController::class, 'expenseSharingCreate'])->name('expense-sharing.create');
-    // Route::post('expense-sharing', [\App\Http\Controllers\CashTransactionController::class, 'expenseSharingStore'])->name('expense-sharing.store');
-    // Route::get('expense-sharing/{id}', [\App\Http\Controllers\CashTransactionController::class, 'expenseSharingShow'])->name('expense-sharing.show');
-    // Route::get('expense-sharing/{id}/edit', [\App\Http\Controllers\CashTransactionController::class, 'expenseSharingEdit'])->name('expense-sharing.edit');
-    // Route::put('expense-sharing/{id}', [\App\Http\Controllers\CashTransactionController::class, 'expenseSharingUpdate'])->name('expense-sharing.update');
-    // Route::delete('expense-sharing/{id}', [\App\Http\Controllers\CashTransactionController::class, 'expenseSharingDestroy'])->name('expense-sharing.destroy');
-    
-    // Revenue Sharing New
-    // Route::get('/revenue-sharing', [\App\Http\Controllers\RevenueSharingBatchController::class, 'index'])->name('revenue-sharing.index');
-    // Route::post('/revenue-sharing/generate', [\App\Http\Controllers\RevenueSharingBatchController::class, 'generate'])->name('revenue-sharing.generate');
-    // Route::post('/revenue-sharing/{batch}/approve', [\App\Http\Controllers\RevenueSharingBatchController::class, 'approve'])->name('revenue-sharing.approve');
-    // Route::post('/revenue-sharing/{batch}/lock', [\App\Http\Controllers\RevenueSharingBatchController::class, 'lock'])->name('revenue-sharing.lock');
-    // Route::get('/revenue-sharing/{batch}', [\App\Http\Controllers\RevenueSharingBatchController::class, 'show'])->name('revenue-sharing.show');
-
-    // Reports
-    // Route::get('/reports/trial-balance', [\App\Http\Controllers\ReportController::class, 'trialBalance'])->name('reports.trial-balance');
-    // Route::get('/reports/profit-loss', [\App\Http\Controllers\ReportController::class, 'profitLoss'])->name('reports.profit-loss');
-    
-    // Audit Trail
-    // Route::get('/audit-logs', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
-    
-    // User Management
-    // Route::resource('users', \App\Http\Controllers\UserController::class);
-
-    // Onboarding Routes (using app/Livewire)
-    Route::prefix('onboarding')->group(function () {
-        Route::get('/leads', \App\Livewire\Onboarding\LeadIndex::class)->name('onboarding.leads.index');
-        Route::get('/leads/create', function () { return view('livewire.onboarding.lead-create'); })->name('onboarding.leads.create');
+    // ==================== CUSTOMER PORTAL ====================
+    Route::middleware(['role:customer'])->prefix('customer-portal')->name('customer-portal.')->group(function () {
+        Route::get('/dashboard', \App\Livewire\CustomerPortal\Dashboard::class)->name('dashboard');
         
-        Route::get('/prospects', \App\Livewire\Onboarding\ProspectIndex::class)->name('onboarding.prospects.index');
-        Route::get('/prospects/create', \App\Livewire\Onboarding\ProspectCreate::class)->name('onboarding.prospects.create');
-        
-        Route::get('/coverage-checks', \App\Livewire\Onboarding\CoverageCheckIndex::class)->name('onboarding.coverage-checks.index');
-        Route::get('/surveys', \App\Livewire\Onboarding\SurveyIndex::class)->name('onboarding.surveys.index');
-        Route::get('/quotations', \App\Livewire\Onboarding\QuotationIndex::class)->name('onboarding.quotations.index');
-        Route::get('/contracts', \App\Livewire\Onboarding\ContractIndex::class)->name('onboarding.contracts.index');
-        Route::get('/installations', \App\Livewire\Onboarding\InstallationIndex::class)->name('onboarding.installations.index');
-        Route::get('/qc', \App\Livewire\Onboarding\QualityControlIndex::class)->name('onboarding.qc.index');
-    });
-
-    // ISP Network Infrastructure Routes
-    Route::prefix('isp')->group(function () {
-        // Vendors
-        Route::prefix('vendors')->name('isp.vendors.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Vendor\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ISP\Vendor\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ISP\Vendor\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ISP\Vendor\Show::class)->name('show');
-        });
-
-        // Towers
-        Route::prefix('towers')->name('isp.towers.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Tower\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ISP\Tower\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ISP\Tower\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ISP\Tower\Show::class)->name('show');
-        });
-
-        // POPs
-        Route::prefix('pops')->name('isp.pops.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Pop\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ISP\Pop\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ISP\Pop\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ISP\Pop\Show::class)->name('show');
-        });
-
-        // OLTs
-        Route::prefix('olts')->name('isp.olts.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Olt\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ISP\Olt\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ISP\Olt\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ISP\Olt\Show::class)->name('show');
-        });
-
-        // ODCs
-        Route::prefix('odcs')->name('isp.odcs.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Odc\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ISP\Odc\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ISP\Odc\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ISP\Odc\Show::class)->name('show');
-        });
-
-        // ODPs
-        Route::prefix('odps')->name('isp.odps.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Odp\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ISP\Odp\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ISP\Odp\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ISP\Odp\Show::class)->name('show');
-        });
-
-        // ONUs
-        Route::prefix('onus')->name('isp.onus.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Onu\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ISP\Onu\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ISP\Onu\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ISP\Onu\Show::class)->name('show');
-        });
-        
-        // Routers
-        Route::prefix('routers')->name('isp.routers.')->group(function () {
-            Route::get('/', \App\Livewire\ISP\Router\Index::class)->name('index');
-            Route::get('/{router}', \App\Livewire\ISP\Router\Show::class)->name('show');
+        Route::prefix('self-service')->name('self-service.')->group(function () {
+            Route::get('/change-pppoe-password', \App\Livewire\CustomerPortal\SelfService\ChangePppoePassword::class)
+                ->name('change-pppoe-password');
+            Route::get('/change-onu-wifi-password', \App\Livewire\CustomerPortal\SelfService\ChangeOnuWifiPassword::class)
+                ->name('change-onu-wifi-password');
+            Route::get('/change-hotspot-credentials', \App\Livewire\CustomerPortal\SelfService\ChangeHotspotCredentials::class)
+                ->name('change-hotspot-credentials');
         });
     });
 
-    // GIS Platform Routes
-    Route::prefix('gis')->group(function () {
-        // Main GIS Platform
-        Route::get('/', \App\Livewire\Gis\GisDashboard::class)->name('gis.index');
-        Route::get('/map', \App\Livewire\Gis\GisMap::class)->name('gis.map');
-        Route::get('/dashboard', \App\Livewire\Gis\GisDashboard::class)->name('gis.dashboard');
-        
-        // GIS Components
-        Route::get('/alarms', \App\Livewire\Gis\AlarmPanel::class)->name('gis.alarms');
-        Route::get('/tickets', \App\Livewire\Gis\TicketPanel::class)->name('gis.tickets');
-        Route::get('/analytics', \App\Livewire\Gis\GisAnalytics::class)->name('gis.analytics');
-        Route::get('/route-planner', \App\Livewire\Gis\RoutePlanner::class)->name('gis.route-planner');
-        Route::get('/heatmap', \App\Livewire\Gis\NetworkHeatmap::class)->name('gis.heatmap');
-        
-        // Node Management
-        Route::get('/nodes/{type}/{id}', \App\Livewire\Gis\NodeDetails::class)->name('gis.nodes.show');
-        
-        // Search
-        Route::get('/search', \App\Livewire\Gis\SearchPanel::class)->name('gis.search');
-    });
-
-    // Administration Routes
-    Route::prefix('admin/users')->name('admin.users.')->group(function () {
-        Route::get('/', \App\Livewire\Admin\User\Index::class)->name('index');
-        Route::get('/create', \App\Livewire\Admin\User\Create::class)->name('create');
-        Route::get('/{id}/edit', \App\Livewire\Admin\User\Edit::class)->name('edit');
-        Route::get('/{id}', \App\Livewire\Admin\User\Show::class)->name('show');
-    });
-
-    Route::prefix('admin/audit-trail')->name('admin.audit-trail.')->group(function () {
-        Route::get('/', \App\Livewire\Admin\AuditTrail\Index::class)->name('index');
-    });
-
-    // Settings Route
-    Route::prefix('admin/settings')->name('admin.settings.')->group(function () {
-        Route::get('/', \App\Livewire\Admin\Settings\Index::class)->name('index');
-    });
-    
-    // Direct Settings Route
-    Route::get('/settings', function () {
-        return redirect()->route('admin.settings.index');
-    })->name('settings');
-
-    // Inventory Routes
-    Route::prefix('inventory/assets')->name('inventory.assets.')->group(function () {
-        Route::get('/', \App\Livewire\Inventory\AssetList::class)->name('index');
-    });
-
-    // NOC Routes
-    Route::prefix('noc/alerts')->name('noc.alerts.')->group(function () {
-        Route::get('/', \App\Livewire\NOC\AlertList::class)->name('index');
-    });
-
-    // ACS Routes
-    Route::prefix('acs')->name('acs.')->group(function () {
-        Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
-        
-        // Devices
-        Route::prefix('devices')->name('devices.')->group(function () {
-            Route::get('/', \App\Livewire\ACS\Device\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ACS\Device\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('edit');
-            Route::get('/{id}', \App\Livewire\ACS\Device\Show::class)->name('show');
-        });
-        
-        // Provisioning
-        Route::prefix('provisioning/templates')->name('provisioning.templates.')->group(function () {
-            Route::get('/', \App\Livewire\ACS\Provisioning\Template\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ACS\Provisioning\Template\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ACS\Provisioning\Template\Edit::class)->name('edit');
-        });
-        
-        // Firmware
-        Route::prefix('firmware')->name('firmware.')->group(function () {
-            Route::get('/', \App\Livewire\ACS\Firmware\Index::class)->name('index');
-            Route::get('/create', \App\Livewire\ACS\Firmware\Create::class)->name('create');
-            Route::get('/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('edit');
-        });
-        
-        // Tasks
-        Route::prefix('tasks')->name('tasks.')->group(function () {
-            Route::get('/', \App\Livewire\ACS\Task\Index::class)->name('index');
-        });
-        
-        // Alarms
-        Route::prefix('alarms')->name('alarms.')->group(function () {
-            Route::get('/', \App\Livewire\ACS\Alarm\Index::class)->name('index');
-        });
-        
-        // Logs
-        Route::prefix('logs')->name('logs.')->group(function () {
-            Route::get('/', \App\Livewire\ACS\Log\Index::class)->name('index');
-        });
-    });
-
-    // Reports Routes
-    Route::prefix('reports/trial-balance')->name('reports.trial-balance.')->group(function () {
-        Route::get('/', \App\Livewire\Reports\TrialBalance::class)->name('index');
-    });
-
+    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

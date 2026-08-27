@@ -37,4 +37,9 @@ abstract class BaseNetworkComponent extends AdminComponent
     {
         $this->resetPage();
     }
+
+    public function updatedPerPage()
+    {
+        $this->resetPage();
+    }
 }

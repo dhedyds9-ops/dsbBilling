@@ -22,12 +22,6 @@ use App\Repositories\Provisioning\ResourceAssignmentRepository;
 use App\Repositories\Provisioning\ResourceReservationRepository;
 use App\Repositories\Provisioning\ServiceInstanceRepository;
 use App\Repositories\Provisioning\VlanAllocationRepository;
-use App\Repositories\AAA\PPPoEUserRepository;
-use App\Repositories\AAA\HotspotUserRepository;
-use App\Repositories\AAA\RadiusAccountingRepository;
-use App\Repositories\AAA\RadiusNasRepository;
-use App\Repositories\AAA\VoucherPoolRepository;
-use App\Repositories\AAA\VoucherRepository;
 use App\Repositories\Billing\InvoiceItemRepository;
 use App\Repositories\Billing\InvoiceRepository;
 use App\Repositories\Billing\SubscriptionRepository;
@@ -54,7 +48,6 @@ use App\Repositories\GIS\CoverageAreaRepository;
 use App\Repositories\GIS\ServiceAreaRepository;
 use App\Repositories\GIS\MapLayerRepository;
 use App\Repositories\GIS\CoordinateReferenceSystemRepository;
-use App\Services\AAA\AAAService;
 use Illuminate\Support\ServiceProvider;
 use Src\Domain\CRM\CoverageCheckRepositoryInterface;
 use Src\Domain\CRM\CustomerActivationRepositoryInterface;
@@ -75,13 +68,6 @@ use Src\Domain\Provisioning\ResourceAssignmentRepositoryInterface;
 use Src\Domain\Provisioning\ResourceReservationRepositoryInterface;
 use Src\Domain\Provisioning\ServiceInstanceRepositoryInterface;
 use Src\Domain\Provisioning\VLANAllocationRepositoryInterface;
-use Src\Domain\AAA\AAAServiceInterface;
-use Src\Domain\AAA\PPPoEUserRepositoryInterface;
-use Src\Domain\AAA\HotspotUserRepositoryInterface;
-use Src\Domain\AAA\RadiusAccountingRepositoryInterface;
-use Src\Domain\AAA\RadiusNasRepositoryInterface;
-use Src\Domain\AAA\VoucherPoolRepositoryInterface;
-use Src\Domain\AAA\VoucherRepositoryInterface;
 use Src\Domain\Billing\InvoiceRepositoryInterface;
 use Src\Domain\Billing\InvoiceItemRepositoryInterface;
 use Src\Domain\Billing\SubscriptionRepositoryInterface;
@@ -136,15 +122,6 @@ class AppServiceProvider extends ServiceProvider
         DeviceAssignmentRepositoryInterface::class => DeviceAssignmentRepository::class,
         ProvisionPipelineRepositoryInterface::class => ProvisionPipelineRepository::class,
 
-        // AAA Services & Repositories
-        AAAServiceInterface::class => AAAService::class,
-        PPPoEUserRepositoryInterface::class => PPPoEUserRepository::class,
-        HotspotUserRepositoryInterface::class => HotspotUserRepository::class,
-        RadiusAccountingRepositoryInterface::class => RadiusAccountingRepository::class,
-        RadiusNasRepositoryInterface::class => RadiusNasRepository::class,
-        VoucherPoolRepositoryInterface::class => VoucherPoolRepository::class,
-        VoucherRepositoryInterface::class => VoucherRepository::class,
-
         // Billing Repositories
         InvoiceRepositoryInterface::class => InvoiceRepository::class,
         InvoiceItemRepositoryInterface::class => InvoiceItemRepository::class,
@@ -184,5 +161,14 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         \Illuminate\Support\Facades\View::composer('layouts.admin', \App\View\Composers\AdminLayoutComposer::class);
+
+        \Illuminate\Support\Facades\RateLimiter::for('radius.accounting', function (\Illuminate\Http\Request $request) {
+            $nasIp = $request->input('nas_ip_address')
+                ?? ($request->header('X-Forwarded-For') ? explode(',', (string)$request->header('X-Forwarded-For'))[0]
+                : $request->ip());
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(1200)->by((string)$nasIp),
+            ];
+        });
     }
 }

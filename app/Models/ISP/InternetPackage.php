@@ -18,6 +18,8 @@ class InternetPackage extends Model
         'price',
         'bandwidth_download',
         'bandwidth_upload',
+        'quota_mb', // Kuota dalam MB, null untuk unlimited
+        'validity_days', // Durasi aktif dalam hari, null untuk bulanan
         'is_active',
         'created_by',
         'updated_by',
@@ -25,6 +27,8 @@ class InternetPackage extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'quota_mb' => 'integer',
+        'validity_days' => 'integer',
         'is_active' => 'boolean',
     ];
 

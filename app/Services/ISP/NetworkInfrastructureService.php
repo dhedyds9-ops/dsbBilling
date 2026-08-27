@@ -90,6 +90,18 @@ abstract class NetworkInfrastructureService
         });
     }
 
+    public function bulkRestore(array $ids, User $user): void
+    {
+        DB::transaction(function () use ($ids, $user) {
+            $modelClass = $this->getModelClass();
+            $models = $modelClass::onlyTrashed()->whereIn('id', $ids)->get();
+            foreach ($models as $model) {
+                $this->restore($model, $user);
+            }
+            $this->logAudit(null, 'bulk_restore', ['ids' => $ids], null, $user);
+        });
+    }
+
     protected function logAudit($model, string $event, ?array $oldValues, ?array $newValues, User $user): void
     {
         try {

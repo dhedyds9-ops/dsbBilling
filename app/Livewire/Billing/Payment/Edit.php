@@ -4,8 +4,9 @@ namespace App\Livewire\Billing\Payment;
 
 use App\Livewire\AdminComponent;
 use App\Models\Payment\Payment;
-use App\Models\Customer;
+use App\Models\CRM\Customer;
 use App\Models\Billing\Invoice;
+use App\Services\Billing\PaymentService;
 
 class Edit extends AdminComponent
 {
@@ -28,7 +29,7 @@ class Edit extends AdminComponent
         $this->activePage = 'payments';
         $this->paymentId = $id;
         $this->payment = Payment::with('invoices')->findOrFail($id);
-        
+
         $this->customer_id = $this->payment->customer_id;
         $this->amount = $this->payment->amount;
         $this->currency = $this->payment->currency;
@@ -40,10 +41,10 @@ class Edit extends AdminComponent
         $this->invoice_ids = $this->payment->invoices->pluck('id')->toArray();
     }
 
-    public function save()
+    public function save(PaymentService $paymentService)
     {
         $this->validate([
-            'customer_id' => 'required|exists:users,id',
+            'customer_id' => 'required|exists:members,id',
             'amount' => 'required|numeric|min:0',
             'currency' => 'required|in:IDR,USD',
             'method' => 'required|in:bank_transfer,cash,credit_card,e_wallet',
@@ -52,19 +53,19 @@ class Edit extends AdminComponent
             'paid_at' => 'nullable|date',
         ]);
 
-        $this->payment->update([
-            'customer_id' => $this->customer_id,
-            'amount' => $this->amount,
-            'currency' => $this->currency,
-            'method' => $this->method,
-            'status' => $this->status,
-            'reference_number' => $this->reference_number,
-            'paid_at' => $this->paid_at,
-            'gateway' => $this->gateway,
-            'updated_by' => auth()->id(),
-        ]);
-
-        $this->payment->invoices()->sync($this->invoice_ids);
+        $paymentService->updatePayment(
+            payment: $this->payment,
+            customerId: (int) $this->customer_id,
+            amount: (float) $this->amount,
+            userId: auth()->id(),
+            invoiceIds: array_map('intval', $this->invoice_ids),
+            currency: $this->currency,
+            method: $this->method,
+            status: $this->status,
+            referenceNumber: $this->reference_number,
+            paidAt: $this->paid_at ? new \DateTime($this->paid_at) : null,
+            gateway: $this->gateway,
+        );
 
         session()->flash('success', 'Payment berhasil diperbarui!');
         return redirect()->route('billing.payments.show', $this->paymentId);
@@ -79,7 +80,7 @@ class Edit extends AdminComponent
                                 ->orWhereIn('id', $this->invoice_ids);
                           })
                           ->get();
-        
+
         return view('livewire.billing.payment.edit', compact('customers', 'invoices'));
     }
 }

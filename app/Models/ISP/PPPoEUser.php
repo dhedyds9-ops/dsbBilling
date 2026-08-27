@@ -76,7 +76,7 @@ class PPPoEUser extends Model
 
     public function radiusAccountings()
     {
-        return $this->hasMany(RadiusAccounting::class);
+        return $this->hasMany(RadiusAccounting::class, 'pppoe_user_id');
     }
 
     public function getIsOnlineAttribute()
@@ -92,5 +92,17 @@ class PPPoEUser extends Model
 
         // For now, just check if there's any accounting (we can refine later)
         return true;
+    }
+
+    public function subscription()
+    {
+        return $this->hasOneThrough(
+            \App\Models\Billing\Subscription::class,
+            CustomerService::class,
+            'id', // Foreign key on CustomerService
+            'customer_service_id', // Foreign key on Subscription
+            'customer_service_id', // Local key on PPPoEUser
+            'id' // Local key on CustomerService
+        );
     }
 }

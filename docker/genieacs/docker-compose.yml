@@ -1,0 +1,102 @@
+services:
+  genieacs-cwmp:
+    image: genieacs/genieacs:latest
+    container_name: genieacs-cwmp
+    restart: unless-stopped
+    command: genieacs-cwmp
+    environment:
+      - GENIEACS_MONGODB_CONNECTION_URL=mongodb://mongo:27017/genieacs
+      - GENIEACS_CWMP_INTERFACE=0.0.0.0
+      - GENIEACS_CWMP_PORT=7547
+      - GENIEACS_UDP_BIND=0.0.0.0
+      - GENIEACS_UDP_PORT=7547
+    ports:
+      - "7547:7547"
+      - "7547:7547/udp"
+    depends_on:
+      - mongo
+    networks:
+      - genieacs-net
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  genieacs-nbi:
+    image: genieacs/genieacs:latest
+    container_name: genieacs-nbi
+    restart: unless-stopped
+    command: genieacs-nbi
+    environment:
+      - GENIEACS_MONGODB_CONNECTION_URL=mongodb://mongo:27017/genieacs
+      - GENIEACS_NBI_INTERFACE=0.0.0.0
+      - GENIEACS_NBI_PORT=7557
+      - GENIEACS_NBI_USERNAME=${GENIEACS_USERNAME:-admin}
+      - GENIEACS_NBI_PASSWORD=${GENIEACS_PASSWORD:-admin}
+    ports:
+      - "7557:7557"
+    depends_on:
+      - mongo
+    networks:
+      - genieacs-net
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  genieacs-fs:
+    image: genieacs/genieacs:latest
+    container_name: genieacs-fs
+    restart: unless-stopped
+    command: genieacs-fs
+    environment:
+      - GENIEACS_MONGODB_CONNECTION_URL=mongodb://mongo:27017/genieacs
+      - GENIEACS_FS_INTERFACE=0.0.0.0
+      - GENIEACS_FS_PORT=7567
+    ports:
+      - "7567:7567"
+    volumes:
+      - genieacs-fs:/opt/genieacs/fs
+    depends_on:
+      - mongo
+    networks:
+      - genieacs-net
+
+  genieacs-ui:
+    image: genieacs/genieacs-ui:latest
+    container_name: genieacs-ui
+    restart: unless-stopped
+    environment:
+      - GENIEACS_UI_INTERFACE=0.0.0.0
+      - GENIEACS_UI_PORT=3000
+      - GENIEACS_NBI_HOST=genieacs-nbi
+      - GENIEACS_NBI_PORT=7557
+      - GENIEACS_UI_JWT_SECRET=${GENIEACS_JWT_SECRET:-replace-this-with-random-long-string}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - genieacs-nbi
+    networks:
+      - genieacs-net
+
+  mongo:
+    image: mongo:6.0
+    container_name: genieacs-mongo
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=genieacs
+    volumes:
+      - genieacs-mongo:/data/db
+    networks:
+      - genieacs-net
+
+volumes:
+  genieacs-mongo:
+    driver: local
+  genieacs-fs:
+    driver: local
+
+networks:
+  genieacs-net:
+    name: genieacs-net
+    driver: bridge

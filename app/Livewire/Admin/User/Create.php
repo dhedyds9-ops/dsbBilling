@@ -12,6 +12,8 @@ class Create extends AdminComponent
     public $name;
     public $email;
     public $password;
+    public $whatsapp;
+    public $wilayah;
     public $selectedRoles = [];
 
     public function mount()
@@ -33,12 +35,16 @@ class Create extends AdminComponent
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8',
+            'whatsapp' => 'required|string|max:255',
+            'wilayah' => 'required|string|max:255',
         ]);
 
         $user = UserModel::create([
             'name' => $this->name,
             'email' => $this->email,
             'password' => Hash::make($this->password),
+            'whatsapp' => $this->whatsapp,
+            'wilayah' => $this->wilayah,
         ]);
 
         if (!empty($this->selectedRoles)) {

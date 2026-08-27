@@ -4,7 +4,8 @@ namespace App\Livewire\Billing\Invoice;
 
 use App\Livewire\AdminComponent;
 use App\Models\Billing\Invoice;
-use App\Models\Customer;
+use App\Models\CRM\Customer;
+use App\Services\Billing\InvoiceService;
 
 class Edit extends AdminComponent
 {
@@ -26,7 +27,7 @@ class Edit extends AdminComponent
         $this->activePage = 'invoices';
         $this->invoiceId = $id;
         $this->invoice = Invoice::with('items')->findOrFail($id);
-        
+
         $this->customer_id = $this->invoice->customer_id;
         $this->invoice_number = $this->invoice->invoice_number;
         $this->issue_date = $this->invoice->issue_date->format('Y-m-d');
@@ -40,7 +41,7 @@ class Edit extends AdminComponent
                 'description' => $item->description,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
-                'total' => $item->total,
+                'subtotal' => $item->subtotal,
             ];
         })->toArray();
         $this->breadcrumbs = [
@@ -58,7 +59,7 @@ class Edit extends AdminComponent
             'description' => '',
             'quantity' => 1,
             'unit_price' => 0,
-            'total' => 0,
+            'subtotal' => 0,
         ];
     }
 
@@ -76,37 +77,40 @@ class Edit extends AdminComponent
         });
     }
 
-    public function save()
+    public function save(InvoiceService $invoiceService)
     {
         $this->validate([
-            'customer_id' => 'required|exists:users,id',
+            'customer_id' => 'required|exists:members,id',
             'invoice_number' => 'required|unique:invoices,invoice_number,' . $this->invoiceId,
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'total_amount' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
+            'items.*.description' => 'required|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        $this->invoice->update([
-            'customer_id' => $this->customer_id,
-            'invoice_number' => $this->invoice_number,
-            'issue_date' => $this->issue_date,
-            'due_date' => $this->due_date,
-            'total_amount' => $this->total_amount,
-            'currency' => $this->currency,
-            'status' => $this->status,
-            'updated_by' => auth()->id(),
-        ]);
-
-        $this->invoice->items()->delete();
-        foreach ($this->items as $item) {
-            $this->invoice->items()->create([
+        $normalizedItems = collect($this->items)->map(function ($item) {
+            return [
                 'description' => $item['description'],
                 'quantity' => $item['quantity'],
                 'unit_price' => $item['unit_price'],
-                'total' => $item['total'],
-            ]);
-        }
+            ];
+        })->toArray();
+
+        $invoiceService->updateInvoice(
+            invoice: $this->invoice,
+            customerId: (int) $this->customer_id,
+            userId: auth()->id(),
+            items: $normalizedItems,
+            issueDate: new \DateTime($this->issue_date),
+            dueDate: new \DateTime($this->due_date),
+            invoiceNumber: $this->invoice_number,
+            contractId: $this->invoice->contract_id,
+            currency: $this->currency,
+            status: $this->status,
+        );
 
         session()->flash('success', 'Invoice berhasil diperbarui!');
         return redirect()->route('billing.invoices.show', $this->invoiceId);

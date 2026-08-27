@@ -18,8 +18,15 @@ class Voucher extends Model
         'code',
         'voucher_pool_id',
         'service_profile_id',
+        'nas_device_id',
+        'owner_id',
         'hotspot_user_id',
         'status',
+        'type',
+        'bind_on_login',
+        'fee_seller',
+        'login_method',
+        'code_combination',
         'activated_at',
         'expires_at',
         'validity_days',
@@ -31,6 +38,8 @@ class Voucher extends Model
     protected $casts = [
         'activated_at' => 'datetime',
         'expires_at' => 'datetime',
+        'bind_on_login' => 'boolean',
+        'fee_seller' => 'decimal:2',
     ];
 
     public function voucherPool()
@@ -69,5 +78,15 @@ class Voucher extends Model
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function nasDevice()
+    {
+        return $this->belongsTo(NasDevice::class);
+    }
+
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_id');
     }
 }

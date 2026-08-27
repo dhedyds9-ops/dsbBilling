@@ -4,17 +4,25 @@ namespace App\Livewire\ISP\Olt;
 
 use App\Livewire\ISP\BaseNetworkComponent;
 use App\Models\ISP\Olt as OltModel;
+use App\Exports\OltExport;
+use App\Imports\OltImport;
 use App\Services\ISP\OltService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\WithFileUploads;
 use Throwable;
 
 class Index extends BaseNetworkComponent
 {
+    use WithFileUploads;
+
     public bool $showTrashed = false;
     public array $selectedOlts = [];
     public bool $selectAll = false;
     public bool $showDeleteModal = false;
+    public $importFile;
+    public bool $showImportModal = false;
 
     public function mount()
     {
@@ -208,7 +216,76 @@ class Index extends BaseNetworkComponent
 
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        Log::info(__METHOD__);
+        try {
+            $selectedIds = $this->selectedOlts;
+            return Excel::download(new OltExport($selectedIds), 'olt.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal export OLT: ' . $e->getMessage());
+        }
+    }
+
+    public function bulkRestore()
+    {
+        Log::info(__METHOD__);
+        $service = app(OltService::class);
+        $user = Auth::user();
+
+        try {
+            if (empty($this->selectedOlts)) {
+                session()->flash('error', 'Silakan pilih setidaknya satu OLT untuk direstore!');
+                return;
+            }
+
+            $service->bulkRestore($this->selectedOlts, $user);
+            session()->flash('success', count($this->selectedOlts) . ' OLT berhasil direstore!');
+            $this->resetActionState();
+        } catch (Throwable $e) {
+            Log::error('Bulk restore OLT failed', ['olt_ids' => $this->selectedOlts, 'message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal merestore OLT: ' . $e->getMessage());
+        }
+    }
+
+    public function openImportModal()
+    {
+        $this->importFile = null;
+        $this->showImportModal = true;
+    }
+
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+        $this->importFile = null;
+    }
+
+    public function import()
+    {
+        $this->validate([
+            'importFile' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            Log::info('Importing OLTs', ['user_id' => auth()->id()]);
+
+            Excel::import(new OltImport(auth()->user()), $this->importFile);
+
+            Log::info('OLTs imported successfully');
+
+            session()->flash('success', 'OLT berhasil diimpor!');
+            $this->closeImportModal();
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            session()->flash('error', 'Gagal mengimpor: ' . implode('; ', $errors));
+        } catch (Throwable $e) {
+            Log::error('Import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal mengimpor: ' . $e->getMessage());
+        }
     }
 
     public function resetFilters()
@@ -233,8 +310,8 @@ class Index extends BaseNetworkComponent
             })
             ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
 
-        $olts = $query->orderBy($this->sortField, $this->sortDirection)
-                     ->paginate($this->perPage);
+        $query = $query->orderBy($this->sortField, $this->sortDirection);
+        $olts = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);
 
         return view('livewire.isp.olt.index', compact('olts'));
     }

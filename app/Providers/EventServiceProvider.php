@@ -27,11 +27,14 @@ use Src\Domain\Customer\Events\ServiceActivatedEvent;
 use Src\Domain\Customer\Events\ServiceSuspendedEvent;
 use Src\Domain\Customer\Events\ServiceReactivatedEvent;
 use Src\Domain\Customer\Events\ServiceTerminatedEvent;
-use Src\Domain\AAA\Events\PPPoEUserCreatedEvent;
-use Src\Domain\AAA\Events\PPPoEUserSuspendedEvent;
 use Src\Domain\Billing\Events\InvoiceCreatedEvent;
+use Src\Domain\Billing\Events\InvoicePaidEvent;
+use Src\Domain\Billing\Events\InvoiceOverdueEvent;
+use Src\Domain\Billing\Events\PaymentReceivedEvent;
+use Src\Domain\Billing\Events\PaymentVerifiedEvent;
 use Src\Domain\Billing\Events\SubscriptionCreatedEvent;
 use App\Events\ISP\InternetPackageSaved;
+use App\Events\ISP\PPPoEUserStatusChangedEvent;
 use App\Listeners\Provisioning\ServiceInstanceCreatedListener;
 use App\Listeners\Provisioning\ResourcesReservedListener;
 use App\Listeners\Provisioning\DeviceAssignedListener;
@@ -43,62 +46,59 @@ use App\Listeners\Provisioning\RadiusProvisionedListener;
 use App\Listeners\Provisioning\OnuProvisionedListener;
 use App\Listeners\Provisioning\ProvisioningVerifiedListener;
 use App\Listeners\Provisioning\ProvisioningFailedListener;
-use App\Listeners\AAA\PPPoEUserCreatedListener;
-use App\Listeners\AAA\PPPoEUserSuspendedListener;
 use App\Listeners\Billing\InvoiceCreatedListener;
+use App\Listeners\Billing\InvoicePaidListener;
+use App\Listeners\Billing\InvoiceOverdueListener;
+use App\Listeners\Billing\PaymentReceivedListener;
+use App\Listeners\Billing\PaymentVerifiedListener;
 use App\Listeners\Billing\SubscriptionCreatedListener;
 use App\Listeners\ISP\SyncInternetPackageToRadius;
+use App\Listeners\ISP\SendPPPoEUserStatusChangedNotification;
+use App\Listeners\ISP\FiberServiceProvisioningListener;
+use App\Listeners\ISP\FiberServiceSuspensionListener;
 
 class EventServiceProvider extends ServiceProvider
 {
     protected $listen = [
-        ServiceInstanceCreatedEvent::class => [
-            ServiceInstanceCreatedListener::class,
+        // ==================== PROVISIONING EVENTS (Src\Domain SSOT) ====================
+        ServiceActivatedEvent::class => [
+            FiberServiceProvisioningListener::class,
         ],
-        ResourcesReservedEvent::class => [
-            ResourcesReservedListener::class,
+        ServiceReactivatedEvent::class => [
+            FiberServiceProvisioningListener::class,
         ],
-        DeviceAssignedEvent::class => [
-            DeviceAssignedListener::class,
+        ServiceSuspendedEvent::class => [
+            FiberServiceSuspensionListener::class,
         ],
-        VlanAllocatedEvent::class => [
-            VlanAllocatedListener::class,
+        ServiceTerminatedEvent::class => [
+            FiberServiceSuspensionListener::class,
         ],
-        IpAllocatedEvent::class => [
-            IpAllocatedListener::class,
-        ],
-        QueueAllocatedEvent::class => [
-            QueueAllocatedListener::class,
-        ],
-        RouterProvisionedEvent::class => [
-            RouterProvisionedListener::class,
-        ],
-        RadiusProvisionedEvent::class => [
-            RadiusProvisionedListener::class,
-        ],
-        OnuProvisionedEvent::class => [
-            OnuProvisionedListener::class,
-        ],
-        ProvisioningVerifiedEvent::class => [
-            ProvisioningVerifiedListener::class,
-        ],
-        ProvisioningFailedEvent::class => [
-            ProvisioningFailedListener::class,
-        ],
-        PPPoEUserCreatedEvent::class => [
-            PPPoEUserCreatedListener::class,
-        ],
-        PPPoEUserSuspendedEvent::class => [
-            PPPoEUserSuspendedListener::class,
-        ],
+
         InvoiceCreatedEvent::class => [
             InvoiceCreatedListener::class,
+        ],
+        InvoicePaidEvent::class => [
+            InvoicePaidListener::class,
+        ],
+        InvoiceOverdueEvent::class => [
+            InvoiceOverdueListener::class,
+        ],
+        PaymentReceivedEvent::class => [
+            PaymentReceivedListener::class,
+        ],
+        PaymentVerifiedEvent::class => [
+            PaymentVerifiedListener::class,
         ],
         SubscriptionCreatedEvent::class => [
             SubscriptionCreatedListener::class,
         ],
+
+        // ==================== ISP LEGACY EVENTS (App\Events — TODO: migrate ke Src\Domain\ISP\Events) ====================
         InternetPackageSaved::class => [
             SyncInternetPackageToRadius::class,
+        ],
+        PPPoEUserStatusChangedEvent::class => [
+            SendPPPoEUserStatusChangedNotification::class,
         ],
     ];
 

@@ -2,11 +2,21 @@
 
 namespace App\Livewire\Admin\User;
 
-use App\Livewire\Admin\BaseAdminComponent;
+use App\Livewire\AdminComponent;
 use App\Models\User as UserModel;
+use Livewire\WithPagination;
 
-class Index extends BaseAdminComponent
+class Index extends AdminComponent
 {
+    use WithPagination;
+
+    public $search = '';
+    public $sortField = 'created_at';
+    public $sortDirection = 'desc';
+    public $perPage = 10;
+    public $filters = [];
+    public $showFilters = false;
+
     public function mount()
     {
         parent::mount();
@@ -18,6 +28,28 @@ class Index extends BaseAdminComponent
             ['label' => 'Administration', 'url' => route('admin.users.index')],
             ['label' => 'Users'],
         ];
+    }
+
+    public function sortBy($field)
+    {
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortDirection = 'asc';
+        }
+        $this->sortField = $field;
+    }
+
+    public function resetFilters()
+    {
+        $this->filters = ['status' => ''];
+        $this->search = '';
+        $this->resetPage();
+    }
+
+    public function updatedSearch()
+    {
+        $this->resetPage();
     }
 
     public function delete($id)

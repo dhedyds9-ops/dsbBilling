@@ -5,7 +5,7 @@ namespace App\Services\Provisioning;
 use App\Models\Customer\CustomerService;
 use App\Models\Customer\Contract;
 use App\Models\ServiceCatalog\Service;
-use App\Models\AAA\PPPoEUser;
+use App\Models\ISP\PPPoEUser;
 use App\Models\Provisioning\ServiceInstance;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -16,12 +16,6 @@ use Src\Domain\Customer\Events\ServiceActivatedEvent;
 use Src\Domain\Customer\Events\ServiceSuspendedEvent;
 use Src\Domain\Customer\Events\ServiceReactivatedEvent;
 use Src\Domain\Customer\Events\ServiceTerminatedEvent;
-use Src\Domain\AAA\Events\PPPoEUserCreatedEvent;
-use Src\Domain\AAA\Events\PPPoEUserActivatedEvent;
-use Src\Domain\AAA\Events\PPPoEUserSuspendedEvent;
-use Src\Domain\AAA\Events\PPPoEUserTerminatedEvent;
-use Src\Domain\AAA\Events\PPPoEUserReactivatedEvent;
-use App\Jobs\AAA\ProvisionPPPoEUserJob;
 
 class CustomerServiceService
 {
@@ -87,18 +81,8 @@ class CustomerServiceService
                     'updated_by' => $userId,
                 ]);
 
-                Event::dispatch(new PPPoEUserCreatedEvent(
-                    $pppoeUser->uuid,
-                    $customerServiceId
-                ));
-
-                ProvisionPPPoEUserJob::dispatch($pppoeUser);
             } elseif ($pppoeUser) {
                 $pppoeUser->update(['status' => 'active', 'updated_by' => $userId]);
-                Event::dispatch(new PPPoEUserActivatedEvent(
-                    $pppoeUser->uuid,
-                    $customerServiceId
-                ));
             }
 
             return $customerService;
@@ -123,11 +107,6 @@ class CustomerServiceService
             $pppoeUser = PPPoEUser::where('customer_service_id', $customerServiceId)->first();
             if ($pppoeUser) {
                 $pppoeUser->update(['status' => 'suspended', 'updated_by' => $userId]);
-                Event::dispatch(new PPPoEUserSuspendedEvent(
-                    $pppoeUser->uuid,
-                    $customerServiceId
-                ));
-                \App\Jobs\AAA\RemovePPPoEUserJob::dispatch($pppoeUser);
             }
 
             return $customerService;
@@ -152,10 +131,6 @@ class CustomerServiceService
             $pppoeUser = PPPoEUser::where('customer_service_id', $customerServiceId)->first();
             if ($pppoeUser) {
                 $pppoeUser->update(['status' => 'active', 'updated_by' => $userId]);
-                Event::dispatch(new PPPoEUserReactivatedEvent(
-                    $pppoeUser->uuid,
-                    $customerServiceId
-                ));
             }
 
             return $customerService;
@@ -181,11 +156,6 @@ class CustomerServiceService
             $pppoeUser = PPPoEUser::where('customer_service_id', $customerServiceId)->first();
             if ($pppoeUser) {
                 $pppoeUser->update(['status' => 'terminated', 'updated_by' => $userId]);
-                Event::dispatch(new PPPoEUserTerminatedEvent(
-                    $pppoeUser->uuid,
-                    $customerServiceId
-                ));
-                \App\Jobs\AAA\RemovePPPoEUserJob::dispatch($pppoeUser);
             }
 
             return $customerService;

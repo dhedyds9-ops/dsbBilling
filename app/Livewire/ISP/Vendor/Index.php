@@ -4,17 +4,25 @@ namespace App\Livewire\ISP\Vendor;
 
 use App\Livewire\ISP\BaseNetworkComponent;
 use App\Models\ISP\Vendor as VendorModel;
+use App\Exports\VendorExport;
+use App\Imports\VendorImport;
 use App\Services\ISP\VendorService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\WithFileUploads;
 use Throwable;
 
 class Index extends BaseNetworkComponent
 {
+    use WithFileUploads;
+
     public bool $showTrashed = false;
     public array $selectedVendors = [];
     public bool $selectAll = false;
     public bool $showDeleteModal = false;
+    public $importFile;
+    public bool $showImportModal = false;
 
     public function mount()
     {
@@ -209,7 +217,55 @@ class Index extends BaseNetworkComponent
 
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        Log::info(__METHOD__);
+        try {
+            $selectedIds = $this->selectedVendors;
+            return Excel::download(new VendorExport($selectedIds), 'vendor.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal export vendor: ' . $e->getMessage());
+        }
+    }
+
+    public function openImportModal()
+    {
+        $this->importFile = null;
+        $this->showImportModal = true;
+    }
+
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+        $this->importFile = null;
+    }
+
+    public function import()
+    {
+        $this->validate([
+            'importFile' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            Log::info('Importing vendors', ['user_id' => auth()->id()]);
+
+            Excel::import(new VendorImport(auth()->user()), $this->importFile);
+
+            Log::info('Vendors imported successfully');
+
+            session()->flash('success', 'Vendor berhasil diimpor!');
+            $this->closeImportModal();
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            session()->flash('error', 'Gagal mengimpor: ' . implode('; ', $errors));
+        } catch (Throwable $e) {
+            Log::error('Import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal mengimpor: ' . $e->getMessage());
+        }
     }
 
     public function resetFilters()

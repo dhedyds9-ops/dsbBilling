@@ -258,6 +258,41 @@ class RouterOSDriver implements RouterOSDriverInterface
         }
     }
 
+    public function updatePPPoEServerUser(string $username, string $password, string $profile): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username, $password, $profile) {
+                $this->ensureConnected();
+
+                // Check if secret exists
+                $query = new Query('/ppp/secret/print');
+                $query->where('name', $username);
+                $secrets = $this->connection->query($query)->read();
+
+                if (!empty($secrets[0]['.id'])) {
+                    // Update existing secret
+                    $updateQuery = (new Query('/ppp/secret/set'))
+                        ->equal('.id', $secrets[0]['.id'])
+                        ->equal('password', $password)
+                        ->equal('profile', $profile);
+                    $this->connection->query($updateQuery)->read();
+                } else {
+                    // Add new secret if not exists
+                    $this->addPPPoESecret($username, $password, $profile);
+                }
+
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function removePPPoEServerUser(string $username): bool
+    {
+        return $this->removePPPoESecret($username);
+    }
+
     public function removePPPoESecret(string $username): bool
     {
         try {
@@ -369,5 +404,434 @@ class RouterOSDriver implements RouterOSDriverInterface
             ['host' => $this->config['host']],
             ($end - $start) * 1000
         ))->toArray();
+    }
+
+    public function updateHotspotUser(string $username, string $password, string $profile = 'default'): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username, $password, $profile) {
+                $this->ensureConnected();
+
+                // Check if hotspot user exists
+                $query = new Query('/ip/hotspot/user/print');
+                $query->where('name', $username);
+                $users = $this->connection->query($query)->read();
+
+                if (!empty($users[0]['.id'])) {
+                    // Update existing user
+                    $updateQuery = (new Query('/ip/hotspot/user/set'))
+                        ->equal('.id', $users[0]['.id'])
+                        ->equal('password', $password);
+                    if ($profile) {
+                        $updateQuery->equal('profile', $profile);
+                    }
+                    $this->connection->query($updateQuery)->read();
+                } else {
+                    // Add new user if not exists (though this shouldn't happen for existing customers)
+                    $addQuery = (new Query('/ip/hotspot/user/add'))
+                        ->equal('name', $username)
+                        ->equal('password', $password);
+                    if ($profile) {
+                        $addQuery->equal('profile', $profile);
+                    }
+                    $this->connection->query($addQuery)->read();
+                }
+
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function disconnectHotspotUser(string $username): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username) {
+                $this->ensureConnected();
+
+                // Find all active sessions for this user
+                $query = new Query('/ip/hotspot/active/print');
+                $query->where('user', $username);
+                $sessions = $this->connection->query($query)->read();
+
+                // Disconnect each active session
+                foreach ($sessions as $session) {
+                    if (!empty($session['.id'])) {
+                        $removeQuery = (new Query('/ip/hotspot/active/remove'))
+                            ->equal('.id', $session['.id']);
+                        $this->connection->query($removeQuery)->read();
+                    }
+                }
+
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function disconnectPppoeUser(string $username): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username) {
+                $this->ensureConnected();
+
+                $query = new Query('/ppp/active/print');
+                $query->where('name', $username);
+                $sessions = $this->connection->query($query)->read();
+
+                foreach ($sessions as $session) {
+                    if (!empty($session['.id'])) {
+                        $removeQuery = (new Query('/ppp/active/remove'))
+                            ->equal('.id', $session['.id']);
+                        $this->connection->query($removeQuery)->read();
+                    }
+                }
+
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    // ============================================================
+    // IP POOL (/ip/pool)
+    // ============================================================
+    public function getPools(): array
+    {
+        try {
+            $this->ensureConnected();
+            return $this->connection->query(new Query('/ip/pool/print'))->read() ?: [];
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function addIpPool(string $name, string $ranges, ?string $comment = null, ?string $nextPool = null): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name, $ranges, $comment, $nextPool) {
+                $this->ensureConnected();
+                $q = (new Query('/ip/pool/add'))
+                    ->equal('name', $name)
+                    ->equal('ranges', $ranges);
+                if ($comment) $q->equal('comment', $comment);
+                if ($nextPool) $q->equal('next-pool', $nextPool);
+                $this->connection->query($q)->read();
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function updateIpPool(string $name, string $ranges, ?string $comment = null, ?string $nextPool = null): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name, $ranges, $comment, $nextPool) {
+                $this->ensureConnected();
+                $find = (new Query('/ip/pool/print'));
+                $find->where('name', $name);
+                $rows = $this->connection->query($find)->read();
+                if (empty($rows[0]['.id'])) {
+                    return $this->addIpPool($name, $ranges, $comment, $nextPool);
+                }
+                $q = (new Query('/ip/pool/set'))
+                    ->equal('.id', $rows[0]['.id'])
+                    ->equal('ranges', $ranges);
+                if ($comment !== null) $q->equal('comment', $comment);
+                if ($nextPool !== null) $q->equal('next-pool', $nextPool);
+                $this->connection->query($q)->read();
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function removeIpPool(string $name): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name) {
+                $this->ensureConnected();
+                $find = new Query('/ip/pool/print');
+                $find->where('name', $name);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $this->connection->query((new Query('/ip/pool/remove'))->equal('.id', $rows[0]['.id']))->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    // ============================================================
+    // PPP PROFILE (/ppp/profile)
+    // ============================================================
+    public function getPppProfiles(): array
+    {
+        try {
+            $this->ensureConnected();
+            return $this->connection->query(new Query('/ppp/profile/print'))->read() ?: [];
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function addPppProfile(string $name, array $options = []): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name, $options) {
+                $this->ensureConnected();
+                $q = (new Query('/ppp/profile/add'))->equal('name', $name);
+                foreach ($options as $k => $v) {
+                    if ($v !== null && $v !== '') $q->equal($k, $v);
+                }
+                $this->connection->query($q)->read();
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function updatePppProfile(string $name, array $options = []): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name, $options) {
+                $this->ensureConnected();
+                $find = new Query('/ppp/profile/print');
+                $find->where('name', $name);
+                $rows = $this->connection->query($find)->read();
+                if (empty($rows[0]['.id'])) {
+                    return $this->addPppProfile($name, $options);
+                }
+                $q = (new Query('/ppp/profile/set'))->equal('.id', $rows[0]['.id']);
+                foreach ($options as $k => $v) {
+                    if ($v !== null && $v !== '') $q->equal($k, $v);
+                }
+                $this->connection->query($q)->read();
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function removePppProfile(string $name): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name) {
+                $this->ensureConnected();
+                $find = new Query('/ppp/profile/print');
+                $find->where('name', $name);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $this->connection->query((new Query('/ppp/profile/remove'))->equal('.id', $rows[0]['.id']))->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function disablePppSecret(string $username): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username) {
+                $this->ensureConnected();
+                $find = new Query('/ppp/secret/print');
+                $find->where('name', $username);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $q = (new Query('/ppp/secret/set'))
+                        ->equal('.id', $rows[0]['.id'])
+                        ->equal('disabled', 'yes');
+                    $this->connection->query($q)->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function enablePppSecret(string $username): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username) {
+                $this->ensureConnected();
+                $find = new Query('/ppp/secret/print');
+                $find->where('name', $username);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $q = (new Query('/ppp/secret/set'))
+                        ->equal('.id', $rows[0]['.id'])
+                        ->equal('disabled', 'no');
+                    $this->connection->query($q)->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    // ============================================================
+    // HOTSPOT USER PROFILE (/ip/hotspot/user/profile)
+    // ============================================================
+    public function getHotspotUserProfiles(): array
+    {
+        try {
+            $this->ensureConnected();
+            return $this->connection->query(new Query('/ip/hotspot/user/profile/print'))->read() ?: [];
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function addHotspotUserProfile(string $name, array $options = []): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name, $options) {
+                $this->ensureConnected();
+                $q = (new Query('/ip/hotspot/user/profile/add'))->equal('name', $name);
+                foreach ($options as $k => $v) {
+                    if ($v !== null && $v !== '') $q->equal($k, $v);
+                }
+                $this->connection->query($q)->read();
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function updateHotspotUserProfile(string $name, array $options = []): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name, $options) {
+                $this->ensureConnected();
+                $find = new Query('/ip/hotspot/user/profile/print');
+                $find->where('name', $name);
+                $rows = $this->connection->query($find)->read();
+                if (empty($rows[0]['.id'])) {
+                    return $this->addHotspotUserProfile($name, $options);
+                }
+                $q = (new Query('/ip/hotspot/user/profile/set'))->equal('.id', $rows[0]['.id']);
+                foreach ($options as $k => $v) {
+                    if ($v !== null && $v !== '') $q->equal($k, $v);
+                }
+                $this->connection->query($q)->read();
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function removeHotspotUserProfile(string $name): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($name) {
+                $this->ensureConnected();
+                $find = new Query('/ip/hotspot/user/profile/print');
+                $find->where('name', $name);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $this->connection->query((new Query('/ip/hotspot/user/profile/remove'))->equal('.id', $rows[0]['.id']))->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function addHotspotUser(string $username, string $password, string $profile = 'default', ?array $options = null): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username, $password, $profile, $options) {
+                $this->ensureConnected();
+                $q = (new Query('/ip/hotspot/user/add'))
+                    ->equal('name', $username)
+                    ->equal('password', $password)
+                    ->equal('profile', $profile);
+                if (is_array($options)) {
+                    foreach ($options as $k => $v) {
+                        if ($v !== null && $v !== '') $q->equal($k, $v);
+                    }
+                }
+                $this->connection->query($q)->read();
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function disableHotspotUser(string $username): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username) {
+                $this->ensureConnected();
+                $find = new Query('/ip/hotspot/user/print');
+                $find->where('name', $username);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $q = (new Query('/ip/hotspot/user/set'))
+                        ->equal('.id', $rows[0]['.id'])
+                        ->equal('disabled', 'yes');
+                    $this->connection->query($q)->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function enableHotspotUser(string $username): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username) {
+                $this->ensureConnected();
+                $find = new Query('/ip/hotspot/user/print');
+                $find->where('name', $username);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $q = (new Query('/ip/hotspot/user/set'))
+                        ->equal('.id', $rows[0]['.id'])
+                        ->equal('disabled', 'no');
+                    $this->connection->query($q)->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function removeHotspotUser(string $username): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username) {
+                $this->ensureConnected();
+                $find = new Query('/ip/hotspot/user/print');
+                $find->where('name', $username);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $this->connection->query((new Query('/ip/hotspot/user/remove'))->equal('.id', $rows[0]['.id']))->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
     }
 }

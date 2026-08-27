@@ -9,7 +9,7 @@ class Customer360 extends AdminComponent
 {
     public $customerId;
     public $customer;
-    public $activeTab = 'profile';
+    public string $activeTab = 'profile';
     
     protected $tabs = [
         'profile' => 'Profile',

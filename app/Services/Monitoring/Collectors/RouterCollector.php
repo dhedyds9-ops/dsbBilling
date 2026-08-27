@@ -9,14 +9,18 @@ use App\Models\ISP\RouterMonitoringLog;
 use App\Models\ISP\PppActiveSession;
 use App\Models\ISP\HotspotActiveSession;
 use App\Models\ISP\QueueMonitoringLog;
+use App\Services\ISP\Session\OnlineSessionStore;
 use App\Services\Monitoring\AlertEngine;
+use App\Support\UptimeParser;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class RouterCollector extends BaseCollector
 {
     public function __construct(
         private MikroTikDriver $driver,
-        private AlertEngine $alertEngine
+        private AlertEngine $alertEngine,
+        private OnlineSessionStore $onlineSessionStore,
     ) {}
     
     public function collect(): void
@@ -127,42 +131,126 @@ class RouterCollector extends BaseCollector
     
     private function updatePppSessions(Router $router, array $sessions): void
     {
-        PppActiveSession::where('router_id', $router->id)->delete();
-        
-        foreach ($sessions as $session) {
-            PppActiveSession::create([
-                'router_id' => $router->id,
-                'name' => $session['name'] ?? null,
-                'service' => $session['service'] ?? null,
-                'caller_id' => $session['caller_id'] ?? null,
-                'address' => $session['address'] ?? null,
-                'uptime' => $session['uptime'] ?? null,
-                'bytes_in' => $session['bytes_in'] ?? 0,
-                'bytes_out' => $session['bytes_out'] ?? 0,
-                'packets_in' => $session['packets_in'] ?? 0,
-                'packets_out' => $session['packets_out'] ?? 0,
-                'rate_up' => $session['rate_up'] ?? null,
-                'rate_down' => $session['rate_down'] ?? null,
-            ]);
+        $compositeKeys = [];
+        $now = now();
+
+        DB::transaction(function () use ($router, $sessions, &$compositeKeys, $now) {
+            foreach ($sessions as $session) {
+                $name = (string)($session['name'] ?? '');
+                $callerId = (string)($session['caller_id'] ?? '');
+                $address = (string)($session['address'] ?? '');
+                $uptime = (string)($session['uptime'] ?? '');
+                $startedAt = UptimeParser::toDateTime($uptime);
+
+                $key = "{$router->id}|{$name}|{$callerId}|{$address}";
+                $compositeKeys[] = $key;
+
+                PppActiveSession::query()->updateOrCreate(
+                    [
+                        'router_id' => $router->id,
+                        'name' => $name,
+                        'caller_id' => $callerId,
+                        'address' => $address,
+                    ],
+                    [
+                        'service' => $session['service'] ?? null,
+                        'uptime' => $uptime,
+                        'bytes_in' => (int)($session['bytes_in'] ?? 0),
+                        'bytes_out' => (int)($session['bytes_out'] ?? 0),
+                        'packets_in' => (int)($session['packets_in'] ?? 0),
+                        'packets_out' => (int)($session['packets_out'] ?? 0),
+                        'rate_up' => $session['rate_up'] ?? null,
+                        'rate_down' => $session['rate_down'] ?? null,
+                        'session_started_at' => $startedAt,
+                        'updated_at' => $now,
+                    ]
+                );
+            }
+
+            if (count($compositeKeys) > 0) {
+                $existing = PppActiveSession::query()
+                    ->where('router_id', $router->id)
+                    ->get(['id', 'router_id', 'name', 'caller_id', 'address']);
+
+                $toDeleteIds = $existing->filter(function ($row) use ($compositeKeys) {
+                    $k = "{$row->router_id}|{$row->name}|{$row->caller_id}|{$row->address}";
+                    return !in_array($k, $compositeKeys, true);
+                })->pluck('id')->all();
+
+                if (count($toDeleteIds) > 0) {
+                    PppActiveSession::query()->whereIn('id', $toDeleteIds)->delete();
+                }
+            } else {
+                PppActiveSession::query()->where('router_id', $router->id)->delete();
+            }
+        });
+
+        try {
+            $this->onlineSessionStore->upsertPppoeFromRouter($router, $sessions);
+        } catch (\Throwable $e) {
+            Cache::driver('array');
+            \Illuminate\Support\Facades\Log::warning('OnlineSession PPPoE sync non-fatal', ['router' => $router->name, 'err' => $e->getMessage()]);
         }
     }
     
     private function updateHotspotSessions(Router $router, array $sessions): void
     {
-        HotspotActiveSession::where('router_id', $router->id)->delete();
-        
-        foreach ($sessions as $session) {
-            HotspotActiveSession::create([
-                'router_id' => $router->id,
-                'user' => $session['user'] ?? null,
-                'mac_address' => $session['mac_address'] ?? null,
-                'address' => $session['address'] ?? null,
-                'server' => $session['server'] ?? null,
-                'login_by' => $session['login_by'] ?? null,
-                'uptime' => $session['uptime'] ?? null,
-                'bytes_in' => $session['bytes_in'] ?? 0,
-                'bytes_out' => $session['bytes_out'] ?? 0,
-            ]);
+        $compositeKeys = [];
+        $now = now();
+
+        DB::transaction(function () use ($router, $sessions, &$compositeKeys, $now) {
+            foreach ($sessions as $session) {
+                $user = (string)($session['user'] ?? '');
+                $mac = (string)($session['mac_address'] ?? '');
+                $address = (string)($session['address'] ?? '');
+                $server = (string)($session['server'] ?? '');
+                $uptime = (string)($session['uptime'] ?? '');
+                $startedAt = UptimeParser::toDateTime($uptime);
+
+                $key = "{$router->id}|{$user}|{$mac}|{$address}|{$server}";
+                $compositeKeys[] = $key;
+
+                HotspotActiveSession::query()->updateOrCreate(
+                    [
+                        'router_id' => $router->id,
+                        'user' => $user,
+                        'mac_address' => $mac,
+                        'address' => $address,
+                        'server' => $server,
+                    ],
+                    [
+                        'login_by' => $session['login_by'] ?? null,
+                        'uptime' => $uptime,
+                        'bytes_in' => (int)($session['bytes_in'] ?? 0),
+                        'bytes_out' => (int)($session['bytes_out'] ?? 0),
+                        'session_started_at' => $startedAt,
+                        'updated_at' => $now,
+                    ]
+                );
+            }
+
+            if (count($compositeKeys) > 0) {
+                $existing = HotspotActiveSession::query()
+                    ->where('router_id', $router->id)
+                    ->get(['id', 'router_id', 'user', 'mac_address', 'address', 'server']);
+
+                $toDeleteIds = $existing->filter(function ($row) use ($compositeKeys) {
+                    $k = "{$row->router_id}|{$row->user}|{$row->mac_address}|{$row->address}|{$row->server}";
+                    return !in_array($k, $compositeKeys, true);
+                })->pluck('id')->all();
+
+                if (count($toDeleteIds) > 0) {
+                    HotspotActiveSession::query()->whereIn('id', $toDeleteIds)->delete();
+                }
+            } else {
+                HotspotActiveSession::query()->where('router_id', $router->id)->delete();
+            }
+        });
+
+        try {
+            $this->onlineSessionStore->upsertHotspotFromRouter($router, $sessions);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('OnlineSession Hotspot sync non-fatal', ['router' => $router->name, 'err' => $e->getMessage()]);
         }
     }
     

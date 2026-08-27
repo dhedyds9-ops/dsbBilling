@@ -14,9 +14,15 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.login');
+        $loginType = $request->route()->getName() === 'admin.login' ? 'admin' : 'customer';
+        
+        if ($loginType === 'admin') {
+            return view('auth.login-admin');
+        }
+        
+        return view('auth.login-customer');
     }
 
     /**
@@ -28,6 +34,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+        
+        if ($user->hasRole('customer')) {
+            return redirect()->intended(route('customer-portal.dashboard', absolute: false));
+        }
+        
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
@@ -42,6 +54,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('home');
     }
 }

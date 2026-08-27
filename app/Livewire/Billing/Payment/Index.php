@@ -4,7 +4,7 @@ namespace App\Livewire\Billing\Payment;
 
 use App\Livewire\Billing\BaseBillingComponent;
 use App\Models\Payment\Payment;
-use App\Models\Customer;
+use App\Models\CRM\Customer;
 
 class Index extends BaseBillingComponent
 {

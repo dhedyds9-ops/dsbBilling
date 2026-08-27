@@ -4,17 +4,25 @@ namespace App\Livewire\ISP\Pop;
 
 use App\Livewire\ISP\BaseNetworkComponent;
 use App\Models\ISP\Pop as PopModel;
+use App\Exports\PopExport;
+use App\Imports\PopImport;
 use App\Services\ISP\PopService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\WithFileUploads;
 use Throwable;
 
 class Index extends BaseNetworkComponent
 {
+    use WithFileUploads;
+
     public bool $showTrashed = false;
     public array $selectedPops = [];
     public bool $selectAll = false;
     public bool $showDeleteModal = false;
+    public $importFile;
+    public bool $showImportModal = false;
 
     public function mount()
     {
@@ -206,9 +214,78 @@ class Index extends BaseNetworkComponent
         }
     }
 
+    public function bulkRestore()
+    {
+        Log::info(__METHOD__);
+        $service = app(PopService::class);
+        $user = Auth::user();
+
+        try {
+            if (empty($this->selectedPops)) {
+                session()->flash('error', 'Silakan pilih setidaknya satu POP untuk direstore!');
+                return;
+            }
+
+            $service->bulkRestore($this->selectedPops, $user);
+            session()->flash('success', count($this->selectedPops) . ' POP berhasil direstore!');
+            $this->resetActionState();
+        } catch (Throwable $e) {
+            Log::error('Bulk restore POPs failed', ['pop_ids' => $this->selectedPops, 'message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal merestore POP: ' . $e->getMessage());
+        }
+    }
+
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        Log::info(__METHOD__);
+        try {
+            $selectedIds = $this->selectedPops;
+            return Excel::download(new PopExport($selectedIds), 'point-of-presence.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal export POP: ' . $e->getMessage());
+        }
+    }
+
+    public function openImportModal()
+    {
+        $this->importFile = null;
+        $this->showImportModal = true;
+    }
+
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+        $this->importFile = null;
+    }
+
+    public function import()
+    {
+        $this->validate([
+            'importFile' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            Log::info('Importing POPs', ['user_id' => auth()->id()]);
+
+            Excel::import(new PopImport(auth()->user()), $this->importFile);
+
+            Log::info('POPs imported successfully');
+
+            session()->flash('success', 'POP berhasil diimpor!');
+            $this->closeImportModal();
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            session()->flash('error', 'Gagal mengimpor: ' . implode('; ', $errors));
+        } catch (Throwable $e) {
+            Log::error('Import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal mengimpor: ' . $e->getMessage());
+        }
     }
 
     public function resetFilters()

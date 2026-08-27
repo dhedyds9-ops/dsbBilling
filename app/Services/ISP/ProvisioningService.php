@@ -9,7 +9,7 @@ interface ProvisioningDriverInterface
 {
     public function provision(Onu $onu, ServiceProfile $profile): bool;
     public function deprovision(Onu $onu): bool;
-    public function re-provision(Onu $onu, ServiceProfile $profile): bool;
+    public function reprovision(Onu $onu, ServiceProfile $profile): bool;
 }
 
 class ProvisioningService

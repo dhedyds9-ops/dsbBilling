@@ -6,7 +6,7 @@ use App\Livewire\AdminComponent;
 use App\Models\Payment\Payment;
 use App\Models\CRM\Customer;
 use App\Models\Billing\Invoice;
-use App\Services\Billing\BillingAutomationService;
+use App\Services\Billing\PaymentService;
 
 class Create extends AdminComponent
 {
@@ -35,7 +35,7 @@ class Create extends AdminComponent
         ];
     }
 
-    public function save()
+    public function save(PaymentService $paymentService)
     {
         $this->validate([
             'customer_id' => 'required|exists:members,id',
@@ -47,34 +47,18 @@ class Create extends AdminComponent
             'paid_at' => 'nullable|date',
         ]);
 
-        $payment = Payment::create([
-            'uuid' => \Illuminate\Support\Str::uuid(),
-            'customer_id' => $this->customer_id,
-            'amount' => $this->amount,
-            'currency' => $this->currency,
-            'method' => $this->method,
-            'status' => $this->status,
-            'reference_number' => $this->reference_number,
-            'paid_at' => $this->paid_at,
-            'gateway' => $this->gateway,
-            'created_by' => auth()->id(),
-            'updated_by' => auth()->id(),
-        ]);
-
-        if (!empty($this->invoice_ids)) {
-            $payment->invoices()->attach($this->invoice_ids);
-            
-            // If payment is successful, verify it for each attached invoice
-            if ($this->status === 'success') {
-                $billingService = app(BillingAutomationService::class);
-                foreach ($this->invoice_ids as $invoiceId) {
-                    $invoice = Invoice::find($invoiceId);
-                    if ($invoice) {
-                        $billingService->verifyPayment($invoice, $this->amount);
-                    }
-                }
-            }
-        }
+        $payment = $paymentService->createPayment(
+            customerId: (int) $this->customer_id,
+            amount: (float) $this->amount,
+            userId: auth()->id(),
+            invoiceIds: array_map('intval', $this->invoice_ids),
+            currency: $this->currency,
+            method: $this->method,
+            status: $this->status,
+            referenceNumber: $this->reference_number,
+            paidAt: $this->paid_at ? new \DateTime($this->paid_at) : null,
+            gateway: $this->gateway,
+        );
 
         session()->flash('success', 'Payment berhasil dibuat!');
         return redirect()->route('billing.payments.show', $payment->id);
@@ -86,7 +70,7 @@ class Create extends AdminComponent
         $invoices = Invoice::where('customer_id', $this->customer_id)
                           ->where('status', '!=', 'paid')
                           ->get();
-        
+
         return view('livewire.billing.payment.create', compact('customers', 'invoices'));
     }
 }

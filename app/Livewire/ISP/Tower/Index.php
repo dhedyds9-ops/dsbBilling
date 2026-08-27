@@ -4,17 +4,25 @@ namespace App\Livewire\ISP\Tower;
 
 use App\Livewire\ISP\BaseNetworkComponent;
 use App\Models\ISP\Tower as TowerModel;
+use App\Exports\TowerExport;
+use App\Imports\TowerImport;
 use App\Services\ISP\TowerService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\WithFileUploads;
 use Throwable;
 
 class Index extends BaseNetworkComponent
 {
+    use WithFileUploads;
+
     public bool $showTrashed = false;
     public array $selectedTowers = [];
     public bool $selectAll = false;
     public bool $showDeleteModal = false;
+    public $importFile;
+    public bool $showImportModal = false;
 
     public function mount()
     {
@@ -206,9 +214,37 @@ class Index extends BaseNetworkComponent
         }
     }
 
+    public function bulkRestore()
+    {
+        Log::info(__METHOD__);
+        $service = app(TowerService::class);
+        $user = Auth::user();
+
+        try {
+            if (empty($this->selectedTowers)) {
+                session()->flash('error', 'Silakan pilih setidaknya satu Tower untuk direstore!');
+                return;
+            }
+
+            $service->bulkRestore($this->selectedTowers, $user);
+            session()->flash('success', count($this->selectedTowers) . ' Tower berhasil direstore!');
+            $this->resetActionState();
+        } catch (Throwable $e) {
+            Log::error('Bulk restore Towers failed', ['tower_ids' => $this->selectedTowers, 'message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal merestore Tower: ' . $e->getMessage());
+        }
+    }
+
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        Log::info(__METHOD__);
+        try {
+            $selectedIds = $this->selectedTowers;
+            return Excel::download(new TowerExport($selectedIds), 'tower.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal export tower: ' . $e->getMessage());
+        }
     }
 
     public function resetFilters()
@@ -218,6 +254,47 @@ class Index extends BaseNetworkComponent
         $this->showTrashed = false;
         $this->resetActionState();
         $this->resetPage();
+    }
+
+    public function openImportModal()
+    {
+        $this->importFile = null;
+        $this->showImportModal = true;
+    }
+
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+        $this->importFile = null;
+    }
+
+    public function import()
+    {
+        $this->validate([
+            'importFile' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            Log::info('Importing towers', ['user_id' => auth()->id()]);
+
+            Excel::import(new TowerImport(auth()->user()), $this->importFile);
+
+            Log::info('Towers imported successfully');
+
+            session()->flash('success', 'Tower berhasil diimpor!');
+            $this->closeImportModal();
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            session()->flash('error', 'Gagal mengimpor: ' . implode('; ', $errors));
+        } catch (Throwable $e) {
+            Log::error('Import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal mengimpor: ' . $e->getMessage());
+        }
     }
 
     public function render()

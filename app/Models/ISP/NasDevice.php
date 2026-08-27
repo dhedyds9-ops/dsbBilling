@@ -70,4 +70,9 @@ class NasDevice extends Model
     {
         return $this->belongsTo(\App\Models\User::class, 'updated_by');
     }
+
+    public function radiusPeer()
+    {
+        return $this->hasOne(RadiusNas::class);
+    }
 }

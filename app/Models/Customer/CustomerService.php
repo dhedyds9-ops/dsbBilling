@@ -73,4 +73,14 @@ class CustomerService extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    public function pppoeUser()
+    {
+        return $this->hasOne(\App\Models\ISP\PPPoEUser::class);
+    }
+
+    public function hotspotUser()
+    {
+        return $this->hasOne(\App\Models\ISP\HotspotUser::class);
+    }
 }

@@ -4,7 +4,8 @@ namespace App\Livewire\Billing\Invoice;
 
 use App\Livewire\AdminComponent;
 use App\Models\Billing\Invoice;
-use App\Models\Customer;
+use App\Models\CRM\Customer;
+use App\Services\Billing\InvoiceService;
 
 class Create extends AdminComponent
 {
@@ -39,7 +40,7 @@ class Create extends AdminComponent
             'description' => '',
             'quantity' => 1,
             'unit_price' => 0,
-            'total' => 0,
+            'subtotal' => 0,
         ];
     }
 
@@ -57,39 +58,39 @@ class Create extends AdminComponent
         });
     }
 
-    public function save()
+    public function save(InvoiceService $invoiceService)
     {
         $this->validate([
-            'customer_id' => 'required|exists:users,id',
+            'customer_id' => 'required|exists:members,id',
             'invoice_number' => 'required|unique:invoices,invoice_number',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'total_amount' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
+            'items.*.description' => 'required|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        $invoice = Invoice::create([
-            'uuid' => \Illuminate\Support\Str::uuid(),
-            'customer_id' => $this->customer_id,
-            'invoice_number' => $this->invoice_number,
-            'issue_date' => $this->issue_date,
-            'due_date' => $this->due_date,
-            'total_amount' => $this->total_amount,
-            'paid_amount' => 0,
-            'currency' => $this->currency,
-            'status' => $this->status,
-            'created_by' => auth()->id(),
-            'updated_by' => auth()->id(),
-        ]);
-
-        foreach ($this->items as $item) {
-            $invoice->items()->create([
+        $normalizedItems = collect($this->items)->map(function ($item) {
+            return [
                 'description' => $item['description'],
                 'quantity' => $item['quantity'],
                 'unit_price' => $item['unit_price'],
-                'total' => $item['total'],
-            ]);
-        }
+            ];
+        })->toArray();
+
+        $invoice = $invoiceService->createInvoice(
+            customerId: (int) $this->customer_id,
+            userId: auth()->id(),
+            items: $normalizedItems,
+            issueDate: new \DateTime($this->issue_date),
+            dueDate: new \DateTime($this->due_date),
+            invoiceNumber: $this->invoice_number,
+            contractId: null,
+            currency: $this->currency,
+            status: $this->status === 'pending' ? 'unpaid' : $this->status,
+        );
 
         session()->flash('success', 'Invoice berhasil dibuat!');
         return redirect()->route('billing.invoices.show', $invoice->id);

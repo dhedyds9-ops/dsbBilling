@@ -633,8 +633,8 @@ class Index extends BaseNetworkComponent
                 $q->where('service_profile_type_id', $this->typeId);
             });
 
-        $profiles = $query->orderBy($this->sortField, $this->sortDirection)
-            ->paginate($this->perPage);
+        $query = $query->orderBy($this->sortField, $this->sortDirection);
+        $profiles = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);
 
         return view('livewire.isp.service-profiles.index', compact('profiles', 'types'));
     }

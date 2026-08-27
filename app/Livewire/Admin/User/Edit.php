@@ -9,11 +9,13 @@ use Illuminate\Support\Facades\Hash;
 
 class Edit extends AdminComponent
 {
+    public UserModel $user;
     public $userId;
-    public $user;
     public $name;
     public $email;
     public $password;
+    public $whatsapp;
+    public $wilayah;
     public $selectedRoles = [];
 
     public function mount($id = null)
@@ -26,6 +28,8 @@ class Edit extends AdminComponent
 
         $this->name = $this->user->name;
         $this->email = $this->user->email;
+        $this->whatsapp = $this->user->whatsapp;
+        $this->wilayah = $this->user->wilayah;
         $this->selectedRoles = $this->user->roles->pluck('id')->toArray();
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
@@ -41,6 +45,8 @@ class Edit extends AdminComponent
         $validation = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $this->userId,
+            'whatsapp' => 'required|string|max:255',
+            'wilayah' => 'required|string|max:255',
         ];
 
         if ($this->password) {
@@ -52,6 +58,8 @@ class Edit extends AdminComponent
         $data = [
             'name' => $this->name,
             'email' => $this->email,
+            'whatsapp' => $this->whatsapp,
+            'wilayah' => $this->wilayah,
         ];
 
         if ($this->password) {

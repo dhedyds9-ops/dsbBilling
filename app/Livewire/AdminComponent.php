@@ -16,6 +16,12 @@ abstract class AdminComponent extends Component
     public string $darkMode = 'false';
     public string $activeModule = '';
     public string $activePage = '';
+    /**
+     * Default activeTab (boleh dioverride child dengan value spesifik misal 'midtrans', 'pppoe').
+     * Fallback disediakan lewat __call() untuk child yang TIDAK mendefinisikan method setActiveTab() sendiri.
+     * Child yang BUTUH custom behavior (misal panggil resetTabPages()) boleh override method setActiveTab() sendiri seperti biasa.
+     */
+    public string $activeTab = 'default';
     
     public array $breadcrumbs = [];
     public array $favorites = [];
@@ -113,35 +119,6 @@ abstract class AdminComponent extends Component
                         'icon' => 'users',
                         'url' => route('crm.customers.index'),
                         'active' => 'crm.customers*',
-                    ],
-                ],
-            ],
-            [
-                'label' => 'AAA',
-                'items' => [
-                    [
-                        'label' => 'PPPoE Users',
-                        'icon' => 'wifi',
-                        'url' => '#',
-                        'active' => 'aaa.pppoe*',
-                    ],
-                    [
-                        'label' => 'Hotspot Users',
-                        'icon' => 'signal',
-                        'url' => '#',
-                        'active' => 'aaa.hotspot*',
-                    ],
-                    [
-                        'label' => 'Vouchers',
-                        'icon' => 'ticket',
-                        'url' => '#',
-                        'active' => 'aaa.voucher*',
-                    ],
-                    [
-                        'label' => 'Radius NAS',
-                        'icon' => 'server',
-                        'url' => '#',
-                        'active' => 'aaa.nas*',
                     ],
                 ],
             ],
@@ -324,7 +301,52 @@ abstract class AdminComponent extends Component
     {
         $this->activePage = $page;
     }
-    
+
+    /**
+     * PHP Magic Method __call: HANYA dijalankan JIKA child class TIDAK memiliki method dengan nama tersebut.
+     *
+     * ✅ Ini adalah cara 100% BACKWARD COMPATIBLE tanpa LSP conflict PHP 8.2:
+     *    - 22 child class yang SUDAH PUNYA override setActiveTab() sendiri (beda signature/behavior)
+     *      → TIDAK TERGANGGU sama sekali (pakai punya child sendiri)
+     *    - Child class yang TIDAK PUNYA setActiveTab() method (misal PaymentGateway, Koneksi Index)
+     *      → Fallback ke sini untuk set property activeTab
+     *
+     * @param  string  $method
+     * @param  array   $args
+     * @return mixed
+     */
+    public function __call($method, $params)
+    {
+        $args = (array) $params;
+        // Fallback global setActiveTab(string $tab): HANYA untuk child yang TIDAK override method ini
+        if ($method === 'setActiveTab' && count($args) >= 1) {
+            $tab = trim((string)($args[0] ?? ''));
+            if ($tab === '') return null;
+            if (strlen($tab) > 80) $tab = substr($tab, 0, 80);
+            $this->activeTab = $tab;
+            return null;
+        }
+
+        // Fallback setActiveTabWithWhitelist(string $tab, array $allowed)
+        if ($method === 'setActiveTabWithWhitelist' && count($args) >= 2) {
+            $tab = trim((string)($args[0] ?? ''));
+            $allowed = (array)($args[1] ?? []);
+            if (count($allowed) > 0 && !in_array($tab, $allowed, true)) {
+                $tab = (string)($allowed[array_key_first($allowed)] ?? $this->activeTab);
+            }
+            if ($tab !== '') $this->activeTab = $tab;
+            return null;
+        }
+
+        // Default behavior untuk method tidak dikenal (mirip stdClass)
+        throw new \BadMethodCallException(sprintf(
+            'Method %s::%s(%s) not found.',
+            static::class,
+            $method,
+            implode(', ', array_map(fn($v) => get_debug_type($v), $args))
+        ));
+    }
+
     public function setBreadcrumbs(array $breadcrumbs): void
     {
         $this->breadcrumbs = $breadcrumbs;

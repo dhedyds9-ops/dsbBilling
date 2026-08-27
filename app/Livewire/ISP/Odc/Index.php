@@ -4,17 +4,25 @@ namespace App\Livewire\ISP\Odc;
 
 use App\Livewire\ISP\BaseNetworkComponent;
 use App\Models\ISP\Odc as OdcModel;
+use App\Exports\OdcExport;
+use App\Imports\OdcImport;
 use App\Services\ISP\OdcService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\WithFileUploads;
 use Throwable;
 
 class Index extends BaseNetworkComponent
 {
+    use WithFileUploads;
+
     public bool $showTrashed = false;
     public array $selectedOdcs = [];
     public bool $selectAll = false;
     public bool $showDeleteModal = false;
+    public $importFile;
+    public bool $showImportModal = false;
 
     public function mount()
     {
@@ -207,7 +215,14 @@ class Index extends BaseNetworkComponent
 
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        Log::info(__METHOD__);
+        try {
+            $selectedIds = $this->selectedOdcs;
+            return Excel::download(new OdcExport($selectedIds), 'odc.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal export ODC: ' . $e->getMessage());
+        }
     }
 
     public function resetFilters()
@@ -217,6 +232,47 @@ class Index extends BaseNetworkComponent
         $this->showTrashed = false;
         $this->resetActionState();
         $this->resetPage();
+    }
+
+    public function openImportModal()
+    {
+        $this->importFile = null;
+        $this->showImportModal = true;
+    }
+
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+        $this->importFile = null;
+    }
+
+    public function import()
+    {
+        $this->validate([
+            'importFile' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            Log::info('Importing ODCs', ['user_id' => auth()->id()]);
+
+            Excel::import(new OdcImport(auth()->user()), $this->importFile);
+
+            Log::info('ODCs imported successfully');
+
+            session()->flash('success', 'ODC berhasil diimpor!');
+            $this->closeImportModal();
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            session()->flash('error', 'Gagal mengimpor: ' . implode('; ', $errors));
+        } catch (Throwable $e) {
+            Log::error('Import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal mengimpor: ' . $e->getMessage());
+        }
     }
 
     public function render()
@@ -231,8 +287,8 @@ class Index extends BaseNetworkComponent
             })
             ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
 
-        $odcs = $query->orderBy($this->sortField, $this->sortDirection)
-                     ->paginate($this->perPage);
+        $query = $query->orderBy($this->sortField, $this->sortDirection);
+        $odcs = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);
 
         return view('livewire.isp.odc.index', compact('odcs'));
     }

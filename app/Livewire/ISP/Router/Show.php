@@ -11,7 +11,7 @@ class Show extends BaseNetworkComponent
 {
     public $routerId;
     public Router $router;
-    public $activeTab = 'overview';
+    public string $activeTab = 'overview';
     public $systemInfo = [];
     public $interfaces = [];
     public $pppActive = [];

@@ -65,6 +65,12 @@ class DatabaseSeeder extends Seeder
             'description' => 'Can only view reports and audit trail',
         ]);
 
+        $customer = Role::create([
+            'name' => 'customer',
+            'display_name' => 'Customer',
+            'description' => 'Customer portal access',
+        ]);
+
         // Create admin user
         $admin = User::create([
             'name' => 'Administrator',

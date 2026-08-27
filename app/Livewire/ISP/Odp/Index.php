@@ -4,17 +4,25 @@ namespace App\Livewire\ISP\Odp;
 
 use App\Livewire\ISP\BaseNetworkComponent;
 use App\Models\ISP\Odp as OdpModel;
+use App\Exports\OdpExport;
+use App\Imports\OdpImport;
 use App\Services\ISP\OdpService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\WithFileUploads;
 use Throwable;
 
 class Index extends BaseNetworkComponent
 {
+    use WithFileUploads;
+
     public bool $showTrashed = false;
     public array $selectedOdps = [];
     public bool $selectAll = false;
     public bool $showDeleteModal = false;
+    public $importFile;
+    public bool $showImportModal = false;
 
     public function mount()
     {
@@ -175,6 +183,27 @@ class Index extends BaseNetworkComponent
         }
     }
 
+    public function bulkRestore()
+    {
+        Log::info(__METHOD__);
+        $service = app(OdpService::class);
+        $user = Auth::user();
+
+        try {
+            if (empty($this->selectedOdps)) {
+                session()->flash('error', 'Silakan pilih setidaknya satu ODP untuk direstore!');
+                return;
+            }
+
+            $service->bulkRestore($this->selectedOdps, $user);
+            session()->flash('success', count($this->selectedOdps) . ' ODP berhasil direstore!');
+            $this->resetActionState();
+        } catch (Throwable $e) {
+            Log::error('Bulk restore ODP failed', ['odp_ids' => $this->selectedOdps, 'message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal merestore ODP: ' . $e->getMessage());
+        }
+    }
+
     public function confirmBulkDelete()
     {
         if (empty($this->selectedOdps)) {
@@ -207,7 +236,14 @@ class Index extends BaseNetworkComponent
 
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        Log::info(__METHOD__);
+        try {
+            $selectedIds = $this->selectedOdps;
+            return Excel::download(new OdpExport($selectedIds), 'odp.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal export ODP: ' . $e->getMessage());
+        }
     }
 
     public function resetFilters()
@@ -217,6 +253,47 @@ class Index extends BaseNetworkComponent
         $this->showTrashed = false;
         $this->resetActionState();
         $this->resetPage();
+    }
+
+    public function openImportModal()
+    {
+        $this->importFile = null;
+        $this->showImportModal = true;
+    }
+
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+        $this->importFile = null;
+    }
+
+    public function import()
+    {
+        $this->validate([
+            'importFile' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            Log::info('Importing ODPs', ['user_id' => auth()->id()]);
+
+            Excel::import(new OdpImport(auth()->user()), $this->importFile);
+
+            Log::info('ODPs imported successfully');
+
+            session()->flash('success', 'ODP berhasil diimpor!');
+            $this->closeImportModal();
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            session()->flash('error', 'Gagal mengimpor: ' . implode('; ', $errors));
+        } catch (Throwable $e) {
+            Log::error('Import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            session()->flash('error', 'Gagal mengimpor: ' . $e->getMessage());
+        }
     }
 
     public function render()

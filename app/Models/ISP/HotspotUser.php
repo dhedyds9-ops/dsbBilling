@@ -75,7 +75,7 @@ class HotspotUser extends Model
 
     public function radiusAccountings()
     {
-        return $this->hasMany(RadiusAccounting::class);
+        return $this->hasMany(RadiusAccounting::class, 'hotspot_user_id');
     }
 
     public function vouchers()
@@ -96,5 +96,17 @@ class HotspotUser extends Model
 
         // For now, just check if there's any active session (we can refine later)
         return true;
+    }
+
+    public function subscription()
+    {
+        return $this->hasOneThrough(
+            \App\Models\Billing\Subscription::class,
+            CustomerService::class,
+            'id', // Foreign key on CustomerService
+            'customer_service_id', // Foreign key on Subscription
+            'customer_service_id', // Local key on HotspotUser
+            'id' // Local key on CustomerService
+        );
     }
 }

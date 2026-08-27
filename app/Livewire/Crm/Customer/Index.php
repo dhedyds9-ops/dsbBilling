@@ -3,7 +3,10 @@
 namespace App\Livewire\Crm\Customer;
 
 use App\Livewire\Crm\BaseCrmComponent;
-use App\Models\CRM\Customer;
+use App\Models\Customer\CustomerService;
+use App\Models\ISP\PPPoEUser;
+use App\Models\ISP\HotspotUser;
+use Carbon\Carbon;
 
 class Index extends BaseCrmComponent
 {
@@ -15,13 +18,6 @@ class Index extends BaseCrmComponent
         $this->filters = ['status' => ''];
     }
 
-    public function delete($id)
-    {
-        $customer = Customer::findOrFail($id);
-        $customer->delete();
-        session()->flash('success', 'Customer berhasil dihapus!');
-    }
-
     public function export()
     {
         session()->flash('info', 'Export feature will be implemented later!');
@@ -29,13 +25,23 @@ class Index extends BaseCrmComponent
 
     public function render()
     {
-        $query = Customer::query();
+        $now = Carbon::now();
+        $monthStart = $now->copy()->startOfMonth();
+        
+        $registrationsThisMonth = CustomerService::where('activated_at', '>=', $monthStart)->count();
+        $renewalsThisMonth = 0; // Will implement later
+        $isolirCustomers = CustomerService::where('status', 'suspended')->count();
+        $disabledAccounts = CustomerService::where('status', 'inactive')->count();
+
+        $query = CustomerService::with(['customer', 'serviceProfile', 'pppoeUser', 'hotspotUser']);
 
         if ($this->search) {
             $query->where(function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%')
-                  ->orWhere('phone', 'like', '%' . $this->search . '%');
+                $q->whereHas('customer', function($cq) {
+                    $cq->where('name', 'like', '%' . $this->search . '%')
+                       ->orWhere('email', 'like', '%' . $this->search . '%')
+                       ->orWhere('phone', 'like', '%' . $this->search . '%');
+                })->orWhere('username', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -43,9 +49,15 @@ class Index extends BaseCrmComponent
             $query->where('status', $this->filters['status']);
         }
 
-        $customers = $query->orderBy($this->sortField, $this->sortDirection)
-                       ->paginate($this->perPage);
+        $customerServices = $query->orderBy($this->sortField, $this->sortDirection)
+                                  ->paginate($this->perPage);
 
-        return view('livewire.crm.customer.index', compact('customers'));
+        return view('livewire.crm.customer.index', compact(
+            'customerServices',
+            'registrationsThisMonth',
+            'renewalsThisMonth',
+            'isolirCustomers',
+            'disabledAccounts'
+        ));
     }
 }

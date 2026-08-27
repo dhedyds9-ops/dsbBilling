@@ -1,0 +1,27 @@
+{
+  "name": "dsbilling-baileys-bot",
+  "version": "1.0.0",
+  "description": "Self-hosted WhatsApp bot interaktif untuk dsBilling ISP berdasarkan @whiskeysockets/baileys. Forward incoming message ke backend Laravel (dsBilling) dan kirim reply dari backend ke customer.",
+  "private": true,
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "start:pm2": "pm2 start index.js --name dsbilling-wa-bot --time",
+    "logs": "pm2 logs dsbilling-wa-bot"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.8",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "libsignal": "github:WhiskeySockets/libsignal-node",
+    "pino": "^8.21.0",
+    "pino-pretty": "^10.3.1",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.33.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
