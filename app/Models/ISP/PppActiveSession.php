@@ -37,4 +37,9 @@ class PppActiveSession extends Model
     {
         return $this->belongsTo(Router::class);
     }
+
+    public function pppoeUser()
+    {
+        return $this->belongsTo(\App\Models\ISP\PppoeUser::class, 'name', 'username');
+    }
 }

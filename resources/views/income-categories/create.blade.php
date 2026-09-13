@@ -16,22 +16,22 @@
                 @csrf
                 <div class="mb-3">
                     <label for="code" class="form-label">Kode Kategori</label>
-                    <input type="text" class="form-control @error('code') is-invalid @enderror" id="code" name="code" value="{{ old('code') }}" required>
+                    <input type="text" class="form-control @error('code') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="code" name="code" value="{{ old('code') }}" required>
                     @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="name" class="form-label">Nama Kategori</label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" required>
+                    <input type="text" class="form-control @error('name') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="name" name="name" value="{{ old('name') }}" required>
                     @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="description" class="form-label">Deskripsi</label>
-                    <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description') }}</textarea>
+                    <textarea class="form-control @error('description') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="description" name="description" rows="3">{{ old('description') }}</textarea>
                     @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="status" class="form-label">Status</label>
-                    <select class="form-control @error('status') is-invalid @enderror" id="status" name="status" required>
+                    <select class="form-control @error('status') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="status" name="status" required>
                         <option value="active" {{ old('status') === 'active' ? 'selected' : '' }}>Aktif</option>
                         <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Nonaktif</option>
                     </select>

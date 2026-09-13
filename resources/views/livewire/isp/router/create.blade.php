@@ -25,43 +25,49 @@
         @endif
     </div>
 
-    <div class="flex items-center gap-4 mb-3">
-        <a href="{{ route('isp.routers.index') }}" class="p-2 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
+    @section('page_title')
+    <div class="flex items-center gap-2">
+        <a href="{{ route('isp.routers.index') }}" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Kembali">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">arrow_back</span>
         </a>
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900">Buat Router Baru</h1>
-            <p class="mt-1 text-sm text-slate-500">Tambahkan router MikroTik baru</p>
+        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
         </div>
+        <span class="text-lg">Tambah Mikrotik (Nas)</span>
     </div>
+@endsection
 
-    <x-base.card>
-        <form wire:submit.prevent="save" class="space-y-6">
+<div class="space-y-6 pb-10">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Informasi Perangkat</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Lengkapi informasi dasar perangkat router Mikrotik Anda.</p>
+        </div>
+
+        <form wire:submit.prevent="save" class="p-6 space-y-8">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Kode Router</label>
-                    <input type="text" wire:model="code" placeholder="Masukkan kode router" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    @error('code') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Kode Router <span class="text-red-500">*</span></label>
+                    <input type="text" wire:model="code" placeholder="Misal: RT-JKT-01" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                    @error('code') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Nama Router</label>
-                    <input type="text" wire:model="name" placeholder="Masukkan nama router" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nama Router <span class="text-red-500">*</span></label>
+                    <input type="text" wire:model="name" placeholder="Misal: Router Utama Jakarta" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                    @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">POP</label>
-                    <select wire:model="pop_id" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                        <option value="">Pilih POP</option>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Lokasi POP</label>
+                    <select wire:model="pop_id" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">Pilih Lokasi POP</option>
                         @foreach($pops as $pop)
                             <option value="{{ $pop->id }}">{{ $pop->code }} - {{ $pop->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Vendor</label>
-                    <select wire:model="vendor_id" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Vendor</label>
+                    <select wire:model="vendor_id" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Pilih Vendor</option>
                         @foreach($vendors as $vendor)
                             <option value="{{ $vendor->id }}">{{ $vendor->code }} - {{ $vendor->name }}</option>
@@ -69,64 +75,82 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Model</label>
-                    <input type="text" wire:model="model" placeholder="Masukkan model" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Model / Tipe</label>
+                    <input type="text" wire:model="model" placeholder="Misal: CCR1036-8G-2S+" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Serial Number</label>
-                    <input type="text" wire:model="serial_number" placeholder="Masukkan serial number" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Serial Number</label>
+                    <input type="text" wire:model="serial_number" placeholder="S/N Perangkat" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">IP Address</label>
-                    <input type="text" wire:model="ip_address" placeholder="Masukkan IP address" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Versi RouterOS</label>
+                    <input type="text" wire:model="routeros_version" placeholder="Misal: v7.11.2" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">API Port</label>
-                    <input type="number" wire:model="api_port" placeholder="Masukkan API port" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Timeout (detik)</label>
-                    <input type="number" wire:model="timeout" placeholder="Masukkan timeout" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">RouterOS Version</label>
-                    <input type="text" wire:model="routeros_version" placeholder="Masukkan versi RouterOS" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                    <select wire:model="status" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                        <option value="active">Aktif</option>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Status</label>
+                    <select wire:model="status" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                        <option value="active">Aktif beroperasi</option>
                         <option value="inactive">Nonaktif</option>
                     </select>
-                    @error('status') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    @error('status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
-                <div class="flex items-center gap-2">
-                    <label class="text-sm font-medium text-slate-700">Gunakan SSL</label>
-                    <input type="checkbox" wire:model="use_ssl" class="rounded border-slate-300 text-primary-600 focus:ring-primary-500">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Deskripsi / Catatan</label>
+                    <textarea wire:model="description" rows="3" placeholder="Informasi tambahan mengenai router ini..." class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"></textarea>
                 </div>
             </div>
+
+            <hr class="border-slate-200 dark:border-slate-700">
+            
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
-                <textarea wire:model="description" rows="3" placeholder="Masukkan deskripsi router" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
-                    <input type="text" wire:model="username" placeholder="Masukkan username" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4">Pengaturan Koneksi API</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">IP Address <span class="text-red-500">*</span></label>
+                        <input type="text" wire:model="ip_address" placeholder="192.168.x.x atau IP Publik" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">API Port <span class="text-red-500">*</span></label>
+                            <input type="number" wire:model="api_port" placeholder="8728" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Timeout (detik)</label>
+                            <input type="number" wire:model="timeout" placeholder="30" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">API Username</label>
+                        <input type="text" wire:model="username" placeholder="Kosongkan untuk auto-generate" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">API Password</label>
+                        <input type="password" wire:model="password" placeholder="Kosongkan untuk auto-generate" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+
+                    <div class="md:col-span-2 pt-2">
+                        <label class="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 cursor-pointer hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 transition-colors">
+                            <input type="checkbox" wire:model="use_ssl" class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-90 dark:bg-slate-900 dark:text-slate-1000">
+                            <div>
+                                <div class="text-sm font-bold text-slate-900 dark:text-white">Gunakan SSL/TLS</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">Aktifkan enkripsi jika router Anda mendukung API-SSL (Port 8729)</div>
+                            </div>
+                        </label>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                    <input type="password" wire:model="password" placeholder="Masukkan password" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                </div>
             </div>
-            <div class="flex items-center justify-end gap-4 pt-4 border-t border-slate-200">
-                <a href="{{ route('isp.routers.index') }}" class="px-6 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <a href="{{ route('isp.routers.index') }}" class="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors">
                     Batal
                 </a>
-                <button type="submit" class="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
-                    Simpan
+                <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm flex items-center gap-2 transition-colors">
+                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">save</span>
+                    Simpan Data
                 </button>
             </div>
         </form>
-    </x-base.card>
+    </div>
+</div>
 </div>

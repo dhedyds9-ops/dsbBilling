@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Router extends Model
 {
+    use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 
     const STATUS_ONLINE = 'online';
@@ -28,11 +29,20 @@ class Router extends Model
         'ip_address',
         'username',
         'password',
+        'radius_secret',
         'status',
         'api_port',
         'use_ssl',
         'timeout',
         'routeros_version',
+        'hostname',
+        'api_user',
+        'api_password',
+        'api_ssl_port',
+        'coa_port',
+        'nas_identifier',
+        'is_active',
+        'vpn_ip',
         'last_seen_at',
         'created_by',
         'updated_by',
@@ -40,6 +50,7 @@ class Router extends Model
     
     protected $casts = [
         'use_ssl' => 'boolean',
+        'has_config_drift' => 'boolean',
         'timeout' => 'integer',
         'api_port' => 'integer',
         'last_seen_at' => 'datetime',
@@ -141,3 +152,4 @@ class Router extends Model
         return self::STATUS_ONLINE;
     }
 }
+

@@ -14,7 +14,7 @@ abstract class BaseCollector implements CollectorInterface
         return "monitoring:{$type}:{$id}";
     }
     
-    protected function putToCache(string $key, array $data, int $ttlInSeconds = 15): void
+    protected function putToCache(string $key, array $data, int $ttlInSeconds = 300): void
     {
         Cache::put($key, $data, now()->addSeconds($ttlInSeconds));
     }

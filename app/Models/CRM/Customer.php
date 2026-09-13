@@ -31,6 +31,35 @@ class Customer extends Model
         'updated_by',
     ];
 
+    protected static function booted()
+    {
+        static::deleted(function ($customer) {
+            // Deactivate associated login user
+            if ($customer->user_id) {
+                \App\Models\User::where('id', $customer->user_id)->update(['is_active' => false]);
+            }
+
+            // Cascade soft delete to customer services
+            if (!$customer->isForceDeleting()) {
+                foreach ($customer->customerServices()->get() as $cs) {
+                    $cs->delete();
+                }
+            }
+        });
+        
+        static::restoring(function ($customer) {
+            // Reactivate associated login user
+            if ($customer->user_id) {
+                \App\Models\User::where('id', $customer->user_id)->update(['is_active' => true]);
+            }
+
+            // Cascade restore to customer services
+            foreach ($customer->customerServices()->onlyTrashed()->get() as $cs) {
+                $cs->restore();
+            }
+        });
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

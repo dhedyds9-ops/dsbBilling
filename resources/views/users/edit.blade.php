@@ -18,7 +18,7 @@
 
                 <div class="mb-3">
                     <label for="name" class="form-label">Nama</label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $user->name) }}" required>
+                    <input type="text" class="form-control @error('name') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="name" name="name" value="{{ old('name', $user->name) }}" required>
                     @error('name')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -26,7 +26,7 @@
 
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $user->email) }}" required>
+                    <input type="email" class="form-control @error('email') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="email" name="email" value="{{ old('email', $user->email) }}" required>
                     @error('email')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -34,7 +34,7 @@
 
                 <div class="mb-3">
                     <label for="password" class="form-label">Password (kosongkan jika tidak ingin diubah)</label>
-                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password">
+                    <input type="password" class="form-control @error('password') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="password" name="password">
                     @error('password')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -42,14 +42,14 @@
 
                 <div class="mb-3">
                     <label for="password_confirmation" class="form-label">Konfirmasi Password</label>
-                    <input type="password" class="form-control" id="password_confirmation" name="password_confirmation">
+                    <input type="password" class="form-control dark:bg-slate-900 dark:text-slate-100" id="password_confirmation" name="password_confirmation">
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Role</label>
                     @foreach($roles as $role)
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="roles[]" value="{{ $role->id }}" id="role_{{ $role->id }}" {{ $user->roles->contains($role->id) ? 'checked' : '' }}>
+                            <input class="form-check-input dark:bg-slate-900 dark:text-slate-100" type="checkbox" name="roles[]" value="{{ $role->id }}" id="role_{{ $role->id }}" {{ $user->roles->contains($role->id) ? 'checked' : '' }}>
                             <label class="form-check-label" for="role_{{ $role->id }}">
                                 {{ $role->name }}
                             </label>

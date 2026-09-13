@@ -1,123 +1,125 @@
-<div class="space-y-6">
-    <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
-    <h1 class="text-2xl font-bold text-slate-900">ACS Dashboard</h1>
+<div>
+  @include('livewire.acs._tabs')
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Online Devices</p>
-                    <p class="text-2xl font-bold text-green-600 mt-1">{{ $stats['online_devices'] ?? 0 }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
+  <div class="space-y-5 pb-10">
+    {{-- KPI CARDS --}}
+    <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {{-- Online --}}
+        <div class="relative overflow-hidden rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-emerald-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">wifi</span>
             </div>
-        </x-base.card>
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Offline Devices</p>
-                    <p class="text-2xl font-bold text-red-600 mt-1">{{ $stats['offline_devices'] ?? 0 }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2">Online Devices</h3>
+                <div class="text-4xl font-black text-emerald-700 dark:text-emerald-300 mb-3">{{ number_format($stats['online_devices'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Perangkat tersambung</div>
             </div>
-        </x-base.card>
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Pending Tasks</p>
-                    <p class="text-2xl font-bold text-yellow-600 mt-1">{{ $stats['pending_tasks'] ?? 0 }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                </div>
+        </div>
+
+        {{-- Offline --}}
+        <div class="relative overflow-hidden rounded-xl border border-rose-200 dark:border-rose-800/60 shadow-md bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-rose-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">wifi_off</span>
             </div>
-        </x-base.card>
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Active Alarms</p>
-                    <p class="text-2xl font-bold text-orange-600 mt-1">{{ $stats['active_alarms'] ?? 0 }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest mb-2">Offline Devices</h3>
+                <div class="text-4xl font-black text-rose-700 dark:text-rose-300 mb-3">{{ number_format($stats['offline_devices'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Perangkat terputus</div>
             </div>
-        </x-base.card>
+        </div>
+
+        {{-- Tasks --}}
+        <div class="relative overflow-hidden rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-md bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-indigo-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">pending_actions</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">Pending Tasks</h3>
+                <div class="text-4xl font-black text-indigo-700 dark:text-indigo-300 mb-3">{{ number_format($stats['pending_tasks'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Tugas antrean CPE</div>
+            </div>
+        </div>
+
+        {{-- Alarms --}}
+        <div class="relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-800/60 shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-amber-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">warning</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest mb-2">Active Alarms</h3>
+                <div class="text-4xl font-black text-amber-700 dark:text-amber-300 mb-3">{{ number_format($stats['active_alarms'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Alarm atau error aktif</div>
+            </div>
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {{-- Recent Devices --}}
-        <x-base.card>
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-slate-900">Recent Devices</h2>
-                <a href="{{ route('acs.devices.index') }}" class="text-sm text-primary-600 hover:text-primary-700">View All</a>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      {{-- Recent Devices --}}
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col">
+        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between">
+          <div class="font-semibold text-slate-900 dark:text-slate-100 text-sm">Perangkat Terbaru</div>
+          <a href="{{ route('acs.devices.index') }}" class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">Lihat Semua &rarr;</a>
+        </div>
+        <div class="divide-y divide-slate-100 dark:divide-slate-700/50 flex-1">
+          @forelse($recentDevices ?? [] as $device)
+            <div class="p-4 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm uppercase shadow-sm">
+                  {{ substr($device->serial_number ?? 'D', 0, 1) }}
+                </div>
+                <div>
+                  <div class="font-medium text-sm text-slate-900 dark:text-slate-100">{{ $device->serial_number ?? '-' }}</div>
+                  <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $device->model ?? '-' }}</div>
+                </div>
+              </div>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider {{ ($device->status === 'online') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400' }}">
+                {{ $device->status }}
+              </span>
             </div>
-            <div class="space-y-3">
-                @forelse($recentDevices ?? [] as $device)
-                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-sm">
-                                {{ substr($device->serial_number ?? 'D', 0, 1) }}
-                            </div>
-                            <div>
-                                <p class="font-medium text-slate-900">{{ $device->serial_number ?? '-' }}</p>
-                                <p class="text-xs text-slate-500">{{ $device->model ?? '-' }}</p>
-                            </div>
-                        </div>
-                        <span class="px-2 py-1 text-xs font-medium rounded-full 
-                            @if($device->status === 'online') bg-green-100 text-green-600
-                            @else bg-red-100 text-red-600
-                            @endif
-                        ">
-                            {{ ucfirst($device->status) }}
-                        </span>
-                    </div>
-                @empty
-                    <p class="text-slate-500 text-center py-4">No recent devices</p>
-                @endforelse
+          @empty
+            <div class="p-8 text-center text-sm text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center">
+              <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-2" translate="no" style="font-size:32px">router</span>
+              Belum ada perangkat terbaru
             </div>
-        </x-base.card>
+          @endforelse
+        </div>
+      </div>
 
-        {{-- Recent Tasks --}}
-        <x-base.card>
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-slate-900">Recent Tasks</h2>
-                <a href="{{ route('acs.tasks.index') }}" class="text-sm text-primary-600 hover:text-primary-700">View All</a>
+      {{-- Recent Tasks --}}
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col">
+        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between">
+          <div class="font-semibold text-slate-900 dark:text-slate-100 text-sm">Tugas (Tasks) Terbaru</div>
+          <a href="{{ route('acs.tasks.index') }}" class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">Lihat Semua &rarr;</a>
+        </div>
+        <div class="divide-y divide-slate-100 dark:divide-slate-700/50 flex-1">
+          @forelse($recentTasks ?? [] as $task)
+            <div class="p-4 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between">
+              <div>
+                <div class="font-medium text-sm text-slate-900 dark:text-slate-100">{{ ucfirst($task->type) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $task->created_at?->format('d/m/Y H:i') ?? '-' }}</div>
+              </div>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider 
+                  @if($task->status === 'completed') bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400
+                  @elseif($task->status === 'running') bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400
+                  @elseif($task->status === 'failed') bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400
+                  @else bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400
+                  @endif
+              ">
+                  {{ $task->status }}
+              </span>
             </div>
-            <div class="space-y-3">
-                @forelse($recentTasks ?? [] as $task)
-                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <div>
-                            <p class="font-medium text-slate-900">{{ ucfirst($task->type) }}</p>
-                            <p class="text-xs text-slate-500">{{ $task->created_at?->format('d/m/Y H:i') ?? '-' }}</p>
-                        </div>
-                        <span class="px-2 py-1 text-xs font-medium rounded-full 
-                            @if($task->status === 'completed') bg-green-100 text-green-600
-                            @elseif($task->status === 'running') bg-blue-100 text-blue-600
-                            @elseif($task->status === 'failed') bg-red-100 text-red-600
-                            @else bg-yellow-100 text-yellow-600
-                            @endif
-                        ">
-                            {{ ucfirst($task->status) }}
-                        </span>
-                    </div>
-                @empty
-                    <p class="text-slate-500 text-center py-4">No recent tasks</p>
-                @endforelse
+          @empty
+            <div class="p-8 text-center text-sm text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center">
+              <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-2" translate="no" style="font-size:32px">pending_actions</span>
+              Belum ada tugas yang dijalankan
             </div>
-        </x-base.card>
+          @endforelse
+        </div>
+      </div>
     </div>
+  </div>
 </div>

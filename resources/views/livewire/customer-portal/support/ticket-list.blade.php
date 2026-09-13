@@ -1,52 +1,64 @@
-<div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Daftar Tiket</h1>
-        <a href="#" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-            Buat Tiket Baru
-        </a>
+@section('header_title', 'Dukungan & Tiket')
+
+<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] relative pb-24">
+    <div class="mb-5">
+        <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Riwayat Pengaduan</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Pantau status tiket bantuan teknis Anda.</p>
     </div>
 
-    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prioritas</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @foreach($tickets as $index => $ticket)
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tickets->firstItem() + $index }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $ticket->title }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ticket->category }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $ticket->priority === 'critical' ? 'bg-red-100 text-red-800' : ($ticket->priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800') }}">
-                                {{ ucfirst($ticket->priority) }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $ticket->status === 'resolved' ? 'bg-green-100 text-green-800' : ($ticket->status === 'closed' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800') }}">
-                                {{ ucfirst($ticket->status) }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ticket->created_at->format('d/m/Y') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a href="#" class="text-indigo-600 hover:text-indigo-900">Lihat</a>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+    @if(session('success'))
+        <div class="mb-5 p-4 rounded-xl flex items-start gap-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 border border-emerald-100">
+            <span class="material-symbols-outlined shrink-0">check_circle</span>
+            <div class="text-sm">{{ session('success') }}</div>
         </div>
-        <div class="mt-4">
-            {{ $tickets->links() }}
+    @endif
+
+    <div class="space-y-4">
+        @forelse($tickets as $ticket)
+        <a href="#" class="block bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700/60 active:scale-[0.98] transition-transform relative overflow-hidden">
+            @if($ticket->priority === 'critical' || $ticket->priority === 'high')
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
+            @else
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500"></div>
+            @endif
+
+            <div class="pl-2">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="font-bold text-slate-900 dark:text-slate-100 text-sm line-clamp-1 pr-2">{{ $ticket->title }}</h3>
+                    <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold 
+                        {{ $ticket->status === 'resolved' || $ticket->status === 'closed' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700' }}">
+                        {{ ucfirst($ticket->status) }}
+                    </span>
+                </div>
+                
+                <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">Kategori: {{ $ticket->category }}</p>
+
+                <div class="flex items-center justify-between text-[10px] text-slate-400">
+                    <div class="flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                        <span>{{ $ticket->created_at->format('d M Y') }}</span>
+                    </div>
+                    <div class="flex items-center text-indigo-500 font-medium">
+                        Lihat Detail
+                        <span class="material-symbols-outlined text-[14px] ml-0.5">chevron_right</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+        @empty
+        <div class="text-center py-10 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
+            <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3 block">support_agent</span>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Tidak ada tiket terbuka.</p>
         </div>
+        @endforelse
     </div>
+
+    <div class="mt-6">
+        {{ $tickets->links('pagination::tailwind') }}
+    </div>
+
+        <!-- Floating Action Button -->
+    <a href="{{ route('customer-portal.support.ticket-create') }}" class="fixed bottom-20 right-4 sm:right-auto sm:ml-[360px] w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-transform active:scale-95 z-50">
+        <span class="material-symbols-outlined text-[28px]">add</span>
+    </a>
 </div>

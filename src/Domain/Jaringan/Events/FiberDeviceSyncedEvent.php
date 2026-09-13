@@ -5,15 +5,16 @@ namespace Src\Domain\Jaringan\Events;
 use DateTimeImmutable;
 use Src\Domain\SharedKernel\Events\DomainEvent;
 
-readonly class FiberDeviceSyncedEvent implements DomainEvent
+class FiberDeviceSyncedEvent extends DomainEvent
 {
     public function __construct(
-        public string $eventId,
-        public string $deviceType,
-        public string $deviceId,
-        public string $userId,
-        public DateTimeImmutable $occurredAt,
-    ) {}
+        public readonly string $eventId,
+        public readonly string $deviceType,
+        public readonly string $deviceId,
+        public readonly string $userId,
+    ) {
+        parent::__construct();
+    }
 
     public static function create(
         string $deviceType,
@@ -24,8 +25,7 @@ readonly class FiberDeviceSyncedEvent implements DomainEvent
             (string) \Illuminate\Support\Str::uuid(),
             $deviceType,
             $deviceId,
-            $userId,
-            new DateTimeImmutable(),
+            $userId
         );
     }
 

@@ -59,6 +59,10 @@ class PollSingleRouterJob implements ShouldQueue
                 'routeros_version' => $systemInfo['version'],
             ]);
             
+            // Auto Recovery: Check and Repair RADIUS Configuration
+            $radiusHost = parse_url(config('app.url'), PHP_URL_HOST) ?? '127.0.0.1';
+            $driver->checkAndRepairRadius($this->router, $radiusHost, $this->router->radius_secret ?? 'radius_secret_here');
+            
             // Get PPP Active Sessions
             $pppSessions = $driver->getPPPActive($this->router);
             $this->updatePppSessions($pppSessions);
@@ -81,7 +85,7 @@ class PollSingleRouterJob implements ShouldQueue
                 'is_online' => true,
                 'last_updated' => now()->timestamp,
             ];
-            Cache::put($cacheKey, $cacheData, now()->addSeconds(15));
+            Cache::put($cacheKey, $cacheData, now()->addSeconds(300));
             
         } catch (\Exception $e) {
             $this->saveMonitoringLog([
@@ -95,7 +99,7 @@ class PollSingleRouterJob implements ShouldQueue
                 'is_online' => false,
                 'error_message' => $e->getMessage(),
                 'last_updated' => now()->timestamp,
-            ], now()->addSeconds(15));
+            ], now()->addSeconds(300));
         }
     }
     

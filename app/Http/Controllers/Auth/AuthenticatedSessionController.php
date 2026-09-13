@@ -11,49 +11,48 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Display the login view.
-     */
     public function create(Request $request): View
     {
-        $loginType = $request->route()->getName() === 'admin.login' ? 'admin' : 'customer';
+        $routeName = $request->route()->getName();
         
-        if ($loginType === 'admin') {
-            return view('auth.login-admin');
+        if ($routeName === 'customer.login') {
+            return view('auth.login-customer');
         }
         
-        return view('auth.login-customer');
+        return view('auth.login-admin');
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
         $request->session()->regenerate();
-
         $user = Auth::user();
         
         if ($user->hasRole('customer')) {
             return redirect()->intended(route('customer-portal.dashboard', absolute: false));
         }
         
+        if ($user->hasRole('reseller')) {
+            return redirect()->intended(route('reseller-portal.dashboard', absolute: false));
+        }
+        
+        if ($user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
+            return redirect()->intended(route('technician.dashboard', absolute: false));
+        }
+        
+        if ($user->job_function === \App\Enums\JobFunction::NOC->value || 
+            $user->hasRole('noc') || $user->hasRole('noc_operator') || $user->hasRole('operator') || $user->hasRole('owner')) {
+            return redirect()->intended(route('noc.overview', absolute: false));
+        }
+        
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
-
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
-
         return redirect()->route('home');
     }
 }

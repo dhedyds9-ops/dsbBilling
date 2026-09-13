@@ -9,6 +9,7 @@ use App\Exports\ServiceProfileExport;
 use App\Imports\ServiceProfileImport;
 use App\Services\ISP\ServiceProfileService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -40,6 +41,9 @@ class Index extends BaseNetworkComponent
     public function mount()
     {
         parent::mount();
+
+        Gate::authorize('viewAny', ServiceProfileModel::class);
+
         $this->activeModule = 'isp';
         $this->activePage = 'service-profiles';
         $this->filters = ['status' => '', 'service_type' => '', 'owner_id' => ''];
@@ -107,10 +111,11 @@ class Index extends BaseNetworkComponent
         \Log::info(__METHOD__);
         $service = app(ServiceProfileService::class);
         $user = Auth::user();
-        
+
         try {
             $profile = ServiceProfileModel::findOrFail($id);
-            
+            Gate::authorize('delete', $profile);
+
             Log::info('Delete Package', [
                 'package_id' => $id,
                 'package_code' => $profile->code,
@@ -152,10 +157,11 @@ class Index extends BaseNetworkComponent
         \Log::info(__METHOD__);
         $service = app(ServiceProfileService::class);
         $user = Auth::user();
-        
+
         try {
             $profile = ServiceProfileModel::withTrashed()->findOrFail($id);
-            
+            Gate::authorize('restore', $profile);
+
             Log::info('Restore Package', [
                 'package_id' => $id,
                 'package_code' => $profile->code,
@@ -197,11 +203,12 @@ class Index extends BaseNetworkComponent
         \Log::info(__METHOD__);
         $service = app(ServiceProfileService::class);
         $user = Auth::user();
-        
+
         try {
             $profile = ServiceProfileModel::findOrFail($id);
+            Gate::authorize('update', $profile);
             $newStatus = $profile->status === 'active' ? 'inactive' : 'active';
-            
+
             Log::info('Toggle Package Status', [
                 'package_id' => $id,
                 'package_code' => $profile->code,
@@ -246,10 +253,11 @@ class Index extends BaseNetworkComponent
         \Log::info(__METHOD__);
         $service = app(ServiceProfileService::class);
         $user = Auth::user();
-        
+
         try {
             $original = ServiceProfileModel::findOrFail($id);
-            
+            Gate::authorize('create', ServiceProfileModel::class);
+
             Log::info('Duplicate Package', [
                 'original_id' => $id,
                 'original_code' => $original->code,
@@ -293,13 +301,15 @@ class Index extends BaseNetworkComponent
         \Log::info(__METHOD__);
         $service = app(ServiceProfileService::class);
         $user = Auth::user();
-        
+
+        Gate::authorize('update', ServiceProfileModel::class);
+
         try {
             if (empty($this->selectedPackages)) {
                 session()->flash('error', 'Silakan pilih setidaknya satu paket untuk diaktifkan!');
                 return;
             }
-            
+
             Log::info('Bulk Activate Packages', [
                 'package_ids' => $this->selectedPackages,
                 'user_id' => $user->id,
@@ -338,13 +348,15 @@ class Index extends BaseNetworkComponent
         \Log::info(__METHOD__);
         $service = app(ServiceProfileService::class);
         $user = Auth::user();
-        
+
+        Gate::authorize('update', ServiceProfileModel::class);
+
         try {
             if (empty($this->selectedPackages)) {
                 session()->flash('error', 'Silakan pilih setidaknya satu paket untuk dinonaktifkan!');
                 return;
             }
-            
+
             Log::info('Bulk Deactivate Packages', [
                 'package_ids' => $this->selectedPackages,
                 'user_id' => $user->id,
@@ -419,13 +431,15 @@ class Index extends BaseNetworkComponent
         \Log::info(__METHOD__);
         $service = app(ServiceProfileService::class);
         $user = Auth::user();
-        
+
+        Gate::authorize('delete', ServiceProfileModel::class);
+
         try {
             if (empty($this->selectedPackages)) {
                 session()->flash('error', 'Silakan pilih setidaknya satu paket untuk dihapus!');
                 return;
             }
-            
+
             Log::info('Bulk Delete Packages', [
                 'package_ids' => $this->selectedPackages,
                 'user_id' => $user->id,
@@ -466,6 +480,7 @@ class Index extends BaseNetworkComponent
     public function export()
     {
         \Log::info(__METHOD__);
+        Gate::authorize('export', ServiceProfileModel::class);
         try {
             $selectedIds = $this->selectedPackages;
             return Excel::download(new ServiceProfileExport($selectedIds), 'paket-internet.xlsx');
@@ -478,6 +493,7 @@ class Index extends BaseNetworkComponent
     public function print()
     {
         \Log::info(__METHOD__);
+        Gate::authorize('export', ServiceProfileModel::class);
         try {
             $query = ServiceProfileModel::with(['owner', 'serviceProfileType']);
 
@@ -519,10 +535,12 @@ class Index extends BaseNetworkComponent
     
     public function import()
     {
+        Gate::authorize('create', ServiceProfileModel::class);
+
         $this->validate([
             'importFile' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
-        
+
         try {
             Log::info('Importing service profiles', ['user_id' => auth()->id()]);
             
@@ -548,6 +566,8 @@ class Index extends BaseNetworkComponent
     
     public function openBulkEditModal()
     {
+        Gate::authorize('update', ServiceProfileModel::class);
+
         if (empty($this->selectedPackages)) {
             session()->flash('error', 'Silakan pilih setidaknya satu paket!');
             return;
@@ -581,11 +601,13 @@ class Index extends BaseNetworkComponent
     
     public function bulkEdit()
     {
+        Gate::authorize('update', ServiceProfileModel::class);
+
         if (empty($this->selectedPackages)) {
             session()->flash('error', 'Silakan pilih setidaknya satu paket!');
             return;
         }
-        
+
         $service = app(ServiceProfileService::class);
         $user = auth()->user();
         
@@ -636,6 +658,6 @@ class Index extends BaseNetworkComponent
         $query = $query->orderBy($this->sortField, $this->sortDirection);
         $profiles = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);
 
-        return view('livewire.isp.service-profiles.index', compact('profiles', 'types'));
+        return view('livewire.isp.service-profile.index', compact('profiles', 'types'));
     }
 }

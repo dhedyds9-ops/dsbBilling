@@ -78,6 +78,25 @@ final class WhatsAppNotificationService
     /**
      * @param array<string,mixed> $extra
      */
+    public function notifyCustomerCreated(Customer $customer, array $credentials, array $extra = []): void
+    {
+        $phone = $this->phoneOf($customer);
+        if (!$phone) return;
+        
+        $txt = $this->template->customerCreated([
+            'customer_name' => $customer->name ?? $customer->full_name ?? 'Pelanggan',
+            'username' => $credentials['username'] ?? '-',
+            'password' => $credentials['password'] ?? '-',
+            'portal_password' => $credentials['portal_password'] ?? '-',
+            ...$extra,
+        ]);
+        
+        $this->dispatchSend($phone, $txt, category: 'info', priorityHigh: true);
+    }
+
+    /**
+     * @param array<string,mixed> $extra
+     */
     public function notifyInvoiceReminder(Invoice $invoice, string $stage = 'h-1', array $extra = []): void
     {
         $customer = $this->customerOf($invoice);
@@ -412,7 +431,15 @@ final class WhatsAppNotificationService
             priorityHigh: $priorityHigh,
         );
         if (!$msg->isPhoneValid()) return;
-        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+        
+        $history = \App\Models\Integration\WaMessageHistory::create([
+            'recipient_number' => $phone,
+            'message' => $text,
+            'category' => $category,
+            'status' => 'pending'
+        ]);
+
+        SendWaMessageJob::dispatch($msg, $history->id)->onQueue('notifications-wa');
     }
 
     /**

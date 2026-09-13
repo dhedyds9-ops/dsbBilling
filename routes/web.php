@@ -9,6 +9,40 @@ use Illuminate\Support\Facades\Auth;
 Route::get('/', fn() => view('landing'))->name('home');
 Route::get('/coming-soon', fn() => view('coming-soon'))->name('coming-soon');
 
+Route::get('/payment', [\App\Http\Controllers\GuestPaymentController::class, 'index'])->name('guest.payment');
+Route::post('/payment/checkout', [\App\Http\Controllers\GuestPaymentController::class, 'checkout'])->name('guest.payment.checkout');
+Route::post('/payment/reset', [\App\Http\Controllers\GuestPaymentController::class, 'resetSession'])->name('guest.payment.reset');
+
+Route::post('/buy-voucher-guest', function (\Illuminate\Http\Request $request) {
+    return redirect()->route('buy-voucher.page', [
+        'paket' => $request->input('service_profile_id'),
+        'phone' => $request->input('phone'),
+    ]);
+})->name('buy-voucher-guest');
+
+Route::get('/buy-voucher', \App\Livewire\Guest\BuyVoucher::class)->name('buy-voucher.page');
+
+Route::post('/register-lead', function (\Illuminate\Http\Request $request) {
+    $data = $request->validate([
+        'name' => 'required|string|max:255',
+        'phone' => 'required|string|max:50',
+        'address' => 'required|string',
+        'package' => 'nullable|string|max:255',
+    ]);
+    
+    \App\Models\CRM\Lead::create([
+        'uuid' => \Illuminate\Support\Str::uuid(),
+        'name' => $data['name'],
+        'phone' => $data['phone'],
+        'address' => $data['address'],
+        'notes' => 'Pendaftaran paket: ' . ($data['package'] ?? '-'),
+        'source' => 'website',
+        'status' => 'new',
+    ]);
+
+    return back()->with('success', 'Terima kasih, pendaftaran Anda telah kami terima. Tim kami akan segera menghubungi Anda.');
+})->name('register.lead');
+
 // Dev Helper (hanya local)
 Route::get('/login-as-admin', function () {
     if (! app()->isLocal()) abort(404);
@@ -23,27 +57,58 @@ $cs = fn() => view('coming-soon');
 
 // ==================== AUTHENTICATED ROUTES ====================
 Route::middleware(['auth'])->group(function () use ($cs) {
+    Route::get('/technician-portal/dashboard', \App\Livewire\ISP\Technician\Dashboard::class)->name('technician.dashboard');
+    Route::middleware(['workforce.checked_in'])->group(function () {
+        Route::get('/technician-portal/my-jobs', \App\Livewire\ISP\Technician\MyJobs\Index::class)->name('technician.my-jobs.index');
+        Route::get('/technician-portal/my-jobs/{job}', \App\Livewire\ISP\Technician\MyJobs\Show::class)->name('technician.my-jobs.show');
+        Route::get('/technician-portal/installation/wizard', \App\Livewire\ISP\Technician\Installation\Wizard::class)->name('technician.installation.wizard');
+        Route::get('/technician-portal/provisioning/{id}', \App\Livewire\ISP\Technician\Provisioning\Show::class)->name('technician.provisioning.show');
+    });
+    Route::get('/technician-portal/attendance', \App\Livewire\ISP\Technician\Attendance\Index::class)->name('technician.attendance');
+    Route::get('/technician-portal/payroll', \App\Livewire\ISP\Technician\Payroll\Index::class)->name('technician.payroll.index');
+    Route::get('/technician-portal/payroll/{id}', \App\Livewire\ISP\Technician\Payroll\Show::class)->name('technician.payroll.show');
+    
+    // Fallback/Dummy routes to prevent MenuRegistry crashes
+    Route::get('/technician-portal/dummy', fn()=>'dummy')->name('technician.history');
+    Route::get('/technician-portal/dummy2', fn()=>'dummy')->name('technician.my-jobs.psb');
+    Route::get('/technician-portal/dummy3', fn()=>'dummy')->name('technician.my-jobs.maintenance');
+    Route::get('/technician-portal/tickets', \App\Livewire\ISP\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
+    Route::get('/technician-portal/dummy5', fn()=>'dummy')->name('technician.installation.index');
+    Route::get('/technician-portal/dummy6', fn()=>'dummy')->name('technician.installation.scan');
+    Route::get('/technician-portal/dummy7', fn()=>'dummy')->name('technician.installation.register');
+    Route::get('/technician-portal/dummy8', fn()=>'dummy')->name('technician.installation.provision');
+    Route::get('/technician-portal/dummy9', fn()=>'dummy')->name('technician.installation.test');
+    Route::get('/technician-portal/dummy10', fn()=>'dummy')->name('technician.installation.docs');
+    Route::get('/technician-portal/dummy11', fn()=>'dummy')->name('technician.odp.search');
+    Route::get('/technician-portal/dummy12', fn()=>'dummy')->name('technician.odp.nearest');
+    Route::get('/technician-portal/dummy13', fn()=>'dummy')->name('technician.odp.ports');
+    Route::get('/technician-portal/dummy14', fn()=>'dummy')->name('technician.customers.show');
+    Route::get('/technician-portal/dummy15', fn()=>'dummy')->name('technician.customers.status');
+    Route::get('/technician-portal/dummy16', fn()=>'dummy')->name('technician.customers.history');
+
+
 
     // ==================== STAFF / ADMIN AREA ====================
-    Route::middleware(['role:super_admin,admin,staff'])->group(function () use ($cs) {
+    Route::middleware(['role:administrator,manager'])->group(function () use ($cs) {
 
         // ==================== 1. DASHBOARD (TANPA SUBMENU SESUAI SSOT v2.0) ====================
         Route::get('/dashboard', \App\Livewire\Dashboard\Index::class)->name('dashboard');
 
-        // ==================== 2. PROFILE PAKET ====================
-        Route::prefix('profile-paket')->name('profile-paket.')->group(function () {
-            Route::get('/grup', \App\Livewire\ProfilePaket\GrupProfile::class)->name('grup');
-            Route::get('/bandwidth', \App\Livewire\ProfilePaket\Bandwidth::class)->name('bandwidth');
-            Route::get('/hotspot', \App\Livewire\ProfilePaket\ProfileHotspot::class)->name('hotspot');
-        });
-
         // ==================== ISP CORE CRUD (EXISTING) ====================
         Route::prefix('isp')->name('isp.')->group(function () {
+            // Voucher Templates
+            Route::get('/voucher-templates', \App\Livewire\ISP\VoucherTemplate\Index::class)->name('voucher-templates.index');
+            Route::get('/voucher-templates/create', \App\Livewire\ISP\VoucherTemplate\Editor::class)->name('voucher-templates.create');
+            Route::get('/voucher-templates/import', \App\Livewire\ISP\VoucherTemplate\Import::class)->name('voucher-templates.import');
+            Route::get('/voucher-templates/{id}/edit', \App\Livewire\ISP\VoucherTemplate\Editor::class)->name('voucher-templates.edit');
+            Route::get('/voucher-templates/{id}/preview', \App\Livewire\ISP\VoucherTemplate\Preview::class)->name('voucher-templates.preview');
+            Route::get('/voucher-templates/{id}/versions', \App\Livewire\ISP\VoucherTemplate\Versions::class)->name('voucher-templates.versions');
+
             // Service Profile = Profile PPPoE (referenced dari Profile Paket > Profile PPPoE
             Route::get('/service-profiles', \App\Livewire\ISP\ServiceProfile\Index::class)->name('service-profiles.index');
             Route::get('/service-profiles/create', \App\Livewire\ISP\ServiceProfile\Create::class)->name('service-profiles.create');
             Route::get('/service-profiles/{id}/edit', \App\Livewire\ISP\ServiceProfile\Edit::class)->name('service-profiles.edit');
-            Route::get('/service-profiles/{id}', \App\Livewire\ISP\ServiceProfile\Show::class)->name('service-profiles.show');
+
 
             // User Online = List Pelanggan > User Online (tabs PPPoE/Hotspot/Voucher + Kick)
             Route::get('/user-online', \App\Livewire\ISP\UserOnline\Index::class)->name('user-online.index');
@@ -62,9 +127,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
             // Voucher (existing CRUD, List Pelanggan > User Voucher tabs biasa/E-Voucher
             Route::get('/vouchers', \App\Livewire\ISP\Voucher\Index::class)->name('vouchers.index');
-            Route::get('/vouchers/create', \App\Livewire\ISP\Voucher\Create::class)->name('vouchers.create');
-            Route::get('/vouchers/{id}/edit', \App\Livewire\ISP\Voucher\Edit::class)->name('vouchers.edit');
-            Route::get('/vouchers/{id}', \App\Livewire\ISP\Voucher\Show::class)->name('vouchers.show');
+            Route::post('/vouchers/print', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print'])->name('vouchers.print');
+            Route::get('/evouchers', \App\Livewire\ISP\EVoucher\Index::class)->name('evouchers.index');
 
             // Router & NAS = Jaringan > Router & NAS
             Route::get('/routers', \App\Livewire\ISP\Router\Index::class)->name('routers.index');
@@ -117,14 +181,11 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/isolir', \App\Livewire\Pelanggan\Isolir\Index::class)->name('isolir');
         });
 
-        // ==================== 4. DATA TAGIHAN ====================
-        Route::prefix('tagihan')->name('tagihan.')->group(function () use ($cs) {
-            // Periode Tagihan: Summary (Total/Unpaid/Paid/Overdue) + Filter Periode/Status/Router/Sales/Reseller/Paket
-            Route::get('/periode', \App\Livewire\Billing\PeriodeTagihan\Index::class)->name('periode');
-        });
+
 
         // === Billing / Semua Tagihan (create: dropdown Tipe Service PPPoE / Hotspot Member) ===
         Route::prefix('billing')->name('billing.')->group(function () {
+            Route::get('/periode', \App\Livewire\Billing\PeriodeTagihan\Index::class)->name('periode.index');
             Route::get('/invoices', \App\Livewire\Billing\Invoice\Index::class)->name('invoices.index');
             Route::get('/invoices/create', \App\Livewire\Billing\Invoice\Create::class)->name('invoices.create');
             Route::get('/invoices/{id}/edit', \App\Livewire\Billing\Invoice\Edit::class)->name('invoices.edit');
@@ -198,14 +259,14 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::prefix('acs')->name('acs.')->group(function () use ($cs) {
             Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
             Route::get('/devices', \App\Livewire\ACS\Device\Index::class)->name('devices.index');
-            Route::get('/devices/create', \App\Livewire\ACS\Device\Create::class)->name('devices.create');
-            Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
+                        Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
             Route::get('/devices/{id}', \App\Livewire\ACS\Device\Show::class)->name('devices.show');
             Route::get('/tasks', \App\Livewire\ACS\Task\Index::class)->name('tasks.index');
             Route::get('/alarms', \App\Livewire\ACS\Alarm\Index::class)->name('alarms.index');
             Route::get('/firmware', \App\Livewire\ACS\Firmware\Index::class)->name('firmware.index');
             Route::get('/firmware/create', \App\Livewire\ACS\Firmware\Create::class)->name('firmware.create');
             Route::get('/firmware/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('firmware.edit');
+            Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
         });
 
         // === GIS (Peta Pelanggan) ===
@@ -213,18 +274,45 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/', \App\Livewire\Gis\GisDashboard::class)->name('index');
             Route::get('/map', \App\Livewire\Gis\GisMap::class)->name('map');
             Route::get('/analytics', \App\Livewire\Gis\GisAnalytics::class)->name('analytics');
-            // Peta Pelanggan (List Pelanggan > Peta Pelanggan) → redirect ke GIS Map (SUDAH ADA)
             Route::get('/customer-map', fn() => redirect()->route('gis.map'))->name('customer-map');
         });
+
+        // === GIS Map APIs (for the JS frontend) ===
+        Route::prefix('map')->group(function () {
+            Route::get('/connections', [\App\Http\Controllers\Gis\MapApiController::class, 'getConnections'])->name('map.connections.index');
+            Route::post('/connections/save', [\App\Http\Controllers\Gis\MapApiController::class, 'saveConnection'])->name('map.connections.save');
+            Route::put('/location/{type}/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'updateLocation'])->name('map.location.update');
+            Route::post('/node/{type}', [\App\Http\Controllers\Gis\MapApiController::class, 'storeNode'])->name('map.node.store');
+            Route::put('/node/{type}/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'updateNode'])->name('map.node.update');
+            Route::get('/wlan-status/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanStatus'])->name('map.wlan-status');
+            Route::post('/wlan-update/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanUpdate'])->name('map.wlan-update');
+            Route::post('/ping', [\App\Http\Controllers\Gis\MapApiController::class, 'ping'])->name('map.ping');
+        });
+        Route::get('/api/network/online-paths', [\App\Http\Controllers\Gis\MapApiController::class, 'onlinePaths'])->name('api.network.online-paths');
 
         // === Inventory (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
         Route::prefix('inventory')->name('inventory.')->group(function () {
             Route::get('/assets', \App\Livewire\Inventory\AssetList::class)->name('assets.index');
         });
 
-        // === NOC (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
+                // === NOC ===
         Route::prefix('noc')->name('noc.')->group(function () {
-            Route::get('/alerts', \App\Livewire\NOC\AlertList::class)->name('alerts.index');
+            Route::get('/', \App\Livewire\NOC\Overview::class)->name('overview');
+            Route::middleware(['workforce.checked_in'])->group(function () {
+                Route::get('/alerts', \App\Livewire\NOC\AlertList::class)->name('alerts.index');
+                Route::get('/alarms', \App\Livewire\NOC\Alarms\Index::class)->name('alarms.index');
+                Route::get('/alarms/{alarm}', \App\Livewire\NOC\Alarms\Show::class)->name('alarms.show');
+                Route::get('/provisioning', \App\Livewire\NOC\Provisioning\Index::class)->name('provisioning.index');
+                Route::get('/provisioning/{id}', \App\Livewire\NOC\Provisioning\Show::class)->name('provisioning.show');
+                Route::get('/routers', \App\Livewire\NOC\Router\Index::class)->name('routers.index');
+                Route::get('/routers/{router}', \App\Livewire\NOC\Router\Show::class)->name('routers.show');
+                Route::get('/olts', \App\Livewire\NOC\Olt\Index::class)->name('olts.index');
+                Route::get('/olts/{olt}', \App\Livewire\NOC\Olt\Show::class)->name('olts.show');
+                Route::get('/onus', \App\Livewire\NOC\Onu\Index::class)->name('onus.index');
+                Route::get('/onus/{onu}', \App\Livewire\NOC\Onu\Show::class)->name('onus.show');
+                Route::get('/pppoe', \App\Livewire\NOC\Pppoe\Index::class)->name('pppoe.index');
+                Route::get('/topology', \App\Livewire\NOC\Topology\Index::class)->name('topology.index');
+            });
         });
 
         // === Reports (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
@@ -237,7 +325,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/customers', \App\Livewire\Crm\Customer\Index::class)->name('customers.index');
             Route::get('/customers/create', \App\Livewire\Crm\Customer\Create::class)->name('customers.create');
             Route::get('/customers/{id}/edit', \App\Livewire\Crm\Customer\Edit::class)->name('customers.edit');
-            Route::get('/customers/{id}', \App\Livewire\Crm\Customer\Show::class)->name('customers.show');
+            Route::get('/customers/{id}', \App\Livewire\Crm\Customer\Customer360::class)->name('customers.show');
             
             Route::get('/leads', \App\Livewire\Crm\Lead\Index::class)->name('leads.index');
             Route::get('/leads/create', \App\Livewire\Crm\Lead\Create::class)->name('leads.create');
@@ -284,12 +372,104 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             
             Route::get('/audit-trail', \App\Livewire\Admin\AuditTrail\Index::class)->name('audit-trail.index');
             Route::get('/settings', \App\Livewire\Admin\Settings\Index::class)->name('settings.index');
+            Route::get('/attendance', \App\Livewire\Admin\Attendance\Index::class)->name('attendance.index');
+            
+            Route::get('/employee', \App\Livewire\Admin\Employee\Index::class)->name('employee.index');
+            Route::get('/employee/create', \App\Livewire\Admin\Employee\Create::class)->name('employee.create');
+            Route::get('/employee/{id}/edit', \App\Livewire\Admin\Employee\Edit::class)->name('employee.edit');
+            
+            Route::get('/payroll', \App\Livewire\Admin\Payroll\Index::class)->name('payroll.index');
+            Route::get('/payroll/generate', \App\Livewire\Admin\Payroll\Generate::class)->name('payroll.generate');
+            Route::get('/payroll/{id}', \App\Livewire\Admin\Payroll\Show::class)->name('payroll.show');
+            Route::get('/payroll/{id}/edit', \App\Livewire\Admin\Payroll\Edit::class)->name('payroll.edit');
         });
+    });
+
+    // ==================== RESELLER PORTAL ====================
+    Route::middleware(['role:reseller'])->prefix('reseller-portal')->name('reseller-portal.')->group(function () {
+        Route::get('/dashboard', \App\Livewire\ResellerPortal\Dashboard::class)->name('dashboard');
+        
+        // Placeholder routes for missing modules
+        $comingSoon = \App\Livewire\ResellerPortal\ComingSoon::class;
+        
+        Route::prefix('customers')->name('customers.')->group(function() use ($comingSoon) {
+            Route::get('/', \App\Livewire\ResellerPortal\Customer\Index::class)->name('index');
+            Route::get('/create', \App\Livewire\ResellerPortal\Customer\Create::class)->name('create');
+            Route::get('/hotspot/create', \App\Livewire\ResellerPortal\Customer\CreateHotspot::class)->name('hotspot.create');
+            Route::get('/{id}/edit', \App\Livewire\ResellerPortal\Customer\Edit::class)->name('edit');
+            Route::get('/{id}/detail', \App\Livewire\ResellerPortal\Customer\Customer360::class)->name('show');
+            Route::get('/pppoe', \App\Livewire\ResellerPortal\Customer\Pppoe::class)->name('pppoe');
+            Route::get('/hotspot', \App\Livewire\ResellerPortal\Customer\Hotspot::class)->name('hotspot');
+            Route::get('/user-online', \App\Livewire\ResellerPortal\Customer\UserOnline::class)->name('user-online');
+            Route::get('/active', \App\Livewire\ResellerPortal\Customer\Active::class)->name('active');
+            Route::get('/isolated', \App\Livewire\ResellerPortal\Customer\Isolated::class)->name('isolated');
+        });
+
+        Route::prefix('finance')->name('finance.')->group(function() {
+            Route::get('/balance', \App\Livewire\ResellerPortal\Finance\Balance::class)->name('balance');
+            Route::get('/topup', \App\Livewire\ResellerPortal\Finance\Topup::class)->name('topup');
+            Route::get('/mutations', \App\Livewire\ResellerPortal\Finance\Mutations::class)->name('mutations');
+            
+        });
+
+        Route::prefix('billing')->name('billing.')->group(function() {
+            Route::get('/invoices', \App\Livewire\ResellerPortal\Billing\Invoices::class)->name('invoices');
+            Route::get('/invoices/{id}', \App\Livewire\ResellerPortal\Billing\InvoiceShow::class)->name('invoices.show');
+            Route::get('/payments', \App\Livewire\ResellerPortal\Billing\Payments::class)->name('payments');
+        });
+
+        Route::prefix('reports')->name('reports.')->group(function() {
+            Route::get('/sales', \App\Livewire\ResellerPortal\Reports\Sales::class)->name('sales');
+            Route::get('/sales/print', [\App\Http\Controllers\Reseller\ReportPrintController::class, 'printSales'])->name('sales.print');
+        Route::get('/commission/print', [\App\Http\Controllers\Reseller\ReportPrintController::class, 'printCommission'])->name('commission.print');
+            Route::get('/revenue', \App\Livewire\ResellerPortal\Reports\Revenue::class)->name('revenue');
+            Route::get('/commission', \App\Livewire\ResellerPortal\Reports\Commission::class)->name('commission');
+        });
+
+        Route::prefix('sales')->name('sales.')->group(function() {
+            Route::get('/voucher', \App\Livewire\ResellerPortal\Sales\VoucherIndex::class)->name('voucher');
+            Route::post('/voucher/print', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print'])->name('voucher.print');
+            Route::post('/voucher', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print']);
+            Route::get('/voucher/preview-template/{id}', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'previewTemplate']);
+        });
+        
+        Route::get('/service-profiles', $comingSoon)->name('service-profiles.index');
+        Route::get('/pppoe-users', $comingSoon)->name('pppoe-users.index');
+        Route::get('/hotspot-users', $comingSoon)->name('hotspot-users.index');
+        Route::get('/vouchers', $comingSoon)->name('vouchers.index');
+        Route::get('/invoices', $comingSoon)->name('invoices.index');
+        Route::get('/payments', $comingSoon)->name('payments.index');
+        Route::get('/reports', $comingSoon)->name('reports.index');
     });
 
     // ==================== CUSTOMER PORTAL ====================
     Route::middleware(['role:customer'])->prefix('customer-portal')->name('customer-portal.')->group(function () {
         Route::get('/dashboard', \App\Livewire\CustomerPortal\Dashboard::class)->name('dashboard');
+
+        Route::prefix('billing')->name('billing.')->group(function () {
+            Route::get('/invoices', \App\Livewire\CustomerPortal\Billing\InvoiceList::class)->name('invoice-list');
+            Route::get('/invoices/{id}', \App\Livewire\CustomerPortal\Billing\InvoiceShow::class)->name('invoice-show');
+            Route::get('/invoices/{id}/print-80mm', [\App\Http\Controllers\CustomerPortal\InvoiceController::class, 'print80mm'])->name('invoice-print-80mm');
+        });
+
+        Route::prefix('support')->name('support.')->group(function () {
+            Route::get('/tickets', \App\Livewire\CustomerPortal\Support\TicketList::class)->name('ticket-list');
+            Route::get('/tickets/create', \App\Livewire\CustomerPortal\Support\TicketCreate::class)->name('ticket-create');
+            Route::get('/contact', \App\Livewire\CustomerPortal\Support\ContactAdmin::class)->name('contact-admin');
+        });
+
+        Route::get('/info', \App\Livewire\CustomerPortal\Info::class)->name('info');
+        Route::get('/connection-info', \App\Livewire\CustomerPortal\ConnectionInfo::class)->name('self-service.connection-info');
+        Route::get('/speed-test', \App\Livewire\CustomerPortal\SelfService\SpeedTest::class)->name('self-service.speed-test');
+        Route::get('/profile', \App\Livewire\CustomerPortal\Profile\Profile::class)->name('profile');
+
+        // Tambahan di self-service
+        Route::prefix('self-service')->name('self-service.')->group(function () {
+            Route::get('/change-plan', \App\Livewire\CustomerPortal\SelfService\ChangePlan::class)->name('change-plan');
+            Route::get('/active-sessions', \App\Livewire\CustomerPortal\SelfService\ActiveSessions::class)->name('active-sessions');
+            Route::get('/connected-devices', \App\Livewire\CustomerPortal\SelfService\ConnectedDevices::class)->name('connected-devices');
+            Route::get('/speedtest', \App\Livewire\CustomerPortal\SelfService\SpeedTest::class)->name('speedtest');
+        });
         
         Route::prefix('self-service')->name('self-service.')->group(function () {
             Route::get('/change-pppoe-password', \App\Livewire\CustomerPortal\SelfService\ChangePppoePassword::class)
@@ -308,3 +488,10 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 });
 
 require __DIR__.'/auth.php';
+
+Route::get('/test-livewire', \App\Livewire\ISP\Technician\Attendance\Index::class);
+
+
+
+
+

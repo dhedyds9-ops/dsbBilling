@@ -9,6 +9,8 @@ class OltMetric extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $fillable = [
         'olt_id',
         'pon_port',

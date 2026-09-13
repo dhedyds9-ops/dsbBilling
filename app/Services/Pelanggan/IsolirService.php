@@ -2,6 +2,7 @@
 
 namespace App\Services\Pelanggan;
 
+use App\Enums\UserRole;
 use App\Models\ISP\HotspotUser;
 use App\Models\ISP\PPPoEUser;
 use App\Repositories\ISP\HotspotUserRepository;
@@ -27,16 +28,16 @@ class IsolirService
             ->leftJoin('customer_services as cs_p', 'pppoe_users.customer_service_id', '=', 'cs_p.id')
             ->leftJoin('members as m_p', 'cs_p.customer_id', '=', 'm_p.id')
             ->leftJoin('service_profiles as sp_p', 'pppoe_users.service_profile_id', '=', 'sp_p.id')
-            ->leftJoin('billing_subscriptions as sub_p', 'cs_p.id', '=', 'sub_p.customer_service_id')
+            ->leftJoin('subscriptions as sub_p', 'cs_p.id', '=', 'sub_p.customer_service_id')
             ->leftJoin('invoices as inv_p', function ($j) {
                 $j->on('sub_p.customer_id', '=', 'inv_p.customer_id')
-                  ->whereIn('inv_p.status', ['pending', 'overdue', 'partial']);
+                  ->whereIn('inv_p.status', ['unpaid', 'pending', 'overdue', 'partial']);
             })
             ->where('pppoe_users.status', 'suspended')
             ->select([
                 DB::raw("'pppoe' as source_type"),
                 'pppoe_users.id as id',
-                DB::raw("CONCAT('P-', pppoe_users.id) as display_id"),
+                DB::raw("('P-' || pppoe_users.id) as display_id"),
                 'pppoe_users.username',
                 'm_p.name as customer_name',
                 'm_p.phone as customer_phone',
@@ -49,8 +50,9 @@ class IsolirService
                 'inv_p.due_date as last_due_date',
                 'pppoe_users.service_profile_id as package_id',
                 DB::raw("NULL as router_id"),
-                'pppoe_users.created_by as sales_id',
-                'pppoe_users.created_by as reseller_id',
+                // Reseller yang memiliki customer (bukan created_by — created_by adalah siapa yang input)
+                'pppoe_users.reseller_id as sales_id',
+                'pppoe_users.reseller_id as reseller_id',
                 DB::raw("NULL as wilayah_id"),
                 'pppoe_users.suspended_at',
             ]);
@@ -59,16 +61,16 @@ class IsolirService
             ->leftJoin('customer_services as cs_h', 'hotspot_users.customer_service_id', '=', 'cs_h.id')
             ->leftJoin('members as m_h', 'cs_h.customer_id', '=', 'm_h.id')
             ->leftJoin('service_profiles as sp_h', 'hotspot_users.service_profile_id', '=', 'sp_h.id')
-            ->leftJoin('billing_subscriptions as sub_h', 'cs_h.id', '=', 'sub_h.customer_service_id')
+            ->leftJoin('subscriptions as sub_h', 'cs_h.id', '=', 'sub_h.customer_service_id')
             ->leftJoin('invoices as inv_h', function ($j) {
                 $j->on('sub_h.customer_id', '=', 'inv_h.customer_id')
-                  ->whereIn('inv_h.status', ['pending', 'overdue', 'partial']);
+                  ->whereIn('inv_h.status', ['unpaid', 'pending', 'overdue', 'partial']);
             })
             ->where('hotspot_users.status', 'suspended')
             ->select([
                 DB::raw("'hotspot' as source_type"),
                 'hotspot_users.id as id',
-                DB::raw("CONCAT('H-', hotspot_users.id) as display_id"),
+                DB::raw("('H-' || hotspot_users.id) as display_id"),
                 'hotspot_users.username',
                 'm_h.name as customer_name',
                 'm_h.phone as customer_phone',
@@ -81,14 +83,21 @@ class IsolirService
                 'inv_h.due_date as last_due_date',
                 'hotspot_users.service_profile_id as package_id',
                 DB::raw("NULL as router_id"),
-                'hotspot_users.created_by as sales_id',
-                'hotspot_users.created_by as reseller_id',
+                // Reseller yang memiliki customer (bukan created_by — created_by adalah siapa yang input)
+                'hotspot_users.reseller_id as sales_id',
+                'hotspot_users.reseller_id as reseller_id',
                 DB::raw("NULL as wilayah_id"),
                 'hotspot_users.suspended_at',
             ]);
 
         $pppoe = $this->applyFilters($pppoe, $search, $filters);
         $hotspot = $this->applyFilters($hotspot, $search, $filters);
+
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole(UserRole::Reseller->value)) {
+            // Reseller hanya bisa lihat customer miliknya berdasarkan reseller_id
+            $pppoe->where('pppoe_users.reseller_id', \Illuminate\Support\Facades\Auth::id());
+            $hotspot->where('hotspot_users.reseller_id', \Illuminate\Support\Facades\Auth::id());
+        }
 
         return $pppoe->unionAll($hotspot);
     }
@@ -159,14 +168,23 @@ class IsolirService
 
     public function summary(): array
     {
-        $total = PPPoEUser::where('status', 'suspended')->count()
-            + HotspotUser::where('status', 'suspended')->count();
+        $pppoeBase = PPPoEUser::where('status', 'suspended');
+        $hotspotBase = HotspotUser::where('status', 'suspended');
 
-        $today = PPPoEUser::whereDate('suspended_at', today())->count()
-            + HotspotUser::whereDate('suspended_at', today())->count();
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole(UserRole::Reseller->value)) {
+            $userId = \Illuminate\Support\Facades\Auth::id();
+            // Scope berdasarkan reseller_id, bukan created_by
+            $pppoeBase->where('reseller_id', $userId);
+            $hotspotBase->where('reseller_id', $userId);
+        }
 
-        $longestPppoe = PPPoEUser::where('status', 'suspended')->min('suspended_at');
-        $longestHotspot = HotspotUser::where('status', 'suspended')->min('suspended_at');
+        $total = (clone $pppoeBase)->count() + (clone $hotspotBase)->count();
+
+        $today = (clone $pppoeBase)->whereDate('suspended_at', today())->count()
+               + (clone $hotspotBase)->whereDate('suspended_at', today())->count();
+
+        $longestPppoe = (clone $pppoeBase)->min('suspended_at');
+        $longestHotspot = (clone $hotspotBase)->min('suspended_at');
         $longest = collect([$longestPppoe, $longestHotspot])->filter()->min();
         $terlama = $longest ? now()->diffInDays($longest) . ' hari' : '-';
 
@@ -191,7 +209,7 @@ class IsolirService
         });
     }
 
-    protected function parseDisplayId(mixed $raw): array
+    public function parseDisplayId(mixed $raw): array
     {
         $s = (string)$raw;
         if (str_starts_with($s, 'P-')) {

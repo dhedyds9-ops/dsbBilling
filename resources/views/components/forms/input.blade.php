@@ -39,9 +39,9 @@ $stateClasses = $error
     ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20'
     : ($success
         ? 'border-success-500 focus:border-success-500 focus:ring-success-500/20'
-        : 'border-slate-300 focus:border-primary-500 focus:ring-primary-500/20 bg-white');
+        : 'border-slate-300 dark:border-slate-600 focus:border-primary-500 focus:ring-primary-500/20 bg-white dark:bg-slate-800');
 
-$disabledClasses = $disabled ? 'opacity-50 cursor-not-allowed bg-slate-100' : '';
+$disabledClasses = $disabled ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : '';
 
 $classes = $baseClasses . ' ' . $sizes[$size] . ' ' . $stateClasses . ' ' . $disabledClasses;
 
@@ -56,7 +56,7 @@ $inputPadding = $hasIcon
 <div class="space-y-1.5" {{ $attributes->only(['wire:model', 'wire:model.lazy', 'x-model']) }}>
     {{-- Label --}}
     @if ($label)
-        <label class="block text-sm font-medium text-slate-700">
+        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
             {{ $label }}
             @if ($attributes->has('required'))
                 <span class="text-danger-500">*</span>
@@ -75,7 +75,7 @@ $inputPadding = $hasIcon
 
         {{-- Prefix --}}
         @if ($prefix)
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 dark:text-slate-400">
                 {{ $prefix }}
             </span>
         @endif
@@ -98,7 +98,7 @@ $inputPadding = $hasIcon
 
         {{-- Suffix --}}
         @if ($suffix)
-            <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500">
+            <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 dark:text-slate-400">
                 {{ $suffix }}
             </span>
         @endif
@@ -108,6 +108,6 @@ $inputPadding = $hasIcon
     @if ($error)
         <p class="text-sm text-danger-600">{{ $error }}</p>
     @elseif ($hint)
-        <p class="text-sm text-slate-500">{{ $hint }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $hint }}</p>
     @endif
 </div>

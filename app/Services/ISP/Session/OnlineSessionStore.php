@@ -232,4 +232,23 @@ class OnlineSessionStore
             Log::warning('OnlineSession removeStale gagal', ['err' => $e->getMessage()]);
         }
     }
+
+    public function cleanupGhostSessions(): int
+    {
+        $deleted = 0;
+        
+        // Poller ghost sessions: no update for 30 mins
+        $deleted += OnlineSession::query()
+            ->where('source', 'router_poller')
+            ->where('last_seen_at', '<', now()->subMinutes(30))
+            ->delete();
+            
+        // Radius accounting ghost sessions: no update for 24 hours
+        $deleted += OnlineSession::query()
+            ->where('source', 'radius_accounting')
+            ->where('last_seen_at', '<', now()->subHours(24))
+            ->delete();
+            
+        return $deleted;
+    }
 }

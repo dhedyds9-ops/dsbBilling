@@ -82,7 +82,7 @@ $filterConfig = $this->getFilterConfig();
                     <h3 class="font-semibold text-sm mb-2">Recent Alarms</h3>
                     <div class="space-y-1 max-h-96 overflow-auto">
                         @forelse ($this->recentAlarms ?? [] as $a)
-                            <div class="flex gap-2 p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-slate-100 dark:border-slate-700/50">
+                            <div class="flex gap-2 p-2 rounded-md hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/50 border border-slate-100 dark:border-slate-700/50">
                                 <div class="flex-shrink-0">
                                     @php
                                         $sevColor = match($a['severity'] ?? 'info') {
@@ -136,7 +136,7 @@ $filterConfig = $this->getFilterConfig();
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                                 @foreach ($ifs as $i)
-                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40">
                                         <td class="px-3 py-2 font-mono text-xs">{{ $i['interface'] }}</td>
                                         <td class="px-3 py-2">@include('livewire.partials.sparkline', ['data' => $i['spark_in'], 'color' => '#22d3ee'])</td>
                                         <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-cyan-600 dark:text-cyan-400">{{ $i['in_mbps'] }}</td>
@@ -171,25 +171,25 @@ $filterConfig = $this->getFilterConfig();
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                     @forelse ($this->resourcesData ?? [] as $r)
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40">
                             <td class="px-3 py-2 font-medium">{{ $r['name'] }}</td>
-                            <td class="px-3 py-2 font-mono text-xs text-slate-500">{{ $r['host'] }}</td>
+                            <td class="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ $r['host'] }}</td>
                             <td class="px-3 py-2 w-32"><x-progress-bar :val="$r['cpu_pct']" :color="$r['cpu_pct'] > 85 ? 'red' : ($r['cpu_pct'] > 60 ? 'amber' : 'emerald')" /></td>
                             <td class="px-3 py-2 w-32"><x-progress-bar :val="$r['mem_pct']" :color="$r['mem_pct'] > 85 ? 'red' : ($r['mem_pct'] > 60 ? 'amber' : 'blue')" /></td>
                             <td class="px-3 py-2 w-32"><x-progress-bar :val="$r['disk_pct']" color="slate" /></td>
                             <td class="px-3 py-2 text-right font-mono text-xs tabular-nums {{ $r['temp_c'] > 65 ? 'text-red-600 dark:text-red-400 font-semibold' : '' }}">{{ $r['temp_c'] }}°C</td>
-                            <td class="px-3 py-2 text-xs text-slate-500">{{ $r['uptime'] }}</td>
+                            <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r['uptime'] }}</td>
                             <td class="px-3 py-2 font-mono text-xs">{{ $r['firmware_version'] }}</td>
                             <td class="px-3 py-2"><x-status-badge :status="$r['status']" /></td>
                             <td class="px-3 py-2 text-right">
-                                <button wire:click="refreshRouter({{ $r['id'] }})" class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700">
+                                <button wire:click="refreshRouter({{ $r['id'] }})" class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-slate-200 hover:bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700 dark:hover:bg-slate-700">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                     Refresh
                                 </button>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="px-6 py-16 text-center text-slate-500">Tidak ada router</td></tr>
+                        <tr><td colspan="10" class="px-6 py-16 text-center text-slate-500 dark:text-slate-400">Tidak ada router</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -199,7 +199,7 @@ $filterConfig = $this->getFilterConfig();
             <table class="w-full text-sm">
                 <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
                     <tr class="text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">
-                        <th class="w-10 px-3 py-2"><input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600"></th>
+                        <th class="w-10 px-3 py-2"><input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"></th>
                         @if ($this->activeTab === 'pppoe')
                             <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('username')">Username</th>
                             <th class="px-3 py-2 text-left">Pelanggan</th>
@@ -227,7 +227,7 @@ $filterConfig = $this->getFilterConfig();
                         $pageRows = $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? $rows->items() : (is_array($rows) ? $rows : $rows->all());
                     @endphp
                     @forelse ($pageRows as $r)
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40">
                             <td class="px-3 py-2"><input type="checkbox" wire:model.live="selected" value="{{ (string) $r->id }}" class="rounded border-slate-300 dark:border-slate-600"></td>
                             @if ($this->activeTab === 'pppoe')
                                 <td class="px-3 py-2 font-mono text-xs text-blue-600 dark:text-blue-400">{{ $r->username }}</td>
@@ -237,16 +237,16 @@ $filterConfig = $this->getFilterConfig();
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums">{{ $r->uptime }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-cyan-600 dark:text-cyan-400">{{ round(($r->download_rate ?? 0)/1e6, 2) }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-purple-600 dark:text-purple-400">{{ round(($r->upload_rate ?? 0)/1e6, 2) }}</td>
-                                <td class="px-3 py-2 text-xs text-slate-500">{{ $r->session_started_at ? \Illuminate\Support\Carbon::parse($r->session_started_at)->diffForHumans() : '-' }}</td>
+                                <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r->session_started_at ? \Illuminate\Support\Carbon::parse($r->session_started_at)->diffForHumans() : '-' }}</td>
                             @else
                                 <td class="px-3 py-2 font-mono text-xs text-purple-600 dark:text-purple-400">{{ $r->username }}</td>
                                 <td class="px-3 py-2 text-xs">{{ $r->router?->name ?? '-' }}</td>
                                 <td class="px-3 py-2 font-mono text-xs">{{ $r->ip_address }}</td>
-                                <td class="px-3 py-2 font-mono text-[10px] text-slate-500">{{ $r->mac_address }}</td>
+                                <td class="px-3 py-2 font-mono text-[10px] text-slate-500 dark:text-slate-400">{{ $r->mac_address }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums">{{ $r->uptime }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-cyan-600 dark:text-cyan-400">{{ $r->rx_bytes }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs tabular-nums text-purple-600 dark:text-purple-400">{{ $r->tx_bytes }}</td>
-                                <td class="px-3 py-2 text-right font-mono text-[10px] text-slate-500">{{ $r->bytes_in ?? 0 }} / {{ $r->bytes_out ?? 0 }}</td>
+                                <td class="px-3 py-2 text-right font-mono text-[10px] text-slate-500 dark:text-slate-400">{{ $r->bytes_in ?? 0 }} / {{ $r->bytes_out ?? 0 }}</td>
                             @endif
                             <td class="px-3 py-2 text-right">
                                 <button wire:click="kickSession('{{ $r->id }}')" class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-300 border border-red-100 dark:border-red-900">
@@ -273,7 +273,7 @@ $filterConfig = $this->getFilterConfig();
                     Menampilkan {{ $rows->firstItem() }}-{{ $rows->lastItem() }} dari {{ $rows->total() }}
                 </div>
                 <div class="flex items-center gap-2">
-                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-1 px-2">
+                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-1 px-2 dark:bg-slate-900 dark:text-slate-100">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="50">50</option>

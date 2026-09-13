@@ -20,6 +20,7 @@ class Alarm extends Model
         'metadata',
         'started_at',
         'resolved_at',
+        'resolved_by',
         'status',
         'acknowledged_by',
         'acknowledged_note',

@@ -5,15 +5,16 @@ namespace App\Models\Workforce;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Src\Domain\Workforce\Enums\AttendanceStatus;
 
 class Attendance extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
-        'uuid',
+        'id',
         'technician_id',
         'date',
         'status',

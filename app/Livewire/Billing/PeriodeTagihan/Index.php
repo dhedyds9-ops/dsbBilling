@@ -100,9 +100,9 @@ class Index extends BaseEnterpriseList
         $this->loadSummary();
     }
 
-    public function updatedFilters(array $value = []): void
+    public function updatedFilters(mixed $value = null, ?string $key = null): void
     {
-        parent::updatedFilters($value);
+        parent::updatedFilters($value, $key);
         $this->loadSummary();
     }
 

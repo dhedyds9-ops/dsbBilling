@@ -21,6 +21,15 @@ class CustomerSupportService
             'status' => 'open',
         ]);
 
+        \Illuminate\Support\Facades\Event::dispatch(\Src\Domain\Support\Events\TicketCreatedEvent::create(
+            (string) $ticket->id,
+            $ticket->uuid,
+            (string) $ticket->customer_id,
+            $ticket->title,
+            (string) $ticket->priority,
+            (string) auth()->id() // Actual user ID who created the ticket
+        ));
+
         return ['success' => true, 'message' => 'Tiket berhasil dibuat', 'ticket_id' => $ticket->id];
     }
 

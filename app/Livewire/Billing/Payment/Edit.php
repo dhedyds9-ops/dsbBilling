@@ -53,6 +53,19 @@ class Edit extends AdminComponent
             'paid_at' => 'nullable|date',
         ]);
 
+        if (!empty($this->invoice_ids)) {
+            $totalTagihan = Invoice::whereIn('id', $this->invoice_ids)->get()->sum(function($inv) {
+                // Because we are editing, the payment is already applied in paid_amount.
+                // We should check the original total_amount, not total - paid, because this payment might be the one that made it paid.
+                return $inv->total_amount;
+            });
+
+            if ($this->amount > $totalTagihan) {
+                $this->addError('amount', 'Nominal pembayaran tidak boleh melebihi total tagihan (Rp ' . number_format($totalTagihan, 0, ',', '.') . ').');
+                return;
+            }
+        }
+
         $paymentService->updatePayment(
             payment: $this->payment,
             customerId: (int) $this->customer_id,

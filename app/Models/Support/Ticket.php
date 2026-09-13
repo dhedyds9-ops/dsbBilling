@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Ticket extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasBranchScope;
 
     protected $fillable = [
         'uuid',
@@ -20,6 +20,7 @@ class Ticket extends Model
         'priority',
         'status',
         'assigned_to',
+        'reseller_id',
         'resolved_at',
     ];
 
@@ -29,7 +30,7 @@ class Ticket extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'customer_id');
+        return $this->belongsTo(\App\Models\CRM\Customer::class, 'customer_id');
     }
 
     public function assignedTo(): BelongsTo

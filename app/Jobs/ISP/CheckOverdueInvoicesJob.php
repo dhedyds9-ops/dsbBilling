@@ -32,13 +32,14 @@ class CheckOverdueInvoicesJob implements ShouldQueue
     {
         Log::info('[CheckOverdueInvoicesJob] Starting overdue invoice check with batch COA...');
 
+        // Get ALL overdue invoices (ignoring global graceDays first)
         $overdueInvoices = Invoice::query()
             ->where('status', '!=', 'paid')
-            ->where('due_date', '<', now()->subDays($this->graceDays)->toDateString())
+            ->where('due_date', '<', now()->toDateString())
             ->with(['customer.customerServices'])
             ->get();
 
-        Log::info("[CheckOverdueInvoicesJob] Found {$overdueInvoices->count()} overdue invoices");
+        Log::info("[CheckOverdueInvoicesJob] Found {$overdueInvoices->count()} overdue invoices (raw)");
 
         if ($overdueInvoices->count() === 0) {
             Log::info('[CheckOverdueInvoicesJob] Nothing to process. Exiting.');
@@ -51,9 +52,17 @@ class CheckOverdueInvoicesJob implements ShouldQueue
         foreach ($overdueInvoices as $invoice) {
             $customer = $invoice->customer;
             if (!$customer) continue;
+            
             foreach ($customer->customerServices as $cs) {
                 $status = is_string($cs->status) ? $cs->status : (string)($cs->status?->value ?? '');
-                if ($status === 'active') {
+                
+                // Get custom grace period from service attributes, fallback to global $this->graceDays
+                $customGraceDays = $cs->attributes['grace_period_days'] ?? $this->graceDays;
+                
+                // Check if this specific invoice has passed its custom grace period
+                $isPassedGracePeriod = \Carbon\Carbon::parse($invoice->due_date)->addDays($customGraceDays)->isPast();
+                
+                if ($status === 'active' && $isPassedGracePeriod) {
                     $activeServicesById[(int)$cs->id] = $cs;
                 }
             }

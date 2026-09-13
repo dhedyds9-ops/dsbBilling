@@ -6,11 +6,12 @@ use App\Livewire\ISP\BaseNetworkComponent;
 use App\Models\ISP\Voucher;
 use App\Exports\VoucherExport;
 use App\Imports\VoucherImport;
-use App\Services\ISP\VoucherService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Livewire\WithFileUploads;
+use Src\Domain\Voucher\Actions\ManageVoucherAction;
+use Src\Domain\Voucher\Queries\VoucherListQuery;
 use Throwable;
 
 class Index extends BaseNetworkComponent
@@ -23,13 +24,30 @@ class Index extends BaseNetworkComponent
     public bool $showDeleteModal = false;
     public $importFile;
     public bool $showImportModal = false;
+    public bool $showFilterModal = false;
+    public bool $showGenerateModal = false;
+    public $nas_device_id;
+    public $reseller_id;
+    public $service_profile_id;
+    public $login_method = 'voucher_code';
+    public $quantity = 1;
+    public $length = 6;
+    public $prefix;
+    public $code_combination = 'uppercase_alphanumeric';
+    public $notes;
 
     public function mount()
     {
         parent::mount();
         $this->activeModule = 'isp';
         $this->activePage = 'vouchers';
-        $this->filters = ['status' => ''];
+        $this->sortField = 'id';
+        $this->sortDirection = 'desc';
+        $this->filters = [
+            'status' => '',
+            'voucher_pool_id' => '',
+            'created_date' => '',
+        ];
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'ISP', 'url' => route('isp.service-profiles.index')],
@@ -40,20 +58,11 @@ class Index extends BaseNetworkComponent
     public function updatedSelectAll($value)
     {
         if ($value) {
-            $query = Voucher::query()
-                ->when($this->showTrashed, fn($q) => $q->withTrashed())
-                ->when($this->search, function($q) {
-                    $q->where(function($sq) {
-                        $sq->where('code', 'like', '%' . $this->search . '%')
-                            ->orWhereHas('owner', function($oq) {
-                                $oq->where('name', 'like', '%' . $this->search . '%');
-                            })
-                            ->orWhereHas('serviceProfile', function($spq) {
-                                $spq->where('name', 'like', '%' . $this->search . '%');
-                            });
-                    });
-                })
-                ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+            $query = $this->voucherQuery()->getListQuery(
+                search: $this->search,
+                filters: $this->filters,
+                withTrashed: $this->showTrashed,
+            )->where('vouchers.type', '!=', 'evoucher');
 
             $this->selectedIds = $query->pluck('id')->toArray();
         } else {
@@ -73,15 +82,48 @@ class Index extends BaseNetworkComponent
         $this->showDeleteModal = false;
     }
 
+    public function clearSelection()
+    {
+        $this->selectedIds = [];
+        $this->selectAll = false;
+    }
+
+    public function printSelected()
+    {
+        if (empty($this->selectedIds)) {
+            session()->flash('error', 'Pilih minimal satu voucher untuk dicetak.');
+            return;
+        }
+
+        $ids = implode(',', $this->selectedIds);
+        $this->dispatch('open-print-window', ids: $ids);
+    }
+
+    public function printSingle($id)
+    {
+        $voucher = \App\Models\ISP\Voucher::find($id);
+        if ($voucher && $voucher->voucher_pool_id) {
+            // Print all vouchers in the same batch generated at the exact same time
+            $ids = \App\Models\ISP\Voucher::where('voucher_pool_id', $voucher->voucher_pool_id)
+                ->where('created_at', $voucher->created_at)
+                ->pluck('id')
+                ->toArray();
+            $this->dispatch('open-print-window', ids: implode(',', $ids));
+        } else {
+            // Fallback to single print
+            $this->dispatch('open-print-window', ids: $id);
+        }
+    }
+
     public function delete($id)
     {
         Log::info(__METHOD__);
-        $service = app(VoucherService::class);
+        $action = $this->manageVoucher();
         $user = Auth::user();
 
         try {
             $voucher = Voucher::findOrFail($id);
-            $service->delete($voucher, $user);
+            $action->delete($voucher, $user);
             session()->flash('success', 'Voucher berhasil dihapus!');
             $this->resetActionState();
         } catch (Throwable $e) {
@@ -93,12 +135,12 @@ class Index extends BaseNetworkComponent
     public function restore($id)
     {
         Log::info(__METHOD__);
-        $service = app(VoucherService::class);
+        $action = $this->manageVoucher();
         $user = Auth::user();
 
         try {
             $voucher = Voucher::withTrashed()->findOrFail($id);
-            $service->restore($voucher, $user);
+            $action->restore($voucher, $user);
             session()->flash('success', 'Voucher berhasil direstore!');
             $this->resetActionState();
         } catch (Throwable $e) {
@@ -119,7 +161,7 @@ class Index extends BaseNetworkComponent
     public function bulkDelete()
     {
         Log::info(__METHOD__);
-        $service = app(VoucherService::class);
+        $action = $this->manageVoucher();
         $user = Auth::user();
 
         try {
@@ -128,7 +170,7 @@ class Index extends BaseNetworkComponent
                 return;
             }
 
-            $service->bulkDelete($this->selectedIds, $user);
+            $action->bulkDelete($this->selectedIds, $user);
             session()->flash('success', count($this->selectedIds) . ' Voucher berhasil dihapus!');
             $this->resetActionState();
         } catch (Throwable $e) {
@@ -140,7 +182,7 @@ class Index extends BaseNetworkComponent
     public function bulkRestore()
     {
         Log::info(__METHOD__);
-        $service = app(VoucherService::class);
+        $action = $this->manageVoucher();
         $user = Auth::user();
 
         try {
@@ -149,7 +191,7 @@ class Index extends BaseNetworkComponent
                 return;
             }
 
-            $service->bulkRestore($this->selectedIds, $user);
+            $action->bulkRestore($this->selectedIds, $user);
             session()->flash('success', count($this->selectedIds) . ' Voucher berhasil direstore!');
             $this->resetActionState();
         } catch (Throwable $e) {
@@ -172,10 +214,25 @@ class Index extends BaseNetworkComponent
 
     public function resetFilters()
     {
-        $this->filters = ['status' => ''];
+        $this->filters = [
+            'status' => '',
+            'voucher_pool_id' => '',
+            'created_date' => '',
+        ];
         $this->search = '';
         $this->showTrashed = false;
         $this->resetActionState();
+        $this->resetPage();
+    }
+
+    public function openFilterModal()
+    {
+        $this->showFilterModal = true;
+    }
+
+    public function applyFilter()
+    {
+        $this->showFilterModal = false;
         $this->resetPage();
     }
 
@@ -220,35 +277,131 @@ class Index extends BaseNetworkComponent
         }
     }
 
+        public function generate(\Src\Domain\Voucher\Actions\GenerateVoucherAction $action)
+    {
+        $this->validate([
+            'service_profile_id' => 'required|exists:service_profiles,id',
+            'quantity' => 'required|integer|min:1|max:5000',
+            'length' => 'required|integer|min:4|max:32',
+            'nas_device_id' => 'nullable|exists:nas_devices,id',
+            'reseller_id' => 'nullable|exists:users,id',
+            'login_method' => 'required|in:voucher_code,username_password',
+            'code_combination' => 'required|in:uppercase,lowercase,alphanumeric,numbers,uppercase_alphanumeric',
+        ]);
+
+        if (auth()->user()->hasRole(\App\Enums\UserRole::Reseller->value)) {
+            $this->reseller_id = auth()->user()->getEffectiveResellerId();
+        }
+
+        try {
+            $attrs = [
+                'type' => 'hotspot',
+                'nas_device_id' => $this->nas_device_id,
+                'reseller_id' => $this->reseller_id,
+                'service_profile_id' => $this->service_profile_id,
+                'bind_on_login' => false,
+                'fee_seller' => 0,
+                'login_method' => $this->login_method,
+                'code_combination' => $this->code_combination,
+                'length' => (int)$this->length,
+                'prefix' => $this->prefix ?: '',
+                'notes' => $this->notes,
+            ];
+
+            $vouchers = $action->generateAdHocVouchers($attrs, (int) $this->quantity, (int) auth()->id());
+
+            $this->showGenerateModal = false;
+            
+            $this->dispatch('voucher-generated-sweetalert', 
+                count: count($vouchers), 
+                ids: implode(',', array_column($vouchers, 'id'))
+            );
+        } catch (\Throwable $e) {
+            report($e);
+            session()->flash('error', 'Gagal generate voucher: ' . $e->getMessage());
+        }
+    }
+
     public function render()
     {
-        $query = Voucher::with(['serviceProfile', 'customer', 'nasDevice', 'owner'])
-            ->when($this->showTrashed, fn($q) => $q->withTrashed())
-            ->when($this->search, function($q) {
-                $q->where(function($sq) {
-                    $sq->where('code', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('owner', function($oq) {
-                            $oq->where('name', 'like', '%' . $this->search . '%');
-                        })
-                        ->orWhereHas('serviceProfile', function($spq) {
-                            $spq->where('name', 'like', '%' . $this->search . '%');
-                        });
-                });
-            })
-            ->when($this->filters['status'], function($q) {
-                $q->where('status', $this->filters['status']);
-            });
+        $query = $this->voucherQuery()->getListQuery(
+            search: $this->search,
+            filters: $this->filters,
+            withTrashed: $this->showTrashed,
+        )->where('vouchers.type', '!=', 'evoucher');
 
-        $vouchers = $query->orderBy($this->sortField, $this->sortDirection)
-            ->paginate($this->perPage);
+        $direction = strtolower($this->sortDirection) === 'asc' ? 'asc' : 'desc';
 
+        switch ($this->sortField) {
+            case 'id':
+                $query->orderBy('vouchers.id', $direction);
+                break;
+            case 'username':
+            case 'password':
+            case 'code':
+                $query->orderBy('vouchers.code', $direction);
+                break;
+            case 'service_profile_name':
+                $query->orderBy('service_profiles.name', $direction);
+                break;
+            case 'selling_price':
+                $query->orderByRaw("COALESCE(NULLIF(vouchers.fee_seller, 0), service_profiles.promo_price, service_profiles.base_price, 0) {$direction}");
+                break;
+            case 'server_name':
+                $query->orderBy('nas_devices.name', $direction);
+                break;
+            case 'created_at':
+                $query->orderBy('vouchers.created_at', $direction);
+                break;
+            case 'expires_at':
+                $query->orderBy('vouchers.expires_at', $direction);
+                break;
+            case 'reseller_name':
+                $query->orderBy('resellers.name', $direction);
+                break;
+            case 'status':
+                $query->orderBy('vouchers.status', $direction);
+                break;
+            default:
+                $query->orderBy('vouchers.id', 'desc');
+                break;
+        }
+
+        $vouchers = $query->paginate((int) $this->perPage);
+
+        // Stats calculation
+        $statsQuery = clone $query;
+        // avoid pagination for stats
+        $statsQuery->limit(PHP_INT_MAX)->offset(0);
+        
         $stats = [
-            'total' => Voucher::count(),
-            'available' => Voucher::where('status', 'available')->count(),
-            'used' => Voucher::where('status', 'used')->count(),
-            'expired' => Voucher::where('status', 'expired')->count(),
+            'total' => Voucher::where('type', '!=', 'evoucher')->count(),
+            'available' => Voucher::where('type', '!=', 'evoucher')->where('status', 'available')->count(),
+            'used' => Voucher::where('type', '!=', 'evoucher')->where('status', 'used')->count(),
+            'expired' => Voucher::where('type', '!=', 'evoucher')->where('status', 'expired')->count(),
         ];
 
-        return view('livewire.isp.voucher.index', compact('vouchers', 'stats'));
+        $voucherPools = \App\Models\ISP\VoucherPool::orderBy('id', 'desc')->get(['id', 'name', 'created_at']);
+        $nasDevices = \App\Models\ISP\NasDevice::active()->get();
+        $userQueryService = app(\App\Services\Auth\UserQueryService::class);
+        $resellers = $userQueryService->getResellers();
+        $serviceProfiles = \App\Models\ISP\ServiceProfile::active()
+            ->where(function($q) {
+                $q->where('service_type', 'voucher')
+                  ->orWhere('service_type', 'hotspot')
+                  ->orWhere('service_type', 'combined');
+            })->get();
+
+        return view('livewire.isp.voucher.index', compact('vouchers', 'stats', 'voucherPools', 'nasDevices', 'resellers', 'serviceProfiles'));
+    }
+
+    private function voucherQuery(): VoucherListQuery
+    {
+        return app(VoucherListQuery::class);
+    }
+
+    private function manageVoucher(): ManageVoucherAction
+    {
+        return app(ManageVoucherAction::class);
     }
 }

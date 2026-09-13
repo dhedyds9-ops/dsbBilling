@@ -29,7 +29,7 @@ class ACSLog extends Model
 
     public function device()
     {
-        return $this->belongsTo(ACSDevice::class);
+        return $this->belongsTo(ACSDevice::class, 'acs_device_id');
     }
 
     public function createdBy()

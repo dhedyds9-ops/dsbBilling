@@ -17,17 +17,17 @@
                 @method('PUT')
                 <div class="mb-3">
                     <label for="code" class="form-label">Kode Akun</label>
-                    <input type="text" class="form-control @error('code') is-invalid @enderror" id="code" name="code" value="{{ old('code', $cashAccount->code) }}" required>
+                    <input type="text" class="form-control @error('code') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="code" name="code" value="{{ old('code', $cashAccount->code) }}" required>
                     @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="name" class="form-label">Nama Akun</label>
-                    <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $cashAccount->name) }}" required>
+                    <input type="text" class="form-control @error('name') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="name" name="name" value="{{ old('name', $cashAccount->name) }}" required>
                     @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="type" class="form-label">Tipe Akun</label>
-                    <select class="form-control @error('type') is-invalid @enderror" id="type" name="type" required>
+                    <select class="form-control @error('type') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="type" name="type" required>
                         <option value="">Pilih Tipe</option>
                         <option value="kas_besar" {{ old('type', $cashAccount->type) === 'kas_besar' ? 'selected' : '' }}>Kas Besar</option>
                         <option value="kecil" {{ old('type', $cashAccount->type) === 'kecil' ? 'selected' : '' }}>Kas Kecil</option>
@@ -37,12 +37,12 @@
                 </div>
                 <div class="mb-3">
                     <label for="description" class="form-label">Deskripsi</label>
-                    <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description', $cashAccount->description) }}</textarea>
+                    <textarea class="form-control @error('description') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="description" name="description" rows="3">{{ old('description', $cashAccount->description) }}</textarea>
                     @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="status" class="form-label">Status</label>
-                    <select class="form-control @error('status') is-invalid @enderror" id="status" name="status" required>
+                    <select class="form-control @error('status') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="status" name="status" required>
                         <option value="active" {{ old('status', $cashAccount->status) === 'active' ? 'selected' : '' }}>Aktif</option>
                         <option value="inactive" {{ old('status', $cashAccount->status) === 'inactive' ? 'selected' : '' }}>Nonaktif</option>
                     </select>

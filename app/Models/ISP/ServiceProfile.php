@@ -2,6 +2,7 @@
 
 namespace App\Models\ISP;
 
+use App\Models\Master\Branch;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceProfile extends Model
 {
+    use \App\Traits\HasBranchScope;
     use SoftDeletes;
 
     protected $table = 'service_profiles';
@@ -74,6 +76,9 @@ class ServiceProfile extends Model
         'base_price',
         'owner_price',
         'reseller_price',
+        'owner_settlement_price',
+        'branch_settlement_price',
+        'reseller_settlement_price',
         'is_free',
         'promo_price',
         'tax_enabled',
@@ -175,9 +180,24 @@ class ServiceProfile extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    /**
+     * Pemilik/admin yang membuat service profile ini.
+     * Catatan: owner_id di service_profiles berbeda dengan di members/pppoe_users.
+     * Di sini owner_id = administrator/manager yang membuat profile ini,
+     * BUKAN reseller. Untuk service profile milik reseller, gunakan reseller_id.
+     */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Branch/cabang yang memiliki service profile ini.
+     * branch_id merujuk ke tabel branches (business entity, bukan role).
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     // Helper Methods
@@ -208,3 +228,4 @@ class ServiceProfile extends Model
         return $activeCount * $price;
     }
 }
+

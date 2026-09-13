@@ -95,7 +95,11 @@ class RouterOSDriver implements RouterOSDriverInterface
                     'cpu_load' => $resources[0]['cpu-load'] ?? 0,
                     'free_memory' => $resources[0]['free-memory'] ?? 0,
                     'total_memory' => $resources[0]['total-memory'] ?? 0,
+                    'free_hdd_space' => $resources[0]['free-hdd-space'] ?? 0,
+                    'total_hdd_space' => $resources[0]['total-hdd-space'] ?? 0,
                     'uptime' => $resources[0]['uptime'] ?? 'unknown',
+                    'board_name' => $resources[0]['board-name'] ?? '-',
+                    'architecture_name' => $resources[0]['architecture-name'] ?? '-',
                 ];
             }
 
@@ -128,14 +132,43 @@ class RouterOSDriver implements RouterOSDriverInterface
             $this->ensureConnected();
             $interfaces = $this->connection->query(new Query('/interface/print'))->read();
 
+            $names = [];
+            foreach ($interfaces as $interface) {
+                if (!in_array($interface['type'] ?? '', ['pppoe-in', 'hotspot'])) {
+                    $names[] = $interface['name'];
+                }
+            }
+
+            $trafficMap = [];
+            if (!empty($names)) {
+                $q = new Query('/interface/monitor-traffic');
+                $q->equal('interface', implode(',', $names));
+                $q->equal('once', '');
+                $traffic = $this->connection->query($q)->read();
+
+                if (is_array($traffic)) {
+                    foreach ($traffic as $t) {
+                        if (isset($t['name'])) {
+                            $trafficMap[$t['name']] = $t;
+                        }
+                    }
+                }
+            }
+
             $stats = [];
             foreach ($interfaces as $interface) {
+                $name = $interface['name'] ?? 'unknown';
+                $txBps = $trafficMap[$name]['tx-bits-per-second'] ?? 0;
+                $rxBps = $trafficMap[$name]['rx-bits-per-second'] ?? 0;
+
                 $stats[] = [
-                    'name' => $interface['name'] ?? 'unknown',
+                    'name' => $name,
                     'type' => $interface['type'] ?? 'unknown',
-                    'status' => $interface['running'] === 'true' ? 'link-up' : 'link-down',
+                    'status' => ($interface['running'] ?? 'false') === 'true' ? 'link-up' : 'link-down',
                     'tx-byte' => $interface['tx-byte'] ?? 0,
                     'rx-byte' => $interface['rx-byte'] ?? 0,
+                    'tx-bps' => $txBps,
+                    'rx-bps' => $rxBps,
                 ];
             }
 
@@ -145,9 +178,31 @@ class RouterOSDriver implements RouterOSDriverInterface
         }
     }
 
-    public function getTrafficStats(): array
+    public function getTrafficStats(string $interface = ''): array
     {
-        return [];
+        try {
+            $this->ensureConnected();
+            if (empty($interface)) {
+                return [];
+            }
+            
+            $query = new Query('/interface/monitor-traffic');
+            $query->equal('interface', $interface);
+            $query->equal('once', '');
+            
+            $result = $this->connection->query($query)->read();
+            
+            if (!empty($result) && isset($result[0])) {
+                return [
+                    'rx-bits-per-second' => $result[0]['rx-bits-per-second'] ?? 0,
+                    'tx-bits-per-second' => $result[0]['tx-bits-per-second'] ?? 0,
+                ];
+            }
+            
+            return [];
+        } catch (Exception $e) {
+            return [];
+        }
     }
 
     public function getPPPActive(): array

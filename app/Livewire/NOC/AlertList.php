@@ -3,18 +3,27 @@
 namespace App\Livewire\NOC;
 
 use App\Livewire\AdminComponent;
+use App\Models\Alarm;
+use Livewire\WithPagination;
+use Livewire\Attributes\Computed;
 
 class AlertList extends AdminComponent
 {
+    use WithPagination;
+
     public array $filters = [
         'severity' => 'all',
         'status' => 'all',
         'source' => 'all',
     ];
 
-    public string $sortField = 'created_at';
+    public string $sortField = 'started_at';
     public string $sortDirection = 'desc';
     public int $perPage = 20;
+
+    public function configure(): void
+    {
+        }
 
     public function mount(): void
     {
@@ -23,38 +32,97 @@ class AlertList extends AdminComponent
         $this->activePage = 'alerts';
     }
 
-    public function getAlerts(): \Illuminate\Support\Collection
+    public function updatedFilters(): void
     {
-        // Placeholder - dalam implementasi nyata, fetch dari repository
-        return collect([
-            ['id' => 1, 'title' => 'OLT-01 High CPU', 'severity' => 'critical', 'source' => 'OLT-01', 'status' => 'active', 'acknowledged_by' => null, 'created_at' => now()->subMinutes(15)],
-            ['id' => 2, 'title' => 'Network Latency Spike', 'severity' => 'warning', 'source' => 'Core-Router-01', 'status' => 'acknowledged', 'acknowledged_by' => 'John Doe', 'created_at' => now()->subHours(1)],
-            ['id' => 3, 'title' => 'Bandwidth Threshold Exceeded', 'severity' => 'warning', 'source' => 'OLT-02', 'status' => 'resolved', 'acknowledged_by' => 'Jane Smith', 'created_at' => now()->subHours(3)],
-            ['id' => 4, 'title' => 'Fiber Cut Detected', 'severity' => 'critical', 'source' => 'Segment-A3', 'status' => 'active', 'acknowledged_by' => null, 'created_at' => now()->subMinutes(5)],
-        ]);
+        $this->resetPage();
     }
 
-    public function getAlertStats(): array
+    public function sort(string $field): void
     {
-        $alerts = $this->getAlerts();
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'asc';
+        }
+    }
+
+    #[Computed]
+    public function alerts(): \Illuminate\Pagination\LengthAwarePaginator
+    {
+        return Alarm::with([
+            'acknowledgedBy:id,name',
+        ])
+        ->when($this->filters['severity'] !== 'all', fn ($q) => $q->where('level', $this->filters['severity']))
+        ->when($this->filters['status'] !== 'all', function ($q) {
+            if ($this->filters['status'] === 'active') {
+                $q->whereIn('status', ['open', 'acknowledged']);
+            } else {
+                $q->where('status', $this->filters['status']);
+            }
+        })
+        ->when($this->filters['source'] !== 'all', fn ($q) => $q->where('source_type', $this->filters['source']))
+        ->when(
+            in_array($this->sortField, ['started_at', 'level', 'status', 'source_name', 'title']),
+            fn ($q) => $q->orderBy($this->sortField, $this->sortDirection)
+        )
+        ->paginate($this->perPage);
+    }
+
+    #[Computed]
+    public function alertStats(): array
+    {
         return [
-            'total' => $alerts->count(),
-            'critical' => $alerts->where('severity', 'critical')->count(),
-            'warning' => $alerts->where('severity', 'warning')->count(),
-            'active' => $alerts->where('status', 'active')->count(),
-            'acknowledged' => $alerts->where('status', 'acknowledged')->count(),
-            'resolved' => $alerts->where('status', 'resolved')->count(),
+            'total' => Alarm::count(),
+            'critical' => Alarm::where('level', 'critical')->where('status', '!=', 'resolved')->count(),
+            'warning' => Alarm::where('level', 'warning')->where('status', '!=', 'resolved')->count(),
+            'active' => Alarm::whereIn('status', ['open', 'acknowledged'])->count(),
+            'acknowledged' => Alarm::where('status', 'acknowledged')->count(),
+            'resolved' => Alarm::where('status', 'resolved')->count(),
         ];
+    }
+
+    #[Computed]
+    public function sourceTypes(): array
+    {
+        return Alarm::select('source_type')
+            ->distinct()
+            ->whereNotNull('source_type')
+            ->pluck('source_type')
+            ->toArray();
     }
 
     public function acknowledgeAlert(int $alertId): void
     {
-        // Logic to acknowledge alert
+        $alarm = Alarm::find($alertId);
+        if (!$alarm || $alarm->status === 'resolved') {
+            return;
+        }
+        $alarm->update([
+            'status' => 'acknowledged',
+            'acknowledged_by' => auth()->id(),
+            'acknowledged_at' => now(),
+        ]);
+        $this->dispatch('toast', type: 'success', message: "Alarm #{$alertId} acknowledged.");
     }
 
     public function resolveAlert(int $alertId): void
     {
-        // Logic to resolve alert
+        $alarm = Alarm::find($alertId);
+        if (!$alarm) {
+            return;
+        }
+        $update = [
+            'status' => 'resolved',
+            'resolved_at' => now(),
+            'resolved_by' => auth()->id(),
+        ];
+        if ($alarm->status !== 'acknowledged') {
+            $update['acknowledged_by'] = auth()->id();
+            $update['acknowledged_at'] = now();
+        }
+        $alarm->update($update);
+        $this->dispatch('toast', type: 'success', message: "Alarm #{$alertId} resolved.");
     }
 
     public function getSeverityColor(string $severity): string
@@ -67,11 +135,16 @@ class AlertList extends AdminComponent
         };
     }
 
+    #[\Livewire\Attributes\Layout('layouts.noc')]
     public function render()
     {
         return view('livewire.noc.alert-list', [
-            'alerts' => $this->getAlerts(),
-            'stats' => $this->getAlertStats(),
+            'alerts' => $this->alerts,
+            'stats' => $this->alertStats,
+            'sourceTypes' => $this->sourceTypes,
         ]);
     }
 }
+
+
+

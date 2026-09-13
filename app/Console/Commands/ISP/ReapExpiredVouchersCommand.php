@@ -3,8 +3,8 @@
 namespace App\Console\Commands\ISP;
 
 use App\Models\ISP\Voucher;
-use App\Services\ISP\Voucher\VoucherLifecycleService;
 use Illuminate\Console\Command;
+use Src\Domain\Voucher\Actions\ExpireVoucherAction;
 
 class ReapExpiredVouchersCommand extends Command
 {
@@ -12,7 +12,7 @@ class ReapExpiredVouchersCommand extends Command
     protected $description = 'Scan voucher status used + expires_at < now() → mark expired, terminate hotspot user, decrement active counter';
 
     public function __construct(
-        private readonly VoucherLifecycleService $lifecycle,
+        private readonly ExpireVoucherAction $expireVoucher,
     ) {
         parent::__construct();
     }
@@ -37,7 +37,7 @@ class ReapExpiredVouchersCommand extends Command
         $query->chunkById(200, function ($vouchers) use (&$affected) {
             foreach ($vouchers as $v) {
                 try {
-                    $this->lifecycle->expireVoucher($v);
+                    $this->expireVoucher->execute($v);
                     $affected++;
                 } catch (\Throwable $e) {
                     $this->error("Expire gagal voucher #{$v->id} ({$v->code}): {$e->getMessage()}");

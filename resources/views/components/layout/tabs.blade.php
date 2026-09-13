@@ -17,27 +17,27 @@
 @php
 $variants = [
     'default' => [
-        'container' => 'border-b border-slate-200',
-        'tab' => 'text-slate-600 hover:text-slate-900 border-b-2 border-transparent',
+        'container' => 'border-b border-slate-200 dark:border-slate-700',
+        'tab' => 'text-slate-600 hover:text-slate-900 dark:text-slate-100 border-b-2 border-transparent',
         'tabActive' => 'text-primary-600 border-primary-600',
         'tabDisabled' => 'opacity-50 cursor-not-allowed',
     ],
     'pills' => [
         'container' => 'gap-2',
-        'tab' => 'px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100',
+        'tab' => 'px-4 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800',
         'tabActive' => 'bg-primary-600 text-white',
         'tabDisabled' => 'opacity-50 cursor-not-allowed',
     ],
     'underline' => [
-        'container' => 'border-b border-slate-200 gap-8',
-        'tab' => 'pb-3 text-slate-600 border-b-2 border-transparent hover:text-slate-900 hover:border-slate-300',
+        'container' => 'border-b border-slate-200 dark:border-slate-700 gap-8',
+        'tab' => 'pb-3 text-slate-600 border-b-2 border-transparent hover:text-slate-900 dark:text-slate-100 hover:border-slate-300 dark:border-slate-600',
         'tabActive' => 'text-primary-600 border-primary-600',
         'tabDisabled' => 'opacity-50 cursor-not-allowed',
     ],
     'boxed' => [
-        'container' => 'p-1 bg-slate-100 rounded-xl gap-1',
-        'tab' => 'px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900',
-        'tabActive' => 'bg-white text-slate-900 shadow-sm',
+        'container' => 'p-1 bg-slate-100 dark:bg-slate-800 rounded-xl gap-1',
+        'tab' => 'px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-100',
+        'tabActive' => 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm',
         'tabDisabled' => 'opacity-50 cursor-not-allowed',
     ],
 ];

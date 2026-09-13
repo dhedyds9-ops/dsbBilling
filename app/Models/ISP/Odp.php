@@ -2,6 +2,7 @@
 
 namespace App\Models\ISP;
 
+use App\Livewire\Gis\GisMap;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Odp extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static function booted()
+    {
+        static::saved(function () {
+            GisMap::flushCache();
+        });
+
+        static::deleted(function () {
+            GisMap::flushCache();
+        });
+
+        static::restored(function () {
+            GisMap::flushCache();
+        });
+    }
 
     protected $fillable = [
         'odc_id',
@@ -165,5 +181,10 @@ class Odp extends Model
         return Attribute::make(
             get: fn (): bool => $this->latitude !== null && $this->longitude !== null
         );
+    }
+
+    public function getPopAttribute()
+    {
+        return $this->olt?->pop ?? $this->odc?->pop;
     }
 }

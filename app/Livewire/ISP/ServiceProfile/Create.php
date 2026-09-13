@@ -3,9 +3,10 @@
 namespace App\Livewire\ISP\ServiceProfile;
 
 use App\Livewire\AdminComponent;
+use App\Models\ISP\ServiceProfile as ServiceProfileModel;
 use App\Services\ISP\ServiceProfileService;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class Create extends AdminComponent
 {
@@ -27,9 +28,18 @@ class Create extends AdminComponent
     public $download_speed = 10;
     public $upload_speed = 10;
     
+    // Burst Settings
+    public $enable_burst = false;
+    public $burst_limit_download;
+    public $burst_limit_upload;
+    public $burst_threshold_download;
+    public $burst_threshold_upload;
+    public $burst_time_download = 60;
+    public $burst_time_upload = 60;
+
     // Billing
     public $base_price = 150000;
-    public $owner_price = 100000;
+    public $owner_price = 0;
     public $reseller_price = 120000;
     public $is_free = false;
     
@@ -58,6 +68,9 @@ class Create extends AdminComponent
     public function mount()
     {
         parent::mount();
+
+        Gate::authorize('create', ServiceProfileModel::class);
+
         $this->activeModule = 'isp';
         $this->activePage = 'service-profiles';
         $this->breadcrumbs = [
@@ -74,6 +87,27 @@ class Create extends AdminComponent
             $this->owner_price = 0;
             $this->reseller_price = 0;
         }
+
+        if ($property === 'enable_burst' && $this->enable_burst) {
+            $this->calculateAutoBurst();
+        }
+    }
+
+    public function calculateAutoBurst()
+    {
+        // Auto hitung burst: Limit = 2x Speed, Threshold = 80% Speed
+        if ($this->download_speed) {
+            $this->burst_limit_download = $this->download_speed * 2;
+            $this->burst_threshold_download = round($this->download_speed * 0.8);
+        }
+        
+        if ($this->upload_speed) {
+            $this->burst_limit_upload = $this->upload_speed * 2;
+            $this->burst_threshold_upload = round($this->upload_speed * 0.8);
+        }
+
+        $this->burst_time_download = 60;
+        $this->burst_time_upload = 60;
     }
 
     public function save(ServiceProfileService $service)
@@ -81,6 +115,11 @@ class Create extends AdminComponent
         Log::info('Create service profile: Starting process', ['user_id' => auth()->id()]);
         
         // Auto generate code - handled in ServiceProfileService
+        // Pastikan visibility selalu punya nilai valid
+        if (empty($this->visibility) || !in_array($this->visibility, ['private', 'shared', 'global'])) {
+            $this->visibility = 'private';
+        }
+
         $this->validate($this->rules(), [
             'name.required' => 'Nama paket harus diisi',
             'name.max' => 'Nama paket tidak boleh lebih dari 255 karakter',
@@ -119,6 +158,24 @@ class Create extends AdminComponent
                 'voucher_prefix', 'voucher_validity_after_activation',
             ]);
 
+            // Sertakan burst hanya jika diaktifkan
+            if ($this->enable_burst) {
+                $data['burst_limit_download'] = $this->burst_limit_download;
+                $data['burst_limit_upload'] = $this->burst_limit_upload;
+                $data['burst_threshold_download'] = $this->burst_threshold_download;
+                $data['burst_threshold_upload'] = $this->burst_threshold_upload;
+                $data['burst_time_download'] = $this->burst_time_download;
+                $data['burst_time_upload'] = $this->burst_time_upload;
+            } else {
+                // Reset burst jika tidak diaktifkan
+                $data['burst_limit_download'] = null;
+                $data['burst_limit_upload'] = null;
+                $data['burst_threshold_download'] = null;
+                $data['burst_threshold_upload'] = null;
+                $data['burst_time_download'] = null;
+                $data['burst_time_upload'] = null;
+            }
+
             Log::info('Create service profile: Calling service layer', ['data' => $data]);
             
             $profile = $service->createProfile($data, auth()->user());
@@ -153,7 +210,7 @@ class Create extends AdminComponent
             'validity_value' => 'nullable|integer|min:1',
             'validity_unit' => 'nullable|in:days,months,hours',
             'max_devices' => 'nullable|integer|min:1|max:10',
-            'visibility' => 'nullable|in:private,shared,global',
+            'visibility' => 'nullable|sometimes|in:private,shared,global',
         ];
         
         // Validate duration if time_based
@@ -168,7 +225,7 @@ class Create extends AdminComponent
             $rules['quota_unit'] = 'required|in:MB,GB';
         }
         
-        if (auth()->user()->hasRole('super_admin')) {
+        if (auth()->user()->hasRole(\App\Enums\UserRole::Administrator->value)) {
             $rules['owner_price'] = 'required|numeric|min:0';
             $rules['reseller_price'] = 'required|numeric|min:0';
         }
@@ -176,24 +233,17 @@ class Create extends AdminComponent
         return $rules;
     }
     
-    protected function generateUniqueCode($name)
-    {
-        $baseCode = Str::upper(Str::slug($name, ''));
-        $counter = 1;
-        $code = $baseCode;
-        
-        while (\App\Models\ISP\ServiceProfile::where('code', $code)->exists()) {
-            $code = $baseCode . $counter++;
-        }
-        
-        return $code;
-    }
-
     public function render()
     {
-        $isSuperAdmin = auth()->user()->hasRole('super_admin') ?? false;
-        $users = $isSuperAdmin ? \App\Models\User::select('id', 'name')->limit(100)->get() : [];
+        $isAdministrator = auth()->user()->hasRole(\App\Enums\UserRole::Administrator->value) ?? false;
+        $users = $isAdministrator
+            ? \App\Models\User::select('id', 'name')
+                ->whereHas('roles', fn($q) => $q->whereIn('name', \App\Enums\UserRole::backofficeRoles()))
+                ->orderBy('name')
+                ->limit(100)
+                ->get()
+            : [];
         
-        return view('livewire.isp.service-profiles.form', compact('isSuperAdmin', 'users'));
+        return view('livewire.isp.service-profile.form', compact('isAdministrator', 'users'));
     }
 }

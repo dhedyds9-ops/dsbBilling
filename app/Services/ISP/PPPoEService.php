@@ -64,7 +64,8 @@ class PPPoEService
         ?int $ipAllocationId,
         int $userId,
         ?string $username = null,
-        ?string $password = null
+        ?string $password = null,
+        array $networkData = []
     ): PPPoEUser {
         return DB::transaction(function () use (
             $customerService,
@@ -72,9 +73,10 @@ class PPPoEService
             $ipAllocationId,
             $userId,
             $username,
-            $password
+            $password,
+            $networkData
         ) {
-            $pppoeUser = $this->pppoeUserRepository->create([
+            $pppoeUser = $this->pppoeUserRepository->create(array_merge([
                 'uuid' => (string) Str::uuid(),
                 'username' => $username ?? 'user_' . $customerService->id,
                 'password' => $password ?? Str::random(12),
@@ -84,7 +86,7 @@ class PPPoEService
                 'status' => 'pending',
                 'created_by' => $userId,
                 'updated_by' => $userId,
-            ]);
+            ], $networkData));
 
             try {
                 $this->provisionToMikrotik($pppoeUser, true);
@@ -114,7 +116,9 @@ class PPPoEService
 
             Event::dispatch(new PPPoEUserStatusChangedEvent($pppoeUser, $oldStatus, 'active'));
 
-            $this->provisionToMikrotik($pppoeUser);
+            if ($oldStatus !== 'pending') {
+                $this->provisionToMikrotik($pppoeUser);
+            }
 
             return $pppoeUser;
         });
@@ -183,165 +187,34 @@ class PPPoEService
 
     protected function provisionToMikrotik(PPPoEUser $pppoeUser, bool $isCreate = false): void
     {
-        $routers = $this->resolveRouters($pppoeUser->serviceProfile);
-        if (empty($routers)) {
-            Log::warning('PPPoEService provision: tidak ada Router aktif', ['user_id' => $pppoeUser->id]);
-            return;
-        }
-
-        $profileName = $pppoeUser->serviceProfile?->name ?: 'default';
-        $username = $pppoeUser->username;
-        $password = $pppoeUser->password;
-        $remoteAddress = null;
-        try {
-            if ($pppoeUser->ipAllocation && !empty($pppoeUser->ipAllocation->ip_address)) {
-                $remoteAddress = $pppoeUser->ipAllocation->ip_address;
-            }
-        } catch (Throwable $e) {}
-
-        $successEnabled = 0;
-        $successUpsert = 0;
-        $kicked = 0;
-
-        foreach ($routers as $router) {
-            try {
-                $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) {
-                    continue;
-                }
-            } catch (Throwable $e) {
-                Log::warning('PPPoEService provision connect gagal', ['router_id' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
-                continue;
-            }
-
-            try {
-                $okEnable = $driver->enablePppSecret($username);
-                if ($okEnable) $successEnabled++;
-
-                $okUpsert = $driver->updatePPPoEServerUser($username, $password, $profileName);
-                if (!$okUpsert && $remoteAddress) {
-                    $okUpsert = $driver->addPPPoESecret($username, $password, $profileName, $remoteAddress);
-                }
-                if ($okUpsert) $successUpsert++;
-
-                if (!$isCreate) {
-                    $okKick = $driver->disconnectPppoeUser($username);
-                    if ($okKick) $kicked++;
-                }
-            } catch (Throwable $e) {
-                Log::error('PPPoEService provision per-router gagal', [
-                    'router_id' => $router->id,
-                    'user' => $username,
-                    'err' => $e->getMessage(),
-                ]);
-            }
-
-            try { $driver->disconnect(); } catch (Throwable $e) {}
-        }
-
-        Log::info('PPPoEService provisionToMikrotik selesai', [
-            'user' => $username,
-            'routers_checked' => count($routers),
-            'enabled' => $successEnabled,
-            'upserted' => $successUpsert,
-            'kicked' => $kicked,
-            'is_create' => $isCreate,
-        ]);
+        if ($isCreate) return;
+        $this->kickActiveSession($pppoeUser);
     }
 
     protected function provisionIsolationToMikrotik(PPPoEUser $pppoeUser): void
     {
-        $routers = $this->resolveRouters($pppoeUser->serviceProfile);
-        if (empty($routers)) {
-            Log::warning('PPPoEService isolir: tidak ada Router aktif', ['user_id' => $pppoeUser->id]);
-            return;
-        }
-
-        $username = $pppoeUser->username;
-        $successDisable = 0;
-        $kicked = 0;
-
-        foreach ($routers as $router) {
-            try {
-                $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) {
-                    continue;
-                }
-            } catch (Throwable $e) {
-                Log::warning('PPPoEService isolir connect gagal', ['router_id' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
-                continue;
-            }
-
-            try {
-                $okDisable = $driver->disablePppSecret($username);
-                if ($okDisable) $successDisable++;
-
-                $okKick = $driver->disconnectPppoeUser($username);
-                if ($okKick) $kicked++;
-            } catch (Throwable $e) {
-                Log::error('PPPoEService isolir per-router gagal', [
-                    'router_id' => $router->id,
-                    'user' => $username,
-                    'err' => $e->getMessage(),
-                ]);
-            }
-
-            try { $driver->disconnect(); } catch (Throwable $e) {}
-        }
-
-        Log::info('PPPoEService provisionIsolationToMikrotik selesai', [
-            'user' => $username,
-            'routers_checked' => count($routers),
-            'disabled' => $successDisable,
-            'kicked' => $kicked,
-        ]);
+        $this->kickActiveSession($pppoeUser);
     }
 
     protected function removeFromMikrotik(PPPoEUser $pppoeUser): void
     {
+        $this->kickActiveSession($pppoeUser);
+    }
+
+    private function kickActiveSession(PPPoEUser $pppoeUser): void
+    {
         $routers = $this->resolveRouters($pppoeUser->serviceProfile);
-        if (empty($routers)) {
-            Log::warning('PPPoEService remove: tidak ada Router aktif', ['user_id' => $pppoeUser->id]);
-            return;
-        }
+        if (empty($routers)) return;
 
         $username = $pppoeUser->username;
-        $successRemove = 0;
-        $kicked = 0;
 
         foreach ($routers as $router) {
             try {
                 $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) {
-                    continue;
-                }
-            } catch (Throwable $e) {
-                Log::warning('PPPoEService remove connect gagal', ['router_id' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
-                continue;
-            }
-
-            try {
-                $okKick = $driver->disconnectPppoeUser($username);
-                if ($okKick) $kicked++;
-
-                $okRemove = $driver->removePPPoEServerUser($username);
-                if ($okRemove) $successRemove++;
-            } catch (Throwable $e) {
-                Log::error('PPPoEService remove per-router gagal', [
-                    'router_id' => $router->id,
-                    'user' => $username,
-                    'err' => $e->getMessage(),
-                ]);
-            }
-
-            try { $driver->disconnect(); } catch (Throwable $e) {}
+                if (!$driver->connect()) continue;
+                $driver->disconnectPppoeUser($username);
+                $driver->disconnect();
+            } catch (\Throwable $e) {}
         }
-
-        Log::info('PPPoEService removeFromMikrotik selesai', [
-            'user' => $username,
-            'routers_checked' => count($routers),
-            'removed' => $successRemove,
-            'kicked' => $kicked,
-        ]);
     }
 }

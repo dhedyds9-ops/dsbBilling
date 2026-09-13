@@ -2,7 +2,7 @@
 
 namespace App\Services\ISP;
 
-use App\Events\ISP\InternetPackageSaved;
+use App\Events\ISP\ServiceProfileSaved;
 use App\Models\AuditLog;
 use App\Models\ISP\ServiceProfile;
 use App\Models\User;
@@ -33,7 +33,7 @@ class ServiceProfileService
 
             $this->logAudit($profile, 'created', null, $profile->toArray(), $user);
 
-            event(new InternetPackageSaved($profile));
+            event(new ServiceProfileSaved($profile, true));
 
             Log::info('Package created', ['profile_id' => $profile->id, 'code' => $profile->code]);
 
@@ -59,7 +59,7 @@ class ServiceProfileService
 
             $this->logAudit($profile, 'updated', $oldValues, $profile->toArray(), $user);
 
-            event(new InternetPackageSaved($profile));
+            event(new ServiceProfileSaved($profile, false));
 
             Log::info('Package updated', ['profile_id' => $profile->id]);       
 
@@ -67,21 +67,40 @@ class ServiceProfileService
         });
     }
 
-    public function cloneProfile(ServiceProfile $profile, User $user, array $newData = []): ServiceProfile
+    public function cloneProfile(ServiceProfile $profile, User $user, array $newData = [], array $options = []): ServiceProfile
     {
-        Log::info('Cloning package', ['original_id' => $profile->id, 'new_data' => $newData, 'user_id' => $user->id]);
+        Log::info('Cloning package', ['original_id' => $profile->id, 'new_data' => $newData, 'options' => $options, 'user_id' => $user->id]);
 
-        return DB::transaction(function () use ($profile, $user, $newData) {    
+        return DB::transaction(function () use ($profile, $user, $newData, $options) {
             $cloneData = $profile->toArray();
 
-            // Generate new unique name and code
+            if (!empty($options)) {
+                $keep = array_merge(
+                    ['name', 'code', 'status', 'created_by', 'updated_by', 'created_at', 'updated_at', 'deleted_at'],
+                    $options['description'] ?? true ? [] : ['description', 'short_description'],
+                    $options['service_type'] ?? true ? [] : ['service_type'],
+                    $options['package_type'] ?? true ? [] : ['package_type', 'duration_value', 'duration_unit', 'quota_value', 'quota_unit', 'validity_value', 'validity_unit'],
+                    $options['bandwidth'] ?? true ? [] : ['download_speed', 'upload_speed', 'burst_limit_download', 'burst_limit_upload', 'burst_threshold_download', 'burst_threshold_upload', 'burst_time_download', 'burst_time_upload'],
+                    $options['prices'] ?? true ? [] : ['base_price', 'owner_price', 'reseller_price', 'setup_fee', 'is_free'],
+                    $options['validity'] ?? true ? [] : ['validity_days', 'validity_hours', 'validity_unit', 'auto_suspend_days'],
+                    $options['max_devices'] ?? true ? [] : ['max_devices'],
+                    $options['technical'] ?? true ? [] : ['queue_type', 'priority', 'cir_download', 'cir_upload', 'mir_download', 'mir_upload', 'radius_group_name', 'radius_rate_limit', 'radius_session_timeout', 'radius_idle_timeout', 'radius_simultaneous_use', 'radius_mac_binding', 'radius_framed_pool', 'radius_address_list', 'radius_attributes', 'ppp_profile_name', 'target_hotspot_profile', 'user_manager_profile', 'ip_pool_parent', 'custom_dns', 'advanced_settings']
+                );
+                foreach (array_keys($cloneData) as $k) {
+                    if (!in_array($k, ['service_profile_type_id', 'tenant_id', 'owner_id', 'branch_id', 'visibility', 'voucher_prefix', 'voucher_validity_after_activation', 'login_start_time', 'login_end_time', 'allowed_login_days', 'idle_disconnect_policy', 'auto_activate_after_payment', 'vlan_id', 'bridge_interface', 'interface_name']) && !in_array($k, $keep)) {
+                        unset($cloneData[$k]);
+                    }
+                }
+            }
+
             $cloneData['name'] = $newData['name'] ?? ($profile->name . ' (Copy)');
             $cloneData['code'] = $newData['code'] ?? $this->generateUniqueCode($profile->name . '_copy');
+            $cloneData['status'] = 'inactive';
 
-            // Reset audit fields
-            unset($cloneData['id'], $cloneData['created_at'], $cloneData['updated_at'], $cloneData['deleted_at'], $cloneData['created_by'], $cloneData['updated_by']);
+            foreach (['id', 'created_at', 'updated_at', 'deleted_at', 'created_by', 'updated_by'] as $f) {
+                unset($cloneData[$f]);
+            }
 
-            // Override with new data
             $cloneData = array_merge($cloneData, $newData);
 
             $clone = $this->createProfile($cloneData, $user);
@@ -90,6 +109,33 @@ class ServiceProfileService
 
             return $clone;
         });
+    }
+
+    public function toggleStatus(ServiceProfile $profile, User $user): ServiceProfile
+    {
+        Log::info('Toggle package status', ['profile_id' => $profile->id, 'old_status' => $profile->status, 'user_id' => $user->id]);
+
+        return DB::transaction(function () use ($profile, $user) {
+            $oldValues = $profile->toArray();
+            $newStatus = $profile->status === 'active' ? 'inactive' : 'active';
+            $profile->update(['status' => $newStatus, 'updated_by' => $user->id]);
+
+            $this->logAudit($profile, 'status_changed', $oldValues, $profile->toArray(), $user);
+
+            event(new ServiceProfileSaved($profile, false));
+
+            return $profile;
+        });
+    }
+
+    public function getAuditLogs(ServiceProfile $profile, int $limit = 25): \Illuminate\Database\Eloquent\Collection
+    {
+        return AuditLog::where('auditable_type', ServiceProfile::class)
+            ->where('auditable_id', $profile->id)
+            ->with('user:id,name')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
     }
 
     public function autoGenerateTechnicalFields(array $data, User $user): array 
@@ -143,23 +189,45 @@ class ServiceProfileService
         }
 
         // Auto generate technical fields
+        // ── Burst: hanya auto-hitung jika user tidak mengisi ──────────────────
+        // Jika enable_burst=false atau nilai kosong, set null; jika ada nilai dari user, pakai itu
+        $hasBurstInput = !empty($data['burst_limit_download']) || !empty($data['burst_limit_upload']);
+        if (!$hasBurstInput) {
+            // Tidak ada burst dari input user → clear semua burst
+            $data['burst_limit_download']     = null;
+            $data['burst_limit_upload']       = null;
+            $data['burst_threshold_download'] = null;
+            $data['burst_threshold_upload']   = null;
+            $data['burst_time_download']      = null;
+            $data['burst_time_upload']        = null;
+        }
+        // Jika ada nilai burst dari user → biarkan nilai tersebut (sudah ada di $data)
+
+        // ── Sinkronisasi kolom harga settlement (lama ↔ baru) ─────────────────
+        // Kolom lama (owner_settlement_price) diisi dari owner_price (baru), dan sebaliknya
+        // Tujuan: GenerateInvoiceJob bisa baca dari kedua kolom dengan benar
+        if (!empty($data['owner_price']) && empty($data['owner_settlement_price'])) {
+            $data['owner_settlement_price'] = $data['owner_price'];
+        } elseif (!empty($data['owner_settlement_price']) && empty($data['owner_price'])) {
+            $data['owner_price'] = $data['owner_settlement_price'];
+        }
+        if (!empty($data['reseller_price']) && empty($data['reseller_settlement_price'])) {
+            $data['reseller_settlement_price'] = $data['reseller_price'];
+        } elseif (!empty($data['reseller_settlement_price']) && empty($data['reseller_price'])) {
+            $data['reseller_price'] = $data['reseller_settlement_price'];
+        }
+
+        $sanitizedName = preg_replace('/[^a-zA-Z0-9]/', '', $name);
+        $sanitizedCode = preg_replace('/[^a-zA-Z0-9]/', '', $code);
+
         $data['queue_type'] = 'simple_queue';
         $data['priority'] = 8;
         $data['cir_download'] = $downloadSpeed * 1000000;
         $data['cir_upload'] = $uploadSpeed * 1000000;
         $data['mir_download'] = $downloadSpeed * 1000000;
         $data['mir_upload'] = $uploadSpeed * 1000000;
-        $data['burst_limit_download'] = (int) ($downloadSpeed * 1.5);
-        $data['burst_limit_upload'] = (int) ($uploadSpeed * 1.5);
-        $data['burst_threshold_download'] = (int) ($downloadSpeed * 0.8);       
-        $data['burst_threshold_upload'] = (int) ($uploadSpeed * 0.8);
-        $data['burst_time_download'] = 60;
-        $data['burst_time_upload'] = 60;
 
-        $sanitizedName = preg_replace('/[^a-zA-Z0-9]/', '', $name);
-        $sanitizedCode = preg_replace('/[^a-zA-Z0-9]/', '', $code);
-
-        $data['radius_group_name'] = 'GRP-' . strtoupper($sanitizedCode);       
+        $data['radius_group_name'] = 'GRP-' . strtoupper($sanitizedCode);
         $data['radius_rate_limit'] = $downloadSpeed . 'M/' . $uploadSpeed . 'M';
 
         // Set session timeout based on validity
@@ -168,14 +236,14 @@ class ServiceProfileService
         } elseif ($validityUnit === 'hours') {
             $data['radius_session_timeout'] = $validityValue * 3600;
         } else { // months
-            $data['radius_session_timeout'] = $validityValue * 30 * 86400;      
+            $data['radius_session_timeout'] = $validityValue * 30 * 86400;
         }
 
         $data['radius_idle_timeout'] = 1800;
         $data['radius_simultaneous_use'] = $data['max_devices'] ?? 1;
         $data['radius_mac_binding'] = false;
-        $data['radius_framed_pool'] = 'Pool-' . strtoupper($sanitizedCode);     
-        $data['radius_address_list'] = 'Allow-' . strtoupper($sanitizedCode);   
+        $data['radius_framed_pool'] = 'Pool-' . strtoupper($sanitizedCode);
+        $data['radius_address_list'] = 'Allow-' . strtoupper($sanitizedCode);
         $data['radius_attributes'] = [
             'MikroTik-Rate-Limit' => $data['radius_rate_limit'],
             'MikroTik-Group' => $data['radius_group_name'],
@@ -199,7 +267,7 @@ class ServiceProfileService
 
         $data['account_type'] = ($data['validity_days'] ?? 0) > 0 ? 'limited' : 'unlimited';
         $data['allowed_login_days'] = [0, 1, 2, 3, 4, 5, 6];
-        $data['login_start_time'] = $data['login_start_time'] ?? '00:00';       
+        $data['login_start_time'] = $data['login_start_time'] ?? '00:00';
         $data['login_end_time'] = $data['login_end_time'] ?? '23:59';
         $data['idle_disconnect_policy'] = 'auto';
 

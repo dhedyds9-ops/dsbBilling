@@ -7,6 +7,7 @@ use App\Models\ISP\Onu;
 use App\Services\Adapters\Provisioning\OltRegistry;
 use App\Services\ISP\GenieAcsProvisioningService;
 use App\Services\ISP\OdpOccupancyService;
+use App\Services\Provisioning\WanConfigurationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +23,7 @@ class FiberServiceProvisioningListener implements ShouldQueue
         protected OltRegistry $oltRegistry,
         protected GenieAcsProvisioningService $genieAcs,
         protected OdpOccupancyService $odpOccupancy,
+        protected WanConfigurationService $wanConfig,
     ) {
     }
 
@@ -72,8 +74,23 @@ class FiberServiceProvisioningListener implements ShouldQueue
 
                 try {
                     $this->genieAcs->syncDeviceFromBilling($onu);
+                    
+                    // NEW: Integrasi CustomerService (PPPoEUser) -> WanConfigurationService (GenieACS TR-069)
+                    $pppoeUser = \App\Models\ISP\PPPoEUser::where('customer_service_id', $customerService->id)->first();
+                    if ($pppoeUser) {
+                        Log::info('Dispatching WAN Configuration for PPPoE', ['onu_id' => $onu->id, 'username' => $pppoeUser->username]);
+                        
+                        // Konfigurasi WAN (PPPoE). WAN Index 1 biasanya untuk Internet.
+                        // Tidak disimpan di GenieACS, tapi dipush langsung.
+                        $this->wanConfig->configureWan($onu, 1, 'pppoe', [
+                            'username' => $pppoeUser->username,
+                            'password' => (str_starts_with($pppoeUser->password, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($pppoeUser->password) : $pppoeUser->password),
+                            'vlan' => $customerService->networkProfile?->vlan_id,
+                        ], $customerService->id, 1);
+                    }
+
                 } catch (Throwable $e) {
-                    Log::warning('GenieACS sync failed on activation', [
+                    Log::warning('GenieACS sync/WAN config failed on activation', [
                         'onu_id' => $onu->id,
                         'msg' => $e->getMessage(),
                     ]);
@@ -100,3 +117,4 @@ class FiberServiceProvisioningListener implements ShouldQueue
         }
     }
 }
+

@@ -6,12 +6,12 @@ class BaseAdapterRegistry
 {
     protected array $adapters = [];
 
-    public function register(string $name, object $adapter): void
+    public function register(string $name, string|object $adapter): void
     {
         $this->adapters[$name] = $adapter;
     }
 
-    public function get(string $name): ?object
+    public function get(string $name): string|object|null
     {
         return $this->adapters[$name] ?? null;
     }

@@ -15,7 +15,7 @@ use Src\Domain\Settings\Events\ConnectionUpdatedEvent;
 class ConnectionSettingsService
 {
     public const GROUP = 'connection';
-    public const TYPES = ['router', 'radius', 'acs'];
+    public const TYPES = ['router', 'radius', 'acs', 'radius_client'];
 
     public function listRouters(): array
     {
@@ -151,20 +151,32 @@ class ConnectionSettingsService
             Setting::setValue('connection.radius_servers', $existing, 'json', self::GROUP);
         } elseif ($type === 'acs') {
             $data = [
-                'api_url' => $data['api_url'] ?? '',
-                'auth_username' => $data['auth_username'] ?? '',
-                'auth_password' => $data['auth_password'] ?? '',
+                'base_url' => $data['base_url'] ?? '',
+                'api_key' => $data['api_key'] ?? '',
                 'connection_request_username' => $data['connection_request_username'] ?? '',
                 'connection_request_password' => $data['connection_request_password'] ?? '',
-                'default_template' => $data['default_template'] ?? '',
+                'tr069_port' => $data['tr069_port'] ?? 7547,
+                'cwmp_version' => $data['cwmp_version'] ?? '1.1',
+                'default_oui' => $data['default_oui'] ?? '',
+                'default_product_class' => $data['default_product_class'] ?? '',
+                'default_software_version' => $data['default_software_version'] ?? '',
+                'ssl_verify' => $data['ssl_verify'] ?? false,
+                'timeout' => $data['timeout'] ?? 10,
+                'retry_count' => $data['retry_count'] ?? 3,
+                'webhook_enabled' => $data['webhook_enabled'] ?? false,
+                'webhook_url' => $data['webhook_url'] ?? '',
             ];
             Setting::setValue('connection.acs', $data, 'json', self::GROUP);
             $id = 'acs-config';
             $action = 'update';
+        } elseif ($type === 'radius_client') {
+            Setting::setValue('connection.radius_client_settings', $data, 'json', self::GROUP);
+            $id = 'radius-client-config';
+            $action = 'update';
         }
 
         Cache::forget(Setting::CACHE_KEY);
-
+        // Dispatch event...
         Event::dispatch(new ConnectionUpdatedEvent(
             userId: $userId,
             type: $type,
@@ -174,6 +186,54 @@ class ConnectionSettingsService
         ));
 
         return ['success' => true, 'type' => $type, 'id' => $id, 'action' => $action];
+    }
+
+    public function saveRouter(array $data): \App\Models\ISP\Router
+    {
+        $id = $data['id'] ?? null;
+        
+        $routerData = [
+            'name' => $data['name'],
+            'hostname' => $data['ip_address'],
+            'ip_address' => $data['ip_address'],
+            'api_port' => (int)$data['api_port'],
+            'api_ssl_port' => (int)$data['api_ssl_port'],
+            'api_user' => $data['api_user'],
+            'use_ssl' => (bool)($data['use_ssl'] ?? false),
+            'coa_port' => (int)($data['radius_port'] ?? 3799),
+            'nas_identifier' => $data['nas_identifier'] ?: $data['name'],
+            'is_active' => (bool)($data['is_active'] ?? true),
+        ];
+
+        if (!empty($data['api_password'])) {
+            $routerData['api_password'] = encrypt($data['api_password']);
+        }
+
+        if ($id) {
+            $router = Router::findOrFail($id);
+            $router->update($routerData);
+        } else {
+            $router = Router::create($routerData);
+        }
+
+        $this->syncList('router');
+        
+        return $router;
+    }
+
+    public function saveRadiusSettings(array $data): array
+    {
+        return $this->save('radius', $data);
+    }
+
+    public function saveRadiusClientSettings(array $data): array
+    {
+        return $this->save('radius_client', $data);
+    }
+
+    public function saveGenieAcsSettings(array $data): array
+    {
+        return $this->save('acs', $data);
     }
 
     public function delete(string $type, $id): array

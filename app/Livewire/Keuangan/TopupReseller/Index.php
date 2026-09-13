@@ -6,6 +6,7 @@ use App\Livewire\BaseEnterpriseList;
 use App\Services\Keuangan\ResellerTopupService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
 
 class Index extends BaseEnterpriseList
 {
@@ -58,6 +59,7 @@ class Index extends BaseEnterpriseList
         }, 'Gagal memuat data Topup Reseller');
     }
 
+    #[Computed]
     public function getSummaryProperty(): array
     {
         try {
@@ -74,11 +76,13 @@ class Index extends BaseEnterpriseList
         }
     }
 
+    #[Computed]
     public function getResellerOptionsProperty(): array
     {
         return $this->service->getResellerOptions();
     }
 
+    #[Computed]
     public function getFilterConfigProperty(): array
     {
         return [
@@ -98,6 +102,7 @@ class Index extends BaseEnterpriseList
         ];
     }
 
+    #[Computed]
     public function getBulkActionsProperty(): array
     {
         return [

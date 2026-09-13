@@ -12,6 +12,21 @@ class OnlineSession extends Model
 
     protected $table = 'online_sessions';
 
+    protected static function booted()
+    {
+        static::created(function ($session) {
+            if ($session->customer_service_id) {
+                event(new \App\Events\ISP\ServiceStatusChanged($session->customer_service_id, 'offline', 'online', $session->protocol));
+            }
+        });
+        
+        static::deleted(function ($session) {
+            if ($session->customer_service_id) {
+                event(new \App\Events\ISP\ServiceStatusChanged($session->customer_service_id, 'online', 'offline', $session->protocol));
+            }
+        });
+    }
+
     protected $fillable = [
         'session_key',
         'protocol',

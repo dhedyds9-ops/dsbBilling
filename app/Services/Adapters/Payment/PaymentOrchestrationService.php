@@ -159,14 +159,48 @@ final class PaymentOrchestrationService
         }
 
         $lockKey = "pay:lock:{$gatewayKey}:{$orderId}:{$event->rawBodyHash}";
+        $lock = \Illuminate\Support\Facades\Cache::lock($lockKey, 120);
         $acquired = false;
         try {
-            $acquired = \Illuminate\Support\Facades\Cache::lock($lockKey, 120)->get();
+            // Log webhook payload
+            DB::table('payment_webhook_logs')->insert([
+                'gateway' => $gatewayKey,
+                'event_type' => $event->eventType,
+                'payload' => json_encode($event->rawPayload),
+                'status' => 'received',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $acquired = $lock->get();
             if (!$acquired) {
                 return ['processed' => false, 'duplicate' => true, 'payment_id' => null, 'invoice_ids' => []];
             }
 
             return DB::transaction(function () use ($event, $gatewayKey, $orderId) {
+                // Idempotency: Check if gateway_transaction_id exists for this gateway
+                $existingSuccess = Payment::query()
+                    ->where('gateway', $gatewayKey)
+                    ->where('gateway_transaction_id', $event->gatewayOrderId)
+                    ->whereIn('status', ['success', 'paid'])
+                    ->first();
+
+                if ($existingSuccess) {
+                    Log::info('[PaymentOrchestration] webhook IDEMPOTENT: payment sudah ada', [
+                        'payment_id' => $existingSuccess->id,
+                        'gateway' => $gatewayKey,
+                        'gateway_transaction_id' => $event->gatewayOrderId,
+                    ]);
+                    $invoices = $existingSuccess->invoices()->pluck('invoices.id')->map(fn($v) => (int)$v)->toArray();
+                    
+                    DB::table('payment_webhook_logs')
+                        ->where('gateway', $gatewayKey)
+                        ->where('payload', json_encode($event->rawPayload))
+                        ->update(['status' => 'duplicate']);
+
+                    return ['processed' => true, 'duplicate' => true, 'payment_id' => $existingSuccess->id, 'invoice_ids' => $invoices];
+                }
+
                 // Find Payment by reference_number = orderId
                 /** @var Payment|null $payment */
                 $payment = Payment::query()
@@ -181,21 +215,16 @@ final class PaymentOrchestrationService
                         'order_id' => $orderId,
                         'event_type' => $event->eventType,
                     ]);
+                    
+                    DB::table('payment_webhook_logs')
+                        ->where('gateway', $gatewayKey)
+                        ->where('payload', json_encode($event->rawPayload))
+                        ->update(['status' => 'ignored', 'error_message' => 'Payment not found']);
+
                     return ['processed' => false, 'duplicate' => false, 'payment_id' => null, 'invoice_ids' => []];
                 }
 
-                // Idempotency: SUDAH paid → return duplicate, JANGAN update 2x!
-                if (in_array(strtolower((string)$payment->status), ['success', 'paid'], true)) {
-                    Log::info('[PaymentOrchestration] webhook IDEMPOTENT: payment sudah paid', [
-                        'payment_id' => $payment->id,
-                        'gateway' => $gatewayKey,
-                        'order_id' => $orderId,
-                    ]);
-                    $invoices = $payment->invoices()->pluck('id')->map(fn($v) => (int)$v)->toArray();
-                    return ['processed' => true, 'duplicate' => true, 'payment_id' => $payment->id, 'invoice_ids' => $invoices];
-                }
-
-                $invoiceIds = $payment->invoices()->pluck('id')->map(fn($v) => (int)$v)->toArray();
+                $invoiceIds = $payment->invoices()->pluck('invoices.id')->map(fn($v) => (int)$v)->toArray();
 
                 if ($event->isSuccess()) {
                     $newStatus = 'success';
@@ -207,7 +236,19 @@ final class PaymentOrchestrationService
                     $newStatus = $payment->status;
                 }
 
-                if ($newStatus !== $payment->status) {
+                if (in_array($payment->status, ['success', 'paid']) && in_array($newStatus, ['pending', 'failed', 'expired'])) {
+                    Log::warning('[PaymentOrchestration] Invalid state transition prevented', [
+                        'payment_id' => $payment->id,
+                        'current_status' => $payment->status,
+                        'attempted_status' => $newStatus,
+                    ]);
+                    $newStatus = $payment->status;
+                }
+
+                if ($newStatus !== $payment->status || !$payment->gateway_transaction_id) {
+                    $payment->gateway_transaction_id = $event->gatewayOrderId;
+                    $payment->save();
+
                     $paymentUpdate = $this->paymentService->updatePayment(
                         payment: $payment,
                         customerId: (int)$payment->customer_id,
@@ -215,12 +256,17 @@ final class PaymentOrchestrationService
                         userId: 1,
                         invoiceIds: $invoiceIds,
                         status: $newStatus,
-                        referenceNumber: $payment->reference_number . '|' . $event->gatewayOrderId,
+                        referenceNumber: $payment->reference_number,
                         paidAt: $event->isSuccess() ? now() : null,
                         gateway: $gatewayKey,
                     );
                     $payment = $paymentUpdate;
                 }
+
+                DB::table('payment_webhook_logs')
+                    ->where('gateway', $gatewayKey)
+                    ->where('payload', json_encode($event->rawPayload))
+                    ->update(['status' => 'processed']);
 
                 Log::info('[PaymentOrchestration] Webhook processed OK', [
                     'gateway' => $gatewayKey,
@@ -234,11 +280,65 @@ final class PaymentOrchestrationService
             });
         } finally {
             if ($acquired) {
-                try {
-                    \Illuminate\Support\Facades\Cache::lock($lockKey, 120)->release();
-                } catch (\Throwable) {
-                }
+                $lock->release();
             }
         }
+    }
+
+    /**
+     * Reconcile pending payments by checking gateway status directly.
+     * This acts as a fallback for missing/delayed webhooks.
+     */
+    public function reconcilePendingPayments(): int
+    {
+        $processed = 0;
+
+        // Find payments stuck in pending for more than 10 minutes, up to 7 days old
+        $pendingPayments = Payment::query()
+            ->where('status', 'pending')
+            ->where('created_at', '<=', now()->subMinutes(10))
+            ->where('created_at', '>=', now()->subDays(7))
+            ->get();
+
+        foreach ($pendingPayments as $payment) {
+            try {
+                $driver = $this->registry->get($payment->gateway);
+                if (!$driver) continue;
+
+                $statusResponse = $driver->checkStatus($payment->reference_number);
+
+                if ($statusResponse->status === 'paid' || $statusResponse->status === 'success') {
+                    $eventType = 'payment.paid';
+                } elseif ($statusResponse->status === 'expired') {
+                    $eventType = 'payment.expired';
+                } elseif ($statusResponse->status === 'failed') {
+                    $eventType = 'payment.failed';
+                } else {
+                    continue; // Still pending or unknown, don't update
+                }
+
+                $syntheticEvent = new WebhookEvent(
+                    eventType: $eventType,
+                    gatewayOrderId: $statusResponse->gatewayReferenceId,
+                    merchantOrderId: $payment->reference_number,
+                    amountIdr: $statusResponse->paidAmountIdr ?: (int)$payment->amount,
+                    paidAmountIdr: $statusResponse->paidAmountIdr ?: (int)$payment->amount,
+                    paymentMethod: $statusResponse->paymentMethod ?: $payment->method,
+                    paidAtIso: $statusResponse->paidAtIso,
+                    signatureVerifiedBy: 'synthetic_reconciliation',
+                    rawBodyHash: hash('sha256', 'reconcile_' . $payment->reference_number . uniqid('', true)),
+                    rawPayload: ['synthetic' => true, 'status' => $statusResponse->status],
+                );
+
+                $this->handleWebhookPaid($syntheticEvent, $payment->gateway);
+                $processed++;
+            } catch (\Throwable $e) {
+                Log::error('[PaymentOrchestration] Reconciliation error for payment ' . $payment->id, [
+                    'err' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $processed;
     }
 }

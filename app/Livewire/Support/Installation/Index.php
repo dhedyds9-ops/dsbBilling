@@ -108,7 +108,7 @@ class Index extends BaseEnterpriseList
         ];
 
         try {
-            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['technician', 'admin', 'super_admin']))
+            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager']))
                 ->pluck('name', 'id')->all();
         } catch (Throwable) {
             $techs = User::pluck('name', 'id')->all();
@@ -178,7 +178,7 @@ class Index extends BaseEnterpriseList
     protected function loadTechnicianLoad(): void
     {
         try {
-            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['technician', 'admin']))
+            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager']))
                 ->get(['id', 'name']);
             $load = [];
             $weekFrom = now()->startOfWeek()->toDateString();

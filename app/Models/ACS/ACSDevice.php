@@ -112,17 +112,17 @@ class ACSDevice extends Model
 
     public function tasks()
     {
-        return $this->hasMany(DeviceTask::class);
+        return $this->hasMany(DeviceTask::class, 'acs_device_id');
     }
 
     public function alarms()
     {
-        return $this->hasMany(ACSAlarm::class);
+        return $this->hasMany(ACSAlarm::class, 'acs_device_id');
     }
 
     public function logs()
     {
-        return $this->hasMany(ACSLog::class);
+        return $this->hasMany(ACSLog::class, 'acs_device_id');
     }
 
     public function createdBy()

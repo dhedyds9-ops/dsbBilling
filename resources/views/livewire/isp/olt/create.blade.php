@@ -1,59 +1,42 @@
-<div class="max-w-7xl mx-auto p-3">
-    <!-- Breadcrumb -->
-    <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
+@section('page_title')
+    <a href="{{ route('isp.olts.index') }}" class="p-1.5 mr-2 text-indigo-100 hover:text-white rounded-lg hover:bg-indigo-700/50 transition-colors" title="Kembali">
+        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">arrow_back</span>
+    </a>
+    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">add_circle</span>
+    <span class="text-lg">Buat OLT Baru</span>
+@endsection
 
-    <!-- Success/Error Flash Message -->
-    <div class="mb-3">
-        @if(session()->has('success'))
-            <x-feedback.alert variant="success">
-                {{ session('success') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('error'))
-            <x-feedback.alert variant="danger">
-                {{ session('error') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('warning'))
-            <x-feedback.alert variant="warning">
-                {{ session('warning') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('info'))
-            <x-feedback.alert variant="info">
-                {{ session('info') }}
-            </x-feedback.alert>
-        @endif
-    </div>
-
-    <div class="flex items-center gap-4 mb-3">
-        <a href="{{ route('isp.olts.index') }}" class="p-2 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-        </a>
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900">Buat OLT Baru</h1>
-            <p class="mt-1 text-sm text-slate-500">Tambahkan OLT baru</p>
+<div class="space-y-5 pb-10 max-w-4xl">
+    {{-- SESSION FLASH --}}
+    @if(session('success'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+            {{ session('success') }}
         </div>
-    </div>
+    @endif
+    @if(session('error'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+            {{ session('error') }}
+        </div>
+    @endif
 
-    <x-base.card>
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div class="p-6">
         <form wire:submit.prevent="save" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Kode OLT</label>
-                    <input type="text" wire:model="code" placeholder="Masukkan kode OLT" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kode OLT</label>
+                    <input type="text" wire:model="code" placeholder="Masukkan kode OLT" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     @error('code') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Nama OLT</label>
-                    <input type="text" wire:model="name" placeholder="Masukkan nama OLT" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama OLT</label>
+                    <input type="text" wire:model="name" placeholder="Masukkan nama OLT" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">POP</label>
-                    <select wire:model="pop_id" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POP</label>
+                    <select wire:model="pop_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Pilih POP</option>
                         @foreach($pops as $pop)
                             <option value="{{ $pop->id }}">{{ $pop->code }} - {{ $pop->name }}</option>
@@ -61,8 +44,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Vendor</label>
-                    <select wire:model="vendor_id" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Vendor</label>
+                    <select wire:model="vendor_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Pilih Vendor</option>
                         @foreach($vendors as $vendor)
                             <option value="{{ $vendor->id }}">{{ $vendor->code }} - {{ $vendor->name }}</option>
@@ -70,24 +53,24 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Model</label>
-                    <input type="text" wire:model="model" placeholder="Masukkan model" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
+                    <input type="text" wire:model="model" placeholder="Masukkan model" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Serial Number</label>
-                    <input type="text" wire:model="serial_number" placeholder="Masukkan serial number" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Serial Number</label>
+                    <input type="text" wire:model="serial_number" placeholder="Masukkan serial number" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">IP Address</label>
-                    <input type="text" wire:model="ip_address" placeholder="Masukkan IP address" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IP Address</label>
+                    <input type="text" wire:model="ip_address" placeholder="Masukkan IP address" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Jumlah Port</label>
-                    <input type="number" wire:model="port_count" placeholder="Masukkan jumlah port" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah Port</label>
+                    <input type="number" wire:model="port_count" placeholder="Masukkan jumlah port" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                    <select wire:model="status" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                    <select wire:model="status" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="active">Aktif</option>
                         <option value="inactive">Nonaktif</option>
                     </select>
@@ -95,27 +78,69 @@
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
-                <textarea wire:model="description" rows="3" placeholder="Masukkan deskripsi OLT" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi</label>
+                <textarea wire:model="description" rows="3" placeholder="Masukkan deskripsi OLT" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100"></textarea>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
-                    <input type="text" wire:model="username" placeholder="Masukkan username" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Username</label>
+                    <input type="text" wire:model="username" placeholder="Masukkan username" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                    <input type="password" wire:model="password" placeholder="Masukkan password" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
+                    <input type="password" wire:model="password" placeholder="Masukkan password" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
             </div>
-            <div class="flex items-center justify-end gap-4 pt-4 border-t border-slate-200">
-                <a href="{{ route('isp.olts.index') }}" class="px-6 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Pengaturan SNMP</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Version</label>
+                        <select wire:model="snmp_version" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                            <option value="1">v1</option>
+                            <option value="2c">v2c</option>
+                            <option value="3">v3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Port</label>
+                        <input type="number" wire:model="snmp_port" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Community (Read)</label>
+                        <input type="text" wire:model="snmp_community_read" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Community (Write)</label>
+                        <input type="text" wire:model="snmp_community_write" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                </div>
+            </div>
+
+            @if($detectedInfo)
+            <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 rounded-lg p-4">
+                <h4 class="font-semibold text-blue-800 mb-2">Informasi OLT Terdeteksi</h4>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    <li><strong>Model:</strong> {{ $detectedInfo['model'] }}</li>
+                    <li><strong>Firmware:</strong> {{ $detectedInfo['firmware'] }}</li>
+                    <li><strong>Uptime:</strong> {{ $detectedInfo['uptime'] }}</li>
+                </ul>
+            </div>
+            @endif
+
+            <div class="flex items-center justify-end gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <a href="{{ route('isp.olts.index') }}" class="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                     Batal
                 </a>
+                <button type="button" wire:click="testConnection" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="testConnection">Test Koneksi</span>
+                    <span wire:loading wire:target="testConnection">Memeriksa...</span>
+                </button>
                 <button type="submit" class="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
                     Simpan
                 </button>
             </div>
         </form>
-    </x-base.card>
+    </div></div>
 </div>
+

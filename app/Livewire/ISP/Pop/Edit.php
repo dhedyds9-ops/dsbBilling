@@ -57,7 +57,7 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
-            'code' => 'required|unique:isp_pops,code,' . $this->popId,
+            'code' => 'required|unique:pops,code,' . $this->popId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);

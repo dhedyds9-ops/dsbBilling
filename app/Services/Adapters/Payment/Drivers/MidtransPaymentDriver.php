@@ -35,16 +35,21 @@ final class MidtransPaymentDriver implements PaymentGatewayDriverInterface
         return $this;
     }
 
+    private function environment(): string
+    {
+        return (string)($this->config['environment'] ?? 'sandbox');
+    }
+
     private function baseUrl(): string
     {
-        return (($this->config['environment'] ?? 'sandbox') === 'sandbox')
+        return ($this->environment() === 'sandbox')
             ? 'https://app.sandbox.midtrans.com'
             : 'https://app.midtrans.com';
     }
 
     private function apiBaseUrl(): string
     {
-        return (($this->config['environment'] ?? 'sandbox') === 'sandbox')
+        return ($this->environment() === 'sandbox')
             ? 'https://api.sandbox.midtrans.com'
             : 'https://api.midtrans.com';
     }
@@ -113,10 +118,11 @@ final class MidtransPaymentDriver implements PaymentGatewayDriverInterface
         }
 
         try {
-            $resp = Http::withBasicAuth($serverKey, '')
+            $http = Http::withBasicAuth($serverKey, '')
                 ->withHeaders(['Accept' => 'application/json', 'Content-Type' => 'application/json'])
-                ->timeout(20)
-                ->post($this->baseUrl() . '/snap/v1/transactions', $payload);
+                ->timeout(20);
+            if (app()->isLocal()) $http->withoutVerifying();
+            $resp = $http->post($this->baseUrl() . '/snap/v1/transactions', $payload);
 
             $raw = $resp->body();
             if (!$resp->successful()) {
@@ -144,9 +150,9 @@ final class MidtransPaymentDriver implements PaymentGatewayDriverInterface
     {
         $serverKey = (string)($this->config['server_key'] ?? '');
         try {
-            $resp = Http::withBasicAuth($serverKey, '')
-                ->timeout(10)
-                ->get($this->apiBaseUrl() . '/v2/' . urlencode($externalReference) . '/status');
+            $http = Http::withBasicAuth($serverKey, '')->timeout(10);
+            if (app()->isLocal()) $http->withoutVerifying();
+            $resp = $http->get($this->apiBaseUrl() . '/v2/' . urlencode($externalReference) . '/status');
 
             $raw = $resp->body();
             $data = json_decode($raw, true) ?: [];

@@ -11,6 +11,37 @@ use Illuminate\Support\Carbon;
 
 class CustomerReportService
 {
+    protected function getCustomerBaseQuery()
+    {
+        $q = Customer::query();
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole('reseller')) {
+            $q->where('reseller_id', \Illuminate\Support\Facades\Auth::id());
+        }
+        return $q;
+    }
+
+    protected function getActivationBaseQuery()
+    {
+        $q = Activation::query();
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole('reseller')) {
+            $q->whereHas('customer', function($cq) {
+                $cq->where('reseller_id', \Illuminate\Support\Facades\Auth::id());
+            });
+        }
+        return $q;
+    }
+
+    protected function getCustomerServiceBaseQuery()
+    {
+        $q = CustomerService::query();
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole('reseller')) {
+            $q->whereHas('customer', function($cq) {
+                $cq->where('reseller_id', \Illuminate\Support\Facades\Auth::id());
+            });
+        }
+        return $q;
+    }
+
     public function growth(array $filters = []): array
     {
         $now = Carbon::now();
@@ -23,7 +54,8 @@ class CustomerReportService
         $growthPct = [];
         $lineTotal = [];
 
-        $runningTotal = Customer::whereDate('created_at', '<', $now->copy()->subMonths($months - 1)->startOfMonth())
+        $runningTotal = $this->getCustomerBaseQuery()
+            ->whereDate('created_at', '<', $now->copy()->subMonths($months - 1)->startOfMonth())
             ->whereNot('status', 'terminated')
             ->count();
 
@@ -33,8 +65,11 @@ class CustomerReportService
             $endM = $monthDate->copy()->endOfMonth();
             $labels[] = $monthDate->format('M Y');
 
-            $newCustomers = Customer::whereBetween('created_at', [$startM, $endM])->count();
-            $suspended = Customer::whereBetween('updated_at', [$startM, $endM])
+            $newCustomers = clone $this->getCustomerBaseQuery();
+            $newCustomers = $newCustomers->whereBetween('created_at', [$startM, $endM])->count();
+            
+            $suspended = clone $this->getCustomerBaseQuery();
+            $suspended = $suspended->whereBetween('updated_at', [$startM, $endM])
                 ->where('status', 'suspended')
                 ->count();
 
@@ -91,8 +126,11 @@ class CustomerReportService
             $dateStr = $date->toDateString();
             $labels[] = $date->format('d/m');
 
-            $acts = Activation::whereDate('activated_at', $dateStr)
-                ->orWhereDate('created_at', $dateStr)
+            $acts = clone $this->getActivationBaseQuery();
+            $acts = $acts->where(function($q) use ($dateStr) {
+                    $q->whereDate('activated_at', $dateStr)
+                      ->orWhereDate('created_at', $dateStr);
+                })
                 ->with(['customer', 'createdBy'])
                 ->get();
 
@@ -131,7 +169,8 @@ class CustomerReportService
             $date = $now->copy()->subDays($i);
             $dateStr = $date->toDateString();
 
-            $suspensions = CustomerService::whereDate('suspended_at', $dateStr)
+            $suspensions = clone $this->getCustomerServiceBaseQuery();
+            $suspensions = $suspensions->whereDate('suspended_at', $dateStr)
                 ->with('customer')
                 ->get();
 
@@ -141,7 +180,8 @@ class CustomerReportService
                 $alasanAll[$a] = ($alasanAll[$a] ?? 0) + $c;
             }
 
-            $aktif = Customer::whereDate('created_at', '<=', $dateStr)
+            $aktif = clone $this->getCustomerBaseQuery();
+            $aktif = $aktif->whereDate('created_at', '<=', $dateStr)
                 ->where(function ($q) {
                     $q->where('status', 'active')
                         ->orWhereNull('status');
@@ -187,7 +227,8 @@ class CustomerReportService
             $date = $now->copy()->subDays($i);
             $dateStr = $date->toDateString();
 
-            $terms = Customer::whereDate('updated_at', $dateStr)
+            $terms = clone $this->getCustomerBaseQuery();
+            $terms = $terms->whereDate('updated_at', $dateStr)
                 ->where('status', 'terminated')
                 ->get();
 
@@ -199,14 +240,16 @@ class CustomerReportService
             }
 
             $churnPct = 0;
-            $awal = Customer::whereDate('created_at', '<=', $dateStr)
+            $awal = clone $this->getCustomerBaseQuery();
+            $awal = $awal->whereDate('created_at', '<=', $dateStr)
                 ->whereNot('status', 'terminated')
                 ->count() + $count;
             if ($awal > 0) {
                 $churnPct = round(($count / $awal) * 100, 2);
             }
 
-            $recovery = Customer::whereDate('updated_at', $dateStr)
+            $recovery = clone $this->getCustomerBaseQuery();
+            $recovery = $recovery->whereDate('updated_at', $dateStr)
                 ->where('status', 'active')
                 ->where('reactivated_at', $dateStr)
                 ->count();

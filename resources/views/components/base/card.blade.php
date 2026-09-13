@@ -29,7 +29,7 @@ $variants = [
 $classes = $baseClasses . ' ' . $variants[$variant];
 
 if ($hover) {
-    $classes .= ' transition-all duration-200 hover:shadow-soft-md hover:border-slate-300 dark:hover:border-slate-600';
+    $classes .= ' transition-all duration-200 hover:shadow-soft-md hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-600';
 }
 
 if ($flush) {

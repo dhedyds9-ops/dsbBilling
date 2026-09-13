@@ -2,10 +2,17 @@
 
 namespace App\Livewire\Keuangan\IncomeHarian;
 
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\IncomeExport;
+use Carbon\Carbon;
+
 use App\Livewire\BaseEnterpriseList;
 use App\Services\Keuangan\IncomeReportService;
+use App\Services\Auth\UserQueryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
 
 class Index extends BaseEnterpriseList
 {
@@ -19,184 +26,229 @@ class Index extends BaseEnterpriseList
         $this->service = $service;
     }
 
+    public $showFilterModal = false;
+
     public function mount(): void
     {
         parent::mount();
         $this->activeModule = 'keuangan';
         $this->activePage = 'income-harian';
+        
         $this->filters = [
-            'start_date' => now()->subDays(6)->toDateString(),
-            'end_date' => now()->toDateString(),
+            'date' => now()->toDateString(),
+            'user_type' => 'all', // all, customer, voucher
+            'service_type' => 'all',
+            'profile_paket' => 'all',
+            'reseller_id' => 'all',
             'method' => '',
-            'gateway' => '',
-            'sales_id' => '',
         ];
-        $this->tabs = [];
-        $this->perPage = 31;
+        $this->perPage = 50;
     }
 
-    public function setActiveTab(string $tab): void
+    public function openFilterModal()
     {
-        $this->activeTab = $tab;
+        $this->showFilterModal = true;
+    }
+
+    public function applyFilter()
+    {
+        $this->showFilterModal = false;
+        $this->resetPage();
     }
 
     public function getRowsQuery()
     {
-        $daily = $this->service->daily($this->filters);
-        return collect($daily);
+        return collect();
     }
 
     public function getRows()
     {
-        return $this->withLoading(function () {
-            $daily = $this->service->daily($this->filters);
-            return collect($daily);
-        }, 'Gagal memuat data Income Harian');
+        return collect($this->periodData['rows'] ?? []);
     }
 
-    public function getDailySummaryProperty(): array
+    #[Computed]
+    public function getPeriodDataProperty(): array
     {
-        try {
-            return $this->service->dailySummary($this->filters);
-        } catch (\Throwable $e) {
-            Log::error('IncomeHarian dailySummary failed', ['e' => $e->getMessage()]);
+        $f = $this->filters;
+        if (!empty($f['date'])) {
+            $f['start_date'] = $f['date'];
+            $f['end_date'] = $f['date'];
+        }
+        return $this->service->getTransactions($f);
+    }
+
+    #[Computed]
+    public function getResellersProperty()
+    {
+        return app(UserQueryService::class)->getResellers();
+    }
+
+        public function updatedFiltersUserType($value): void
+    {
+        $this->filters['service_type'] = 'all';
+        $this->filters['profile_paket'] = 'all';
+    }
+
+    public function updatedFiltersServiceType($value): void
+    {
+        $this->filters['profile_paket'] = 'all';
+    }
+
+    #[Computed]
+    public function getServicesProperty()
+    {
+        $userType = $this->filters['user_type'] ?? 'all';
+        if ($userType === 'customer') {
             return [
-                'today_total' => 0,
-                'today_count' => 0,
-                'today_customers' => 0,
-                'today_avg' => 0,
-                'ytd' => 0,
+                (object)['id' => 'pppoe', 'name' => 'PPPoE'],
+                (object)['id' => 'hotspot', 'name' => 'Hotspot']
+            ];
+        } elseif ($userType === 'voucher') {
+            return [
+                (object)['id' => 'voucher', 'name' => 'Voucher'],
+                (object)['id' => 'evoucher', 'name' => 'E-Voucher']
             ];
         }
+        return [
+            (object)['id' => 'pppoe', 'name' => 'PPPoE'],
+            (object)['id' => 'hotspot', 'name' => 'Hotspot'],
+            (object)['id' => 'voucher', 'name' => 'Voucher'],
+            (object)['id' => 'evoucher', 'name' => 'E-Voucher']
+        ];
     }
 
-    public function getChartDataProperty(): array
+    #[Computed]
+    public function getProfilesProperty()
     {
-        try {
-            return $this->service->chart30Days();
-        } catch (\Throwable $e) {
-            Log::error('IncomeHarian chart30Days failed', ['e' => $e->getMessage()]);
-            return [
-                'labels' => [],
-                'pppoe' => [],
-                'hotspot' => [],
-                'voucher' => [],
-                'other' => [],
-                'total' => [],
-            ];
+        $st = $this->filters['service_type'] ?? 'all';
+        $q = \App\Models\ISP\ServiceProfile::query();
+        if ($st !== 'all') {
+            $q->where('service_type', $st);
+        } else {
+            $ut = $this->filters['user_type'] ?? 'all';
+            if ($ut === 'customer') {
+                $q->whereIn('service_type', ['pppoe', 'hotspot']);
+            } elseif ($ut === 'voucher') {
+                $q->whereIn('service_type', ['voucher', 'evoucher']);
+            }
         }
+        return $q->get();
     }
 
-    public function getTopCustomersProperty(): array
-    {
-        try {
-            return $this->service->topCustomers($this->filters, 10);
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    public function getTopSalesProperty(): array
-    {
-        try {
-            return $this->service->topSales($this->filters, 10);
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    public function getPaymentMethodBreakdownProperty(): array
-    {
-        try {
-            return $this->service->paymentMethodBreakdown($this->filters);
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    public function getCashFlowMiniProperty(): array
-    {
-        try {
-            return $this->service->cashFlowMini($this->filters);
-        } catch (\Throwable) {
-            return ['income' => 0, 'expense' => 0, 'net' => 0];
-        }
-    }
-
-    public function getSalesOptionsProperty(): array
-    {
-        return $this->service->getSalesOptions();
-    }
-
+    #[Computed]
     public function getFilterConfigProperty(): array
     {
+        $resellerOptions = [];
+        foreach ($this->resellers as $r) {
+            $resellerOptions[$r->id] = $r->name;
+        }
+
+        $serviceOptions = [];
+        foreach ($this->services as $s) {
+            $serviceOptions[$s->id] = $s->name;
+        }
+
+        $profileOptions = [];
+        foreach ($this->profiles as $p) {
+            $profileOptions[$p->id] = $p->name;
+        }
+
         return [
-            ['key' => 'start_date', 'label' => 'Tanggal Mulai', 'type' => 'date'],
-            ['key' => 'end_date', 'label' => 'Tanggal Selesai', 'type' => 'date'],
-            ['key' => 'method', 'label' => 'Metode Bayar', 'type' => 'select', 'options' => [
-                'bank_transfer' => 'Bank Transfer',
-                'cash' => 'Cash',
-                'e_wallet' => 'E-Wallet',
-                'credit_card' => 'Credit Card',
-            ]],
-            ['key' => 'gateway', 'label' => 'Gateway', 'type' => 'select', 'options' => [
-                'manual' => 'Manual',
-                'midtrans' => 'Midtrans',
-                'xendit' => 'Xendit',
-                'tripay' => 'Tripay',
-                'pppoe' => 'PPPoE',
-                'hotspot' => 'Hotspot',
-                'voucher' => 'Voucher',
-            ]],
-            ['key' => 'sales_id', 'label' => 'Sales', 'type' => 'select', 'options' => $this->salesOptions],
+            [
+                'key' => 'reseller_id',
+                'label' => 'Semua Reseller',
+                'type' => 'select',
+                'options' => $resellerOptions
+            ],
+            [
+                'key' => 'user_type',
+                'label' => 'Semua Tipe Pengguna',
+                'type' => 'select',
+                'options' => [
+                    'customer' => 'Customer/Member',
+                    'voucher' => 'Voucher'
+                ]
+            ],
+            [
+                'key' => 'service_type',
+                'label' => 'Semua Layanan',
+                'type' => 'select',
+                'options' => $serviceOptions
+            ],
+            [
+                'key' => 'profile_paket',
+                'label' => 'Semua Profil Paket',
+                'type' => 'select',
+                'options' => $profileOptions
+            ]
         ];
     }
 
     public function getBulkActionsProperty(): array
     {
-        return [
-            ['key' => 'export', 'label' => 'Export CSV', 'variant' => 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700'],
-        ];
+        return [];
     }
 
     public function handleBulkAction(string $action, array $ids): int
     {
-        return match ($action) {
-            'export' => (function () {
-                $this->exportCsv();
-                return count($ids);
-            })(),
-            default => 0,
-        };
+        return 0;
     }
 
-    public function exportCsv(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
+            public function exportCsv(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
     {
-        $rows = $this->service->daily($this->filters);
-        return $this->service->exportCsvDaily($rows);
+        return redirect()->back()->with('error', 'Silakan gunakan Export Excel atau PDF.');
     }
 
-    public function updatedSelected(array $value): void
+    public function exportExcel()
     {
+        $data = $this->periodData;
+        $rows = $data['rows'] ?? [];
+        $filename = 'income-' . now()->format('YmdHis') . '.xlsx';
+        return Excel::download(new IncomeExport($rows), $filename);
     }
 
-    public function updatedSelectAll(bool $value): void
+    public function exportPdf()
     {
+        $data = $this->periodData;
+        $rows = $data['rows'] ?? [];
+        
+        $isHarian = isset($this->filters['date']);
+        
+        $title = $isHarian ? 'Pemasukan Harian' : 'Pemasukan Periode';
+        $subtitle = $isHarian 
+            ? 'Tanggal: ' . Carbon::parse($this->filters['date'] ?? now())->translatedFormat('l, d F Y')
+            : 'Periode: ' . Carbon::parse($this->filters['start_date'] ?? now())->translatedFormat('d F Y') . ' s/d ' . Carbon::parse($this->filters['end_date'] ?? now())->translatedFormat('d F Y');
+
+        $pdf = Pdf::loadView('exports.income-pdf', [
+            'rows' => $rows,
+            'title' => $title,
+            'subtitle' => $subtitle,
+        ])->setPaper('a4', 'landscape');
+        
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, 'income-' . now()->format('YmdHis') . '.pdf');
     }
 
-    public function render()
+            public function render()
     {
-        $rows = $this->getRows();
+        $data = $this->periodData;
+        $items = collect($data['rows']);
+        $page = $this->page ?? 1;
+        
+        $rows = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items->forPage($page, $this->perPage),
+            $items->count(),
+            $this->perPage,
+            $page,
+            ['path' => \Illuminate\Support\Facades\Request::url(), 'query' => \Illuminate\Support\Facades\Request::query()]
+        );
+        
         return view('livewire.keuangan.income-harian.index', [
             'rows' => $rows,
-            'summary' => $this->dailySummary,
-            'chartData' => $this->chartData,
-            'topCustomers' => $this->topCustomers,
-            'topSales' => $this->topSales,
-            'paymentMethods' => $this->paymentMethodBreakdown,
-            'cashFlow' => $this->cashFlowMini,
-            'filterConfig' => $this->filterConfig,
-            'bulkActions' => $this->bulkActions,
+            'summary' => $data['summary'] ?? []
         ]);
     }
 }
+
+

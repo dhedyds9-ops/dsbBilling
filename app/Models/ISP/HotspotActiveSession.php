@@ -32,4 +32,14 @@ class HotspotActiveSession extends Model
     {
         return $this->belongsTo(Router::class);
     }
+
+    public function hotspotUser()
+    {
+        return $this->belongsTo(\App\Models\ISP\HotspotUser::class, 'user', 'username');
+    }
+
+    public function voucher()
+    {
+        return $this->belongsTo(\App\Models\ISP\Voucher::class, 'user', 'code');
+    }
 }

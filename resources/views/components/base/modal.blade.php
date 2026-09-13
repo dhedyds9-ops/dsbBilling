@@ -80,15 +80,15 @@ $sizeClasses = $sizes[$size] ?? $sizes['md'];
         x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="{{ $sizeClasses }} w-full bg-white rounded-2xl shadow-soft-xl border border-slate-200 max-h-[90vh] flex flex-col"
+        class="{{ $sizeClasses }} w-full bg-white dark:bg-slate-800 rounded-2xl shadow-soft-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col"
         @click.stop
     >
         {{-- Header --}}
         @if (isset($header) || $showClose || $title)
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
                 <div>
                     @if ($title)
-                        <h3 class="text-lg font-semibold text-slate-900">{{ $title }}</h3>
+                        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ $title }}</h3>
                     @endif
                     {{ $header ?? '' }}
                 </div>
@@ -97,7 +97,7 @@ $sizeClasses = $sizes[$size] ?? $sizes['md'];
                     <button
                         type="button"
                         @click="show = false"
-                        class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        class="p-2 text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
                         aria-label="Close modal"
                     >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +115,7 @@ $sizeClasses = $sizes[$size] ?? $sizes['md'];
 
         {{-- Footer --}}
         @if (isset($footer))
-            <div class="px-6 py-4 border-t border-slate-200 bg-slate-50">
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                 {{ $footer }}
             </div>
         @endif

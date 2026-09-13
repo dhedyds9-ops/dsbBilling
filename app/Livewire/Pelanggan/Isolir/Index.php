@@ -25,6 +25,7 @@ class Index extends BaseEnterpriseList
         'customer_service_id' => '',
         'package_id' => '',
         'notes' => '',
+        'grace_days' => 3,
     ];
 
     public function mount(): void
@@ -178,6 +179,7 @@ class Index extends BaseEnterpriseList
                     'customer_service_id' => '',
                     'package_id' => '',
                     'notes' => '',
+                    'grace_days' => 3,
                 ];
                 $this->dispatch('close-modal', name: $this->confirmModal);
                 $this->showPerpanjangModal = true;
@@ -226,7 +228,61 @@ class Index extends BaseEnterpriseList
 
     public function submitPerpanjang(): void
     {
-        session()->flash('success', 'Perpanjangan berhasil dicatat (demo).');
+        $this->validate([
+            'formParams.grace_days' => 'required|integer|min:1|max:7',
+        ]);
+
+        try {
+            $svc = app(IsolirService::class);
+            $parsed = $svc->parseDisplayId($this->selectedUser['id'] ?? '');
+            if (!$parsed || !$parsed[0]) {
+                throw new \Exception('Data pelanggan tidak valid.');
+            }
+
+            [$type, $realId] = $parsed;
+            $customer = null;
+
+            if ($type === 'pppoe') {
+                $user = \App\Models\ISP\PPPoEUser::with('customer')->find($realId);
+                $customer = $user?->customer;
+            } else {
+                $user = \App\Models\ISP\HotspotUser::with('customer')->find($realId);
+                $customer = $user?->customer;
+            }
+
+            if (!$customer) {
+                throw new \Exception('Pelanggan tidak ditemukan.');
+            }
+
+            $invoice = \App\Models\Billing\Invoice::where('customer_id', $customer->id)
+                ->whereIn('status', ['unpaid', 'overdue', 'partial', 'pending'])
+                ->latest('due_date')
+                ->first();
+
+            if (!$invoice) {
+                throw new \Exception('Tidak ada tagihan tertunggak untuk pelanggan ini.');
+            }
+
+            if ($invoice->hasActiveGracePeriod()) {
+                throw new \Exception('Pelanggan ini sedang dalam masa Janji Bayar hingga ' . $invoice->grace_period_until->format('d/m/Y'));
+            }
+
+            // Batasi janji bayar maksimal 1 kali jika sudah pernah ada tapi lewat (opsional)
+            // if ($invoice->grace_period_until !== null) { ... }
+
+            $days = (int)$this->formParams['grace_days'];
+            $invoice->grace_period_until = now()->addDays($days);
+            $invoice->save();
+
+            // Reactivate the user since they are given grace period
+            $svc->reactivateUser($this->selectedUser['id']);
+
+            session()->flash('success', "Janji Bayar berhasil diberikan selama {$days} hari. Pelanggan telah diaktifkan kembali.");
+            $this->loadSummary();
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal: ' . $e->getMessage());
+        }
+
         $this->closeModals();
     }
 

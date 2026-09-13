@@ -6,6 +6,7 @@ namespace App\Services\ISP\Radius;
 
 use App\Services\ISP\Radius\ValueObjects\PolicyResult;
 use App\Services\ISP\Radius\ValueObjects\RadiusAccessContext;
+use App\Models\ISP\RadiusNas;
 
 /**
  * SSOT: Radius Authorization Service.

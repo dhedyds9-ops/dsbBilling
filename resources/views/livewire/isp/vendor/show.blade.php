@@ -26,7 +26,7 @@
     <div class="space-y-6">
         <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
         <div class="flex items-center gap-4">
-            <a href="{{ route('isp.vendors.index') }}" class="p-2 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+            <a href="{{ route('isp.vendors.index') }}" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:bg-slate-800">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
@@ -37,21 +37,21 @@
                         {{ substr($vendor->name, 0, 1) }}
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-slate-900">{{ $vendor->name }}</h1>
+                        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $vendor->name }}</h1>
                         <div class="flex items-center gap-2 mt-1">
                             <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                @if($vendor->status === 'active') bg-green-100 text-green-600
-                                @else bg-slate-100 text-slate-600
+                                @if($vendor->status === 'active') bg-green-100 dark:bg-green-900/50 text-green-600
+                                @else bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400
                                 @endif">
                                 {{ ucfirst($vendor->status) }}
                             </span>
-                            <span class="text-sm text-slate-500 font-mono">{{ $vendor->code }}</span>
+                            <span class="text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $vendor->code }}</span>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('isp.vendors.edit', $vendor->id) }}" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                <a href="{{ route('isp.vendors.edit', $vendor->id) }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                     Edit
                 </a>
             </div>
@@ -60,70 +60,70 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <x-base.card>
                 <x-slot name="header">
-                    <h3 class="text-lg font-semibold text-slate-900">Informasi Vendor</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Informasi Vendor</h3>
                 </x-slot>
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Kode</label>
-                            <p class="text-slate-900 font-mono">{{ $vendor->code }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kode</label>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $vendor->code }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Nama</label>
-                            <p class="text-slate-900">{{ $vendor->name }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nama</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $vendor->name }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Kontak Person</label>
-                            <p class="text-slate-900">{{ $vendor->contact_person ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kontak Person</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $vendor->contact_person ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Telepon</label>
-                            <p class="text-slate-900">{{ $vendor->phone ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Telepon</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $vendor->phone ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Email</label>
-                            <p class="text-slate-900">{{ $vendor->email ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Email</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $vendor->email ?? '-' }}</p>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-500 mb-1">Alamat</label>
-                        <p class="text-slate-900">{{ $vendor->address ?? '-' }}</p>
+                        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Alamat</label>
+                        <p class="text-slate-900 dark:text-slate-100">{{ $vendor->address ?? '-' }}</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-500 mb-1">Deskripsi</label>
-                        <p class="text-slate-900">{{ $vendor->description ?? '-' }}</p>
+                        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Deskripsi</label>
+                        <p class="text-slate-900 dark:text-slate-100">{{ $vendor->description ?? '-' }}</p>
                     </div>
                 </div>
             </x-base.card>
 
             <x-base.card>
                 <x-slot name="header">
-                    <h3 class="text-lg font-semibold text-slate-900">Statistik Perangkat</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Statistik Perangkat</h3>
                 </x-slot>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="p-4 bg-slate-50 rounded-lg">
-                        <p class="text-sm text-slate-500">OLT</p>
-                        <p class="text-2xl font-bold text-slate-900">{{ $vendor->olts->count() }}</p>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">OLT</p>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $vendor->olts->count() }}</p>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-lg">
-                        <p class="text-sm text-slate-500">ONU</p>
-                        <p class="text-2xl font-bold text-slate-900">{{ $vendor->onus->count() }}</p>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">ONU</p>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $vendor->onus->count() }}</p>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-lg">
-                        <p class="text-sm text-slate-500">Splitter</p>
-                        <p class="text-2xl font-bold text-slate-900">{{ $vendor->splitters->count() }}</p>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Splitter</p>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $vendor->splitters->count() }}</p>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-lg">
-                        <p class="text-sm text-slate-500">Router</p>
-                        <p class="text-2xl font-bold text-slate-900">{{ $vendor->routers->count() }}</p>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Router</p>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $vendor->routers->count() }}</p>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-lg">
-                        <p class="text-sm text-slate-500">Switch</p>
-                        <p class="text-2xl font-bold text-slate-900">{{ $vendor->switches->count() }}</p>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Switch</p>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $vendor->switches->count() }}</p>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-lg">
-                        <p class="text-sm text-slate-500">Access Point</p>
-                        <p class="text-2xl font-bold text-slate-900">{{ $vendor->accessPoints->count() }}</p>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Access Point</p>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $vendor->accessPoints->count() }}</p>
                     </div>
                 </div>
             </x-base.card>

@@ -21,10 +21,10 @@
             <form method="GET" action="{{ route('internet-packages.index') }}">
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <input type="text" name="search" value="{{ request('search') }}" class="form-control" placeholder="Cari kode atau nama paket...">
+                        <input type="text" name="search" value="{{ request('search') }}" class="form-control dark:bg-slate-900 dark:text-slate-100" placeholder="Cari kode atau nama paket...">
                     </div>
                     <div class="col-md-3">
-                        <select name="is_active" class="form-select">
+                        <select name="is_active" class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                             <option value="">Semua Status</option>
                             <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>Aktif</option>
                             <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>Nonaktif</option>
@@ -42,7 +42,7 @@
 
     <div class="card">
         <div class="card-body">
-            <div class="table-responsive">
+            <div class="w-full overflow-x-auto">
                 <table class="table table-bordered table-hover">
                     <thead class="table-light">
                         <tr>

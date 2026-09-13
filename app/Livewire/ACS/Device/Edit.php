@@ -11,6 +11,7 @@ use App\Models\ISP\Olt;
 use App\Models\ISP\Pop;
 use App\Models\ISP\Odp;
 use App\Models\ISP\Vendor;
+use Illuminate\Support\Carbon;
 
 class Edit extends BaseACSComponent
 {
@@ -45,6 +46,16 @@ class Edit extends BaseACSComponent
     public $temperature;
     public $notes;
 
+    // Data yang diambil otomatis dari GenieACS (read-only)
+    public $acs_online = false;
+    public $acs_ip_address = '';
+    public $acs_mac_address = '';
+    public $acs_last_inform = '';
+    public $acs_error = '';
+
+    public $wifi_ssid;
+    public $wifi_password;
+
     public function mount($id = null)
     {
         parent::mount();
@@ -60,22 +71,160 @@ class Edit extends BaseACSComponent
             ['label' => $this->device->serial_number, 'url' => route('acs.devices.show', $id)],
             ['label' => 'Edit'],
         ];
+
+        // Auto-fetch status, IP, dan MAC dari GenieACS
+        $this->syncFromGenieACS();
+    }
+
+    /**
+     * Mengambil status online/offline, IP address, dan MAC address
+     * secara otomatis dari GenieACS berdasarkan _lastInform dan parameter device.
+     */
+    public function syncFromGenieACS()
+    {
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $params = $driver->getDeviceParameters($this->device->uuid);
+
+            $extract = function ($path) use ($params) {
+                $parts = explode('.', $path);
+                $node = $params;
+                foreach ($parts as $p) {
+                    if (!is_array($node) || !array_key_exists($p, $node)) {
+                        return null;
+                    }
+                    $node = $node[$p];
+                }
+                return isset($node['_value']) ? $node['_value'] : null;
+            };
+
+            // === STATUS ONLINE/OFFLINE ===
+            // Ditentukan dari _lastInform: jika < 5 menit lalu = online
+            $lastInform = $params['_lastInform'] ?? null;
+            if ($lastInform) {
+                $informTime = Carbon::parse($lastInform);
+                $this->acs_online = abs(now()->diffInMinutes($informTime)) < 5;
+                $this->acs_last_inform = $informTime->format('d/m/Y H:i:s');
+            } else {
+                $this->acs_online = false;
+                $this->acs_last_inform = '-';
+            }
+
+            // Update status di database secara otomatis
+            $newStatus = $this->acs_online ? 'online' : 'offline';
+            $this->status = $newStatus;
+
+            // === IP ADDRESS ===
+            // Coba ambil dari berbagai path TR-069/TR-181
+            $ip = $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress')
+                ?? $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress')
+                ?? $extract('VirtualParameters.pppoeIP')
+                ?? $extract('VirtualParameters.IPTR069')
+                ?? $extract('Device.DHCPv4.Client.1.IPAddress')
+                ?? $extract('Device.IP.Interface.1.IPv4Address.1.IPAddress');
+
+            if ($ip && $ip !== '0.0.0.0') {
+                $this->acs_ip_address = $ip;
+                $this->ip_address = $ip;
+            } else {
+                $this->acs_ip_address = $this->ip_address ?: '-';
+            }
+
+            // === MAC ADDRESS ===
+            // Coba ambil dari berbagai path TR-069/TR-181
+            $mac = $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.MACAddress')
+                ?? $extract('VirtualParameters.pppoeMac')
+                ?? $extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress')
+                ?? $extract('Device.Ethernet.Interface.1.MACAddress')
+                ?? $extract('Device.WiFi.SSID.1.MACAddress');
+
+            if ($mac) {
+                $this->acs_mac_address = strtoupper($mac);
+                $this->mac_address = strtoupper($mac);
+            } else {
+                $this->acs_mac_address = $this->mac_address ?: '-';
+            }
+
+                        $this->acs_error = '';
+
+            // === WIFI CREDENTIALS ===
+            try {
+                $vendorName = $this->device->vendor?->name ?? 'default';
+                $creds = $driver->getWifiCredentials($this->device->uuid, $vendorName);
+                if (!empty($creds['ssid'])) {
+                    $this->wifi_ssid = $creds['ssid'];
+                }
+                if (!empty($creds['password'])) {
+                    $this->wifi_password = $creds['password'];
+                }
+            } catch (\Exception $e) {
+                // Ignore wifi fetch errors
+            }
+
+        } catch (\Exception $e) {
+            $this->acs_error = 'Tidak dapat terhubung ke GenieACS: ' . $e->getMessage();
+            // Tetap gunakan data dari database jika GenieACS tidak bisa dihubungi
+        }
+    }
+
+    /**
+     * Tombol refresh manual untuk mengambil data terbaru dari GenieACS
+     */
+    public function refreshFromACS()
+    {
+        $this->syncFromGenieACS();
+        if ($this->acs_error) {
+            session()->flash('error', $this->acs_error);
+        } else {
+            session()->flash('success', 'Data berhasil diperbarui dari GenieACS.');
+        }
     }
 
     public function save()
     {
-        $validated = $this->validate([
+                $validated = $this->validate([
             'serial_number' => 'nullable|string|max:255',
-            'mac_address' => 'nullable|string|max:255',
             'vendor_id' => 'nullable|exists:vendors,id',
-            'status' => 'required|string|in:online,offline,unknown',
+            'model' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
+            'wifi_ssid' => 'nullable|string|max:255',
+            'wifi_password' => 'nullable|string|max:255',
         ]);
 
+        // Status, IP, dan MAC diisi otomatis dari GenieACS, bukan manual
+        $validated['status'] = $this->status; // dari syncFromGenieACS
+        $validated['ip_address'] = $this->ip_address;
+        $validated['mac_address'] = $this->mac_address;
         $validated['updated_by'] = auth()->id();
 
-        $this->device->update($validated);
+        $this->device->update([
+            'serial_number' => $validated['serial_number'],
+            'vendor_id' => $validated['vendor_id'],
+            'model' => $validated['model'],
+            'notes' => $validated['notes'],
+            'status' => $validated['status'],
+            'ip_address' => $validated['ip_address'],
+            'mac_address' => $validated['mac_address'],
+            'updated_by' => $validated['updated_by'],
+        ]);
+        
+        // Push to GenieACS if changed
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $vendorName = $this->device->vendor?->name ?? 'default';
+            
+            if ($this->wifi_ssid) {
+                $driver->updateWifiSsid($this->device->uuid, $this->wifi_ssid, $vendorName);
+            }
+            if ($this->wifi_password) {
+                $driver->updateWifiPassword($this->device->uuid, $this->wifi_password, $vendorName);
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Device tersimpan, tapi gagal mengirim task WiFi ke GenieACS: ' . $e->getMessage());
+            return redirect()->route('acs.devices.show', $this->deviceId);
+        }
 
-        session()->flash('success', 'Device berhasil diperbarui!');
+        session()->flash('success', 'Device dan pengaturan WiFi berhasil diperbarui!');
         return redirect()->route('acs.devices.show', $this->deviceId);
     }
 

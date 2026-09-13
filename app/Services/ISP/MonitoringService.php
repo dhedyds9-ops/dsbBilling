@@ -15,6 +15,23 @@ interface DeviceMonitorInterface
     public function getTrafficStats($device): array;
     public function getPPPActive($device): array;
     public function getHotspotActive($device): array;
+    public function getQueueStats($device): array;
+    public function checkAndRepairRadius($device, string $radiusIp, string $radiusSecret): bool;
+    
+    // Web Winbox Methods
+    public function getLogs($device, int $limit = 50): array;
+    public function getPppServers($device): array;
+    public function getPppProfiles($device): array;
+    public function getPppSecrets($device): array;
+    public function getVpnServers($device): array;
+    public function getHotspotServers($device): array;
+    public function getHotspotProfiles($device): array;
+    public function getWalledGarden($device): array;
+    
+    // Web Winbox Phase 2
+    public function runTerminalCommand($device, string $command): array;
+    public function rebootRouter($device): bool;
+    public function backupRouter($device): ?array;
 }
 
 class MonitoringService
@@ -78,6 +95,64 @@ class MonitoringService
     {
         $cachedData = self::getCachedData($device);
         return $cachedData['queue_stats'] ?? [];
+    }
+    
+    // Web Winbox Methods (Direct API calls for real-time visibility, not cached for now)
+    
+    public function getLogs($device, int $limit = 50): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getLogs($device, $limit) : [];
+    }
+
+    public function getPppServers($device): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getPppServers($device) : [];
+    }
+
+    public function getPppProfiles($device): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getPppProfiles($device) : [];
+    }
+
+    public function getPppSecrets($device): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getPppSecrets($device) : [];
+    }
+
+    public function getVpnServers($device): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getVpnServers($device) : [];
+    }
+
+    public function getHotspotServers($device): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getHotspotServers($device) : [];
+    }
+
+    public function getHotspotProfiles($device): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getHotspotProfiles($device) : [];
+    }
+
+    public function getWalledGarden($device): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->getWalledGarden($device) : [];
+    }
+
+    // Web Winbox Phase 2
+    public function runTerminalCommand($device, string $command): array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->runTerminalCommand($device, $command) : [];
+    }
+    
+    public function rebootRouter($device): bool
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->rebootRouter($device) : false;
+    }
+    
+    public function backupRouter($device): ?array
+    {
+        return ($driver = $this->getDriver($device)) ? $driver->backupRouter($device) : null;
     }
     
     public static function getCacheKey($device): string

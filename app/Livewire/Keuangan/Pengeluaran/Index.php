@@ -6,13 +6,24 @@ use App\Livewire\BaseEnterpriseList;
 use App\Services\Keuangan\ExpenseService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
+use Livewire\WithFileUploads;
 
 class Index extends BaseEnterpriseList
 {
+    use WithFileUploads;
     public string $activeModule = 'keuangan';
     public string $activePage = 'pengeluaran';
 
     public string $rejectReason = '';
+
+    public bool $showCreateModal = false;
+    public $form_date = '';
+    public string $form_category = '';
+    public string $form_description = '';
+    public $form_amount = 0;
+    public $form_attachment;
+    public string $form_status = 'pending_approval';
 
     protected ExpenseService $service;
 
@@ -41,6 +52,54 @@ class Index extends BaseEnterpriseList
         ];
     }
 
+    public function openCreateModal(): void
+    {
+        $this->reset(['form_date', 'form_category', 'form_description', 'form_amount', 'form_attachment']);
+        $this->form_date = now()->toDateString();
+        $this->form_status = 'pending_approval';
+        $this->showCreateModal = true;
+    }
+
+    public function closeCreateModal(): void
+    {
+        $this->showCreateModal = false;
+    }
+
+    public function saveExpense(): void
+    {
+        $this->validate([
+            'form_reseller_id' => 'nullable|exists:users,id',
+            'form_date' => 'required|date',
+            'form_category' => 'required|string',
+            'form_description' => 'required|string|max:255',
+            'form_amount' => 'required|numeric|min:1',
+            'form_attachment' => 'nullable|image|max:2048',
+            'form_status' => 'required|in:draft,pending_approval',
+        ]);
+
+        try {
+            $data = [
+                'expense_date' => $this->form_date,
+                'category' => $this->form_category,
+                'description' => $this->form_description,
+                'amount' => $this->form_amount,
+                'status' => $this->form_status,
+            ];
+
+            if ($this->form_attachment) {
+                $data['attachment_file'] = $this->form_attachment->store('expenses', 'public');
+            }
+
+            $this->service->create($data, auth()->id());
+            
+            $this->dispatch('notify', message: 'Pengeluaran berhasil ditambahkan.', type: 'success');
+            $this->closeCreateModal();
+        } catch (\Exception $e) {
+            Log::error('Gagal menyimpan pengeluaran', ['error' => $e->getMessage()]);
+            $this->dispatch('notify', message: 'Gagal menyimpan data pengeluaran.', type: 'error');
+        }
+    }
+
     public function setActiveTab(string $tab): void
     {
         $this->activeTab = $tab;
@@ -58,6 +117,7 @@ class Index extends BaseEnterpriseList
         }, 'Gagal memuat data Pengeluaran');
     }
 
+    #[Computed]
     public function getSummaryProperty(): array
     {
         try {
@@ -73,16 +133,24 @@ class Index extends BaseEnterpriseList
         }
     }
 
+    #[Computed]
+    public function getResellerOptionsProperty()
+    {
+        return app(\App\Services\Auth\UserQueryService::class)->getResellersForDropdown();
+    }
+
     public function getCategoryOptionsProperty(): array
     {
         return $this->service->getCategoryOptions();
     }
 
+    #[Computed]
     public function getApproverOptionsProperty(): array
     {
         return $this->service->getApproverOptions();
     }
 
+    #[Computed]
     public function getFilterConfigProperty(): array
     {
         return [
@@ -99,6 +167,7 @@ class Index extends BaseEnterpriseList
         ];
     }
 
+    #[Computed]
     public function getBulkActionsProperty(): array
     {
         return [

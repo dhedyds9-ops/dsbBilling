@@ -22,7 +22,7 @@ $stateClasses = $disabled
         ? 'bg-primary-50 text-primary-700'
         : ($danger
             ? 'text-danger-600 hover:bg-danger-50'
-            : 'text-slate-700 hover:bg-slate-100'));
+            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800'));
 
 $classes = $baseClasses . ' ' . $stateClasses;
 @endphp

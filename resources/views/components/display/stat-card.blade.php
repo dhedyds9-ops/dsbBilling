@@ -29,7 +29,7 @@ $iconBgColors = [
 $trendColors = [
     'up' => 'text-success-600',
     'down' => 'text-danger-600',
-    'neutral' => 'text-slate-500',
+    'neutral' => 'text-slate-500 dark:text-slate-400',
 ];
 
 $trendDirection = $trendDirection ?? (
@@ -37,22 +37,22 @@ $trendDirection = $trendDirection ?? (
 );
 @endphp
 
-<div class="bg-white rounded-xl border border-slate-200 p-6 shadow-soft" {{ $attributes }}>
+<div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-soft" {{ $attributes }}>
     <div class="flex items-start justify-between">
         <div class="space-y-2">
             @if ($label)
-                <p class="text-sm font-medium text-slate-500">{{ $label }}</p>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ $label }}</p>
             @endif
 
             <div class="flex items-baseline gap-1">
                 @if ($prefix)
-                    <span class="text-2xl font-semibold text-slate-900">{{ $prefix }}</span>
+                    <span class="text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ $prefix }}</span>
                 @endif
 
-                <span class="text-3xl font-bold text-slate-900">{{ $value }}</span>
+                <span class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ $value }}</span>
 
                 @if ($suffix)
-                    <span class="text-lg font-medium text-slate-500">{{ $suffix }}</span>
+                    <span class="text-lg font-medium text-slate-500 dark:text-slate-400">{{ $suffix }}</span>
                 @endif
             </div>
 
@@ -73,7 +73,7 @@ $trendDirection = $trendDirection ?? (
                     @endif
 
                     <span class="text-sm font-medium">{{ abs($trend) }}%</span>
-                    <span class="text-sm text-slate-500">vs last period</span>
+                    <span class="text-sm text-slate-500 dark:text-slate-400">vs last period</span>
                 </div>
             @endif
         </div>

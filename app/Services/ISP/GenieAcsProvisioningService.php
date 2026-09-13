@@ -166,24 +166,32 @@ JS,
         }
     }
 
-    public function updateSsidAndPassword(Onu $onu, string $ssid, string $password): array
+    public function updateSsidAndPassword(Onu $onu, string $ssid, ?string $password = null): array
     {
         try {
             $deviceId = $onu->genieacs_device_id;
             $vendor = $onu->vendor?->name ?? 'default';
-            $tasks = [];
-            $tasks[] = $this->driver->updateWifiSsid($deviceId, $ssid, $vendor);
-            $tasks[] = $this->driver->updateWifiPassword($deviceId, $password, $vendor);
+            
+            // Send both SSID and Password in a single connection request
+            $success = $this->driver->updateWifiSsidAndPassword($deviceId, $ssid, $password, $vendor);
+            $tasks = [$success];
+
             DB::transaction(function () use ($onu, $ssid, $password) {
-                $onu->update(['wifi_ssid' => $ssid, 'wifi_password' => $password]);
+                $onuData = ['wifi_ssid' => $ssid];
+                if (!empty($password)) {
+                    $onuData['wifi_password'] = $password;
+                }
+                $onu->update($onuData);
                 if ($cs = $onu->customerService) {
                     $attrs = $cs->attributes ?? [];
                     $attrs['wifi_ssid'] = $ssid;
-                    $attrs['wifi_password'] = $password;
+                    if (!empty($password)) {
+                        $attrs['wifi_password'] = $password;
+                    }
                     $cs->update(['attributes' => $attrs]);
                 }
             });
-            return ['success' => true, 'tasks' => $tasks];
+            return ['success' => $success, 'tasks' => $tasks];
         } catch (Exception $e) {
             Log::error('WiFi update failed', ['onu_id' => $onu->id, 'msg' => $e->getMessage()]);
             return ['success' => false, 'error' => $e->getMessage()];

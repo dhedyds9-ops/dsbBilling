@@ -19,6 +19,7 @@ class Expense extends Model
         'code',
         'description',
         'category',
+        'reseller_id',
         'amount',
         'status',
         'attachment_file',
@@ -50,6 +51,11 @@ class Expense extends Model
                 $model->expense_date = now()->toDateString();
             }
         });
+    }
+
+    public function reseller()
+    {
+        return $this->belongsTo(User::class, 'reseller_id');
     }
 
     public function requestedBy()

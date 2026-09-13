@@ -1,0 +1,54 @@
+<?php
+$file = 'D:/dsBilling/vendor/livewire/livewire/src/Drawer/Utils.php';
+$content = file_get_contents($file);
+
+// Find escapeStringForHtml and add a try-catch to log the failing key
+$search = <<<PHP
+    static function escapeStringForHtml(\$subject)
+    {
+        if (is_string(\$subject) || is_numeric(\$subject)) {
+            return htmlspecialchars(\$subject, ENT_QUOTES|ENT_SUBSTITUTE);
+        }
+
+        return htmlspecialchars(json_encode(\$subject, JSON_THROW_ON_ERROR), ENT_QUOTES|ENT_SUBSTITUTE);
+    }
+PHP;
+
+$replace = <<<PHP
+    static function escapeStringForHtml(\$subject)
+    {
+        if (is_string(\$subject) || is_numeric(\$subject)) {
+            return htmlspecialchars(\$subject, ENT_QUOTES|ENT_SUBSTITUTE);
+        }
+
+        try {
+            return htmlspecialchars(json_encode(\$subject, JSON_THROW_ON_ERROR), ENT_QUOTES|ENT_SUBSTITUTE);
+        } catch (\JsonException \$e) {
+            \Log::error("Livewire json_encode failed in escapeStringForHtml", [
+                'error' => \$e->getMessage(),
+                'subject_keys' => is_array(\$subject) ? array_keys(\$subject) : gettype(\$subject)
+            ]);
+            
+            // Try to find the exact bad string
+            \$findBad = function(\$arr, \$path = "") use (&\$findBad) {
+                if (is_array(\$arr)) {
+                    foreach (\$arr as \$k => \$v) {
+                        \$findBad(\$v, \$path ? "\$path.\$k" : \$k);
+                    }
+                } elseif (is_string(\$arr)) {
+                    if (!mb_check_encoding(\$arr, 'UTF-8')) {
+                        \Log::error("Found bad UTF-8 string at path: " . \$path);
+                    }
+                }
+            };
+            if (is_array(\$subject)) \$findBad(\$subject);
+            
+            throw \$e;
+        }
+    }
+PHP;
+
+$content = str_replace($search, $replace, $content);
+file_put_contents($file, $content);
+echo "Added try-catch to Utils::escapeStringForHtml to log the error to laravel.log.";
+?>

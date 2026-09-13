@@ -4,7 +4,7 @@ namespace App\Services\Laporan;
 
 use App\Models\Billing\Invoice;
 use App\Models\Payment\Payment;
-use App\Models\ISP\InternetPackage;
+use App\Models\ISP\ServiceProfile;
 use App\Models\CRM\Customer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -37,14 +37,14 @@ class PendapatanService
                 $q->where('package_id', $filters['paket_id']);
             });
         }
-        if (!empty($filters['sales_id'])) {
-            $query->whereHas('customer.createdBy', function ($q) use ($filters) {
-                $q->where('id', $filters['sales_id']);
-            });
-        }
         if (!empty($filters['reseller_id'])) {
             $query->whereHas('customer', function ($q) use ($filters) {
                 $q->where('reseller_id', $filters['reseller_id']);
+            });
+        }
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole('reseller')) {
+            $query->whereHas('customer', function ($q) {
+                $q->where('reseller_id', \Illuminate\Support\Facades\Auth::id());
             });
         }
         return $query;
@@ -110,22 +110,31 @@ class PendapatanService
             $labels[] = $date->format('d/m');
             $dateStr = $date->toDateString();
 
-            $payments = Payment::where('status', 'success')
+            $q = Payment::where('status', 'success')
                 ->whereDate('paid_at', $dateStr)
-                ->with(['invoices.items'])
-                ->get();
+                ->with(['invoices.items']);
+            
+            if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole('reseller')) {
+                $q->whereHas('customer', function ($cq) {
+                    $cq->where('reseller_id', \Illuminate\Support\Facades\Auth::id());
+                });
+            }
+            
+            $payments = $q->get();
 
-            $pTot = 0; $hTot = 0; $vTot = 0;
+            $pTot = 0; $hTot = 0; $vTot = 0; $evTot = 0;
             foreach ($payments as $pay) {
                 $cat = $this->categorizePayment($pay);
                 if ($cat === 'pppoe') $pTot += $pay->amount;
                 elseif ($cat === 'hotspot') $hTot += $pay->amount;
+                elseif ($cat === 'e-voucher') $evTot += $pay->amount;
                 else $vTot += $pay->amount;
             }
             $pppoe[] = $pTot;
             $hotspot[] = $hTot;
             $voucher[] = $vTot;
-            $total[] = $pTot + $hTot + $vTot;
+            $evoucher[] = $evTot;
+            $total[] = $pTot + $hTot + $vTot + $evTot;
         }
 
         return [
@@ -133,6 +142,7 @@ class PendapatanService
             'pppoe' => $pppoe,
             'hotspot' => $hotspot,
             'voucher' => $voucher,
+            'evoucher' => $evoucher,
             'total' => $total,
             'max_val' => max(1, ...$total),
         ];
@@ -141,12 +151,14 @@ class PendapatanService
     protected function categorizePayment(Payment $payment): string
     {
         $method = strtolower($payment->method ?? '');
+        if (str_contains($method, 'evoucher') || str_contains($method, 'e-voucher')) return 'e-voucher';
         if (str_contains($method, 'voucher')) return 'voucher';
         if (str_contains($method, 'hotspot')) return 'hotspot';
         $firstInvoice = $payment->invoices->first();
         if ($firstInvoice && $firstInvoice->items) {
             foreach ($firstInvoice->items as $item) {
                 $label = strtolower($item['label'] ?? '');
+                if (str_contains($label, 'evoucher') || str_contains($label, 'e-voucher')) return 'e-voucher';
                 if (str_contains($label, 'hotspot')) return 'hotspot';
                 if (str_contains($label, 'voucher')) return 'voucher';
             }
@@ -222,20 +234,26 @@ class PendapatanService
 
     public function topPackages(array $filters = [], int $limit = 10): array
     {
-        $invoiceItems = DB::table('invoice_items as ii')
+        $q1 = DB::table('invoice_items as ii')
             ->join('invoices as i', 'i.id', '=', 'ii.invoice_id')
             ->join('payments_invoices as pi', 'pi.invoice_id', '=', 'i.id')
             ->join('payments as p', 'p.id', '=', 'pi.payment_id')
             ->where('p.status', 'success')
             ->when(!empty($filters['tahun']), fn($q) => $q->whereYear('p.paid_at', $filters['tahun']))
-            ->when(!empty($filters['bulan']), fn($q) => $q->whereMonth('p.paid_at', $filters['bulan']))
-            ->select(
-                'ii.package_id',
-                'ii.label as package_name',
+            ->when(!empty($filters['bulan']), fn($q) => $q->whereMonth('p.paid_at', $filters['bulan']));
+
+        if (auth()->check() && auth()->user()->hasRole(\App\Enums\UserRole::Reseller->value)) {
+            $effective = auth()->user()->getEffectiveResellerId();
+            if ($effective) $q1->where('i.reseller_id', $effective);
+        }
+
+        $invoiceItems = $q1->select(
+                DB::raw('0 as package_id'),
+                'ii.description as package_name',
                 DB::raw('COUNT(DISTINCT p.customer_id) as jumlah_pelanggan'),
-                DB::raw('SUM(ii.amount) as total_pendapatan')
+                DB::raw('SUM(ii.subtotal) as total_pendapatan')
             )
-            ->groupBy('ii.package_id', 'ii.label')
+            ->groupBy('ii.description')
             ->orderByDesc('total_pendapatan')
             ->limit($limit)
             ->get();
@@ -243,28 +261,34 @@ class PendapatanService
         $grandTotal = Payment::where('status', 'success')->sum('amount');
 
         $prevMonth = Carbon::now()->subMonth();
-        $prevItems = DB::table('invoice_items as ii')
+        $q2 = DB::table('invoice_items as ii')
             ->join('invoices as i', 'i.id', '=', 'ii.invoice_id')
             ->join('payments_invoices as pi', 'pi.invoice_id', '=', 'i.id')
             ->join('payments as p', 'p.id', '=', 'pi.payment_id')
             ->where('p.status', 'success')
             ->whereMonth('p.paid_at', $prevMonth->month)
-            ->whereYear('p.paid_at', $prevMonth->year)
-            ->select('ii.package_id', DB::raw('SUM(ii.amount) as prev_total'))
-            ->groupBy('ii.package_id')
-            ->pluck('prev_total', 'package_id')
+            ->whereYear('p.paid_at', $prevMonth->year);
+
+        if (auth()->check() && auth()->user()->hasRole(\App\Enums\UserRole::Reseller->value)) {
+            $effective = auth()->user()->getEffectiveResellerId();
+            if ($effective) $q2->where('i.reseller_id', $effective);
+        }
+
+        $prevItems = $q2->select('ii.description as package_name', DB::raw('SUM(ii.subtotal) as prev_total'))
+            ->groupBy('ii.description')
+            ->pluck('prev_total', 'package_name')
             ->all();
 
         $ranked = [];
         foreach ($invoiceItems as $idx => $row) {
             $rev = (float) $row->total_pendapatan;
-            $prev = (float) ($prevItems[$row->package_id] ?? 0);
+            $prev = (float) ($prevItems[$row->package_name] ?? 0);
             $kontribusi = $grandTotal > 0 ? round(($rev / $grandTotal) * 100, 2) : 0;
             $trend = $prev > 0 ? round((($rev - $prev) / $prev) * 100, 2) : ($rev > 0 ? 100 : 0);
             $ranked[] = [
                 'rank' => $idx + 1,
-                'package_id' => $row->package_id,
-                'nama_paket' => $row->package_name ?? ('Paket #' . $row->package_id),
+                'package_id' => $row->package_id ?? 0,
+                'nama_paket' => $row->package_name ?? 'Unknown',
                 'jumlah_pelanggan' => $row->jumlah_pelanggan,
                 'total_pendapatan' => $rev,
                 'kontribusi_pct' => $kontribusi,

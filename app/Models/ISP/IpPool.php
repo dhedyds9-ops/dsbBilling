@@ -54,4 +54,14 @@ class IpPool extends Model
     {
         return $this->belongsTo(\App\Models\User::class, 'updated_by');
     }
+
+    public function networkProfiles()
+    {
+        return $this->hasMany(\App\Models\Provisioning\NetworkProfile::class, 'ip_pool_id');
+    }
+
+    public function ipAllocations()
+    {
+        return $this->hasMany(\App\Models\Provisioning\IpAllocation::class, 'ip_pool_id');
+    }
 }

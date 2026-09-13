@@ -66,6 +66,17 @@ class RouterCollector extends BaseCollector
             $hotspotSessions = $this->driver->getHotspotActive($router);
             $queueStats = $this->driver->getQueueStats($router);
             
+            // Fetch traffic from interfaces to populate rx_bps and tx_bps
+            $interfaceStats = $this->driver->getInterfaceStats($router);
+            $totalRxBps = 0;
+            $totalTxBps = 0;
+            foreach ($interfaceStats as $iface) {
+                // Sum all interface traffic. Since a router routes between interfaces, 
+                // total traffic / 2 is a good proxy for throughput if WAN isn't specified.
+                $totalRxBps += (int)($iface['rx-bps'] ?? 0);
+                $totalTxBps += (int)($iface['tx-bps'] ?? 0);
+            }
+            
             $healthScore = $this->calculateHealthScore($systemInfo);
             
             // Save monitoring log
@@ -79,6 +90,8 @@ class RouterCollector extends BaseCollector
                 'total_memory' => $systemInfo['total_memory'] ?? 0,
                 'uptime' => $systemInfo['uptime'] ?? null,
                 'error_message' => $systemInfo['error'] ?? null,
+                'rx_bps' => $totalRxBps > 0 ? (int)($totalRxBps / 2) : 0,
+                'tx_bps' => $totalTxBps > 0 ? (int)($totalTxBps / 2) : 0,
             ]);
             
             $router->update([
@@ -103,7 +116,7 @@ class RouterCollector extends BaseCollector
             // Check for alerts
             $this->checkAlerts($router, $systemInfo, $healthScore);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->saveMonitoringLog($router, [
                 'is_online' => false,
                 'error_message' => $e->getMessage(),

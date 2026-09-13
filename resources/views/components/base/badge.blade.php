@@ -21,7 +21,7 @@
 $baseClasses = 'inline-flex items-center font-medium rounded-full';
 
 $variants = [
-    'default' => 'bg-slate-100 text-slate-700',
+    'default' => 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
     'primary' => 'bg-primary-100 text-primary-700',
     'secondary' => 'bg-secondary-100 text-secondary-700',
     'success' => 'bg-success-100 text-success-700',

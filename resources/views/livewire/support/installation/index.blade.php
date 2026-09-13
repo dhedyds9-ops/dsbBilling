@@ -6,7 +6,7 @@
     'in_progress' => ['bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300','Dikerjakan'],
     'completed' => ['bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300','Selesai'],
     'cancelled' => ['bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300','Dibatalkan'],
-    default => ['bg-slate-100 text-slate-600', $s ?: '-'],
+    default => ['bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400', $s ?: '-'],
   };
 @endphp
 <div>
@@ -39,7 +39,7 @@
   <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
     <nav class="flex items-center gap-1 text-sm font-medium overflow-x-auto">
       @foreach(['workorder'=>'Work Order','schedule'=>'Jadwal','technician'=>'Teknisi','checklist'=>'Checklist'] as $k=>$l)
-        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">{{ $l }}</button>
+        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">{{ $l }}</button>
       @endforeach
     </nav>
   </div>
@@ -73,7 +73,7 @@
       <table class="min-w-full text-sm">
         <thead class="bg-slate-50 dark:bg-slate-900/40 border-y border-slate-200 dark:border-slate-700">
           <tr>
-            <th class="w-10 px-3 py-2 text-left"><input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"></th>
+            <th class="w-10 px-3 py-2 text-left"><input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"></th>
             <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('code')">Kode WO{!! $sortIcon('code') !!}</th>
             <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Pelanggan</th>
             <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Paket / Alamat</th>
@@ -87,7 +87,7 @@
         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
           @forelse($rows as $r)
             @php [$sc, $sl] = $statusBadge($r->status ?? 'pending'); @endphp
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40">
+            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/40">
               <td class="px-3 py-2"><input type="checkbox" value="{{ $r->id }}" wire:model.live="selected" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"></td>
               <td class="px-3 py-2 font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $r->code ?? 'WO-'.$r->id }}</td>
               <td class="px-3 py-2">
@@ -112,21 +112,21 @@
               <td class="px-3 py-2"><span class="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full {{ $sc }}">{{ $sl }}</span></td>
               <td class="px-3 py-2">
                 <div class="flex items-center justify-end gap-1">
-                  <button wire:click="rowDetail({{$r->id}})" title="Detail" class="p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:bg-blue-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
-                  <button wire:click="rowAssign({{$r->id}})" title="Assign" class="p-1.5 rounded text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg></button>
+                  <button wire:click="rowDetail({{$r->id}})" title="Detail" class="p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 dark:text-slate-400 dark:hover:bg-blue-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
+                  <button wire:click="rowAssign({{$r->id}})" title="Assign" class="p-1.5 rounded text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:bg-indigo-900/30 dark:text-slate-400 dark:hover:bg-indigo-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg></button>
                   @if(($r->status??'pending')==='scheduled' || ($r->status??'pending')==='pending')
-                    <button wire:click="rowStart({{$r->id}})" title="Start" class="p-1.5 rounded text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:text-slate-400 dark:hover:bg-amber-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button>
+                    <button wire:click="rowStart({{$r->id}})" title="Start" class="p-1.5 rounded text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:bg-amber-900/30 dark:text-slate-400 dark:hover:bg-amber-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button>
                   @endif
                   @if(($r->status??'pending')==='in_progress')
-                    <button wire:click="confirmRowAction('complete', {{$r->id}})" title="Selesai" class="p-1.5 rounded text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-slate-400 dark:hover:bg-emerald-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                    <button wire:click="confirmRowAction('complete', {{$r->id}})" title="Selesai" class="p-1.5 rounded text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
                   @endif
-                  <button wire:click="confirmRowAction('cancel', {{$r->id}})" title="Batal" class="p-1.5 rounded text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                  <button wire:click="confirmRowAction('cancel', {{$r->id}})" title="Batal" class="p-1.5 rounded text-slate-500 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 dark:text-slate-400 dark:hover:bg-red-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
               </td>
             </tr>
           @empty
             <tr><td colspan="9" class="px-3 py-16 text-center">
-              <div class="inline-flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
+              <div class="inline-flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500 dark:text-slate-400">
                 <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 <div class="text-sm font-medium">Belum ada Work Order Instalasi</div>
                 <div class="text-xs opacity-80">Klik WO Baru untuk membuat.</div>
@@ -185,7 +185,7 @@
             <div class="p-4 space-y-2">
               @foreach($checklistTemplate ?? [] as $c)
                 <label class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
-                  <input type="checkbox" disabled checked class="mt-0.5 rounded border-slate-300">
+                  <input type="checkbox" disabled checked class="mt-0.5 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                   <span>{{ $c['label'] }}</span>
                 </label>
               @endforeach

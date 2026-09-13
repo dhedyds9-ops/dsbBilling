@@ -10,11 +10,11 @@
                 <form method="GET" class="row g-3">
                     <div class="col-md-5">
                         <label class="form-label">Tanggal Mulai</label>
-                        <input type="date" name="start_date" value="{{ $startDate }}" class="form-control">
+                        <input type="date" name="start_date" value="{{ $startDate }}" class="form-control dark:bg-slate-900 dark:text-slate-100">
                     </div>
                     <div class="col-md-5">
                         <label class="form-label">Tanggal Selesai</label>
-                        <input type="date" name="end_date" value="{{ $endDate }}" class="form-control">
+                        <input type="date" name="end_date" value="{{ $endDate }}" class="form-control dark:bg-slate-900 dark:text-slate-100">
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100">

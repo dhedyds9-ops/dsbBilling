@@ -4,11 +4,10 @@ namespace App\Services\Adapters\Provisioning\Support;
 
 use Exception;
 use phpseclib3\Net\SSH2;
-use phpseclib3\Net\Telnet;
 
 class TelnetSshClient
 {
-    protected SSH2|Telnet|null $connection = null;
+    protected SSH2|SimpleTelnet|null $connection = null;
     protected string $mode;
     protected string $host;
     protected int $port;
@@ -17,14 +16,14 @@ class TelnetSshClient
     protected string $enableSecret;
     protected int $timeout;
 
-    public function connect(string $host, string $username, string $password, string $mode = 'telnet', int $port = 0, string $enableSecret = '', int $timeout = 10): static
+    public function connect(string $host, ?string $username, ?string $password, string $mode = 'telnet', int $port = 0, ?string $enableSecret = '', int $timeout = 10): static
     {
-        $this->host = $host;
-        $this->username = $username;
-        $this->password = $password;
-        $this->mode = $mode;
-        $this->enableSecret = $enableSecret;
-        $this->timeout = $timeout;
+        $this->host     = $host;
+        $this->username = $username ?? '';
+        $this->password = $password ?? '';
+        $this->mode     = $mode;
+        $this->enableSecret = $enableSecret ?? '';
+        $this->timeout  = $timeout;
 
         if ($mode === 'ssh') {
             if ($port === 0) {
@@ -42,15 +41,12 @@ class TelnetSshClient
             if ($port === 0) {
                 $port = 23;
             }
-            if (!class_exists(Telnet::class)) {
-                throw new Exception('phpseclib3 Telnet not installed. Run: composer require phpseclib/phpseclib');
-            }
-            $telnet = new Telnet($host, $port, $timeout);
+            $telnet = new SimpleTelnet($host, $port, $timeout);
             $telnet->login($username, $password);
             $this->connection = $telnet;
         }
 
-        if ($enableSecret !== '') {
+        if ($this->enableSecret !== '' || $mode === 'telnet') {
             $this->enterEnableMode();
         }
 
@@ -96,9 +92,11 @@ class TelnetSshClient
             $this->connection->write($this->enableSecret . "\n");
         } else {
             $this->connection->write("enable\n");
-            $this->connection->read('/Password:/');
-            $this->connection->write($this->enableSecret . "\n");
-            $this->connection->read('/[>#]/');
+            $out = $this->connection->read('/(Password:|#)/i');
+            if (str_contains(strtolower($out), 'password')) {
+                $this->connection->write($this->enableSecret . "\n");
+                $this->connection->read('/#/');
+            }
         }
     }
 
@@ -110,6 +108,92 @@ class TelnetSshClient
             } catch (Exception) {
             }
             $this->connection = null;
+        }
+    }
+
+    public function __destruct()
+    {
+        $this->disconnect();
+    }
+}
+
+class SimpleTelnet
+{
+    protected $socket;
+    protected $host;
+    protected $port;
+    protected $timeout;
+
+    public function __construct(string $host, int $port = 23, int $timeout = 10)
+    {
+        $this->host = $host;
+        $this->port = $port;
+        $this->timeout = $timeout;
+        $this->socket = @fsockopen($host, $port, $errno, $errstr, $timeout);
+        if (!$this->socket) {
+            throw new Exception("Cannot connect to $host:$port - $errstr ($errno)");
+        }
+        stream_set_timeout($this->socket, $timeout);
+    }
+
+    public function login(string $username, string $password): void
+    {
+        $this->read('/(User\s*name|Username|Login|login|user):/i');
+        $this->write($username . "\n");
+        $this->read('/Password:/i');
+        $this->write($password . "\n");
+        $this->read('/[>#]/');
+    }
+
+    public function write(string $buffer): void
+    {
+        if ($this->socket) {
+            fwrite($this->socket, $buffer);
+        }
+    }
+
+    public function read(string $pattern): string
+    {
+        if (!$this->socket) {
+            return '';
+        }
+        $result = '';
+        $start = time();
+        while (!feof($this->socket)) {
+            if (time() - $start > $this->timeout) {
+                throw new Exception("Timeout waiting for pattern: $pattern");
+            }
+            $c = fgetc($this->socket);
+            if ($c === false) {
+                usleep(10000);
+                continue;
+            }
+
+            // Telnet negotiation: IAC (255)
+            if (ord($c) === 255) {
+                $verb = fgetc($this->socket);
+                $opt = fgetc($this->socket);
+                if (ord($verb) === 253) {
+                    $this->write(chr(255) . chr(252) . $opt);
+                } elseif (ord($verb) === 251) {
+                    $this->write(chr(255) . chr(254) . $opt);
+                }
+                continue;
+            }
+
+            $result .= $c;
+            if (preg_match($pattern, $result)) {
+                return $result;
+            }
+        }
+        return $result;
+    }
+
+    public function disconnect(): void
+    {
+        if ($this->socket) {
+            @fclose($this->socket);
+            $this->socket = null;
         }
     }
 

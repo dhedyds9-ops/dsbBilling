@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # 1. dsBilling Application (PHP-FPM + Nginx)
+  # Menggunakan image laravel standar, atau Anda bisa build image kustom
+  dsb_app:
+    image: dsbilling/app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dsb_app
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=http://localhost
+      - DB_CONNECTION=mysql
+      - DB_HOST=dsb_db
+      - DB_PORT=3306
+      - DB_DATABASE=dsbilling
+      - DB_USERNAME=dsb_user
+      - DB_PASSWORD=dsb_secret
+      # Radius Config
+      - RADIUS_DB_HOST=dsb_db
+      - RADIUS_DB_DATABASE=radius
+      - RADIUS_DB_USERNAME=radius
+      - RADIUS_DB_PASSWORD=rad_secret
+    volumes:
+      - dsb_storage:/var/www/html/storage
+      - dsb_env:/var/www/html/.env
+    depends_on:
+      - dsb_db
+
+  # 2. Database (MySQL / MariaDB)
+  dsb_db:
+    image: mariadb:10.11
+    container_name: dsb_db
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=dsb_root_secret
+      - MYSQL_DATABASE=dsbilling
+      - MYSQL_USER=dsb_user
+      - MYSQL_PASSWORD=dsb_secret
+    volumes:
+      - dsb_db_data:/var/lib/mysql
+    # Jangan ekspor port DB ke publik untuk keamanan, biarkan jaringan internal docker
+    # ports:
+    #   - "3306:3306"
+
+  # 3. Radius Engine (FreeRADIUS terintegrasi)
+  dsb_radius:
+    image: dsbilling/freeradius:latest
+    container_name: dsb_radius
+    restart: always
+    environment:
+      - DB_HOST=dsb_db
+      - DB_PORT=3306
+      - DB_DATABASE=dsbilling
+      - DB_USERNAME=dsb_user
+      - DB_PASSWORD=dsb_secret
+      - RADIUS_SECRET=testing123
+    ports:
+      - "1812:1812/udp" # Auth
+      - "1813:1813/udp" # Acct
+      - "3799:3799/udp" # CoA
+    depends_on:
+      - dsb_db
+
+volumes:
+  dsb_db_data:
+  dsb_storage:
+  dsb_env:

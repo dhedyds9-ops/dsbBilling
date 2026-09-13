@@ -3,7 +3,7 @@
 namespace App\Livewire\ACS\Task;
 
 use App\Livewire\ACS\BaseACSComponent;
-use App\Models\ACS\DeviceTask;
+use App\Models\ISP\OnuConfigurationJob;
 
 class Index extends BaseACSComponent
 {
@@ -22,19 +22,17 @@ class Index extends BaseACSComponent
 
     public function delete($id)
     {
-        $task = DeviceTask::findOrFail($id);
+        $task = OnuConfigurationJob::findOrFail($id);
         $task->delete();
         session()->flash('success', 'Task berhasil dihapus!');
     }
 
     public function render()
     {
-        $query = DeviceTask::with('device');
+        $query = OnuConfigurationJob::with(['onu', 'customerService.customer']);
 
         if ($this->search) {
-            $query->whereHas('device', function($q) {
-                $q->where('serial_number', 'like', '%' . $this->search . '%');
-            });
+            $query->whereHas('onu', function($q) { $q->where('serial_number', 'like', '%' . $this->search . '%'); });
         }
 
         if ($this->filters['status']) {

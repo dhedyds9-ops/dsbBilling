@@ -61,7 +61,7 @@
             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Customer Growth (12 Bulan Terakhir)</h3>
-                    <div class="flex items-center gap-3 text-xs text-slate-500">
+                    <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span>New</span>
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500"></span>Suspend</span>
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-0.5 bg-blue-600"></span>Total</span>
@@ -141,9 +141,9 @@
                                     $gc = $gp >= 0 ? 'text-emerald-600' : 'text-red-600';
                                     $gs = $gp >= 0 ? '+' : '';
                                 @endphp
-                                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/40">
+                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/40">
                                     <td class="px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200">{{ $r['bulan'] }}</td>
-                                    <td class="text-right px-3 py-1.5 text-slate-500">{{ number_format($r['awal']) }}</td>
+                                    <td class="text-right px-3 py-1.5 text-slate-500 dark:text-slate-400">{{ number_format($r['awal']) }}</td>
                                     <td class="text-right px-3 py-1.5 text-emerald-600 font-semibold">+{{ number_format($r['add']) }}</td>
                                     <td class="text-right px-3 py-1.5 text-red-600 font-semibold">-{{ number_format($r['suspend']) }}</td>
                                     <td class="text-right px-3 py-1.5 text-blue-700 dark:text-blue-400 font-bold">{{ number_format($r['akhir']) }}</td>
@@ -209,7 +209,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                             @foreach($a['rows'] as $r)
-                                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/40">
+                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/40">
                                     <td class="px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200">{{ $r['tanggal'] }}</td>
                                     <td class="text-right px-3 py-1.5 font-bold text-blue-600 dark:text-blue-400">{{ $r['jumlah_aktivasi'] }}</td>
                                     <td class="px-3 py-1.5 text-slate-600 dark:text-slate-300">
@@ -293,7 +293,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                                 @foreach($suspensions['rows'] as $r)
-                                    <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/40">
+                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/40">
                                         <td class="px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200">{{ $r['tanggal'] }}</td>
                                         <td class="text-right px-3 py-1.5 font-bold text-red-600">{{ $r['jumlah_suspend'] }}</td>
                                         <td class="px-3 py-1.5 text-slate-600 dark:text-slate-300">
@@ -316,19 +316,19 @@
             @php $sm = $terminations['summary'] ?? []; @endphp
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
-                    <div class="text-[10px] text-slate-500">Total Terminasi 30h</div>
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400">Total Terminasi 30h</div>
                     <div class="text-base font-bold text-red-600">{{ number_format($sm['total_terminasi'] ?? 0) }}</div>
                 </div>
                 <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
-                    <div class="text-[10px] text-slate-500">Recovery Berhasil</div>
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400">Recovery Berhasil</div>
                     <div class="text-base font-bold text-emerald-600">{{ number_format($sm['total_recovery'] ?? 0) }}</div>
                 </div>
                 <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
-                    <div class="text-[10px] text-slate-500">Recovery Rate</div>
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400">Recovery Rate</div>
                     <div class="text-base font-bold text-blue-600">{{ number_format($sm['recovery_rate_pct'] ?? 0,2,',','.') }}%</div>
                 </div>
                 <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
-                    <div class="text-[10px] text-slate-500">Alasan Terbanyak</div>
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400">Alasan Terbanyak</div>
                     @php $ar = $sm['top_alasan'] ?? []; $firstKey = array_key_first($ar); @endphp
                     <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{{ $firstKey ? "$firstKey (".$ar[$firstKey].")" : '-' }}</div>
                 </div>
@@ -352,7 +352,7 @@
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                             @foreach($terminations['rows'] as $r)
                                 @php $cc = ($r['churn_pct'] ?? 0) > 2 ? 'text-red-600 font-bold' : 'text-slate-600 dark:text-slate-300'; @endphp
-                                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/40">
+                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/40">
                                     <td class="px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200">{{ $r['tanggal'] }}</td>
                                     <td class="text-right px-3 py-1.5 font-bold text-red-600">{{ $r['jumlah_nonaktif'] }}</td>
                                     <td class="px-3 py-1.5 text-slate-600 dark:text-slate-300">

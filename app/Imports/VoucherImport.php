@@ -2,12 +2,11 @@
 
 namespace App\Imports;
 
-use App\Models\ISP\Voucher;
-use App\Services\ISP\VoucherService;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Src\Domain\Voucher\Actions\ManageVoucherAction;
 
 class VoucherImport implements ToModel, WithHeadingRow, WithValidation
 {
@@ -20,14 +19,14 @@ class VoucherImport implements ToModel, WithHeadingRow, WithValidation
 
     public function model(array $row)
     {
-        $service = app(VoucherService::class);
+        $action = app(ManageVoucherAction::class);
         
         $data = [
             'code' => $row['kode_voucher'] ?? $row['code'] ?? null,
             'voucher_pool_id' => $row['voucher_pool_id'] ?? null,
             'service_profile_id' => $row['service_profile_id'] ?? null,
             'nas_device_id' => $row['nas_device_id'] ?? null,
-            'owner_id' => $row['owner_id'] ?? null,
+            'reseller_id' => $row['reseller_id'] ?? null,
             'status' => $row['status'] ?? 'available',
             'type' => $row['type'] ?? null,
             'fee_seller' => $row['fee_seller'] ?? null,
@@ -36,7 +35,7 @@ class VoucherImport implements ToModel, WithHeadingRow, WithValidation
         ];
         
         try {
-            return $service->create($data, $this->user);
+            return $action->create($data, $this->user);
         } catch (\Exception $e) {
             Log::error('Import failed for row', [
                 'row' => $row,

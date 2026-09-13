@@ -8,4 +8,7 @@ enum AttendanceStatus: string {
     case ABSENT = 'absent';
     case LATE = 'late';
     case EARLY_LEAVE = 'early_leave';
+    case SICK = 'sick';
+    case LEAVE = 'leave';
 }
+

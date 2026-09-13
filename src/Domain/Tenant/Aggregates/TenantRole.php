@@ -35,13 +35,13 @@ class TenantRole extends AggregateRoot
         );
     }
 
-    public static function createSuperAdmin(Uuid $tenantId): self
+    public static function createAdministrator(Uuid $tenantId): self
     {
         $role = new self(
             Uuid::generate(),
             $tenantId,
-            'Super Admin',
-            'super_admin',
+            'Administrator',
+            'administrator',
             'Full access to all tenant resources'
         );
         $role->isSystemRole = true;
@@ -72,13 +72,13 @@ class TenantRole extends AggregateRoot
         return $role;
     }
 
-    public static function createOperator(Uuid $tenantId): self
+    public static function createManager(Uuid $tenantId): self
     {
         $role = new self(
             Uuid::generate(),
             $tenantId,
-            'Operator',
-            'operator',
+            'Manager',
+            'manager',
             'Operational access'
         );
         $role->isSystemRole = true;

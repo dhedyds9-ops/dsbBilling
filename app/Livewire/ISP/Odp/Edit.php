@@ -51,7 +51,7 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
-            'code' => 'required|unique:isp_odps,code,' . $this->odpId,
+            'code' => 'required|unique:odps,code,' . $this->odpId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);

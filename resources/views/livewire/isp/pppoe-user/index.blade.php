@@ -1,212 +1,369 @@
-<div class="space-y-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900">PPPoE Users</h1>
-            <p class="text-slate-500 mt-1">Kelola semua pelanggan PPPoE</p>
+@section('page_title')
+    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">dialpad</span>
+    <span class="text-lg">Daftar PPPoE</span>
+@endsection
+
+<div class="space-y-5 pb-10">
+    {{-- SESSION FLASH --}}
+    @if(session('success'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+            {{ session('success') }}
         </div>
-        <div class="flex gap-3">
-            <a href="{{ route('isp.pppoe-users.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Tambah User
+    @endif
+    @if(session('error'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+            {{ session('error') }}
+        </div>
+    @endif
+
+    {{-- KPI CARDS --}}
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {{-- Total --}}
+        <div class="relative overflow-x-auto rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-md bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-indigo-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">dialpad</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">Total PPPoE</h3>
+                <div class="text-4xl font-black text-indigo-700 dark:text-indigo-300 mb-3">{{ number_format($stats['total'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Semua User PPPoE</div>
+            </div>
+        </div>
+        
+        {{-- Aktif --}}
+        <div wire:click="$set('filters.status', 'active')" class="relative overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-emerald-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">wifi</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2">Aktif (Berlangganan)</h3>
+                <div class="text-4xl font-black text-emerald-700 dark:text-emerald-300 mb-3">{{ number_format($stats['active'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Klik untuk memfilter</div>
+            </div>
+        </div>
+
+        {{-- Online (Jaringan) --}}
+        <div wire:click="$set('filters.status', 'online')" class="relative overflow-x-auto rounded-xl border border-cyan-200 cursor-pointer dark:border-cyan-800/60 shadow-md bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-950/50 dark:to-slate-800 group transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-blue-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-cyan-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">rss_feed</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-cyan-500 dark:text-cyan-400 uppercase tracking-widest mb-2">Online (Jaringan)</h3>
+                <div class="text-4xl font-black text-cyan-700 dark:text-cyan-300 mb-3">{{ number_format($stats['online'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Live dari Mikrotik</div>
+            </div>
+        </div>
+
+        {{-- Offline (Jaringan) --}}
+        <div wire:click="$set('filters.status', 'offline')" class="relative overflow-x-auto rounded-xl border border-slate-200 cursor-pointer dark:border-slate-700/60 shadow-md bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800 group transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-400 to-slate-500 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-slate-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">wifi_off</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Offline (Jaringan)</h3>
+                <div class="text-4xl font-black text-slate-700 dark:text-slate-300 mb-3">{{ number_format(max(0, ($stats['active'] ?? 0) - ($stats['online'] ?? 0))) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Live dari Mikrotik</div>
+            </div>
+        </div>
+        
+
+
+        {{-- Suspend --}}
+        <div wire:click="$set('filters.status', 'suspended')" class="relative overflow-x-auto rounded-xl border border-red-200 dark:border-red-800/60 shadow-md bg-gradient-to-br from-red-50 to-white dark:from-red-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-rose-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-red-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">gpp_bad</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-red-500 dark:text-red-400 uppercase tracking-widest mb-2">Suspend / Isolir</h3>
+                <div class="text-4xl font-black text-red-700 dark:text-red-300 mb-3">{{ number_format($stats['suspended'] ?? 0) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">Klik untuk memfilter</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- TOOLBAR & FILTER --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+            <a href="{{ route('isp.pppoe-users.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
+                Tambah
             </a>
-        </div>
-    </div>
-
-    <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-slate-500">Total</p>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['total'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-slate-500">Aktif</p>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['active'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-gray-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-slate-500">Nonaktif</p>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['inactive'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-slate-500">Online</p>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['online'] }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm border p-6">
-        <div class="flex flex-wrap gap-4 items-end">
-            <div class="flex-1 min-w-[200px]">
-                <label class="block text-sm font-medium text-slate-700 mb-2">Cari</label>
-                <input type="text" wire:model.live.debounce.300ms="search" class="w-full border-slate-300 rounded-lg focus:border-blue-500 focus:ring-blue-500" placeholder="Cari username, nama, atau nomor HP...">
-            </div>
-            <div class="min-w-[150px]">
-                <label class="block text-sm font-medium text-slate-700 mb-2">Status</label>
-                <select wire:model.live="filters.status" class="w-full border-slate-300 rounded-lg focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">Semua Status</option>
-                    <option value="active">Aktif</option>
-                    <option value="inactive">Nonaktif</option>
-                    <option value="suspended">Suspended</option>
-                    <option value="terminated">Terminated</option>
-                </select>
-            </div>
-            <div class="flex items-center gap-2">
-                <label class="flex items-center text-sm text-slate-700">
-                    <input type="checkbox" wire:model.live="showTrashed" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 mr-2">
-                    Tampilkan Dihapus
-                </label>
-            </div>
-            <button wire:click="resetFilters" class="px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
-                Reset Filter
+            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all">
+                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">download</span>
+                Export
+            </button>
+            <button wire:click="openImportModal" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all">
+                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">upload</span>
+                Import
             </button>
         </div>
+        
+        <div class="flex items-center gap-2">
+            <div class="flex-1 relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="search"
+                       placeholder="Cari username..."
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
+            </div>
+            <select wire:model.live="filters.status"
+                    class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                <option value="">Semua Status</option>
+                <option value="active">Aktif (Semua)</option>
+                <option value="online">Aktif & Online</option>
+                <option value="offline">Aktif & Offline</option>
+                <option value="suspended">Suspend / Isolir</option>
+            </select>
+            <select wire:model.live="perPage"
+                    class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                <option value="20">20 / halaman</option>
+                <option value="50">50 / halaman</option>
+                <option value="100">100 / halaman</option>
+                <option value="500">500 / halaman</option>
+                <option value="999999">Semua</option>
+            </select>
+            @if($search || $filters['status'])
+            <button wire:click="resetFilters"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                Reset
+            </button>
+            @endif
+        </div>
     </div>
 
-    <!-- Table -->
-    <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+    {{-- DATA TABLE --}}
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left">
-                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80">
+                        <th class="px-4 py-3 text-left font-semibold">
+                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Username
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
+                            <button wire:click="sortBy('id')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
+                                ID
+                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">unfold_more</span>
+                            </button>
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Pelanggan
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Nama</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Username</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Password</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Layanan</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Paket</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Ip Address</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner/Reseller</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">WhatsApp</th>
+                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
+                            <button wire:click="sortBy('created_at')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
+                                Tgl Register
+                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">unfold_more</span>
+                            </button>
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Paket
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Status
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Online
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Aksi
-                        </th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tgl Login</th>
+                            <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tgl Logout</th>
+                            <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tgl Isolir</th>
+                        <th class="px-4 py-3 text-right font-semibold whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-slate-200">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     @forelse($pppoeUsers as $user)
-                        <tr class="{{ $user->trashed() ? 'bg-slate-50' : '' }}">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <input type="checkbox" wire:model.live="selectedIds" value="{{ $user->id }}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        @php
+                            $isOnline = $user->is_online ?? false;
+                            $isSuspend = $user->status === 'suspended';
+                            $dynamicId = $user->customer ? (($user->customer->created_at ? $user->customer->created_at->format('Ymd') : date('Ymd')) . str_pad($user->customer->id % 100, 2, '0', STR_PAD_LEFT)) : '-';
+                            $layanan = 'PPPoE';
+                            $tglLogin = $user->latestAccounting?->acct_start_time ? $user->latestAccounting->acct_start_time->format('d-m-Y H:i') : '-';
+                            $tglLogout = $user->latestAccounting?->acct_stop_time ? $user->latestAccounting->acct_stop_time->format('d-m-Y H:i') : '-';
+                            
+                            $rowBg = 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-700/20 transition-colors';
+                            $textPrimary = 'text-slate-900 dark:text-slate-100 font-medium';
+                            $textSecondary = 'text-slate-600 dark:text-slate-300';
+                            $idColor = 'text-slate-700 dark:text-slate-300';
+                            
+                            if ($isSuspend) {
+                                $rowBg = 'bg-red-50/40 hover:bg-red-100/60 dark:bg-red-900/10 dark:hover:bg-red-900/20 transition-colors grayscale-[20%]';
+                                $textPrimary = 'text-red-900 dark:text-red-100 font-semibold';
+                                $textSecondary = 'text-red-700 dark:text-red-300';
+                                $idColor = 'text-red-800 dark:text-red-400';
+                            } elseif ($isOnline) {
+                                $rowBg = 'bg-emerald-50/30 hover:bg-emerald-100/50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 transition-colors';
+                                $textPrimary = 'text-emerald-900 dark:text-emerald-100 font-semibold';
+                                $textSecondary = 'text-emerald-700 dark:text-emerald-300';
+                                $idColor = 'text-emerald-800 dark:text-emerald-400';
+                            }
+                        @endphp
+                        <tr class="{{ $rowBg }}">
+                            <td class="px-4 py-3">
+                                <input type="checkbox" wire:model.live="selectedIds" value="{{ $user->id }}" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600">
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-slate-900">{{ $user->username }}</div>
+                            <td class="px-4 py-3 font-mono text-xs {{ $idColor }}">
+                                  <div class="flex items-center gap-2">
+                                      <input type="checkbox" wire:change="toggleStatus({{ $user->id }})" 
+                                             class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                             {{ $user->status === 'active' ? 'checked' : '' }}
+                                             title="Toggle Aktif/Suspend">
+                                      {{ $dynamicId }}
+                                  </div>
+                              </td>
+                            <td class="px-4 py-3 {{ $textPrimary }}">
+                                @if(isset($user->customer->id))
+                                    <a href="{{ route('crm.customers.show', $user->customer->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors">
+                                        {{ $user->customer->name ?? '-' }}
+                                    </a>
+                                @else
+                                    -
+                                @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-slate-900">{{ $user->customer?->name ?? '-' }}</div>
-                                <div class="text-sm text-slate-500">{{ $user->customer?->phone ?? '-' }}</div>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-semibold {{ $isSuspend ? 'text-red-700 dark:text-red-400' : 'text-indigo-600 dark:text-indigo-400' }} font-mono">{{ $user->username }}</span>
+                                    <button type="button" onclick="navigator.clipboard.writeText('{{ $user->username }}'); alert('Username disalin!')" class="text-slate-400 hover:text-indigo-500 transition-colors" title="Salin Username">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">content_copy</span>
+                                    </button>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {{ $user->serviceProfile?->name ?? '-' }}
+                            <td class="px-4 py-3" x-data="{ showPw: false }">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-mono text-slate-500 dark:text-slate-400" x-show="!showPw">••••••••</span>
+                                    <span class="text-xs font-mono {{ $textSecondary }}" x-show="showPw" x-cloak>{{ $user->password }}</span>
+                                    <button type="button" @click="showPw = !showPw" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors" title="Lihat/Sembunyikan Password">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px" x-text="showPw ? 'visibility_off' : 'visibility'"></span>
+                                    </button>
+                                    <button type="button" onclick="navigator.clipboard.writeText('{{ $user->password }}'); alert('Password disalin!')" class="text-slate-400 hover:text-indigo-500 transition-colors" title="Salin Password">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">content_copy</span>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold {{ $layanan === 'PPPoE' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' }}">
+                                    {{ $layanan }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $user->status === 'active' ? 'bg-green-100 text-green-800' : ($user->status === 'suspended' ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-800') }}">
-                                    {{ ucfirst($user->status) }}
-                                </span>
-                                @if($user->trashed())
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 ml-2">
-                                        Dihapus
+                            <td class="px-4 py-3 {{ $textSecondary }}">
+                                {{ $user->serviceProfile->name ?? '-' }}
+                            </td>
+                            <td class="px-4 py-3 {{ $textSecondary }} font-mono text-xs">
+                                {{ $user->static_ip ?? $user->ip_address ?? 'Dynamic' }}
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($user->reseller)
+                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400">
+                                        {{ $user->reseller->name }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                                        Pusat (HQ)
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $user->is_online ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800' }}">
-                                    {{ $user->is_online ? 'Online' : 'Offline' }}
-                                </span>
+                            <td class="px-4 py-3 {{ $textSecondary }}">
+                                {{ $user->customer->phone ?? '-' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div class="flex items-center justify-end gap-2">
-                                    @if(!$user->trashed())
-                                        <button wire:click="toggleStatus({{ $user->id }})" class="{{ $user->status === 'active' ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900' }}" title="{{ $user->status === 'active' ? 'Suspend' : 'Aktifkan' }}">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                @if($user->status === 'active')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                @else
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                @endif
-                                            </svg>
-                                        </button>
-                                        <button wire:click="delete({{ $user->id }})" onclick="return confirm('Yakin ingin menghapus user ini?')" class="text-red-600 hover:text-red-900" title="Hapus">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                @if($user->status === 'suspended')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
+                                        Suspend
+                                    </span>
+                                @elseif($isOnline)
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
+                                        Online
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                        Offline
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 {{ $textSecondary }} text-xs">
+                                {{ $user->created_at ? $user->created_at->format('d-m-Y') : '-' }}
+                            </td>
+                            <td class="px-4 py-3 {{ $textSecondary }} text-xs font-mono">
+                                {{ $tglLogin }}
+                            </td>
+                            <td class="px-4 py-3 {{ $textSecondary }} text-xs font-mono">
+                                {{ $tglLogout }}
+                            </td>
+                            <td class="px-4 py-3 {{ $textSecondary }} text-xs">
+                                {{ $user->subscription->next_billing_date ? \Carbon\Carbon::parse($user->subscription->next_billing_date)->format('d-m-Y') : '-' }}
+                            </td>
+                            <td class="px-4 py-3 text-right whitespace-nowrap">
+                                <div class="flex items-center justify-end gap-1">
+                                    <a href="{{ route('isp.pppoe-users.edit', $user->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    @if(isset($user->customer->id))
+                                        <a href="{{ route('crm.customers.show', $user->customer->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">account_circle</span>
+                                        </a>
                                     @endif
+                                    <button wire:click="delete({{ $user->id }}, null)" onclick="confirm('Yakin ingin menghapus user ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-slate-500">
-                                <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                </svg>
-                                <p class="text-lg font-medium text-slate-900">Tidak ada PPPoE User</p>
-                                <p class="text-slate-500 mt-1">Mulai tambah user PPPoE pertama Anda</p>
+                            <td colspan="12" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                                <div class="flex flex-col items-center justify-center">
+                                    <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">folder_open</span>
+                                    <p>Belum ada data PPPoE User</p>
+                                </div>
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-
-        <!-- Pagination -->
         @if($pppoeUsers->hasPages())
-            <div class="px-6 py-4 border-t border-slate-200">
+            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
                 {{ $pppoeUsers->links() }}
             </div>
         @endif
     </div>
+
+    {{-- IMPORT MODAL --}}
+    @if($showImportModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm transition-opacity">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+                <div class="p-6">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Import Data PPPoE</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Unggah file Excel (.xlsx, .csv) dari sistem radius lama Anda (mendukung format MixRadius/MSRadius/dsBilling).</p>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pilih File Excel</label>
+                        <input type="file" wire:model="importFile" accept=".xlsx,.xls,.csv" class="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:bg-indigo-900/30 file:text-indigo-700 hover:file:bg-indigo-100 dark:bg-indigo-900/50 dark:file:bg-indigo-900/30 dark:file:text-indigo-400 transition-all cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                        @error('importFile') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 mt-8">
+                        <button wire:click="closeImportModal" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                            Batal
+                        </button>
+                        <button wire:click="import" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+                            <span wire:loading.remove wire:target="import" class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">upload</span>
+                            <span wire:loading wire:target="import" class="material-symbols-outlined notranslate mr-1.5 animate-spin" translate="no" style="font-size:18px">sync</span>
+                            <span wire:loading.remove wire:target="import">Proses Import</span>
+                            <span wire:loading wire:target="import">Memproses...</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
 </div>

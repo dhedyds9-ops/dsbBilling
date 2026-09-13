@@ -53,7 +53,7 @@
             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Pendapatan per Hari (Stacked Bar + Total Line)</h3>
-                    <div class="flex items-center gap-3 text-xs text-slate-500">
+                    <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-blue-500"></span>PPPoE</span>
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span>Hotspot</span>
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-amber-500"></span>Voucher</span>
@@ -133,7 +133,7 @@
                                 <div class="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                                     <div class="h-full {{ $p[2] }}" style="width:{{ $pct }}%"></div>
                                 </div>
-                                <div class="text-[10px] text-slate-500 mt-0.5">Rp {{ number_format($p[1],0,',','.') }}</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Rp {{ number_format($p[1],0,',','.') }}</div>
                             </div>
                         @endforeach
                     </div>
@@ -188,7 +188,7 @@
             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Comparison Periodik</h3>
-                    <div class="text-xs text-slate-500">
+                    <div class="text-xs text-slate-500 dark:text-slate-400">
                         <span class="font-medium text-purple-700 dark:text-purple-400">Periode N:</span> {{ $comparison['period_label_n'] }} &bull;
                         <span class="font-medium text-slate-600 dark:text-slate-300 ml-2">Periode N-1:</span> {{ $comparison['period_label_n1'] }}
                     </div>
@@ -225,11 +225,11 @@
                                         <span class="w-28 text-right text-[11px] font-semibold text-slate-700 dark:text-slate-200">{{ $formatter($vn, $r['metric']) }}</span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <span class="w-20 text-[10px] text-slate-500">Periode N-1</span>
+                                        <span class="w-20 text-[10px] text-slate-500 dark:text-slate-400">Periode N-1</span>
                                         <div class="flex-1 h-4 rounded bg-slate-100 dark:bg-slate-700 overflow-hidden">
                                             <div class="h-full bg-slate-400" style="width:{{ $wN1 }}%"></div>
                                         </div>
-                                        <span class="w-28 text-right text-[11px] text-slate-500">{{ $formatter($vn1, $r['metric']) }}</span>
+                                        <span class="w-28 text-right text-[11px] text-slate-500 dark:text-slate-400">{{ $formatter($vn1, $r['metric']) }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -247,17 +247,17 @@
                         <tr>
                             <th class="text-left px-3 py-2 font-medium text-slate-600 dark:text-slate-300">Metric</th>
                             <th class="text-right px-3 py-2 font-medium text-purple-700 dark:text-purple-400">Periode N</th>
-                            <th class="text-right px-3 py-2 font-medium text-slate-500">Periode N-1</th>
+                            <th class="text-right px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Periode N-1</th>
                             <th class="text-right px-3 py-2 font-medium text-slate-600 dark:text-slate-300">Selisih</th>
                             <th class="text-right px-3 py-2 font-medium text-slate-600 dark:text-slate-300">Growth</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                         @foreach($rows as $r)
-                            <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/40">
+                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/40">
                                 <td class="px-3 py-2 text-slate-700 dark:text-slate-200 font-medium">{{ $r['metric'] }}</td>
                                 <td class="text-right px-3 py-2 text-purple-700 dark:text-purple-400 font-semibold">{{ is_numeric($r['periode_n']) && !str_contains($r['metric'], '%') ? (str_contains($r['metric'],'Pendapatan') ? 'Rp '.number_format($r['periode_n'],0,',','.') : number_format($r['periode_n'])) : (str_contains($r['metric'], '%') ? number_format($r['periode_n'],2,',','.').'%' : $r['periode_n']) }}</td>
-                                <td class="text-right px-3 py-2 text-slate-500">{{ is_numeric($r['periode_n1']) && !str_contains($r['metric'], '%') ? (str_contains($r['metric'],'Pendapatan') ? 'Rp '.number_format($r['periode_n1'],0,',','.') : number_format($r['periode_n1'])) : (str_contains($r['metric'], '%') ? number_format($r['periode_n1'],2,',','.').'%' : $r['periode_n1']) }}</td>
+                                <td class="text-right px-3 py-2 text-slate-500 dark:text-slate-400">{{ is_numeric($r['periode_n1']) && !str_contains($r['metric'], '%') ? (str_contains($r['metric'],'Pendapatan') ? 'Rp '.number_format($r['periode_n1'],0,',','.') : number_format($r['periode_n1'])) : (str_contains($r['metric'], '%') ? number_format($r['periode_n1'],2,',','.').'%' : $r['periode_n1']) }}</td>
                                 <td class="text-right px-3 py-2 text-slate-700 dark:text-slate-200">
                                     @if(is_numeric($r['diff']))
                                         {{ ($r['diff'] >= 0 ? '+' : '') . (str_contains($r['metric'],'Pendapatan') ? 'Rp '.number_format($r['diff'],0,',','.') : (str_contains($r['metric'],'%') ? number_format($r['diff'],2,',','.').' %' : number_format($r['diff']))) }}
@@ -277,7 +277,7 @@
             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                 <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 class="text-xs font-semibold text-slate-700 dark:text-slate-200">Top 10 Paket Berdasarkan Pendapatan</h3>
-                    <span class="text-[10px] text-slate-500">{{ count($topPackages) }} paket</span>
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400">{{ count($topPackages) }} paket</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-xs">
@@ -299,7 +299,7 @@
                                     $maxContrib = collect($topPackages)->max('total_pendapatan') ?: 1;
                                     $barW = $maxContrib > 0 ? ($p['total_pendapatan']/$maxContrib*100) : 0;
                                 @endphp
-                                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/40">
+                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/40">
                                     <td class="px-3 py-2">
                                         <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold
                                             {{ $p['rank'] == 1 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'

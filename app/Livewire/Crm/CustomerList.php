@@ -27,9 +27,9 @@ class CustomerList extends AdminComponent
         $this->activePage = 'customers';
     }
 
-    public function updatedFilters(array $value = []): void
+    public function updatedFilters(): void
     {
-        parent::updatedFilters($value);
+        $this->resetPage();
     }
 
     public function updatedSelectAll(bool $value): void

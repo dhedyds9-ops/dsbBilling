@@ -2,17 +2,24 @@
 
 namespace Src\Domain\Support\Events;
 
-use DateTimeImmutable;
 use Src\Domain\SharedKernel\Events\DomainEvent;
 
-readonly class TicketClosedEvent implements DomainEvent
+class TicketClosedEvent extends DomainEvent
 {
+    public string $eventId;
+    public string $ticketId;
+    public string $closedBy;
+
     public function __construct(
-        public string $eventId,
-        public string $ticketId,
-        public string $closedBy,
-        public DateTimeImmutable $occurredAt,
-    ) {}
+        string $eventId,
+        string $ticketId,
+        string $closedBy,
+    ) {
+        parent::__construct();
+        $this->eventId   = $eventId;
+        $this->ticketId  = $ticketId;
+        $this->closedBy  = $closedBy;
+    }
 
     public static function create(
         string $ticketId,
@@ -22,7 +29,6 @@ readonly class TicketClosedEvent implements DomainEvent
             (string) \Illuminate\Support\Str::uuid(),
             $ticketId,
             $closedBy,
-            new DateTimeImmutable(),
         );
     }
 

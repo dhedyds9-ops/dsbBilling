@@ -37,6 +37,7 @@ final class SendWaMessageJob implements ShouldQueue
 
     public function __construct(
         public readonly WaOutgoingMessage $message,
+        public readonly ?int $historyId = null,
     ) {}
 
     public function middleware(): array
@@ -65,6 +66,12 @@ final class SendWaMessageJob implements ShouldQueue
                 return;
             }
             // invalid / daily cap: buang
+            if ($this->historyId) {
+                \App\Models\Integration\WaMessageHistory::find($this->historyId)?->update([
+                    'status' => 'failed',
+                    'error_message' => 'Dibatalkan antispam: ' . $reason
+                ]);
+            }
             $this->delete();
             return;
         }
@@ -92,6 +99,14 @@ final class SendWaMessageJob implements ShouldQueue
                         'to' => $msg->toPhone,
                         'gateway_msg_id' => $res->gatewayMessageId,
                     ]);
+                    
+                    if ($this->historyId) {
+                        \App\Models\Integration\WaMessageHistory::find($this->historyId)?->update([
+                            'status' => 'sent',
+                            'payload' => ['gateway_msg_id' => $res->gatewayMessageId, 'driver' => $driver->driverKey()]
+                        ]);
+                    }
+                    
                     return;
                 }
                 $lastErr = $res->errorCode . ' ' . $res->errorMessage;
@@ -105,7 +120,24 @@ final class SendWaMessageJob implements ShouldQueue
             'to' => $msg->toPhone,
             'last_err' => $lastErr,
         ]);
+        
+        if ($this->historyId) {
+            \App\Models\Integration\WaMessageHistory::find($this->historyId)?->update([
+                'error_message' => $lastErr
+            ]);
+        }
+
         $this->release(30);
+    }
+
+    public function failed(\Throwable $exception)
+    {
+        if ($this->historyId) {
+            \App\Models\Integration\WaMessageHistory::find($this->historyId)?->update([
+                'status' => 'failed',
+                'error_message' => substr($exception->getMessage(), 0, 1000)
+            ]);
+        }
     }
 
     public function uniqueId(): string

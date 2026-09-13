@@ -35,7 +35,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
     <nav class="flex items-center justify-between">
         {{-- Info --}}
         @if ($showInfo)
-            <div class="text-sm text-slate-600">
+            <div class="text-sm text-slate-600 dark:text-slate-400">
                 Showing
                 <span class="font-medium">{{ $from }}</span>
                 to
@@ -53,7 +53,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                 @if ($currentPage > 1)
                     <button
                         wire:click="gotoPage(1)"
-                        class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                        class="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
                         aria-label="First page"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +66,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                 @if ($currentPage > 1)
                     <button
                         wire:click="gotoPage({{ $currentPage - 1 }})"
-                        class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                        class="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
                         aria-label="Previous page"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +89,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                     @if ($showEllipsisStart)
                         <button
                             wire:click="gotoPage(1)"
-                            class="min-w-[2.5rem] h-10 px-3 text-sm font-medium {{ $currentPage === 1 ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-100' }} rounded-lg transition-colors"
+                            class="min-w-[2.5rem] h-10 px-3 text-sm font-medium {{ $currentPage === 1 ? 'bg-primary-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800' }} rounded-lg transition-colors"
                         >
                             1
                         </button>
@@ -100,7 +100,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                     @for ($i = $start; $i <= $end; $i++)
                         <button
                             wire:click="gotoPage({{ $i }})"
-                            class="min-w-[2.5rem] h-10 px-3 text-sm font-medium {{ $currentPage === $i ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-100' }} rounded-lg transition-colors"
+                            class="min-w-[2.5rem] h-10 px-3 text-sm font-medium {{ $currentPage === $i ? 'bg-primary-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800' }} rounded-lg transition-colors"
                         >
                             {{ $i }}
                         </button>
@@ -111,7 +111,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                         <span class="px-2 text-slate-400">...</span>
                         <button
                             wire:click="gotoPage({{ $totalPages }})"
-                            class="min-w-[2.5rem] h-10 px-3 text-sm font-medium {{ $currentPage === $totalPages ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-100' }} rounded-lg transition-colors"
+                            class="min-w-[2.5rem] h-10 px-3 text-sm font-medium {{ $currentPage === $totalPages ? 'bg-primary-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800' }} rounded-lg transition-colors"
                         >
                             {{ $totalPages }}
                         </button>
@@ -122,7 +122,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                 @if ($currentPage < $totalPages)
                     <button
                         wire:click="gotoPage({{ $currentPage + 1 }})"
-                        class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                        class="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
                         aria-label="Next page"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,7 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                 @if ($currentPage < $totalPages)
                     <button
                         wire:click="gotoPage({{ $totalPages }})"
-                        class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                        class="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
                         aria-label="Last page"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,19 +150,19 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
                 <button
                     wire:click="gotoPage({{ $currentPage - 1 }})"
                     @if ($currentPage === 1) disabled @endif
-                    class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Previous
                 </button>
 
-                <span class="text-sm text-slate-600">
+                <span class="text-sm text-slate-600 dark:text-slate-400">
                     Page {{ $currentPage }} of {{ $totalPages }}
                 </span>
 
                 <button
                     wire:click="gotoPage({{ $currentPage + 1 }})"
                     @if ($currentPage === $totalPages) disabled @endif
-                    class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Next
                 </button>

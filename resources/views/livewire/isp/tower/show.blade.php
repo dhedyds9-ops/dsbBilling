@@ -26,7 +26,7 @@
     <div class="space-y-6">
         <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
         <div class="flex items-center gap-4">
-            <a href="{{ route('isp.towers.index') }}" class="p-2 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+            <a href="{{ route('isp.towers.index') }}" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:bg-slate-800">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
@@ -37,21 +37,21 @@
                         {{ substr($tower->name, 0, 1) }}
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-slate-900">{{ $tower->name }}</h1>
+                        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $tower->name }}</h1>
                         <div class="flex items-center gap-2 mt-1">
                             <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                        @if($tower->status === 'active') bg-green-100 text-green-600
-                                        @else bg-slate-100 text-slate-600
+                                        @if($tower->status === 'active') bg-green-100 dark:bg-green-900/50 text-green-600
+                                        @else bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400
                                         @endif">
                                         {{ ucfirst($tower->status) }}
                                     </span>
-                            <span class="text-sm text-slate-500 font-mono">{{ $tower->code }}</span>
+                            <span class="text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $tower->code }}</span>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('isp.towers.edit', $tower->id) }}" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                <a href="{{ route('isp.towers.edit', $tower->id) }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                     Edit
                 </a>
             </div>
@@ -60,77 +60,77 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <x-base.card>
                 <x-slot name="header">
-                    <h3 class="text-lg font-semibold text-slate-900">Informasi Tower</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Informasi Tower</h3>
                 </x-slot>
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Kode</label>
-                            <p class="text-slate-900 font-mono">{{ $tower->code }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kode</label>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $tower->code }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Nama</label>
-                            <p class="text-slate-900">{{ $tower->name }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nama</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $tower->name }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Tinggi</label>
-                            <p class="text-slate-900">{{ $tower->height ?? '-' }} m</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Tinggi</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $tower->height ?? '-' }} m</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Tipe</label>
-                            <p class="text-slate-900">{{ $tower->type ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Tipe</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $tower->type ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Provinsi</label>
-                            <p class="text-slate-900">{{ $tower->province ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Provinsi</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $tower->province ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Kota</label>
-                            <p class="text-slate-900">{{ $tower->city ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kota</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $tower->city ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Kecamatan</label>
-                            <p class="text-slate-900">{{ $tower->district ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kecamatan</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $tower->district ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Kelurahan</label>
-                            <p class="text-slate-900">{{ $tower->village ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kelurahan</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $tower->village ?? '-' }}</p>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-500 mb-1">Alamat</label>
-                        <p class="text-slate-900">{{ $tower->address ?? '-' }}</p>
+                        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Alamat</label>
+                        <p class="text-slate-900 dark:text-slate-100">{{ $tower->address ?? '-' }}</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-500 mb-1">Deskripsi</label>
-                        <p class="text-slate-900">{{ $tower->description ?? '-' }}</p>
+                        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Deskripsi</label>
+                        <p class="text-slate-900 dark:text-slate-100">{{ $tower->description ?? '-' }}</p>
                     </div>
                 </div>
             </x-base.card>
 
             <x-base.card>
                 <x-slot name="header">
-                    <h3 class="text-lg font-semibold text-slate-900">Lokasi & Statistik</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Lokasi & Statistik</h3>
                 </x-slot>
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Latitude</label>
-                            <p class="text-slate-900 font-mono">{{ $tower->latitude ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Latitude</label>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $tower->latitude ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Longitude</label>
-                            <p class="text-slate-900 font-mono">{{ $tower->longitude ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Longitude</label>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $tower->longitude ?? '-' }}</p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
-                        <div class="p-4 bg-slate-50 rounded-lg">
-                            <p class="text-sm text-slate-500">POP</p>
-                            <p class="text-2xl font-bold text-slate-900">{{ $tower->pops->count() }}</p>
+                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                            <p class="text-sm text-slate-500 dark:text-slate-400">POP</p>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $tower->pops->count() }}</p>
                         </div>
-                        <div class="p-4 bg-slate-50 rounded-lg">
-                            <p class="text-sm text-slate-500">Access Point</p>
-                            <p class="text-2xl font-bold text-slate-900">{{ $tower->accessPoints->count() }}</p>
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Access Point</p>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $tower->accessPoints->count() }}</p>
                         </div>
                     </div>
                 </div>

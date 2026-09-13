@@ -24,6 +24,25 @@ class Index extends BaseNetworkComponent
     public $importFile;
     public bool $showImportModal = false;
 
+    public bool $showScriptModal = false;
+    public ?RouterModel $scriptRouter = null;
+
+    // Provisioning modal state
+    public $provisioningToken = null;
+    public $provisioningExpires = null;
+    public bool $showProvisioningModal = false;
+
+    public function openScriptModal($id)
+    {
+        $this->generateProvisioningToken($id);
+    }
+
+    public function closeScriptModal()
+    {
+        $this->showScriptModal = false;
+        $this->scriptRouter = null;
+    }
+
     public function mount()
     {
         parent::mount();
@@ -49,7 +68,7 @@ class Index extends BaseNetworkComponent
                           ->orWhere('model', 'like', '%' . $this->search . '%');
                     });
                 })
-                ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+                ->when($this->filters['status'] ?? null, fn($q) => $q->where('status', $this->filters['status']));
 
             $this->selectedRouters = $query->pluck('id')->toArray();
         } else {
@@ -120,6 +139,28 @@ class Index extends BaseNetworkComponent
             Log::error('Toggle Router status failed', ['router_id' => $id, 'message' => $e->getMessage()]);
             session()->flash('error', 'Gagal mengubah status Router: ' . $e->getMessage());
         }
+    }
+
+    public function generateProvisioningToken($id)
+    {
+        try {
+            $router = RouterModel::findOrFail($id);
+            $service = app(\App\Services\Provisioning\RouterProvisioningService::class);
+            $session = $service->generateSession($router, auth()->id());
+
+            $this->provisioningToken = $session->raw_token;
+            $this->provisioningExpires = $session->expires_at->diffForHumans();
+            $this->showProvisioningModal = true;
+        } catch (Throwable $e) {
+            Log::error('Generate Provisioning Token failed', ['id' => $id, 'error' => $e->getMessage()]);
+            session()->flash('error', 'Gagal generate provisioning token: ' . $e->getMessage());
+        }
+    }
+
+    public function closeProvisioningModal()
+    {
+        $this->showProvisioningModal = false;
+        $this->provisioningToken = null;
     }
 
     public function duplicate($id)
@@ -235,14 +276,10 @@ class Index extends BaseNetworkComponent
 
         try {
             Log::info('Importing routers', ['user_id' => auth()->id()]);
-
             Excel::import(new RouterImport(auth()->user()), $this->importFile);
-
             Log::info('Routers imported successfully');
-
             session()->flash('success', 'Router berhasil diimpor!');
             $this->closeImportModal();
-
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = $e->failures();
             $errors = [];
@@ -267,11 +304,35 @@ class Index extends BaseNetworkComponent
                       ->orWhere('model', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+            ->when($this->filters['status'] ?? null, fn($q) => $q->where('status', $this->filters['status']));
 
         $routers = $query->orderBy($this->sortField, $this->sortDirection)
                           ->paginate($this->perPage);
 
-        return view('livewire.isp.router.index', compact('routers'));
+        // Pre-compute online status dari cache — protected from any blocking/exception
+        $monitoringService = app(\App\Services\ISP\MonitoringService::class);
+        $onlineStatus = [];
+        $activeUsers = [];
+        foreach ($routers as $router) {
+            try {
+                $onlineStatus[$router->id] = $monitoringService->ping($router);
+                
+                // Ambil jumlah user aktif dari cache (PPP + Hotspot)
+                $ppp = $monitoringService->getPPPActive($router);
+                $hotspot = $monitoringService->getHotspotActive($router);
+                $activeUsers[$router->id] = count($ppp) + count($hotspot);
+            } catch (Throwable $e) {
+                $onlineStatus[$router->id] = false;
+                $activeUsers[$router->id] = 0;
+            }
+        }
+
+        $summary = [
+            'total' => RouterModel::count(),
+            'active' => RouterModel::where('status', 'active')->count(),
+            'inactive' => RouterModel::where('status', 'inactive')->count(),
+        ];
+
+        return view('livewire.isp.router.index', compact('routers', 'onlineStatus', 'activeUsers', 'summary'));
     }
 }

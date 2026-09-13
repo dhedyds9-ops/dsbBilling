@@ -25,9 +25,9 @@ class PeriodeTagihanService
     protected function invoiceBase(?string $search, array $filters): \Illuminate\Database\Eloquent\Builder
     {
         $query = Invoice::query()
-            ->leftJoin('members', 'invoices.customer_id', '=', 'members.id')
-            ->leftJoin('billing_subscriptions', 'invoices.customer_id', '=', 'billing_subscriptions.customer_id')
-            ->leftJoin('customer_services', 'billing_subscriptions.customer_service_id', '=', 'customer_services.id')
+            ->leftJoin('users as customers', 'invoices.customer_id', '=', 'customers.id')
+            ->leftJoin('subscriptions', 'invoices.customer_id', '=', 'subscriptions.customer_id')
+            ->leftJoin('customer_services', 'subscriptions.customer_service_id', '=', 'customer_services.id')
             ->leftJoin('users as creators', 'invoices.created_by', '=', 'creators.id')
             ->select([
                 'invoices.id',
@@ -39,7 +39,7 @@ class PeriodeTagihanService
                 'invoices.paid_amount',
                 'invoices.status',
                 'invoices.created_by',
-                'members.name as customer_name',
+                'customers.name as customer_name',
                 'customer_services.service_profile_id as package_id',
                 'customer_services.id as customer_service_id',
             ]);
@@ -47,10 +47,10 @@ class PeriodeTagihanService
         if ($search) {
             $query->where(function ($sq) use ($search) {
                 $sq->where('invoices.invoice_number', 'like', "%{$search}%")
-                   ->orWhere('members.name', 'like', "%{$search}%");
+                   ->orWhere('customers.name', 'like', "%{$search}%");
             });
         }
-        if (!empty($filters['status'])) {
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $query->where('invoices.status', $filters['status']);
         }
         if (!empty($filters['tahun'])) {
@@ -67,7 +67,7 @@ class PeriodeTagihanService
                     ->where('cs_sales.created_by', $filters['sales_id']);
             });
         }
-        if (!empty($filters['reseller_id'])) {
+        if (!empty($filters['reseller_id']) && $filters['reseller_id'] !== 'all') {
             $query->where('invoices.created_by', $filters['reseller_id']);
         }
         if (!empty($filters['package_id'])) {
@@ -94,17 +94,27 @@ class PeriodeTagihanService
             });
         }
 
+        // Eksklusikan invoice dari pembelian voucher
+        $query->whereNotExists(function ($sub) {
+            $sub->select('id')
+                ->from('voucher_orders')
+                ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
+        });
+
         return $query;
     }
 
     public function aggregatePeriode(array $filters, ?string $search, string $sort, string $dir): Collection
     {
         $base = $this->invoiceBase($search, $filters);
+        $driver = DB::connection()->getDriverName();
+        $yearSql = $driver === 'sqlite' ? "CAST(strftime('%Y', issue_date) AS INTEGER)" : "YEAR(issue_date)";
+        $monthSql = $driver === 'sqlite' ? "CAST(strftime('%m', issue_date) AS INTEGER)" : "MONTH(issue_date)";
 
         $raw = DB::query()
             ->select([
-                DB::raw("YEAR(issue_date) as tahun"),
-                DB::raw("MONTH(issue_date) as bulan"),
+                DB::raw("$yearSql as tahun"),
+                DB::raw("$monthSql as bulan"),
                 DB::raw("COUNT(DISTINCT id) as jumlah_invoice"),
                 DB::raw("COALESCE(SUM(total_amount), 0) as total_tagihan"),
                 DB::raw("COALESCE(SUM(paid_amount), 0) as sudah_dibayar"),
@@ -165,7 +175,7 @@ class PeriodeTagihanService
                 DB::raw("COUNT(DISTINCT id) as total_invoice"),
                 DB::raw("COALESCE(SUM(total_amount), 0) as total_tagihan"),
                 DB::raw("COALESCE(SUM(CASE WHEN status IN ('unpaid','partial','pending') THEN (total_amount - paid_amount) ELSE 0 END), 0) as belum_bayar"),
-                DB::raw("COALESCE(SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END), 0) as lunas"),
+                DB::raw("COALESCE(SUM(paid_amount), 0) as sudah_bayar"),
                 DB::raw("COALESCE(SUM(CASE WHEN status = 'overdue' THEN (total_amount - paid_amount) ELSE 0 END), 0) as overdue"),
             ])
             ->from(DB::raw("({$base->toSql()}) as inv_base"))
@@ -175,7 +185,8 @@ class PeriodeTagihanService
         return [
             'total_tagihan' => (float)($agg->total_tagihan ?? 0),
             'belum_bayar' => (float)($agg->belum_bayar ?? 0),
-            'lunas' => (float)($agg->lunas ?? 0),
+            'sudah_bayar' => (float)($agg->sudah_bayar ?? 0),
+            'lunas' => (float)($agg->sudah_bayar ?? 0),
             'overdue' => (float)($agg->overdue ?? 0),
         ];
     }
@@ -240,21 +251,47 @@ class PeriodeTagihanService
         }
 
         $profile = $sub->customerService?->serviceProfile;
-        $amount = (float)($profile?->base_price ?? $profile?->promo_price ?? 0);
-        if ($amount <= 0) {
+        
+        // Use recurring price from subscription if available, otherwise fallback to profile price
+        $baseAmount = (float)($sub->recurring_price ?? $profile?->base_price ?? $profile?->promo_price ?? 0);
+        if ($baseAmount <= 0) {
             return null;
+        }
+
+        // Determine issue_date and calculate prorate if applicable
+        $issueDate = $start->copy();
+        $amount = $baseAmount;
+        $isProrated = false;
+        $notes = '';
+
+        if ($sub->start_date && $sub->start_date->year == $tahun && $sub->start_date->month == $bulan) {
+            // Subscription started in this exact month
+            $issueDate = $sub->start_date->copy();
+            
+            // Check if prorata is enabled
+            if ($profile && $profile->prorata_billing) {
+                $daysInMonth = $start->daysInMonth;
+                $activeDays = $end->diffInDays($issueDate) + 1; // inclusive
+                $amount = round(($baseAmount / $daysInMonth) * $activeDays);
+                $isProrated = true;
+                $notes = " (Prorata $activeDays/$daysInMonth Hari)";
+            }
         }
 
         $invoiceNumber = 'INV-' . $tahun . str_pad($bulan, 2, '0', STR_PAD_LEFT)
             . '-' . str_pad(Invoice::count() + 1, 6, '0', STR_PAD_LEFT);
+
+        // Due date calculation (e.g. 7 days from issue date)
+        // Can be improved later by fetching from a global settings table
+        $dueDate = $issueDate->copy()->addDays(7);
 
         $invoice = $this->invoiceRepository->create([
             'uuid' => (string) Str::uuid(),
             'customer_id' => $sub->customer_id,
             'contract_id' => $sub->contract_id ?? null,
             'invoice_number' => $invoiceNumber,
-            'issue_date' => $start,
-            'due_date' => $start->copy()->addDays(7),
+            'issue_date' => $issueDate,
+            'due_date' => $dueDate,
             'total_amount' => $amount,
             'paid_amount' => 0,
             'currency' => 'IDR',
@@ -267,7 +304,7 @@ class PeriodeTagihanService
             'uuid' => (string) Str::uuid(),
             'invoice_id' => $invoice->id,
             'description' => 'Tagihan ' . $this->periodeLabel($tahun, $bulan)
-                . ' - ' . ($profile?->name ?? 'Paket Langganan'),
+                . ' - ' . ($profile?->name ?? 'Paket Langganan') . $notes,
             'quantity' => 1,
             'unit_price' => $amount,
             'subtotal' => $amount,

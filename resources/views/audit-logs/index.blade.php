@@ -10,14 +10,14 @@
     <div class="card-body">
         <form method="GET" class="mb-3">
             <div class="input-group">
-                <input type="text" name="search" value="{{ request('search') }}" class="form-control" placeholder="Cari event atau catatan...">
+                <input type="text" name="search" value="{{ request('search') }}" class="form-control dark:bg-slate-900 dark:text-slate-100" placeholder="Cari event atau catatan...">
                 <button class="btn btn-primary" type="submit">
                     <i class="bi bi-search"></i> Cari
                 </button>
             </div>
         </form>
 
-        <div class="table-responsive">
+        <div class="w-full overflow-x-auto">
             <table class="table table-striped table-hover">
                 <thead class="table-dark">
                     <tr>

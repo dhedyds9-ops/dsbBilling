@@ -26,7 +26,7 @@
     <div class="space-y-6">
         <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
         <div class="flex items-center gap-4">
-            <a href="{{ route('isp.onus.index') }}" class="p-2 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+            <a href="{{ route('isp.onus.index') }}" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:bg-slate-800">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
@@ -37,21 +37,21 @@
                         {{ substr($onu->name, 0, 1) }}
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-slate-900">{{ $onu->name }}</h1>
+                        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $onu->name }}</h1>
                         <div class="flex items-center gap-2 mt-1">
                             <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                        @if($onu->status === 'active') bg-green-100 text-green-600
-                                        @else bg-slate-100 text-slate-600
+                                        @if($onu->status === 'active') bg-green-100 dark:bg-green-900/50 text-green-600
+                                        @else bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400
                                         @endif">
                                         {{ ucfirst($onu->status) }}
                                     </span>
-                            <span class="text-sm text-slate-500 font-mono">{{ $onu->code }}</span>
+                            <span class="text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $onu->code }}</span>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('isp.onus.edit', $onu->id) }}" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                <a href="{{ route('isp.onus.edit', $onu->id) }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                     Edit
                 </a>
             </div>
@@ -60,59 +60,59 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <x-base.card>
                 <x-slot name="header">
-                    <h3 class="text-lg font-semibold text-slate-900">Informasi ONU</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Informasi ONU</h3>
                 </x-slot>
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Kode</label>
-                            <p class="text-slate-900 font-mono">{{ $onu->code }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kode</label>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $onu->code }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Nama</label>
-                            <p class="text-slate-900">{{ $onu->name }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nama</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $onu->name }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">OLT</label>
-                            <p class="text-slate-900">{{ $onu->olt->name ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">OLT</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $onu->olt->name ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Vendor</label>
-                            <p class="text-slate-900">{{ $onu->vendor->name ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Vendor</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $onu->vendor->name ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Model</label>
-                            <p class="text-slate-900">{{ $onu->model ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Model</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $onu->model ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">Serial Number</label>
-                            <p class="text-slate-900 font-mono">{{ $onu->serial_number ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Serial Number</label>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $onu->serial_number ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">MAC Address</label>
-                            <p class="text-slate-900 font-mono">{{ $onu->mac_address ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">MAC Address</label>
+                            <p class="text-slate-900 dark:text-slate-100 font-mono">{{ $onu->mac_address ?? '-' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-500 mb-1">PON Port</label>
-                            <p class="text-slate-900">{{ $onu->pon_port ?? '-' }}</p>
+                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">PON Port</label>
+                            <p class="text-slate-900 dark:text-slate-100">{{ $onu->pon_port ?? '-' }}</p>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-500 mb-1">Deskripsi</label>
-                        <p class="text-slate-900">{{ $onu->description ?? '-' }}</p>
+                        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Deskripsi</label>
+                        <p class="text-slate-900 dark:text-slate-100">{{ $onu->description ?? '-' }}</p>
                     </div>
                 </div>
             </x-base.card>
 
             <x-base.card>
                 <x-slot name="header">
-                    <h3 class="text-lg font-semibold text-slate-900">Statistik</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Statistik</h3>
                 </x-slot>
                 <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
-                        <div class="p-4 bg-slate-50 rounded-lg">
-                            <p class="text-sm text-slate-500">Port ONU</p>
-                            <p class="text-2xl font-bold text-slate-900">{{ $onu->onuPorts->count() }}</p>
+                    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Port ONU</p>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $onu->onuPorts->count() }}</p>
                         </div>
                     </div>
                 </div>

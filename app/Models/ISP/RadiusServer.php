@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RadiusServer extends Model
 {
+    use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 
     protected $table = 'radius_servers';
@@ -51,3 +52,4 @@ class RadiusServer extends Model
         return $this->belongsTo(\App\Models\User::class, 'updated_by');
     }
 }
+

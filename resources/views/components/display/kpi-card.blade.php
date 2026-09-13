@@ -32,22 +32,22 @@ $chartColorMap = [
 ];
 @endphp
 
-<div class="bg-white rounded-xl border border-slate-200 p-6 shadow-soft" {{ $attributes }}>
+<div class="bg-surface-container/60 backdrop-blur-xl rounded-xl border border-outline-variant shadow-[0_0_15px_rgba(0,0,0,0.2)] p-6 shadow-soft" {{ $attributes }}>
     {{-- Header --}}
     <div class="flex items-center justify-between mb-4">
         <div>
             @if ($title)
-                <p class="text-sm font-medium text-slate-500">{{ $title }}</p>
+                <p class="text-sm font-medium text-gray-400">{{ $title }}</p>
             @endif
 
             @if ($subtitle)
-                <p class="text-xs text-slate-400 mt-0.5">{{ $subtitle }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $subtitle }}</p>
             @endif
         </div>
 
         @if ($icon)
-            <div class="p-2 rounded-lg bg-slate-100">
-                <x-icon :name="$icon" class="w-5 h-5 text-slate-600" />
+            <div class="p-2 rounded-lg bg-surface-bright border border-outline-variant">
+                <x-icon :name="$icon" class="w-5 h-5 text-gray-300" />
             </div>
         @endif
     </div>
@@ -55,7 +55,7 @@ $chartColorMap = [
     {{-- Value --}}
     <div class="flex items-end justify-between">
         <div>
-            <p class="text-3xl font-bold text-slate-900">{{ $value }}</p>
+            <p class="text-3xl font-bold text-white font-heading font-bold">{{ $value }}</p>
 
             @if ($changeValue !== null)
                 <div class="flex items-center gap-1 mt-1.5">
@@ -73,7 +73,7 @@ $chartColorMap = [
                     <span class="text-sm font-medium {{ $changeColor }}">
                         {{ abs($changeValue) }}{{ $changeType === 'percentage' ? '%' : '' }}
                     </span>
-                    <span class="text-xs text-slate-500">vs last period</span>
+                    <span class="text-xs text-gray-400">vs last period</span>
                 </div>
             @endif
         </div>

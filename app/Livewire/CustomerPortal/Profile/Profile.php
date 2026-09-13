@@ -5,7 +5,9 @@ namespace App\Livewire\CustomerPortal\Profile;
 use App\Services\CustomerPortal\CustomerProfileService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 
+#[Layout('layouts.customer-app')]
 class Profile extends Component
 {
     public $name;

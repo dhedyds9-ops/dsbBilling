@@ -173,9 +173,9 @@ class TenantManagerService
     private function createDefaultRoles(Tenant $tenant): void
     {
         $roles = [
-            TenantRole::createSuperAdmin($tenant->getId()),
+            TenantRole::createAdministrator($tenant->getId()),
             TenantRole::createAdmin($tenant->getId()),
-            TenantRole::createOperator($tenant->getId()),
+            TenantRole::createManager($tenant->getId()),
             TenantRole::createViewer($tenant->getId()),
         ];
 

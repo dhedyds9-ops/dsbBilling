@@ -29,9 +29,8 @@ class VerifyNasSecret
 
         $secret = $nas->nas_secret ?? null;
         if ($secret === null || $secret === '') {
-            Log::warning("Radius ingest: NAS {$nas->nas_name} secret kosong, allow tanpa validasi HMAC");
-            $request->attributes->set('radius_nas', $nas);
-            return $next($request);
+            Log::warning("Radius ingest: NAS {$nas->nas_name} secret kosong, reject request");
+            return response()->json(['error' => 'HMAC validation failed: secret empty'], 403);
         }
 
         $providedSig = $request->header('X-Radius-Signature')
@@ -39,19 +38,25 @@ class VerifyNasSecret
             ?? $request->input('Message-Authenticator')
             ?? $request->input('signature');
 
-        if ($providedSig !== null && $providedSig !== '') {
-            $payload = $request->getContent();
-            $expect = hash_hmac('md5', $payload, $secret);
-            $alt = hash_hmac('sha256', $payload, $secret);
-            if (!hash_equals($expect, (string)$providedSig) && !hash_equals($alt, (string)$providedSig)) {
-                $legacy = md5($payload . $secret);
-                if (!hash_equals($legacy, (string)$providedSig)) {
-                    Log::warning('Radius ingest: HMAC signature mismatch', [
-                        'nas' => $nas->nas_name,
-                        'ip' => $nasIp,
-                    ]);
-                    return response()->json(['error' => 'Invalid NAS signature'], 403);
-                }
+        if ($providedSig === null || $providedSig === '') {
+            Log::warning('Radius ingest: HMAC signature missing', [
+                'nas' => $nas->nas_name,
+                'ip' => $nasIp,
+            ]);
+            return response()->json(['error' => 'HMAC signature required'], 403);
+        }
+
+        $payload = $request->getContent();
+        $expect = hash_hmac('md5', $payload, $secret);
+        $alt = hash_hmac('sha256', $payload, $secret);
+        if (!hash_equals($expect, (string)$providedSig) && !hash_equals($alt, (string)$providedSig)) {
+            $legacy = md5($payload . $secret);
+            if (!hash_equals($legacy, (string)$providedSig)) {
+                Log::warning('Radius ingest: HMAC signature mismatch', [
+                    'nas' => $nas->nas_name,
+                    'ip' => $nasIp,
+                ]);
+                return response()->json(['error' => 'Invalid NAS signature'], 403);
             }
         }
 

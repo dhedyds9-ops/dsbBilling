@@ -46,11 +46,31 @@ class CustomerSelfServiceService
         return ['success' => true, 'message' => 'Password PPPoE berhasil diubah'];
     }
 
+    public function getOnuWifiCredentials(int $customerId, int $onuId): array
+    {
+        return $this->genieAcsService->getWifiCredentials($customerId, $onuId);
+    }
+
+    public function getOnuConnectedDevices(int $customerId, int $onuId): array
+    {
+        return $this->genieAcsService->getConnectedDevices($customerId, $onuId);
+    }
+
     public function changeOnuWifiPassword(int $customerId, int $onuId, string $newPassword): array
     {
         return $this->genieAcsService->updateWifiPassword(
             $customerId,
             $onuId,
+            $newPassword
+        );
+    }
+
+    public function changeOnuWifiCredentials(int $customerId, int $onuId, string $newSsid, ?string $newPassword = null): array
+    {
+        return $this->genieAcsService->updateWifiSsidAndPassword(
+            $customerId,
+            $onuId,
+            $newSsid,
             $newPassword
         );
     }

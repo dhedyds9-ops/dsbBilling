@@ -55,11 +55,11 @@ foreach ($this->tabs as $k => $label) {
                 <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
                     <tr class="text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">
                         <th class="w-10 px-3 py-2">
-                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600">
+                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </th>
                         @if ($this->activeTab === 'olt')
-                            <th class="px-3 py-2 text-left cursor-pointer hover:text-slate-900" wire:click="sortBy('id')">ID <x-sort-ind :field="'id'" :current="$this->sortField" :dir="$this->sortDirection" /></th>
-                            <th class="px-3 py-2 text-left cursor-pointer hover:text-slate-900" wire:click="sortBy('name')">Nama <x-sort-ind :field="'name'" :current="$this->sortField" :dir="$this->sortDirection" /></th>
+                            <th class="px-3 py-2 text-left cursor-pointer hover:text-slate-900 dark:text-slate-100" wire:click="sortBy('id')">ID <x-sort-ind :field="'id'" :current="$this->sortField" :dir="$this->sortDirection" /></th>
+                            <th class="px-3 py-2 text-left cursor-pointer hover:text-slate-900 dark:text-slate-100" wire:click="sortBy('name')">Nama <x-sort-ind :field="'name'" :current="$this->sortField" :dir="$this->sortDirection" /></th>
                             <th class="px-3 py-2 text-left">Host</th>
                             <th class="px-3 py-2 text-left">POP</th>
                             <th class="px-3 py-2 text-right">Port PON</th>
@@ -119,12 +119,12 @@ foreach ($this->tabs as $k => $label) {
                         $pageRows = $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? $rows->items() : (is_array($rows) ? $rows : $rows->all());
                     @endphp
                     @forelse ($pageRows as $r)
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/60">
                             <td class="px-3 py-2">
                                 <input type="checkbox" wire:model.live="selected" value="{{ (string) $r->id }}" class="rounded border-slate-300 dark:border-slate-600">
                             </td>
                             @if ($this->activeTab === 'olt')
-                                <td class="px-3 py-2 font-mono text-xs text-slate-500">{{ $r->id }}</td>
+                                <td class="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ $r->id }}</td>
                                 <td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{{ $r->name }}</td>
                                 <td class="px-3 py-2 font-mono text-xs">{{ $r->host }}</td>
                                 <td class="px-3 py-2">{{ $r->pop->name ?? '-' }}</td>
@@ -144,23 +144,23 @@ foreach ($this->tabs as $k => $label) {
                                 <td class="px-3 py-2"><x-status-badge :status="$r->status" /></td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->rx_power ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->tx_power ?? '-' }}</td>
-                                <td class="px-3 py-2 text-xs text-slate-500">{{ $r->last_registered_at ? \Illuminate\Support\Carbon::parse($r->last_registered_at)->diffForHumans() : '-' }}</td>
+                                <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r->last_registered_at ? \Illuminate\Support\Carbon::parse($r->last_registered_at)->diffForHumans() : '-' }}</td>
                             @elseif ($this->activeTab === 'odp')
                                 <td class="px-3 py-2 font-medium">{{ $r->name }}</td>
-                                <td class="px-3 py-2 text-xs text-slate-500">{{ $r->location ?? '-' }}</td>
+                                <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r->location ?? '-' }}</td>
                                 <td class="px-3 py-2">{{ $r->pop->name ?? '-' }}</td>
                                 <td class="px-3 py-2">{{ $r->olt->name ?? '-' }}</td>
                                 <td class="px-3 py-2">{{ $r->splitter->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->port_total ?? 0 }}/{{ $r->port_used ?? 0 }}</td>
                             @elseif ($this->activeTab === 'odc')
                                 <td class="px-3 py-2 font-medium">{{ $r->name }}</td>
-                                <td class="px-3 py-2 text-xs text-slate-500">{{ $r->location ?? '-' }}</td>
+                                <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r->location ?? '-' }}</td>
                                 <td class="px-3 py-2">{{ $r->pop->name ?? '-' }}</td>
                                 <td class="px-3 py-2">{{ $r->rack->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->port_total ?? 0 }}/{{ $r->port_used ?? 0 }}</td>
                             @elseif ($this->activeTab === 'pop')
                                 <td class="px-3 py-2 font-medium">{{ $r->name }}</td>
-                                <td class="px-3 py-2 text-xs text-slate-500 max-w-xs truncate">{{ $r->address }}</td>
+                                <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">{{ $r->address }}</td>
                                 <td class="px-3 py-2 font-mono text-xs">{{ ($r->latitude ?? '-') . ', ' . ($r->longitude ?? '-') }}</td>
                                 <td class="px-3 py-2 text-right">{{ $r->olts->count() ?? 0 }}</td>
                             @elseif ($this->activeTab === 'fiber')
@@ -179,29 +179,29 @@ foreach ($this->tabs as $k => $label) {
                             @endif
                             <td class="px-3 py-2 text-right whitespace-nowrap">
                                 <div class="inline-flex items-center gap-0.5">
-                                    <button wire:click="rowEdit({{ $r->id }})" class="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded dark:hover:bg-blue-900/30" title="Edit">
+                                    <button wire:click="rowEdit({{ $r->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Edit">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                     </button>
-                                    <button wire:click="rowDetail({{ $r->id }})" class="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded dark:hover:bg-blue-900/30" title="Detail">
+                                    <button wire:click="rowDetail({{ $r->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Detail">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     </button>
-                                    <button wire:click="rowSync({{ $r->id }})" class="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded dark:hover:bg-emerald-900/30" title="Sync">
+                                    <button wire:click="rowSync({{ $r->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 rounded dark:hover:bg-emerald-900/30" title="Sync">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                     </button>
-                                    <button wire:click="rowShowMap({{ $r->id }})" class="p-1 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 rounded dark:hover:bg-cyan-900/30" title="Map">
+                                    <button wire:click="rowShowMap({{ $r->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded dark:hover:bg-cyan-900/30" title="Map">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                     </button>
                                     @if ($this->activeTab === 'onu')
-                                        <button wire:click="rowTestLos({{ $r->id }})" class="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded dark:hover:bg-red-900/30" title="Test LOS">
+                                        <button wire:click="rowTestLos({{ $r->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 rounded dark:hover:bg-red-900/30" title="Test LOS">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                                         </button>
                                     @endif
                                     @if (($r->status ?? '') === 'active')
-                                        <button wire:click="rowDisable({{ $r->id }})" class="p-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded dark:hover:bg-amber-900/30" title="Disable">
+                                        <button wire:click="rowDisable({{ $r->id }})" class="p-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:bg-amber-900/30 rounded dark:hover:bg-amber-900/30" title="Disable">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                                         </button>
                                     @else
-                                        <button wire:click="rowEnable({{ $r->id }})" class="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded dark:hover:bg-emerald-900/30" title="Enable">
+                                        <button wire:click="rowEnable({{ $r->id }})" class="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-900/30 rounded dark:hover:bg-emerald-900/30" title="Enable">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
                                     @endif
@@ -227,7 +227,7 @@ foreach ($this->tabs as $k => $label) {
                     Menampilkan {{ $rows->firstItem() }}-{{ $rows->lastItem() }} dari {{ $rows->total() }}
                 </div>
                 <div class="flex items-center gap-2">
-                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-1 px-2">
+                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-1 px-2 dark:bg-slate-900 dark:text-slate-100">
                         <option value="10">10 / hal</option>
                         <option value="25">25 / hal</option>
                         <option value="50">50 / hal</option>
@@ -246,16 +246,16 @@ foreach ($this->tabs as $k => $label) {
             <div x-show="show" class="w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
                 <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 class="font-semibold">Hasil Test LOS ONU</h3>
-                    <button @click="show = false; $wire.closeLosTest()" class="text-slate-400 hover:text-slate-600">
+                    <button @click="show = false; $wire.closeLosTest()" class="text-slate-400 hover:text-slate-600 dark:text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 <div class="px-5 py-4 space-y-2 text-sm">
-                    <div class="flex justify-between"><span class="text-slate-500">SN:</span><span class="font-mono">{{ $this->losTestResult['serial_number'] }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Status:</span><x-status-badge :status="$this->losTestResult['status']" /></div>
-                    <div class="flex justify-between"><span class="text-slate-500">RX Power:</span><span class="font-mono">{{ $this->losTestResult['rx_power_dbm'] ?? '-' }} dBm</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">TX Power:</span><span class="font-mono">{{ $this->losTestResult['tx_power_dbm'] ?? '-' }} dBm</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Diuji:</span><span class="text-xs">{{ $this->losTestResult['tested_at'] }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">SN:</span><span class="font-mono">{{ $this->losTestResult['serial_number'] }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Status:</span><x-status-badge :status="$this->losTestResult['status']" /></div>
+                    <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">RX Power:</span><span class="font-mono">{{ $this->losTestResult['rx_power_dbm'] ?? '-' }} dBm</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">TX Power:</span><span class="font-mono">{{ $this->losTestResult['tx_power_dbm'] ?? '-' }} dBm</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Diuji:</span><span class="text-xs">{{ $this->losTestResult['tested_at'] }}</span></div>
                 </div>
                 <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/70 rounded-b-xl flex justify-end">
                     <button @click="show = false; $wire.closeLosTest()" class="px-3 py-1.5 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white">Tutup</button>
@@ -269,7 +269,7 @@ foreach ($this->tabs as $k => $label) {
             <div x-show="show" class="w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
                 <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 class="font-semibold">Lokasi: {{ $this->mapData['name'] }}</h3>
-                    <button @click="show = false; $wire.closeMapPopup()" class="text-slate-400 hover:text-slate-600">
+                    <button @click="show = false; $wire.closeMapPopup()" class="text-slate-400 hover:text-slate-600 dark:text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>

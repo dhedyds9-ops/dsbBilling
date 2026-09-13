@@ -5,8 +5,8 @@ namespace App\Livewire\ISP\ServiceProfile;
 use App\Livewire\AdminComponent;
 use App\Models\ISP\ServiceProfile as ServiceProfileModel;
 use App\Services\ISP\ServiceProfileService;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class Edit extends AdminComponent
 {
@@ -30,6 +30,15 @@ class Edit extends AdminComponent
     // Bandwidth
     public $download_speed = 10;
     public $upload_speed = 10;
+
+    // Burst Settings
+    public $enable_burst = false;
+    public $burst_limit_download;
+    public $burst_limit_upload;
+    public $burst_threshold_download;
+    public $burst_threshold_upload;
+    public $burst_time_download = 60;
+    public $burst_time_upload = 60;
     
     // Billing
     public $base_price = 0;
@@ -63,6 +72,8 @@ class Edit extends AdminComponent
         $this->activePage = 'service-profiles';
         $this->profileId = $id;
         $this->profile = ServiceProfileModel::findOrFail($id);
+
+        Gate::authorize('update', $this->profile);
 
         $this->code = $this->profile->code;
         $this->name = $this->profile->name;
@@ -104,10 +115,20 @@ class Edit extends AdminComponent
         $this->login_start_time = $this->profile->login_start_time ?? '00:00';
         $this->login_end_time = $this->profile->login_end_time ?? '23:59';
 
+        // Burst fields
+        $this->burst_limit_download = $this->profile->burst_limit_download;
+        $this->burst_limit_upload = $this->profile->burst_limit_upload;
+        $this->burst_threshold_download = $this->profile->burst_threshold_download;
+        $this->burst_threshold_upload = $this->profile->burst_threshold_upload;
+        $this->burst_time_download = $this->profile->burst_time_download ?? 60;
+        $this->burst_time_upload = $this->profile->burst_time_upload ?? 60;
+        $this->enable_burst = !empty($this->profile->burst_limit_download);
+
+
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Paket Internet', 'url' => route('isp.service-profiles.index')],
-            ['label' => $this->profile->name, 'url' => route('isp.service-profiles.show', $this->profileId)],
+            ['label' => $this->profile->name, 'url' => '#'],
             ['label' => 'Edit'],
         ];
     }
@@ -119,12 +140,35 @@ class Edit extends AdminComponent
             $this->owner_price = 0;
             $this->reseller_price = 0;
         }
+
+        if ($property === 'enable_burst' && $this->enable_burst) {
+            $this->calculateAutoBurst();
+        }
+    }
+
+    public function calculateAutoBurst()
+    {
+        if ($this->download_speed) {
+            $this->burst_limit_download = $this->download_speed * 2;
+            $this->burst_threshold_download = round($this->download_speed * 0.8);
+        }
+        if ($this->upload_speed) {
+            $this->burst_limit_upload = $this->upload_speed * 2;
+            $this->burst_threshold_upload = round($this->upload_speed * 0.8);
+        }
+        $this->burst_time_download = 60;
+        $this->burst_time_upload = 60;
     }
 
     public function save(ServiceProfileService $service)
     {
         Log::info('Update service profile: Starting process', ['user_id' => auth()->id(), 'profile_id' => $this->profileId]);
         
+        // Pastikan visibility selalu punya nilai valid
+        if (empty($this->visibility) || !in_array($this->visibility, ['private', 'shared', 'global'])) {
+            $this->visibility = 'private';
+        }
+
         $this->validate($this->rules(), [
             'name.required' => 'Nama paket harus diisi',
             'name.max' => 'Nama paket tidak boleh lebih dari 255 karakter',
@@ -158,6 +202,23 @@ class Edit extends AdminComponent
                 'login_start_time', 'login_end_time',
             ]);
 
+            // Sertakan burst hanya jika diaktifkan
+            if ($this->enable_burst) {
+                $data['burst_limit_download'] = $this->burst_limit_download;
+                $data['burst_limit_upload'] = $this->burst_limit_upload;
+                $data['burst_threshold_download'] = $this->burst_threshold_download;
+                $data['burst_threshold_upload'] = $this->burst_threshold_upload;
+                $data['burst_time_download'] = $this->burst_time_download;
+                $data['burst_time_upload'] = $this->burst_time_upload;
+            } else {
+                $data['burst_limit_download'] = null;
+                $data['burst_limit_upload'] = null;
+                $data['burst_threshold_download'] = null;
+                $data['burst_threshold_upload'] = null;
+                $data['burst_time_download'] = null;
+                $data['burst_time_upload'] = null;
+            }
+
             Log::info('Update service profile: Calling service layer', ['data' => $data]);
             
             $service->updateProfile($this->profile, $data, auth()->user());
@@ -165,7 +226,7 @@ class Edit extends AdminComponent
             Log::info('Update service profile: Success');
 
             session()->flash('success', 'Paket Internet berhasil diperbarui!');
-            return redirect()->route('isp.service-profiles.show', $this->profileId);
+            return redirect()->route('isp.service-profiles.index');
             
         } catch (\Exception $e) {
             Log::error('Update service profile: Failed', [
@@ -192,7 +253,7 @@ class Edit extends AdminComponent
             'validity_value' => 'required|integer|min:1',
             'validity_unit' => 'required|in:days,months,hours',
             'max_devices' => 'required|integer|min:1',
-            'visibility' => 'required|in:private,shared,global',
+            'visibility' => 'nullable|sometimes|in:private,shared,global',
         ];
         
         // Validate duration if time_based
@@ -207,7 +268,7 @@ class Edit extends AdminComponent
             $rules['quota_unit'] = 'required|in:MB,GB';
         }
 
-        if (auth()->user()->hasRole('super_admin')) {
+        if (auth()->user()->hasRole(\App\Enums\UserRole::Administrator->value)) {
             $rules['owner_price'] = 'required|numeric|min:0';
             $rules['reseller_price'] = 'required|numeric|min:0';
         }
@@ -217,9 +278,15 @@ class Edit extends AdminComponent
 
     public function render()
     {
-        $isSuperAdmin = auth()->user()->hasRole('super_admin') ?? false;
-        $users = $isSuperAdmin ? \App\Models\User::select('id', 'name')->limit(100)->get() : [];
+        $isAdministrator = auth()->user()->hasRole(\App\Enums\UserRole::Administrator->value) ?? false;
+        $users = $isAdministrator
+            ? \App\Models\User::select('id', 'name')
+                ->whereHas('roles', fn($q) => $q->whereIn('name', \App\Enums\UserRole::backofficeRoles()))
+                ->orderBy('name')
+                ->limit(100)
+                ->get()
+            : [];
         
-        return view('livewire.isp.service-profiles.form', compact('isSuperAdmin', 'users'));
+        return view('livewire.isp.service-profile.form', compact('isAdministrator', 'users'));
     }
 }

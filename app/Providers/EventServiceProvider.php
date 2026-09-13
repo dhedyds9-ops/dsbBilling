@@ -33,7 +33,7 @@ use Src\Domain\Billing\Events\InvoiceOverdueEvent;
 use Src\Domain\Billing\Events\PaymentReceivedEvent;
 use Src\Domain\Billing\Events\PaymentVerifiedEvent;
 use Src\Domain\Billing\Events\SubscriptionCreatedEvent;
-use App\Events\ISP\InternetPackageSaved;
+use App\Events\ISP\ServiceProfileSaved;
 use App\Events\ISP\PPPoEUserStatusChangedEvent;
 use App\Listeners\Provisioning\ServiceInstanceCreatedListener;
 use App\Listeners\Provisioning\ResourcesReservedListener;
@@ -52,7 +52,7 @@ use App\Listeners\Billing\InvoiceOverdueListener;
 use App\Listeners\Billing\PaymentReceivedListener;
 use App\Listeners\Billing\PaymentVerifiedListener;
 use App\Listeners\Billing\SubscriptionCreatedListener;
-use App\Listeners\ISP\SyncInternetPackageToRadius;
+use App\Listeners\ISP\SyncServiceProfileToRadiusAndMikrotik;
 use App\Listeners\ISP\SendPPPoEUserStatusChangedNotification;
 use App\Listeners\ISP\FiberServiceProvisioningListener;
 use App\Listeners\ISP\FiberServiceSuspensionListener;
@@ -79,6 +79,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         InvoicePaidEvent::class => [
             InvoicePaidListener::class,
+            \App\Listeners\Billing\GenerateVoucherOnInvoicePaid::class,
         ],
         InvoiceOverdueEvent::class => [
             InvoiceOverdueListener::class,
@@ -94,11 +95,34 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         // ==================== ISP LEGACY EVENTS (App\Events — TODO: migrate ke Src\Domain\ISP\Events) ====================
-        InternetPackageSaved::class => [
-            SyncInternetPackageToRadius::class,
+        ServiceProfileSaved::class => [
+            SyncServiceProfileToRadiusAndMikrotik::class,
         ],
         PPPoEUserStatusChangedEvent::class => [
             SendPPPoEUserStatusChangedNotification::class,
+        ],
+        \App\Events\ISP\Voucher\VouchersGeneratedEvent::class => [
+            \App\Listeners\ISP\SyncVouchersToMikrotikListener::class,
+        ],
+        \App\Events\ISP\OnuStatusChanged::class => [
+            \App\Listeners\ISP\UnifiedStateUpdater::class,
+        ],
+        \App\Events\ISP\Tr069StatusChanged::class => [
+            \App\Listeners\ISP\UnifiedStateUpdater::class,
+        ],
+        \App\Events\ISP\ServiceStatusChanged::class => [
+            \App\Listeners\ISP\UnifiedStateUpdater::class,
+        ],
+
+        // ==================== SUPPORT TICKET EVENTS ====================
+        \Src\Domain\Support\Events\TicketCreatedEvent::class => [
+            \App\Listeners\Support\TicketCreatedListener::class,
+        ],
+        \Src\Domain\Support\Events\TicketAssignedEvent::class => [
+            \App\Listeners\Support\TicketAssignedListener::class,
+        ],
+        \Src\Domain\Support\Events\TicketResolvedEvent::class => [
+            \App\Listeners\Support\TicketResolvedListener::class,
         ],
     ];
 
@@ -112,3 +136,4 @@ class EventServiceProvider extends ServiceProvider
         //
     }
 }
+

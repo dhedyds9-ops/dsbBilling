@@ -10,6 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 class FinancialStatementService
 {
+    protected SettlementCalculator $settlementCalculator;
+
+    public function __construct(SettlementCalculator $settlementCalculator)
+    {
+        $this->settlementCalculator = $settlementCalculator;
+    }
+
     protected function getPeriodRange(array $filters): array
     {
         $year = (int) ($filters['year'] ?? now()->year);
@@ -37,26 +44,68 @@ class FinancialStatementService
             ->sum('amount');
 
         $revenueLines = [];
-        $paymentsByGateway = Payment::where('status', 'success')
+        $payments = Payment::where('status', 'success')
             ->whereBetween('paid_at', [$start, $end])
-            ->select('gateway', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as cnt'))
-            ->groupBy('gateway')
+            ->with('invoices.items')
             ->get();
 
         $pppoe = 0;
         $hotspot = 0;
-        $voucher = 0;
+        $voucher_reguler = 0;
+        $evoucher = 0;
         $otherRev = 0;
 
-        foreach ($paymentsByGateway as $p) {
-            $gw = strtolower($p->gateway ?? '');
-            $amt = (float) $p->total;
-            if (str_contains($gw, 'pppoe') || str_contains($gw, 'isp')) {
-                $pppoe += $amt;
+        $feeReseller = 0;
+        $feeBranch = 0;
+        $hppInternet = 0;
+
+        foreach ($payments as $p) {
+            $amt = (float) $p->amount;
+            
+            $gw = strtolower($p->gateway ?? '') . ' ' . strtolower($p->method ?? '');
+            if ($p->relationLoaded('invoices') && $p->invoices->isNotEmpty()) {
+                $invTotal = (float) $p->invoices->sum('total_amount');
+                $paymentRatio = $invTotal > 0 ? ($amt / $invTotal) : 1;
+                
+                foreach ($p->invoices as $inv) {
+                    foreach ($inv->items as $item) {
+                        $qty = max(1, (int) $item->quantity);
+                        $unitPrice = (float) $item->unit_price;
+                        $ownerPrice = (float) $item->owner_settlement_price;
+                        $branchPrice = (float) $item->branch_settlement_price;
+                        $resellerPrice = (float) $item->reseller_settlement_price;
+
+                        $allocation = $this->settlementCalculator->calculateItem(
+                            $unitPrice,
+                            $ownerPrice,
+                            $branchPrice,
+                            $resellerPrice,
+                            $qty,
+                            $paymentRatio
+                        );
+                        $feeReseller += $allocation['reseller_margin'];
+                        $feeBranch += $allocation['branch_margin'];
+                        $hppInternet += $allocation['owner_settlement'];
+                    }
+                }
+                
+                $firstItem = $p->invoices->first()->items->first();
+                if ($firstItem) {
+                    $gw .= ' ' . strtolower($firstItem->label ?? '');
+                }
+            } else {
+                // Hapus estimasi kasar 35%. Jika tidak ada rincian invoice, biarkan 0
+                $hppInternet += 0;
+            }
+
+            if (str_contains($gw, 'evoucher') || str_contains($gw, 'e-voucher')) {
+                $evoucher += $amt;
+            } elseif (str_contains($gw, 'voucher')) {
+                $voucher_reguler += $amt;
             } elseif (str_contains($gw, 'hotspot')) {
                 $hotspot += $amt;
-            } elseif (str_contains($gw, 'voucher')) {
-                $voucher += $amt;
+            } elseif (str_contains($gw, 'pppoe') || str_contains($gw, 'isp')) {
+                $pppoe += $amt;
             } else {
                 $otherRev += $amt;
             }
@@ -64,15 +113,22 @@ class FinancialStatementService
 
         $revenueLines[] = ['label' => 'Pendapatan PPPoE / Langganan', 'amount' => $pppoe, 'type' => 'revenue'];
         $revenueLines[] = ['label' => 'Pendapatan Hotspot', 'amount' => $hotspot, 'type' => 'revenue'];
-        $revenueLines[] = ['label' => 'Pendapatan Voucher', 'amount' => $voucher, 'type' => 'revenue'];
+        $revenueLines[] = ['label' => 'Pendapatan Voucher Reguler', 'amount' => $voucher_reguler, 'type' => 'revenue'];
+        $revenueLines[] = ['label' => 'Pendapatan E-Voucher', 'amount' => $evoucher, 'type' => 'revenue'];
         $revenueLines[] = ['label' => 'Pendapatan Lainnya', 'amount' => $otherRev, 'type' => 'revenue'];
 
-        $totalRevenue = $pppoe + $hotspot + $voucher + $otherRev;
-        $cogsPercent = 0.35;
-        $cogs = round($totalRevenue * $cogsPercent, 2);
-        $cogsLines = [
-            ['label' => 'HPP (Biaya Pokok Penjualan)', 'amount' => $cogs, 'type' => 'cogs'],
-        ];
+        $totalRevenue = $pppoe + $hotspot + $voucher_reguler + $evoucher + $otherRev;
+        
+        $cogsLines = [];
+        if ($feeReseller > 0) {
+            $cogsLines[] = ['label' => 'Bagi Hasil Reseller (Fee Seller)', 'amount' => $feeReseller, 'type' => 'cogs'];
+        }
+        if ($feeBranch > 0) {
+            $cogsLines[] = ['label' => 'Bagi Hasil Branch', 'amount' => $feeBranch, 'type' => 'cogs'];
+        }
+        $cogsLines[] = ['label' => 'HPP Internet (Modal Pusat)', 'amount' => $hppInternet, 'type' => 'cogs'];
+        
+        $cogs = $feeReseller + $feeBranch + $hppInternet;
         $grossProfit = $totalRevenue - $cogs;
 
         $expenseTotal = 0;
@@ -106,9 +162,9 @@ class FinancialStatementService
         }
 
         if ($expenseTotal === 0) {
-            $estExp = round($grossProfit * 0.25, 2);
-            $expenseLines[] = ['label' => 'Beban Operasional (estimasi)', 'amount' => $estExp, 'type' => 'expense'];
-            $expenseTotal = $estExp;
+            // Hapus estimasi kasar 25%. Gunakan 0 jika tidak ada data dari modul Pengeluaran.
+            $expenseLines[] = ['label' => 'Beban Operasional (Belum Ada Data)', 'amount' => 0, 'type' => 'expense'];
+            $expenseTotal = 0;
         }
 
         $operatingProfit = $grossProfit - $expenseTotal;

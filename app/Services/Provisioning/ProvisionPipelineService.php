@@ -36,16 +36,14 @@ class ProvisionPipelineService
     protected function createDefaultSteps(ProvisionPipeline $pipeline): void
     {
         $steps = [
-            ['name' => 'Reserve Resources', 'type' => 'reservation', 'order' => 1],
-            ['name' => 'Assign Device', 'type' => 'device_assignment', 'order' => 2],
-            ['name' => 'Allocate VLAN', 'type' => 'vlan_allocation', 'order' => 3],
-            ['name' => 'Allocate IP', 'type' => 'ip_allocation', 'order' => 4],
-            ['name' => 'Allocate Queue', 'type' => 'queue_allocation', 'order' => 5],
-            ['name' => 'Provision Router', 'type' => 'router_provision', 'order' => 6],
-            ['name' => 'Provision RADIUS', 'type' => 'radius_provision', 'order' => 7],
-            ['name' => 'Provision ONU', 'type' => 'onu_provision', 'order' => 8],
-            ['name' => 'Verify Provisioning', 'type' => 'verification', 'order' => 9],
-            ['name' => 'Release Reservations', 'type' => 'release', 'order' => 10],
+            ['name' => 'Customer Validation', 'type' => 'customer_validation', 'order' => 1],
+            ['name' => 'Resource Reservation', 'type' => 'resource_reservation', 'order' => 2],
+            ['name' => 'ONU Registration', 'type' => 'olt_onu_registration', 'order' => 3],
+            ['name' => 'OLT Service Provisioning', 'type' => 'olt_service_provisioning', 'order' => 4],
+            ['name' => 'RADIUS Provisioning', 'type' => 'radius_provisioning', 'order' => 5],
+            ['name' => 'TR-069 Provisioning', 'type' => 'onu_tr069_provisioning', 'order' => 6],
+            ['name' => 'Service Verification', 'type' => 'service_verification', 'order' => 7],
+            ['name' => 'Activation', 'type' => 'activation', 'order' => 8],
         ];
 
         foreach ($steps as $step) {
@@ -59,6 +57,14 @@ class ProvisionPipelineService
         }
 
         $pipeline->update(['total_steps' => count($steps)]);
+    }
+
+    public function startPipeline(int $pipelineId): void
+    {
+        $pipeline = ProvisionPipeline::findOrFail($pipelineId);
+        
+        $orchestrator = app(\App\Services\Provisioning\Pipeline\PipelineOrchestrator::class);
+        $orchestrator->processNext($pipeline);
     }
 
     public function updateStepStatus(int $pipelineId, string $stepName, string $status, ?string $error = null): ProvisionPipelineStep

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
+    use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -20,8 +21,10 @@ class Payment extends Model
         'method',
         'status',
         'reference_number',
+        'gateway_transaction_id',
         'paid_at',
         'gateway',
+        'reseller_id',
         'created_by',
         'updated_by',
     ];

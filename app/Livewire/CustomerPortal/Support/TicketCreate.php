@@ -5,7 +5,9 @@ namespace App\Livewire\CustomerPortal\Support;
 use App\Services\CustomerPortal\CustomerSupportService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 
+#[Layout('layouts.customer-app')]
 class TicketCreate extends Component
 {
     public $title;
@@ -26,7 +28,14 @@ class TicketCreate extends Component
     {
         $this->validate();
 
-        $result = $supportService->createTicket(Auth::id(), [
+        $customer = auth()->user()->customer;
+        if (!$customer) {
+            $this->message = "Profil pelanggan tidak ditemukan.";
+            $this->messageType = 'error';
+            return;
+        }
+
+        $result = $supportService->createTicket($customer->id, [
             'title' => $this->title,
             'description' => $this->description,
             'category' => $this->category,
@@ -38,6 +47,8 @@ class TicketCreate extends Component
 
         if ($result['success']) {
             $this->reset(['title', 'description', 'category', 'priority']);
+            session()->flash('success', 'Tiket berhasil dibuat.');
+            return redirect()->route('customer-portal.support.ticket-list');
         }
     }
 

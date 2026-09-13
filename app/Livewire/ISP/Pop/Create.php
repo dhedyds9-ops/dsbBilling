@@ -38,7 +38,7 @@ class Create extends AdminComponent
     public function save()
     {
         $this->validate([
-            'code' => 'required|unique:isp_pops,code',
+            'code' => 'required|unique:pops,code',
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);

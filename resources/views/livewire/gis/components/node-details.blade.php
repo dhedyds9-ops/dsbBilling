@@ -1,10 +1,10 @@
-<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+<div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
     <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-gray-700">Node Details</h3>
+    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Node Details</h3>
         <button 
             wire:click="$emit('closeNodeDetails')"
-            class="text-gray-400 hover:text-gray-600"
+            class="text-gray-400 hover:text-gray-600 dark:text-gray-400"
         >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -20,26 +20,26 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p class="mt-2 text-sm text-gray-500">Loading...</p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
     @else
     <!-- Tabs -->
-    <div class="flex border-b border-gray-200">
+    <div class="flex border-b border-gray-200 dark:border-gray-700">
         <button 
             wire:click="$set('activeTab', 'overview')"
-            class="flex-1 px-4 py-2 text-sm font-medium {{ $activeTab === 'overview' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700' }}"
+            class="flex-1 px-4 py-2 text-sm font-medium {{ $activeTab === 'overview' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-300' }}"
         >
             Overview
         </button>
         <button 
             wire:click="$set('activeTab', 'performance')"
-            class="flex-1 px-4 py-2 text-sm font-medium {{ $activeTab === 'performance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700' }}"
+            class="flex-1 px-4 py-2 text-sm font-medium {{ $activeTab === 'performance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-300' }}"
         >
             Performance
         </button>
         <button 
             wire:click="$set('activeTab', 'connections')"
-            class="flex-1 px-4 py-2 text-sm font-medium {{ $activeTab === 'connections' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700' }}"
+            class="flex-1 px-4 py-2 text-sm font-medium {{ $activeTab === 'connections' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-300' }}"
         >
             Connections
         </button>
@@ -58,17 +58,17 @@
                             </span>
                             <span class="status-indicator status-{{ $nodeData['status'] ?? 'active' }}"></span>
                         </div>
-                        <span class="text-xs text-gray-500">ID: {{ $nodeId }}</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">ID: {{ $nodeId }}</span>
                     </div>
 
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900">{{ $nodeData['name'] ?? 'Unknown Node' }}</h4>
-                        <p class="text-sm text-gray-500">{{ $nodeData['location'] ?? 'No location' }}</p>
+                        <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $nodeData['name'] ?? 'Unknown Node' }}</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $nodeData['location'] ?? 'No location' }}</p>
                     </div>
 
                     <!-- Coordinates -->
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <p class="text-xs text-gray-500 mb-1">Coordinates</p>
+                    <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Coordinates</p>
                         <p class="text-sm font-mono">
                             {{ $nodeData['latitude'] ?? '0.0000' }}, {{ $nodeData['longitude'] ?? '0.0000' }}
                         </p>
@@ -76,20 +76,20 @@
 
                     <!-- Status Info -->
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-gray-50 rounded-lg p-3">
-                            <p class="text-xs text-gray-500">Status</p>
+                        <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Status</p>
                             <p class="text-sm font-medium capitalize">{{ $nodeData['status'] ?? 'unknown' }}</p>
                         </div>
-                        <div class="bg-gray-50 rounded-lg p-3">
-                            <p class="text-xs text-gray-500">Type</p>
+                        <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Type</p>
                             <p class="text-sm font-medium capitalize">{{ $nodeData['type'] ?? $nodeType }}</p>
                         </div>
                     </div>
 
                     <!-- Utilization -->
-                    <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
                         <div class="flex items-center justify-between mb-2">
-                            <p class="text-xs text-gray-500">Utilization</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Utilization</p>
                             <p class="text-sm font-medium">{{ $nodeData['utilization'] ?? 0 }}%</p>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2">
@@ -106,9 +106,9 @@
                 <!-- Performance Metrics -->
                 <div class="space-y-4">
                     @foreach($performanceMetrics as $metric)
-                    <div class="border border-gray-200 rounded-lg p-3">
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">{{ $metric['label'] ?? 'Metric' }}</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $metric['label'] ?? 'Metric' }}</span>
                             <span class="text-sm font-semibold {{ ($metric['value'] ?? 0) > ($metric['threshold'] ?? 100) ? 'text-red-600' : 'text-green-600' }}">
                                 {{ $metric['value'] ?? 0 }}{{ $metric['unit'] ?? '' }}
                             </span>
@@ -123,7 +123,7 @@
                     @endforeach
 
                     @if(empty($performanceMetrics))
-                    <div class="text-center py-4 text-gray-500">
+                    <div class="text-center py-4 text-gray-500 dark:text-gray-400">
                         <p class="text-sm">No performance data available</p>
                     </div>
                     @endif
@@ -136,15 +136,15 @@
                     @forelse($relatedNodes as $related)
                     <div 
                         wire:click="$emit('showNodeDetails', '{{ $related['id'] }}', '{{ $related['type'] }}')"
-                        class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                        class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:bg-gray-900/50 cursor-pointer transition-colors"
                     >
                         <div class="flex items-center space-x-3">
                             <span class="px-2 py-1 text-xs font-medium rounded bg-{{ $related['type'] === 'olt' ? 'blue' : 'green' }}-100 text-{{ $related['type'] === 'olt' ? 'blue' : 'green' }}-800">
                                 {{ strtoupper($related['type'] ?? '') }}
                             </span>
                             <div>
-                                <p class="text-sm font-medium text-gray-900">{{ $related['name'] ?? 'Unknown' }}</p>
-                                <p class="text-xs text-gray-500">{{ $related['connection_type'] ?? 'Connected' }}</p>
+                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $related['name'] ?? 'Unknown' }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $related['connection_type'] ?? 'Connected' }}</p>
                             </div>
                         </div>
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,7 +152,7 @@
                         </svg>
                     </div>
                     @empty
-                    <div class="text-center py-4 text-gray-500">
+                    <div class="text-center py-4 text-gray-500 dark:text-gray-400">
                         <p class="text-sm">No connected nodes</p>
                     </div>
                     @endforelse
@@ -162,11 +162,11 @@
     </div>
 
     <!-- Actions -->
-    <div class="p-4 border-t border-gray-200 bg-gray-50">
+    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
         <div class="flex space-x-2">
             <button 
                 wire:click="$emit('showOnMap', $nodeId, $nodeType)"
-                class="flex-1 px-3 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-600 rounded-lg hover:bg-blue-50"
+                class="flex-1 px-3 py-2 text-sm font-medium text-blue-600 bg-white dark:bg-slate-800 border border-blue-600 rounded-lg hover:bg-blue-50 dark:bg-blue-900/30"
             >
                 Show on Map
             </button>
@@ -185,7 +185,7 @@
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
         </svg>
-        <p class="mt-2 text-sm text-gray-500">Select a node to view details</p>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Select a node to view details</p>
     </div>
     @endif
 </div>

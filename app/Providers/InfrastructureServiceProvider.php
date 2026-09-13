@@ -41,6 +41,8 @@ class InfrastructureServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        $this->app->singleton(\Src\Domain\SharedKernel\Events\EventDispatcherInterface::class, \Src\Infrastructure\Events\LaravelEventDispatcher::class);
+        
         foreach ($this->singletons as $abstract => $concrete) {
             $this->app->singleton($abstract, $concrete);
         }
@@ -109,6 +111,25 @@ class InfrastructureServiceProvider extends ServiceProvider
                 $driver = app(\App\Integration\MikroTik\Services\RouterOSService::class)->getDriver($device);
                 return $driver->getQueueStats();
             }
+
+            public function checkAndRepairRadius($device, string $radiusIp, string $radiusSecret): bool
+            {
+                return false;
+            }
+
+            public function getLogs($device, int $limit = 50): array { return []; }
+            public function getPppServers($device): array { return []; }
+            public function getPppProfiles($device): array { return []; }
+            public function getPppSecrets($device): array { return []; }
+            public function getVpnServers($device): array { return []; }
+            public function getHotspotServers($device): array { return []; }
+            public function getHotspotProfiles($device): array { return []; }
+            public function getWalledGarden($device): array { return []; }
+            
+            // Web Winbox Phase 2
+            public function runTerminalCommand($device, string $command): array { return []; }
+            public function rebootRouter($device): bool { return false; }
+            public function backupRouter($device): ?array { return null; }
         };
         $monitoringService->registerDriver(Router::class, $oldMikroTikDriver);
     }

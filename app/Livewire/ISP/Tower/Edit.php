@@ -58,7 +58,7 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
-            'code' => 'required|unique:isp_towers,code,' . $this->towerId,
+            'code' => 'required|unique:towers,code,' . $this->towerId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);

@@ -205,10 +205,30 @@ class CustomerOnboardingService
         $data['updated_by'] = $userId;
 
         $installation = DB::transaction(function () use ($data) {
-            return $this->installationRepo->create($data);
+            $install = $this->installationRepo->create($data);
+            
+            // Otomatisasi Tiket Pemasangan Baru (Level: HIGH)
+            if (isset($install->survey->prospect)) {
+                $prospect = $install->survey->prospect;
+                \App\Models\Support\Ticket::create([
+                    'uuid' => (string) Str::uuid(),
+                    'customer_id' => null, // Pelanggan belum aktif, bisa dikaitkan ke prospect/lead di logic lain jika ada, atau dibiarkan null
+                    'title' => 'Pemasangan Baru - ' . $prospect->name,
+                    'description' => 'Jadwal Pemasangan Baru untuk ' . $prospect->name . ".\nAlamat: " . $prospect->address . "\nKontak: " . $prospect->phone,
+                    'category' => 'installation',
+                    'priority' => 'high',
+                    'status' => 'open',
+                    'assigned_to' => null, // PIC teknisi pemasangan
+                    'due_date' => $data['scheduled_at'] ?? now()->addDays(3),
+                    'created_by' => $data['created_by'],
+                    'updated_by' => $data['updated_by'],
+                ]);
+            }
+
+            return $install;
         });
 
-        Event::dispatch(new InstallationScheduledEvent($installation->uuid, $installation->survey->prospect_id));
+        Event::dispatch(new InstallationScheduledEvent($installation->uuid, $installation->survey->prospect_id ?? 0));
 
         return $installation;
     }

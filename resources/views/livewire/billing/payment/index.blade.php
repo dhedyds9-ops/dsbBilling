@@ -1,213 +1,226 @@
-<div class="space-y-6">
-    <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
-    {{-- Header --}}
-    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900">Payment Management</h1>
-            <p class="mt-1 text-sm text-slate-500">Kelola semua pembayaran pelanggan</p>
-        </div>
+<div>
+    @section('page_title')
         <div class="flex items-center gap-3">
-            <button wire:click="export" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
-                <svg class="w-4 h-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                </svg>
-                Export
-            </button>
-            <a href="{{ route('billing.payments.create') }}" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Buat Payment
-            </a>
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <span class="material-symbols-outlined notranslate" translate="no">payments</span>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Data Pembayaran</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Riwayat dan pencatatan pembayaran dari pelanggan</p>
+            </div>
         </div>
-    </div>
+    @endsection
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Total Payment</p>
-                    <p class="text-2xl font-bold text-slate-900 mt-1">{{ $stats['total'] ?? 0 }}</p>
+    <div class="space-y-4">
+        {{-- KPI CARDS --}}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {{-- Total Pemasukan --}}
+            <div wire:click="$set('filters.status', '')" class="relative overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800 group hover:shadow-md transition-all cursor-pointer">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-400 rounded-t-xl"></div>
+                <div class="absolute top-3 right-3 opacity-10 text-emerald-500 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">account_balance_wallet</span>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                    </svg>
-                </div>
-            </div>
-        </x-base.card>
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Total Amount</p>
-                    <p class="text-2xl font-bold text-slate-900 mt-1">Rp {{ number_format($stats['total_amount'] ?? 0, 0, ',', '.') }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-            </div>
-        </x-base.card>
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Success</p>
-                    <p class="text-2xl font-bold text-green-600 mt-1">{{ $stats['success'] ?? 0 }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-            </div>
-        </x-base.card>
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Pending</p>
-                    <p class="text-2xl font-bold text-yellow-600 mt-1">{{ $stats['pending'] ?? 0 }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-            </div>
-        </x-base.card>
-        <x-base.card>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-slate-500">Failed</p>
-                    <p class="text-2xl font-bold text-red-600 mt-1">{{ $stats['failed'] ?? 0 }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-            </div>
-        </x-base.card>
-    </div>
-
-    {{-- Search & Filters --}}
-    <x-base.card>
-        <div class="flex flex-col md:flex-row gap-4">
-            <div class="flex-1">
-                <input type="text" wire:model.live="search" placeholder="Cari referensi atau nama customer..." class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            </div>
-            <button wire:click="$toggle('showFilters')" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
-                <svg class="w-4 h-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
-                Filter
-            </button>
-            <button wire:click="resetFilters" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">
-                Reset
-            </button>
-        </div>
-        @if($showFilters)
-            <div class="mt-4 pt-4 border-t border-slate-200">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                        <select wire:model.live="filters.status" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                            <option value="">Semua Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="success">Success</option>
-                            <option value="failed">Failed</option>
-                        </select>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-2">Total Penerimaan</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Rp {{ number_format($stats['total_amount'] ?? 0, 0, ',', '.') }}</span>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Metode</label>
-                        <select wire:model.live="filters.method" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                            <option value="">Semua Metode</option>
-                            <option value="bank_transfer">Bank Transfer</option>
-                            <option value="cash">Cash</option>
-                            <option value="credit_card">Credit Card</option>
-                            <option value="e_wallet">E-Wallet</option>
-                        </select>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ number_format($stats['total'] ?? 0) }} Transaksi</p>
+                </div>
+            </div>
+
+            {{-- Sukses --}}
+            <div wire:click="$set('filters.status', 'success')" class="relative overflow-x-auto rounded-xl border border-blue-200 dark:border-blue-800/60 shadow-sm bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/50 dark:to-slate-800 group hover:shadow-md transition-all cursor-pointer">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-xl"></div>
+                <div class="absolute top-3 right-3 opacity-10 text-blue-500 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">check_circle</span>
+                </div>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-blue-600 dark:text-blue-500 uppercase tracking-widest mb-2">Berhasil (Success)</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{{ number_format($stats['success'] ?? 0) }}</span>
+                        <span class="text-sm font-medium text-slate-500 dark:text-slate-400">Transaksi</span>
                     </div>
                 </div>
             </div>
-        @endif
-    </x-base.card>
 
-    {{-- Data Table --}}
-    <x-base.card :padding="false">
-        <div class="overflow-x-auto rounded-xl border border-slate-200">
-            <table class="w-full">
+            {{-- Menunggu --}}
+            <div wire:click="$set('filters.status', 'pending')" class="relative overflow-x-auto rounded-xl border border-amber-200 dark:border-amber-800/60 shadow-sm bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/50 dark:to-slate-800 group hover:shadow-md transition-all cursor-pointer">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-400 rounded-t-xl"></div>
+                <div class="absolute top-3 right-3 opacity-10 text-amber-500 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">hourglass_empty</span>
+                </div>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-2">Menunggu (Pending)</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{{ number_format($stats['pending'] ?? 0) }}</span>
+                        <span class="text-sm font-medium text-slate-500 dark:text-slate-400">Transaksi</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Gagal --}}
+            <div wire:click="$set('filters.status', 'failed')" class="relative overflow-x-auto rounded-xl border border-red-200 dark:border-red-800/60 shadow-sm bg-gradient-to-br from-red-50 to-white dark:from-red-950/50 dark:to-slate-800 group hover:shadow-md transition-all cursor-pointer">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-rose-400 rounded-t-xl"></div>
+                <div class="absolute top-3 right-3 opacity-10 text-red-500 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">cancel</span>
+                </div>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-red-600 dark:text-red-500 uppercase tracking-widest mb-2">Gagal / Dibatalkan</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{{ number_format($stats['failed'] ?? 0) }}</span>
+                        <span class="text-sm font-medium text-slate-500 dark:text-slate-400">Transaksi</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- TOOLBAR --}}
+        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="flex-1 w-full relative max-w-md">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari No. Referensi atau Pelanggan..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+            </div>
+            <div class="flex items-center gap-2">
+                <select wire:model.live="filters.status" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                    <option value="">Semua Status</option>
+                    <option value="success">Berhasil (Success)</option>
+                    <option value="pending">Menunggu (Pending)</option>
+                    <option value="failed">Gagal (Failed)</option>
+                </select>
+                <select wire:model.live="filters.payment_method" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                    <option value="">Semua Metode</option>
+                    <option value="cash">Tunai (Cash)</option>
+                    <option value="transfer">Transfer Bank</option>
+                    <option value="qris">QRIS</option>
+                    <option value="payment_gateway">Payment Gateway</option>
+                </select>
+                                <select wire:model.live="perPage" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                    <option value="10">10 Baris</option>
+                    <option value="25">25 Baris</option>
+                    <option value="50">50 Baris</option>
+                    <option value="100">100 Baris</option>
+                </select>
+                <button wire:click="export" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export
+                </button>
+                <a href="{{ route('billing.payments.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span> Catat Pembayaran
+                </a>
+            </div>
+        </div>
+
+        {{-- DATA TABLE --}}
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden overflow-x-auto relative">
+            
+            {{-- Bulk Actions Bar --}}
+            @if(count($selected) > 0)
+            <div class="absolute top-0 left-0 w-full h-12 bg-indigo-50 dark:bg-indigo-900/30 border-b border-indigo-100 dark:border-indigo-800 flex items-center justify-between px-4 z-10">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                        <span class="w-5 h-5 inline-flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs mr-1">{{ count($selected) }}</span> Terpilih
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button wire:click="bulkDelete" wire:confirm="Yakin ingin menghapus {{ count($selected) }} pembayaran terpilih secara permanen?" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm flex items-center gap-1.5">
+                        <span class="material-symbols-outlined" style="font-size:16px">delete</span> Hapus
+                    </button>
+                </div>
+            </div>
+            @endif
+
+            <table class="w-full text-sm text-left">
                 <thead>
-                    <tr class="bg-slate-50">
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Referensi</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Customer</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Amount</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Metode</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Tanggal</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Aksi</th>
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/80">
+                        <th class="px-4 py-3 w-10 text-center">
+                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-600 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                        </th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">No. Referensi</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Pelanggan</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Invoice</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Tanggal Bayar</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Metode</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Nominal</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200">
-                    @foreach($payments as $payment)
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-6 py-4">
-                                <div class="font-medium text-slate-900">{{ $payment->reference_number }}</div>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                    @forelse($payments as $payment)
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-4 py-3 text-center">
+                                <input type="checkbox" wire:model.live="selected" value="{{ $payment->id }}" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-600 cursor-pointer">
                             </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold">
-                                        {{ substr($payment->customer?->name ?? 'U', 0, 1) }}
-                                    </div>
-                                    <div class="font-medium text-slate-900">{{ $payment->customer?->name ?? '-' }}</div>
-                                </div>
+                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                {{ $payment->reference_number ?? '-' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-slate-900 font-medium">Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 text-sm text-slate-600">
-                                {{ ucfirst(str_replace('_', ' ', $payment->method)) }}
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
+                                <div class="font-medium">{{ $payment->customer->name ?? '-' }}</div>
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                    @if($payment->status === 'success') bg-green-100 text-green-600
-                                    @elseif($payment->status === 'pending') bg-yellow-100 text-yellow-600
-                                    @elseif($payment->status === 'failed') bg-red-100 text-red-600
-                                    @else bg-slate-100 text-slate-600
-                                    @endif
-                                ">
-                                    {{ ucfirst($payment->status) }}
-                                </span>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+    @if($payment->invoices->count() > 0)
+        <a href="{{ route('billing.invoices.show', $payment->invoices->first()->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
+            {{ $payment->invoices->first()->invoice_number }}
+        </a>
+    @else
+        -
+    @endif
+</td>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                {{ $payment->paid_at?->format('d M Y, H:i') ?? '-' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-slate-600">{{ $payment->paid_at?->format('d/m/Y') ?? $payment->created_at?->format('d/m/Y') }}</td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-2">
-                                    <a href="{{ route('billing.payments.show', $payment->id) }}" class="p-2 text-slate-500 hover:text-primary-600 rounded-lg hover:bg-slate-100">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
-                                    </a>
-                                    <a href="{{ route('billing.payments.edit', $payment->id) }}" class="p-2 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                        </svg>
-                                    </a>
-                                    <button wire:click="delete({{ $payment->id }})" wire:confirm="Yakin ingin menghapus payment ini?" class="p-2 text-slate-500 hover:text-red-600 rounded-lg hover:bg-slate-100">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 uppercase text-xs font-semibold">
+                                {{ str_replace('_', ' ', $payment->method) }}
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($payment->status === 'success')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">check_circle</span> Sukses</span>
+                                @elseif($payment->status === 'pending')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">schedule</span> Menunggu</span>
+                                @elseif($payment->status === 'failed')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">cancel</span> Gagal</span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">{{ ucfirst($payment->status) }}</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                                Rp {{ number_format($payment->amount, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+    @if($payment->invoices->count() > 0)
+        <a href="{{ route('billing.invoices.show', $payment->invoices->first()->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Print Invoice">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
+        </a>
+    @else
+        <span class="text-xs text-slate-400 italic">Tanpa Invoice</span>
+    @endif
+    @if(auth()->user()->hasRole('administrator'))
+        <button wire:click="delete({{ $payment->id }})" onclick="confirm('Yakin ingin menghapus data pembayaran ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors" title="Hapus">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+        </button>
+    @endif
+</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                                <div class="flex flex-col items-center justify-center">
+                                    <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">payments</span>
+                                    <p class="text-lg font-medium text-slate-900 dark:text-slate-100 mt-2">Tidak Ada Data</p>
+                                    <p class="text-sm mt-1">Belum ada riwayat pembayaran yang ditemukan.</p>
                                 </div>
                             </td>
                         </tr>
-                    @endforeach
+                    @endforelse
                 </tbody>
             </table>
+            @if($payments->hasPages())
+                <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                    {{ $payments->links() }}
+                </div>
+            @endif
         </div>
-        @if($payments->hasPages())
-            <div class="px-6 py-4 border-t border-slate-200">
-                {{ $payments->links() }}
-            </div>
-        @endif
-    </x-base.card>
+    </div>
 </div>

@@ -1,9 +1,11 @@
 <?php
 
 use App\Jobs\ISP\CheckOverdueInvoicesJob;
+use App\Jobs\Monitoring\RunCollectorJob;
 use App\Services\ISP\FiberLinkStatusService;
 use App\Services\ISP\OdpOccupancyService;
 use App\Services\ISP\OltPollingService;
+use App\Services\Monitoring\Collectors\RouterCollector;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
@@ -11,9 +13,10 @@ Artisan::command('inspire', function () {
     $this->comment(\Illuminate\Foundation\Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('billing:run-automation')
-    ->dailyAt('08:00')
-    ->timezone('Asia/Jakarta');
+Schedule::command('billing:mass-generate')
+    ->dailyAt('01:00')
+    ->timezone('Asia/Jakarta')
+    ->name('Mass Billing Generator');
 
 Schedule::command('billing:run-automation')
     ->dailyAt('18:00')
@@ -23,6 +26,11 @@ Schedule::job(new CheckOverdueInvoicesJob(graceDays: 0))
     ->dailyAt('09:00')
     ->timezone('Asia/Jakarta')
     ->name('Check Overdue Invoices and Isolate Users');
+
+Schedule::command('billing:auto-suspend')
+    ->dailyAt('00:01')
+    ->timezone('Asia/Jakarta')
+    ->name('Engine Isolir Otomatis - Janji Bayar Check');
 
 Schedule::command('radius:reap-dead-sessions --timeout=3600')
     ->everyTenMinutes()
@@ -57,6 +65,19 @@ Schedule::call(function (OltPollingService $polling) {
     ->name('OLT / ONU SNMP Signal Polling')
     ->withoutOverlapping(5);
 
+// =================== ROUTER (MIKROTIK) POLLING ===================
+Schedule::job(new RunCollectorJob(RouterCollector::class))
+    ->everyMinute()
+    ->timezone('Asia/Jakarta')
+    ->name('MikroTik Router Status Polling')
+    ->withoutOverlapping(1);
+
+Schedule::command('acs:monitor-alarms')
+    ->everyFiveMinutes()
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping(5)
+    ->name('ACS Alarms Polling');
+
 Schedule::call(function (OdpOccupancyService $svc) {
     $svc->recalculateAll();
 })
@@ -77,4 +98,17 @@ Schedule::call(function (FiberLinkStatusService $svc) {
     ->hourly()
     ->timezone('Asia/Jakarta')
     ->name('Fiber Link Quality Alerting (Problem ODP)')
+    ->withoutOverlapping(30);
+
+// =================== PAYMENT RECONCILIATION ===================
+Schedule::command('payment:reconcile')
+    ->everyFifteenMinutes()
+    ->timezone('Asia/Jakarta')
+    ->name('Reconcile Payment Gateways')
+    ->withoutOverlapping(10);
+
+Schedule::command('gacs:reconcile-states')
+    ->hourly()
+    ->timezone('Asia/Jakarta')
+    ->name('GACS State Reconciliation Hourly')
     ->withoutOverlapping(30);

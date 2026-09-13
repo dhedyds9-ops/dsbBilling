@@ -48,6 +48,7 @@ use App\Repositories\GIS\CoverageAreaRepository;
 use App\Repositories\GIS\ServiceAreaRepository;
 use App\Repositories\GIS\MapLayerRepository;
 use App\Repositories\GIS\CoordinateReferenceSystemRepository;
+use App\Repositories\Voucher\EloquentVoucherRepository;
 use Illuminate\Support\ServiceProvider;
 use Src\Domain\CRM\CoverageCheckRepositoryInterface;
 use Src\Domain\CRM\CustomerActivationRepositoryInterface;
@@ -94,6 +95,7 @@ use Src\Domain\GIS\Repositories\CoverageAreaRepositoryInterface;
 use Src\Domain\GIS\Repositories\ServiceAreaRepositoryInterface;
 use Src\Domain\GIS\Repositories\MapLayerRepositoryInterface;
 use Src\Domain\GIS\Repositories\CoordinateReferenceSystemRepositoryInterface;
+use Src\Domain\Voucher\Repositories\VoucherRepositoryInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -151,6 +153,9 @@ class AppServiceProvider extends ServiceProvider
         ServiceAreaRepositoryInterface::class => ServiceAreaRepository::class,
         MapLayerRepositoryInterface::class => MapLayerRepository::class,
         CoordinateReferenceSystemRepositoryInterface::class => CoordinateReferenceSystemRepository::class,
+
+        // Voucher Repositories
+        VoucherRepositoryInterface::class => EloquentVoucherRepository::class,
     ];
 
     public function register(): void
@@ -160,6 +165,17 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->environment('production')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
+        // Wire Laravel's native 'can' to our custom permission system
+        \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
+            if (method_exists($user, 'hasPermission') && $user->hasPermission($ability)) {
+                return true;
+            }
+        });
+
         \Illuminate\Support\Facades\View::composer('layouts.admin', \App\View\Composers\AdminLayoutComposer::class);
 
         \Illuminate\Support\Facades\RateLimiter::for('radius.accounting', function (\Illuminate\Http\Request $request) {
@@ -168,6 +184,17 @@ class AppServiceProvider extends ServiceProvider
                 : $request->ip());
             return [
                 \Illuminate\Cache\RateLimiting\Limit::perMinute(1200)->by((string)$nasIp),
+            ];
+        });
+
+        \Illuminate\Support\Facades\RateLimiter::for('radius.preauth', function (\Illuminate\Http\Request $request) {
+            // Throttle per NAS IP (bukan per client IP) — FreeRADIUS mengirim dari satu NAS server
+            // 300 req/menit sudah cukup untuk ISP dengan 100-200 user login bersamaan
+            $nasIp = $request->input('nas_ip_address')
+                ?? ($request->header('X-Forwarded-For') ? explode(',', (string)$request->header('X-Forwarded-For'))[0]
+                : $request->ip());
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(300)->by((string)$nasIp),
             ];
         });
     }

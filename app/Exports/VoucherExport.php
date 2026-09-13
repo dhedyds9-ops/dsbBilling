@@ -57,7 +57,7 @@ class VoucherExport implements FromCollection, WithHeadings, ShouldAutoSize, Wit
             $voucher->voucherPool?->name,
             $voucher->serviceProfile?->name,
             $voucher->nasDevice?->name,
-            $voucher->owner?->name,
+            $voucher->reseller?->name,
             $voucher->status,
             $voucher->type,
             $voucher->fee_seller,
@@ -70,3 +70,4 @@ class VoucherExport implements FromCollection, WithHeadings, ShouldAutoSize, Wit
         ];
     }
 }
+

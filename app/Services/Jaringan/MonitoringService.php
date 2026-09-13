@@ -332,7 +332,7 @@ class MonitoringService
 
     public function getCustomerOptions(): array
     {
-        return \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'customer'))
+        return \App\Models\CRM\Customer::where('status', 'active')
             ->orderBy('name')
             ->pluck('name', 'id')
             ->toArray();

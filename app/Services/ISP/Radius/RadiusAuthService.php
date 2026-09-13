@@ -33,6 +33,8 @@ final class RadiusAuthService
     ) {}
 
     /**
+     * @param  bool  $authorizeOnly  Jika true, skip verifikasi password (untuk authorize-only endpoint).
+     *                                Gunakan flag ini — JANGAN gunakan password dummy string.
      * @return array{ok: bool, username: string, reason: string, context?: RadiusAccessContext, auth_method?: string}
      */
     public function authenticate(
@@ -44,14 +46,21 @@ final class RadiusAuthService
         ?string $calledStationId = null,
         ?string $framedIp = null,
         string $protocol = 'pppoe',
+        bool $authorizeOnly = false,
     ): array {
         $t0 = microtime(true);
         $username = trim($username);
         $password = (string)$password;
 
         try {
-            if ($username === '' || $password === '') {
-                return $this->fail($username, 'Username / password kosong', $t0);
+            // Validasi username: wajib ada
+            if ($username === '') {
+                return $this->fail($username, 'Username tidak boleh kosong', $t0);
+            }
+
+            // Validasi password hanya jika bukan mode authorize-only
+            if (!$authorizeOnly && $password === '') {
+                return $this->fail($username, 'Password tidak boleh kosong', $t0);
             }
 
             // Cascade lookup: PPPoEUser -> HotspotUser -> VoucherCode
@@ -61,9 +70,12 @@ final class RadiusAuthService
                 return $this->fail($username, 'Username tidak terdaftar di sistem', $t0);
             }
 
-            $authed = $this->verifyPassword($lookup['identity'], $password);
-            if (!$authed) {
-                return $this->fail($username, 'Password salah', $t0, $lookup['method']);
+            // Jika authorizeOnly=true, skip verifikasi password — context sudah cukup untuk policy evaluation
+            if (!$authorizeOnly) {
+                $authed = $this->verifyPassword($lookup['identity'], $password);
+                if (!$authed) {
+                    return $this->fail($username, 'Password salah', $t0, $lookup['method']);
+                }
             }
 
             $ctx = $this->hydrateContext(
@@ -147,13 +159,23 @@ final class RadiusAuthService
     {
         if ($identity instanceof Voucher) {
             // Voucher: password opsional. Jika password = null / '' = accept.
-            $stored = (string)($identity->password ?? '');
+            $storedRaw = (string)($identity->password ?? '');
+        try {
+            $stored = str_starts_with($storedRaw, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($storedRaw) : $storedRaw;
+        } catch (\Exception $e) {
+            $stored = $storedRaw;
+        }
             if ($stored === '') return true;
             return Hash::check($plain, $stored) || $plain === $stored;
         }
 
         /** @var PPPoEUser|HotspotUser $identity */
-        $stored = (string)($identity->password ?? '');
+        $storedRaw = (string)($identity->password ?? '');
+        try {
+            $stored = str_starts_with($storedRaw, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($storedRaw) : $storedRaw;
+        } catch (\Exception $e) {
+            $stored = $storedRaw;
+        }
         if ($stored === '') return false;
 
         // Hash Laravel

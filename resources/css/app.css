@@ -1,3 +1,634 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --ds-primary: #2563eb;
+    --ds-on-primary: #ffffff;
+    --ds-primary-container: #dbeafe;
+    --ds-on-primary-container: #1e3a8a;
+
+    --ds-secondary: #7c3aed;
+    --ds-on-secondary: #ffffff;
+    --ds-secondary-container: #ede9fe;
+    --ds-on-secondary-container: #4c1d95;
+
+    --ds-tertiary: #0891b2;
+    --ds-on-tertiary: #ffffff;
+    --ds-tertiary-container: #cffafe;
+    --ds-on-tertiary-container: #164e63;
+
+    --ds-surface: #ffffff;
+    --ds-surface-dim: #f8fafc;
+    --ds-surface-bright: #ffffff;
+    --ds-surface-container-lowest: #ffffff;
+    --ds-surface-container-low: #f8fafc;
+    --ds-surface-container: #f1f5f9;
+    --ds-surface-container-high: #e2e8f0;
+    --ds-surface-container-highest: #cbd5e1;
+    --ds-on-surface: #0f172a;
+    --ds-on-surface-variant: #475569;
+    --ds-outline: #94a3b8;
+    --ds-outline-variant: #cbd5e1;
+
+    --ds-error: #dc2626;
+    --ds-on-error: #ffffff;
+    --ds-error-container: #fee2e2;
+    --ds-on-error-container: #7f1d1d;
+
+    --ds-success: #16a34a;
+    --ds-warning: #d97706;
+
+    --ds-primary-50: #eff6ff;
+    --ds-primary-100: #dbeafe;
+    --ds-primary-200: #bfdbfe;
+    --ds-primary-300: #93c5fd;
+    --ds-primary-400: #60a5fa;
+    --ds-primary-500: #3b82f6;
+    --ds-primary-600: #2563eb;
+    --ds-primary-700: #1d4ed8;
+    --ds-primary-800: #1e40af;
+    --ds-primary-900: #1e3a8a;
+
+    --ds-scrim: rgb(15 23 42 / 40%);
+    --ds-shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+    --ds-shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+    --ds-shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.06);
+    --ds-shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.08);
+    --ds-shadow-xl: 0 20px 25px -5px rgb(15  23  42 / 0.10), 0 8px 10px -6px rgb(15 23  42  /  0.10);
+
+    --ds-radius-xs: 0.375rem;
+    --ds-radius-sm: 0.5rem;
+    --ds-radius-md: 0.75rem;
+    --ds-radius-lg: 1rem;
+    --ds-radius-xl: 1.25rem;
+    --ds-radius-2xl: 1.5rem;
+    --ds-radius-full: 9999px;
+}
+
+.dark {
+    --ds-surface: #0b1120;
+    --ds-surface-dim: #020617;
+    --ds-surface-bright: #1e293b;
+    --ds-surface-container-lowest: #020617;
+    --ds-surface-container-low: #0f172a;
+    --ds-surface-container: #1e293b;
+    --ds-surface-container-high: #334155;
+    --ds-surface-container-highest: #475569;
+    --ds-on-surface: #f1f5f9;
+    --ds-on-surface-variant: #94a3b8;
+    --ds-outline: #475569;
+    --ds-outline-variant: #334155;
+
+    --ds-primary: #60a5fa;
+    --ds-on-primary: #172554;
+    --ds-primary-container: #1e3a8a;
+    --ds-on-primary-container: #dbeafe;
+
+    --ds-secondary: #c084fc;
+    --ds-on-secondary: #3b0764;
+    --ds-secondary-container: #4c1d95;
+    --ds-on-secondary-container: #ede9fe;
+
+    --ds-error: #f87171;
+    --ds-error-container: #7f1d1d;
+    --ds-on-error-container: #fee2e2;
+
+    --ds-success: #4ade80;
+    --ds-warning: #fbbf24;
+}
+
+html, body {
+    scroll-behavior: smooth;
+    background-color: var(--ds-surface-container-low);
+    color: var(--ds-on-surface);
+}
+
+body {
+    font-family: 'Figtree', 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+        'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* ============ Material Symbols ============ */
+.material-symbols-outlined {
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    vertical-align: middle;
+}
+.material-symbols-outlined.fill {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.material-symbols-outlined.weight-500 { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+.material-symbols-outlined.weight-600 { font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24; }
+.ms-14 { font-size: 14px; }
+.ms-16 { font-size: 16px; }
+.ms-18 { font-size: 18px; }
+.ms-20 { font-size: 20px; }
+.ms-22 { font-size: 22px; }
+.ms-24 { font-size: 24px; }
+.ms-28 { font-size: 28px; }
+.ms-32 { font-size: 32px; }
+.ms-36 { font-size: 36px; }
+.ms-40 { font-size: 40px; }
+.ms-48 { font-size: 48px; }
+
+/* ============ Design Token Helpers ============ */
+.text-ds-primary { color: var(--ds-primary); }
+.text-ds-on-primary { color: var(--ds-on-primary); }
+.bg-ds-primary { background-color: var(--ds-primary); }
+.bg-ds-primary-container { background-color: var(--ds-primary-container); }
+.text-ds-on-primary-container { color: var(--ds-on-primary-container); }
+
+.text-ds-secondary { color: var(--ds-secondary); }
+.bg-ds-secondary { background-color: var(--ds-secondary); }
+.bg-ds-secondary-container { background-color: var(--ds-secondary-container); }
+.text-ds-on-secondary-container { color: var(--ds-on-secondary-container); }
+
+.text-ds-tertiary { color: var(--ds-tertiary); }
+.bg-ds-tertiary { background-color: var(--ds-tertiary); }
+
+.bg-ds-surface { background-color: var(--ds-surface); }
+.bg-ds-surface-dim { background-color: var(--ds-surface-dim); }
+.bg-ds-surface-container-lowest { background-color: var(--ds-surface-container-lowest); }
+.bg-ds-surface-container-low { background-color: var(--ds-surface-container-low); }
+.bg-ds-surface-container { background-color: var(--ds-surface-container); }
+.bg-ds-surface-container-high { background-color: var(--ds-surface-container-high); }
+.bg-ds-surface-container-highest { background-color: var(--ds-surface-container-highest); }
+
+.text-ds-on-surface { color: var(--ds-on-surface); }
+.text-ds-on-surface-variant { color: var(--ds-on-surface-variant); }
+
+.border-ds-outline { border-color: var(--ds-outline); }
+.border-ds-outline-variant { border-color: var(--ds-outline-variant); }
+
+.text-ds-error { color: var(--ds-error); }
+.bg-ds-error { background-color: var(--ds-error); }
+.bg-ds-error-container { background-color: var(--ds-error-container); }
+.text-ds-on-error-container { color: var(--ds-on-error-container); }
+
+.text-ds-success { color: var(--ds-success); }
+.text-ds-warning { color: var(--ds-warning); }
+
+/* ============ Buttons (Reusable) ============ */
+.btn-primary-solid {
+    background: var(--ds-primary);
+    color: var(--ds-on-primary);
+    transition: all 0.2s ease;
+    border-radius: var(--ds-radius-md);
+}
+.btn-primary-solid:hover {
+    background: var(--ds-primary-700);
+    transform: translateY(-1px);
+    box-shadow: var(--ds-shadow-md);
+}
+.btn-primary-tonal {
+    background: var(--ds-primary-container);
+    color: var(--ds-on-primary-container);
+    border-radius: var(--ds-radius-md);
+    transition: all 0.2s ease;
+}
+.btn-primary-tonal:hover {
+    filter: brightness(0.95);
+}
+
+/* ============ Glass & Surface Cards ============ */
+.glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+.dark .glass-card {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.surface-card {
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-outline-variant);
+    border-radius: var(--ds-radius-lg);
+    box-shadow: var(--ds-shadow-sm);
+}
+.surface-card-interactive {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.surface-card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ds-shadow-md);
+    border-color: var(--ds-outline);
+}
+
+/* ============ Landing Page ============ */
+.price-best-seller-badge {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-secondary) 100%);
+    color: white;
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: var(--ds-shadow-lg);
+    z-index: 20;
+}
+.pricing-card-wrapper {
+    perspective: 1000px;
+}
+.best-seller-card {
+    position: relative;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+.hero-gradient-bg {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.12) 0%, transparent 50%),
+        radial-gradient(circle at 80% 30%, rgba(124, 58, 237, 0.10) 0%, transparent 50%),
+        radial-gradient(circle at 50% 80%, rgba(8, 145, 178, 0.10) 0%, transparent 50%),
+        linear-gradient(180deg, var(--ds-surface-container-low) 0%, var(--ds-surface) 100%);
+}
+.grid-pattern {
+    background-image:
+        linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+@keyframes blob {
+    0% { transform: translate(0px, 0px) scale(1); }
+    33% { transform: translate(30px, -50px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
+    100% { transform: translate(0px, 0px) scale(1); }
+}
+.animate-blob { animation: blob 7s infinite; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-3000 { animation-delay: 3s; }
+.animation-delay-4000 { animation-delay: 4s; }
+.animation-delay-5000 { animation-delay: 5s; }
+
+/* ============ Network Topology Animations ============ */
+@keyframes dash-draw {
+    from { stroke-dashoffset: 200; }
+    to   { stroke-dashoffset: 0; }
+}
+@keyframes node-pulse {
+    0%, 100% { opacity: 1; r: 5; }
+    50%       { opacity: 0.6; r: 7; }
+}
+@keyframes flow-dot {
+    0%   { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -40; }
+}
+.net-line {
+    stroke-dasharray: 8 4;
+    animation: flow-dot 1.6s linear infinite;
+}
+.net-line-draw {
+    stroke-dasharray: 200;
+    animation: dash-draw 1.2s ease forwards;
+}
+.net-node-pulse {
+    animation: node-pulse 2s ease-in-out infinite;
+}
+.animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============ Login Page Helpers ============ */
+.login-grid-bg {
+    background-image:
+        linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 36px 36px;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+    animation: fadeInUp 0.6s ease forwards;
+    opacity: 0;
+}
+
+/* ============ Accordion / Tabs ============ */
+.accordion-content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.35s ease;
+}
+.accordion-content.open {
+    max-height: 800px;
+}
+.nav-link-underline {
+    position: relative;
+}
+.nav-link-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--ds-primary) 0%, var(--ds-secondary) 100%);
+    transition: width 0.3s ease;
+    border-radius: 2px;
+}
+.nav-link-underline:hover::after {
+    width: 100%;
+}
+
+/* ============ Form Fields Reset ============ */
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+}
+
+/* ============ Scrollbar (Material-ish) ============ */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: var(--ds-surface-container-low);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--ds-outline-variant);
+    border-radius: 999px;
+    border: 2px solid var(--ds-surface-container-low);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ds-outline);
+}
+
+/* ============ Utility: No Select / Drag Ghosting ============ */
+[x-cloak] { display: none !important; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ============ Table Chrome ============ */
+.ds-table-wrapper {
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-outline-variant);
+    border-radius: var(--ds-radius-lg);
+    box-shadow: var(--ds-shadow-sm);
+    overflow: hidden;
+}
+.ds-table thead {
+    background: var(--ds-surface-container-low);
+    border-bottom: 1px solid var(--ds-outline-variant);
+}
+.ds-table thead th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ds-on-surface-variant);
+    white-space: nowrap;
+}
+.ds-table tbody td {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    color: var(--ds-on-surface);
+    border-top: 1px solid var(--ds-outline-variant);
+}
+.ds-table tbody tr:hover td {
+    background: var(--ds-surface-container-low);
+}
+
+/* ============ Status Dots ============ */
+.status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    display: inline-block;
+    box-shadow: 0 0 0 3px currentColor;
+    opacity: 0.18;
+}
+.status-dot::after {
+    content: '';
+}
+
+/* =========================================================
+   DSBILLING NEON THEME OVERRIDES (ENTERPRISE ISP BILLING)
+   ========================================================= */
+
+:root {
+    --neon-primary: #00e5ff;
+    --neon-secondary: #00f3ff;
+    --neon-success: #10b981;
+    --neon-warning: #f59e0b;
+    --neon-danger: #ef4444;
+    --neon-info: #0ea5e9;
+    
+    --neon-border: #00e5ff;
+}
+
+/* --- BACKGROUND GLOW --- */
+body.dark, .dark body {
+    background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.08), transparent 35%), #05070D !important;
+}
+body:not(.dark) {
+    background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.05), transparent 35%), #F8FAFC !important;
+}
+
+/* --- CARDS --- */
+/* Target rounded border containers inside the content area */
+.ds-main-content .rounded-lg.border,
+.ds-main-content .rounded-xl.border,
+.ds-main-content .bg-white.border {
+    background: #FFFFFF !important;
+    border-color: rgba(0, 229, 255, 0.18) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.3s ease;
+}
+.ds-main-content .rounded-lg.border:hover,
+.ds-main-content .rounded-xl.border:hover,
+.ds-main-content .bg-white.border:hover {
+    border-color: rgba(0, 229, 255, 0.40) !important;
+    box-shadow: 0 4px 24px rgba(0, 229, 255, 0.10) !important;
+}
+
+.dark .ds-main-content .rounded-lg.border,
+.dark .ds-main-content .rounded-xl.border,
+.dark .ds-main-content .bg-slate-800.border,
+.dark .ds-main-content .bg-slate-900.border {
+    background: rgba(12, 17, 27, 0.92) !important;
+    border-color: rgba(0, 229, 255, 0.22) !important;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.06) !important;
+}
+.dark .ds-main-content .rounded-lg.border:hover,
+.dark .ds-main-content .rounded-xl.border:hover,
+.dark .ds-main-content .bg-slate-800.border:hover,
+.dark .ds-main-content .bg-slate-900.border:hover {
+    border-color: rgba(0, 229, 255, 0.45) !important;
+    box-shadow: 0 0 18px rgba(0, 229, 255, 0.12) !important;
+}
+
+/* Exceptions for badges inside cards that might get caught by rounded-lg */
+.ds-main-content span.rounded-lg,
+.ds-main-content span.border,
+.ds-main-content span.rounded-full,
+.ds-main-content svg.rounded-lg {
+    background: inherit !important;
+    border-color: inherit !important;
+    box-shadow: none !important;
+}
+
+/* --- TABLES --- */
+.ds-main-content table {
+    border: 1px solid rgba(0, 229, 255, 0.16) !important;
+    border-collapse: collapse;
+}
+.ds-main-content thead {
+    background: rgba(0, 229, 255, 0.04) !important;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.28) !important;
+}
+.ds-main-content thead th {
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+}
+.ds-main-content tbody tr {
+    border-bottom: 1px solid rgba(0, 229, 255, 0.08) !important;
+    transition: background 0.2s ease;
+}
+.ds-main-content tbody tr:hover {
+    background: rgba(0, 229, 255, 0.03) !important;
+}
+
+.dark .ds-main-content table {
+    border: 1px solid rgba(0, 229, 255, 0.20) !important;
+}
+.dark .ds-main-content thead {
+    background: rgba(0, 229, 255, 0.06) !important;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.35) !important;
+}
+.dark .ds-main-content tbody tr {
+    border-bottom: 1px solid rgba(0, 229, 255, 0.10) !important;
+}
+.dark .ds-main-content tbody tr:hover {
+    background: rgba(0, 229, 255, 0.05) !important;
+}
+
+/* --- BUTTONS --- */
+.ds-main-content .btn-primary, 
+.ds-main-content button.bg-primary-600,
+.ds-main-content a.bg-primary-600 {
+    background: var(--neon-primary) !important;
+    color: #000000 !important;
+    font-weight: 600;
+    border: none !important;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.25) !important;
+    transition: all 0.3s ease;
+}
+.ds-main-content .btn-primary:hover,
+.ds-main-content button.bg-primary-600:hover,
+.ds-main-content a.bg-primary-600:hover {
+    box-shadow: 0 0 18px rgba(0, 229, 255, 0.40) !important;
+    transform: translateY(-1px);
+}
+
+.ds-main-content .btn-secondary {
+    background: transparent !important;
+    border: 1px solid rgba(0, 229, 255, 0.45) !important;
+    color: var(--neon-primary) !important;
+}
+.ds-main-content .btn-secondary:hover {
+    background: rgba(0, 229, 255, 0.08) !important;
+    border-color: var(--neon-primary) !important;
+}
+
+/* --- INPUT & SELECT --- */
+.ds-main-content input:not([type="checkbox"]):not([type="radio"]),
+.ds-main-content select,
+.ds-main-content textarea {
+    transition: all 0.2s ease;
+}
+.ds-main-content input:not([type="checkbox"]):not([type="radio"]):focus,
+.ds-main-content select:focus,
+.ds-main-content textarea:focus {
+    border-color: var(--neon-primary) !important;
+    box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.10), 0 0 10px rgba(0, 229, 255, 0.12) !important;
+    outline: none !important;
+}
+
+/* --- BADGES / STATUS --- */
+.ds-main-content .bg-success-100, .ds-main-content .text-success-700 {
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: var(--neon-success) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+.ds-main-content .bg-warning-100, .ds-main-content .text-warning-700 {
+    background: rgba(245, 158, 11, 0.1) !important;
+    color: var(--neon-warning) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+.ds-main-content .bg-danger-100, .ds-main-content .text-danger-700, .ds-main-content .bg-red-100 {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: var(--neon-danger) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+/* --- MODALS --- */
+.dark .ds-main-content [role="dialog"] .bg-white {
+    background: rgba(12, 17, 27, 0.95) !important;
+    border: 1px solid rgba(0, 229, 255, 0.30) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.50), 0 0 20px rgba(0, 229, 255, 0.08) !important;
+}
+.ds-main-content [role="dialog"] .bg-white {
+    border: 1px solid rgba(0, 229, 255, 0.18) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.10), 0 0 15px rgba(0, 229, 255, 0.05) !important;
+}
+
+/* --- PAGINATION --- */
+.ds-main-content nav[aria-label="Pagination"] span[aria-current="page"] > span {
+    border-color: var(--neon-primary) !important;
+    background: rgba(0, 229, 255, 0.1) !important;
+    color: var(--neon-primary) !important;
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.15) !important;
+}
+
+/* Exceptions for badges inside cards that might get caught by rounded-lg */
+.ds-main-content .badge,
+.ds-main-content .inline-flex {
+    box-shadow: none !important;
+}
+
+
+/* ============ Print Styles ============ */
+@media print {
+    body { background: white !important; color: black !important; }
+    .ds-main-content, .ds-main-content * { box-shadow: none !important; background: transparent !important; color: black !important; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #cbd5e1 !important; }
+}
+
+/* Fix Chrome Autofill in Dark Mode */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover, 
+.dark input:-webkit-autofill:focus, 
+.dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+    transition: background-color 5000s ease-in-out 0s;
+}

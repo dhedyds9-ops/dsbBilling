@@ -20,6 +20,8 @@ class RouterMonitoringLog extends Model
         'total_memory',
         'uptime',
         'error_message',
+        'rx_bps',
+        'tx_bps',
     ];
     
     protected $casts = [

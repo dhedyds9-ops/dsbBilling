@@ -7,17 +7,22 @@ use App\Models\Payment\Payment;
 use App\Models\CRM\Customer;
 use App\Models\Billing\Invoice;
 use App\Services\Billing\PaymentService;
+use Livewire\Attributes\Url;
 
 class Create extends AdminComponent
 {
+
+    #[Url]
     public $customer_id;
     public $amount;
     public $currency = 'IDR';
     public $method = 'bank_transfer';
-    public $status = 'pending';
+    public $status = 'success';
     public $reference_number;
     public $paid_at;
     public $gateway = 'manual';
+
+    #[Url]
     public $invoice_ids = [];
 
     public function mount()
@@ -47,6 +52,17 @@ class Create extends AdminComponent
             'paid_at' => 'nullable|date',
         ]);
 
+        if (!empty($this->invoice_ids)) {
+            $totalTagihan = Invoice::whereIn('id', $this->invoice_ids)->get()->sum(function($inv) {
+                return $inv->total_amount - $inv->paid_amount;
+            });
+
+            if ($this->amount > $totalTagihan) {
+                $this->addError('amount', 'Nominal pembayaran tidak boleh melebihi sisa tagihan (Rp ' . number_format($totalTagihan, 0, ',', '.') . ').');
+                return;
+            }
+        }
+
         $payment = $paymentService->createPayment(
             customerId: (int) $this->customer_id,
             amount: (float) $this->amount,
@@ -61,7 +77,11 @@ class Create extends AdminComponent
         );
 
         session()->flash('success', 'Payment berhasil dibuat!');
-        return redirect()->route('billing.payments.show', $payment->id);
+        
+        if (!empty($this->invoice_ids)) {
+            return redirect()->route('billing.invoices.show', $this->invoice_ids[0]);
+        }
+        return redirect()->route('billing.payments.index');
     }
 
     public function render()

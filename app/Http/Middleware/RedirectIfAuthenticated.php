@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RedirectIfAuthenticated
 {
-    public function handle(Request $request, Closure $next, string ...$guards): Response
+    public function handle(Request $request, Closure $next, string ...$guards)
     {
         $guards = empty($guards) ? [null] : $guards;
 
@@ -18,10 +18,23 @@ class RedirectIfAuthenticated
                 $user = Auth::guard($guard)->user();
                 
                 if ($user->hasRole('customer')) {
-                    return redirect()->route('customer-portal.dashboard');
+                    return new \Illuminate\Http\RedirectResponse(route('customer-portal.dashboard', absolute: false));
                 }
                 
-                return redirect()->route('dashboard');
+                if ($user->hasRole('reseller')) {
+                    return new \Illuminate\Http\RedirectResponse(route('reseller-portal.dashboard', absolute: false));
+                }
+                
+                if ($user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
+                    return new \Illuminate\Http\RedirectResponse(route('technician.dashboard', absolute: false));
+                }
+                
+                if ($user->job_function === \App\Enums\JobFunction::NOC->value || 
+                    $user->hasRole('noc') || $user->hasRole('noc_operator') || $user->hasRole('operator') || $user->hasRole('owner')) {
+                    return new \Illuminate\Http\RedirectResponse(route('noc.overview', absolute: false));
+                }
+                
+                return new \Illuminate\Http\RedirectResponse(route('dashboard', absolute: false));
             }
         }
 

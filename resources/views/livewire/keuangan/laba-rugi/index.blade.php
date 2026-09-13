@@ -3,26 +3,47 @@
   $pct = fn($n) => number_format((float)($n ?? 0), 2, ',', '.') . '%';
 @endphp
 <div>
-  @include('partials.enterprise.list-toolbar', [
-    'title' => 'Laporan Keuangan',
-    'primaryLabel' => null,
-    'primaryAction' => null,
-    'actions' => [
-      ['label' => 'Export CSV', 'icon' => 'download', 'action' => 'exportCsv()'],
-      ['label' => 'Export PDF', 'icon' => 'file-text', 'action' => 'exportPdf()'],
-    ],
-    'searchPlaceholder' => 'Cari akun / deskripsi...',
-    'showFiltersToggle' => true,
-  ])
+    @section('page_title')
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <span class="material-symbols-outlined notranslate" translate="no">account_balance</span>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Laporan Keuangan (Laba Rugi)</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Analisa pendapatan, pengeluaran, AR Aging, dan Net Profit</p>
+            </div>
+        </div>
+    @endsection
 
-  @if ($showFilters)
-    @include('partials.enterprise.filters', ['filters' => $filterConfig])
-  @endif
+    {{-- TOOLBAR & FILTERS --}}
+    <div class="mb-4 flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="flex-1 w-full relative flex flex-wrap gap-2">
+            @foreach($filterConfig as $f)
+                @if($f['type'] === 'select')
+                    <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2 min-w-[120px] dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">{{ $f['label'] }}</option>
+                        @foreach($f['options'] as $val => $lbl)
+                            <option value="{{ $val }}">{{ $lbl }}</option>
+                        @endforeach
+                    </select>
+                @endif
+            @endforeach
+        </div>
+        <div class="flex items-center gap-2">
+            <button wire:click="exportCsv" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> CSV
+            </button>
+            <button wire:click="exportPdf" class="px-4 py-2 bg-red-50 text-red-600 dark:bg-red-900/20 border border-red-200 dark:border-red-800 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-900/40 transition-colors flex items-center gap-2">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">picture_as_pdf</span> PDF
+            </button>
+        </div>
+    </div>
 
-  <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+  <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+    <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
     <nav class="flex items-center gap-1 text-sm font-medium overflow-x-auto">
       @foreach(['income_statement'=>'Laba Rugi','cash_flow'=>'Arus Kas','expense_detail'=>'Detail Beban','top_revenue'=>'Top Revenue','ar_aging'=>'AR Aging'] as $k=>$l)
-        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">{{ $l }}</button>
+        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">{{ $l }}</button>
       @endforeach
     </nav>
   </div>
@@ -178,7 +199,7 @@
               </thead>
               <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                 @foreach($expenseBreakdown ?? [] as $e)
-                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/30">
+                  <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/30">
                     <td class="px-4 py-2 text-slate-700 dark:text-slate-200">{{ $e['label'] }}</td>
                     <td class="px-4 py-2 text-right font-mono text-slate-600 dark:text-slate-300">{{ $fmt($e['cogs'] ?? 0) }}</td>
                     <td class="px-4 py-2 text-right font-mono text-slate-600 dark:text-slate-300">{{ $fmt($e['opex'] ?? 0) }}</td>
@@ -203,7 +224,7 @@
                       <div class="flex-1 bg-blue-500 rounded-t" style="height:{{ max(5, (($e['total']??0)/$maxBudget)*100) }}%" title="Realisasi"></div>
                       <div class="flex-1 bg-slate-200 dark:bg-slate-600 rounded-t" style="height:{{ max(5, (($e['budget']??0)/$maxBudget)*100) }}%" title="Budget"></div>
                     </div>
-                    <div class="text-[9px] text-slate-500 truncate w-full text-center">{{ substr($e['label'] ?? '-', 0, 10) }}</div>
+                    <div class="text-[9px] text-slate-500 dark:text-slate-400 truncate w-full text-center">{{ substr($e['label'] ?? '-', 0, 10) }}</div>
                   </div>
                 @endforeach
               </div>
@@ -225,8 +246,8 @@
               <tr><th class="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">#</th><th class="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Pelanggan</th><th class="px-4 py-2 text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Revenue</th><th class="px-4 py-2 text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">%</th></tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
-              @foreach($topRevenue ?? [] as $i=>$c)
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/30">
+              @foreach($topRevenue['rows'] ?? [] as $i=>$c)
+                <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/30">
                   <td class="px-4 py-2 text-slate-500 dark:text-slate-400 font-mono">{{ $i+1 }}</td>
                   <td class="px-4 py-2"><div class="font-medium text-slate-800 dark:text-slate-100">{{ $c['name'] }}</div><div class="text-xs text-slate-500 dark:text-slate-400">{{ $c['code'] ?? '' }} · {{ $c['package'] ?? '' }}</div></td>
                   <td class="px-4 py-2 text-right font-mono font-semibold text-slate-800 dark:text-slate-100">{{ $fmt($c['amount']) }}</td>
@@ -244,7 +265,7 @@
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
               @foreach($topSales ?? [] as $i=>$s)
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/30">
+                <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/30">
                   <td class="px-4 py-2 text-slate-500 dark:text-slate-400 font-mono">{{ $i+1 }}</td>
                   <td class="px-4 py-2"><div class="font-medium text-slate-800 dark:text-slate-100">{{ $s['name'] }}</div><div class="text-xs text-slate-500 dark:text-slate-400">{{ $s['type'] ?? 'Sales' }} · {{ $s['customer_count'] ?? 0 }} plg</div></td>
                   <td class="px-4 py-2 text-right font-mono font-semibold text-slate-800 dark:text-slate-100">{{ $fmt($s['amount']) }}</td>
@@ -282,11 +303,11 @@
                   '>180' => ['bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', 'Isolir / SP3 / Putus'],
                 ];
                 $grand = 0;
-                foreach($arAging ?? [] as $a) $grand += (float)($a['outstanding'] ?? 0);
+                foreach($arAging['rows'] ?? [] as $a) $grand += (float)($a['outstanding'] ?? 0);
               @endphp
-              @foreach($arAging ?? [] as $a)
-                @php [$cls, $action] = $colors[$a['bucket']] ?? ['bg-slate-100 text-slate-600', '-']; $pct = $grand ? min(100, round(((float)$a['outstanding'] / $grand)*100,1)) : 0; @endphp
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/30">
+              @foreach($arAging['rows'] ?? [] as $a)
+                @php [$cls, $action] = $colors[$a['bucket']] ?? ['bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400', '-']; $pct = $grand ? min(100, round(((float)$a['outstanding'] / $grand)*100,1)) : 0; @endphp
+                <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/30">
                   <td class="px-4 py-2"><span class="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full {{ $cls }}">{{ $a['bucket'] }} hari</span></td>
                   <td class="px-4 py-2 text-right font-mono text-slate-700 dark:text-slate-200">{{ number_format($a['count'] ?? 0, 0, ',', '.') }}</td>
                   <td class="px-4 py-2 text-right font-mono font-semibold text-slate-800 dark:text-slate-100">{{ $fmt($a['outstanding'] ?? 0) }}</td>
@@ -296,7 +317,7 @@
               @endforeach
               <tr class="bg-slate-50 dark:bg-slate-900/40 border-t-2 border-slate-300 dark:border-slate-600 font-bold">
                 <td class="px-4 py-2.5 text-slate-900 dark:text-slate-100">TOTAL PIUTANG</td>
-                <td class="px-4 py-2.5 text-right font-mono text-slate-800 dark:text-slate-100">{{ number_format(collect($arAging ?? [])->sum('count') ?? 0) }}</td>
+                <td class="px-4 py-2.5 text-right font-mono text-slate-800 dark:text-slate-100">{{ number_format(collect($arAging['rows'] ?? [])->sum('count') ?? 0) }}</td>
                 <td class="px-4 py-2.5 text-right font-mono text-red-700 dark:text-red-300">{{ $fmt($grand) }}</td>
                 <td class="px-4 py-2.5"></td><td class="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">100%</td>
               </tr>
@@ -307,7 +328,7 @@
           <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
             <div class="font-semibold text-slate-900 dark:text-slate-100 mb-3">Komposisi AR Aging</div>
             <div class="space-y-2">
-              @foreach($arAging ?? [] as $a)
+              @foreach($arAging['rows'] ?? [] as $a)
                 @php $pct = $grand ? min(100, round(((float)$a['outstanding'] / $grand)*100,1)) : 0; @endphp
                 <div>
                   <div class="flex justify-between mb-1 text-xs text-slate-700 dark:text-slate-200"><span>{{ $a['bucket'] }} hari</span><span class="font-mono">{{ $pct }}% · {{ $fmt($a['outstanding']??0) }}</span></div>

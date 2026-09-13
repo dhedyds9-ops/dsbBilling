@@ -68,7 +68,7 @@ class ServiceProfileExport implements FromCollection, WithHeadings, ShouldAutoSi
             $profile->owner_price ? 'Rp ' . number_format($profile->owner_price, 0, ',', '.') : '-',
             $profile->reseller_price ? 'Rp ' . number_format($profile->reseller_price, 0, ',', '.') : '-',
             $profile->status === 'active' ? 'Aktif' : 'Nonaktif',
-            $profile->owner ? $profile->owner->name : '-',
+            $profile->reseller ? $profile->reseller->name : '-',
             $profile->created_at ? $profile->created_at->format('d/m/Y H:i') : '-',
             $profile->updated_at ? $profile->updated_at->format('d/m/Y H:i') : '-'
         ];

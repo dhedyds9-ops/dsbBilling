@@ -33,6 +33,14 @@ abstract class BaseOltDriver implements OltDriverInterface
     public function __construct(Olt $olt)
     {
         $this->olt = $olt;
+
+        if (!function_exists('snmpget')) {
+            Log::warning('PHP SNMP extension tidak terpasang. Fallback ke shell_exec `snmpget` — pastikan net-snmp-utils / snmp binary tersedia di PATH.', [
+                'olt_id' => $olt->id,
+                'ip' => $olt->ip_address,
+            ]);
+        }
+
         $this->initializeSnmp();
     }
 
@@ -40,11 +48,23 @@ abstract class BaseOltDriver implements OltDriverInterface
     {
         $read = $this->olt->snmp_community_read ?? $this->snmpCommunityRead;
         $write = $this->olt->snmp_community_write ?? $this->snmpCommunityWrite;
-        $version = $this->olt->snmp_version ?? $this->snmpVersion;
+
+        $rawVersion = $this->olt->snmp_version ?? $this->snmpVersion;
+        if (is_string($rawVersion)) {
+            $rawVersion = preg_replace('/^v/i', '', trim($rawVersion));
+        }
+        $version = in_array($rawVersion, ['1', '2c', '3'], true) ? $rawVersion : '2c';
+
         $this->snmpCommunityRead = $read;
         $this->snmpCommunityWrite = $write;
         $this->snmpVersion = $version;
-        $this->snmp = new SnmpClient($this->olt->ip_address, $this->snmpCommunityRead, $this->snmpVersion);
+
+        $port = (int)($this->olt->snmp_port ?? 161);
+        $timeout = (int)config('olt-drivers.defaults.timeout_seconds', 3);
+        $timeout = max(1, $timeout);
+        $retries = 1;
+
+        $this->snmp = new SnmpClient((string)$this->olt->ip_address, $read, $version, $timeout, $retries, $port);
     }
 
     protected function initializeCli(): void
@@ -55,28 +75,64 @@ abstract class BaseOltDriver implements OltDriverInterface
         $this->cli = new TelnetSshClient();
         $this->cli->connect(
             $this->olt->ip_address,
-            $this->olt->username,
-            $this->olt->password,
+            $this->olt->username ?? '',
+            $this->olt->password ?? '',
             $this->cliMode,
             (int)($this->olt->cli_port ?? 0),
-            $this->enableSecret
+            $this->olt->enable_secret ?? ''
         );
     }
 
     public function getSystemInfo(): array
     {
         try {
+            // Lakukan PING (sysUpTime) pertama kali. Jika gagal, langsung abort agar tidak menunggu timeout berlipat.
+            $sysUpTime = $this->snmp->get($this->systemOids['sysUpTime']);
+
+            if ($sysUpTime === false || $sysUpTime === '' || $sysUpTime === null) {
+                Log::warning('OLT SNMP sysUpTime kosong (connection refused/timeout)', [
+                    'olt_id' => $this->olt->id,
+                    'ip' => $this->olt->ip_address,
+                    'community' => $this->snmpCommunityRead,
+                    'version' => $this->snmpVersion,
+                ]);
+                return [
+                    'name' => $this->olt->name,
+                    'uptime' => 'N/A',
+                    'description' => 'N/A',
+                    'firmware' => null,
+                    'temperature' => 0,
+                    'ip_address' => $this->olt->ip_address,
+                    'model' => $this->olt->model,
+                    'status' => 'offline',
+                    'error' => 'SNMP Timeout / Unreachable',
+                ];
+            }
+
+            // Jika sysUpTime berhasil, OLT dipastikan online. Lanjut ambil metrik lainnya.
+            $sysName = $this->snmp->get($this->systemOids['sysName']);
+            $sysDescr = $this->snmp->get($this->systemOids['sysDescr']);
+
+            $firmware = $this->extractFirmwareVersion(
+                is_string($sysDescr) ? $sysDescr : '',
+                is_string($this->olt->firmware_version) ? $this->olt->firmware_version : null
+            );
+
             return [
-                'name' => $this->snmp->get($this->systemOids['sysName']) ?: $this->olt->name,
-                'uptime' => $this->formatUptime($this->snmp->get($this->systemOids['sysUpTime']) ?: '0'),
-                'description' => $this->snmp->get($this->systemOids['sysDescr']) ?: 'N/A',
+                'name' => $sysName !== false ? $sysName : $this->olt->name,
+                'uptime' => $this->formatUptime((string)$sysUpTime),
+                'description' => $sysDescr !== false ? $sysDescr : 'N/A',
+                'firmware' => $firmware,
                 'temperature' => $this->getTemperature(),
                 'ip_address' => $this->olt->ip_address,
                 'model' => $this->olt->model,
                 'status' => 'online',
             ];
         } catch (Exception $e) {
-            Log::warning('OLT SNMP failed: ' . $e->getMessage(), ['olt_id' => $this->olt->id]);
+            Log::warning('OLT SNMP failed: ' . $e->getMessage(), [
+                'olt_id' => $this->olt->id,
+                'ip' => $this->olt->ip_address,
+            ]);
             return [
                 'name' => $this->olt->name,
                 'uptime' => 'N/A',
@@ -85,6 +141,7 @@ abstract class BaseOltDriver implements OltDriverInterface
                 'ip_address' => $this->olt->ip_address,
                 'model' => $this->olt->model,
                 'status' => 'offline',
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -184,18 +241,46 @@ abstract class BaseOltDriver implements OltDriverInterface
 
     protected function formatUptime(string $rawTicks): string
     {
-        $ticks = (int)$rawTicks;
+        $trimmed = trim($rawTicks);
+        if ($trimmed === '' || $trimmed === 'N/A' || $trimmed === '0') {
+            return $trimmed === '0' ? '0 menit' : 'N/A';
+        }
+
+        if (!is_numeric($trimmed)) {
+            if (preg_match('/\((\d+)\)/', $trimmed, $m)) {
+                $ticks = (int)$m[1];
+            } else {
+                return 'N/A';
+            }
+        } else {
+            $ticks = (int)$trimmed;
+        }
+
         if ($ticks <= 0) {
-            return '0 days';
+            return 'N/A';
         }
         $seconds = (int)($ticks / 100);
+        if ($seconds < 60) {
+            return '< 1 menit';
+        }
         $days = (int)($seconds / 86400);
         $hours = (int)(($seconds % 86400) / 3600);
         $minutes = (int)(($seconds % 3600) / 60);
         if ($days > 0) {
             return sprintf('%d hari, %d jam %d menit', $days, $hours, $minutes);
         }
-        return sprintf('%d jam %d menit', $hours, $minutes);
+        if ($hours > 0) {
+            return sprintf('%d jam %d menit', $hours, $minutes);
+        }
+        return sprintf('%d menit', $minutes);
+    }
+
+    protected function extractFirmwareVersion(string $sysDescr, ?string $default = null): ?string
+    {
+        if (preg_match('/(?:Version|Ver|V|FW|Firmware)\s*[:=]?\s*([vV\d\.]+)/i', $sysDescr, $matches)) {
+            return $matches[1];
+        }
+        return $default ?? 'N/A';
     }
 
     abstract public function getPonPortsStatus(): array;

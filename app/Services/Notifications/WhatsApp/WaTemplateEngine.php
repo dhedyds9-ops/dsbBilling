@@ -48,6 +48,30 @@ final class WaTemplateEngine
             . "Terima kasih 🙏\n— " . $this->brand();
     }
 
+    /** Notifikasi Pelanggan Baru Dibuat */
+    public function customerCreated(array $d): string
+    {
+        $nama = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $username = $this->e($d['username'] ?? '-');
+        $password = $this->e($d['password'] ?? '-');
+        $portalCode = $this->e($d['portal_password'] ?? '-');
+        $portalUrl = rtrim(config('app.url'), '/') . '/login/customer';
+        
+        return "🎉 *SELAMAT DATANG!*\n\n"
+            . "Yth. *{$nama}*,\n"
+            . "Terima kasih telah bergabung dengan layanan internet kami.\n\n"
+            . "Berikut adalah detail akun layanan Anda:\n"
+            . "👤 Username Internet : *{$username}*\n"
+            . "🔑 Password Internet : *{$password}*\n\n"
+            . "📱 *AKSES PORTAL PELANGGAN*\n"
+            . "Untuk melihat tagihan dan paket, silakan login di portal:\n"
+            . "🔗 Link: {$portalUrl}\n"
+            . "Ketik salah satu data berikut di kolom login:\n"
+            . "• No WhatsApp Anda\n"
+            . "• Kode Akses: *{$portalCode}*\n\n"
+            . "Terima kasih 🙏\n— " . $this->brand();
+    }
+
     /** 2. Reminder tagihan H-3 / H-1 sebelum jatuh tempo */
     public function invoiceReminder(array $d, string $stage = 'h-1'): string
     {
@@ -298,6 +322,82 @@ final class WaTemplateEngine
     }
 
     // ---------- helpers ----------
+    // ================================================================
+    //  TICKET NOTIFICATIONS (Support → Teknisi)
+    // ================================================================
+
+    /** Notifikasi tiket BARU MASUK ke NOC / Admin */
+    public function ticketCreated(array $d): string
+    {
+        $no     = $this->e($d['ticket_id'] ?? '-');
+        $title  = $this->e($d['title'] ?? '-');
+        $cat    = $this->e($d['category'] ?? '-');
+        $prio   = strtoupper($this->e($d['priority'] ?? 'medium'));
+        $cust   = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $by     = $this->e($d['created_by'] ?? 'System');
+        $prioEmoji = match(strtolower($d['priority'] ?? 'medium')) {
+            'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
+        };
+        return "🎫 *TIKET SUPPORT BARU*\n\n"
+            . "No. Tiket : *#{$no}*\n"
+            . "Pelanggan : *{$cust}*\n"
+            . "Judul     : {$title}\n"
+            . "Kategori  : {$cat}\n"
+            . "Prioritas : {$prioEmoji} *{$prio}*\n"
+            . "Dibuat oleh: {$by}\n\n"
+            . "Segera assign tiket ini ke teknisi yang bertugas.\n"
+            . "— " . $this->brand();
+    }
+
+    /** Notifikasi tiket DIASSIGN ke teknisi */
+    public function ticketAssigned(array $d): string
+    {
+        $no      = $this->e($d['ticket_id'] ?? '-');
+        $title   = $this->e($d['title'] ?? '-');
+        $cat     = $this->e($d['category'] ?? '-');
+        $prio    = strtoupper($this->e($d['priority'] ?? 'medium'));
+        $cust    = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $addr    = $this->e($d['customer_address'] ?? '');
+        $phone   = $this->e($d['customer_phone'] ?? '');
+        $desc    = $this->e($d['description'] ?? '');
+        $tech    = $this->e($d['technician_name'] ?? 'Teknisi');
+        $prioEmoji = match(strtolower($d['priority'] ?? 'medium')) {
+            'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
+        };
+        return "🔧 *TIKET DITUGASKAN KEPADA ANDA*\n\n"
+            . "Halo *{$tech}*,\n\n"
+            . "Anda mendapat tugas tiket support baru:\n\n"
+            . "🎫 No. Tiket : *#{$no}*\n"
+            . "📋 Judul     : *{$title}*\n"
+            . "🏷️ Kategori  : {$cat}\n"
+            . "⚡ Prioritas : {$prioEmoji} *{$prio}*\n\n"
+            . "👤 *DATA PELANGGAN*\n"
+            . "Nama    : {$cust}\n"
+            . ($addr  ? "Alamat  : {$addr}\n" : "")
+            . ($phone ? "No. HP  : {$phone}\n" : "")
+            . ($desc  ? "\n📝 *Keluhan:*\n{$desc}\n" : "")
+            . "\nSilakan segera hubungi pelanggan dan tangani gangguan ini.\n\n"
+            . "— " . $this->brand();
+    }
+
+    /** Notifikasi tiket SELESAI (resolved) ke pelanggan */
+    public function ticketResolved(array $d): string
+    {
+        $no   = $this->e($d['ticket_id'] ?? '-');
+        $title = $this->e($d['title'] ?? '-');
+        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $tech  = $this->e($d['technician_name'] ?? 'Tim Teknis');
+        return "✅ *TIKET SUPPORT SELESAI*\n\n"
+            . "Yth. *{$cust}*,\n\n"
+            . "Tiket Anda telah diselesaikan:\n\n"
+            . "🎫 No. Tiket : *#{$no}*\n"
+            . "📋 Judul     : {$title}\n"
+            . "👨‍🔧 Teknisi  : {$tech}\n\n"
+            . "Kami harap masalah Anda telah terselesaikan.\n"
+            . "Jika masih ada kendala, silakan buat tiket baru.\n\n"
+            . "Terima kasih 🙏\n— " . $this->brand();
+    }
+
     private function rp(float $amount): string
     {
         return 'Rp ' . number_format((float)$amount, 0, ',', '.');

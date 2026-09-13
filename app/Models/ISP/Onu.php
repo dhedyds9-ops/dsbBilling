@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class Onu extends Model
 {
+    use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -43,6 +46,46 @@ class Onu extends Model
         'created_by',
         'updated_by',
     ];
+
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            if (empty($model->code)) {
+                $prefix = 'ONU-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $model->serial_number ?? Str::random(6)), -6));
+                $base = $prefix;
+                $counter = 1;
+                while (static::withTrashed()->where('code', $prefix)->where('id', '!=', $model->id)->exists()) {
+                    $prefix = $base . '-' . $counter++;
+                }
+                $model->code = $prefix;
+            }
+            if (!empty($model->serial_number)) {
+                $model->serial_number = strtoupper(trim($model->serial_number));
+            }
+            if (!empty($model->mac_address)) {
+                $cleaned = strtoupper(preg_replace('/[^A-F0-9]/i', '', trim($model->mac_address)));
+                if (strlen($cleaned) === 12) {
+                    $model->mac_address = implode(':', str_split($cleaned, 2));
+                }
+            }
+            if (!empty($model->code)) {
+                $model->code = trim($model->code);
+            }
+            if (!empty($model->name)) {
+                $model->name = trim($model->name);
+            }
+        });
+
+        static::saved(function ($model) {
+            Cache::forget('gis_map_data');
+        });
+
+        static::deleted(function ($model) {
+            Cache::forget('gis_map_data');
+        });
+    }
+
+
 
     protected $casts = [
         'pon_port' => 'integer',
@@ -133,6 +176,18 @@ class Onu extends Model
         return $this->hasOne(\App\Models\Customer\CustomerService::class);
     }
 
+    public function customer()
+    {
+        return $this->hasOneThrough(
+            \App\Models\CRM\Customer::class,
+            \App\Models\Customer\CustomerService::class,
+            'onu_id',
+            'id',
+            'id',
+            'customer_id'
+        );
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');
@@ -176,4 +231,61 @@ class Onu extends Model
             get: fn (): string => $this->serial_number ?: $this->mac_address ?: (string)$this->getKey()
         );
     }
+
+    public function rxPower(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?float => $this->rx_power_dbm
+        );
+    }
+
+    public function txPower(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?float => $this->tx_power_dbm
+        );
+    }
+
+    public function formattedPonPort(): Attribute
+    {
+        return Attribute::make(
+            get: function (): string {
+                if ($this->pon_port === null) return '-';
+                if ($this->pon_port >= 1310721 && $this->pon_port <= 1310728) {
+                    $port = $this->pon_port - 1310720;
+                    return "0/0/{$port}";
+                }
+                if ($this->pon_port > 1000000) {
+                    $slot = ($this->pon_port >> 24) & 0xFF;
+                    $port = ($this->pon_port >> 8) & 0xFF;
+                    if ($slot === 0 && $port === 0) {
+                        return (string)$this->pon_port;
+                    }
+                    return "0/{$slot}/{$port}";
+                }
+                return (string)$this->pon_port;
+            }
+        );
+    }
+
+    public function capability()
+    {
+        return $this->hasOne(OnuCapability::class);
+    }
+
+    public function parameterMappings()
+    {
+        return $this->hasMany(OnuParameterMapping::class);
+    }
+
+    public function state()
+    {
+        return $this->hasOne(OnuState::class);
+    }
+
+    public function configurationJobs()
+    {
+        return $this->hasMany(OnuConfigurationJob::class);
+    }
 }
+

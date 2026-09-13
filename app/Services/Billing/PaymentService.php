@@ -33,12 +33,13 @@ class PaymentService
         string $method = 'bank_transfer',
         string $status = 'pending',
         ?string $referenceNumber = null,
+        ?string $gatewayTransactionId = null,
         ?\DateTimeInterface $paidAt = null,
         string $gateway = 'manual',
     ): Payment {
         return DB::transaction(function () use (
             $customerId, $amount, $userId, $invoiceIds, $currency, $method,
-            $status, $referenceNumber, $paidAt, $gateway
+            $status, $referenceNumber, $gatewayTransactionId, $paidAt, $gateway
         ) {
             $resolvedReference = $referenceNumber ?? 'PAY-' . now()->format('YmdHis');
 
@@ -50,6 +51,7 @@ class PaymentService
                 'method' => $method,
                 'status' => $status,
                 'reference_number' => $resolvedReference,
+                'gateway_transaction_id' => $gatewayTransactionId,
                 'paid_at' => $paidAt ?? ($status === 'success' ? now() : null),
                 'gateway' => $gateway,
                 'created_by' => $userId,
@@ -85,12 +87,13 @@ class PaymentService
         ?string $method = null,
         ?string $status = null,
         ?string $referenceNumber = null,
+        ?string $gatewayTransactionId = null,
         ?\DateTimeInterface $paidAt = null,
         ?string $gateway = null,
     ): Payment {
         return DB::transaction(function () use (
             $payment, $customerId, $amount, $userId, $invoiceIds, $currency, $method,
-            $status, $referenceNumber, $paidAt, $gateway
+            $status, $referenceNumber, $gatewayTransactionId, $paidAt, $gateway
         ) {
             $previousStatus = $payment->status;
 
@@ -101,6 +104,7 @@ class PaymentService
                 'method' => $method ?? $payment->method,
                 'status' => $status ?? $payment->status,
                 'reference_number' => $referenceNumber ?? $payment->reference_number,
+                'gateway_transaction_id' => $gatewayTransactionId ?? $payment->gateway_transaction_id,
                 'paid_at' => $paidAt ?? $payment->paid_at,
                 'gateway' => $gateway ?? $payment->gateway,
                 'updated_by' => $userId,
@@ -184,8 +188,8 @@ class PaymentService
 
         try {
             $customerService->update([
-                'status' => 'active',
-                'suspended_at' => null,
+                'reactivation_status' => 'pending',
+                // JANGAN merubah status = 'active' di sini. Status akan diubah setelah COA sukses.
             ]);
         } catch (\Throwable $e) {
             Log::warning('PaymentService handleInvoicePaid update status failed', [
@@ -195,24 +199,6 @@ class PaymentService
             ]);
         }
 
-        if ($this->provisioningService) {
-            try {
-                $reactivateResult = $this->provisioningService->reactivateCustomerService($customerService);
-                Log::info('PaymentService reactivate provisioning', [
-                    'invoice_id' => $invoice->id,
-                    'cs_id' => $customerService->id,
-                    'enabled' => $reactivateResult['enabled'] ?? 0,
-                    'kicked' => $reactivateResult['kicked'] ?? 0,
-                    'errors' => $reactivateResult['errors'] ?? [],
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('PaymentService reactivate provisioning FATAL', [
-                    'cs_id' => $customerService->id,
-                    'invoice_id' => $invoice->id,
-                    'err' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-        }
+        \App\Jobs\Billing\ReactivateCustomerJob::dispatch($invoice);
     }
 }

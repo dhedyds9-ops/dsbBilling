@@ -5,6 +5,7 @@ namespace App\Services\ISP\Radius;
 use App\Enums\ISP\CoaAuditState;
 use App\Enums\ISP\CoaType;
 use App\Models\Customer\CustomerService;
+use App\Models\ISP\HotspotUser;
 use App\Models\ISP\OnlineSession;
 use App\Models\ISP\PPPoEUser;
 use App\Models\ISP\RadiusCoaAudit;
@@ -34,7 +35,7 @@ final class CoaDispatchService
     ) {}
 
     /**
-     * Single COA dispatch.
+     * Single COA dispatch untuk PPPoEUser.
      *
      * @param  array<string,mixed>  $extraAttrs
      * @return array{ok: bool, audit_id: ?int, audit_uuid: ?string, queued_at: ?string}
@@ -47,31 +48,71 @@ final class CoaDispatchService
         ?int $maxAttempts = null,
         array $extraAttrs = [],
     ): array {
+        return $this->enqueueGeneric($type, $pppoeUser, $operatorId, $overrideSuspendPolicy, $maxAttempts, $extraAttrs);
+    }
+
+    /**
+     * Single COA dispatch untuk HotspotUser.
+     *
+     * @param  array<string,mixed>  $extraAttrs
+     * @return array{ok: bool, audit_id: ?int, audit_uuid: ?string, queued_at: ?string}
+     */
+    public function enqueueHotspot(
+        CoaType $type,
+        HotspotUser $hotspotUser,
+        int $operatorId = 1,
+        ?SuspendPolicy $overrideSuspendPolicy = null,
+        ?int $maxAttempts = null,
+        array $extraAttrs = [],
+    ): array {
+        return $this->enqueueGeneric($type, $hotspotUser, $operatorId, $overrideSuspendPolicy, $maxAttempts, $extraAttrs);
+    }
+
+    /**
+     * Internal: single COA dispatch untuk PPPoEUser atau HotspotUser.
+     *
+     * @param  PPPoEUser|HotspotUser  $user
+     * @param  array<string,mixed>    $extraAttrs
+     * @return array{ok: bool, audit_id: ?int, audit_uuid: ?string, queued_at: ?string}
+     */
+    private function enqueueGeneric(
+        CoaType $type,
+        PPPoEUser|HotspotUser $user,
+        int $operatorId = 1,
+        ?SuspendPolicy $overrideSuspendPolicy = null,
+        ?int $maxAttempts = null,
+        array $extraAttrs = [],
+    ): array {
         $t0 = microtime(true);
         try {
             DB::beginTransaction();
 
-            $customerService = $pppoeUser->customerService;
-            $serviceProfile = $customerService?->serviceProfile;
+            $customerService = $user->customerService;
+            $serviceProfile  = $customerService?->serviceProfile;
 
-            [$identifiers] = $this->resolveSessionIdentifiers($pppoeUser);
-            $nas = $this->resolveNas($pppoeUser, $identifiers);
+            [$identifiers] = $this->resolveSessionIdentifiers($user);
+            $nas = $this->resolveNas($user, $identifiers);
 
-            $changeAttrs = $this->buildChangeAttributes($type, $pppoeUser, $customerService, $serviceProfile, $overrideSuspendPolicy, $extraAttrs);
+            $changeAttrs = $this->buildChangeAttributes($type, $user, $customerService, $serviceProfile, $overrideSuspendPolicy, $extraAttrs);
+
+            $isPppoe    = $user instanceof PPPoEUser;
+            $pppoeId    = $isPppoe ? $user->id : null;
+            $hotspotId  = !$isPppoe ? $user->id : null;
 
             $audit = RadiusCoaAudit::create([
-                'uuid' => RadiusCoaAudit::newUuid(),
-                'coa_type' => $type,
-                'state' => CoaAuditState::Created,
-                'attempt_count' => 0,
-                'max_attempts' => $maxAttempts ?? self::MAX_ATTEMPTS_DEFAULT,
-                'identifiers' => $identifiers,
+                'uuid'               => RadiusCoaAudit::newUuid(),
+                'coa_type'           => $type,
+                'state'              => CoaAuditState::Created,
+                'attempt_count'      => 0,
+                'max_attempts'       => $maxAttempts ?? self::MAX_ATTEMPTS_DEFAULT,
+                'identifiers'        => $identifiers,
                 'attributes_to_change' => $changeAttrs,
-                'radius_nas_id' => $nas?->id,
-                'router_id' => $nas?->router_id,
-                'pppoe_user_id' => $pppoeUser->id,
-                'customer_service_id' => $customerService?->id,
-                'operator_id' => $operatorId,
+                'radius_nas_id'      => $nas?->id,
+                'router_id'          => $nas?->router_id,
+                'pppoe_user_id'      => $pppoeId,
+                'hotspot_user_id'    => $hotspotId,
+                'customer_service_id'=> $customerService?->id,
+                'operator_id'        => $operatorId,
             ]);
 
             $audit->transition(CoaAuditState::Queued);
@@ -102,10 +143,10 @@ final class CoaDispatchService
             $latMs = (microtime(true) - $t0) * 1000.0;
             $this->metrics->recordLatency(PerformanceMetricsService::OP_COA, $latMs, false);
             return [
-                'ok' => false,
-                'audit_id' => null,
+                'ok'         => false,
+                'audit_id'   => null,
                 'audit_uuid' => null,
-                'queued_at' => null,
+                'queued_at'  => null,
             ];
         }
     }
@@ -124,14 +165,48 @@ final class CoaDispatchService
         ?int $maxAttempts = null,
         array $extraAttrs = [],
     ): array {
-        $total = 0;
+        return $this->enqueueBatchGeneric($type, $pppoeUsers, $operatorId, $overrideSuspendPolicy, $maxAttempts, $extraAttrs);
+    }
+
+    /**
+     * Batch enqueue many Hotspot users with same CoaType. Returns result summary.
+     *
+     * @param  iterable<HotspotUser>  $hotspotUsers
+     * @return array{total: int, queued: int, failed: int, uuids: list<string>}
+     */
+    public function enqueueBatchHotspot(
+        CoaType $type,
+        iterable $hotspotUsers,
+        int $operatorId = 1,
+        ?SuspendPolicy $overrideSuspendPolicy = null,
+        ?int $maxAttempts = null,
+        array $extraAttrs = [],
+    ): array {
+        return $this->enqueueBatchGeneric($type, $hotspotUsers, $operatorId, $overrideSuspendPolicy, $maxAttempts, $extraAttrs);
+    }
+
+    /**
+     * Internal: batch enqueue untuk PPPoEUser atau HotspotUser.
+     *
+     * @param  iterable<PPPoEUser|HotspotUser>  $users
+     * @return array{total: int, queued: int, failed: int, uuids: list<string>}
+     */
+    private function enqueueBatchGeneric(
+        CoaType $type,
+        iterable $users,
+        int $operatorId = 1,
+        ?SuspendPolicy $overrideSuspendPolicy = null,
+        ?int $maxAttempts = null,
+        array $extraAttrs = [],
+    ): array {
+        $total  = 0;
         $queued = 0;
         $failed = 0;
-        $uuids = [];
+        $uuids  = [];
 
-        foreach ($pppoeUsers as $user) {
+        foreach ($users as $user) {
             $total++;
-            $r = $this->enqueue($type, $user, $operatorId, $overrideSuspendPolicy, $maxAttempts, $extraAttrs);
+            $r = $this->enqueueGeneric($type, $user, $operatorId, $overrideSuspendPolicy, $maxAttempts, $extraAttrs);
             if ($r['ok']) {
                 $queued++;
                 $uuids[] = $r['audit_uuid'];
@@ -231,15 +306,24 @@ final class CoaDispatchService
     }
 
     /**
+     * Resolve session identifiers untuk PPPoEUser atau HotspotUser.
+     *
+     * @param  PPPoEUser|HotspotUser  $user
      * @return array{array, ?OnlineSession}
      */
-    private function resolveSessionIdentifiers(PPPoEUser $user): array
+    private function resolveSessionIdentifiers(PPPoEUser|HotspotUser $user): array
     {
-        $session = OnlineSession::query()
-            ->where('pppoe_user_id', $user->id)
+        $query = OnlineSession::query()
             ->whereIn('radius_state', ['online', 'suspend_applied', 'authenticated'])
-            ->orderByDesc('last_seen_at')
-            ->first();
+            ->orderByDesc('last_seen_at');
+
+        if ($user instanceof PPPoEUser) {
+            $query->where('pppoe_user_id', $user->id);
+        } else {
+            $query->where('hotspot_user_id', $user->id);
+        }
+
+        $session = $query->first();
 
         $ids = [];
 
@@ -263,7 +347,12 @@ final class CoaDispatchService
         return [$ids, $session];
     }
 
-    private function resolveNas(PPPoEUser $user, array $identifiers): ?RadiusNas
+    /**
+     * Resolve NAS untuk PPPoEUser atau HotspotUser.
+     *
+     * @param  PPPoEUser|HotspotUser  $user
+     */
+    private function resolveNas(PPPoEUser|HotspotUser $user, array $identifiers): ?RadiusNas
     {
         $nasId = $user->radius_nas_id ?? null;
         if ($nasId) {

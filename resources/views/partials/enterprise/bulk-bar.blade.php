@@ -14,7 +14,7 @@ Bulk Action Bar SSOT
                 {{ $a['label'] }}
             </button>
         @endforeach
-        <button wire:click="$set('selected', [])" class="px-2.5 py-1 text-xs rounded-md text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-slate-800">Batal</button>
+        <button wire:click="$set('selected', [])" class="px-2.5 py-1 text-xs rounded-md text-slate-600 hover:bg-white dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-800">Batal</button>
     </div>
 </div>
 @endif

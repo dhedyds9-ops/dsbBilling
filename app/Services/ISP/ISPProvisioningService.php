@@ -263,6 +263,19 @@ class ISPProvisioningService
                         $customerService->activated_at = now();
                     }
                     $customerService->saveQuietly();
+
+                    if ($pppoeUser) {
+                        $pppoeUser->timestamps = false;
+                        $pppoeUser->status = 'active';
+                        $pppoeUser->suspended_at = null;
+                        $pppoeUser->saveQuietly();
+                    }
+                    if ($hotspotUser) {
+                        $hotspotUser->timestamps = false;
+                        $hotspotUser->status = 'active';
+                        $hotspotUser->suspended_at = null;
+                        $hotspotUser->saveQuietly();
+                    }
                 } catch (Throwable $e) {
                     $result['errors'][] = 'Update DB status CustomerService gagal: ' . $e->getMessage();
                 }

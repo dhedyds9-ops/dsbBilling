@@ -1,84 +1,130 @@
-{{--
-Enterprise Layout - Single Layout for All Admin Pages
---}}
-
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="bg-slate-50 dark:bg-slate-900" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', $title ?? config('app.name', 'WiFinan Admin'))</title>
+    <title>@yield('title', $title ?? config('app.name', 'dsBilling Admin'))</title>
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CDN Config for Light Theme -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Figtree', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .apexcharts-canvas, .apexcharts-svg { background: transparent !important; }
+        .apexcharts-tooltip { background: transparent !important; }
+
+        /* Fix Material Symbols icons always rendering as icons (not text) */
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined' !important;
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none !important;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr !important;
+            -webkit-font-feature-settings: 'liga';
+            font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+    </style>
 
     <!-- Styles -->
     @livewireStyles
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    @stack('styles')
 </head>
 
 <body
     x-data="{
         sidebarCollapsed: false,
-        sidebarMobileOpen: false,
-        darkMode: false
+        sidebarMobileOpen: false
     }"
-    x-init="
-        darkMode = localStorage.getItem('darkMode') === 'true' ||
-                   (window.matchMedia('(prefers-color-scheme: dark)').matches && !localStorage.getItem('darkMode'));
-        if (darkMode) document.documentElement.classList.add('dark');
-        $watch('darkMode', function (value) {
-            if (value) {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('darkMode', 'true');
-            } else {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('darkMode', 'false');
-            }
-        });
-    "
-    :class="darkMode ? 'dark' : ''"
-    class="h-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased"
+    class="min-h-screen font-sans text-slate-900 dark:text-slate-100 antialiased bg-slate-50 dark:bg-slate-900 print:bg-white print:text-black"
 >
     <!-- Mobile Sidebar Overlay -->
     <div
         x-show="sidebarMobileOpen"
         @click="sidebarMobileOpen = false"
-        class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm lg:hidden"
+        x-transition:enter="transition-opacity ease-linear duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition-opacity ease-linear duration-300"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-40 bg-slate-900/80 backdrop-blur-sm lg:hidden"
         style="display: none;"
     ></div>
 
     <!-- Sidebar -->
-    <x-admin.sidebar />
+    <div class="print:hidden">
+        <x-admin.sidebar />
+    </div>
 
     <!-- Main Content Area -->
     <div
-        class="lg:pl-72 transition-all duration-300"
-        :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'"
+        class="lg:pl-64 print:pl-0 transition-all duration-300 relative flex flex-col min-h-screen"
+        :class="sidebarCollapsed ? 'lg:pl-20 print:pl-0' : 'lg:pl-64 print:pl-0'"
     >
         <!-- Topbar -->
-        <x-admin.topbar :breadcrumbs="$breadcrumbs ?? []" :user="auth()->user()" />
+        <div class="print:hidden">
+            <x-admin.topbar :breadcrumbs="$breadcrumbs ?? []" :user="auth()->user()" />
+        </div>
 
         <!-- Page Content -->
-        <main class="min-h-[calc(100vh-4rem)] p-6">
+        <main class="flex-1 p-6 print:p-0 print:m-0">
             {{ $slot ?? '' }}
             @yield('content')
         </main>
-
-        <!-- Footer -->
-        <footer class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-4 px-6 text-sm text-slate-500 dark:text-slate-400">
-            © 2024 WiFinan. All rights reserved.
-        </footer>
     </div>
 
     <!-- Scripts -->
     @livewireScripts
     @stack('scripts')
+
+    <!-- Protect Material Symbols from Google Translate -->
+    <script>
+        function protectIcons() {
+            document.querySelectorAll('.material-symbols-outlined').forEach(function(el) {
+                el.setAttribute('translate', 'no');
+                el.classList.add('notranslate');
+            });
+        }
+        // Run on DOM ready
+        document.addEventListener('DOMContentLoaded', protectIcons);
+        // Run after Livewire updates
+        document.addEventListener('livewire:update', protectIcons);
+        // Watch for dynamic DOM changes (Google Translate itself)
+        new MutationObserver(protectIcons).observe(document.body, { childList: true, subtree: true });
+    </script>
+@include('components.global-sweetalert')
 </body>
 </html>

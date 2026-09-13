@@ -3,9 +3,9 @@
 @section('title', 'Customers - WiFiNan')
 
 @section('breadcrumb')
-<span class="text-slate-500">CRM</span>
+<span class="text-slate-500 dark:text-slate-400">CRM</span>
 <span class="text-slate-400 mx-2">/</span>
-<span class="text-slate-900">Customers</span>
+<span class="text-slate-900 dark:text-slate-100">Customers</span>
 @endsection
 
 @section('content')
@@ -13,8 +13,8 @@
     <!-- Page Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900">Customers</h1>
-            <p class="mt-1 text-sm text-slate-500">Manage your customers and their services</p>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Customers</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Manage your customers and their services</p>
         </div>
         <div class="flex items-center gap-3">
             <a href="{{ route('crm.customers.export') }}" class="btn-outline btn-sm">
@@ -42,8 +42,8 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['total'] }}</p>
-                    <p class="text-sm text-slate-500">Total Customers</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['total'] }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Total Customers</p>
                 </div>
             </div>
         </div>
@@ -55,8 +55,8 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['active'] }}</p>
-                    <p class="text-sm text-slate-500">Active</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['active'] }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Active</p>
                 </div>
             </div>
         </div>
@@ -68,8 +68,8 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['inactive'] }}</p>
-                    <p class="text-sm text-slate-500">Inactive</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['inactive'] }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Inactive</p>
                 </div>
             </div>
         </div>
@@ -81,8 +81,8 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-slate-900">{{ $stats['new_this_month'] }}</p>
-                    <p class="text-sm text-slate-500">New This Month</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['new_this_month'] }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">New This Month</p>
                 </div>
             </div>
         </div>
@@ -98,12 +98,12 @@
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <input type="text" wire:model.live.debounce.300ms="filters.search" placeholder="Search customers..." class="input pl-10">
+                        <input type="text" wire:model.live.debounce.300ms="filters.search" placeholder="Search customers..." class="input pl-10 dark:bg-slate-900 dark:text-slate-100">
                     </div>
                 </div>
 
                 <!-- Status Filter -->
-                <select wire:model.live="filters.status" class="select w-auto">
+                <select wire:model.live="filters.status" class="select w-auto dark:bg-slate-900 dark:text-slate-100">
                     <option value="all">All Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -111,7 +111,7 @@
                 </select>
 
                 <!-- Package Filter -->
-                <select wire:model.live="filters.package" class="select w-auto">
+                <select wire:model.live="filters.package" class="select w-auto dark:bg-slate-900 dark:text-slate-100">
                     <option value="all">All Packages</option>
                     <option value="basic">Basic 50 Mbps</option>
                     <option value="standard">Standard 75 Mbps</option>
@@ -119,7 +119,7 @@
                 </select>
 
                 <!-- Area Filter -->
-                <select wire:model.live="filters.area" class="select w-auto">
+                <select wire:model.live="filters.area" class="select w-auto dark:bg-slate-900 dark:text-slate-100">
                     <option value="all">All Areas</option>
                     <option value="jakarta_selatan">Jakarta Selatan</option>
                     <option value="jakarta_barat">Jakarta Barat</option>
@@ -136,7 +136,7 @@
                 <thead>
                     <tr>
                         <th class="w-10">
-                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300">
+                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </th>
                         <th class="cursor-pointer" wire:click="sortBy('name')">
                             <div class="flex items-center gap-2">
@@ -176,7 +176,7 @@
                     @foreach($customers as $customer)
                     <tr>
                         <td>
-                            <input type="checkbox" value="{{ $customer['id'] }}" wire:model.live="selected" class="rounded border-slate-300">
+                            <input type="checkbox" value="{{ $customer['id'] }}" wire:model.live="selected" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </td>
                         <td>
                             <div class="flex items-center gap-3">
@@ -184,16 +184,16 @@
                                     {{ substr($customer['name'], 0, 1) }}
                                 </div>
                                 <div>
-                                    <p class="font-medium text-slate-900">{{ $customer['name'] }}</p>
-                                    <p class="text-sm text-slate-500">{{ $customer['email'] }}</p>
+                                    <p class="font-medium text-slate-900 dark:text-slate-100">{{ $customer['name'] }}</p>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ $customer['email'] }}</p>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <span class="text-slate-700">{{ $customer['package'] }}</span>
+                            <span class="text-slate-700 dark:text-slate-300">{{ $customer['package'] }}</span>
                         </td>
                         <td>
-                            <span class="text-slate-700">{{ $customer['area'] }}</span>
+                            <span class="text-slate-700 dark:text-slate-300">{{ $customer['area'] }}</span>
                         </td>
                         <td>
                             @if($customer['status'] === 'active')
@@ -205,23 +205,23 @@
                             @endif
                         </td>
                         <td>
-                            <span class="text-sm text-slate-500">{{ $customer['created_at']->diffForHumans() }}</span>
+                            <span class="text-sm text-slate-500 dark:text-slate-400">{{ $customer['created_at']->diffForHumans() }}</span>
                         </td>
                         <td class="text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('crm.customers.view', $customer['id']) }}" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ route('crm.customers.view', $customer['id']) }}" class="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
+                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </a>
-                                <a href="{{ route('crm.customers.edit', $customer['id']) }}" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <a href="{{ route('crm.customers.edit', $customer['id']) }}" class="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
+                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </a>
-                                <button class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <button class="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
+                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                     </svg>
                                 </button>
@@ -235,7 +235,7 @@
         
         <!-- Pagination -->
         <div class="card-footer flex items-center justify-between">
-            <p class="text-sm text-slate-500">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
                 Showing {{ $customers->count() }} of {{ $stats['total'] }} customers
             </p>
             <div class="pagination">

@@ -106,6 +106,23 @@ class Index extends AdminComponent
         parent::mount();
         $this->activeModule = 'pengaturan';
         $this->activePage = 'whatsapp';
+
+        // Load existing data from DB and merge with defaults
+        $dbConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+        $this->connection = array_merge($this->connection, $dbConn);
+
+        $dbTemplates = \App\Models\Setting::getValue('whatsapp.templates', []);
+        if (!empty($dbTemplates)) {
+            // Merge to preserve missing keys if we added new templates
+            foreach ($this->templates as $i => $defaultTpl) {
+                foreach ($dbTemplates as $dbTpl) {
+                    if ($dbTpl['code'] === $defaultTpl['code']) {
+                        $this->templates[$i] = array_merge($defaultTpl, $dbTpl);
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     public function authorizeAccess(): void
@@ -149,6 +166,8 @@ class Index extends AdminComponent
     {
         $this->validate();
         try {
+            \App\Models\Setting::setValue('whatsapp.connection', $this->connection);
+            \App\Models\Setting::setValue('whatsapp.templates', $this->templates);
             $this->savedStatus = 'saved';
             session()->flash('success', 'Konfigurasi WhatsApp berhasil disimpan.');
         } catch (Throwable $e) {

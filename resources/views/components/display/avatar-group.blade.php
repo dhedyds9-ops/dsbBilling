@@ -19,7 +19,7 @@ $remaining = count($avatars) - $max;
 
 <div class="flex items-center -space-x-3" {{ $attributes }}>
     @foreach ($displayed as $avatar)
-        <x-avatar
+        <x-display.avatar
             :src="$avatar['src'] ?? null"
             :name="$avatar['name'] ?? null"
             :size="$size"
@@ -29,7 +29,7 @@ $remaining = count($avatars) - $max;
 
     @if ($remaining > 0)
         <div class="relative inline-block">
-            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-sm font-medium text-slate-600 ring-2 ring-white">
+            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-sm font-medium text-slate-600 dark:text-slate-400 ring-2 ring-white">
                 +{{ $remaining }}
             </div>
         </div>

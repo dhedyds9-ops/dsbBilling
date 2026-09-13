@@ -3,15 +3,19 @@
 namespace App\Livewire;
 
 use Livewire\WithPagination;
+use Livewire\Attributes\Url;
 
 abstract class BaseEnterpriseList extends AdminComponent
 {
     use WithPagination;
 
+    #[Url]
     public string $search = '';
     public string $sortField = 'created_at';
     public string $sortDirection = 'desc';
     public int $perPage = 25;
+    
+    #[Url]
     public array $filters = [];
     public bool $showFilters = false;
     public bool $loading = false;
@@ -21,6 +25,7 @@ abstract class BaseEnterpriseList extends AdminComponent
     public bool $selectAll = false;
     public string $bulkAction = '';
 
+    #[Url]
     public string $activeTab = '';
     public array $tabs = [];
 
@@ -78,7 +83,7 @@ abstract class BaseEnterpriseList extends AdminComponent
         $this->selectAll = false;
     }
 
-    public function updatedFilters(array $value = []): void
+    public function updatedFilters(mixed $value = null, ?string $key = null): void
     {
         $this->resetPage();
     }
@@ -94,8 +99,13 @@ abstract class BaseEnterpriseList extends AdminComponent
     public function updatedSelectAll(bool $value): void
     {
         if ($value) {
-            $this->selected = collect($this->getRowsQuery()->limit(min(500, $this->perPage * 5))
-                ->pluck('id')->all())
+            $query = $this->getRowsQuery();
+            $limit = min(500, $this->perPage * 5);
+            $ids = $query instanceof \Illuminate\Support\Collection 
+                ? $query->take($limit)->pluck('id')->all()
+                : $query->limit($limit)->pluck('id')->all();
+                
+            $this->selected = collect($ids)
                 ->map(fn($v) => (string) $v)
                 ->all();
         } else {
@@ -105,8 +115,13 @@ abstract class BaseEnterpriseList extends AdminComponent
 
     public function updatedSelected(array $value): void
     {
-        $rows = $this->getRowsQuery()->limit(min(500, $this->perPage * 5))->pluck('id')->map(fn($v) => (string) $v)->all();
-        $this->selectAll = count($value) > 0 && count(array_diff($rows, $value)) === 0;
+        $query = $this->getRowsQuery();
+        $limit = min(500, $this->perPage * 5);
+        $ids = $query instanceof \Illuminate\Support\Collection 
+            ? $query->take($limit)->pluck('id')->map(fn($v) => (string) $v)->all()
+            : $query->limit($limit)->pluck('id')->map(fn($v) => (string) $v)->all();
+            
+        $this->selectAll = count($value) > 0 && count(array_diff($ids, $value)) === 0;
     }
 
     public function applyBulk(string $action): void
@@ -176,7 +191,9 @@ abstract class BaseEnterpriseList extends AdminComponent
         ];
 
         $prefix = $messages[$action] ?? 'Berhasil memproses';
-        session()->flash('success', "{$prefix} {$count} data.");
+        $msg = "{$prefix} {$count} data.";
+        session()->flash('success', $msg);
+        $this->dispatch('toast', type: 'success', message: $msg);
 
         $this->selected = [];
         $this->selectAll = false;

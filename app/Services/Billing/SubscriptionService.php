@@ -73,17 +73,17 @@ class SubscriptionService
 
     protected function calculateNextBillingDate(\DateTimeInterface $startDate, string $billingCycle): \DateTimeInterface
     {
-        $nextDate = clone $startDate;
+        $nextDate = \Illuminate\Support\Carbon::instance($startDate)->copy();
 
         switch ($billingCycle) {
             case 'monthly':
-                $nextDate->add(new \DateInterval('P1M'));
+                $nextDate->addMonthNoOverflow();
                 break;
             case 'quarterly':
-                $nextDate->add(new \DateInterval('P3M'));
+                $nextDate->addMonthsNoOverflow(3);
                 break;
             case 'yearly':
-                $nextDate->add(new \DateInterval('P1Y'));
+                $nextDate->addYearNoOverflow();
                 break;
         }
 

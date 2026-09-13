@@ -23,6 +23,7 @@ class Edit extends AdminComponent
     public $mac_address;
     public $pon_port;
     public $status;
+    public $customer_service_id;
 
     public function mount($id = null)
     {
@@ -42,6 +43,7 @@ class Edit extends AdminComponent
         $this->mac_address = $this->onu->mac_address;
         $this->pon_port = $this->onu->pon_port;
         $this->status = $this->onu->status;
+        $this->customer_service_id = $this->onu->customerService->id ?? null;
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Network', 'url' => route('isp.onus.index')],
@@ -54,7 +56,7 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
-            'code' => 'required|unique:isp_onus,code,' . $this->onuId,
+            'code' => 'required|unique:onus,code,' . $this->onuId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);
@@ -73,6 +75,19 @@ class Edit extends AdminComponent
             'status' => $this->status,
         ], Auth::user());
 
+        // Update customer service relation
+        $oldCsId = $this->onu->customerService->id ?? null;
+        if ($oldCsId != $this->customer_service_id) {
+            // Remove old mapping if exists
+            if ($oldCsId) {
+                \App\Models\Customer\CustomerService::where('id', $oldCsId)->update(['onu_id' => null]);
+            }
+            // Set new mapping
+            if ($this->customer_service_id) {
+                \App\Models\Customer\CustomerService::where('id', $this->customer_service_id)->update(['onu_id' => $this->onu->id]);
+            }
+        }
+
         session()->flash('success', 'ONU berhasil diperbarui!');
         return redirect()->route('isp.onus.show', $this->onuId);
     }
@@ -81,6 +96,7 @@ class Edit extends AdminComponent
     {
         $olts = Olt::active()->get();
         $vendors = Vendor::active()->get();
-        return view('livewire.isp.onu.edit', compact('olts', 'vendors'));
+        $customerServices = \App\Models\Customer\CustomerService::with('customer')->get();
+        return view('livewire.isp.onu.edit', compact('olts', 'vendors', 'customerServices'));
     }
 }

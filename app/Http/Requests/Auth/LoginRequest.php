@@ -28,7 +28,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -42,15 +42,115 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $identity = trim((string) $this->string('login'));
+        $password = (string) $this->string('password');
+        $remember = $this->boolean('remember');
+        $isCustomerLogin = $this->input('login_type') === 'customer';
+
+        $user = $this->resolveIdentity($identity);
+
+        if (!$user) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'login' => trans('auth.failed'),
             ]);
         }
 
+        if ($isCustomerLogin) {
+            if (!$user->hasRole('customer')) {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'login' => trans('auth.failed'),
+                ]);
+            }
+        }
+
+        // ALL users must be checked for password!
+        if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'login' => trans('auth.failed'),
+            ]);
+        }
+
+        if (!$user->is_active) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'login' => 'Akun Anda belum aktif atau telah dinonaktifkan.',
+            ]);
+        }
+
+        Auth::login($user, $remember);
+
         RateLimiter::clear($this->throttleKey());
+    }
+
+        private function resolveIdentity(string $identity): ?\App\Models\User
+    {
+        $query = \App\Models\User::query();
+        $lower = mb_strtolower(trim($identity));
+        
+        // Bersihkan nomor HP dari spasi, strip, atau plus
+        $cleanPhone = preg_replace('/[^0-9]/', '', $identity);
+        
+        $phone0 = null;
+        $phone62 = null;
+        
+        if (!empty($cleanPhone)) {
+            $phone0 = $cleanPhone;
+            $phone62 = $cleanPhone;
+            if (str_starts_with($cleanPhone, '62')) {
+                $phone0 = '0' . substr($cleanPhone, 2);
+            } elseif (str_starts_with($cleanPhone, '0')) {
+                $phone62 = '62' . substr($cleanPhone, 1);
+            }
+        }
+
+        if (ctype_digit($cleanPhone) && strlen($cleanPhone) >= 10 && strlen($cleanPhone) <= 15) {
+            return $query->where(function($q) use ($lower, $phone0, $phone62) {
+                if ($phone0 && $phone62) {
+                    $q->whereRaw('LOWER(whatsapp) IN (?, ?)', [$phone0, $phone62]);
+                }
+                $q->orWhereRaw('LOWER(pppoe_username) = ?', [$lower])
+                  ->orWhereRaw('LOWER(customer_code) = ? OR LOWER(username) = ? OR LOWER(email) = ?', [$lower, $lower, $lower]);
+                  
+                if ($phone0 && $phone62) {
+                    $q->orWhereHas('customer', function($subQ) use ($phone0, $phone62) {
+                        $subQ->whereRaw('LOWER(phone) IN (?, ?)', [$phone0, $phone62]);
+                    });
+                }
+            })->first();
+        }
+
+        // Cek apakah username ini adalah username Hotspot
+        $hotspotUser = \App\Models\ISP\HotspotUser::with('customerService.customer')->whereRaw('LOWER(username) = ?', [$lower])->first();
+        if ($hotspotUser && $hotspotUser->customerService && $hotspotUser->customerService->customer && $hotspotUser->customerService->customer->user_id) {
+            $u = \App\Models\User::find($hotspotUser->customerService->customer->user_id);
+            if ($u) return $u;
+        }
+
+        if (str_contains($identity, '@')) {
+            return $query->whereRaw('LOWER(email) = ?', [$lower])->first()
+                ?? $query->whereRaw('LOWER(pppoe_username) = ? OR LOWER(customer_code) = ? OR LOWER(username) = ?', [$lower, $lower, $lower])->first();
+        }
+
+        return $query->where(function ($q) use ($lower, $phone0, $phone62) {
+            $q->whereRaw('LOWER(email) = ?', [$lower])
+                ->orWhereRaw('LOWER(username) = ?', [$lower])
+                ->orWhereRaw('LOWER(customer_code) = ?', [$lower])
+                ->orWhereRaw('LOWER(pppoe_username) = ?', [$lower]);
+                
+            if ($phone0 && $phone62) {
+                $q->orWhereRaw('LOWER(whatsapp) IN (?, ?)', [$phone0, $phone62])
+                  ->orWhereHas('customer', function($subQ) use ($phone0, $phone62) {
+                      $subQ->whereRaw('LOWER(phone) IN (?, ?)', [$phone0, $phone62]);
+                  });
+            }
+        })->first();
     }
 
     /**
@@ -69,7 +169,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'login' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -81,6 +181,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('login')).'|'.$this->ip());
     }
 }

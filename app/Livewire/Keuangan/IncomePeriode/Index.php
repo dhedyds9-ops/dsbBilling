@@ -2,10 +2,17 @@
 
 namespace App\Livewire\Keuangan\IncomePeriode;
 
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\IncomeExport;
+use Carbon\Carbon;
+
 use App\Livewire\BaseEnterpriseList;
 use App\Services\Keuangan\IncomeReportService;
+use App\Services\Auth\UserQueryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
 
 class Index extends BaseEnterpriseList
 {
@@ -19,177 +26,223 @@ class Index extends BaseEnterpriseList
         $this->service = $service;
     }
 
+    public $showFilterModal = false;
+
     public function mount(): void
     {
         parent::mount();
         $this->activeModule = 'keuangan';
         $this->activePage = 'income-periode';
-        $this->tabs = [
-            'monthly' => 'Bulanan',
-            'yearly' => 'Tahunan',
-        ];
+        
         $this->filters = [
-            'year' => (string) now()->year,
-            'month' => (string) now()->month,
-            'start_date' => '',
-            'end_date' => '',
+            'start_date' => now()->startOfMonth()->toDateString(),
+            'end_date' => now()->endOfMonth()->toDateString(),
+            'user_type' => 'all', // all, customer, voucher
+            'service_type' => 'all',
+            'profile_paket' => 'all',
+            'reseller_id' => 'all',
+            'method' => '',
         ];
         $this->perPage = 50;
     }
 
-    public function setActiveTab(string $tab): void
+    public function openFilterModal()
     {
-        $this->activeTab = $tab;
+        $this->showFilterModal = true;
+    }
+
+    public function applyFilter()
+    {
+        $this->showFilterModal = false;
+        $this->resetPage();
     }
 
     public function getRowsQuery()
     {
-        $data = $this->service->periodComparison($this->activeTab ?: 'monthly', $this->filters);
-        return collect($data['rows'] ?? []);
+        return collect();
     }
 
     public function getRows()
     {
-        return $this->withLoading(function () {
-            $data = $this->getPeriodData();
-            return collect($data['rows'] ?? []);
-        }, 'Gagal memuat data Income Periode');
+        return collect($this->periodData['rows'] ?? []);
     }
 
+    #[Computed]
     public function getPeriodDataProperty(): array
     {
-        try {
-            return $this->service->periodComparison($this->activeTab ?: 'monthly', $this->filters);
-        } catch (\Throwable $e) {
-            Log::error('IncomePeriode periodComparison failed', ['e' => $e->getMessage()]);
+        return $this->service->getTransactions($this->filters);
+    }
+
+    #[Computed]
+    public function getResellersProperty()
+    {
+        return app(UserQueryService::class)->getResellers();
+    }
+
+        public function updatedFiltersUserType($value): void
+    {
+        $this->filters['service_type'] = 'all';
+        $this->filters['profile_paket'] = 'all';
+    }
+
+    public function updatedFiltersServiceType($value): void
+    {
+        $this->filters['profile_paket'] = 'all';
+    }
+
+    #[Computed]
+    public function getServicesProperty()
+    {
+        $userType = $this->filters['user_type'] ?? 'all';
+        if ($userType === 'customer') {
             return [
-                'type' => $this->activeTab ?: 'monthly',
-                'period_label' => '-',
-                'prev_period_label' => '-',
-                'current_total' => 0,
-                'prev_total' => 0,
-                'growth_percent' => 0,
-                'labels' => [],
-                'current_data' => [],
-                'prev_data' => [],
-                'rows' => [],
+                (object)['id' => 'pppoe', 'name' => 'PPPoE'],
+                (object)['id' => 'hotspot', 'name' => 'Hotspot']
+            ];
+        } elseif ($userType === 'voucher') {
+            return [
+                (object)['id' => 'voucher', 'name' => 'Voucher'],
+                (object)['id' => 'evoucher', 'name' => 'E-Voucher']
             ];
         }
+        return [
+            (object)['id' => 'pppoe', 'name' => 'PPPoE'],
+            (object)['id' => 'hotspot', 'name' => 'Hotspot'],
+            (object)['id' => 'voucher', 'name' => 'Voucher'],
+            (object)['id' => 'evoucher', 'name' => 'E-Voucher']
+        ];
     }
 
-    protected function getPeriodData(): array
+    #[Computed]
+    public function getProfilesProperty()
     {
-        return $this->periodData;
+        $st = $this->filters['service_type'] ?? 'all';
+        $q = \App\Models\ISP\ServiceProfile::query();
+        if ($st !== 'all') {
+            $q->where('service_type', $st);
+        } else {
+            $ut = $this->filters['user_type'] ?? 'all';
+            if ($ut === 'customer') {
+                $q->whereIn('service_type', ['pppoe', 'hotspot']);
+            } elseif ($ut === 'voucher') {
+                $q->whereIn('service_type', ['voucher', 'evoucher']);
+            }
+        }
+        return $q->get();
     }
 
+    #[Computed]
     public function getFilterConfigProperty(): array
     {
-        $months = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $months[(string) $m] = now()->setMonth($m)->translatedFormat('F');
-        }
-        $years = [];
-        $y = now()->year;
-        for ($i = 0; $i < 5; $i++) {
-            $years[(string) ($y - $i)] = (string) ($y - $i);
+        $resellerOptions = [];
+        foreach ($this->resellers as $r) {
+            $resellerOptions[$r->id] = $r->name;
         }
 
-        $result = [
-            ['key' => 'year', 'label' => 'Tahun', 'type' => 'select', 'options' => $years],
-        ];
-        if (($this->activeTab ?: 'monthly') === 'monthly') {
-            $result[] = ['key' => 'month', 'label' => 'Bulan', 'type' => 'select', 'options' => $months];
+        $serviceOptions = [];
+        foreach ($this->services as $s) {
+            $serviceOptions[$s->id] = $s->name;
         }
-        $result[] = ['key' => 'start_date', 'label' => 'Rentang Mulai', 'type' => 'date'];
-        $result[] = ['key' => 'end_date', 'label' => 'Rentang Akhir', 'type' => 'date'];
-        return $result;
+
+        $profileOptions = [];
+        foreach ($this->profiles as $p) {
+            $profileOptions[$p->id] = $p->name;
+        }
+
+        return [
+            [
+                'key' => 'reseller_id',
+                'label' => 'Semua Reseller',
+                'type' => 'select',
+                'options' => $resellerOptions
+            ],
+            [
+                'key' => 'user_type',
+                'label' => 'Semua Tipe Pengguna',
+                'type' => 'select',
+                'options' => [
+                    'customer' => 'Customer/Member',
+                    'voucher' => 'Voucher'
+                ]
+            ],
+            [
+                'key' => 'service_type',
+                'label' => 'Semua Layanan',
+                'type' => 'select',
+                'options' => $serviceOptions
+            ],
+            [
+                'key' => 'profile_paket',
+                'label' => 'Semua Profil Paket',
+                'type' => 'select',
+                'options' => $profileOptions
+            ]
+        ];
     }
 
     public function getBulkActionsProperty(): array
     {
-        return [
-            ['key' => 'export', 'label' => 'Export Excel', 'variant' => 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700'],
-        ];
+        return [];
     }
 
     public function handleBulkAction(string $action, array $ids): int
     {
-        return match ($action) {
-            'export' => (function () {
-                $this->exportExcelAction();
-                return count($ids);
-            })(),
-            default => 0,
-        };
+        return 0;
     }
 
-    public function exportExcelAction(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
+            public function exportCsv(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
     {
-        $userId = Auth::id() ?? 1;
-        return $this->service->excelExport([
-            'type' => $this->activeTab ?: 'monthly',
-            'filters' => $this->filters,
-        ], $userId);
+        return redirect()->back()->with('error', 'Silakan gunakan Export Excel atau PDF.');
     }
 
-    public function exportPdfAction(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
+    public function exportExcel()
     {
-        $userId = Auth::id() ?? 1;
-        return $this->service->pdfExport([
-            'type' => $this->activeTab ?: 'monthly',
-            'filters' => $this->filters,
-        ], $userId);
+        $data = $this->periodData;
+        $rows = $data['rows'] ?? [];
+        $filename = 'income-' . now()->format('YmdHis') . '.xlsx';
+        return Excel::download(new IncomeExport($rows), $filename);
     }
 
-    public function exportRowExcel(string $periodLabel): void
+    public function exportPdf()
     {
-        $userId = Auth::id() ?? 1;
-        try {
-            $this->service->excelExport([
-                'type' => $this->activeTab ?: 'monthly',
-                'filters' => array_merge($this->filters, ['period_label' => $periodLabel]),
-            ], $userId);
-            session()->flash('success', 'Excel untuk periode ' . $periodLabel . ' sedang diproses.');
-        } catch (\Throwable $e) {
-            $this->errorMessage = 'Gagal export: ' . $e->getMessage();
-        }
-    }
+        $data = $this->periodData;
+        $rows = $data['rows'] ?? [];
+        
+        $isHarian = isset($this->filters['date']);
+        
+        $title = $isHarian ? 'Pemasukan Harian' : 'Pemasukan Periode';
+        $subtitle = $isHarian 
+            ? 'Tanggal: ' . Carbon::parse($this->filters['date'] ?? now())->translatedFormat('l, d F Y')
+            : 'Periode: ' . Carbon::parse($this->filters['start_date'] ?? now())->translatedFormat('d F Y') . ' s/d ' . Carbon::parse($this->filters['end_date'] ?? now())->translatedFormat('d F Y');
 
-    public function exportRowPdf(string $periodLabel): void
-    {
-        try {
-            $this->service->pdfExport([
-                'type' => $this->activeTab ?: 'monthly',
-                'filters' => array_merge($this->filters, ['period_label' => $periodLabel]),
-            ], Auth::id() ?? 1);
-            session()->flash('success', 'PDF untuk periode ' . $periodLabel . ' sedang diproses.');
-        } catch (\Throwable $e) {
-            $this->errorMessage = 'Gagal export: ' . $e->getMessage();
-        }
-    }
-
-    public function exportCsv(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
-    {
-        return $this->exportExcelAction();
-    }
-
-    public function updatedSelected(array $value): void
-    {
-    }
-
-    public function updatedSelectAll(bool $value): void
-    {
+        $pdf = Pdf::loadView('exports.income-pdf', [
+            'rows' => $rows,
+            'title' => $title,
+            'subtitle' => $subtitle,
+        ])->setPaper('a4', 'landscape');
+        
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, 'income-' . now()->format('YmdHis') . '.pdf');
     }
 
     public function render()
     {
-        $rows = $this->getRows();
-        $periodData = $this->periodData;
+        $data = $this->periodData;
+        $items = collect($data['rows']);
+        $page = $this->page ?? 1;
+        
+        $rows = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items->forPage($page, $this->perPage),
+            $items->count(),
+            $this->perPage,
+            $page,
+            ['path' => \Illuminate\Support\Facades\Request::url(), 'query' => \Illuminate\Support\Facades\Request::query()]
+        );
+        
         return view('livewire.keuangan.income-periode.index', [
             'rows' => $rows,
-            'periodData' => $periodData,
-            'filterConfig' => $this->filterConfig,
-            'bulkActions' => $this->bulkActions,
+            'summary' => $data['summary'] ?? [],
         ]);
     }
 }

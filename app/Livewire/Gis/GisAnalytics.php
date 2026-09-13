@@ -163,6 +163,6 @@ class GisAnalytics extends Component
             'summaryMetrics' => $this->summaryMetrics,
             'topPerformers' => $this->topPerformers,
             'bottomPerformers' => $this->bottomPerformers,
-        ]);
+        ])->layout('layouts.noc');
     }
 }

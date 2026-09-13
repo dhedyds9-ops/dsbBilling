@@ -10,16 +10,18 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
+        $password = env('ADMIN_DEFAULT_PASSWORD', \Illuminate\Support\Str::random(16));
         User::updateOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('password'),
+                'username' => 'admin',
+                'password' => Hash::make($password),
             ]
         );
 
         $this->command->info('User created successfully!');
         $this->command->info('Email: admin@example.com');
-        $this->command->info('Password: password');
+        $this->command->info('Password: ' . (env('ADMIN_DEFAULT_PASSWORD') ? '***** (from env)' : $password));
     }
 }

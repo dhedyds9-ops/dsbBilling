@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FiberService
 {
-    public function listByTab(string $tab, array $filters, string $search, string $sortField, string $sortDirection, int $perPage)
+    public function queryByTab(string $tab, array $filters, string $search, string $sortField, string $sortDirection)
     {
         $query = match ($tab) {
             'olt' => $this->oltQuery(),
@@ -32,8 +32,12 @@ class FiberService
 
         $query = $this->applyFilters($query, $tab, $filters);
         $query = $this->applySearch($query, $tab, $search);
-        $query = $query->orderBy($this->mapSortField($tab, $sortField), $sortDirection);
+        return $query->orderBy($this->mapSortField($tab, $sortField), $sortDirection);
+    }
 
+    public function listByTab(string $tab, array $filters, string $search, string $sortField, string $sortDirection, int $perPage)
+    {
+        $query = $this->queryByTab($tab, $filters, $search, $sortField, $sortDirection);
         return $perPage > 0 ? $query->paginate($perPage) : $query->get();
     }
 
@@ -64,12 +68,12 @@ class FiberService
 
     protected function odpQuery()
     {
-        return Odp::with(['pop', 'olt', 'splitter']);
+        return Odp::with(['olt.pop', 'odc.pop', 'splitter']);
     }
 
     protected function odcQuery()
     {
-        return Odc::with(['pop', 'rack']);
+        return Odc::with(['pop']);
     }
 
     protected function popQuery()
@@ -91,8 +95,13 @@ class FiberService
     protected function applyFilters($query, string $tab, array $filters)
     {
         if (!empty($filters['pop_id'])) {
-            if (in_array($tab, ['olt', 'odp', 'odc'])) {
+            if (in_array($tab, ['olt', 'odc'])) {
                 $query->where('pop_id', $filters['pop_id']);
+            } elseif ($tab === 'odp') {
+                $query->where(function ($q) use ($filters) {
+                    $q->whereHas('olt', fn($sq) => $sq->where('pop_id', $filters['pop_id']))
+                      ->orWhereHas('odc', fn($sq) => $sq->where('pop_id', $filters['pop_id']));
+                });
             } elseif ($tab === 'onu') {
                 $query->whereHas('olt', fn($q) => $q->where('pop_id', $filters['pop_id']));
             }
@@ -100,6 +109,11 @@ class FiberService
         if (!empty($filters['olt_id'])) {
             if (in_array($tab, ['onu', 'odp', 'los'])) {
                 $query->where('olt_id', $filters['olt_id']);
+            }
+        }
+        if (!empty($filters['pon_port'])) {
+            if (in_array($tab, ['onu', 'los'])) {
+                $query->where('pon_port', $filters['pon_port']);
             }
         }
         if (!empty($filters['status']) && in_array($tab, ['olt', 'onu', 'odp', 'odc', 'fiber'])) {
@@ -111,6 +125,11 @@ class FiberService
         if (!empty($filters['region'])) {
             if ($tab === 'pop') {
                 $query->where('region', 'like', '%' . $filters['region'] . '%');
+            } elseif ($tab === 'odp') {
+                $query->where(function ($q) use ($filters) {
+                    $q->whereHas('olt', fn($sq) => $sq->whereHas('pop', fn($ssq) => $ssq->where('region', 'like', '%' . $filters['region'] . '%')))
+                      ->orWhereHas('odc', fn($sq) => $sq->whereHas('pop', fn($ssq) => $ssq->where('region', 'like', '%' . $filters['region'] . '%')));
+                });
             } else {
                 $query->whereHas('pop', fn($q) => $q->where('region', 'like', '%' . $filters['region'] . '%'));
             }
@@ -148,7 +167,8 @@ class FiberService
                     ->orWhereHas('customer', fn($sq) => $sq->where('name', 'like', $like)),
                 'odp' => $q->where('name', 'like', $like)
                     ->orWhere('code', 'like', $like)
-                    ->orWhereHas('pop', fn($sq) => $sq->where('name', 'like', $like)),
+                    ->orWhereHas('olt', fn($sq) => $sq->whereHas('pop', fn($ssq) => $ssq->where('name', 'like', $like)))
+                    ->orWhereHas('odc', fn($sq) => $sq->whereHas('pop', fn($ssq) => $ssq->where('name', 'like', $like))),
                 'odc' => $q->where('name', 'like', $like)
                     ->orWhere('code', 'like', $like)
                     ->orWhereHas('pop', fn($sq) => $sq->where('name', 'like', $like)),
@@ -191,7 +211,35 @@ class FiberService
                 default => Olt::class,
             };
 
+            $acsDriver = null;
+            $onlineMap = [];
+            $acsReachable = false;
+            if ($tab === 'onu') {
+                $acsDriver = app(\App\Services\Adapters\Monitoring\GenieACSDriver::class);
+                try {
+                    $devices = $acsDriver->listDevices(['projection' => '_lastInform,_deviceId._SerialNumber'], 5000);
+                    $acsReachable = true;
+                    foreach ($devices as $dev) {
+                        $sn = $dev['_deviceId']['_SerialNumber'] ?? null;
+                        if ($sn && isset($dev['_lastInform'])) {
+                            $isOnline = abs(now()->diffInMinutes(\Illuminate\Support\Carbon::parse($dev['_lastInform']))) < 5;
+                            $onlineMap[$sn] = $isOnline;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to bulk fetch devices from GenieACS: " . $e->getMessage());
+                }
+            }
+
             foreach ($class::whereIn('id', $ids)->cursor() as $item) {
+                if ($tab === 'onu' && $item->serial_number && $acsReachable) {
+                    if (array_key_exists($item->serial_number, $onlineMap)) {
+                        $item->status = $onlineMap[$item->serial_number] ? 'active' : 'offline';
+                    } else {
+                        // If it wasn't in the listDevices result, it's not registered/online
+                        $item->status = 'offline';
+                    }
+                }
                 $item->update(['last_sync_at' => now(), 'updated_by' => $userId]);
                 Event::dispatch(FiberDeviceSyncedEvent::create($tab, (string) $item->id, (string) $userId));
                 $count++;
@@ -301,6 +349,26 @@ class FiberService
             default => Olt::class,
         };
         $item = $class::findOrFail($id);
+
+        if ($tab === 'onu' && $item->serial_number) {
+            if (str_starts_with($item->serial_number, 'CDATA-GPON-') || str_starts_with($item->serial_number, 'DUMMY-')) {
+                \Log::info("Skipping GenieACS sync for dummy SN: {$item->serial_number}");
+            } else {
+                try {
+                    $acsDriver = app(\App\Services\Adapters\Monitoring\GenieACSDriver::class);
+                    $isOnline = $acsDriver->isDeviceOnline($item->serial_number);
+                    // JANGAN override status fisik OLT (active/inactive) dengan status TR-069 (GenieACS).
+                    // Karena jika OLT bilang alat ini tersambung (active), tapi belum disetting PPPoE (TR-069 offline),
+                    // alat ini sebenarnya masih aktif secara fisik.
+                    // $item->status = $isOnline ? 'active' : 'offline';
+                    
+                    // Kita bisa simpan ke kolom lain jika ada, atau sekadar memicu event sync TR-069.
+                } catch (\Exception $e) {
+                    \Log::error("Failed to sync ONU from GenieACS: " . $e->getMessage());
+                }
+            }
+        }
+
         $item->update(['last_sync_at' => now(), 'updated_by' => $userId]);
         Event::dispatch(FiberDeviceSyncedEvent::create($tab, (string) $id, (string) $userId));
     }
@@ -397,6 +465,30 @@ class FiberService
         return Olt::orderBy('name')->pluck('name', 'id')->toArray();
     }
 
+    public function getPonPortOptions(): array
+    {
+        $ports = Onu::whereNotNull('pon_port')
+            ->distinct()
+            ->pluck('pon_port')
+            ->toArray();
+            
+        $options = [];
+        foreach ($ports as $port) {
+            $formatted = $port;
+            if ($port >= 1310721 && $port <= 1310728) {
+                $formatted = "0/0/" . ($port - 1310720);
+            } elseif ($port > 1000000) {
+                $slot = ($port >> 24) & 0xFF;
+                $p = ($port >> 8) & 0xFF;
+                $formatted = ($slot === 0 && $p === 0) ? (string)$port : "0/{$slot}/{$p}";
+            }
+            $options[$port] = $formatted;
+        }
+        
+        asort($options);
+        return $options;
+    }
+
     public function getVendorOptions(): array
     {
         return \App\Models\ISP\Vendor::orderBy('name')->pluck('name', 'id')->toArray();
@@ -404,9 +496,6 @@ class FiberService
 
     public function getTechnicianOptions(): array
     {
-        return \App\Models\User::whereHas('roles', fn($q) => $q->whereIn('name', ['technician', 'staff', 'admin']))
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->toArray();
+        return app(\App\Services\Auth\UserQueryService::class)->getEligibleAssigneesForDropdown();
     }
 }

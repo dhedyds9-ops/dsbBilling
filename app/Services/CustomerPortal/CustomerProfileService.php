@@ -36,6 +36,7 @@ class CustomerProfileService
 
         $user->update([
             'password' => Hash::make($newPassword),
+            'password_changed_at' => now(),
         ]);
 
         return ['success' => true, 'message' => 'Password berhasil diubah'];

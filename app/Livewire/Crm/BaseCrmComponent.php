@@ -9,11 +9,20 @@ abstract class BaseCrmComponent extends AdminComponent
 {
     use WithPagination;
 
+    #[Livewire\Attributes\Url]
     public $search = '';
+    
+    #[Livewire\Attributes\Url]
     public $sortField = 'created_at';
+    
+    #[Livewire\Attributes\Url]
     public $sortDirection = 'desc';
+    
     public $perPage = 10;
+    
+    #[Livewire\Attributes\Url]
     public $filters = [];
+    
     public $showFilters = false;
 
     public function sortBy($field)

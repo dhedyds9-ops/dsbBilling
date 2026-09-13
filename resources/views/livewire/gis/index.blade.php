@@ -132,39 +132,39 @@
         }
     </style>
 </head>
-<body class="h-screen overflow-hidden bg-gray-100">
+<body class="h-screen overflow-hidden bg-gray-100 dark:bg-gray-800">
     <div x-data="gisPlatform()" x-init="init()" class="h-full flex flex-col">
         <!-- Header -->
-        <header class="bg-white shadow-sm border-b border-gray-200 z-50">
+        <header class="bg-white dark:bg-slate-800 shadow-sm border-b border-gray-200 dark:border-gray-700 z-50">
             <div class="flex items-center justify-between px-4 py-2">
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-2">
                         <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                         </svg>
-                        <span class="text-xl font-bold text-gray-800">WiFinan GIS</span>
+                        <span class="text-xl font-bold text-gray-800 dark:text-gray-200">WiFinan GIS</span>
                     </div>
                     
                     <!-- Quick Stats -->
                     <div class="hidden lg:flex items-center space-x-6 ml-8">
                         <div class="flex items-center space-x-2">
                             <span class="status-indicator status-active"></span>
-                            <span class="text-sm text-gray-600">OLT: <span class="font-semibold">1180</span></span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">OLT: <span class="font-semibold">1180</span></span>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="status-indicator status-warning"></span>
-                            <span class="text-sm text-gray-600">ODP: <span class="font-semibold">3245</span></span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">ODP: <span class="font-semibold">3245</span></span>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="status-indicator status-critical"></span>
-                            <span class="text-sm text-gray-600">Alarms: <span class="font-semibold text-red-600">3</span></span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Alarms: <span class="font-semibold text-red-600">3</span></span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="flex items-center space-x-4">
                     <!-- Time Range Selector -->
-                    <select wire:model.live="timeRange" class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <select wire:model.live="timeRange" class="text-sm border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="24h">Last 24 Hours</option>
                         <option value="7d">Last 7 Days</option>
                         <option value="30d">Last 30 Days</option>
@@ -172,7 +172,7 @@
                     
                     <!-- User Menu -->
                     <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                        <button @click="open = !open" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 dark:text-gray-100">
                             <img class="w-8 h-8 rounded-full bg-gray-300" src="https://ui-avatars.com/api/?name=Admin&background=3B82F6&color=fff" alt="User">
                             <span class="text-sm font-medium">Admin</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,16 +187,16 @@
         <!-- Main Content -->
         <div class="flex-1 flex overflow-hidden relative">
             <!-- Left Sidebar - Layers & Search -->
-            <div class="gis-sidebar w-80 flex flex-col border-r border-gray-200 bg-white overflow-hidden">
+            <div class="gis-sidebar w-80 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 overflow-hidden">
                 <!-- Search -->
-                <div class="p-4 border-b border-gray-200">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                     <div class="relative">
                         <input 
                             type="text" 
                             wire:model.live="searchQuery"
                             @input="$wire.search()"
                             placeholder="Search nodes, customers..."
-                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100"
                         >
                         <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -205,19 +205,19 @@
                     
                     <!-- Search Results -->
                     @if(count($searchResults ?? []) > 0)
-                    <div class="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    <div class="mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
                         @foreach($searchResults as $result)
                         <div 
                             wire:click="selectSearchResult('{{ $result['id'] }}', '{{ $result['type'] }}')"
-                            class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            class="px-4 py-3 hover:bg-gray-50 dark:bg-gray-900/50 cursor-pointer border-b border-gray-100 dark:border-slate-700 last:border-b-0"
                         >
                             <div class="flex items-center space-x-2">
                                 <span class="px-2 py-0.5 text-xs font-medium rounded bg-{{ $result['type'] === 'olt' ? 'blue' : 'green' }}-100 text-{{ $result['type'] === 'olt' ? 'blue' : 'green' }}-800">
                                     {{ strtoupper($result['type']) }}
                                 </span>
-                                <span class="font-medium text-gray-900">{{ $result['name'] }}</span>
+                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $result['name'] }}</span>
                             </div>
-                            <p class="text-sm text-gray-500 mt-1">{{ $result['code'] }}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $result['code'] }}</p>
                         </div>
                         @endforeach
                     </div>
@@ -225,8 +225,8 @@
                 </div>
                 
                 <!-- Layer Control -->
-                <div class="p-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Map Layers</h3>
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Map Layers</h3>
                     <div class="space-y-2">
                         @foreach($layers as $layerName => $visible)
                         <label class="flex items-center space-x-3 cursor-pointer">
@@ -234,11 +234,11 @@
                                 type="checkbox" 
                                 wire:change="toggleLayer('{{ $layerName }}')"
                                 @if($visible) checked @endif
-                                class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 dark:bg-slate-900 dark:text-slate-100"
                             >
                             <span class="flex items-center space-x-2">
                                 <span class="w-3 h-3 rounded-full" style="background-color: {{ $layerColors[$layerName] ?? '#6B7280' }}"></span>
-                                <span class="text-sm text-gray-700">{{ ucfirst($layerName) }}</span>
+                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ ucfirst($layerName) }}</span>
                             </span>
                         </label>
                         @endforeach
@@ -246,22 +246,22 @@
                 </div>
                 
                 <!-- Quick Actions -->
-                <div class="p-4 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Quick Actions</h3>
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Quick Actions</h3>
                     <div class="grid grid-cols-2 gap-2">
-                        <button class="px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 flex items-center space-x-1">
+                        <button class="px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:bg-blue-900/50 flex items-center space-x-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                             </svg>
                             <span>Route</span>
                         </button>
-                        <button class="px-3 py-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 flex items-center space-x-1">
+                        <button class="px-3 py-2 text-xs font-medium text-green-700 bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:bg-green-900/50 flex items-center space-x-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
                             <span>Add ODP</span>
                         </button>
-                        <button class="px-3 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 flex items-center space-x-1">
+                        <button class="px-3 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg hover:bg-yellow-100 dark:bg-yellow-900/50 flex items-center space-x-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -278,18 +278,18 @@
                 
                 <!-- Recent Activity -->
                 <div class="flex-1 overflow-y-auto p-4">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Recent Activity</h3>
+                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent Activity</h3>
                     <div class="space-y-3">
                         @foreach($recentAlarms ?? [] as $alarm)
-                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div class="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
                             <div class="flex items-center justify-between">
                                 <span class="flex items-center space-x-2">
                                     <span class="w-2 h-2 rounded-full bg-{{ $alarm['severity'] === 'critical' ? 'red' : 'yellow' }}-500"></span>
-                                    <span class="text-sm font-medium text-gray-900">{{ $alarm['id'] }}</span>
+                                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $alarm['id'] }}</span>
                                 </span>
-                                <span class="text-xs text-gray-500">{{ $alarm['timestamp'] }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $alarm['timestamp'] }}</span>
                             </div>
-                            <p class="text-sm text-gray-600 mt-1">{{ $alarm['message'] }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ $alarm['message'] }}</p>
                         </div>
                         @endforeach
                     </div>
@@ -302,60 +302,60 @@
                 
                 <!-- Toolbar -->
                 <div class="gis-toolbar absolute top-4 right-4 flex flex-col space-y-2">
-                    <button @click="zoomIn" class="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50" title="Zoom In">
-                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button @click="zoomIn" class="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:bg-gray-50 dark:bg-gray-900/50" title="Zoom In">
+                        <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
                     </button>
-                    <button @click="zoomOut" class="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50" title="Zoom Out">
-                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button @click="zoomOut" class="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:bg-gray-50 dark:bg-gray-900/50" title="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
                         </svg>
                     </button>
-                    <button @click="locateMe" class="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50" title="My Location">
-                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button @click="locateMe" class="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:bg-gray-50 dark:bg-gray-900/50" title="My Location">
+                        <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                         </svg>
                     </button>
-                    <button @click="toggleFullscreen" class="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50" title="Fullscreen">
-                        <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button @click="toggleFullscreen" class="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:bg-gray-50 dark:bg-gray-900/50" title="Fullscreen">
+                        <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
                         </svg>
                     </button>
                 </div>
                 
                 <!-- Legend -->
-                <div class="gis-legend absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 max-w-xs">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-3">Legend</h4>
+                <div class="gis-legend absolute bottom-4 left-4 bg-white dark:bg-slate-800 rounded-lg shadow-lg p-4 max-w-xs">
+                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Legend</h4>
                     <div class="space-y-2">
                         <div class="flex items-center space-x-2">
                             <span class="w-4 h-4 rounded-full bg-blue-500"></span>
-                            <span class="text-sm text-gray-600">OLT</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">OLT</span>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="w-3 h-3 rounded-full bg-green-500"></span>
-                            <span class="text-sm text-gray-600">ODP</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">ODP</span>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                            <span class="text-sm text-gray-600">ONU</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">ONU</span>
                         </div>
-                        <div class="border-t border-gray-200 pt-2 mt-2">
+                        <div class="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                             <div class="flex items-center space-x-2">
                                 <span class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
-                                <span class="text-sm text-gray-600">Critical Alarm</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Critical Alarm</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Zoom Controls -->
-                <div class="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4">
-                    <div class="text-xs text-gray-500 mb-2">Utilization</div>
+                <div class="absolute bottom-4 right-4 bg-white dark:bg-slate-800 rounded-lg shadow-lg p-4">
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">Utilization</div>
                     <div class="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div class="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500" style="width: 72%"></div>
                     </div>
-                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                         <span>0%</span>
                         <span>72%</span>
                         <span>100%</span>
@@ -365,10 +365,10 @@
             
             <!-- Right Sidebar - Details Panel -->
             @if($selectedNodeId)
-            <div class="gis-sidebar w-96 flex flex-col border-l border-gray-200 bg-white">
-                <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Node Details</h3>
-                    <button wire:click="clearSelection" class="text-gray-400 hover:text-gray-600">
+            <div class="gis-sidebar w-96 flex flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Node Details</h3>
+                    <button wire:click="clearSelection" class="text-gray-400 hover:text-gray-600 dark:text-gray-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -380,14 +380,14 @@
                     <div class="p-4">
                         <!-- Node Header -->
                         <div class="flex items-center space-x-3 mb-6">
-                            <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <div class="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
                                 <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
                                 </svg>
                             </div>
                             <div>
-                                <h4 class="text-xl font-semibold text-gray-900">{{ $nodeDetails['name'] ?? 'N/A' }}</h4>
-                                <p class="text-sm text-gray-500">{{ $nodeDetails['code'] ?? '' }}</p>
+                                <h4 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $nodeDetails['name'] ?? 'N/A' }}</h4>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $nodeDetails['code'] ?? '' }}</p>
                             </div>
                         </div>
                         
@@ -395,10 +395,10 @@
                         <div class="mb-6">
                             @php
                                 $statusClass = match($nodeDetails['status'] ?? 'inactive') {
-                                    'active' => 'bg-green-100 text-green-800',
-                                    'warning' => 'bg-yellow-100 text-yellow-800',
-                                    'critical' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800'
+                                    'active' => 'bg-green-100 dark:bg-green-900/50 text-green-800',
+                                    'warning' => 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800',
+                                    'critical' => 'bg-red-100 dark:bg-red-900/50 text-red-800',
+                                    default => 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
                                 };
                             @endphp
                             <span class="px-3 py-1 text-sm font-medium rounded-full {{ $statusClass }}">
@@ -417,16 +417,16 @@
                         <div x-show="activeTab === 'overview'">
                             <div class="space-y-4">
                                 <div>
-                                    <label class="text-sm text-gray-500">Location</label>
-                                    <p class="text-gray-900">{{ $nodeDetails['location']['name'] ?? 'N/A' }}</p>
+                                    <label class="text-sm text-gray-500 dark:text-gray-400">Location</label>
+                                    <p class="text-gray-900 dark:text-gray-100">{{ $nodeDetails['location']['name'] ?? 'N/A' }}</p>
                                 </div>
                                 <div>
-                                    <label class="text-sm text-gray-500">Coordinates</label>
-                                    <p class="text-gray-900">{{ $nodeDetails['location']['lat'] ?? 'N/A' }}, {{ $nodeDetails['location']['lon'] ?? 'N/A' }}</p>
+                                    <label class="text-sm text-gray-500 dark:text-gray-400">Coordinates</label>
+                                    <p class="text-gray-900 dark:text-gray-100">{{ $nodeDetails['location']['lat'] ?? 'N/A' }}, {{ $nodeDetails['location']['lon'] ?? 'N/A' }}</p>
                                 </div>
                                 <div>
-                                    <label class="text-sm text-gray-500">Type</label>
-                                    <p class="text-gray-900">{{ strtoupper($nodeDetails['type'] ?? 'N/A') }}</p>
+                                    <label class="text-sm text-gray-500 dark:text-gray-400">Type</label>
+                                    <p class="text-gray-900 dark:text-gray-100">{{ strtoupper($nodeDetails['type'] ?? 'N/A') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -436,7 +436,7 @@
                             <div class="space-y-4">
                                 <div>
                                     <div class="flex justify-between text-sm mb-1">
-                                        <span class="text-gray-500">Port Utilization</span>
+                                        <span class="text-gray-500 dark:text-gray-400">Port Utilization</span>
                                         <span class="font-medium">{{ $nodeDetails['capacity']['utilization'] ?? 0 }}%</span>
                                     </div>
                                     <div class="w-full h-2 bg-gray-200 rounded-full">
@@ -444,13 +444,13 @@
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div class="bg-gray-50 rounded-lg p-3">
-                                        <p class="text-sm text-gray-500">Total Ports</p>
-                                        <p class="text-xl font-semibold text-gray-900">{{ $nodeDetails['capacity']['total_ports'] ?? 0 }}</p>
+                                    <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Total Ports</p>
+                                        <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $nodeDetails['capacity']['total_ports'] ?? 0 }}</p>
                                     </div>
-                                    <div class="bg-gray-50 rounded-lg p-3">
-                                        <p class="text-sm text-gray-500">Used Ports</p>
-                                        <p class="text-xl font-semibold text-gray-900">{{ $nodeDetails['capacity']['used_ports'] ?? 0 }}</p>
+                                    <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Used Ports</p>
+                                        <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $nodeDetails['capacity']['used_ports'] ?? 0 }}</p>
                                     </div>
                                 </div>
                             </div>

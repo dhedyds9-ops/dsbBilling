@@ -40,52 +40,45 @@ class NotificationCenter extends Component
 
     public function loadNotifications(): void
     {
-        $userId = auth()->id();
-
-        $this->notifications = Cache::remember("notifications:{$userId}", 60, function () {
-            return $this->fetchNotifications();
-        });
-
+        $this->notifications = $this->fetchNotifications();
         $this->unreadCount = count(array_filter($this->notifications, fn($n) => !$n['read']));
     }
 
     protected function fetchNotifications(): array
     {
-        // Placeholder - dalam implementasi nyata, fetch dari database
-        return [
-            [
-                'id' => 1,
-                'type' => 'warning',
-                'title' => 'Server Load High',
-                'message' => 'OLT-01 CPU usage at 85%',
-                'time' => now()->subMinutes(5)->diffForHumans(),
-                'read' => false,
-                'url' => '/noc/alerts/1',
-            ],
-            [
-                'id' => 2,
-                'type' => 'success',
-                'title' => 'Payment Received',
-                'message' => 'Payment of Rp 5,000,000 from John Doe',
-                'time' => now()->subMinutes(15)->diffForHumans(),
-                'read' => false,
-                'url' => '/billing/payments/1',
-            ],
-            [
-                'id' => 3,
-                'type' => 'info',
-                'title' => 'New Ticket',
-                'message' => 'Customer reported connection issue',
-                'time' => now()->subMinutes(30)->diffForHumans(),
-                'read' => true,
-                'url' => '/tickets/1',
-            ],
-        ];
+        if (!auth()->check()) {
+            return [];
+        }
+
+        return \App\Models\Notification\Notification::where('recipient_id', auth()->id())
+            ->latest()
+            ->limit(20)
+            ->get()
+            ->map(function ($notif) {
+                $data = is_array($notif->data) ? $notif->data : [];
+                return [
+                    'id' => $notif->id, // it's integer here
+                    'type' => $notif->type ?? 'in_app',
+                    'title' => $notif->title ?? 'Notifikasi',
+                    'message' => $notif->message ?? '',
+                    'url' => $data['url'] ?? '#',
+                    'icon' => $data['icon'] ?? 'notifications',
+                    'color' => $data['color'] ?? 'blue',
+                    'read' => $notif->status === 'read',
+                    'time' => $notif->created_at->diffForHumans(),
+                ];
+            })
+            ->toArray();
     }
 
     public function markAsRead(int $notificationId): void
     {
         $userId = auth()->id();
+        
+        $notif = \App\Models\Notification\Notification::where('recipient_id', $userId)->find($notificationId);
+        if ($notif) {
+            $notif->update(['status' => 'read']);
+        }
 
         foreach ($this->notifications as &$notification) {
             if ($notification['id'] === $notificationId) {
@@ -95,29 +88,29 @@ class NotificationCenter extends Component
         }
 
         $this->unreadCount = count(array_filter($this->notifications, fn($n) => !$n['read']));
-
-        Cache::put("notifications:{$userId}", $this->notifications, 3600);
     }
 
     public function markAllAsRead(): void
     {
+        $userId = auth()->id();
+        \App\Models\Notification\Notification::where('recipient_id', $userId)
+            ->where('status', '!=', 'read')
+            ->update(['status' => 'read']);
+
         foreach ($this->notifications as &$notification) {
             $notification['read'] = true;
         }
 
         $this->unreadCount = 0;
-
-        $userId = auth()->id();
-        Cache::put("notifications:{$userId}", $this->notifications, 3600);
     }
 
     public function clearAll(): void
     {
+        $userId = auth()->id();
+        \App\Models\Notification\Notification::where('recipient_id', $userId)->delete();
+
         $this->notifications = [];
         $this->unreadCount = 0;
-
-        $userId = auth()->id();
-        Cache::forget("notifications:{$userId}");
     }
 
     public function render()

@@ -8,11 +8,24 @@ use App\Models\CRM\Customer;
 class Edit extends AdminComponent
 {
     public $customerId;
+    public $customer;
+    
+    // basic fields that might exist in blade
     public $name = '';
+    public $customer_code = '';
     public $email = '';
     public $phone = '';
     public $address = '';
-    public $status = 'active';
+    public $latitude = '';
+    public $longitude = '';
+    public $status = '';
+    public $service_profile_id;
+    public $router_id;
+    public $pppoe_username = '';
+    public $pppoe_password = '';
+    public $reseller_id = '';
+    public $branch_id = '';
+    public $notes = '';
 
     public function mount($id = null)
     {
@@ -20,36 +33,19 @@ class Edit extends AdminComponent
         $this->activeModule = 'crm';
         $this->activePage = 'customers';
         $this->customerId = $id;
-        $customer = Customer::findOrFail($id);
-        $this->name = $customer->name;
-        $this->email = $customer->email;
-        $this->phone = $customer->phone;
-        $this->address = $customer->address;
-        $this->status = $customer->status;
-    }
-
-    public function save()
-    {
-        $this->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'required|string|max:50',
-            'address' => 'nullable|string',
-            'status' => 'required|in:active,inactive,suspended',
-        ]);
-
-        $customer = Customer::findOrFail($this->customerId);
-        $customer->update([
-            'name' => $this->name,
-            'email' => $this->email,
-            'phone' => $this->phone,
-            'address' => $this->address,
-            'status' => $this->status,
-            'updated_by' => auth()->id(),
-        ]);
-
-        session()->flash('success', 'Customer berhasil diperbarui!');
-        return redirect()->route('crm.customers.index');
+        $this->customer = Customer::findOrFail($id);
+        
+        $this->name = $this->customer->name;
+        $this->customer_code = $this->customer->customer_code;
+        $this->email = $this->customer->email;
+        $this->phone = $this->customer->phone;
+        $this->address = $this->customer->address;
+        $this->latitude = $this->customer->latitude;
+        $this->longitude = $this->customer->longitude;
+        $this->status = $this->customer->status;
+        $this->reseller_id = $this->customer->reseller_id;
+        $this->branch_id = $this->customer->branch_id;
+        $this->notes = $this->customer->notes;
     }
 
     public function render()

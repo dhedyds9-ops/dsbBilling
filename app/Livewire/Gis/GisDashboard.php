@@ -171,6 +171,6 @@ class GisDashboard extends Component
 
     public function render()
     {
-        return view('livewire.gis.components.dashboard');
+        return view('livewire.gis.components.dashboard')->layout('layouts.noc');
     }
 }

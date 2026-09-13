@@ -51,9 +51,19 @@ class Index extends BaseNetworkComponent
                             });
                     });
                 })
-                ->when($this->filters['status'], function($q) {
+                ->when(!empty($this->filters['status']), function($q) {
+                if ($this->filters['status'] === 'online') {
+                    $q->where('status', 'active')->whereIn('username', function($sq) {
+                        $sq->select('user')->from('hotspot_active_sessions');
+                    });
+                } elseif ($this->filters['status'] === 'offline') {
+                    $q->where('status', 'active')->whereNotIn('username', function($sq) {
+                        $sq->select('user')->from('hotspot_active_sessions');
+                    });
+                } else {
                     $q->where('status', $this->filters['status']);
-                });
+                }
+            });
 
             $this->selectedIds = $query->pluck('id')->toArray();
         } else {
@@ -118,10 +128,13 @@ class Index extends BaseNetworkComponent
             $hotspotUser = HotspotUser::findOrFail($id);
             if ($hotspotUser->status === 'active') {
                 $service->suspendHotspotUser($hotspotUser->id, $user->id);
+                $name = $hotspotUser->customer->name ?? $hotspotUser->username;
+                session()->flash('success', "Akses Hotspot untuk pelanggan {$name} berhasil di-suspend / diisolir!");
             } else if ($hotspotUser->status === 'suspended') {
                 $service->activateHotspotUser($hotspotUser->id, $user->id);
+                $name = $hotspotUser->customer->name ?? $hotspotUser->username;
+                session()->flash('success', "Akses Hotspot untuk pelanggan {$name} berhasil diaktifkan kembali!");
             }
-            session()->flash('success', 'Status Hotspot User berhasil diubah!');
         } catch (Throwable $e) {
             Log::error('Toggle Hotspot User status failed', ['hotspot_user_id' => $id, 'message' => $e->getMessage()]);
             session()->flash('error', 'Gagal mengubah status Hotspot User: ' . $e->getMessage());
@@ -155,9 +168,9 @@ class Index extends BaseNetworkComponent
         session()->flash('success', 'Invoice untuk renew berhasil dibuat!');
     }
 
-    public function print($id)
+    public function printUser($id)
     {
-        $hotspotUser = HotspotUser::with(['customer', 'serviceProfile', 'subscription'])->findOrFail($id);
+        $hotspotUser = HotspotUser::with(['customer', 'serviceProfile', 'subscription', 'latestAccounting'])->findOrFail($id);
         
         session()->flash('info', 'Fitur print sedang dalam pengembangan! Data user: ' . $hotspotUser->username);
     }
@@ -297,18 +310,29 @@ class Index extends BaseNetworkComponent
                         });
                 });
             })
-            ->when($this->filters['status'], function($q) {
-                $q->where('status', $this->filters['status']);
+            ->when(!empty($this->filters['status']), function($q) {
+                if ($this->filters['status'] === 'online') {
+                    $q->where('status', 'active')->whereIn('username', function($sq) {
+                        $sq->select('user')->from('hotspot_active_sessions');
+                    });
+                } elseif ($this->filters['status'] === 'offline') {
+                    $q->where('status', 'active')->whereNotIn('username', function($sq) {
+                        $sq->select('user')->from('hotspot_active_sessions');
+                    });
+                } else {
+                    $q->where('status', $this->filters['status']);
+                }
             });
 
         $query = $query->orderBy($this->sortField, $this->sortDirection);
-        $hotspotUsers = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);
+        $hotspotUsers = $query->paginate($this->perPage == 'All' ? 999999 : $this->perPage);
 
         $stats = [
             'total' => HotspotUser::count(),
             'active' => HotspotUser::where('status', 'active')->count(),
             'inactive' => HotspotUser::where('status', 'inactive')->count(),
-            'online' => HotspotUser::where('status', 'active')->where('is_online', true)->count(),
+            'suspended' => HotspotUser::where('status', 'suspended')->count(),
+            'online' => \App\Models\ISP\HotspotActiveSession::whereIn('user', \App\Models\ISP\HotspotUser::select('username'))->distinct('user')->count('user'),
         ];
 
         return view('livewire.isp.hotspot-user.index', compact('hotspotUsers', 'stats'));

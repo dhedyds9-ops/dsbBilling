@@ -1,0 +1,693 @@
+<?php
+
+namespace App\Navigation;
+
+use App\Models\ACS\ACSAlarm;
+use App\Models\Billing\Invoice;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
+
+class MenuRegistry
+{
+    public static function getNavigation(): array
+    {
+        $user = Auth::user();
+        $role = $user ? ($user->roles->first()->name ?? 'guest') : 'guest';
+        $userId = $user ? $user->id : 0;
+        $jobFunction = $user ? ($user->job_function ?? 'none') : 'none';
+        
+        $cacheKey = "dsbilling_navigation.{$role}.{$jobFunction}.{$userId}.v5";
+
+        $navigation = Cache::remember($cacheKey, 3600, function () use ($role, $user) {
+            if ($role === 'reseller') {
+                return self::buildResellerNavigation();
+            }
+            if ($role === 'customer') {
+                return self::buildCustomerNavigation();
+            }
+            if ($role === 'manager' && $user && $user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
+                return self::buildTechnicianNavigation();
+            }
+            return self::buildNavigation();
+        });
+
+        return self::applyBadges($navigation);
+    }
+
+    private static function buildTechnicianNavigation(): array
+    {
+        return [
+            [
+                'label' => 'Dashboard',
+                'icon' => 'home',
+                'route' => 'technician.dashboard',
+                'active' => 'technician.dashboard',
+                'groups' => null,
+            ],
+            [
+                'label' => 'Workforce & Pekerjaan',
+                'icon' => 'briefcase',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Kehadiran (Absensi)',
+                                'route' => 'technician.attendance',
+                                'icon' => 'clock',
+                                'active' => 'technician.attendance',
+                            ],
+                            [
+                                'label' => 'Tugas Saya',
+                                'route' => 'technician.my-jobs.index',
+                                'icon' => 'clipboard-list',
+                                'active' => 'technician.my-jobs.*',
+                            ],
+                            [
+                                'label' => 'Pemakaian Material',
+                                'route' => 'technician.material.index',
+                                'icon' => 'archive',
+                                'active' => 'technician.material.*',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+            [
+                'label' => 'Instalasi & Provisioning',
+                'icon' => 'wifi',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Wizard Instalasi',
+                                'route' => 'technician.installation.wizard',
+                                'icon' => 'plus-circle',
+                                'active' => 'technician.installation.*',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+        ];
+    }
+
+    private static function buildNavigation(): array
+    {
+        return [
+            [
+                'label' => 'Dashboard',
+                'icon' => 'home',
+                'route' => 'dashboard',
+                'active' => 'dashboard',
+                'groups' => null,
+            ],
+            
+            [
+                'label' => 'Pelanggan',
+                'icon' => 'users',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Customer',
+                                'route' => 'crm.customers.index',
+                                'icon' => 'users',
+                                'active' => 'crm.customers.*',
+                            ],
+                            [
+                                'label' => 'PPPoE',
+                                'route' => 'isp.pppoe-users.index',
+                                'icon' => 'user',
+                                'active' => 'isp.pppoe-users.*',
+                            ],
+                            [
+                                'label' => 'Hotspot',
+                                'route' => 'isp.hotspot-users.index',
+                                'icon' => 'wifi',
+                                'active' => 'isp.hotspot-users.*',
+                            ],
+                            [
+                                'label' => 'Voucher',
+                                'route' => 'isp.vouchers.index',
+                                'icon' => 'credit-card',
+                                'active' => 'isp.vouchers.*',
+                            ],
+                            [
+                                'label' => 'Online',
+                                'route' => 'isp.user-online.index',
+                                'icon' => 'user-check',
+                                'active' => 'isp.user-online.index',
+                            ],
+                            [
+                                'label' => 'Isolir',
+                                'route' => 'pelanggan.isolir',
+                                'icon' => 'user-x',
+                                'active' => 'pelanggan.isolir',
+                            ],
+                            [
+                                'label' => 'Leads & Activations',
+                                'route' => 'crm.leads.index',
+                                'icon' => 'user-plus',
+                                'active' => 'crm.leads.*',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'Paket & Layanan',
+                'icon' => 'package',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Paket Internet',
+                                'route' => 'isp.service-profiles.index',
+                                'icon' => 'package',
+                                'active' => 'isp.service-profiles.*',
+                            ],
+                            [
+                                'label' => 'Network Profile',
+                                'route' => 'isp.network-profiles.index',
+                                'icon' => 'git-branch',
+                                'active' => 'isp.network-profiles.*',
+                            ],
+                            [
+                                'label' => 'IP Pool',
+                                'route' => 'isp.ip-pools.index',
+                                'icon' => 'layers',
+                                'active' => 'isp.ip-pools.*',
+                            ],
+                            [
+                                'label' => 'Template Voucher',
+                                'route' => 'isp.voucher-templates.index',
+                                'icon' => 'file-code',
+                                'active' => 'isp.voucher-templates.*',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'Billing',
+                'icon' => 'file-invoice',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Tagihan',
+                                'route' => 'billing.invoices.index',
+                                'icon' => 'file-text',
+                                'active' => 'billing.invoices.*',
+                            ],
+                            [
+                                'label' => 'Pembayaran',
+                                'route' => 'billing.payments.index',
+                                'icon' => 'credit-card',
+                                'active' => 'billing.payments.*',
+                            ],
+                            [
+                                'label' => 'Periode Tagihan',
+                                'route' => 'tagihan.periode',
+                                'icon' => 'calendar',
+                                'active' => 'tagihan.periode',
+                            ],
+                            [
+                                'label' => 'Payment Gateway',
+                                'route' => 'pengaturan.payment-gateway',
+                                'icon' => 'link',
+                                'active' => 'pengaturan.payment-gateway',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'Keuangan',
+                'icon' => 'currency-dollar',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Pendapatan Harian',
+                                'route' => 'keuangan.income-harian',
+                                'icon' => 'trending-up',
+                                'active' => 'keuangan.income-harian',
+                            ],
+                            [
+                                'label' => 'Pendapatan Periode',
+                                'route' => 'keuangan.income-periode',
+                                'icon' => 'bar-chart',
+                                'active' => 'keuangan.income-periode',
+                            ],
+                            [
+                                'label' => 'Pengeluaran',
+                                'route' => 'keuangan.pengeluaran',
+                                'icon' => 'trending-down',
+                                'active' => 'keuangan.pengeluaran',
+                            ],
+                            [
+                                'label' => 'Laba Rugi',
+                                'route' => 'keuangan.laba-rugi',
+                                'icon' => 'pie-chart',
+                                'active' => 'keuangan.laba-rugi',
+                            ],
+                            [
+                                'label' => 'Saldo Reseller',
+                                'route' => 'reseller-portal.dashboard',
+                                'icon' => 'plus-circle',
+                                'active' => 'reseller-portal.dashboard',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'Jaringan',
+                'icon' => 'server',
+                'groups' => [
+                    [
+                        'label' => 'Infrastruktur',
+                        'items' => [
+                            [
+                                'label' => 'Router / NAS',
+                                'route' => 'isp.routers.index',
+                                'icon' => 'server',
+                                'active' => 'isp.routers.*',
+                            ],
+                            [
+                                'label' => 'OLT',
+                                'route' => 'isp.olts.index',
+                                'icon' => 'server-stack',
+                                'active' => 'isp.olts.*',
+                            ],
+                            [
+                                'label' => 'ONU',
+                                'route' => 'isp.onus.index',
+                                'icon' => 'zap',
+                                'active' => 'isp.onus.*',
+                            ],
+                            [
+                                'label' => 'ODP',
+                                'route' => 'isp.odps.index',
+                                'icon' => 'box',
+                                'active' => 'isp.odps.*',
+                            ],
+                            [
+                                'label' => 'ODC',
+                                'route' => 'isp.odcs.index',
+                                'icon' => 'box',
+                                'active' => 'isp.odcs.*',
+                            ],
+                            [
+                                'label' => 'POP',
+                                'route' => 'isp.pops.index',
+                                'icon' => 'box',
+                                'active' => 'isp.pops.*',
+                            ],
+                            [
+                                'label' => 'Tower',
+                                'route' => 'isp.towers.index',
+                                'icon' => 'signal',
+                                'active' => 'isp.towers.*',
+                            ],
+                            [
+                                'label' => 'Vendor',
+                                'route' => 'isp.vendors.index',
+                                'icon' => 'box',
+                                'active' => 'isp.vendors.*',
+                            ],
+                        ]
+                    ],
+                    [
+                        'label' => 'Dashboard Jaringan',
+                        'items' => [
+                            [
+                                'label' => 'Fiber Dashboard',
+                                'route' => 'jaringan.fiber',
+                                'icon' => 'git-branch',
+                                'active' => 'jaringan.fiber',
+                            ],
+                            [
+                                'label' => 'Monitoring Center',
+                                'route' => 'jaringan.monitoring',
+                                'icon' => 'activity',
+                                'active' => 'jaringan.monitoring',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'GenieACS',
+                'icon' => 'server',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Dashboard ACS',
+                                'route' => 'acs.dashboard',
+                                'icon' => 'pie-chart',
+                                'active' => 'acs.dashboard',
+                            ],
+                            [
+                                'label' => 'Devices',
+                                'route' => 'acs.devices.index',
+                                'icon' => 'hard-drive',
+                                'active' => 'acs.devices.*',
+                            ],
+                            [
+                                'label' => 'Provisioning / Tasks',
+                                'route' => 'acs.tasks.index',
+                                'icon' => 'cpu-chip',
+                                'active' => 'acs.tasks.*',
+                            ],
+                            [
+                                'label' => 'Firmware',
+                                'route' => 'acs.firmware.index',
+                                'icon' => 'download',
+                                'active' => 'acs.firmware.*',
+                            ],
+                            [
+                                'label' => 'Settings',
+                                'route' => 'acs.settings',
+                                'icon' => 'settings',
+                                'active' => 'acs.settings',
+                            ],
+                            [
+                                'label' => 'Provisioning Logs',
+                                'route' => 'noc.provisioning.index',
+                                'icon' => 'clipboard-list',
+                                'active' => 'noc.provisioning.*',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'NOC',
+                'icon' => 'activity',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'NOC Overview',
+                                'route' => 'noc.overview',
+                                'icon' => 'activity',
+                                'active' => 'noc.overview',
+                            ],
+                            [
+                                'label' => 'Router Monitoring',
+                                'route' => 'noc.routers.index',
+                                'icon' => 'server',
+                                'active' => 'noc.routers.*',
+                            ],
+                            [
+                                'label' => 'OLT Monitoring',
+                                'route' => 'noc.olts.index',
+                                'icon' => 'server-stack',
+                                'active' => 'noc.olts.*',
+                            ],
+                            [
+                                'label' => 'ONU Monitoring',
+                                'route' => 'noc.onus.index',
+                                'icon' => 'zap',
+                                'active' => 'noc.onus.*',
+                            ],
+                            [
+                                'label' => 'PPPoE Traffic',
+                                'route' => 'noc.pppoe.index',
+                                'icon' => 'trending-up',
+                                'active' => 'noc.pppoe.*',
+                            ],
+                            [
+                                'label' => 'Alarms & Alerts',
+                                'route' => 'noc.alarms.index',
+                                'icon' => 'bell-alert',
+                                'active' => 'noc.alarms.*',
+                            ],
+                            [
+                                'label' => 'Laporan Jaringan',
+                                'route' => 'laporan.jaringan',
+                                'icon' => 'clipboard-list',
+                                'active' => 'laporan.jaringan',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'Inventory',
+                'icon' => 'box',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Data Barang',
+                                'route' => 'inventory.assets.index',
+                                'icon' => 'archive',
+                                'active' => 'inventory.assets.index',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'Support',
+                'icon' => 'support',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Tiket Support',
+                                'route' => 'support.ticket',
+                                'icon' => 'support',
+                                'active' => 'support.ticket',
+                            ],
+                            [
+                                'label' => 'Instalasi',
+                                'route' => 'crm.installations.index',
+                                'icon' => 'tool',
+                                'active' => 'crm.installations.*',
+                            ],
+                            [
+                                'label' => 'Maintenance',
+                                'route' => 'support.maintenance',
+                                'icon' => 'tool',
+                                'active' => 'support.maintenance.*',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+
+            [
+                'label' => 'Pengaturan',
+                'icon' => 'settings',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Perusahaan',
+                                'route' => 'admin.settings.index',
+                                'icon' => 'building',
+                                'active' => 'admin.settings.*',
+                            ],
+                            [
+                                'label' => 'User Management',
+                                'route' => 'admin.users.index',
+                                'icon' => 'users',
+                                'active' => 'admin.users.*',
+                            ],
+                            [
+                                'label' => 'Tagihan & Otomasi',
+                                'route' => 'admin.settings.billing',
+                                'icon' => 'settings',
+                                'active' => 'admin.settings.billing',
+                            ],
+                            [
+                                'label' => 'Aktivasi Lisensi',
+                                /* 'route' => 'pengaturan.lisensi' */ 'route' => 'admin.settings.index',
+                                'icon' => 'key',
+                                'active' => 'admin.settings.index',
+                            ],
+                            [
+                                'label' => 'WhatsApp Gateway',
+                                'route' => 'pengaturan.whatsapp',
+                                'icon' => 'support',
+                                'active' => 'pengaturan.whatsapp.*',
+                            ],
+                            [
+                                'label' => 'Telegram Gateway',
+                                'route' => 'pengaturan.telegram',
+                                'icon' => 'support',
+                                'active' => 'pengaturan.telegram.*',
+                            ],
+                            [
+                                'label' => 'Audit Log',
+                                'route' => 'admin.audit-trail.index',
+                                'icon' => 'clipboard-list',
+                                'active' => 'admin.audit-trail.*',
+                            ],
+                        ]
+                    ]
+                ]
+            ],
+        ];
+    }
+
+    private static function applyBadges(array $navigation): array
+    {
+        $unpaidInvoices = Invoice::where('status', 'unpaid')->count();
+        $activeAlarms = class_exists(ACSAlarm::class) ? ACSAlarm::where('status', 'active')->count() : 0;
+
+        foreach ($navigation as &$category) {
+            foreach (($category['groups'] ?? []) as &$group) {
+                foreach (($group['items'] ?? []) as &$item) {
+                    if (($item['route'] ?? '') === 'billing.invoices.index' && $unpaidInvoices > 0) {
+                        $item['badge'] = $unpaidInvoices;
+                    }
+                    if (($item['route'] ?? '') === 'acs.alarms.index' && $activeAlarms > 0) {
+                        $item['badge'] = $activeAlarms;
+                    }
+                }
+            }
+        }
+        return $navigation;
+    }
+
+    private static function buildResellerNavigation(): array
+    {
+        return [
+            [
+                'label' => 'Dashboard Reseller',
+                'icon' => 'home',
+                'route' => 'reseller-portal.dashboard',
+                'active' => 'reseller-portal.dashboard',
+            ],
+        ];
+    }
+
+    private static function buildCustomerNavigation(): array
+    {
+        $userId = Auth::id();
+        $customer = \App\Models\CRM\Customer::with(['customerServices.pppoeUser', 'customerServices.hotspotUser'])
+            ->where('user_id', $userId)
+            ->first();
+            
+        $isPppoe = false;
+        $isHotspot = false;
+        
+        if ($customer) {
+            foreach ($customer->customerServices as $cs) {
+                if ($cs->pppoeUser) $isPppoe = true;
+                if ($cs->hotspotUser) $isHotspot = true;
+            }
+        }
+
+        $selfServiceItems = [];
+        
+        if ($isPppoe) {
+            $selfServiceItems[] = [
+                'label' => 'Pengaturan Modem',
+                'route' => 'customer-portal.self-service.change-onu-wifi-password',
+                'icon' => 'router',
+                'active' => 'customer-portal.self-service.change-onu-wifi-password',
+            ];
+            $selfServiceItems[] = [
+                'label' => 'Perangkat Terhubung',
+                'route' => 'customer-portal.self-service.connected-devices',
+                'icon' => 'devices',
+                'active' => 'customer-portal.self-service.connected-devices',
+            ];
+        }
+        
+        if ($isHotspot) {
+            $selfServiceItems[] = [
+                'label' => 'Username & Password',
+                'route' => 'customer-portal.self-service.change-hotspot-credentials',
+                'icon' => 'manage_accounts',
+                'active' => 'customer-portal.self-service.change-hotspot-credentials',
+            ];
+            $selfServiceItems[] = [
+                'label' => 'User Aktif',
+                'route' => 'customer-portal.self-service.active-sessions',
+                'icon' => 'history',
+                'active' => 'customer-portal.self-service.active-sessions',
+            ];
+        }
+
+        $navigation = [
+            [
+                'label' => 'Dashboard',
+                'icon' => 'home',
+                'route' => 'customer-portal.dashboard',
+                'active' => 'customer-portal.dashboard',
+                'groups' => null,
+            ],
+            [
+                'label' => 'Layanan & Tagihan',
+                'icon' => 'receipt_long',
+                'groups' => [
+                    [
+                        'items' => [
+                            [
+                                'label' => 'Tagihan Saya',
+                                'route' => 'customer-portal.billing.invoice-list',
+                                'icon' => 'receipt',
+                                'active' => 'customer-portal.billing.*',
+                            ],
+                            [
+                                'label' => 'Ganti Paket Layanan',
+                                'route' => 'customer-portal.self-service.change-plan',
+                                'icon' => 'upgrade',
+                                'active' => 'customer-portal.self-service.change-plan',
+                            ],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        if (!empty($selfServiceItems)) {
+            $navigation[] = [
+                'label' => 'Self Service',
+                'icon' => 'build',
+                'groups' => [
+                    [
+                        'items' => $selfServiceItems
+                    ]
+                ]
+            ];
+        }
+
+        $navigation[] = [
+            'label' => 'Pengaturan',
+            'icon' => 'settings',
+            'groups' => [
+                [
+                    'items' => [
+                        [
+                            'label' => 'Profil Saya',
+                            'route' => 'profile.edit',
+                            'icon' => 'person',
+                            'active' => 'profile.edit',
+                        ],
+                    ]
+                ]
+            ]
+        ];
+
+        return $navigation;
+    }
+}
+
+

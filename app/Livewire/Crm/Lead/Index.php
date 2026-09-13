@@ -4,6 +4,7 @@ namespace App\Livewire\Crm\Lead;
 
 use App\Livewire\Crm\BaseCrmComponent;
 use App\Models\CRM\Lead;
+use App\Services\Onboarding\CustomerOnboardingService;
 
 class Index extends BaseCrmComponent
 {
@@ -19,7 +20,18 @@ class Index extends BaseCrmComponent
     {
         $lead = Lead::findOrFail($id);
         $lead->delete();
-        session()->flash('success', 'Lead berhasil dihapus!');
+        session()->flash('success', 'Calon User berhasil dihapus!');
+    }
+
+    public function convertToProspect($id, CustomerOnboardingService $onboarding)
+    {
+        $lead = Lead::findOrFail($id);
+        if ($lead->status === 'converted') {
+            session()->flash('warning', 'Calon User ini sudah pernah dikonversi.');
+            return;
+        }
+        $onboarding->convertLeadToProspect($lead->id, auth()->id());
+        session()->flash('success', 'Calon User berhasil dikonversi ke Prospecting! Lanjutkan Survei & Instalasi.');
     }
 
     public function export()
@@ -35,7 +47,8 @@ class Index extends BaseCrmComponent
             $query->where(function($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
                   ->orWhere('email', 'like', '%' . $this->search . '%')
-                  ->orWhere('phone', 'like', '%' . $this->search . '%');
+                  ->orWhere('phone', 'like', '%' . $this->search . '%')
+                  ->orWhere('address', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -44,8 +57,15 @@ class Index extends BaseCrmComponent
         }
 
         $leads = $query->orderBy($this->sortField, $this->sortDirection)
-                       ->paginate($this->perPage);
+                       ->paginate($this->perPage === 'all' ? 999999 : $this->perPage);
 
-        return view('livewire.crm.lead.index', compact('leads'));
+        $stats = [
+            'total' => Lead::count(),
+            'new' => Lead::where('status', 'new')->count(),
+            'followup' => Lead::whereIn('status', ['contacted', 'qualified'])->count(),
+            'converted' => Lead::where('status', 'converted')->count(),
+        ];
+
+        return view('livewire.crm.lead.index', compact('leads', 'stats'));
     }
 }

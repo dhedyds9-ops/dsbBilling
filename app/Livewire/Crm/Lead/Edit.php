@@ -43,6 +43,7 @@ class Edit extends AdminComponent
 
         $lead = Lead::findOrFail($this->leadId);
         $lead->update([
+            'updated_by' => auth()->id(),
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
@@ -60,3 +61,4 @@ class Edit extends AdminComponent
         return view('livewire.crm.lead.edit');
     }
 }
+

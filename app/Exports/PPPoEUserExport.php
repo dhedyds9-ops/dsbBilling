@@ -31,44 +31,38 @@ class PPPoEUserExport implements FromCollection, WithHeadings, ShouldAutoSize, W
     public function headings(): array
     {
         return [
-            'ID',
-            'UUID',
             'Username',
+            'Password',
             'Nama Pelanggan',
+            'No HP',
+            'Email',
+            'Alamat',
             'Paket Langganan',
+            'Siklus Tagihan',
             'Status',
-            'Dibuat Oleh',
-            'Diperbarui Oleh',
-            'Dibuat Pada',
-            'Diperbarui Pada'
+            'Router',
+            'Mac Address',
+            'Static IP',
+            'Reseller',
         ];
     }
 
     public function map($pppoeUser): array
     {
         return [
-            $pppoeUser->id,
-            $pppoeUser->uuid,
             $pppoeUser->username,
+            $pppoeUser->password, // Export in plain for migration/backup
             $pppoeUser->customer?->name ?? '-',
+            $pppoeUser->customer?->phone ?? '-',
+            $pppoeUser->customer?->email ?? '-',
+            $pppoeUser->customer?->address ?? '-',
             $pppoeUser->serviceProfile?->name ?? '-',
-            $this->getStatusText($pppoeUser->status),
-            $pppoeUser->createdBy?->name ?? '-',
-            $pppoeUser->updatedBy?->name ?? '-',
-            $pppoeUser->created_at?->format('d/m/Y H:i'),
-            $pppoeUser->updated_at?->format('d/m/Y H:i')
+            $pppoeUser->subscription?->billing_cycle ?? 'monthly',
+            $pppoeUser->status ?? 'active',
+            $pppoeUser->router?->name ?? '-',
+            $pppoeUser->mac_address ?? '-',
+            $pppoeUser->static_ip ?? '-',
+            $pppoeUser->reseller?->name ?? '-',
         ];
-    }
-
-    protected function getStatusText($status): string
-    {
-        return match($status) {
-            'active' => 'Aktif',
-            'inactive' => 'Nonaktif',
-            'suspended' => 'Suspended',
-            'terminated' => 'Terminated',
-            'pending' => 'Pending',
-            default => $status
-        };
     }
 }

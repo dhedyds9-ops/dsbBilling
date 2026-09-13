@@ -34,17 +34,17 @@ $translateClasses = $sizes[$size]['translate'];
         @if ($disabled) disabled @endif
     >
         <span
-            class="inline-block {{ $dotClasses }} transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out {{ $checked ? $translateClasses : 'translate-x-0.5' }}"
+            class="inline-block {{ $dotClasses }} transform rounded-full bg-white dark:bg-slate-800 shadow-sm transition-transform duration-200 ease-in-out {{ $checked ? $translateClasses : 'translate-x-0.5' }}"
         ></span>
     </button>
 
     @if ($label)
-        <span class="text-sm font-medium text-slate-700">{{ $label }}</span>
+        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ $label }}</span>
     @endif
 
     <input
         type="checkbox"
-        class="sr-only"
+        class="sr-only dark:bg-slate-900 dark:text-slate-100"
         {{ $attributes->merge(['class' => '']) }}
         @if ($checked) checked @endif
         @if ($disabled) disabled @endif

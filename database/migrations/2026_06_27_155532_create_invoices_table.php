@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('paid_amount', 12, 2)->default(0);
             $table->string('currency')->default('IDR');
             $table->string('status')->default('draft');
-            $table->json('items')->nullable();
+            $table->json('item_details')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->softDeletes();

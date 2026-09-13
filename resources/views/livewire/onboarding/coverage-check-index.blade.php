@@ -1,6 +1,6 @@
 <div class="row g-4">
     <div class="col-12">
-        <div class="card card-stat bg-white">
+        <div class="card card-stat bg-white dark:bg-slate-800">
             <div class="card-body d-flex align-items-center justify-content-between">
                 <div>
                     <h2 class="h3 mb-1 fw-bold">Coverage Check</h2>
@@ -14,9 +14,9 @@
     </div>
 
     <div class="col-12">
-        <div class="card card-stat bg-white">
+        <div class="card card-stat bg-white dark:bg-slate-800">
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="w-full overflow-x-auto">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                         <tr>

@@ -51,9 +51,19 @@ class Index extends BaseNetworkComponent
                             });
                     });
                 })
-                ->when($this->filters['status'], function($q) {
+                ->when(!empty($this->filters['status']), function($q) {
+                if ($this->filters['status'] === 'online') {
+                    $q->where('status', 'active')->whereHas('radiusAccountings', function($sq) {
+                        $sq->whereNull('acct_stop_time');
+                    });
+                } elseif ($this->filters['status'] === 'offline') {
+                    $q->where('status', 'active')->whereDoesntHave('radiusAccountings', function($sq) {
+                        $sq->whereNull('acct_stop_time');
+                    });
+                } else {
                     $q->where('status', $this->filters['status']);
-                });
+                }
+            });
 
             $this->selectedIds = $query->pluck('id')->toArray();
         } else {
@@ -104,10 +114,13 @@ class Index extends BaseNetworkComponent
         $pppoeUser = PPPoEUser::findOrFail($id);
         if ($pppoeUser->status === 'active') {
             $service->suspendPPPoEUser($pppoeUser->id, Auth::id());
+            $name = $pppoeUser->customer->name ?? $pppoeUser->username;
+            session()->flash('success', "Akses PPPoE untuk pelanggan {$name} berhasil di-suspend / diisolir!");
         } else if ($pppoeUser->status === 'suspended') {
             $service->reactivatePPPoEUser($pppoeUser->id, Auth::id());
+            $name = $pppoeUser->customer->name ?? $pppoeUser->username;
+            session()->flash('success', "Akses PPPoE untuk pelanggan {$name} berhasil diaktifkan kembali!");
         }
-        session()->flash('success', 'Status PPPoE User berhasil diubah!');
     }
 
     public function renew($id, \App\Services\Billing\InvoiceService $invoiceService)
@@ -137,9 +150,9 @@ class Index extends BaseNetworkComponent
         session()->flash('success', 'Invoice untuk renew berhasil dibuat!');
     }
 
-    public function print($id)
+    public function printUser($id)
     {
-        $pppoeUser = PPPoEUser::with(['customer', 'serviceProfile', 'subscription'])->findOrFail($id);
+        $pppoeUser = PPPoEUser::with(['customer', 'serviceProfile', 'subscription', 'latestAccounting'])->findOrFail($id);
         
         // Redirect to a print view or open a print dialog
         session()->flash('info', 'Fitur print sedang dalam pengembangan! Data user: ' . $pppoeUser->username);
@@ -225,7 +238,11 @@ class Index extends BaseNetworkComponent
 
             Log::info('PPPoE Users imported successfully');
 
-            session()->flash('success', 'PPPoE User berhasil diimpor!');
+            if (session()->has('import_result')) {
+                session()->flash('success', session('import_result'));
+            } else {
+                session()->flash('success', 'PPPoE User berhasil diimpor!');
+            }
             $this->closeImportModal();
 
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
@@ -235,9 +252,11 @@ class Index extends BaseNetworkComponent
                 $errors[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
             }
             session()->flash('error', 'Gagal mengimpor: ' . implode('; ', $errors));
+            $this->closeImportModal();
         } catch (Throwable $e) {
             Log::error('Import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            session()->flash('error', 'Gagal mengimpor: ' . $e->getMessage());
+            session()->flash('error', $e->getMessage());
+            $this->closeImportModal();
         }
     }
 
@@ -254,8 +273,18 @@ class Index extends BaseNetworkComponent
                         });
                 });
             })
-            ->when($this->filters['status'], function($q) {
-                $q->where('status', $this->filters['status']);
+            ->when(!empty($this->filters['status']), function($q) {
+                if ($this->filters['status'] === 'online') {
+                    $q->where('status', 'active')->whereHas('radiusAccountings', function($sq) {
+                        $sq->whereNull('acct_stop_time');
+                    });
+                } elseif ($this->filters['status'] === 'offline') {
+                    $q->where('status', 'active')->whereDoesntHave('radiusAccountings', function($sq) {
+                        $sq->whereNull('acct_stop_time');
+                    });
+                } else {
+                    $q->where('status', $this->filters['status']);
+                }
             });
 
         $pppoeUsers = $query->orderBy($this->sortField, $this->sortDirection)
@@ -265,7 +294,8 @@ class Index extends BaseNetworkComponent
             'total' => PPPoEUser::count(),
             'active' => PPPoEUser::where('status', 'active')->count(),
             'inactive' => PPPoEUser::where('status', 'inactive')->count(),
-            'online' => 0,
+            'suspended' => PPPoEUser::where('status', 'suspended')->count(),
+            'online' => \App\Models\ISP\PPPoEUser::where('status', 'active')->whereHas('radiusAccountings', function($q) { $q->whereNull('acct_stop_time'); })->count(),
         ];
 
         return view('livewire.isp.pppoe-user.index', compact('pppoeUsers', 'stats'));

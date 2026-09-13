@@ -51,6 +51,7 @@ class Index extends BaseEnterpriseList
             'category' => '',
             'due_from' => '',
             'due_to' => '',
+            'ignored' => false,
         ];
         $this->newTicket = [
             'customer_id' => '',
@@ -223,6 +224,7 @@ class Index extends BaseEnterpriseList
             ['key' => 'category', 'label' => 'Kategori', 'type' => 'select', 'options' => $opts['categories'] ?? []],
             ['key' => 'due_from', 'label' => 'Due Date (Awal)', 'type' => 'date'],
             ['key' => 'due_to', 'label' => 'Due Date (Akhir)', 'type' => 'date'],
+            ['key' => 'ignored', 'label' => 'Tampilkan Hanya Tiket Terabaikan (>24 jam)', 'type' => 'boolean'],
         ];
     }
 

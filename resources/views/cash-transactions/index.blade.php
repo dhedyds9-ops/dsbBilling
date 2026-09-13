@@ -8,7 +8,7 @@
         <div class="d-flex gap-2">
             <form method="GET" action="{{ route('cash-transactions.index') }}" class="d-flex gap-2">
                 <input type="hidden" name="type" value="{{ request('type') }}">
-                <input type="month" name="period" class="form-control" value="{{ request('period') }}" placeholder="Periode">
+                <input type="month" name="period" class="form-control dark:bg-slate-900 dark:text-slate-100" value="{{ request('period') }}" placeholder="Periode">
                 <button type="submit" class="btn btn-secondary">Filter</button>
                 @if(request('period') || request('type'))
                     <a href="{{ route('cash-transactions.index') }}" class="btn btn-light">Reset</a>
@@ -26,7 +26,7 @@
 
     <div class="card">
         <div class="card-body">
-            <div class="table-responsive">
+            <div class="w-full overflow-x-auto">
                 <table class="table table-bordered table-hover">
                     <thead class="table-light">
                         <tr>

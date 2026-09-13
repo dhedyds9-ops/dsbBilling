@@ -22,8 +22,22 @@ class OltRegistry extends BaseAdapterRegistry
 
     public function forOlt(Olt $olt): OltDriverInterface
     {
-        $vendorName = strtolower($olt->vendor?->name ?? 'default');
-        $vendorKey = trim($vendorName);
+        $vendorName = null;
+
+        if ($olt->relationLoaded('vendor') && $olt->vendor !== null) {
+            $vendorName = $olt->vendor->name;
+        } elseif (!empty($olt->vendor_id)) {
+            $vendorRow = \App\Models\ISP\Vendor::select('name')->find($olt->vendor_id);
+            if ($vendorRow !== null) {
+                $vendorName = $vendorRow->name;
+            }
+        }
+
+        if ($vendorName === null) {
+            $vendorName = 'default';
+        }
+
+        $vendorKey = strtolower(trim($vendorName));
 
         if ($this->has($vendorKey)) {
             $class = $this->adapters[$vendorKey];

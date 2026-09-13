@@ -10,6 +10,7 @@ use App\Services\Adapters\Payment\Drivers\MidtransPaymentDriver;
 use App\Services\Adapters\Payment\Drivers\TripayPaymentDriver;
 use App\Services\Adapters\Payment\Drivers\XenditPaymentDriver;
 use App\Services\Pengaturan\PaymentGatewaySettingsService;
+use App\Services\Adapters\BaseAdapterRegistry;
 
 /**
  * SSOT: Payment Gateway Registry.

@@ -9,12 +9,14 @@ use App\Models\ISP\Voucher;
 use App\Services\ISP\Session\SessionKickService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class Index extends BaseNetworkComponent
 {
     public string $activeTab = 'pppoe';
-
-    protected $listeners = ['echo:user-online,UserOnlineUpdated' => '$refresh'];
+    public bool $showFilterModal = false;
+    
+    protected $listeners = ['echo:user-online,UserOnlineUpdated' => '$refresh', 'refresh-online' => '$refresh'];
 
     public function mount()
     {
@@ -29,17 +31,27 @@ class Index extends BaseNetworkComponent
         ];
     }
 
+    public function openFilterModal()
+    {
+        $this->showFilterModal = true;
+    }
+
+    public function applyFilter()
+    {
+        $this->showFilterModal = false;
+        $this->resetPage();
+    }
+
     public function setActiveTab(string $tab)
     {
         $this->activeTab = $tab;
-        $this->resetTabPages();
+        $this->resetPage();
     }
 
     public function kickPppoe(int $sessionId)
     {
         try {
             $session = PppActiveSession::with('router')->findOrFail($sessionId);
-            /** @var SessionKickService $kicker */
             $kicker = app(SessionKickService::class);
             $result = $kicker->kickPppoe($session, Auth::user());
 
@@ -49,7 +61,7 @@ class Index extends BaseNetworkComponent
                 $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia. Radius user dapat reconnect.)';
             }
             session()->flash('success', $msg);
-            $this->dispatch('$refresh');
+            $this->dispatch('refresh-online');
         } catch (\Exception $e) {
             Log::error('Failed to kick PPPoE user', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
             session()->flash('error', 'Gagal memutuskan PPPoE user: ' . $e->getMessage());
@@ -60,7 +72,6 @@ class Index extends BaseNetworkComponent
     {
         try {
             $session = HotspotActiveSession::with('router')->findOrFail($sessionId);
-            /** @var SessionKickService $kicker */
             $kicker = app(SessionKickService::class);
             $result = $kicker->kickHotspot($session, Auth::user());
 
@@ -70,56 +81,64 @@ class Index extends BaseNetworkComponent
                 $msg .= ' (Hanya via API RouterOS — PoD RADIUS gagal/tidak tersedia.)';
             }
             session()->flash('success', $msg);
-            $this->dispatch('$refresh');
+            $this->dispatch('refresh-online');
         } catch (\Exception $e) {
             Log::error('Failed to kick Hotspot user', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
             session()->flash('error', 'Gagal memutuskan Hotspot user: ' . $e->getMessage());
         }
     }
 
-    public function kickAllUsernameSessions(string $username)
-    {
-        try {
-            $username = trim(urldecode($username));
-            if ($username === '') {
-                session()->flash('error', 'Username tidak boleh kosong');
-                return;
-            }
-            /** @var SessionKickService $kicker */
-            $kicker = app(SessionKickService::class);
-            $result = $kicker->kickUsernameGlobally($username, Auth::user());
-
-            $count = $result['count'] ?? 0;
-            session()->flash('success', "Global kick username {$username}: {$count} session ditangani.");
-            $this->dispatch('$refresh');
-        } catch (\Exception $e) {
-            Log::error('Global kick username gagal', ['u' => $username, 'err' => $e->getMessage()]);
-            session()->flash('error', 'Global kick gagal: ' . $e->getMessage());
-        }
-    }
-
-    public function updatedSearch()
-    {
-        $this->resetTabPages();
-    }
-
-    public function updatedPerPage()
-    {
-        $this->resetTabPages();
-    }
-
-    private function resetTabPages(): void
-    {
-        $this->resetPage('pppoePage');
-        $this->resetPage('hotspotPage');
-        $this->resetPage('voucherPage');
-    }
-
     public function render()
     {
-        $pppoeQuery = PppActiveSession::with(['router'])
-            ->when($this->search, function ($query) {
-                $query->where(function ($subQuery) {
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.customerService.customer.createdBy']);
+        
+        $voucherQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'voucher.reseller'])
+            ->whereExists(function ($q) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
+            });
+
+        $hotspotQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'hotspotUser.customerService.customer.createdBy'])
+            ->whereNotExists(function ($q) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
+            });
+        
+        if ($user->hasRole('reseller')) {
+            $pppoeQuery->whereExists(function ($sub) use ($user) {
+                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('pppoe_users')
+                    ->join('customer_services', 'pppoe_users.customer_service_id', '=', 'customer_services.id')
+                    ->join('members', 'customer_services.customer_id', '=', 'members.id')
+                    ->whereRaw('pppoe_users.username = ppp_active_sessions.name')
+                    ->where('members.created_by', $user->id);
+            });
+            $hotspotQuery->whereExists(function ($sub) use ($user) {
+                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('hotspot_users')
+                    ->join('customer_services', 'hotspot_users.customer_service_id', '=', 'customer_services.id')
+                    ->join('members', 'customer_services.customer_id', '=', 'members.id')
+                    ->whereRaw('hotspot_users.username = hotspot_active_sessions.user')
+                    ->where('members.created_by', $user->id);
+            });
+            $voucherQuery->whereExists(function ($sub) use ($user) {
+                $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('vouchers')
+                    ->whereRaw('vouchers.code = hotspot_active_sessions.user')
+                    ->where('vouchers.reseller_id', $user->id);
+            });
+        }
+
+        $stats = [
+            'pppoe' => (clone $pppoeQuery)->count(),
+            'hotspot' => (clone $hotspotQuery)->count(),
+            'voucher' => (clone $voucherQuery)->count(),
+        ];
+        $stats['total'] = $stats['pppoe'] + $stats['hotspot'] + $stats['voucher'];
+
+        if ($this->search) {
+            if ($this->activeTab === 'pppoe') {
+                $pppoeQuery->where(function ($subQuery) {
                     $subQuery->where('name', 'like', '%' . $this->search . '%')
                         ->orWhere('address', 'like', '%' . $this->search . '%')
                         ->orWhere('uptime', 'like', '%' . $this->search . '%')
@@ -127,47 +146,38 @@ class Index extends BaseNetworkComponent
                             $routerQuery->where('name', 'like', '%' . $this->search . '%');
                         });
                 });
-            })
-            ->orderBy('session_started_at', 'desc');
-
-        $hotspotQuery = HotspotActiveSession::with(['router'])
-            ->when($this->search, function ($query) {
-                $query->where(function ($subQuery) {
+            } elseif ($this->activeTab === 'hotspot') {
+                $hotspotQuery->where(function ($subQuery) {
                     $subQuery->where('user', 'like', '%' . $this->search . '%')
                         ->orWhere('address', 'like', '%' . $this->search . '%')
                         ->orWhere('mac_address', 'like', '%' . $this->search . '%')
                         ->orWhere('server', 'like', '%' . $this->search . '%')
-                        ->orWhere('uptime', 'like', '%' . $this->search . '%')
                         ->orWhereHas('router', function ($routerQuery) {
                             $routerQuery->where('name', 'like', '%' . $this->search . '%');
                         });
                 });
-            })
-            ->orderBy('session_started_at', 'desc');
-
-        $voucherQuery = Voucher::with(['hotspotUser', 'serviceProfile', 'owner'])
-            ->where('status', '!=', 'available')
-            ->when($this->search, function ($query) {
-                $query->where(function ($subQuery) {
-                    $subQuery->where('code', 'like', '%' . $this->search . '%')
-                        ->orWhere('status', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('hotspotUser', function ($hotspotUserQuery) {
-                            $hotspotUserQuery->where('username', 'like', '%' . $this->search . '%');
-                        })
-                        ->orWhereHas('serviceProfile', function ($serviceProfileQuery) {
-                            $serviceProfileQuery->where('name', 'like', '%' . $this->search . '%');
-                        })
-                        ->orWhereHas('owner', function ($ownerQuery) {
-                            $ownerQuery->where('name', 'like', '%' . $this->search . '%');
+            } elseif ($this->activeTab === 'voucher') {
+                $voucherQuery->where(function ($subQuery) {
+                    $subQuery->where('user', 'like', '%' . $this->search . '%')
+                        ->orWhere('address', 'like', '%' . $this->search . '%')
+                        ->orWhere('mac_address', 'like', '%' . $this->search . '%')
+                        ->orWhere('server', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('router', function ($routerQuery) {
+                            $routerQuery->where('name', 'like', '%' . $this->search . '%');
                         });
                 });
-            })
-            ->orderBy('activated_at', 'desc');
+            }
+        }
 
-        $pppoeSessions = $pppoeQuery->paginate($this->perPage, ['*'], 'pppoePage');
-        $hotspotSessions = $hotspotQuery->paginate($this->perPage, ['*'], 'hotspotPage');
-        $vouchers = $voucherQuery->paginate($this->perPage, ['*'], 'voucherPage');
+        $results = [];
+        if ($this->activeTab === 'pppoe') {
+            $results = $pppoeQuery->orderBy('session_started_at', 'desc')->paginate($this->perPage);
+        } elseif ($this->activeTab === 'hotspot') {
+            $results = $hotspotQuery->orderBy('session_started_at', 'desc')->paginate($this->perPage);
+        } else {
+            $results = $voucherQuery->orderBy('session_started_at', 'desc')->paginate($this->perPage);
+        }
 
-        return view('livewire.isp.user-online.index', compact('pppoeSessions', 'hotspotSessions', 'vouchers'));
+        return view('livewire.isp.user-online.index', compact('results', 'stats'));
     }
 }

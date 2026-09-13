@@ -3,6 +3,8 @@
 namespace App\Livewire\Billing;
 
 use App\Livewire\AdminComponent;
+use App\Models\Billing\Invoice;
+use App\Services\Adapters\Payment\PaymentOrchestrationService;
 
 class InvoiceList extends AdminComponent
 {
@@ -26,27 +28,22 @@ class InvoiceList extends AdminComponent
         $this->activePage = 'invoices';
     }
 
-    public function getInvoices(): \Illuminate\Support\Collection
+    public function getInvoices()
     {
-        // Placeholder - dalam implementasi nyata, fetch dari repository
-        return collect([
-            ['id' => 1, 'number' => 'INV-2024-001', 'customer' => 'John Doe', 'amount' => 500000, 'status' => 'paid', 'due_date' => now()->addDays(7), 'created_at' => now()->subDays(5)],
-            ['id' => 2, 'number' => 'INV-2024-002', 'customer' => 'Jane Smith', 'amount' => 350000, 'status' => 'pending', 'due_date' => now()->addDays(14), 'created_at' => now()->subDays(3)],
-            ['id' => 3, 'number' => 'INV-2024-003', 'customer' => 'Bob Wilson', 'amount' => 750000, 'status' => 'overdue', 'due_date' => now()->subDays(3), 'created_at' => now()->subDays(20)],
-            ['id' => 4, 'number' => 'INV-2024-004', 'customer' => 'Alice Brown', 'amount' => 450000, 'status' => 'paid', 'due_date' => now()->addDays(10), 'created_at' => now()->subDays(2)],
-        ]);
+        return Invoice::with('customer')
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->paginate($this->perPage);
     }
 
     public function getInvoiceStats(): array
     {
-        $invoices = $this->getInvoices();
         return [
-            'total' => $invoices->count(),
-            'total_amount' => $invoices->sum('amount'),
-            'paid' => $invoices->where('status', 'paid')->count(),
-            'pending' => $invoices->where('status', 'pending')->count(),
-            'overdue' => $invoices->where('status', 'overdue')->count(),
-            'collection_rate' => 75.5,
+            'total' => Invoice::count(),
+            'total_amount' => Invoice::sum('total_amount'),
+            'paid' => Invoice::where('status', 'paid')->count(),
+            'pending' => Invoice::where('status', 'unpaid')->count(),
+            'overdue' => Invoice::where('status', 'overdue')->count(),
+            'collection_rate' => 0, // placeholder
         ];
     }
 
@@ -58,6 +55,40 @@ class InvoiceList extends AdminComponent
     public function sendReminder(int $invoiceId): void
     {
         // Logic to send reminder
+    }
+
+    public function payWithMidtrans(int $invoiceId, PaymentOrchestrationService $orchestration)
+    {
+        $invoice = Invoice::with('customer')->findOrFail($invoiceId);
+        if ($invoice->status === 'paid') {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Tagihan sudah lunas.']);
+            return;
+        }
+        
+        $amountIdr = (int) ($invoice->total_amount - $invoice->paid_amount);
+
+        try {
+            $result = $orchestration->initiatePayment(
+                gatewayKey: 'midtrans',
+                customerId: $invoice->customer_id,
+                userId: auth()->id() ?? 1,
+                amountIdr: $amountIdr,
+                invoiceIds: [$invoice->id],
+                paymentMethodCode: null,
+                customerName: $invoice->customer->name ?? 'Customer',
+                customerEmail: $invoice->customer->email ?? 'cust@example.com',
+                customerPhone: $invoice->customer->phone ?? '081234567890',
+            );
+
+            if ($result['gateway_response']->success) {
+                // Redirect user to midtrans snap page
+                return redirect()->away($result['gateway_response']->redirectUrl);
+            } else {
+                $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal Midtrans: ' . $result['gateway_response']->errorMessage]);
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
     }
 
     public function render()

@@ -1,56 +1,70 @@
-<div class="p-6">
-    <h1 class="text-2xl font-bold mb-6">Profil Saya</h1>
+@section('header_title', 'Profil Saya')
+
+<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] space-y-6 pb-20">
 
     @if($message)
-        <div class="mb-4 {{ $messageType === 'success' ? 'text-green-600' : 'text-red-600' }}">{{ $message }}</div>
+        <div class="p-3 rounded-xl text-sm font-medium \{{ $messageType === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 border border-emerald-100' : 'bg-red-50 dark:bg-red-900/30 text-red-600 border border-red-100' }}">
+            {{ $message }}
+        </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Data Profil</h2>
-            <form wire:submit="updateProfile">
-                <div class="mb-4">
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                    <input type="text" id="name" wire:model="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                    <input type="email" id="email" wire:model="email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">Telepon</label>
-                    <input type="tel" id="phone" wire:model="phone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                </div>
-                <div class="flex items-center justify-end">
-                    <button type="submit" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                        Simpan Profil
-                    </button>
-                </div>
-            </form>
+    <!-- Data Profil -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/60">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500">
+                <span class="material-symbols-outlined">person</span>
+            </div>
+            <h2 class="text-base font-bold text-slate-900 dark:text-slate-100">Informasi Pribadi</h2>
         </div>
 
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Ubah Password</h2>
-            <form wire:submit="changePassword">
-                <div class="mb-4">
-                    <label for="currentPassword" class="block text-sm font-medium text-gray-700 mb-2">Password Saat Ini</label>
-                    <input type="password" id="currentPassword" wire:model="currentPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-2">Password Baru</label>
-                    <input type="password" id="newPassword" wire:model="newPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
-                </div>
-                <div class="mb-4">
-                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">Konfirmasi Password Baru</label>
-                    <input type="password" id="confirmPassword" wire:model="confirmPassword" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
-                </div>
-                <div class="flex items-center justify-end">
-                    <button type="submit" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                        Ubah Password
-                    </button>
-                </div>
-            </form>
+        <form wire:submit="updateProfile" class="space-y-4">
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Nama Lengkap</label>
+                <input type="text" wire:model="name" class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white dark:bg-slate-900 dark:text-slate-100" required>
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Alamat Email</label>
+                <input type="email" wire:model="email" class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white dark:bg-slate-900 dark:text-slate-100" required>
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Nomor WhatsApp</label>
+                <input type="tel" wire:model="phone" class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white dark:bg-slate-900 dark:text-slate-100">
+            </div>
+            <div class="pt-2">
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3.5 rounded-xl text-sm transition-all shadow-md shadow-indigo-500/20">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Keamanan -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/60">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-500">
+                <span class="material-symbols-outlined">lock</span>
+            </div>
+            <h2 class="text-base font-bold text-slate-900 dark:text-slate-100">Keamanan Akun</h2>
         </div>
+
+        <form wire:submit="changePassword" class="space-y-4">
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password Saat Ini</label>
+                <input type="password" wire:model="currentPassword" class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all dark:text-white dark:bg-slate-900 dark:text-slate-100" required>
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password Baru</label>
+                <input type="password" wire:model="newPassword" class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all dark:text-white dark:bg-slate-900 dark:text-slate-100" required>
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Konfirmasi Password Baru</label>
+                <input type="password" wire:model="confirmPassword" class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all dark:text-white dark:bg-slate-900 dark:text-slate-100" required>
+            </div>
+            <div class="pt-2">
+                <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold py-3.5 rounded-xl text-sm transition-all shadow-sm">
+                    Ganti Password
+                </button>
+            </div>
+        </form>
     </div>
 </div>
-

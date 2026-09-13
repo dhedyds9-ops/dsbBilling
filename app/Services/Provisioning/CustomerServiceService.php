@@ -71,7 +71,7 @@ class CustomerServiceService
                 $pppoeUser = PPPoEUser::create([
                     'uuid' => (string) Str::uuid(),
                     'username' => $username,
-                    'password' => Hash::make($password),
+                    'password' => \Illuminate\Support\Facades\Crypt::encryptString($password),
                     'customer_service_id' => $customerServiceId,
                     'service_profile_id' => $serviceInstance->service_profile_id,
                     'ip_allocation_id' => $serviceInstance->ip_allocation_id,
@@ -162,3 +162,6 @@ class CustomerServiceService
         });
     }
 }
+
+
+

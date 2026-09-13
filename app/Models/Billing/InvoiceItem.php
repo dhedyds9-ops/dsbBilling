@@ -17,6 +17,9 @@ class InvoiceItem extends Model
         'quantity',
         'unit_price',
         'subtotal',
+        'owner_settlement_price',
+        'branch_settlement_price',
+        'reseller_settlement_price',
         'created_by',
         'updated_by',
     ];
@@ -24,6 +27,9 @@ class InvoiceItem extends Model
     protected $casts = [
         'unit_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'owner_settlement_price' => 'decimal:2',
+        'branch_settlement_price' => 'decimal:2',
+        'reseller_settlement_price' => 'decimal:2',
     ];
 
     public function invoice()

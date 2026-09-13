@@ -9,6 +9,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\ACS\ACSDevice;
 use App\Models\ACS\DeviceTask;
+use App\Services\Adapters\Monitoring\GenieACSDriver;
+use Exception;
 
 class RebootDeviceJob implements ShouldQueue
 {
@@ -18,7 +20,7 @@ class RebootDeviceJob implements ShouldQueue
     {
     }
 
-    public function handle(): void
+    public function handle(GenieACSDriver $driver): void
     {
         $device = ACSDevice::find($this->deviceId);
         if (!$device) {
@@ -35,13 +37,25 @@ class RebootDeviceJob implements ShouldQueue
             }
         }
 
-        // Actual reboot via GenieACS would go here
+        try {
+            $acsId = $device->uuid ?: $device->serial_number;
+            $driver->rebootDevice($acsId);
 
-        if ($this->taskId && isset($task)) {
-            $task->update([
-                'status' => 'completed',
-                'completed_at' => now(),
-            ]);
+            if ($this->taskId && isset($task)) {
+                $task->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                ]);
+            }
+        } catch (Exception $e) {
+            if ($this->taskId && isset($task)) {
+                $task->update([
+                    'status' => 'failed',
+                    'failed_at' => now(),
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+            throw $e;
         }
     }
 }

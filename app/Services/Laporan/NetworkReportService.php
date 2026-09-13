@@ -25,8 +25,7 @@ class NetworkReportService
             ->get(['id', 'name', 'code']);
 
         if ($routers->count() === 0) {
-            $routers = collect([(object)['id' => 0, 'name' => 'Router Demo 1', 'code' => 'RTR-01'],
-                (object)['id' => 1, 'name' => 'Router Demo 2', 'code' => 'RTR-02']]);
+            $routers = collect([]);
         }
 
         $labels = [];
@@ -63,9 +62,7 @@ class NetworkReportService
                 if ($log && isset($log->metrics['availability_pct'])) {
                     $pct = (float) $log->metrics['availability_pct'];
                 } else {
-                    $seed = abs(crc32($r->id . $dateStr)) % 1000;
-                    $pct = 98 + ($seed / 100);
-                    if ($pct > 100) $pct = 99.9;
+                    $pct = 0;
                 }
 
                 $lineData[$r->id][] = $pct;
@@ -119,26 +116,7 @@ class NetworkReportService
             ->get();
 
         if ($alarms->count() === 0) {
-            $demo = [];
-            $seeds = ['Router Core B', 'OLT Sentral', 'POP Selatan', 'Distribusi Utara'];
-            $causes = ['Power Supply Failure', 'Fiber Cut', 'Hardware Error', 'High CPU Load', 'Memory Exhausted', 'Firmware Crash'];
-            $sev = ['critical', 'high', 'medium', 'low'];
-            $techs = ['Budi Santoso', 'Andi Pratama', 'Dedi Wijaya'];
-            for ($i = 0; $i < 12; $i++) {
-                $tgl = $now->copy()->subDays(random_int(0, 30));
-                $dur = random_int(5, 240);
-                $demo[] = (object)[
-                    'id' => $i + 1,
-                    'device_name' => $seeds[array_rand($seeds)],
-                    'tgl_mulai' => $tgl,
-                    'tgl_selesai' => $tgl->copy()->addMinutes($dur),
-                    'durasi_menit' => $dur,
-                    'root_cause' => $causes[array_rand($causes)],
-                    'severity' => $sev[array_rand($sev)],
-                    'teknisi' => $techs[array_rand($techs)],
-                ];
-            }
-            $alarms = collect($demo);
+            $alarms = collect([]);
         }
 
         $sevTotals = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
@@ -182,29 +160,14 @@ class NetworkReportService
                 ->whereDate('created_at', $dateStr)
                 ->count();
             if ($cnt === 0) {
-                $cnt = abs(crc32($dateStr)) % 15;
+                $cnt = 0;
             }
             $counts[] = $cnt;
         }
 
         $onus = Onu::limit(100)->get(['id', 'name', 'sn', 'olt_id', 'odp_id', 'los_count']);
         if ($onus->count() === 0) {
-            $demo = [];
-            $olts = ['OLT-01', 'OLT-02', 'OLT-03'];
-            $odps = ['ODP-A1', 'ODP-B2', 'ODP-C3', 'ODP-D4'];
-            for ($i = 0; $i < 10; $i++) {
-                $demo[] = (object)[
-                    'id' => $i + 1,
-                    'name' => 'ONU-' . str_pad((string)($i + 1), 4, '0', STR_PAD_LEFT),
-                    'sn' => 'ONT' . str_pad((string)random_int(100000, 999999), 8, '0', STR_PAD_LEFT),
-                    'olt_id' => array_rand($olts),
-                    'odp_id' => array_rand($odps),
-                    'los_count' => random_int(3, 30),
-                    'olt_name' => $olts[array_rand($olts)],
-                    'odp_name' => $odps[array_rand($odps)],
-                ];
-            }
-            $onus = collect($demo);
+            $onus = collect([]);
         }
 
         $topLos = $onus->sortByDesc(fn($o) => $o->los_count ?? 0)->take(10)->values();
@@ -256,12 +219,7 @@ class NetworkReportService
             ->get(['id', 'name', 'code']);
 
         if ($routers->count() === 0) {
-            $routers = collect([
-                (object)['id' => 1, 'name' => 'Router Core', 'code' => 'CORE-01'],
-                (object)['id' => 2, 'name' => 'Router Edge A', 'code' => 'EDGE-A'],
-                (object)['id' => 3, 'name' => 'Router Edge B', 'code' => 'EDGE-B'],
-                (object)['id' => 4, 'name' => 'POP Barat', 'code' => 'POP-BRT'],
-            ]);
+            $routers = collect([]);
         }
 
         $metrics = ['CPU', 'MEM', 'Disk', 'Temp', 'NTP Sync', 'Firmware'];
@@ -283,8 +241,7 @@ class NetworkReportService
                 if ($log && isset($log->metrics[$mk])) {
                     $val = is_numeric($log->metrics[$mk]) ? (float)$log->metrics[$mk] : 85;
                 } else {
-                    $seed = abs(crc32($r->id . $mk));
-                    $val = 70 + ($seed % 31);
+                    $val = 0;
                 }
                 if (in_array($mk, ['ntp', 'firmware'])) {
                     $val = min(100, $val);

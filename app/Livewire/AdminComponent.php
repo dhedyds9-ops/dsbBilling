@@ -185,12 +185,7 @@ abstract class AdminComponent extends Component
                         'url' => route('isp.odps.index'),
                         'active' => 'isp.odps*',
                     ],
-                    [
-                        'label' => 'ONUs',
-                        'icon' => 'device-mobile',
-                        'url' => route('isp.onus.index'),
-                        'active' => 'isp.onus*',
-                    ],
+
                 ],
             ],
             [
@@ -238,9 +233,9 @@ abstract class AdminComponent extends Component
                 'label' => 'Administration',
                 'items' => [
                     [
-                        'label' => 'Users',
+                        'label' => 'Manajemen User',
                         'icon' => 'users',
-                        'url' => '#',
+                        'url' => route('admin.users.index'),
                         'active' => 'admin.user*',
                     ],
                     [

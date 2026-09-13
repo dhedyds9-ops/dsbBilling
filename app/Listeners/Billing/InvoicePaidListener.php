@@ -7,9 +7,8 @@ namespace App\Listeners\Billing;
 use App\Enums\ISP\CoaType;
 use App\Jobs\ISP\Radius\DispatchBatchCoaJob;
 use App\Models\Billing\Invoice;
-use App\Models\Customer\Customer;
+use App\Models\CRM\Customer;
 use App\Models\ISP\PPPoEUser;
-use App\Services\Notifications\Channels\WhatsAppChannel;
 use Illuminate\Support\Facades\Log;
 use Src\Domain\Billing\Events\InvoicePaidEvent;
 
@@ -27,12 +26,12 @@ use Src\Domain\Billing\Events\InvoicePaidEvent;
 final class InvoicePaidListener
 {
     public function __construct(
-        private readonly WhatsAppChannel $wa,
+        private readonly \App\Services\Notifications\WhatsApp\WhatsAppNotificationService $waService,
     ) {}
 
     public function handle(InvoicePaidEvent $event): void
     {
-        $invoiceUuid = $event->invoiceUuid ?? '';
+        $invoiceUuid = $event->invoiceId ?? '';
         $customerId = (int)($event->customerId ?? 0);
         $amount = (float)($event->amountPaid ?? 0.0);
 
@@ -100,7 +99,7 @@ final class InvoicePaidListener
 
         // 2. Kirim WhatsApp notifikasi
         try {
-            $this->sendWhatsAppPaidNotification($customer, $invoice, $amount);
+            $this->waService->notifyPaymentSuccess($invoice, $amount, $invoiceUuid);
         } catch (\Throwable $e) {
             Log::warning('[InvoicePaidListener] WA notification failed', [
                 'err' => $e->getMessage(),
@@ -119,45 +118,5 @@ final class InvoicePaidListener
             'pppoe_users_reactivated' => $pppoeUsers->count(),
             'processed_at' => now()->toIso8601String(),
         ]);
-    }
-
-    private function sendWhatsAppPaidNotification(?Customer $customer, Invoice $invoice, float $amount): void
-    {
-        if (!$customer) return;
-
-        $phone = (string)($customer->phone ?? ($customer->whatsapp ?? ''));
-        if ($phone === '') return;
-
-        $name = $customer->name ?? 'Customer';
-        $invNo = $invoice->invoice_number ?? ('INV-' . $invoice->id);
-        $amountStr = 'Rp ' . number_format((float)$amount, 0, ',', '.');
-        $due = $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '-';
-        $totalStr = 'Rp ' . number_format((float)($invoice->total_amount ?? 0), 0, ',', '.');
-
-        $msg = "✅ *PEMBAYARAN DITERIMA - dsBilling*\n\n"
-             . "Pelanggan: *{$name}*\n"
-             . "No. Invoice: *{$invNo}*\n"
-             . "Jatuh Tempo: {$due}\n"
-             . "Tagihan: {$totalStr}\n"
-             . "Dibayar: *{$amountStr}*\n\n"
-             . "Layanan Anda sedang dalam proses *reaktivasi otomatis* (maks. 3 menit).\n"
-             . "Jika masih belum bisa akses, silakan restart ONU/Modem Anda.\n\n"
-             . "Terima kasih atas kepercayaan Anda 🙏";
-
-        // Kirim via Laravel Notification / log dulu (karena Alarm model required saat ini, kita gunakan Log untuk prod-ready)
-        Log::channel('whatsapp')->info('PAYMENT_PAID_WHATSAPP', [
-            'to' => $phone,
-            'message' => $msg,
-            'invoice_id' => $invoice->id,
-        ]);
-
-        // Jika sudah ada Alarm abstraction yang bisa untuk notification non-alarm, gunakan channel secara native:
-        try {
-            $alarmClass = \App\Models\Alarm::class;
-            if (class_exists($alarmClass)) {
-                // (Alarm akan digenerate otomatis oleh framework; di sini cuma simulasi untuk audit)
-            }
-        } catch (\Throwable) {
-        }
     }
 }

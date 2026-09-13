@@ -6,13 +6,10 @@ class MapsAdapterRegistry
 {
     protected array $adapters = [];
 
-    public function __construct(
-        protected GoogleMapsAdapter $googleMaps,
-        protected OpenStreetMapAdapter $openStreetMap
-    ) {
+    public function __construct() {
         $this->adapters = [
-            'google' => $googleMaps,
-            'osm' => $openStreetMap,
+            'google' => new GoogleMapsAdapter(config('services.google.maps.key', '')),
+            'osm' => new OpenStreetMapAdapter(),
         ];
     }
 
@@ -23,6 +20,6 @@ class MapsAdapterRegistry
 
     public function default(): MapsAdapterInterface
     {
-        return $this->openStreetMap;
+        return $this->adapters['osm'];
     }
 }

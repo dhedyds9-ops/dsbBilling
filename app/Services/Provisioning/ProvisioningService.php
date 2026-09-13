@@ -4,12 +4,11 @@ namespace App\Services\Provisioning;
 
 use App\Jobs\Provisioning\ReserveResourcesJob;
 use App\Jobs\Provisioning\RollbackProvisioningJob;
-use App\Jobs\SendNotificationJob;
+use App\Jobs\Notifications\SendNotificationJob;
 use App\Models\AuditLog;
 use App\Models\CRM\Customer;
 use App\Models\Customer\Contract;
 use App\Models\Customer\CustomerService;
-use App\Models\ISP\InternetPackage;
 use App\Models\Notification\Notification;
 use App\Models\Provisioning\ProvisionPipeline;
 use App\Models\Provisioning\ProvisionPipelineStep;
@@ -62,6 +61,8 @@ class ProvisioningService
                 'contract_id' => $contract->id,
                 'service_id' => $service?->id,
                 'service_profile_id' => $serviceProfile?->id,
+                'network_profile_id' => $data['network_profile_id'] ?? null,
+                'onu_id' => $data['onu_id'] ?? null,
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
@@ -88,7 +89,7 @@ class ProvisioningService
 
             // Step 6: Create First Invoice
             $invoice = $this->invoiceService->createInvoice(
-                $contract,
+                $contract->customer_id,
                 $userId,
                 [
                     [
@@ -96,17 +97,27 @@ class ProvisioningService
                         'quantity' => 1,
                         'unit_price' => $recurringPrice,
                     ]
-                ]
+                ],
+                null,
+                null,
+                null,
+                $contract->id
             );
 
             // Step 7: Create PPPoE User
+            $networkData = collect($data)->only([
+                'router_id', 'mac_address', 'static_ip', 'odp_id', 'port_number', 'onu_id', 
+                'reseller_id', 'billing_cycle', 'setup_fee'
+            ])->filter(fn($val) => $val !== null && $val !== '')->toArray();
+
             $pppoeUser = $this->pppoeService->createPPPoEUser(
                 $customerService,
                 $serviceProfile?->id ?? 1,
                 null,
                 $userId,
                 $data['username'],
-                $data['password']
+                $data['password'],
+                $networkData
             );
 
             $this->pppoeService->activatePPPoEUser($pppoeUser->id, $userId);
@@ -165,6 +176,8 @@ class ProvisioningService
                 'contract_id' => $contract->id,
                 'service_id' => $service?->id,
                 'service_profile_id' => $serviceProfile?->id,
+                'network_profile_id' => $data['network_profile_id'] ?? null,
+                'onu_id' => $data['onu_id'] ?? null,
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
@@ -193,7 +206,7 @@ class ProvisioningService
 
                 // Step 6: Create First Invoice
                 $invoice = $this->invoiceService->createInvoice(
-                    $contract,
+                    $contract->customer_id,
                     $userId,
                     [
                         [
@@ -201,7 +214,11 @@ class ProvisioningService
                             'quantity' => 1,
                             'unit_price' => $recurringPrice,
                         ]
-                    ]
+                    ],
+                    null,
+                    null,
+                    null,
+                    $contract->id
                 );
             }
 
@@ -212,7 +229,8 @@ class ProvisioningService
                 null,
                 $userId,
                 $data['username'],
-                $data['password']
+                $data['password'],
+                true // provisionOnCreate
             );
 
             $this->hotspotService->activateHotspotUser($hotspotUser->id, $userId);
@@ -257,16 +275,54 @@ class ProvisioningService
         $customer = Customer::where('phone', $data['phone'])->first();
 
         if (!$customer) {
+            // Create user portal login
+            $user = \App\Models\User::create([
+                'name' => $data['name'],
+                'email' => $data['email'] ?? null,
+                'whatsapp' => $data['phone'],
+                'customer_code' => $data['customer_code'] ?? null,
+                'username' => $data['customer_code'] ?? null,
+                'password' => \Illuminate\Support\Facades\Hash::make('123456'),
+                'is_active' => true,
+            ]);
+
+            if ($role = \App\Models\Role::where('name', 'customer')->first()) {
+                $user->roles()->attach($role->id);
+            }
+
             $customer = Customer::create([
-                'code' => 'CUST-' . strtoupper(Str::random(8)),
+                'code' => $data['customer_code'] ?? $user->customer_code ?? 'CUST-' . strtoupper(Str::random(8)),
+                'user_id' => $user->id,
                 'name' => $data['name'],
                 'phone' => $data['phone'],
                 'email' => $data['email'] ?? null,
                 'address' => $data['address'] ?? null,
+                'latitude' => $data['latitude'] ?? null,
+                'longitude' => $data['longitude'] ?? null,
+                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
                 'status' => 'active',
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
+        } else {
+            // Jika customer sudah ada tapi belum punya akun login portal, buatkan sekarang
+            if (empty($customer->user_id)) {
+                $user = \App\Models\User::create([
+                    'name' => $customer->name,
+                    'email' => $customer->email,
+                    'whatsapp' => $customer->phone,
+                    'customer_code' => $customer->code,
+                    'username' => $customer->code,
+                    'password' => \Illuminate\Support\Facades\Hash::make('123456'),
+                    'is_active' => true,
+                ]);
+
+                if ($role = \App\Models\Role::where('name', 'customer')->first()) {
+                    $user->roles()->attach($role->id);
+                }
+
+                $customer->update(['user_id' => $user->id]);
+            }
         }
 
         return $customer;
@@ -294,14 +350,13 @@ class ProvisioningService
 
     protected function logAudit(CustomerService $customerService, int $userId, string $action): void
     {
-        AuditLog::create([
-            'uuid' => (string) Str::uuid(),
+        \App\Models\AuditLog::create([
+            'auditable_type' => CustomerService::class,
+            'auditable_id' => $customerService->id,
+            'event' => $action,
+            'new_values' => $customerService->getChanges(),
             'user_id' => $userId,
-            'action' => $action,
-            'model_type' => CustomerService::class,
-            'model_id' => $customerService->id,
-            'changes' => json_encode($customerService->getChanges()),
-            'created_at' => now(),
+            'notes' => 'Generated by ProvisioningService',
         ]);
     }
 

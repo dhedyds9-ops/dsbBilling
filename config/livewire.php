@@ -179,7 +179,7 @@ return [
     |
     */
 
-    'inject_assets' => false,
+    'inject_assets' => true,
 
     /*
     |---------------------------------------------------------------------------
@@ -280,3 +280,4 @@ return [
         'max_components' => 200,     // Maximum components per batch request
     ],
 ];
+

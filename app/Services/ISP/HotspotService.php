@@ -63,7 +63,8 @@ class HotspotService
         ?int $voucherPoolId,
         int $userId,
         ?string $username = null,
-        ?string $password = null
+        ?string $password = null,
+        bool $provisionOnCreate = true
     ): HotspotUser {
         return DB::transaction(function () use (
             $customerService,
@@ -71,7 +72,8 @@ class HotspotService
             $voucherPoolId,
             $userId,
             $username,
-            $password
+            $password,
+            $provisionOnCreate
         ) {
             $hotspotUser = $this->hotspotUserRepository->create([
                 'uuid' => (string) Str::uuid(),
@@ -84,15 +86,6 @@ class HotspotService
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
-
-            try {
-                $this->provisionToMikrotik($hotspotUser, true);
-            } catch (Throwable $e) {
-                Log::warning('Create Hotspot initial provision non-fatal', [
-                    'user_id' => $hotspotUser->id,
-                    'err' => $e->getMessage(),
-                ]);
-            }
 
             return $hotspotUser;
         });
@@ -111,7 +104,9 @@ class HotspotService
                 'updated_by' => $userId,
             ]);
 
-            $this->provisionToMikrotik($hotspotUser);
+            if ($oldStatus !== 'pending') {
+                $this->provisionToMikrotik($hotspotUser);
+            }
 
             try {
                 if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
@@ -211,221 +206,39 @@ class HotspotService
 
     protected function provisionToMikrotik(HotspotUser $hotspotUser, bool $isCreate = false): void
     {
-        $routers = $this->resolveRouters($hotspotUser->serviceProfile);
-        if (empty($routers)) {
-            Log::warning('HotspotService provision: tidak ada Router aktif', ['user_id' => $hotspotUser->id]);
-            return;
-        }
-
-        $profileName = $hotspotUser->serviceProfile?->name ?: 'default';
-        $username = $hotspotUser->username;
-        $password = $hotspotUser->password;
-
-        $timelimit = null;
-        $datalimit = null;
-        try {
-            $hours = (int)($hotspotUser->time_limit_hours ?? 0);
-            if ($hours > 0) {
-                $timelimit = sprintf('%02d:00:00', $hours);
-            }
-            $gb = (float)($hotspotUser->quota_gb ?? 0);
-            if ($gb > 0) {
-                $datalimit = (int)round($gb * 1024 * 1024 * 1024);
-            }
-        } catch (Throwable $e) {}
-
-        $successEnabled = 0;
-        $successUpsert = 0;
-        $kicked = 0;
-
-        foreach ($routers as $router) {
-            try {
-                $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) {
-                    continue;
-                }
-            } catch (Throwable $e) {
-                Log::warning('HotspotService provision connect gagal', ['router_id' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
-                continue;
-            }
-
-            try {
-                $okEnable = $driver->enableHotspotUser($username);
-                if ($okEnable) $successEnabled++;
-
-                $options = [];
-                if ($timelimit !== null) $options['limit-uptime'] = $timelimit;
-                if ($datalimit !== null) $options['limit-bytes-total'] = $datalimit;
-
-                $okUpsert = $driver->updateHotspotUser($username, $password, $profileName, $options);
-                if (!$okUpsert) {
-                    $okUpsert = $driver->addHotspotUser($username, $password, $profileName, $options);
-                }
-                if ($okUpsert) $successUpsert++;
-
-                if (!$isCreate) {
-                    $okKick = $driver->disconnectHotspotUser($username);
-                    if ($okKick) $kicked++;
-                }
-            } catch (Throwable $e) {
-                Log::error('HotspotService provision per-router gagal', [
-                    'router_id' => $router->id,
-                    'user' => $username,
-                    'err' => $e->getMessage(),
-                ]);
-            }
-
-            try { $driver->disconnect(); } catch (Throwable $e) {}
-        }
-
-        Log::info('HotspotService provisionToMikrotik selesai', [
-            'user' => $username,
-            'routers_checked' => count($routers),
-            'enabled' => $successEnabled,
-            'upserted' => $successUpsert,
-            'kicked' => $kicked,
-            'is_create' => $isCreate,
-            'timelimit' => $timelimit,
-            'datalimit' => $datalimit,
-        ]);
+        if ($isCreate) return;
+        $this->kickActiveSession($hotspotUser);
     }
 
     protected function provisionIsolationToMikrotik(HotspotUser $hotspotUser): void
     {
-        $routers = $this->resolveRouters($hotspotUser->serviceProfile);
-        if (empty($routers)) {
-            Log::warning('HotspotService isolir: tidak ada Router aktif', ['user_id' => $hotspotUser->id]);
-            return;
-        }
-
-        $username = $hotspotUser->username;
-        $successDisable = 0;
-        $kicked = 0;
-
-        foreach ($routers as $router) {
-            try {
-                $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) {
-                    continue;
-                }
-            } catch (Throwable $e) {
-                Log::warning('HotspotService isolir connect gagal', ['router_id' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
-                continue;
-            }
-
-            try {
-                $okDisable = $driver->disableHotspotUser($username);
-                if ($okDisable) $successDisable++;
-
-                $okKick = $driver->disconnectHotspotUser($username);
-                if ($okKick) $kicked++;
-            } catch (Throwable $e) {
-                Log::error('HotspotService isolir per-router gagal', [
-                    'router_id' => $router->id,
-                    'user' => $username,
-                    'err' => $e->getMessage(),
-                ]);
-            }
-
-            try { $driver->disconnect(); } catch (Throwable $e) {}
-        }
-
-        Log::info('HotspotService provisionIsolationToMikrotik selesai', [
-            'user' => $username,
-            'routers_checked' => count($routers),
-            'disabled' => $successDisable,
-            'kicked' => $kicked,
-        ]);
+        $this->kickActiveSession($hotspotUser);
     }
 
     protected function disconnectFromMikrotik(HotspotUser $hotspotUser): void
     {
-        $routers = $this->resolveRouters($hotspotUser->serviceProfile);
-        if (empty($routers)) {
-            Log::warning('HotspotService disconnect: tidak ada Router aktif', ['user_id' => $hotspotUser->id]);
-            return;
-        }
-
-        $username = $hotspotUser->username;
-        $kicked = 0;
-
-        foreach ($routers as $router) {
-            try {
-                $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) {
-                    continue;
-                }
-            } catch (Throwable $e) {
-                Log::warning('HotspotService disconnect connect gagal', ['router_id' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
-                continue;
-            }
-
-            try {
-                $okKick = $driver->disconnectHotspotUser($username);
-                if ($okKick) $kicked++;
-            } catch (Throwable $e) {
-                Log::error('HotspotService disconnect per-router gagal', [
-                    'router_id' => $router->id,
-                    'user' => $username,
-                    'err' => $e->getMessage(),
-                ]);
-            }
-
-            try { $driver->disconnect(); } catch (Throwable $e) {}
-        }
-
-        Log::info('HotspotService disconnectFromMikrotik selesai', [
-            'user' => $username,
-            'routers_checked' => count($routers),
-            'kicked' => $kicked,
-        ]);
+        $this->kickActiveSession($hotspotUser);
     }
 
     protected function removeFromMikrotik(HotspotUser $hotspotUser): void
     {
+        $this->kickActiveSession($hotspotUser);
+    }
+
+    private function kickActiveSession(HotspotUser $hotspotUser): void
+    {
         $routers = $this->resolveRouters($hotspotUser->serviceProfile);
-        if (empty($routers)) {
-            Log::warning('HotspotService remove: tidak ada Router aktif', ['user_id' => $hotspotUser->id]);
-            return;
-        }
+        if (empty($routers)) return;
 
         $username = $hotspotUser->username;
-        $successRemove = 0;
-        $kicked = 0;
 
         foreach ($routers as $router) {
             try {
                 $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) {
-                    continue;
-                }
-            } catch (Throwable $e) {
-                Log::warning('HotspotService remove connect gagal', ['router_id' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
-                continue;
-            }
-
-            try {
-                $okKick = $driver->disconnectHotspotUser($username);
-                if ($okKick) $kicked++;
-
-                $okRemove = $driver->removeHotspotUser($username);
-                if ($okRemove) $successRemove++;
-            } catch (Throwable $e) {
-                Log::error('HotspotService remove per-router gagal', [
-                    'router_id' => $router->id,
-                    'user' => $username,
-                    'err' => $e->getMessage(),
-                ]);
-            }
-
-            try { $driver->disconnect(); } catch (Throwable $e) {}
+                if (!$driver->connect()) continue;
+                $driver->disconnectHotspotUser($username);
+                $driver->disconnect();
+            } catch (\Throwable $e) {}
         }
-
-        Log::info('HotspotService removeFromMikrotik selesai', [
-            'user' => $username,
-            'routers_checked' => count($routers),
-            'removed' => $successRemove,
-            'kicked' => $kicked,
-        ]);
     }
 }

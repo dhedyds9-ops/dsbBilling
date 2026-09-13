@@ -51,67 +51,74 @@ class GlobalSearch extends Component
     protected function performSearch(): array
     {
         $results = [];
+        $user = auth()->user();
+        
+        $isCustomer = false;
+        $customerId = 0;
+        
+        if ($user && $user->customer) {
+            $isCustomer = true;
+            $customerId = $user->customer->id;
+        }
 
-        // Search Customers
-        if ($this->selectedCategory === 'all' || $this->selectedCategory === 'customers') {
-            // $customers = Customer::search($this->query)->limit($this->limit)->get();
-            // foreach ($customers as $customer) {
-            //     $results[] = [
-            //         'type' => 'customer',
-            //         'title' => $customer->name,
-            //         'subtitle' => $customer->email,
-            //         'url' => "/customers/{$customer->id}",
-            //         'icon' => 'heroicon-o-user',
-            //     ];
-            // }
+        // Only admins search customers
+        if (!$isCustomer && ($this->selectedCategory === 'all' || $this->selectedCategory === 'customers')) {
+            $customers = \App\Models\CRM\Customer::where('name', 'like', '%' . $this->query . '%')
+                ->orWhere('email', 'like', '%' . $this->query . '%')
+                ->limit($this->limit)->get();
+            foreach ($customers as $customer) {
+                $results[] = [
+                    'type' => 'customer',
+                    'title' => $customer->name,
+                    'subtitle' => $customer->email,
+                    'url' => "#",
+                    'icon' => 'user',
+                ];
+            }
         }
 
         // Search Invoices
         if ($this->selectedCategory === 'all' || $this->selectedCategory === 'invoices') {
-            // $invoices = Invoice::search($this->query)->limit($this->limit)->get();
-            // foreach ($invoices as $invoice) {
-            //     $results[] = [
-            //         'type' => 'invoice',
-            //         'title' => $invoice->number,
-            //         'subtitle' => number_format($invoice->total, 0, ',', '.'),
-            //         'url' => "/billing/invoices/{$invoice->id}",
-            //         'icon' => 'heroicon-o-document-text',
-            //     ];
-            // }
+            $query = \App\Models\Billing\Invoice::where('invoice_number', 'like', '%' . $this->query . '%');
+            if ($isCustomer) {
+                $query->where('customer_id', $customerId);
+            }
+            $invoices = $query->limit($this->limit)->get();
+            
+            foreach ($invoices as $invoice) {
+                $results[] = [
+                    'type' => 'invoice',
+                    'title' => $invoice->invoice_number,
+                    'subtitle' => 'Rp ' . number_format($invoice->total_amount, 0, ',', '.'),
+                    'url' => $isCustomer ? route('customer-portal.billing.invoice-show', $invoice->id) : route('billing.invoices.show', $invoice->id),
+                    'icon' => 'file-text',
+                ];
+            }
         }
 
         // Search Tickets
         if ($this->selectedCategory === 'all' || $this->selectedCategory === 'tickets') {
-            // $tickets = Ticket::search($this->query)->limit($this->limit)->get();
-            // foreach ($tickets as $ticket) {
-            //     $results[] = [
-            //         'type' => 'ticket',
-            //         'title' => $ticket->subject,
-            //         'subtitle' => $ticket->status,
-            //         'url' => "/tickets/{$ticket->id}",
-            //         'icon' => 'heroicon-o-support',
-            //     ];
-            // }
-        }
-
-        // Search Assets
-        if ($this->selectedCategory === 'all' || $this->selectedCategory === 'assets') {
-            // $assets = Asset::search($this->query)->limit($this->limit)->get();
-            // foreach ($assets as $asset) {
-            //     $results[] = [
-            //         'type' => 'asset',
-            //         'title' => $asset->name,
-            //         'subtitle' => $asset->serial_number,
-            //         'url' => "/inventory/assets/{$asset->id}",
-            //         'icon' => 'heroicon-o-cube',
-            //     ];
-            // }
+            $query = \App\Models\Support\Ticket::where('title', 'like', '%' . $this->query . '%');
+            if ($isCustomer) {
+                $query->where('customer_id', $user->id);
+            }
+            $tickets = $query->limit($this->limit)->get();
+            
+            foreach ($tickets as $ticket) {
+                $results[] = [
+                    'type' => 'ticket',
+                    'title' => $ticket->title,
+                    'subtitle' => 'Status: ' . ucfirst($ticket->status),
+                    'url' => "#",
+                    'icon' => 'support',
+                ];
+            }
         }
 
         return $results;
     }
 
-    public function goToResult(string $url): void
+    public function goToResult(string $url)
     {
         $this->close();
         return redirect($url);

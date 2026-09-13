@@ -11,8 +11,10 @@ namespace App\Services\Notifications\WhatsApp\ValueObjects;
  */
 final readonly class WaOutgoingMessage
 {
+    public string $toPhone;
+
     public function __construct(
-        public string  $toPhone,               // format: 628123456789 (tanpa 0 / +)
+        string $toPhone,               // format: 628123456789 (tanpa 0 / +)
         public string  $type = 'text',         // text | image | document | audio | video | template | button | list
         public string  $text = '',             // message content / caption for media
         public string  $mediaUrl = '',         // image/video/document/audio url (public)
@@ -25,7 +27,7 @@ final readonly class WaOutgoingMessage
         public bool    $priorityHigh = false,  // true = bypass rate limit (otp / critical)
         public ?string $idempotencyKey = null, // prevent double-send, hash(to+type+category+message)
     ) {
-        $this->toPhone = self::normalizePhone($this->toPhone);
+        $this->toPhone = self::normalizePhone($toPhone);
     }
 
     public static function normalizePhone(string $phone): string

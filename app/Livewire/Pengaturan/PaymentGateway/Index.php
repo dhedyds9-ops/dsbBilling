@@ -14,6 +14,11 @@ class Index extends AdminComponent
 
     public string $activeTab = 'midtrans';
 
+    public function setActiveTab(string $tab): void
+    {
+        $this->activeTab = $tab;
+    }
+
     public array $general = [
         'mode' => 'sandbox',
         'success_url' => '/payment/success',
@@ -140,11 +145,11 @@ class Index extends AdminComponent
         'require_attachment' => true,
         'max_wait_hours' => 48,
         'accounts' => [
-            ['bank_name' => 'Bank BCA', 'account_no' => '1234567890', 'account_holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['bank_name' => 'Bank BRI', 'account_no' => '0001234567890', 'account_holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['bank_name' => 'Bank Mandiri', 'account_no' => '123-00-1234567-8', 'account_holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['bank_name' => 'Bank BNI', 'account_no' => '0123456789', 'account_holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['bank_name' => 'BSI (Bank Syariah Indonesia)', 'account_no' => '7123456789', 'account_holder' => 'PT dsBilling Indonesia', 'enabled' => false],
+            ['id' => 1, 'bank_name' => 'Bank BCA', 'account_number' => '1234567890', 'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
+            ['id' => 2, 'bank_name' => 'Bank BRI', 'account_number' => '0001234567890', 'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
+            ['id' => 3, 'bank_name' => 'Bank Mandiri', 'account_number' => '123-00-1234567-8', 'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
+            ['id' => 4, 'bank_name' => 'Bank BNI', 'account_number' => '0123456789', 'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
+            ['id' => 5, 'bank_name' => 'BSI (Bank Syariah Indonesia)', 'account_number' => '7123456789', 'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => false],
         ],
     ];
 
@@ -152,10 +157,10 @@ class Index extends AdminComponent
         'enabled' => true,
         'require_attachment' => true,
         'providers' => [
-            ['name' => 'GoPay', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['name' => 'OVO', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['name' => 'DANA', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['name' => 'ShopeePay', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
+            ['id' => 1, 'name' => 'GoPay', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
+            ['id' => 2, 'name' => 'OVO', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
+            ['id' => 3, 'name' => 'DANA', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
+            ['id' => 4, 'name' => 'ShopeePay', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
         ],
     ];
 
@@ -169,6 +174,29 @@ class Index extends AdminComponent
         parent::mount();
         $this->activeModule = 'pengaturan';
         $this->activePage = 'payment-gateway';
+
+        $svc = app(\App\Services\Pengaturan\PaymentGatewaySettingsService::class);
+        $all = $svc->getAll();
+        if (isset($all['midtrans'])) $this->midtrans = array_merge($this->midtrans, $all['midtrans']);
+        if (isset($all['xendit'])) $this->xendit = array_merge($this->xendit, $all['xendit']);
+        if (isset($all['duitku'])) $this->duitku = array_merge($this->duitku, $all['duitku']);
+        if (isset($all['tripay'])) $this->tripay = array_merge($this->tripay, $all['tripay']);
+        if (isset($all['manual_transfer'])) {
+            $this->manualBank['accounts'] = $all['manual_transfer']['bank_accounts'] ?? [];
+            $this->manualBank['enabled'] = $all['manual_transfer']['enabled'] ?? true;
+        }
+        if (isset($all['manual_ewallet'])) {
+            $this->ewalletManual['providers'] = $all['manual_ewallet']['providers'] ?? [];
+            $this->ewalletManual['enabled'] = $all['manual_ewallet']['enabled'] ?? true;
+            $this->ewalletManual['require_attachment'] = $all['manual_ewallet']['require_attachment'] ?? true;
+        }
+
+        $this->general['mode'] = \App\Models\Setting::getValue('payment_gateway.general.mode', 'sandbox');
+        $this->general['invoice_prefix'] = \App\Models\Setting::getValue('payment_gateway.general.invoice_prefix', 'INV-');
+        $this->general['default_expiry_hours'] = \App\Models\Setting::getValue('payment_gateway.general.default_expiry_hours', 24);
+        $this->general['success_url'] = \App\Models\Setting::getValue('payment_gateway.general.success_url', '/payment/success');
+        $this->general['pending_url'] = \App\Models\Setting::getValue('payment_gateway.general.pending_url', '/payment/pending');
+        $this->general['error_url'] = \App\Models\Setting::getValue('payment_gateway.general.error_url', '/payment/error');
     }
 
     public function authorizeAccess(): void
@@ -205,10 +233,31 @@ class Index extends AdminComponent
         ];
     }
 
-    public function save(): void
+    public function save(\App\Services\Pengaturan\PaymentGatewaySettingsService $svc): void
     {
         $this->validate();
         try {
+            $svc->save('midtrans', $this->midtrans);
+            $svc->save('xendit', $this->xendit);
+            $svc->save('duitku', $this->duitku);
+            $svc->save('tripay', $this->tripay);
+            $svc->save('manual_transfer', [
+                'enabled' => $this->manualBank['enabled'] ?? true,
+                'bank_accounts' => $this->manualBank['accounts'] ?? []
+            ]);
+            $svc->save('manual_ewallet', [
+                'enabled' => $this->ewalletManual['enabled'] ?? true,
+                'require_attachment' => $this->ewalletManual['require_attachment'] ?? true,
+                'providers' => $this->ewalletManual['providers'] ?? [],
+            ]);
+
+            \App\Models\Setting::setValue('payment_gateway.general.mode', $this->general['mode'], 'string', 'payment_gateway');
+            \App\Models\Setting::setValue('payment_gateway.general.invoice_prefix', $this->general['invoice_prefix'], 'string', 'payment_gateway');
+            \App\Models\Setting::setValue('payment_gateway.general.default_expiry_hours', $this->general['default_expiry_hours'], 'integer', 'payment_gateway');
+            \App\Models\Setting::setValue('payment_gateway.general.success_url', $this->general['success_url'], 'string', 'payment_gateway');
+            \App\Models\Setting::setValue('payment_gateway.general.pending_url', $this->general['pending_url'], 'string', 'payment_gateway');
+            \App\Models\Setting::setValue('payment_gateway.general.error_url', $this->general['error_url'], 'string', 'payment_gateway');
+
             $this->savedStatus = 'saved';
             session()->flash('success', 'Konfigurasi Payment Gateway berhasil disimpan.');
         } catch (Throwable $e) {
@@ -219,10 +268,13 @@ class Index extends AdminComponent
 
     public function addBankAccount(): void
     {
+        $nextId = (count($this->manualBank['accounts'] ?? []) + 1);
         $this->manualBank['accounts'][] = [
+            'id' => $nextId,
             'bank_name' => '',
-            'account_no' => '',
+            'account_number' => '',
             'account_holder' => '',
+            'branch' => '',
             'enabled' => true,
         ];
     }
@@ -237,7 +289,9 @@ class Index extends AdminComponent
 
     public function addEwallet(): void
     {
+        $nextId = (count($this->ewalletManual['providers'] ?? []) + 1);
         $this->ewalletManual['providers'][] = [
+            'id' => $nextId,
             'name' => '',
             'number' => '',
             'holder' => '',
@@ -261,18 +315,24 @@ class Index extends AdminComponent
                 ? $this->midtrans['server_key_sandbox']
                 : $this->midtrans['server_key_production'];
             $url = $this->general['mode'] === 'sandbox'
-                ? 'https://api.sandbox.midtrans.com/v1/balance'
-                : 'https://api.midtrans.com/v1/balance';
+                ? 'https://api.sandbox.midtrans.com/v2/DSB-TEST-PING/status'
+                : 'https://api.midtrans.com/v2/DSB-TEST-PING/status';
             if (empty($key)) {
                 $this->balanceInfo = 'Server key belum diisi.';
                 return;
             }
-            $resp = Http::timeout(10)
-                ->withBasicAuth($key, '')
-                ->get($url);
-            $this->balanceInfo = $resp->successful()
-                ? json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-                : ('HTTP ' . $resp->status() . ': ' . $resp->body());
+            $http = Http::timeout(10)->withBasicAuth($key, '')->acceptJson();
+            if (app()->isLocal()) $http->withoutVerifying();
+            $resp = $http->get($url);
+            
+            if ($resp->status() === 401) {
+                $this->balanceInfo = 'Koneksi Gagal: HTTP 401 Unauthorized (Server Key salah).';
+            } elseif ($resp->status() === 404) {
+                // Midtrans returns 404 for missing transaction, which means Auth was actually SUCCESSFUL.
+                $this->balanceInfo = 'Koneksi Berhasil! Server Key valid (Environment: ' . $this->general['mode'] . ').';
+            } else {
+                $this->balanceInfo = 'HTTP ' . $resp->status() . ': ' . $resp->body();
+            }
         } catch (Throwable $e) {
             $this->balanceInfo = 'Error: ' . $e->getMessage();
         }
@@ -289,9 +349,9 @@ class Index extends AdminComponent
                 $this->balanceInfo = 'Secret key belum diisi.';
                 return;
             }
-            $resp = Http::timeout(10)
-                ->withBasicAuth($key, '')
-                ->get('https://api.xendit.co/balance');
+            $http = Http::timeout(10)->withBasicAuth($key, '');
+            if (app()->isLocal()) $http->withoutVerifying();
+            $resp = $http->get('https://api.xendit.co/balance');
             $this->balanceInfo = $resp->successful()
                 ? json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
                 : ('HTTP ' . $resp->status() . ': ' . $resp->body());
@@ -314,9 +374,9 @@ class Index extends AdminComponent
                 $this->balanceInfo = 'API key belum diisi.';
                 return;
             }
-            $resp = Http::timeout(10)
-                ->withHeaders(['Authorization' => 'Bearer ' . $key])
-                ->get($url);
+            $http = Http::timeout(10)->withHeaders(['Authorization' => 'Bearer ' . $key]);
+            if (app()->isLocal()) $http->withoutVerifying();
+            $resp = $http->get($url);
             $this->balanceInfo = $resp->successful()
                 ? json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
                 : ('HTTP ' . $resp->status() . ': ' . $resp->body());

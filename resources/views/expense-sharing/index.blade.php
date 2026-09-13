@@ -7,7 +7,7 @@
         <h2>{{ $pageTitle }}</h2>
         <div class="d-flex gap-2">
             <form method="GET" action="{{ route('expense-sharing.index') }}" class="d-flex gap-2">
-                <input type="month" name="period" class="form-control" value="{{ request('period') }}" placeholder="Periode">
+                <input type="month" name="period" class="form-control dark:bg-slate-900 dark:text-slate-100" value="{{ request('period') }}" placeholder="Periode">
                 <button type="submit" class="btn btn-secondary">Filter</button>
                 @if(request('period'))
                     <a href="{{ route('expense-sharing.index') }}" class="btn btn-light">Reset</a>
@@ -25,7 +25,7 @@
 
     <div class="card">
         <div class="card-body">
-            <div class="table-responsive">
+            <div class="w-full overflow-x-auto">
                 <table class="table table-bordered table-hover">
                     <thead class="table-light">
                         <tr>

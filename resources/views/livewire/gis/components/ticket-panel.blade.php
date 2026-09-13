@@ -1,16 +1,16 @@
-<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+<div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
     <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-200">
+    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-700">Tickets</h3>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Tickets</h3>
             <div class="flex items-center space-x-2">
-                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800">
                     {{ $pendingCount }} Pending
                 </span>
-                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800">
                     {{ $inProgressCount }} In Progress
                 </span>
-                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/50 text-green-800">
                     {{ $resolvedCount }} Resolved
                 </span>
             </div>
@@ -18,20 +18,20 @@
     </div>
 
     <!-- Filters -->
-    <div class="p-4 border-b border-gray-200 space-y-3">
+    <div class="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
         <!-- Search -->
         <input 
             type="text"
             wire:model.live="searchQuery"
             placeholder="Search tickets..."
-            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100"
         >
 
         <div class="flex flex-wrap gap-2">
             <!-- Status Filter -->
             <select 
                 wire:model.live="filterStatus"
-                class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                class="text-sm border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100"
             >
                 <option value="all">All Status</option>
                 <option value="open">Open</option>
@@ -43,7 +43,7 @@
             <!-- Priority Filter -->
             <select 
                 wire:model.live="filterPriority"
-                class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                class="text-sm border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100"
             >
                 <option value="all">All Priority</option>
                 <option value="critical">Critical</option>
@@ -55,7 +55,7 @@
             <!-- Type Filter -->
             <select 
                 wire:model.live="filterType"
-                class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                class="text-sm border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100"
             >
                 <option value="all">All Types</option>
                 <option value="fault">Fault</option>
@@ -70,18 +70,18 @@
             <input 
                 type="checkbox" 
                 wire:model.live="showAssignedOnly"
-                class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 dark:bg-slate-900 dark:text-slate-100"
             >
-            <span class="text-sm text-gray-600">Show assigned only</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">Show assigned only</span>
         </label>
     </div>
 
     <!-- Ticket List -->
-    <div class="max-h-96 overflow-y-auto divide-y divide-gray-200">
+    <div class="max-h-96 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
         @forelse($tickets as $ticket)
         <div 
             wire:click="$emit('showTicketDetails', '{{ $ticket['id'] ?? '' }}')"
-            class="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+            class="px-4 py-3 hover:bg-gray-50 dark:bg-gray-900/50 cursor-pointer transition-colors"
         >
             <div class="flex items-start justify-between">
                 <div class="flex items-start space-x-3">
@@ -104,27 +104,27 @@
                         @endswitch
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-gray-900">{{ $ticket['title'] ?? 'Unknown Ticket' }}</p>
-                        <p class="text-xs text-gray-500 mt-1">{{ $ticket['id'] ?? '' }} - {{ $ticket['customer_name'] ?? '' }}</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $ticket['title'] ?? 'Unknown Ticket' }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $ticket['id'] ?? '' }} - {{ $ticket['customer_name'] ?? '' }}</p>
                         <div class="flex items-center space-x-2 mt-2">
                             <span class="px-2 py-0.5 text-xs font-medium rounded 
                                 @switch($ticket['status'] ?? 'open')
                                     @case('open')
-                                        bg-amber-100 text-amber-800
+                                        bg-amber-100 dark:bg-amber-900/50 text-amber-800
                                         @break
                                     @case('in_progress')
-                                        bg-blue-100 text-blue-800
+                                        bg-blue-100 dark:bg-blue-900/50 text-blue-800
                                         @break
                                     @case('resolved')
-                                        bg-green-100 text-green-800
+                                        bg-green-100 dark:bg-green-900/50 text-green-800
                                         @break
                                     @default
-                                        bg-gray-100 text-gray-800
+                                        bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200
                                 @endswitch
                             ">
                                 {{ str_replace('_', ' ', ucfirst($ticket['status'] ?? 'open')) }}
                             </span>
-                            <span class="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
+                            <span class="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                                 {{ ucfirst($ticket['type'] ?? 'fault') }}
                             </span>
                         </div>
@@ -133,7 +133,7 @@
                 <div class="text-right">
                     @if(isset($ticket['sla_deadline']))
                         <p class="text-xs text-gray-400">SLA</p>
-                        <p class="text-xs font-medium {{ ($ticket['sla_breached'] ?? false) ? 'text-red-600' : 'text-gray-600' }}">
+                        <p class="text-xs font-medium {{ ($ticket['sla_breached'] ?? false) ? 'text-red-600' : 'text-gray-600 dark:text-gray-400' }}">
                             {{ $ticket['sla_deadline'] ?? '' }}
                         </p>
                     @endif
@@ -142,7 +142,7 @@
 
             <!-- Assignee -->
             @if(isset($ticket['assignee']))
-            <div class="mt-2 flex items-center space-x-2 text-xs text-gray-500">
+            <div class="mt-2 flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
                 <img class="w-4 h-4 rounded-full" src="https://ui-avatars.com/api/?name={{ urlencode($ticket['assignee']) }}&size=16" alt="">
                 <span>{{ $ticket['assignee'] }}</span>
             </div>
@@ -153,13 +153,13 @@
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
             </svg>
-            <p class="mt-2 text-sm text-gray-500">No tickets found</p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No tickets found</p>
         </div>
         @endforelse
     </div>
 
     <!-- Create Ticket Button -->
-    <div class="p-4 border-t border-gray-200 bg-gray-50">
+    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
         <button 
             wire:click="$emit('createNewTicket')"
             class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"

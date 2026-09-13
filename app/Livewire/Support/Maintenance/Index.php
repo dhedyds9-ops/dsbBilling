@@ -86,9 +86,9 @@ class Index extends BaseEnterpriseList
                 ->where('table_schema', env('DB_DATABASE'))
                 ->where('table_name', 'support_maintenances')
                 ->exists();
-            return $exists ? 'support_maintenances' : 'support_tickets';
+            return $exists ? 'support_maintenances' : 'tickets';
         } catch (Throwable) {
-            return 'support_tickets';
+            return 'tickets';
         }
     }
 
@@ -97,7 +97,7 @@ class Index extends BaseEnterpriseList
         try {
             $tbl = $this->tableName();
             $q = DB::table($tbl);
-            $isTicket = $tbl === 'support_tickets';
+            $isTicket = $tbl === 'tickets';
             $statusCol = $isTicket ? 'status' : 'status';
             $this->summary = [
                 'total' => $q->count(),
@@ -118,7 +118,7 @@ class Index extends BaseEnterpriseList
         }
 
         try {
-            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['technician', 'admin', 'super_admin']))
+            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager']))
                 ->pluck('name', 'id')->all();
         } catch (Throwable) {
             $techs = User::limit(100)->pluck('name', 'id')->all();
@@ -165,7 +165,7 @@ class Index extends BaseEnterpriseList
             $month = $this->calendarMonth ?: now()->format('Y-m');
             $start = date('Y-m-01', strtotime($month . '-01'));
             $end = date('Y-m-t', strtotime($month . '-01'));
-            $isTicket = $tbl === 'support_tickets';
+            $isTicket = $tbl === 'tickets';
             $dateCol = $isTicket ? 'created_at' : 'created_at';
             $rows = DB::table($tbl)
                 ->whereBetween(DB::raw("DATE({$dateCol})"), [$start, $end])
@@ -192,12 +192,12 @@ class Index extends BaseEnterpriseList
     protected function loadTechnicianStats(): void
     {
         try {
-            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['technician', 'admin']))
+            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager']))
                 ->get(['id', 'name']);
             $monthFrom = now()->startOfMonth()->toDateString();
             $monthTo = now()->endOfMonth()->toDateString();
             $tbl = $this->tableName();
-            $isTicket = $tbl === 'support_tickets';
+            $isTicket = $tbl === 'tickets';
             $dateCol = $isTicket ? 'created_at' : 'created_at';
             $techCol = $isTicket ? 'assigned_to' : 'assigned_to';
             $stats = [];
@@ -257,7 +257,7 @@ class Index extends BaseEnterpriseList
     {
         $tbl = $this->tableName();
         $q = DB::table($tbl);
-        $isTicket = $tbl === 'support_tickets';
+        $isTicket = $tbl === 'tickets';
         $statusCol = 'status';
         $dateCol = $isTicket ? 'created_at' : 'created_at';
         $techCol = 'assigned_to';

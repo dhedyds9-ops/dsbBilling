@@ -2,7 +2,9 @@
 
 namespace App\Services\Support;
 
+use App\Models\CRM\Customer;
 use App\Models\Support\Ticket;
+use App\Services\Auth\UserQueryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
@@ -40,6 +42,11 @@ class TicketService
         if (!empty($filters['due_to'])) {
             $query->whereDate('due_date', '<=', $filters['due_to']);
         }
+        if (!empty($filters['ignored'])) {
+            // Tiket terabaikan (contoh: status open/in_progress dan sudah lebih dari 24 jam tidak di-update)
+            $query->whereIn('status', ['open', 'in_progress'])
+                  ->where('updated_at', '<=', now()->subHours(24));
+        }
 
         if ($search) {
             $like = '%' . $search . '%';
@@ -61,12 +68,21 @@ class TicketService
 
     public function summary(): array
     {
+        $dailyChart = Ticket::select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->pluck('count', 'date')
+            ->toArray();
+
         return [
             'open' => Ticket::where('status', 'open')->count(),
             'in_progress' => Ticket::where('status', 'in_progress')->count(),
             'pending_customer' => Ticket::where('status', 'pending_customer')->count(),
             'resolved' => Ticket::where('status', 'resolved')->count(),
             'closed' => Ticket::where('status', 'closed')->count(),
+            'daily_chart' => $dailyChart,
         ];
     }
 
@@ -252,17 +268,23 @@ class TicketService
         }, 200, $headers);
     }
 
+    /**
+     * Dapatkan daftar assignee untuk ticket.
+     * Assignee adalah administrator dan manager yang aktif.
+     * DILARANG: supervisor/operator sebagai role — gunakan permission ticket.assign.
+     */
     public function getAssigneeOptions(): array
     {
-        return \App\Models\User::whereHas('roles', fn($q) => $q->whereIn('name', ['admin', 'staff', 'technician', 'super_admin']))
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->toArray();
+        return app(UserQueryService::class)->getEligibleAssigneesForDropdown();
     }
 
+    /**
+     * Dapatkan daftar customer untuk ticket dari model CRM\Customer.
+     * DILARANG: query User dengan role='customer' — customer entity ada di members table.
+     */
     public function getCustomerOptions(): array
     {
-        return \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'customer'))
+        return Customer::where('status', 'active')
             ->orderBy('name')
             ->pluck('name', 'id')
             ->toArray();

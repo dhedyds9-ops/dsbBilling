@@ -2,6 +2,7 @@
 
 namespace App\Models\ISP;
 
+use App\Livewire\Gis\GisMap;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,6 +10,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class DistributionBox extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static function booted()
+    {
+        static::saved(function () {
+            GisMap::flushCache();
+        });
+
+        static::deleted(function () {
+            GisMap::flushCache();
+        });
+
+        static::restored(function () {
+            GisMap::flushCache();
+        });
+    }
 
     protected $fillable = [
         'odp_id',

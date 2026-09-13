@@ -9,7 +9,7 @@ interface RouterOSDriverInterface
     public function ping(): bool;
     public function getSystemInfo(): array;
     public function getInterfaceStats(): array;
-    public function getTrafficStats(): array;
+    public function getTrafficStats(string $interface = ''): array;
     public function getPPPActive(): array;
     public function getHotspotActive(): array;
     public function getQueueStats(): array;

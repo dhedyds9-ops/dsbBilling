@@ -5,15 +5,25 @@ namespace Src\Domain\Support\Events;
 use DateTimeImmutable;
 use Src\Domain\SharedKernel\Events\DomainEvent;
 
-readonly class TicketAssignedEvent implements DomainEvent
+class TicketAssignedEvent extends DomainEvent
 {
+    public string $eventId;
+    public string $ticketId;
+    public string $assigneeId;
+    public string $assignedBy;
+
     public function __construct(
-        public string $eventId,
-        public string $ticketId,
-        public string $assigneeId,
-        public string $assignedBy,
-        public DateTimeImmutable $occurredAt,
-    ) {}
+        string $eventId,
+        string $ticketId,
+        string $assigneeId,
+        string $assignedBy,
+    ) {
+        parent::__construct();
+        $this->eventId    = $eventId;
+        $this->ticketId   = $ticketId;
+        $this->assigneeId = $assigneeId;
+        $this->assignedBy = $assignedBy;
+    }
 
     public static function create(
         string $ticketId,
@@ -25,7 +35,6 @@ readonly class TicketAssignedEvent implements DomainEvent
             $ticketId,
             $assigneeId,
             $assignedBy,
-            new DateTimeImmutable(),
         );
     }
 

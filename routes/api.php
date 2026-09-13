@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\GenieAcsWebhookController;
 
 // ========================= PAYMENT WEBHOOKS (NO AUTH — signature-based security) ========================
 Route::prefix('payment')->name('payment.')->group(function () {
@@ -15,6 +16,10 @@ Route::prefix('payment')->name('payment.')->group(function () {
         ->name('moota.push')
         ->middleware('throttle:30,1');
 });
+
+// ========================= TELEGRAM WEBHOOK ==============================================
+Route::post('/telegram/webhook', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'handle'])
+    ->name('telegram.webhook');
 
 // ========================= WHATSAPP WEBHOOKS (NO AUTH — signature-based security) ========================
 Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
@@ -46,7 +51,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // =============================== ISP FIBER API ======================================
-    Route::prefix('isp')->middleware(['auth:sanctum', 'ability:isp:operate'])->name('isp.')->group(function () {
+    Route::prefix('isp')->middleware(['auth:sanctum', 'ability:isp:operate'])->name('isp.api.')->group(function () {
         // ------- OLT -------
         Route::prefix('olts')->name('olts.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ISP\OltApiController::class, 'index'])->name('index');
@@ -64,6 +69,14 @@ Route::prefix('v1')->group(function () {
 
         // ------- ONU -------
         Route::prefix('onus')->name('onus.')->group(function () {
+            // Remediation Engine (Phase 3 & 4: Capability Discovery & Dry Run)
+            Route::post('/{id}/discover', [\App\Http\Controllers\Api\Provisioning\OnuCapabilityController::class, 'discover'])->name('discover');
+            Route::get('/{id}/capabilities', [\App\Http\Controllers\Api\Provisioning\OnuCapabilityController::class, 'getCapabilities'])->name('capabilities');
+            Route::post('/{id}/remediate/dry-run', [\App\Http\Controllers\Api\Provisioning\OnuCapabilityController::class, 'dryRunRemediation'])->name('remediate.dry-run');
+            Route::post('/{id}/remediate', [\App\Http\Controllers\Api\Provisioning\OnuCapabilityController::class, 'remediate'])->name('remediate.execute');
+            Route::get('/remediation-jobs/{uuid}', [\App\Http\Controllers\Api\Provisioning\OnuCapabilityController::class, 'getRemediationJob'])->name('remediation.show');
+            Route::post('/remediation-jobs/{uuid}/reconcile', [\App\Http\Controllers\Api\Provisioning\OnuRemediationReconciliationController::class, 'reconcile'])->name('remediation.reconcile');
+
             Route::get('/', [\App\Http\Controllers\Api\ISP\OnuApiController::class, 'index'])->name('index');
             Route::get('/{id}', [\App\Http\Controllers\Api\ISP\OnuApiController::class, 'show'])->where('id', '\d+')->name('show');
             Route::post('/', [\App\Http\Controllers\Api\ISP\OnuApiController::class, 'provision'])->name('provision');
@@ -106,3 +119,11 @@ Route::prefix('v1')->group(function () {
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::post('/webhooks/genieacs', [GenieAcsWebhookController::class, 'handleEvent'])->name('api.webhooks.genieacs');
+
+Route::post('/v1/router-provision/bootstrap', [\App\Http\Controllers\Api\Provisioning\RouterBootstrapController::class, 'bootstrap'])->name('router-provision.bootstrap');
+Route::post('/v1/customer-services/{id}/provision', [\App\Http\Controllers\Api\Provisioning\CustomerServiceProvisionController::class, 'provision'])
+    ->middleware(['auth:sanctum'])
+    ->name('api.customer-services.provision');
+

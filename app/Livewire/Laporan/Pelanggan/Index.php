@@ -5,7 +5,7 @@ namespace App\Livewire\Laporan\Pelanggan;
 use App\Livewire\BaseEnterpriseList;
 use App\Services\Laporan\CustomerReportService;
 use App\Models\ISP\Router;
-use App\Models\ISP\InternetPackage;
+use App\Models\ISP\ServiceProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
@@ -87,17 +87,22 @@ class Index extends BaseEnterpriseList
     {
         $now = Carbon::now();
         $startMonth = $now->copy()->startOfMonth();
-        $aktif = \App\Models\CRM\Customer::where(function ($q) {
+        $baseQuery = \App\Models\CRM\Customer::query();
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole('reseller')) {
+            $baseQuery->where('created_by', \Illuminate\Support\Facades\Auth::id());
+        }
+
+        $aktif = (clone $baseQuery)->where(function ($q) {
             $q->where('status', 'active')->orWhereNull('status');
         })->count();
-        $baru = \App\Models\CRM\Customer::whereBetween('created_at', [$startMonth, $now])->count();
-        $suspend = \App\Models\CRM\Customer::where('status', 'suspended')
+        $baru = (clone $baseQuery)->whereBetween('created_at', [$startMonth, $now])->count();
+        $suspend = (clone $baseQuery)->where('status', 'suspended')
             ->whereBetween('updated_at', [$startMonth, $now])
             ->count();
-        $awalAktif = \App\Models\CRM\Customer::whereDate('created_at', '<', $startMonth)
+        $awalAktif = (clone $baseQuery)->whereDate('created_at', '<', $startMonth)
             ->where(function ($q) { $q->where('status', 'active')->orWhereNull('status'); })
             ->count() + 1;
-        $terminated = \App\Models\CRM\Customer::where('status', 'terminated')
+        $terminated = (clone $baseQuery)->where('status', 'terminated')
             ->whereBetween('updated_at', [$startMonth, $now])
             ->count();
         $churn = round(($terminated / $awalAktif) * 100, 2);
@@ -134,10 +139,10 @@ class Index extends BaseEnterpriseList
     {
         return [
             'routers' => Router::pluck('name', 'id')->all(),
-            'pakets' => InternetPackage::pluck('name', 'id')->all(),
+            'pakets' => ServiceProfile::pluck('name', 'id')->all(),
             'wilayahs' => ['jakarta' => 'Jakarta', 'bandung' => 'Bandung', 'surabaya' => 'Surabaya', 'yogyakarta' => 'Yogyakarta', 'semarang' => 'Semarang'],
             'sales' => User::pluck('name', 'id')->all(),
-            'resellers' => User::whereHas('roles', fn($q) => $q->where('name', 'reseller'))->pluck('name', 'id')->all(),
+            'resellers' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager', 'reseller']))->pluck('name', 'id')->all(),
         ];
     }
 

@@ -4,6 +4,7 @@ namespace App\Services\Keuangan;
 
 use App\Models\Keuangan\Expense;
 use App\Models\User;
+use App\Services\Auth\UserQueryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Src\Domain\Keuangan\Events\ExpenseApprovedEvent;
@@ -69,7 +70,7 @@ class ExpenseService
                 'monthly_total' => 0,
                 'needs_approval' => 0,
                 'approved' => 0,
-                'budget_remaining' => 0,
+                'spent_this_year' => 0,
             ];
         }
 
@@ -254,10 +255,14 @@ class ExpenseService
         ];
     }
 
+    /**
+     * Dapatkan daftar approver untuk expense.
+     * Approver adalah administrator dan manager yang aktif.
+     * DILARANG: menggunakan legacy roles finance/treasurer/owner yang tidak terdefinisi.
+     * Untuk pembatasan lebih lanjut, gunakan permission 'finance.settlement'.
+     */
     public function getApproverOptions(): array
     {
-        return User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['admin', 'finance', 'owner', 'manager']);
-        })->pluck('name', 'id')->toArray();
+        return app(UserQueryService::class)->getEligibleApproversForDropdown();
     }
 }

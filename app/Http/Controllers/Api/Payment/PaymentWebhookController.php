@@ -26,8 +26,9 @@ use Throwable;
  *   2. HMAC/Signature driver-specific di body (SHA-512 Midtrans / HMAC-SHA256 Tripay / X-Callback-Token Xendit / MD5 Duitku)
  *   3. Idempotency + Replay Attack Prevention via Redis rawBodyHash TTL 7 hari + RateLimit 60/req/min/ip
  *
- * Selalu return HTTP 200 OK untuk payload yang signature-nya valid meskipun business logic duplicate processing
- * (ini penting supaya Gateway TIDAK retry tanpa henti). 4xx hanya jika signature invalid atau driver unknown.
+ * Selalu return HTTP 200 OK untuk payload yang signature-nya valid jika berhasil diproses atau duplicate.
+ * Jika business logic gagal (Exception), kembalikan HTTP 500 agar gateway melakukan retry.
+ * 4xx hanya jika signature invalid atau driver unknown.
  */
 final class PaymentWebhookController extends Controller
 {
@@ -114,13 +115,11 @@ final class PaymentWebhookController extends Controller
                 'err' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            // Jangan return 5xx ke gateway → supaya dia tidak retry spam
-            // Tapi tetap 200 OK karna signature sudah valid, kita sudah log.
+            // Kembalikan HTTP 500 agar gateway melakukan retry, karena proses gagal
             return response()->json([
-                'ok' => true,
-                'status' => 'accepted_pending_retry',
-                'note' => 'Signature valid; queued for async retry',
-            ], 202);
+                'ok' => false,
+                'status' => 'internal_error_retry_please',
+            ], 500);
         }
 
         // 8. Mark payload SEEN → Cache 7 hari (anti replay next time)

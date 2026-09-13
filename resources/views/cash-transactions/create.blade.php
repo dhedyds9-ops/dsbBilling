@@ -16,7 +16,7 @@
                 @csrf
                 <div class="mb-3">
                     <label for="type" class="form-label">Tipe Transaksi</label>
-                    <select class="form-control @error('type') is-invalid @enderror" id="type" name="type" required>
+                    <select class="form-control @error('type') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="type" name="type" required>
                         <option value="">Pilih Tipe</option>
                         <option value="income" {{ old('type', $defaultType ?? '') === 'income' ? 'selected' : '' }}>Pendapatan</option>
                         <option value="expense" {{ old('type', $defaultType ?? '') === 'expense' ? 'selected' : '' }}>Pengeluaran</option>
@@ -26,7 +26,7 @@
                 </div>
                 <div class="mb-3">
                     <label for="cash_account_id" class="form-label">Akun Kas</label>
-                    <select class="form-control @error('cash_account_id') is-invalid @enderror" id="cash_account_id" name="cash_account_id" required>
+                    <select class="form-control @error('cash_account_id') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="cash_account_id" name="cash_account_id" required>
                         <option value="">Pilih Akun Kas</option>
                         @foreach($cashAccounts as $account)
                             <option value="{{ $account->id }}" {{ old('cash_account_id') == $account->id ? 'selected' : '' }}>{{ $account->name }}</option>
@@ -36,7 +36,7 @@
                 </div>
                 <div class="mb-3" id="relatedAccountField" style="display: none;">
                     <label for="related_cash_account_id" class="form-label">Akun Tujuan</label>
-                    <select class="form-control @error('related_cash_account_id') is-invalid @enderror" id="related_cash_account_id" name="related_cash_account_id">
+                    <select class="form-control @error('related_cash_account_id') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="related_cash_account_id" name="related_cash_account_id">
                         <option value="">Pilih Akun Tujuan</option>
                         @foreach($cashAccounts as $account)
                             <option value="{{ $account->id }}" {{ old('related_cash_account_id') == $account->id ? 'selected' : '' }}>{{ $account->name }}</option>
@@ -46,7 +46,7 @@
                 </div>
                 <div class="mb-3" id="expenseCategoryField" style="display: none;">
                     <label for="expense_category_id" class="form-label">Kategori Pengeluaran</label>
-                    <select class="form-control @error('expense_category_id') is-invalid @enderror" id="expense_category_id" name="expense_category_id">
+                    <select class="form-control @error('expense_category_id') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="expense_category_id" name="expense_category_id">
                         <option value="">Pilih Kategori</option>
                         @foreach($expenseCategories as $category)
                             <option value="{{ $category->id }}" {{ old('expense_category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
@@ -56,22 +56,22 @@
                 </div>
                 <div class="mb-3">
                     <label for="amount" class="form-label">Jumlah</label>
-                    <input type="number" class="form-control @error('amount') is-invalid @enderror" id="amount" name="amount" value="{{ old('amount', 0) }}" required min="0">
+                    <input type="number" class="form-control @error('amount') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="amount" name="amount" value="{{ old('amount', 0) }}" required min="0">
                     @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="transaction_date" class="form-label">Tanggal Transaksi</label>
-                    <input type="date" class="form-control @error('transaction_date') is-invalid @enderror" id="transaction_date" name="transaction_date" value="{{ old('transaction_date', date('Y-m-d')) }}" required>
+                    <input type="date" class="form-control @error('transaction_date') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="transaction_date" name="transaction_date" value="{{ old('transaction_date', date('Y-m-d')) }}" required>
                     @error('transaction_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="description" class="form-label">Deskripsi</label>
-                    <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3">{{ old('description') }}</textarea>
+                    <textarea class="form-control @error('description') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="description" name="description" rows="3">{{ old('description') }}</textarea>
                     @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="mb-3">
                     <label for="status" class="form-label">Status</label>
-                    <select class="form-control @error('status') is-invalid @enderror" id="status" name="status" required>
+                    <select class="form-control @error('status') is-invalid @enderror dark:bg-slate-900 dark:text-slate-100" id="status" name="status" required>
                         <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="posted" {{ old('status') === 'posted' ? 'selected' : '' }}>Diposting</option>
                         <option value="canceled" {{ old('status') === 'canceled' ? 'selected' : '' }}>Dibatalkan</option>

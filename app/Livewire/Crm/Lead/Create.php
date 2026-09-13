@@ -33,6 +33,8 @@ class Create extends AdminComponent
         ]);
 
         Lead::create([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'created_by' => auth()->id(),
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
@@ -50,3 +52,4 @@ class Create extends AdminComponent
         return view('livewire.crm.lead.create');
     }
 }
+

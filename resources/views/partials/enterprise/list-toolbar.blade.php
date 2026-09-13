@@ -47,7 +47,7 @@ Usage:
             </button>
         @endif
         @foreach ($actions as $a)
-            <button wire:click="{{ $a['action'] }}" class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700">
+            <button wire:click="{{ $a['action'] }}" class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700">
                 @if (!empty($a['icon']))
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         @if ($a['icon']==='download')<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>@endif
@@ -68,7 +68,7 @@ Usage:
                 wire:model.live="search"
                 type="search"
                 placeholder="{{ $searchPlaceholder }}"
-                class="w-full sm:w-64 pl-9 pr-3 py-1.5 text-sm rounded-md border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100">
+                class="w-full sm:w-64 pl-9 pr-3 py-1.5 text-sm rounded-md border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
             <svg class="w-4 h-4 absolute left-2.5 top-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
 

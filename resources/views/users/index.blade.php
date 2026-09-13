@@ -24,7 +24,7 @@
 
     <div class="card">
         <div class="card-body">
-            <div class="table-responsive">
+            <div class="w-full overflow-x-auto">
                 <table class="table table-bordered table-hover">
                     <thead class="table-light">
                         <tr>

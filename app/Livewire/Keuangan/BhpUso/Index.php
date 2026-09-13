@@ -4,11 +4,14 @@ namespace App\Livewire\Keuangan\BhpUso;
 
 use App\Livewire\BaseEnterpriseList;
 use App\Services\Keuangan\IncomeReportService;
+use App\Services\Keuangan\FinancialStatementService;
+use App\Services\Keuangan\BhpUsoCalculationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
+use Livewire\Attributes\Computed;
 
 class Index extends BaseEnterpriseList
 {
@@ -22,10 +25,17 @@ class Index extends BaseEnterpriseList
     ];
 
     protected ?IncomeReportService $svc = null;
+    protected ?FinancialStatementService $financialSvc = null;
+    protected ?BhpUsoCalculationService $bhpUsoSvc = null;
 
-    public function boot(IncomeReportService $svc): void
-    {
+    public function boot(
+        IncomeReportService $svc,
+        FinancialStatementService $fsvc,
+        BhpUsoCalculationService $bhpUsoSvc
+    ): void {
         $this->svc = $svc;
+        $this->financialSvc = $fsvc;
+        $this->bhpUsoSvc = $bhpUsoSvc;
     }
 
     public function mount(): void
@@ -88,25 +98,17 @@ class Index extends BaseEnterpriseList
         try {
             $from = $this->filters['start_date'] ?: now()->startOfMonth()->toDateString();
             $to = $this->filters['end_date'] ?: now()->toDateString();
-            $filters = array_merge($this->filters, ['start_date' => $from, 'end_date' => $to]);
-            $daily = method_exists($this->svc, 'daily') ? $this->svc->daily($filters) : [];
-            $pppoe = 0; $hotspot = 0; $voucher = 0; $other = 0;
-            $total = 0;
-            foreach ($daily as $d) {
-                $pppoe += (float)($d['pppoe'] ?? 0);
-                $hotspot += (float)($d['hotspot'] ?? 0);
-                $voucher += (float)($d['voucher'] ?? 0);
-                $other += (float)($d['other'] ?? 0);
-                $total += (float)($d['total'] ?? $d['amount'] ?? 0);
-            }
-            if ($total === 0 && ($pppoe + $hotspot + $voucher) > 0) {
-                $total = $pppoe + $hotspot + $voucher;
-            }
-            if ($pppoe + $hotspot + $voucher + $other === 0 && $total > 0) {
-                $pppoe = $total * 0.7;
-                $hotspot = $total * 0.2;
-                $voucher = $total * 0.1;
-            }
+            
+            $fin = $this->financialSvc ? $this->financialSvc->incomeStatement(['start_period' => $from, 'end_period' => $to]) : [];
+            $rev = $fin['revenue'] ?? [];
+            
+            $pppoe = (float)($rev['pppoe'] ?? 0);
+            $hotspot = (float)($rev['hotspot'] ?? 0);
+            $voucher = (float)($rev['voucher'] ?? 0);
+            $other = (float)($rev['evoucher'] ?? 0) + (float)($rev['other'] ?? 0);
+            
+            $total = (float)($rev['total'] ?? 0);
+
             return [
                 'period_label' => date('M Y', strtotime($from)),
                 'from' => $from,
@@ -132,82 +134,60 @@ class Index extends BaseEnterpriseList
     protected function bhpRates(): array
     {
         return [
-            ['kode' => 'BHP-BAK', 'name' => 'Bahan Bakar Generator', 'base_pct' => 1.50, 'base_min' => 100000],
-            ['kode' => 'BHP-OLT', 'name' => 'Pemeliharaan OLT & Core', 'base_pct' => 2.00, 'base_min' => 200000],
-            ['kode' => 'BHP-FIB', 'name' => 'Pemeliharaan Fiber & ODP', 'base_pct' => 1.75, 'base_min' => 150000],
-            ['kode' => 'BHP-CPE', 'name' => 'Pemeliharaan CPE/ONU', 'base_pct' => 1.25, 'base_min' => 80000],
-            ['kode' => 'BHP-LST', 'name' => 'Listrik POP & Data Center', 'base_pct' => 3.50, 'base_min' => 500000],
-            ['kode' => 'BHP-INT', 'name' => 'Bandwidth Internasional', 'base_pct' => 8.00, 'base_min' => 2000000],
-            ['kode' => 'BHP-SW', 'name' => 'Software & License', 'base_pct' => 0.75, 'base_min' => 50000],
-            ['kode' => 'USO-KOM', 'name' => 'USO Kominfo (1.25%)', 'base_pct' => 1.25, 'base_min' => 0],
+            ['kode' => 'BHP-TEL', 'name' => 'BHP Telekomunikasi (0.5%)', 'base_pct' => 0.50, 'base_min' => 0],
+            ['kode' => 'USO-KOM', 'name' => 'Kewajiban Pelayanan Universal / USO (1.25%)', 'base_pct' => 1.25, 'base_min' => 0],
         ];
     }
 
     protected function buildDetailRows(): array
     {
-        $rev = $this->revenueBreakdown();
-        $totalRev = $rev['total_revenue'] ?? 0;
-        $rows = [];
-        $bhpTotal = 0; $usoTotal = 0;
-        foreach ($this->bhpRates() as $r) {
-            $nominal = $totalRev * ((float)$r['base_pct'] / 100);
-            $nominal = max($nominal, (float)$r['base_min']);
-            $isUso = str_starts_with((string)$r['kode'], 'USO');
-            if ($isUso) $usoTotal += $nominal; else $bhpTotal += $nominal;
-            $rows[] = [
-                'kode' => $r['kode'],
-                'name' => $r['name'],
-                'rate_pct' => $r['base_pct'],
-                'minimal' => $r['base_min'],
-                'revenue_base' => $totalRev,
-                'nominal' => $nominal,
-                'type' => $isUso ? 'USO' : 'BHP',
-            ];
+        $from = $this->filters['start_date'] ?: now()->startOfMonth()->toDateString();
+        $to = $this->filters['end_date'] ?: now()->toDateString();
+
+        if ($this->bhpUsoSvc) {
+            $calculation = $this->bhpUsoSvc->calculateForPeriod($from, $to);
+            return $calculation['detail_rows'];
         }
-        $rows[] = [
-            'kode' => 'TOTAL-BHP',
-            'name' => 'TOTAL BIAYA HIDUP PEMELIHARAAN',
-            'rate_pct' => round(($bhpTotal / max(1, $totalRev)) * 100, 2),
-            'minimal' => array_sum(array_column($this->bhpRates(), 'base_min')),
-            'revenue_base' => $totalRev,
-            'nominal' => $bhpTotal,
-            'type' => 'SUBTOTAL-BHP',
-        ];
-        $rows[] = [
-            'kode' => 'TOTAL-USO',
-            'name' => 'TOTAL KEWAJIBAN USO',
-            'rate_pct' => 1.25,
-            'minimal' => 0,
-            'revenue_base' => $totalRev,
-            'nominal' => $usoTotal,
-            'type' => 'SUBTOTAL-USO',
-        ];
-        $rows[] = [
-            'kode' => 'GRAND',
-            'name' => 'GRAND TOTAL BHP + USO',
-            'rate_pct' => round((($bhpTotal + $usoTotal) / max(1, $totalRev)) * 100, 2),
-            'minimal' => 0,
-            'revenue_base' => $totalRev,
-            'nominal' => $bhpTotal + $usoTotal,
-            'type' => 'GRAND',
-        ];
-        return $rows;
+
+        return [];
     }
 
     protected function buildHistoryRows(): array
     {
         $rows = [];
+        $year = (int) ($this->filters['year'] ?? now()->year);
+        
         for ($m = 1; $m <= 12; $m++) {
-            $rev = rand(100, 500) * 1000000;
-            $bhp = $rev * 0.1875;
-            $uso = $rev * 0.0125;
+            $start = now()->setYear($year)->setMonth($m)->startOfMonth()->toDateString();
+            $end = now()->setYear($year)->setMonth($m)->endOfMonth()->toDateString();
+            
+            try {
+                if ($this->bhpUsoSvc) {
+                    $calculation = $this->bhpUsoSvc->calculateForPeriod($start, $end);
+                    $rev = $calculation['total_retail'];
+                    $dasar = $calculation['dasar_pengenaan'];
+                    $bhp = $calculation['bhp_total'];
+                    $uso = $calculation['uso_total'];
+                    $grand = $calculation['grand_total'];
+                } else {
+                    $rev = 0; $dasar = 0; $bhp = 0; $uso = 0; $grand = 0;
+                }
+            } catch (Throwable) {
+                $rev = 0; $dasar = 0; $bhp = 0; $uso = 0; $grand = 0;
+            }
+            
             $rows[] = [
                 'id' => $m,
                 'periode' => now()->setMonth($m)->translatedFormat('F Y'),
+                'period_label' => now()->setMonth($m)->translatedFormat('F Y'),
                 'revenue' => $rev,
+                'dasar_pengenaan' => $dasar,
                 'bhp_total' => $bhp,
+                'bhp' => $bhp,
                 'uso_total' => $uso,
-                'grand_total' => $bhp + $uso,
+                'uso' => $uso,
+                'grand_total' => $grand,
+                'total' => $grand,
                 'status' => $m < (int) now()->month ? 'paid' : ($m === (int) now()->month ? 'pending' : 'draft'),
                 'paid_date' => $m < (int) now()->month ? now()->setMonth($m)->addDays(7)->toDateString() : null,
                 'no_bukti' => $m < (int) now()->month ? 'BHP-USO-' . sprintf('%02d', $m) . date('y') : '-',
@@ -216,6 +196,42 @@ class Index extends BaseEnterpriseList
         return $rows;
     }
 
+    #[Computed]
+    public function getBhpItemsProperty(): array
+    {
+        $detail = $this->buildDetailRows();
+        $items = [];
+        $totalBhp = collect($detail)->firstWhere('kode', 'TOTAL-BHP')['nominal'] ?? 1;
+        if ($totalBhp <= 0) $totalBhp = 1;
+
+        foreach ($detail as $r) {
+            if ($r['type'] === 'BHP' || $r['type'] === 'USO') {
+                $items[] = [
+                    'code' => $r['kode'],
+                    'name' => $r['name'],
+                    'base_pct' => $r['rate_pct'],
+                    'base_min' => $r['minimal'],
+                    'nominal' => $r['nominal'],
+                    'pct_of_bhp' => ($r['nominal'] / $totalBhp) * 100,
+                ];
+            }
+        }
+        return $items;
+    }
+
+    #[Computed]
+    public function getDetailRowsProperty(): array
+    {
+        return $this->buildDetailRows();
+    }
+
+    #[Computed]
+    public function getHistoryRowsProperty(): array
+    {
+        return $this->buildHistoryRows();
+    }
+
+    #[Computed]
     public function getSummaryProperty(): array
     {
         $rev = $this->revenueBreakdown();
@@ -298,21 +314,24 @@ class Index extends BaseEnterpriseList
         }
     }
 
-    public function bayarBhpUso(int $id): void
+    public function confirmRowAction(string $action, int $id): void
     {
-        $this->confirmTitle = 'Bayar BHP & USO';
-        $this->confirmMessage = "Anda akan menandai pembayaran periode ID #{$id} sebagai LUNAS. Lanjutkan?";
-        $this->confirmAction = 'pay-bhp';
-        $this->confirmParams = ['id' => $id];
-        $this->confirmBtnText = 'Bayar';
-        $this->confirmBtnClass = 'bg-emerald-600 hover:bg-emerald-700 text-white';
-        $this->dispatch('open-modal', name: $this->confirmModal);
+        if ($action === 'pay-bhp') {
+            $this->confirmTitle = 'Bayar BHP & USO';
+            $this->confirmMessage = "Anda akan menandai pembayaran periode ID #{$id} sebagai LUNAS. Lanjutkan?";
+            $this->confirmAction = 'pay-bhp';
+            $this->confirmParams = ['id' => $id];
+            $this->confirmBtnText = 'Bayar';
+            $this->confirmBtnClass = 'bg-emerald-600 hover:bg-emerald-700 text-white';
+            $this->dispatch('open-modal', name: $this->confirmModal);
+        }
     }
 
-    public function cetakSkri(int $id): void
+    public function cetakSkri(?int $id = null): void
     {
         try {
-            session()->flash('info', 'Cetak SKKI/SKRI untuk #' . $id . ' diproses.');
+            $msg = $id ? 'Cetak SKKI/SKRI untuk #'.$id.' diproses.' : 'Cetak SKKI/SKRI untuk periode terpilih diproses.';
+            session()->flash('info', $msg);
         } catch (Throwable $e) {
             $this->errorMessage = 'Gagal cetak: ' . $e->getMessage();
         }
@@ -336,6 +355,7 @@ class Index extends BaseEnterpriseList
     public function updatedSelected(array $value): void {}
     public function updatedSelectAll(bool $value): void {}
 
+    #[Computed]
     public function getFilterConfigProperty(): array
     {
         $years = [];
@@ -352,6 +372,7 @@ class Index extends BaseEnterpriseList
         ];
     }
 
+    #[Computed]
     public function getBulkActionsProperty(): array
     {
         return [
@@ -359,6 +380,7 @@ class Index extends BaseEnterpriseList
         ];
     }
 
+    #[Computed]
     public function getToolbarActionsProperty(): array
     {
         return [
@@ -377,6 +399,11 @@ class Index extends BaseEnterpriseList
             'filterConfig' => $this->filterConfig,
             'bulkActions' => $this->bulkActions,
             'toolbarActions' => $this->toolbarActions,
+            'bhpItems' => $this->bhpItems,
+            'detailRows' => $this->detailRows,
+            'historyRows' => $this->historyRows,
         ]);
     }
 }
+
+

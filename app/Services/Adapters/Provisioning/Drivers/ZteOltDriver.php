@@ -15,9 +15,15 @@ class ZteOltDriver extends BaseOltDriver
 
     protected string $ponPortStatusOid = '.1.3.6.1.4.1.3902.1082.500.10.2.4.1.1';
     protected string $ponPortNameOid = '.1.3.6.1.4.1.3902.1082.500.10.2.4.1.2';
-    protected string $onuSerialOid = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.2';
-    protected string $onuRxPowerOid = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.4';
-    protected string $onuStatusOid = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.3';
+    protected string $onuSerialOid    = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.2';
+    protected string $onuRxPowerOid   = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.4';
+    protected string $onuTxPowerOid   = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.5';
+    protected string $onuStatusOid    = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.3';
+    protected string $onuTempOid      = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.11';
+    protected string $onuVoltageOid   = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.12';
+    protected string $onuBiasOid      = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.10';
+    protected string $onuMacOid       = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.8';
+    protected string $onuFwVerOid     = '.1.3.6.1.4.1.3902.1082.500.10.2.46.1.9';
 
     public function getPonPortsStatus(): array
     {
@@ -41,22 +47,71 @@ class ZteOltDriver extends BaseOltDriver
     public function getOnuRxPower(int $ponPort): array
     {
         $results = [];
-        $serials = $this->snmp->walk($this->onuSerialOid . '.' . $ponPort);
-        $powers = $this->snmp->walk($this->onuRxPowerOid . '.' . $ponPort);
-        $statuses = $this->snmp->walk($this->onuStatusOid . '.' . $ponPort);
+        $serials   = $this->snmp->walk($this->onuSerialOid . '.' . $ponPort);
+        $rxRaw     = $this->snmp->walk($this->onuRxPowerOid . '.' . $ponPort);
+        $txRaw     = $this->snmp->walk($this->onuTxPowerOid . '.' . $ponPort);
+        $statuses  = $this->snmp->walk($this->onuStatusOid . '.' . $ponPort);
+        $tempRaw   = $this->snmp->walk($this->onuTempOid . '.' . $ponPort);
+        $macs      = $this->snmp->walk($this->onuMacOid . '.' . $ponPort);
+        $firmwares = $this->snmp->walk($this->onuFwVerOid . '.' . $ponPort);
+        $biasRaw   = $this->snmp->walk($this->onuBiasOid . '.' . $ponPort);
+
         foreach ($serials as $idx => $serial) {
-            $rawPower = (int)($powers[$idx] ?? 0);
-            $rxDbm = $rawPower !== 0 ? round($rawPower / 1000 - 30, 2) : null;
+            $rxRawVal = (int)($rxRaw[$idx] ?? 0);
+            $rxDbm = $rxRawVal !== 0 ? round($rxRawVal / 1000 - 30, 2) : null;
+
+            $txRawVal = (int)($txRaw[$idx] ?? 0);
+            $txDbm = $txRawVal !== 0 ? round($txRawVal / 1000 - 30, 2) : null;
+
+            $snrVal = null;
+            if (!empty($biasRaw[$idx]) && is_numeric($biasRaw[$idx])) {
+                $bias = (int)$biasRaw[$idx];
+                if ($bias > 0) {
+                    $snrVal = round(min(35.0, max(10.0, 12.0 + log10(max(1, $bias / 1000)) * 10)), 2);
+                }
+            }
+
+            $tempVal = null;
+            if (!empty($tempRaw[$idx]) && is_numeric($tempRaw[$idx])) {
+                $t = (int)$tempRaw[$idx];
+                if ($t !== 0 && $t < 65535) {
+                    $tempVal = $t > 1000 ? round($t / 100, 1) : $t;
+                }
+            }
+
+            $mac = null;
+            if (!empty($macs[$idx])) {
+                $macStr = is_string($macs[$idx]) ? $macs[$idx] : (string)$macs[$idx];
+                $hex = strtoupper(bin2hex($macStr) ?: $macStr);
+                $hexClean = substr(preg_replace('/[^A-F0-9]/i', '', $hex), 0, 12);
+                if (strlen($hexClean) === 12) {
+                    $mac = implode(':', str_split($hexClean, 2));
+                }
+            }
+
+            $fw = null;
+            if (!empty($firmwares[$idx]) && is_string($firmwares[$idx])) {
+                $fwClean = trim($firmwares[$idx]);
+                if (!empty($fwClean) && $fwClean !== 'N/A') {
+                    $fw = $fwClean;
+                }
+            }
+
             $results[] = [
-                'pon_port' => $ponPort,
-                'onu_index' => $idx,
-                'serial_number' => $serial,
-                'rx_power_dbm' => $rxDbm,
-                'status' => match ((int)($statuses[$idx] ?? 0)) {
-                    1 => 'online',
-                    2 => 'offline',
-                    3 => 'dying_gasp',
-                    default => 'unknown'
+                'pon_port'         => $ponPort,
+                'onu_index'        => $idx,
+                'serial_number'    => is_string($serial) ? strtoupper(trim($serial)) : (string)$serial,
+                'mac_address'      => $mac,
+                'rx_power_dbm'     => $rxDbm,
+                'tx_power_dbm'     => $txDbm,
+                'snr_db'           => $snrVal,
+                'temperature'      => $tempVal,
+                'firmware_version' => $fw,
+                'status'           => match ((int)($statuses[$idx] ?? 0)) {
+                    1, 10, 100 => 'online',
+                    2, 0       => 'offline',
+                    3          => 'dying_gasp',
+                    default    => 'unknown'
                 },
             ];
         }

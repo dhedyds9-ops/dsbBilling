@@ -12,55 +12,119 @@ class SnmpClient
     protected int $timeout;
     protected int $retries;
 
-    public function __construct(string $host, string $community = 'public', string $version = '2c', int $timeout = 2, int $retries = 2)
+    protected static ?bool $extSnmpAvailable = null;
+    protected static ?bool $cliSnmpAvailable = null;
+
+    public function __construct(string $host, string $community = 'public', string $version = '2c', int $timeout = 5, int $retries = 2, int $port = 161)
     {
-        $this->host = $host;
+        if ($host === '' || $host === '0') {
+            throw new Exception("Host SNMP tidak valid (empty).");
+        }
+        if (!in_array($version, ['1', '2c', '3'], true)) {
+            throw new Exception("SNMP version tidak valid: {$version}. Hanya '1', '2c', atau '3' yang didukung.");
+        }
+        $this->host = $port === 161 ? $host : $host . ':' . $port;
         $this->community = $community;
         $this->version = $version;
-        $this->timeout = $timeout * 1000000;
-        $this->retries = $retries;
+        $this->timeout = max(1, $timeout) * 1000000;
+        $this->retries = max(0, $retries);
+
+        $this->ensureBackendAvailable();
+    }
+
+    protected function ensureBackendAvailable(): void
+    {
+        if (self::$extSnmpAvailable === null) {
+            self::$extSnmpAvailable = function_exists('snmpget');
+        }
+        if (self::$extSnmpAvailable) {
+            return;
+        }
+
+        if (self::$cliSnmpAvailable === null) {
+            self::$cliSnmpAvailable = $this->detectCliSnmp();
+        }
+
+        if (!self::$extSnmpAvailable && !self::$cliSnmpAvailable) {
+            throw new Exception($this->buildUnavailableMessage());
+        }
+    }
+
+    protected function detectCliSnmp(): bool
+    {
+        try {
+            if (PHP_OS_FAMILY === 'Windows') {
+                $where = @shell_exec('where snmpget 2>&1');
+                if ($where !== null && trim($where) !== '' && !str_contains($where, 'Could not find files')) {
+                    return true;
+                }
+                return false;
+            }
+            $which = @shell_exec('command -v snmpget 2>&1');
+            return $which !== null && trim($which) !== '';
+        } catch (Exception) {
+            return false;
+        }
+    }
+
+    protected function buildUnavailableMessage(): string
+    {
+        $windowsFix = PHP_OS_FAMILY === 'Windows'
+            ? ' [WINDOWS FIX:] Buka php.ini lalu hapus tanda ";" di baris: ;extension=snmp  =>  jadi: extension=snmp.dll  (kemudian restart Apache/Nginx/Laragon). Jika tetap gagal, install Net-SNMP Windows binary dari net-snmp.org dan tambahkan ke PATH.'
+            : ' [LINUX/MAC FIX:] sudo apt-get install php-snmp net-snmp / sudo dnf install php-snmp net-snmp-utils, lalu restart web server.';
+
+        return "TIDAK ADA BACKEND SNMP YANG TERSEDIA. PHP SNMP extension (fungsi snmpget) tidak aktif, dan binary CLI `snmpget` tidak ditemukan di PATH." . $windowsFix;
     }
 
     public function get(string $oid): string|bool
     {
-        if (!function_exists('snmpget')) {
-            return $this->fallbackSnmpGet($oid);
-        }
-        $result = @snmpget($this->host, $this->community, $oid, $this->timeout, $this->retries);
-        if ($result === false) {
+        if ($oid === '') {
             return false;
         }
-        return $this->parseValue($result);
+        if (self::$extSnmpAvailable) {
+            $result = @snmpget($this->host, $this->community, $oid, $this->timeout, $this->retries);
+            if ($result === false) {
+                return false;
+            }
+            return $this->parseValue($result);
+        }
+        return $this->fallbackSnmpGet($oid);
     }
 
     public function walk(string $oid): array
     {
-        if (!function_exists('snmprealwalk')) {
-            return $this->fallbackSnmpWalk($oid);
-        }
-        $result = @snmprealwalk($this->host, $this->community, $oid, $this->timeout, $this->retries);
-        if ($result === false) {
+        if ($oid === '') {
             return [];
         }
-        $parsed = [];
-        foreach ($result as $key => $value) {
-            $parsed[str_replace($oid . '.', '', $key)] = $this->parseValue($value);
+        if (self::$extSnmpAvailable) {
+            $result = @snmprealwalk($this->host, $this->community, $oid, $this->timeout, $this->retries);
+            if ($result === false) {
+                return [];
+            }
+            $parsed = [];
+            foreach ($result as $key => $value) {
+                $parsed[str_replace($oid . '.', '', $key)] = $this->parseValue($value);
+            }
+            return $parsed;
         }
-        return $parsed;
+        return $this->fallbackSnmpWalk($oid);
     }
 
     public function set(string $oid, string $type, mixed $value): bool
     {
-        if (!function_exists('snmpset')) {
-            return false;
+        if (self::$extSnmpAvailable && function_exists('snmpset')) {
+            return @snmpset($this->host, $this->community, $oid, $type, $value, $this->timeout, $this->retries);
         }
-        return @snmpset($this->host, $this->community, $oid, $type, $value, $this->timeout, $this->retries);
+        return false;
     }
 
     protected function parseValue(string $raw): string
     {
         $raw = trim($raw);
-        if (preg_match('/^(STRING|Counter\d*|Gauge\d*|Integer|OctetString|Hex-?)\s*:?\s*(.*)$/i', $raw, $m)) {
+        if ($raw === '') {
+            return '';
+        }
+        if (preg_match('/^(STRING|Counter\d*|Gauge\d*|Integer|OctetString|Hex-?)\s*:?\s*(.*)$/is', $raw, $m)) {
             $value = trim($m[2]);
             if ($m[1] === 'Hex-STRING' || str_starts_with(strtoupper($value), '0X')) {
                 return $this->hexToAscii($value);
@@ -80,6 +144,9 @@ class SnmpClient
     {
         $hex = preg_replace('/^0x/i', '', $hex);
         $hex = preg_replace('/\s+/', '', $hex);
+        if ($hex === '') {
+            return '';
+        }
         $chars = str_split($hex, 2);
         $ascii = '';
         foreach ($chars as $char) {
@@ -91,6 +158,21 @@ class SnmpClient
             }
         }
         return trim($ascii);
+    }
+
+    protected function isCliErrorMessage(string $output): bool
+    {
+        $lower = strtolower($output);
+        return str_contains($lower, 'is not recognized')
+            || str_contains($lower, 'not found')
+            || str_contains($lower, 'no such file or directory')
+            || str_contains($lower, 'cannot find')
+            || str_contains($lower, 'the term \'')
+            || str_contains($lower, 'is not an internal or external command')
+            || str_contains($lower, 'timeout:')
+            || str_contains($lower, 'error response')
+            || str_contains($lower, 'permission denied')
+            || str_contains($lower, 'failed');
     }
 
     protected function fallbackSnmpGet(string $oid): string|bool
@@ -106,10 +188,17 @@ class SnmpClient
                 escapeshellarg($oid)
             );
             $output = @shell_exec($cmd);
-            if ($output === null || trim($output) === '' || str_contains($output, 'No Such Instance')) {
+            if ($output === null) {
                 return false;
             }
-            return $this->parseValue(trim($output));
+            $output = trim($output);
+            if ($output === '' || $this->isCliErrorMessage($output)) {
+                return false;
+            }
+            if (stripos($output, 'No Such Instance') !== false || stripos($output, 'No Such Object') !== false) {
+                return false;
+            }
+            return $this->parseValue($output);
         } catch (Exception) {
             return false;
         }
@@ -128,16 +217,23 @@ class SnmpClient
                 escapeshellarg($oid)
             );
             $output = @shell_exec($cmd);
-            if ($output === null || trim($output) === '') {
+            if ($output === null) {
+                return [];
+            }
+            $output = trim($output);
+            if ($output === '' || $this->isCliErrorMessage($output)) {
                 return [];
             }
             $lines = explode("\n", $output);
             $parsed = [];
             foreach ($lines as $line) {
                 $parts = explode(' = ', $line, 2);
-            if (count($parts) === 2) {
+                if (count($parts) === 2) {
                     $key = trim($parts[0]);
                     $value = trim($parts[1]);
+                    if ($this->isCliErrorMessage($value)) {
+                        continue;
+                    }
                     $oidSuffix = str_replace($oid . '.', '', $key);
                     $parsed[$oidSuffix] = $this->parseValue($value);
                 }

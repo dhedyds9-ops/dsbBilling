@@ -79,6 +79,21 @@ class Index extends AdminComponent
         parent::mount();
         $this->activeModule = 'pengaturan';
         $this->activePage = 'telegram';
+
+        $savedBot = \App\Models\Setting::getValue('telegram.bot', []);
+        if (!empty($savedBot)) {
+            $this->bot = array_merge($this->bot, $savedBot);
+        }
+
+        $savedChatIds = \App\Models\Setting::getValue('telegram.chatIds', []);
+        if (!empty($savedChatIds)) {
+            $this->chatIds = $savedChatIds;
+        }
+
+        $savedTemplates = \App\Models\Setting::getValue('telegram.templates', []);
+        if (!empty($savedTemplates)) {
+            $this->templates = $savedTemplates;
+        }
     }
 
     public function authorizeAccess(): void
@@ -105,6 +120,11 @@ class Index extends AdminComponent
     {
         try {
             $valid = $this->validate();
+            
+            \App\Models\Setting::setValue('telegram.bot', $this->bot);
+            \App\Models\Setting::setValue('telegram.chatIds', $this->chatIds);
+            \App\Models\Setting::setValue('telegram.templates', $this->templates);
+
             $this->savedStatus = 'success';
             session()->flash('success', 'Konfigurasi Telegram Bot disimpan.');
         } catch (Throwable $e) {
@@ -130,6 +150,24 @@ class Index extends AdminComponent
             }
         } catch (Throwable $e) {
             $this->botInfo = 'ERROR: ' . $e->getMessage();
+        }
+    }
+
+    public function getWebhookInfo(): void
+    {
+        try {
+            if (empty($this->bot['bot_token'])) {
+                $this->webhookInfo = 'Isi dulu Bot Token.';
+                return;
+            }
+            $resp = Http::timeout(5)->get('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/getWebhookInfo');
+            if ($resp->successful()) {
+                $this->webhookInfo = 'Webhook Info: ' . substr($resp->body(), 0, 500);
+            } else {
+                $this->webhookInfo = 'Gagal get webhook info: ' . substr($resp->body(), 0, 200);
+            }
+        } catch (Throwable $e) {
+            $this->webhookInfo = 'ERROR: ' . $e->getMessage();
         }
     }
 

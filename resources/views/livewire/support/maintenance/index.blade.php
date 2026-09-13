@@ -12,7 +12,7 @@
     'corrective' => ['bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300','Corrective'],
     'predictive' => ['bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300','Predictive'],
     'emergency' => ['bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300','Emergency'],
-    default => ['bg-slate-100 text-slate-600', $t ?: '-'],
+    default => ['bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400', $t ?: '-'],
   };
 @endphp
 <div>
@@ -46,7 +46,7 @@
   <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
     <nav class="flex items-center gap-1 text-sm font-medium overflow-x-auto">
       @foreach(['calendar'=>'Kalender','history'=>'Riwayat','technician'=>'Teknisi','material'=>'Material'] as $k=>$l)
-        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">{{ $l }}</button>
+        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">{{ $l }}</button>
       @endforeach
     </nav>
   </div>
@@ -95,7 +95,7 @@
       <table class="min-w-full text-sm">
         <thead class="bg-slate-50 dark:bg-slate-900/40 border-y border-slate-200 dark:border-slate-700">
           <tr>
-            <th class="w-10 px-3 py-2 text-left"><input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"></th>
+            <th class="w-10 px-3 py-2 text-left"><input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"></th>
             <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('scheduled_date')">Jadwal{!! $sortIcon('scheduled_date') !!}</th>
             <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Judul / Perangkat</th>
             <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Type</th>
@@ -109,7 +109,7 @@
         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
           @forelse($rows as $r)
             @php [$sc,$sl]=$statusBadge($r->status??'scheduled'); [$tc,$tl]=$typeBadge($r->type??'corrective'); @endphp
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40">
+            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/40">
               <td class="px-3 py-2"><input type="checkbox" value="{{ $r->id }}" wire:model.live="selected" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"></td>
               <td class="px-3 py-2 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{{ $r->scheduled_date ? \Carbon\Carbon::parse($r->scheduled_date)->format('d/m/Y H:i') : '-' }}</td>
               <td class="px-3 py-2">
@@ -123,20 +123,20 @@
               <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r->completed_at ? \Carbon\Carbon::parse($r->completed_at)->format('d/m/Y H:i') : '-' }}</td>
               <td class="px-3 py-2">
                 <div class="flex items-center justify-end gap-1">
-                  <button wire:click="rowDetail({{$r->id}})" title="Detail" class="p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:bg-blue-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
+                  <button wire:click="rowDetail({{$r->id}})" title="Detail" class="p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 dark:text-slate-400 dark:hover:bg-blue-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                   @if(($r->status??'scheduled')==='scheduled')
-                    <button wire:click="rowStart({{$r->id}})" title="Mulai" class="p-1.5 rounded text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:text-slate-400 dark:hover:bg-amber-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg></button>
+                    <button wire:click="rowStart({{$r->id}})" title="Mulai" class="p-1.5 rounded text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:bg-amber-900/30 dark:text-slate-400 dark:hover:bg-amber-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg></button>
                   @endif
                   @if(($r->status??'scheduled')==='in_progress')
-                    <button wire:click="confirmRowAction('complete', {{$r->id}})" title="Selesai" class="p-1.5 rounded text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-slate-400 dark:hover:bg-emerald-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                    <button wire:click="confirmRowAction('complete', {{$r->id}})" title="Selesai" class="p-1.5 rounded text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
                   @endif
-                  <button wire:click="confirmRowAction('delete', {{$r->id}})" title="Hapus" class="p-1.5 rounded text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22"/></svg></button>
+                  <button wire:click="confirmRowAction('delete', {{$r->id}})" title="Hapus" class="p-1.5 rounded text-slate-500 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 dark:text-slate-400 dark:hover:bg-red-900/30"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22"/></svg></button>
                 </div>
               </td>
             </tr>
           @empty
             <tr><td colspan="9" class="px-3 py-16 text-center">
-              <div class="inline-flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
+              <div class="inline-flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500 dark:text-slate-400">
                 <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <div class="text-sm font-medium">Belum ada jadwal maintenance</div>
                 <div class="text-xs opacity-80">Klik "Jadwal Baru" untuk menambahkan.</div>

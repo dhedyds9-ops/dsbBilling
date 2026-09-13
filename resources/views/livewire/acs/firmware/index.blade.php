@@ -1,79 +1,100 @@
-<div class="space-y-6">
-    <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
-    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900">Firmware Management</h1>
-            <p class="mt-1 text-sm text-slate-500">Kelola firmware perangkat</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="{{ route('acs.firmware.create') }}" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Tambah Firmware
-            </a>
+<div>
+  @php
+    ob_start();
+  @endphp
+    <a href="{{ route('acs.firmware.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+      <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">upload</span>
+      Upload Firmware
+    </a>
+  @php
+    $actions = ob_get_clean();
+  @endphp
+  
+  @include('livewire.acs._tabs', ['actions' => $actions])
+
+  <div class="space-y-5 pb-10">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+            <div class="flex-1 relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="search"
+                       placeholder="Cari firmware..."
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
+            </div>
+            
+            <select wire:model.live="perPage"
+                    class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                <option value="10">10 / halaman</option>
+                <option value="25">25 / halaman</option>
+                <option value="50">50 / halaman</option>
+            </select>
         </div>
     </div>
 
-    {{-- Data Table --}}
-    <x-base.card :padding="false">
-        <div class="overflow-x-auto rounded-xl border border-slate-200">
-            <table class="w-full">
+    {{-- DATA TABLE --}}
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
                 <thead>
-                    <tr class="bg-slate-50">
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Version</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Vendor</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Model</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Release Date</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Aksi</th>
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80">
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">File Name</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Version</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Product Class</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Size</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Uploaded</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200">
-                    @forelse($firmwares as $firmware)
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-6 py-4">
-                                <div class="font-medium text-slate-900">{{ $firmware->version }}</div>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                    @forelse($firmwares ?? [] as $fw)
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                {{ $fw->filename ?? '-' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-slate-600">{{ $firmware->vendor?->name ?? '-' }}</td>
-                            <td class="px-6 py-4 text-sm text-slate-600">{{ $firmware->model ?? '-' }}</td>
-                            <td class="px-6 py-4 text-sm text-slate-600">{{ $firmware->release_date?->format('d/m/Y') ?? '-' }}</td>
-                            <td class="px-6 py-4">
-                                <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                    @if($firmware->status === 'active') bg-green-100 text-green-600
-                                    @else bg-yellow-100 text-yellow-600
-                                    @endif
-                                ">
-                                    {{ ucfirst($firmware->status) }}
-                                </span>
+                            <td class="px-4 py-3 font-mono text-xs">
+                                {{ $fw->version ?? '-' }}
                             </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-2">
-                                    <a href="{{ route('acs.firmware.edit', $firmware->id) }}" class="p-2 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                        </svg>
+                            <td class="px-4 py-3">
+                                {{ $fw->product_class ?? '-' }}
+                            </td>
+                            <td class="px-4 py-3 text-xs">
+                                {{ $fw->size ? round($fw->size / 1024 / 1024, 2) . ' MB' : '-' }}
+                            </td>
+                            <td class="px-4 py-3 text-xs">
+                                {{ $fw->created_at?->format('d/m/Y') ?? '-' }}
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex justify-end gap-1">
+                                    <a href="{{ route('acs.firmware.edit', $fw->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
-                                    <button wire:click="delete({{ $firmware->id }})" wire:confirm="Yakin ingin menghapus firmware ini?" class="p-2 text-slate-500 hover:text-red-600 rounded-lg hover:bg-slate-100">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
+                                    <button wire:click="delete({{ $fw->id }})" wire:confirm="Yakin ingin menghapus firmware ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-slate-500">
-                                <svg class="w-12 h-12 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                <p class="text-lg">Belum ada firmware</p>
+                            <td colspan="6" class="px-4 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
+                                    <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">system_update_alt</span>
+                                    <div class="text-sm font-medium text-slate-900 dark:text-slate-100">Belum ada Firmware</div>
+                                </div>
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </x-base.card>
+
+        @if(isset($firmwares) && method_exists($firmwares, 'hasPages') && $firmwares->hasPages())
+            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
+                {{ $firmwares->links() }}
+            </div>
+        @endif
+    </div>
+  </div>
 </div>

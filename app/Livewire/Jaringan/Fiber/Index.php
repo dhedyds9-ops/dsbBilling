@@ -17,7 +17,6 @@ class Index extends BaseEnterpriseList
     public string $sortField = 'id';
 
     public array $tabs = [
-        'olt' => 'OLT',
         'onu' => 'ONU',
         'odp' => 'ODP',
         'odc' => 'ODC',
@@ -45,19 +44,27 @@ class Index extends BaseEnterpriseList
     public function mount(): void
     {
         parent::mount();
-        $this->activeTab = 'olt';
-        $this->filters = [
+        if (empty($this->activeTab)) {
+            $this->activeTab = 'onu';
+        }
+        
+        $defaultFilters = [
             'pop_id' => '',
             'olt_id' => '',
+            'pon_port' => '',
             'status' => '',
             'technician_id' => '',
             'region' => '',
             'vendor_id' => '',
             'install_date_from' => '',
             'install_date_to' => '',
+            'signal_quality' => '',
+            'odp_id' => '',
         ];
-        $this->loadSummary();
+        $this->filters = array_merge($defaultFilters, $this->filters);
+
         $this->loadFilterOptions();
+        $this->loadSummary();
     }
 
     public function loadSummary(): void
@@ -70,6 +77,7 @@ class Index extends BaseEnterpriseList
         $this->filterOptions = [
             'pops' => $this->fiberService->getPopOptions(),
             'olts' => $this->fiberService->getOltOptions(),
+            'pon_ports' => $this->fiberService->getPonPortOptions(),
             'vendors' => $this->fiberService->getVendorOptions(),
             'technicians' => $this->fiberService->getTechnicianOptions(),
             'statuses' => [
@@ -83,14 +91,13 @@ class Index extends BaseEnterpriseList
 
     public function getRowsQuery()
     {
-        return $this->fiberService->listByTab(
+        return $this->fiberService->queryByTab(
             $this->activeTab,
             $this->filters,
             $this->search,
             $this->sortField,
-            $this->sortDirection,
-            0
-        )->getQuery();
+            $this->sortDirection
+        );
     }
 
     public function getRows()
@@ -110,7 +117,7 @@ class Index extends BaseEnterpriseList
     public function handleBulkAction(string $action, array $ids): int
     {
         $userId = Auth::id() ?? 0;
-        return match ($action) {
+        $count = match ($action) {
             'sync' => $this->fiberService->bulkSync($ids, $this->activeTab, $userId),
             'disable' => $this->fiberService->bulkDisable($ids, $this->activeTab, $userId),
             'enable' => $this->fiberService->bulkEnable($ids, $this->activeTab, $userId),
@@ -118,6 +125,8 @@ class Index extends BaseEnterpriseList
             'export' => $this->doBulkExport($ids),
             default => 0,
         };
+        $this->loadSummary();
+        return $count;
     }
 
     protected function doBulkExport(array $ids): int
@@ -171,13 +180,26 @@ class Index extends BaseEnterpriseList
         }
     }
 
+    public function openGuide(): void
+    {
+        $this->dispatch('open-modal', name: 'olt-guide-modal');
+    }
+
     public function getToolbarActions(): array
     {
         return [
-            ['label' => 'Export', 'icon' => 'download', 'action' => 'exportCsv()'],
-            ['label' => 'Sync OLT', 'icon' => 'refresh-cw', 'action' => "syncAllOLT()"],
+            ['label' => 'Sync OLT', 'icon' => 'server', 'action' => "syncAllOLT()"],
+            ['label' => 'Sync ONU', 'icon' => 'refresh-cw', 'action' => "syncAllONU()"],
             ['label' => 'Bulk ONU Audit', 'icon' => 'check-circle', 'action' => 'runOnuAudit()'],
-            ['label' => 'Import', 'icon' => 'upload', 'action' => "dispatch('open-modal', name: 'import-modal')"],
+        ];
+    }
+
+    public function getDropdownActions(): array
+    {
+        return [
+            ['label' => 'Panduan Integrasi', 'icon' => 'book-open', 'action' => 'openGuide()'],
+            ['label' => 'Export', 'icon' => 'download', 'action' => 'exportCsv()'],
+            ['label' => 'Import', 'icon' => 'upload', 'action' => "\$dispatch('open-modal', {name: 'import-modal'})"],
         ];
     }
 
@@ -198,6 +220,7 @@ class Index extends BaseEnterpriseList
         return [
             ['key' => 'pop_id', 'label' => 'Lokasi POP', 'type' => 'select', 'options' => $opts['pops'] ?? []],
             ['key' => 'olt_id', 'label' => 'OLT', 'type' => 'select', 'options' => $opts['olts'] ?? []],
+            ['key' => 'pon_port', 'label' => 'PON Port', 'type' => 'select', 'options' => $opts['pon_ports'] ?? []],
             ['key' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => $opts['statuses'] ?? []],
             ['key' => 'technician_id', 'label' => 'Teknisi', 'type' => 'select', 'options' => $opts['technicians'] ?? []],
             ['key' => 'region', 'label' => 'Wilayah', 'type' => 'text'],
@@ -224,10 +247,25 @@ class Index extends BaseEnterpriseList
         $userId = Auth::id() ?? 0;
         $this->withLoading(function () use ($userId) {
             $count = $this->fiberService->bulkSync(\App\Models\ISP\Olt::pluck('id')->all(), 'olt', $userId);
-            session()->flash('success', "Berhasil sync {$count} OLT.");
+            $msg = "Berhasil sync {$count} OLT.";
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
             $this->loadSummary();
             return null;
         }, 'Sync OLT gagal');
+    }
+
+    public function syncAllONU(): void
+    {
+        $userId = Auth::id() ?? 0;
+        $this->withLoading(function () use ($userId) {
+            $count = $this->fiberService->bulkSync(\App\Models\ISP\Onu::pluck('id')->all(), 'onu', $userId);
+            $msg = "Berhasil memicu sync untuk {$count} ONU.";
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
+            $this->loadSummary();
+            return null;
+        }, 'Sync ONU gagal');
     }
 
     public function runOnuAudit(): void
@@ -237,6 +275,7 @@ class Index extends BaseEnterpriseList
             $result = $this->fiberService->auditOnu($userId);
             $msg = "Audit ONU: Total {$result['total']}, No SN: {$result['no_serial']}, No OLT: {$result['no_olt']}, Duplicate: {$result['duplicate']}, LOS: {$result['los']}";
             session()->flash('info', $msg);
+            $this->dispatch('toast', type: 'info', message: $msg);
             return null;
         }, 'Audit ONU gagal');
     }
@@ -281,10 +320,12 @@ class Index extends BaseEnterpriseList
         try {
             $this->fiberService->syncDevice($id, $this->activeTab, $userId);
             session()->flash('success', 'Berhasil sync device.');
+            $this->dispatch('toast', type: 'success', message: 'Berhasil sync device.');
             $this->loadSummary();
         } catch (Throwable $e) {
             Log::error('rowSync failed', ['tab' => $this->activeTab, 'id' => $id, 'err' => $e->getMessage()]);
             $this->errorMessage = 'Sync gagal: ' . $e->getMessage();
+            $this->dispatch('toast', type: 'error', message: $this->errorMessage);
         }
     }
 
@@ -367,3 +408,4 @@ class Index extends BaseEnterpriseList
         return view('livewire.jaringan.fiber.index', compact('rows'));
     }
 }
+

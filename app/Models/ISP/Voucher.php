@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Voucher extends Model
 {
+    use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 
     protected $table = 'vouchers';
@@ -19,12 +20,12 @@ class Voucher extends Model
         'voucher_pool_id',
         'service_profile_id',
         'nas_device_id',
-        'owner_id',
+        'reseller_id',   // Reseller yang menerbitkan voucher ini (rename dari owner_id)
         'hotspot_user_id',
         'status',
         'type',
         'bind_on_login',
-        'fee_seller',
+        'fee_seller',    // Dihitung otomatis dari SettlementCalculator, JANGAN diinput manual
         'login_method',
         'code_combination',
         'activated_at',
@@ -85,8 +86,32 @@ class Voucher extends Model
         return $this->belongsTo(NasDevice::class);
     }
 
+    /**
+     * Reseller yang menerbitkan/memiliki voucher ini.
+     * Rename dari owner_id untuk kejelasan semantik bisnis.
+     * Reseller adalah financial actor (role=reseller).
+     */
+    public function reseller()
+    {
+        return $this->belongsTo(User::class, 'reseller_id');
+    }
+
+    /**
+     * Alias backward-compatible untuk relasi reseller.
+     * Digunakan oleh VoucherPrintController, VoucherExport, dan template
+     * voucher legacy yang masih memakai nama "owner" (sebelum di-refactor
+     * menjadi "reseller" untuk kejelasan semantik).
+     */
     public function owner()
     {
-        return $this->belongsTo(User::class, 'owner_id');
+        return $this->belongsTo(User::class, 'reseller_id');
+    }
+
+    /**
+     * Alias untuk createdBy (backward-compatible & short-hand di blade).
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

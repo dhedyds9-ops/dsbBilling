@@ -1,27 +1,93 @@
 <div wire:key="keuangan-pengeluaran-{{ now()->timestamp }}">
-    @include('partials.enterprise.list-toolbar', [
-        'title' => 'Pengeluaran',
-        'primaryLabel' => null,
-        'primaryAction' => null,
-        'actions' => [
-            ['label' => 'Export CSV', 'icon' => 'download', 'action' => 'exportCsv()'],
-        ],
-        'searchPlaceholder' => 'Cari kode / deskripsi...',
-        'showFiltersToggle' => true,
-    ])
+        @section('page_title')
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined notranslate text-rose-500" translate="no" style="font-size:24px">account_balance_wallet</span>
+            <span class="text-lg">Pengeluaran (Opex)</span>
+        </div>
+    @endsection
 
-    @include('partials.enterprise.summary-cards', [
-        'items' => [
-            ['label' => 'Total Pengeluaran Bulan Ini', 'value' => 'Rp ' . number_format($summary['monthly_total'] ?? 0, 0, ',', '.'), 'color' => 'red', 'icon' => 'dollar-sign'],
-            ['label' => 'Butuh Approval', 'value' => number_format($summary['needs_approval'] ?? 0, 0, ',', '.'), 'color' => 'amber', 'icon' => 'clock'],
-            ['label' => 'Disetujui', 'value' => number_format($summary['approved'] ?? 0, 0, ',', '.'), 'color' => 'green', 'icon' => 'check-circle'],
-            ['label' => 'Anggaran Sisa', 'value' => 'Rp ' . number_format($summary['budget_remaining'] ?? 0, 0, ',', '.'), 'color' => 'blue', 'icon' => 'credit-card'],
-        ],
-    ])
+    <div class="space-y-4">
+        {{-- KPI CARDS --}}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {{-- Pengeluaran Bulan Ini --}}
+            <div class="relative overflow-x-auto rounded-xl border border-rose-200 dark:border-rose-800/60 shadow-sm bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/50 dark:to-slate-800">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-400 rounded-t-xl"></div>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-rose-600 dark:text-rose-500 uppercase tracking-widest mb-2">Total Bulan Ini</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Rp {{ number_format($summary['monthly_total'] ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
 
-    @if ($showFilters)
-        @include('partials.enterprise.filters', ['filters' => $filterConfig])
-    @endif
+            {{-- Butuh Approval --}}
+            <div class="relative overflow-x-auto rounded-xl border border-amber-200 dark:border-amber-800/60 shadow-sm bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/50 dark:to-slate-800">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-400 rounded-t-xl"></div>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-2">Menunggu Approval</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{{ number_format($summary['needs_approval'] ?? 0, 0, ',', '.') }}</span>
+                        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">item</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Disetujui --}}
+            <div class="relative overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-400 rounded-t-xl"></div>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-2">Disetujui</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{{ number_format($summary['approved'] ?? 0, 0, ',', '.') }}</span>
+                        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">item</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Anggaran --}}
+            <div class="relative overflow-x-auto rounded-xl border border-blue-200 dark:border-blue-800/60 shadow-sm bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/50 dark:to-slate-800">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-xl"></div>
+                <div class="p-4 pt-5">
+                    <h3 class="text-xs font-bold text-blue-600 dark:text-blue-500 uppercase tracking-widest mb-2">Anggaran Sisa</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Rp {{ number_format($summary['budget_remaining'] ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- TOOLBAR & FILTERS --}}
+                <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button wire:click="exportCsv" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm flex items-center gap-2 transition-colors">
+                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">download</span>
+                    Export CSV
+                </button>
+            </div>
+            <div class="flex-1 w-full relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size: 18px">search</span>
+                </div>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari kode / deskripsi..." class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 px-3 py-2 dark:bg-slate-900 dark:text-slate-100">
+            </div>
+            <div class="flex flex-wrap gap-2">
+                @foreach($this->filterConfig as $f)
+                    @if($f['type'] === 'select')
+                        <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2 min-w-[120px] dark:bg-slate-900 dark:text-slate-100">
+                            <option value="">{{ $f['label'] }}</option>
+                            @foreach($f['options'] as $val => $lbl)
+                                <option value="{{ $val }}">{{ $lbl }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+                @endforeach
+            </div>
+              <div>
+                <button wire:click="exportCsv" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export CSV
+                </button>
+            </div>
+        </div>
 
     @include('partials.enterprise.bulk-bar', ['bulkActions' => $bulkActions])
 
@@ -42,7 +108,7 @@
                 <thead class="bg-slate-50 dark:bg-slate-700/40 border-y border-slate-200 dark:border-slate-700">
                     <tr>
                         <th class="px-3 py-2 w-10">
-                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600">
+                            <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </th>
                         <th class="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300 cursor-pointer select-none" wire:click="sortBy('expense_date')">
                             Tgl
@@ -90,7 +156,7 @@
                                 'lain' => 'Lainnya',
                             ];
                         @endphp
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/30">
                             <td class="px-3 py-2">
                                 <input type="checkbox" wire:model.live="selected" value="{{ (string) $row->id }}" class="rounded border-slate-300 dark:border-slate-600">
                             </td>
@@ -106,21 +172,21 @@
                                 @if (!empty($row->attachment_file))
                                     <a href="{{ $row->attachment_file }}" target="_blank" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 underline text-xs">Lihat</a>
                                 @else
-                                    <span class="text-slate-400 dark:text-slate-500 text-xs">-</span>
+                                    <span class="text-slate-400 dark:text-slate-500 dark:text-slate-400 text-xs">-</span>
                                 @endif
                             </td>
                             <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300 text-xs">{{ $row->requestedBy?->name ?? '-' }}</td>
                             <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300 text-xs">{{ $row->approvedBy?->name ?? '-' }}</td>
                             <td class="px-3 py-2 whitespace-nowrap text-right">
                                 <div class="inline-flex gap-1 flex-wrap justify-end">
-                                    <button wire:click="edit({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200">Edit</button>
+                                    <button wire:click="edit({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-slate-200 hover:bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200">Edit</button>
                                     @if (strtolower($row->status ?? '') === 'pending_approval')
                                         <button wire:click="approve({{ $row->id }})" class="px-2 py-1 text-[11px] rounded bg-emerald-600 hover:bg-emerald-700 text-white font-medium">Setujui</button>
                                         <button wire:click="confirmReject({{ $row->id }})" class="px-2 py-1 text-[11px] rounded bg-red-600 hover:bg-red-700 text-white font-medium">Tolak</button>
                                     @endif
-                                    <button wire:click="viewAttachment({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200">File</button>
-                                    <button wire:click="confirmDelete({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-red-200 hover:bg-red-50 text-red-700 dark:border-red-900 dark:hover:bg-red-900/30 dark:text-red-300">Hapus</button>
-                                    <button wire:click="printReceipt({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200">Kwitansi</button>
+                                    <button wire:click="viewAttachment({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-slate-200 hover:bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200">File</button>
+                                    <button wire:click="confirmDelete({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-red-200 hover:bg-red-50 dark:bg-red-900/30 text-red-700 dark:border-red-900 dark:hover:bg-red-900/30 dark:text-red-300">Hapus</button>
+                                    <button wire:click="printReceipt({{ $row->id }})" class="px-2 py-1 text-[11px] rounded border border-slate-200 hover:bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200">Kwitansi</button>
                                 </div>
                             </td>
                         </tr>
@@ -143,7 +209,7 @@
                 </div>
                 <div>{{ $rows->links() }}</div>
                 <div class="flex items-center gap-1">
-                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-700 py-1 px-2 bg-white dark:bg-slate-700 dark:text-slate-200">
+                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-700 py-1 px-2 bg-white dark:bg-slate-900 dark:bg-slate-700 dark:text-slate-200 dark:bg-slate-900 dark:text-slate-100">
                         <option value="10">10 / hal</option>
                         <option value="25">25 / hal</option>
                         <option value="50">50 / hal</option>

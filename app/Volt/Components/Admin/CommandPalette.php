@@ -339,7 +339,7 @@ new class extends Component {
             <div class="flex items-center gap-2 text-xs text-slate-400">
                 <span>WiFinan</span>
                 <span>•</span>
-                <span>v1.0</span>
+                <span>v2.0</span>
             </div>
         </div>
     </div>

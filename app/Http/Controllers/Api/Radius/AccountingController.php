@@ -160,15 +160,17 @@ class AccountingController extends Controller
         }
 
         try {
-            // Hydrate minimal context: panggil authenticate dengan skip policy password (dummy)
+            // Hydrate context tanpa verifikasi password — authorize-only endpoint
+            // PENTING: gunakan flag $authorizeOnly=true, bukan password dummy string.
             $authResult = $this->authService->authenticate(
                 username: $username,
-                password: '__AUTHORIZE_ONLY__',
+                password: '',
                 nas: $request->attributes->get('radius_nas'),
                 nasIp: (string)($request->input('nas_ip_address') ?? $request->ip()),
                 callingStationId: (string)($request->input('calling_station_id') ?? null),
                 calledStationId: (string)($request->input('called_station_id') ?? null),
                 framedIp: (string)($request->input('framed_ip_address') ?? null),
+                authorizeOnly: true,
             );
 
             $ctx = $authResult['context'] ?? null;

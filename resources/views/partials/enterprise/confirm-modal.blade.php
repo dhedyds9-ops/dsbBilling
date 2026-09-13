@@ -20,7 +20,7 @@ Enterprise Confirmation Modal SSOT — auto wired to BaseEnterpriseList
             </div>
         </div>
         <div class="px-5 py-4 flex items-center justify-end gap-2 bg-slate-50 dark:bg-slate-800/70 rounded-b-xl">
-            <button @click="show = false" class="px-3 py-1.5 text-sm rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700">Batal</button>
+            <button @click="show = false" class="px-3 py-1.5 text-sm rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-white dark:bg-slate-800 dark:hover:bg-slate-700">Batal</button>
             <button wire:click="handleConfirm" @click="show = false" class="px-4 py-1.5 text-sm font-medium rounded-md text-white {{ $this->confirmBtnClass ?? 'bg-red-600 hover:bg-red-700' }}">
                 {{ $this->confirmBtnText ?? 'Ya' }}
             </button>

@@ -22,6 +22,7 @@ class PaymentGatewaySettingsService
         'tripay' => 'Tripay (Multi-Channel Closed)',
         'bca_va' => 'BCA Virtual Account (Legacy)',
         'manual_transfer' => 'Manual Transfer Bank',
+        'manual_ewallet' => 'Manual e-Wallet (GoPay/OVO/DANA/ShopeePay)',
         'ewallet' => 'e-Wallet (OVO/GOPAY/DANA Legacy)',
     ];
 
@@ -101,6 +102,20 @@ class PaymentGatewaySettingsService
                 'fee_fixed' => 0,
                 'bank_accounts' => $this->defaultBankAccounts(),
             ],
+            'manual_ewallet' => [
+                'enabled' => true,
+                'label' => 'e-Wallet Manual',
+                'environment' => 'production',
+                'merchant_id' => '',
+                'server_key' => '',
+                'client_key' => '',
+                'callback_url' => '',
+                'webhook_secret' => '',
+                'fee_percent' => 0,
+                'fee_fixed' => 0,
+                'require_attachment' => true,
+                'providers' => $this->defaultEwalletProviders(),
+            ],
             'ewallet' => [
                 'enabled' => false,
                 'label' => 'e-Wallet (OVO/GOPAY/DANA)',
@@ -126,10 +141,20 @@ class PaymentGatewaySettingsService
         ];
     }
 
+    protected function defaultEwalletProviders(): array
+    {
+        return [
+            ['id' => 1, 'name' => 'GoPay', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
+            ['id' => 2, 'name' => 'OVO', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
+            ['id' => 3, 'name' => 'DANA', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
+            ['id' => 4, 'name' => 'ShopeePay', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
+        ];
+    }
+
     protected function generateCallbackUrl(string $key): string
     {
         $base = config('app.url', url('/'));
-        return rtrim($base, '/') . "/payment/callback/{$key}/" . md5(config('app.key') . $key);
+        return rtrim($base, '/') . "/api/payment/webhook/{$key}/" . md5(config('app.key') . $key);
     }
 
     public function getAll(): array
@@ -153,7 +178,23 @@ class PaymentGatewaySettingsService
     {
         if (!isset(self::GATEWAYS[$key])) return null;
         $all = $this->getAll();
-        return $all[$key] ?? null;
+        $config = $all[$key] ?? null;
+        if (!$config) return null;
+
+        $env = \App\Models\Setting::getValue('payment_gateway.general.mode', 'sandbox');
+        $config['environment'] = $env;
+
+        if ($key === 'midtrans') {
+            $config['server_key'] = $config['server_key_' . $env] ?? $config['server_key'] ?? '';
+            $config['client_key'] = $config['client_key_' . $env] ?? $config['client_key'] ?? '';
+        } elseif ($key === 'xendit') {
+            $config['server_key'] = $config['secret_key_' . $env] ?? $config['server_key'] ?? '';
+            $config['client_key'] = $config['public_key_' . $env] ?? $config['client_key'] ?? '';
+        } elseif ($key === 'duitku' || $key === 'tripay') {
+            $config['server_key'] = $config['api_key_' . $env] ?? $config['server_key'] ?? '';
+        }
+
+        return $config;
     }
 
     public function save(string $key, array $data): array
@@ -171,17 +212,36 @@ class PaymentGatewaySettingsService
             $bankAccounts = $data['bank_accounts'] ?? $existing['bank_accounts'] ?? $this->defaultBankAccounts();
             $cleaned = [];
             foreach ($bankAccounts as $ba) {
-                if (empty($ba['account_number'])) continue;
+                $no = trim((string)($ba['account_number'] ?? ($ba['account_no'] ?? '')));
+                if (empty($no)) continue;
                 $cleaned[] = [
                     'id' => $ba['id'] ?? (count($cleaned) + 1),
-                    'bank_name' => trim($ba['bank_name'] ?? ''),
-                    'account_number' => trim($ba['account_number'] ?? ''),
-                    'account_holder' => trim($ba['account_holder'] ?? ''),
-                    'branch' => trim($ba['branch'] ?? ''),
-                    'active' => (bool) ($ba['active'] ?? true),
+                    'bank_name' => trim((string)($ba['bank_name'] ?? '')),
+                    'account_number' => $no,
+                    'account_holder' => trim((string)($ba['account_holder'] ?? '')),
+                    'branch' => trim((string)($ba['branch'] ?? '')),
+                    'active' => (bool)($ba['active'] ?? true),
                 ];
             }
             $merged['bank_accounts'] = $cleaned;
+        }
+
+        if ($key === 'manual_ewallet') {
+            $providers = $data['providers'] ?? $existing['providers'] ?? $this->defaultEwalletProviders();
+            $cleaned = [];
+            foreach ($providers as $p) {
+                $no = trim((string)($p['number'] ?? ''));
+                if (empty($no)) continue;
+                $cleaned[] = [
+                    'id' => $p['id'] ?? (count($cleaned) + 1),
+                    'name' => trim((string)($p['name'] ?? '')),
+                    'number' => $no,
+                    'holder' => trim((string)($p['holder'] ?? '')),
+                    'active' => (bool)($p['active'] ?? true),
+                ];
+            }
+            $merged['providers'] = $cleaned;
+            $merged['require_attachment'] = (bool)($data['require_attachment'] ?? $existing['require_attachment'] ?? true);
         }
 
         Setting::setValue(self::PREFIX . '.' . $key, $merged, 'json', self::GROUP);
@@ -272,9 +332,9 @@ class PaymentGatewaySettingsService
                         $success = true;
                         $message = 'Gateway siap (environment ' . ($config['environment'] ?? 'production') . '). API ping simulasi berhasil.';
                     } else {
-                        $response = Http::timeout(10)
-                            ->withBasicAuth($config['server_key'], '')
-                            ->get($baseUrl . '/transactions?limit=1');
+                        $http = Http::timeout(10)->withBasicAuth($config['server_key'], '');
+                        if (app()->isLocal()) $http->withoutVerifying();
+                        $response = $http->get($baseUrl . '/transactions?limit=1');
                         if ($response->successful() || $response->status() === 401) {
                             $success = true;
                             $message = 'Koneksi API berhasil. Status autentikasi: ' . ($response->successful() ? 'OK' : 'Unauthorized (cek hak akses)');

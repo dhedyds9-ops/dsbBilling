@@ -14,8 +14,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'job_function' => \App\Http\Middleware\JobFunctionMiddleware::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'radius.nas_secret' => \App\Http\Middleware\Radius\VerifyNasSecret::class,
+            'verify.license' => \App\Http\Middleware\VerifyLicense::class,
+            'workforce.checked_in' => \App\Http\Middleware\EnsureWorkforceCheckedIn::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

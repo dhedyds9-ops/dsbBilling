@@ -14,10 +14,28 @@ class CustomerDashboardService
 {
     public function getDashboardData(int $customerId): array
     {
-        $customerServices = CustomerService::with(['serviceInstance', 'contract'])->where('customer_id', $customerId)->get();
-        $pppoeUser = PPPoEUser::with(['customerService'])->where('customer_service_id', $customerServices->first()?->id)->first();
+        $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
+            ->where('customer_id', $customerId)->get();
+
+        $primaryService = $customerServices->where('status', 'active')->first()
+            ?? $customerServices->first();
+
+        $pppoeUser = $primaryService?->pppoeUser
+            ?? PPPoEUser::with(['customerService', 'serviceProfile'])
+                ->where('customer_service_id', $primaryService?->id)->first();
+
+        $hotspotUser = $primaryService?->hotspotUser
+            ?? \App\Models\ISP\HotspotUser::with(['customerService'])
+                ->where('customer_service_id', $primaryService?->id)->first();
+
+        // Load serviceProfile for pppoeUser if not already loaded
+        if ($pppoeUser && !$pppoeUser->relationLoaded('serviceProfile')) {
+            $pppoeUser->load('serviceProfile');
+        }
+
         $activeInvoices = Invoice::where('customer_id', $customerId)
             ->where('status', '!=', 'paid')
+            ->whereRaw('total_amount > paid_amount')
             ->get();
         $recentInvoices = Invoice::where('customer_id', $customerId)
             ->latest()
@@ -25,22 +43,33 @@ class CustomerDashboardService
             ->get();
 
         // Hitung penggunaan bandwidth bulan ini dari RadiusAccounting
-        $usageStats = $this->calculateUsageStats($pppoeUser);
+        $usageStats = $this->calculateUsageStats($pppoeUser, $hotspotUser);
+
+        $subscription = \App\Models\Billing\Subscription::where('customer_id', $customerId)->where('status', 'active')->first();
+
+        // Resolusi service profile: dari pppoeUser, hotspotUser, atau customerService
+        $serviceProfile = $pppoeUser?->serviceProfile
+            ?? $primaryService?->serviceProfile
+            ?? null;
 
         return [
+            'next_billing_date' => $subscription ? $subscription->next_billing_date : null,
             'customer_services' => $customerServices,
+            'primary_service' => $primaryService,
+            'service_profile' => $serviceProfile,
             'pppoe_user' => $pppoeUser,
+            'hotspot_user' => $hotspotUser,
             'active_invoices' => $activeInvoices,
             'recent_invoices' => $recentInvoices,
-            'internet_status' => $this->determineInternetStatus($pppoeUser),
-            'total_outstanding' => $activeInvoices->sum('total_amount'),
+            'internet_status' => $this->determineInternetStatus($pppoeUser, $hotspotUser),
+            'total_outstanding' => $activeInvoices->sum('total_amount') - $activeInvoices->sum('paid_amount'),
             'usage_stats' => $usageStats,
         ];
     }
 
-    private function calculateUsageStats(?PPPoEUser $pppoeUser): array
+    private function calculateUsageStats(?PPPoEUser $pppoeUser, $hotspotUser = null): array
     {
-        if (!$pppoeUser) {
+        if (!$pppoeUser && !$hotspotUser) {
             return [
                 'upload_mb' => 0,
                 'download_mb' => 0,
@@ -53,10 +82,18 @@ class CustomerDashboardService
         }
 
         // Ambil data akuntansi bulan ini
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $accountings = RadiusAccounting::where('pppoe_user_id', $pppoeUser->id)
-            ->where('acct_start_time', '>=', $startOfMonth)
-            ->get();
+        $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+        $accountings = collect();
+        if ($pppoeUser) {
+            $accountings = RadiusAccounting::where('pppoe_user_id', $pppoeUser->id)
+                ->where('acct_start_time', '>=', $startOfMonth)
+                ->get();
+        } elseif ($hotspotUser) {
+            // Usually hotspot uses username
+            $accountings = RadiusAccounting::where('username', $hotspotUser->username)
+                ->where('acct_start_time', '>=', $startOfMonth)
+                ->get();
+        }
 
         $uploadBytes = $accountings->sum('acct_input_octets');
         $downloadBytes = $accountings->sum('acct_output_octets');
@@ -65,7 +102,12 @@ class CustomerDashboardService
         $totalMb = $uploadMb + $downloadMb;
 
         // Hitung hari aktif
-        $activeDays = $pppoeUser->activated_at ? $pppoeUser->activated_at->diffInDays(Carbon::now()) : 0;
+        $activeDays = 0;
+        if ($pppoeUser && $pppoeUser->activated_at) {
+            $activeDays = $pppoeUser->activated_at->diffInDays(\Carbon\Carbon::now());
+        } elseif ($hotspotUser && $hotspotUser->activated_at) {
+            $activeDays = $hotspotUser->activated_at->diffInDays(\Carbon\Carbon::now());
+        }
 
         return [
             'upload_mb' => $uploadMb,
@@ -78,32 +120,54 @@ class CustomerDashboardService
         ];
     }
 
-    private function determineInternetStatus(?PPPoEUser $pppoeUser): array
+    private function determineInternetStatus(?PPPoEUser $pppoeUser, $hotspotUser = null): array
     {
-        if (!$pppoeUser) {
-            return [
-                'status' => 'unknown',
-                'message' => 'Layanan tidak ditemukan',
-            ];
+        if ($pppoeUser) {
+            return match ($pppoeUser->status) {
+                'active' => [
+                    'status' => 'online',
+                    'message' => 'Internet aktif (PPPoE)',
+                    'severity' => AlarmSeverity::OK->value,
+                ],
+                'suspended' => [
+                    'status' => 'offline',
+                    'message' => 'Internet ditangguhkan',
+                    'severity' => AlarmSeverity::WARNING->value,
+                ],
+                default => [
+                    'status' => 'unknown',
+                    'message' => 'Status tidak diketahui',
+                    'severity' => AlarmSeverity::INFO->value,
+                ],
+            };
         }
 
-        return match ($pppoeUser->status) {
-            'active' => [
-                'status' => 'online',
-                'message' => 'Internet aktif',
-                'severity' => AlarmSeverity::OK->value,
-            ],
-            'suspended' => [
-                'status' => 'offline',
-                'message' => 'Internet ditangguhkan',
-                'severity' => AlarmSeverity::WARNING->value,
-            ],
-            default => [
-                'status' => 'unknown',
-                'message' => 'Status tidak diketahui',
-                'severity' => AlarmSeverity::INFO->value,
-            ],
-        };
+        if ($hotspotUser) {
+            return match ($hotspotUser->status ?? 'unknown') {
+                'active' => [
+                    'status' => 'online',
+                    'message' => 'Internet aktif (Hotspot)',
+                    'severity' => AlarmSeverity::OK->value,
+                ],
+                'suspended', 'inactive' => [
+                    'status' => 'offline',
+                    'message' => 'Akun Hotspot ditangguhkan',
+                    'severity' => AlarmSeverity::WARNING->value,
+                ],
+                default => [
+                    'status' => 'unknown',
+                    'message' => 'Status Hotspot tidak diketahui',
+                    'severity' => AlarmSeverity::INFO->value,
+                ],
+            };
+        }
+
+        return [
+            'status' => 'unknown',
+            'message' => 'Layanan tidak ditemukan',
+            'severity' => AlarmSeverity::INFO->value,
+        ];
     }
 }
+
 

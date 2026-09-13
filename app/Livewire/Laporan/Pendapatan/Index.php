@@ -5,7 +5,7 @@ namespace App\Livewire\Laporan\Pendapatan;
 use App\Livewire\BaseEnterpriseList;
 use App\Services\Laporan\PendapatanService;
 use App\Models\ISP\Router;
-use App\Models\ISP\InternetPackage;
+use App\Models\ISP\ServiceProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
@@ -31,7 +31,6 @@ class Index extends BaseEnterpriseList
             'end_date' => now()->toDateString(),
             'router_id' => '',
             'paket_id' => '',
-            'sales_id' => '',
             'reseller_id' => '',
         ];
     }
@@ -112,9 +111,8 @@ class Index extends BaseEnterpriseList
     {
         return [
             'routers' => Router::pluck('name', 'id')->all(),
-            'pakets' => InternetPackage::pluck('name', 'id')->all(),
-            'sales' => User::pluck('name', 'id')->all(),
-            'resellers' => User::whereHas('roles', fn($q) => $q->where('name', 'reseller'))->pluck('name', 'id')->all(),
+            'pakets' => ServiceProfile::pluck('name', 'id')->all(),
+            'resellers' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager', 'reseller']))->pluck('name', 'id')->all(),
         ];
     }
 

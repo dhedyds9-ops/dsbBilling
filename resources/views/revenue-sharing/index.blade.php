@@ -25,7 +25,7 @@
                 <form method="GET" class="d-flex gap-2">
                     <div class="form-group flex-grow-1">
                         <label for="period">Periode</label>
-                        <input type="month" name="period" id="period" class="form-control" value="{{ $period }}">
+                        <input type="month" name="period" id="period" class="form-control dark:bg-slate-900 dark:text-slate-100" value="{{ $period }}">
                     </div>
                     <div class="form-group align-self-end">
                         <button type="submit" class="btn btn-primary">Lihat</button>
@@ -115,7 +115,7 @@
                 <h5 class="mb-0">Detail Anggota</h5>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
+                <div class="w-full overflow-x-auto">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
@@ -199,7 +199,7 @@
                     <h5 class="mb-0">Riwayat Batch</h5>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
+                    <div class="w-full overflow-x-auto">
                         <table class="table table-bordered table-hover">
                             <thead class="table-light">
                                 <tr>

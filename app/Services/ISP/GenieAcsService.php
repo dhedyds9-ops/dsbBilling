@@ -39,6 +39,21 @@ class GenieAcsService
         );
     }
 
+    public function getWifiCredentials(int $customerId, int $onuId): array
+    {
+        $onu = $this->resolveCustomerOnu($customerId, $onuId);
+        $deviceId = $onu->genieacs_device_id;
+        $vendor = $onu->vendor?->name ?? 'default';
+
+        return $this->genieACSDriver->getWifiCredentials($deviceId, $vendor);
+    }
+
+    public function getConnectedDevices(int $customerId, int $onuId): array
+    {
+        $onu = $this->resolveCustomerOnu($customerId, $onuId);
+        return $this->genieACSDriver->getConnectedDevices($onu->genieacs_device_id);
+    }
+
     public function updateWifiPassword(int $customerId, int $onuId, string $newPassword): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
@@ -46,7 +61,7 @@ class GenieAcsService
         return $this->provisioningService->updateSsidAndPassword($onu, $ssid, $newPassword);
     }
 
-    public function updateWifiSsidAndPassword(int $customerId, int $onuId, string $ssid, string $password): array
+    public function updateWifiSsidAndPassword(int $customerId, int $onuId, string $ssid, ?string $password = null): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
         return $this->provisioningService->updateSsidAndPassword($onu, $ssid, $password);
