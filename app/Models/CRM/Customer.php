@@ -99,4 +99,9 @@ class Customer extends Model
     {
         return $this->hasManyThrough(Installation::class, Contract::class, 'customer_id', 'contract_id');
     }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(\App\Models\Support\Ticket::class, 'customer_id');
+    }
 }
