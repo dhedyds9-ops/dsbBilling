@@ -60,4 +60,29 @@
             }
         });
     }, true); // Use capture phase!
+
+    // Listen for 'toast' or 'notify' events to show a small non-intrusive notification
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+
+    const handleToast = (e) => {
+        let payload = Array.isArray(e.detail) && e.detail.length > 0 ? e.detail[0] : e.detail;
+        if (!payload) return;
+        Toast.fire({
+            icon: payload.type || 'info',
+            title: payload.message || 'Notification'
+        });
+    };
+
+    window.addEventListener('toast', handleToast);
+    window.addEventListener('notify', handleToast);
 </script>
