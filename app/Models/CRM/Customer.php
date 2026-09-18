@@ -70,6 +70,11 @@ class Customer extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reseller_id');
+    }
+
     public function customerServices(): HasMany
     {
         return $this->hasMany(CustomerService::class, 'customer_id');
