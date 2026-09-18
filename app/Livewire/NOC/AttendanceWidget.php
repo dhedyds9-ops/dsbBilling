@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Noc;
+namespace App\Livewire\NOC;
 
 use Livewire\Component;
 use App\Models\Workforce\Attendance;
