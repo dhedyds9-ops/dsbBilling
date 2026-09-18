@@ -21,7 +21,11 @@ Login ke server Ubuntu Anda via SSH, lalu jalankan perintah berikut untuk mengin
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y nginx git unzip curl supervisor sqlite3 redis-server nodejs npm
+sudo apt install -y nginx git unzip curl supervisor sqlite3 redis-server
+
+# Instalasi Node.js 18 (Wajib untuk kompilasi Frontend & GenieACS)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # Instalasi PHP 8.2 dan ekstensinya
 sudo apt install -y software-properties-common
@@ -56,6 +60,9 @@ sudo chmod -R 775 storage bootstrap/cache
 sudo composer install --optimize-autoloader --no-dev
 sudo cp .env.example .env
 sudo php artisan key:generate
+
+# Set default database ke SQLite untuk kemudahan instalasi
+sed -i 's/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/' .env
 
 # Instal library frontend & kompilasi aset (Tailwind & Vite)
 npm install
@@ -170,10 +177,9 @@ Di `/etc/freeradius/3.0/sites-enabled/default`, tambahkan `rest` di bawah blok `
 
 ## 3. Panduan Instalasi GenieACS (TR-069)
 
-### 3.1 Instalasi Node.js & MongoDB
+### 3.1 Instalasi MongoDB
+Node.js sudah terinstal pada tahap 1. Sekarang instal database MongoDB yang dibutuhkan oleh GenieACS:
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs gnupg curl
 curl -fsSL https://pgp.mongodb.com/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
 echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
 sudo apt-get update && sudo apt-get install -y mongodb-org
@@ -184,38 +190,40 @@ sudo systemctl enable mongod && sudo systemctl start mongod
 ```bash
 sudo npm install -g genieacs
 sudo useradd --system --no-create-home --user-group genieacs
-sudo mkdir /opt/genieacs /var/log/genieacs /opt/genieacs/ext
+sudo mkdir -p /opt/genieacs /var/log/genieacs /opt/genieacs/ext
 sudo chown genieacs:genieacs /opt/genieacs /var/log/genieacs /opt/genieacs/ext
-```
-Buat `.env` di `sudo nano /opt/genieacs/genieacs.env`:
-```env
+
+# Buat file konfigurasi Environment (Salin blok di bawah ini sekaligus)
+sudo bash -c 'cat <<EOF > /opt/genieacs/genieacs.env
 GENIEACS_CWMP_ACCESS_LOG_FILE=/var/log/genieacs/genieacs-cwmp-access.log
 GENIEACS_NBI_ACCESS_LOG_FILE=/var/log/genieacs/genieacs-nbi-access.log
 GENIEACS_FS_ACCESS_LOG_FILE=/var/log/genieacs/genieacs-fs-access.log
 GENIEACS_UI_ACCESS_LOG_FILE=/var/log/genieacs/genieacs-ui-access.log
 GENIEACS_DEBUG_FILE=/var/log/genieacs/genieacs-debug.yaml
 GENIEACS_EXT_DIR=/opt/genieacs/ext
-GENIEACS_UI_JWT_SECRET=Rahasia12345
+GENIEACS_UI_JWT_SECRET=dsBillingSuperSecret123
+EOF'
 ```
 
-### 3.3 Systemd Services
-Buat 4 service di `/etc/systemd/system/` (contoh: `genieacs-cwmp.service`) dengan isi:
-```ini
+### 3.3 Systemd Services (Otomatis)
+Jalankan blok perintah berikut untuk membuat dan menjalankan 4 *service* GenieACS sekaligus:
+```bash
+for service in cwmp nbi fs ui; do
+sudo bash -c "cat <<EOF > /etc/systemd/system/genieacs-\$service.service
 [Unit]
-Description=GenieACS CWMP
+Description=GenieACS \$service
 After=network.target
 
 [Service]
 User=genieacs
 EnvironmentFile=/opt/genieacs/genieacs.env
-ExecStart=/usr/bin/genieacs-cwmp
+ExecStart=/usr/bin/env genieacs-\$service
 
 [Install]
 WantedBy=default.target
-```
-Lakukan hal yang sama untuk `genieacs-nbi`, `genieacs-fs`, dan `genieacs-ui`.
-Kemudian jalankan:
-```bash
+EOF"
+done
+
 sudo systemctl daemon-reload
 sudo systemctl enable genieacs-cwmp genieacs-nbi genieacs-fs genieacs-ui
 sudo systemctl start genieacs-cwmp genieacs-nbi genieacs-fs genieacs-ui
