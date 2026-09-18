@@ -58,9 +58,10 @@ class Index extends BaseACSComponent
             $count = 0;
             $syncedIds = [];
             
-            foreach ($devices as $deviceData) {
-                $deviceId = $deviceData['_id'] ?? null;
-                if (!$deviceId) continue;
+            \Illuminate\Support\Facades\DB::transaction(function () use ($devices, &$count, &$syncedIds) {
+                foreach ($devices as $deviceData) {
+                    $deviceId = $deviceData['_id'] ?? null;
+                    if (!$deviceId) continue;
 
                 $mac = $deviceData['VirtualParameters']['pppoeMac']['_value'] ??
                        $deviceData['VirtualParameters']['PonMac']['_value'] ??
@@ -154,6 +155,7 @@ class Index extends BaseACSComponent
             if (count($syncedIds) > 0) {
                 \App\Models\ACS\ACSDevice::whereNotIn('uuid', $syncedIds)->update(['status' => 'offline']);
             }
+            });
 
             session()->flash('success', "Berhasil mensinkronisasi {$count} perangkat dari GenieACS!");
         } catch (\Exception $e) {
