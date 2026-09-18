@@ -121,6 +121,27 @@ class Show extends AdminComponent
         }
     }
 
+    public function summonDevice()
+    {
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $driver->summonDevice($this->device->uuid);
+            
+            \App\Models\ACS\DeviceTask::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'acs_device_id' => $this->device->id,
+                'type' => 'connection_request',
+                'status' => 'pending',
+                'created_by' => auth()->id()
+            ]);
+
+            session()->flash('success', 'Perintah Summon (Connection Request) telah dikirim ke perangkat.');
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Summon dikirim.']);
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengirim perintah Summon: ' . $e->getMessage());
+        }
+    }
+
     public function rebootDevice()
     {
         try {

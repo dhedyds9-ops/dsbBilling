@@ -33,6 +33,9 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
+            <button wire:click="summonDevice" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-200 rounded-lg text-sm font-semibold transition-colors">
+                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">connect_without_contact</span> Summon
+            </button>
             <button wire:click="openWifiModal" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:bg-indigo-900/50 border border-indigo-200 rounded-lg text-sm font-semibold transition-colors">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">wifi</span> Ganti WiFi
             </button>

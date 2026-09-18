@@ -263,8 +263,23 @@ class GenieACSDriver
         try {
             $params = $this->getDeviceParameters($deviceId);
             return isset($params['_lastInform'])
-                && abs(now()->diffInMinutes(Carbon::parse($params['_lastInform']))) < 5;
-        } catch (Exception) {
+                && abs(now()->diffInMinutes(\Carbon\Carbon::parse($params['_lastInform']))) < 1440;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function summonDevice(string $deviceId): bool
+    {
+        try {
+            $response = Http::timeout(5)
+                ->withBasicAuth($this->username, $this->password)
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", [
+                    'name' => 'refreshObject',
+                    'objectName' => ''
+                ]);
+            return $response->successful();
+        } catch (\Exception $e) {
             return false;
         }
     }
