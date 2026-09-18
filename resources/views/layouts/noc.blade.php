@@ -128,8 +128,8 @@
             {{-- Clock --}}
             <span class="text-xs text-gray-400 noc-mono" x-text="now"></span>
 
-            {{-- Attendance Widget --}}
-            @livewire('noc.attendance-widget')
+            <!-- Realtime Attendance Check-in -->
+            @livewire(\App\Livewire\NOC\AttendanceWidget::class)
 
             {{-- Refresh --}}
             <button
