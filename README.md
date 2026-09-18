@@ -21,13 +21,13 @@ Login ke server Ubuntu Anda via SSH, lalu jalankan perintah berikut untuk mengin
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y nginx git unzip curl supervisor sqlite3
+sudo apt install -y nginx git unzip curl supervisor sqlite3 redis-server nodejs npm
 
 # Instalasi PHP 8.2 dan ekstensinya
 sudo apt install -y software-properties-common
 sudo add-apt-repository ppa:ondrej/php -y
 sudo apt update
-sudo apt install -y php8.2-fpm php8.2-cli php8.2-common php8.2-sqlite3 php8.2-mysql php8.2-zip php8.2-gd php8.2-mbstring php8.2-curl php8.2-xml php8.2-bcmath
+sudo apt install -y php8.2-fpm php8.2-cli php8.2-common php8.2-sqlite3 php8.2-mysql php8.2-zip php8.2-gd php8.2-mbstring php8.2-curl php8.2-xml php8.2-bcmath php8.2-redis
 
 # Instalasi Composer (Package Manager PHP)
 curl -sS https://getcomposer.org/installer | php
@@ -52,10 +52,14 @@ mkdir -p bootstrap/cache
 sudo chown -R www-data:www-data storage bootstrap/cache
 sudo chmod -R 775 storage bootstrap/cache
 
-# Instal library
+# Instal library backend
 sudo composer install --optimize-autoloader --no-dev
 sudo cp .env.example .env
 sudo php artisan key:generate
+
+# Instal library frontend & kompilasi aset (Tailwind & Vite)
+npm install
+npm run build
 ```
 
 ### 1.3 Eksekusi Database & Build Tampilan
@@ -67,6 +71,9 @@ sudo chown www-data:www-data database/database.sqlite
 
 # Jalankan migrasi database
 sudo php artisan migrate --force
+
+# Masukkan data awal (Seeder) & Akun Admin (Catat email & password yang muncul)
+sudo php artisan db:seed
 
 # Kompilasi cache
 sudo php artisan optimize
@@ -212,4 +219,15 @@ Kemudian jalankan:
 sudo systemctl daemon-reload
 sudo systemctl enable genieacs-cwmp genieacs-nbi genieacs-fs genieacs-ui
 sudo systemctl start genieacs-cwmp genieacs-nbi genieacs-fs genieacs-ui
+```
+
+### 3.4 Konfigurasi Integrasi dengan Laravel (.env)
+
+Agar sistem **dsBilling** dapat berkomunikasi dengan GenieACS, tambahkan atau pastikan variabel berikut ada pada file `.env` di folder instalasi Laravel (`/var/www/dsbilling/.env`):
+
+```env
+# Sesuaikan dengan pengaturan GenieACS
+GENIEACS_BASE_URL=http://localhost:7557
+GENIEACS_USERNAME=admin
+GENIEACS_PASSWORD=admin
 ```
