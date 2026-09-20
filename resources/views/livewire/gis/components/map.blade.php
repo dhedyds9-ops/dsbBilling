@@ -1609,17 +1609,31 @@
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([odc.latitude, odc.longitude]);
 
-                        var poly = L.polyline(pathPoints, {
-                            color: lineColor,
-                            weight: 4,
-                            opacity: 0.7,
-                            dashArray: '10, 5'
-                        }).addTo(lines);
+                        var distanceStr = calculatePolylineDistanceMeters(pathPoints);
+                        
+                        var poly;
+                        if (L.polyline && L.polyline.antPath) {
+                            poly = L.polyline.antPath(pathPoints, {
+                                color: lineColor,
+                                weight: 5,
+                                opacity: 0.9,
+                                pulseColor: '#ffffff',
+                                delay: 400
+                            }).addTo(lines);
+                        } else {
+                            poly = L.polyline(pathPoints, {
+                                color: lineColor,
+                                weight: 5,
+                                opacity: 0.9
+                            }).addTo(lines);
+                        }
+                        
+                        if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
 
                         if (editMode) {
                             poly.on('click', function(e) {
                                 addWaypointMarker(key, e.latlng);
-                                drawLines(); // This will save implicitly inside addWaypointMarker logic? No, addWaypoint calls save.
+                                drawLines(); 
                             });
                         }
                     }
@@ -1639,11 +1653,26 @@
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([odp.latitude, odp.longitude]);
 
-                        var poly = L.polyline(pathPoints, {
-                            color: lineColor,
-                            weight: 3,
-                            opacity: 0.8
-                        }).addTo(lines);
+                        var distanceStr = calculatePolylineDistanceMeters(pathPoints);
+                        
+                        var poly;
+                        if (L.polyline && L.polyline.antPath) {
+                            poly = L.polyline.antPath(pathPoints, {
+                                color: lineColor,
+                                weight: 4,
+                                opacity: 0.8,
+                                pulseColor: '#ffffff',
+                                delay: 400
+                            }).addTo(lines);
+                        } else {
+                            poly = L.polyline(pathPoints, {
+                                color: lineColor,
+                                weight: 4,
+                                opacity: 0.8
+                            }).addTo(lines);
+                        }
+                        
+                        if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
 
                         if (editMode) {
                             poly.on('click', function(e) {
@@ -1673,6 +1702,7 @@
                                 opacity: 0.8,
                                 dashArray: '5, 5'
                             }).addTo(lines);
+                            var distanceStr = calculatePolylineDistanceMeters(pathPoints); if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
 
                             if (editMode) {
                                 poly.on('click', function(e) {
@@ -1697,6 +1727,7 @@
                                 opacity: 0.8,
                                 dashArray: '5, 5'
                             }).addTo(lines);
+                            var distanceStr = calculatePolylineDistanceMeters(pathPoints); if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
 
                             if (editMode) {
                                 poly.on('click', function(e) {
@@ -1738,6 +1769,8 @@
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([customer.latitude, customer.longitude]);
                         
+                        var distanceStr = calculatePolylineDistanceMeters(pathPoints);
+
                         var poly;
                         if (isOnline && L.polyline && L.polyline.antPath) {
                             poly = L.polyline.antPath(pathPoints, {
@@ -1753,6 +1786,9 @@
                         } else {
                             poly = L.polyline(pathPoints, lineOptions).addTo(lines);
                         }
+                        
+                        if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
+
                         if (editMode) {
                             poly.on('click', function(e) {
                                 addWaypointMarker(key, e.latlng);
@@ -2162,10 +2198,12 @@
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
                     <div class="map-popup">
-                        <h6 class="map-popup-title">ODP: ${odp.name}</h6>
-                        <table class="table table-sm table-borderless map-popup-table">
-                            <tr><td class="map-popup-label">Kapasitas:</td><td class="map-popup-value">${odp.filled || 0}/${odp.capacity}</td></tr>
-                            <tr><td class="map-popup-label">ODC:</td><td class="map-popup-value">${odcName}</td></tr>
+                          <h6 class="map-popup-title">ODP: ${odp.name}</h6>
+                          <table class="table table-sm table-borderless map-popup-table">
+                              <tr><td class="map-popup-label">Splitter:</td><td class="map-popup-value">1:${odp.port_count || '?'} (-${odp.port_count == 4 ? 7.2 : (odp.port_count == 8 ? 10.5 : (odp.port_count == 16 ? 13.5 : 0))} dB)</td></tr>
+                              <tr><td class="map-popup-label">Port Terpakai:</td><td class="map-popup-value">${odp.used_port_count || 0} / ${odp.port_count || '?'}</td></tr>
+                              <tr><td class="map-popup-label">Port Tersedia:</td><td class="map-popup-value text-emerald-400 font-bold">${(odp.port_count || 0) - (odp.used_port_count || 0) - (odp.reserved_port_count || 0)} ONU lagi</td></tr>
+                              <tr><td class="map-popup-label">ODC:</td><td class="map-popup-value">${odcName}</td></tr>
                             <tr><td class="map-popup-label">Area:</td><td class="map-popup-value">${odp.kampung || '-'}</td></tr>
                             <tr><td class="map-popup-label">Warna:</td><td class="map-popup-value">${odpColorLabel}</td></tr>
                             <tr><td class="map-popup-label">Jarak ODP-ODC:</td><td class="map-popup-value">${odpToOdcDistance}</td></tr>
@@ -3317,3 +3355,4 @@
 </script>
 @endpush
 </div>
+

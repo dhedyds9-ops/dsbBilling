@@ -79,22 +79,23 @@ class MapApiController extends Controller
                 $model = $id ? Odc::find($id) : new Odc();
                 if ($model) {
                     $model->name = $request->input('name');
-                    $model->pon_port = $request->input('pon_port');
-                    $model->area = $request->input('area');
-                    $model->color = $request->input('color');
                     $model->olt_id = $request->input('olt_id');
-                    $model->cable_no = $request->input('cable_no');
+                    $model->address = $request->input('area');
+                    if (!$id) $model->code = $request->input('cable_no') ?: $request->input('name');
+                    $model->description = "PON Port: " . $request->input('pon_port') . " | Color: " . $request->input('color');
+                    if (!$model->port_count) $model->port_count = 144;
                 }
                 break;
             case 'odp':
                 $model = $id ? Odp::find($id) : new Odp();
                 if ($model) {
                     $model->name = $request->input('name');
-                    $model->region_id = $request->input('region_id');
                     $model->odc_id = $request->input('odc_id');
-                    $model->color = $request->input('color');
-                    $model->kampung = $request->input('kampung');
-                    $model->odc_port = $request->input('odc_port');
+                    $model->address = $request->input('kampung');
+                    if (!$id) $model->code = $request->input('name');
+                    $model->description = "Color: " . $request->input('color') . " | ODC Port: " . $request->input('odc_port');
+                    if (!$model->split_ratio) $model->split_ratio = 8;
+                    if (!$model->port_count) $model->port_count = 8;
                 }
                 break;
             case 'htb':
@@ -102,9 +103,8 @@ class MapApiController extends Controller
                     $model = $id ? DistributionBox::find($id) : new DistributionBox();
                     if ($model) {
                         $model->name = $request->input('name');
-                        $model->uplink_type = $request->input('uplink_type');
-                        $model->odp_id = $request->input('odp_id');
-                        $model->parent_htb_id = $request->input('parent_htb_id');
+                        $model->odp_id = $request->input('odp_id') ?: null;
+                        if (!$id) $model->code = $request->input('name');
                     }
                 }
                 break;
@@ -113,9 +113,9 @@ class MapApiController extends Controller
                     $model = $id ? JointClosure::find($id) : new JointClosure();
                     if ($model) {
                         $model->name = $request->input('name');
-                        $model->region_id = $request->input('region_id');
                         $model->odc_id = $request->input('odc_id');
                         $model->description = $request->input('description');
+                        if (!$id) $model->code = $request->input('name');
                     }
                 }
                 break;
@@ -125,13 +125,12 @@ class MapApiController extends Controller
             // Map common inputs
             if ($request->has('latitude')) $model->latitude = $request->input('latitude');
             if ($request->has('longitude')) $model->longitude = $request->input('longitude');
-            if ($request->has('code') && !$model->code) $model->code = $request->input('name');
             
             $model->save();
             return response()->json(['success' => true, 'id' => $model->id]);
         }
 
-        return response()->json(['success' => false, 'message' => 'Failed to save node'], 400);
+        return response()->json(['success' => false, 'message' => 'Model not found or saving failed'], 404);
     }
 
     public function wlanStatus($id)
