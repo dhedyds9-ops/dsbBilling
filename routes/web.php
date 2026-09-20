@@ -328,7 +328,6 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::prefix('noc')->name('noc.')->group(function () {
             Route::get('/', \App\Livewire\NOC\Overview::class)->name('overview');
             Route::middleware(['workforce.checked_in'])->group(function () {
-                Route::get('/alerts', \App\Livewire\NOC\AlertList::class)->name('alerts.index');
                 Route::get('/alarms', \App\Livewire\NOC\Alarms\Index::class)->name('alarms.index');
                 Route::get('/alarms/{alarm}', \App\Livewire\NOC\Alarms\Show::class)->name('alarms.show');
                 Route::get('/provisioning', \App\Livewire\NOC\Provisioning\Index::class)->name('provisioning.index');

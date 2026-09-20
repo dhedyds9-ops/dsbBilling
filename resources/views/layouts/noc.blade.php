@@ -95,7 +95,6 @@
                     ['route' => 'noc.olts.index',       'label' => 'OLT',           'icon' => 'server-stack'],
                     ['route' => 'noc.onus.index',       'label' => 'ONU',           'icon' => 'router'],
                     ['route' => 'noc.pppoe.index',      'label' => 'Active Sessions',         'icon' => 'users'],
-                    ['route' => 'noc.alerts.index',     'label' => 'Alerts',        'icon' => 'exclamation-triangle'],
                     ['route' => 'noc.alarms.index',     'label' => 'Alarms',        'icon' => 'bell'],
                     ['route' => 'noc.provisioning.index','label' => 'Provisioning', 'icon' => 'list-checks'],
                     ['route' => 'noc.topology.index',   'label' => 'Impact Analysis',           'icon' => 'impact'],
