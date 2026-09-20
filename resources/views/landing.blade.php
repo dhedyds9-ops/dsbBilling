@@ -169,8 +169,12 @@
 <header class="bg-surface/60 dark:bg-surface/60 backdrop-blur-3xl border-b border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] fixed top-0 w-full z-50">
     <div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
         <!-- Brand -->
-        <a href="{{ route('home') }}" class="font-display-lg text-headline-lg font-black text-primary tracking-tighter">
-            {{ $companyName }}
+        <a href="{{ route('home') }}" class="flex items-center gap-2 font-display-lg text-headline-lg font-black text-primary tracking-tighter">
+            @if($companyLogo)
+                <img src="{{ asset('storage/' . $companyLogo) }}" alt="{{ $companyName }}" class="h-10 w-auto object-contain">
+            @else
+                {{ $companyName }}
+            @endif
         </a>
         
         <!-- Navigation Links (Desktop) -->
@@ -182,6 +186,9 @@
         
         <!-- Actions -->
         <div class="hidden md:flex items-center gap-stack-md">
+            <a href="{{ route('admin.login') }}" class="text-on-surface-variant hover:text-primary transition-colors font-label-bold text-label-bold flex items-center gap-1" title="Login Admin">
+                <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
+            </a>
             <a href="{{ route('guest.payment') }}" class="inline-flex btn-secondary text-primary font-label-bold text-label-bold px-6 py-2 rounded-full">
                 Cek Tagihan
             </a>
@@ -211,6 +218,10 @@
             <a href="{{ route('customer.login') }}" class="text-center btn-primary text-white font-label-bold text-label-bold px-6 py-3 rounded-full flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-sm">account_balance_wallet</span>
                 Portal Pelanggan
+            </a>
+            <a href="{{ route('admin.login') }}" class="text-center text-on-surface-variant hover:text-primary font-label-bold flex items-center justify-center gap-2 py-2">
+                <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
+                Login Admin
             </a>
         </div>
     </div>
