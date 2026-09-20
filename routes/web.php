@@ -11,6 +11,29 @@ Route::get('/', function () {
     $packagesHotspot = \App\Models\ISP\ServiceProfile::where('is_active', true)->whereIn('service_type', ['hotspot', 'Hotspot', 'HOTSPOT'])->orderBy('price')->take(3)->get();
     $packagesVoucher = \App\Models\ISP\ServiceProfile::where('is_active', true)->whereIn('service_type', ['voucher', 'Voucher', 'VOUCHER'])->orderBy('price')->take(4)->get();
 
+    // Jika database kosong, berikan data dummy agar UI landing page tetap cantik
+    if ($packagesPppoe->isEmpty()) {
+        $packagesPppoe = collect([
+            (object)['name' => 'Home Basic', 'description' => '10 Mbps', 'price' => 150000, 'feature1' => 'Koneksi Stabil', 'feature2' => 'Cocok untuk 2-3 Gadget', 'feature3' => 'Tanpa FUP'],
+            (object)['name' => 'Home Pro', 'description' => '30 Mbps', 'price' => 250000, 'feature1' => 'Super Cepat & Stabil', 'feature2' => 'Cocok untuk Keluarga', 'feature3' => 'Unlimited Quota'],
+            (object)['name' => 'Home Ultimate', 'description' => '50 Mbps', 'price' => 350000, 'feature1' => 'Streaming 4K Lancar', 'feature2' => 'Cocok untuk Gaming', 'feature3' => 'Prioritas Jaringan']
+        ]);
+    }
+    if ($packagesHotspot->isEmpty()) {
+        $packagesHotspot = collect([
+            (object)['name' => 'Member Starter', 'description' => 'Akses 1 Perangkat', 'price' => 50000, 'feature1' => 'Single Device Login', 'feature2' => 'Standard Bandwidth'],
+            (object)['name' => 'Member Pro', 'description' => 'Akses 2 Perangkat', 'price' => 80000, 'feature1' => '2 Devices Concurrent', 'feature2' => 'Priority Bandwidth']
+        ]);
+    }
+    if ($packagesVoucher->isEmpty()) {
+        $packagesVoucher = collect([
+            (object)['id' => 1, 'name' => 'Voucher 6 Jam', 'description' => 'Akses Singkat', 'price' => 3000, 'icon' => 'timer'],
+            (object)['id' => 2, 'name' => 'Voucher 1 Hari', 'description' => 'Akses Harian', 'price' => 5000, 'icon' => 'today'],
+            (object)['id' => 3, 'name' => 'Voucher 1 Minggu', 'description' => 'Akses Mingguan', 'price' => 25000, 'icon' => 'date_range'],
+            (object)['id' => 4, 'name' => 'Voucher 1 Bulan', 'description' => 'Akses Bulanan', 'price' => 75000, 'icon' => 'calendar_month']
+        ]);
+    }
+
     return view('landing', compact('packagesPppoe', 'packagesHotspot', 'packagesVoucher'));
 })->name('home');
 Route::get('/coming-soon', fn() => view('coming-soon'))->name('coming-soon');

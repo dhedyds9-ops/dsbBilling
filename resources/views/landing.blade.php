@@ -185,11 +185,13 @@
         </nav>
         
         <!-- Actions -->
-        <div class="hidden md:flex items-center gap-stack-md">
-            <a href="{{ route('admin.login') }}" class="text-on-surface-variant hover:text-primary transition-colors font-label-bold text-label-bold flex items-center gap-1" title="Login Admin">
-                <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
+        <div class="hidden md:flex items-center gap-4">
+            <a href="{{ route('admin.login') }}" class="text-on-surface-variant hover:text-primary transition-colors font-label-bold text-sm flex items-center gap-1.5" title="Login Admin">
+                <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                <span class="hidden lg:inline">Admin</span>
             </a>
-            <a href="{{ route('guest.payment') }}" class="inline-flex btn-secondary text-primary font-label-bold text-label-bold px-6 py-2 rounded-full">
+            <div class="w-px h-6 bg-white/10 mx-1"></div>
+            <a href="{{ route('guest.payment') }}" class="inline-flex btn-secondary text-primary font-label-bold text-sm px-5 py-2 rounded-full">
                 Cek Tagihan
             </a>
             <a href="{{ route('customer.login') }}" class="btn-primary text-white font-label-bold text-label-bold px-6 py-2 rounded-full flex items-center gap-2">
