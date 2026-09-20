@@ -1071,10 +1071,74 @@
         font-size: 0.875rem; 
         transition: background 0.2s;
     }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-primary:hover { background: #2563eb; }
-    .btn-secondary { background: #475569; color: white; }
-    .btn-secondary:hover { background: #334155; }
+    .btn-primary { background: #06b6d4; color: white; padding: 8px 16px; }
+    .btn-primary:hover { background: #0891b2; }
+    .btn-secondary { background: #334155; color: white; padding: 8px 16px; }
+    .btn-secondary:hover { background: #1e293b; }
+
+    /* Modal Dark Theme Overrides */
+    .modal-content { 
+        padding: 20px; 
+        background: #0f172a !important; 
+        color: #f8fafc !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+        border-bottom: 1px solid #1e293b;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+    .modal-footer {
+        border-top: 1px solid #1e293b;
+        padding-top: 15px;
+        margin-top: 15px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .form-control, .form-select {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f8fafc !important;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #06b6d4 !important;
+        box-shadow: 0 0 0 0.25rem rgba(6, 182, 212, 0.25) !important;
+    }
+
+    /* Leaflet Popup Dark Theme */
+    .leaflet-popup-content-wrapper {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border: 1px solid #1e293b;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .leaflet-popup-tip {
+        background-color: #0f172a !important;
+        border: 1px solid #1e293b;
+    }
+    
+    /* Legacy Popup Button Fixes */
+    .map-popup-btn {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 8px !important;
+        border: none !important;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        text-transform: uppercase;
+        color: white !important;
+    }
+    .btn-outline-primary.map-popup-btn { background: #3b82f6 !important; }
+    .btn-outline-primary.map-popup-btn:hover { background: #2563eb !important; }
+    .btn-danger.map-popup-btn { background: #ef4444 !important; }
+    .btn-danger.map-popup-btn:hover { background: #dc2626 !important; }
 
 </style>
 @endpush
