@@ -85,10 +85,10 @@
                     <label for="login" class="block text-sm font-medium text-slate-300 mb-2">Email, Username, or Phone</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span class="material-symbols-outlined text-slate-500 dark:text-slate-400 text-xl">person</span>
+                            <span class="material-symbols-outlined text-slate-500 text-xl">person</span>
                         </div>
                         <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username"
-                            class="block w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors sm:text-sm dark:bg-slate-900 dark:text-slate-100"
+                            class="block w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors sm:text-sm"
                             placeholder="Enter your credential">
                     </div>
                     @error('login')
@@ -108,12 +108,12 @@
                     </div>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span class="material-symbols-outlined text-slate-500 dark:text-slate-400 text-xl">lock</span>
+                            <span class="material-symbols-outlined text-slate-500 text-xl">lock</span>
                         </div>
                         <input id="password" x-bind:type="showPassword ? 'text' : 'password'" name="password" required autocomplete="current-password"
-                            class="block w-full pl-10 pr-10 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors sm:text-sm dark:bg-slate-900 dark:text-slate-100"
+                            class="block w-full pl-10 pr-10 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors sm:text-sm"
                             placeholder="••••••••">
-                        <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 dark:text-slate-400 hover:text-slate-300 transition-colors focus:outline-none">
+                        <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none">
                             <span class="material-symbols-outlined text-xl" x-text="showPassword ? 'visibility_off' : 'visibility'">visibility</span>
                         </button>
                     </div>
@@ -124,7 +124,7 @@
 
                 <!-- Remember Me -->
                 <div class="flex items-center mb-6">
-                    <input id="remember_me" type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                    <input id="remember_me" type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-800">
                     <label for="remember_me" class="ml-2 block text-sm text-slate-400 cursor-pointer">
                         Remember me
                     </label>
@@ -137,13 +137,18 @@
             </form>
         </div>
 
-        <div class="mt-8 text-center">
-            <p class="text-sm text-slate-500 dark:text-slate-400">
+        <div class="mt-8 flex flex-col gap-4 text-center">
+            <p class="text-sm text-slate-500">
                 Are you a customer? 
                 <a href="{{ route('customer.login') }}" class="font-medium text-slate-300 hover:text-white transition-colors underline decoration-slate-600 hover:decoration-slate-400 underline-offset-4">
                     Customer Portal
                 </a>
             </p>
+            
+            <a href="{{ route('home') }}" class="inline-flex items-center justify-center gap-2 text-sm text-slate-400 hover:text-cyan-400 transition-colors mx-auto mt-4 px-4 py-2 rounded-full border border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10">
+                <span class="material-symbols-outlined text-lg">arrow_back</span>
+                Kembali ke Halaman Utama
+            </a>
         </div>
     </div>
 

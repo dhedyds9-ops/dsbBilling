@@ -82,10 +82,10 @@
                     <label for="login" class="block text-sm font-medium text-slate-300 mb-2">Email, Username, or Phone</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <span class="material-symbols-outlined text-slate-500 dark:text-slate-400">account_circle</span>
+                            <span class="material-symbols-outlined text-slate-500 text-xl">person</span>
                         </div>
                         <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username"
-                            class="block w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors sm:text-sm dark:bg-slate-900 dark:text-slate-100"
+                            class="block w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors sm:text-sm"
                             placeholder="Your credential">
                     </div>
                     @error('login')
@@ -105,12 +105,12 @@
                     </div>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <span class="material-symbols-outlined text-slate-500 dark:text-slate-400">key</span>
+                            <span class="material-symbols-outlined text-slate-500 text-xl">lock</span>
                         </div>
                         <input id="password" x-bind:type="showPassword ? 'text' : 'password'" name="password" required autocomplete="current-password"
-                            class="block w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors sm:text-sm dark:bg-slate-900 dark:text-slate-100"
+                            class="block w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors sm:text-sm"
                             placeholder="••••••••">
-                        <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 dark:text-slate-400 hover:text-slate-300 transition-colors focus:outline-none">
+                        <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none">
                             <span class="material-symbols-outlined" x-text="showPassword ? 'visibility_off' : 'visibility'">visibility</span>
                         </button>
                     </div>
@@ -122,25 +122,31 @@
                 <!-- Remember Me -->
                 <div class="flex items-center justify-between mb-8">
                     <div class="flex items-center">
-                        <input id="remember_me" type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-900/60 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                        <input id="remember_me" type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-900/60 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-800">
                         <label for="remember_me" class="ml-2 block text-sm text-slate-400 cursor-pointer">
                             Keep me signed in
                         </label>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-2xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-blue-500 transition-all">
-                    Access Portal
-                    <span class="material-symbols-outlined ml-2 text-lg">arrow_forward</span>
+                <button type="submit" class="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-2xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-emerald-500 transition-all">
+                    Sign In
+                    <span class="material-symbols-outlined ml-2 text-lg">login</span>
                 </button>
             </form>
         </div>
 
-        <div class="mt-8 text-center flex items-center justify-center space-x-4">
-            <span class="text-sm text-slate-500 dark:text-slate-400">Staff member?</span>
-            <a href="{{ route('admin.login') }}" class="inline-flex items-center px-3 py-1.5 border border-slate-700 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
-                <span class="material-symbols-outlined text-sm mr-1.5">admin_panel_settings</span>
-                Admin Login
+        <div class="mt-8 flex flex-col gap-4 text-center">
+            <p class="text-sm text-slate-500">
+                Are you an admin? 
+                <a href="{{ route('admin.login') }}" class="font-medium text-slate-300 hover:text-white transition-colors underline decoration-slate-600 hover:decoration-slate-400 underline-offset-4">
+                    Admin Portal
+                </a>
+            </p>
+            
+            <a href="{{ route('home') }}" class="inline-flex items-center justify-center gap-2 text-sm text-slate-400 hover:text-blue-400 transition-colors mx-auto mt-4 px-4 py-2 rounded-full border border-slate-700 hover:border-blue-500/50 hover:bg-blue-500/10">
+                <span class="material-symbols-outlined text-lg">arrow_back</span>
+                Kembali ke Halaman Utama
             </a>
         </div>
     </div>
