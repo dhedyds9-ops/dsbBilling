@@ -570,6 +570,7 @@
     .custom-icon.icon-customer-offline i { transform: rotate(45deg); }
     .modern-map-popup .customer-card {
         width: 320px;
+        padding: 16px 20px;
         color: #cbd5e1;
         font-family: "Inter", "Segoe UI", Tahoma, sans-serif;
         font-size: 12px;
@@ -974,25 +975,32 @@
     .custom-icon.icon-customer-offline i { transform: rotate(45deg); }
 
     
+    /* Override default Leaflet padding for full control */
+    .leaflet-popup-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
     /* Styles for legacy map-popup (OLT, ODC, ODP) */
     .map-popup {
         font-family: "Inter", sans-serif;
-        padding: 6px;
+        padding: 16px 20px;
         color: #e2e8f0;
+        min-width: 240px;
     }
     .map-popup-title {
         color: #00e5ff;
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 700;
         margin-top: 0;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
         border-bottom: 1px solid #1e293b;
-        padding-bottom: 8px;
+        padding-bottom: 12px;
     }
-    .map-popup-table { width: 100%; font-size: 12px; margin-bottom: 12px; }
-    .map-popup-label { color: #94a3b8; padding-right: 8px; padding-bottom: 4px; }
-    .map-popup-value { font-weight: 600; color: #f8fafc; padding-bottom: 4px; }
-    .map-popup-actions { display: flex; gap: 8px; }
+    .map-popup-table { width: 100%; font-size: 12px; margin-bottom: 16px; border-collapse: separate; border-spacing: 0 8px; }
+    .map-popup-label { color: #94a3b8; padding-right: 12px; vertical-align: top; }
+    .map-popup-value { font-weight: 600; color: #f8fafc; vertical-align: top; line-height: 1.4; }
+    .map-popup-actions { display: flex; gap: 12px; margin-top: 16px; padding-top: 4px; }
     .map-popup-btn {
         flex: 1;
         padding: 6px;
