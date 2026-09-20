@@ -185,20 +185,19 @@
         </nav>
         
         <!-- Actions -->
-        <div class="hidden md:flex items-center gap-4">
-            <a href="{{ route('admin.login') }}" class="text-on-surface-variant hover:text-primary transition-colors font-label-bold text-sm flex items-center gap-1.5" title="Login Admin">
+        <div class="hidden md:flex items-center gap-3">
+            <a href="{{ route('admin.login') }}" class="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all shadow-sm">
                 <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
-                <span class="hidden lg:inline">Admin</span>
+                Admin
             </a>
-            <div class="w-px h-6 bg-white/10 mx-1"></div>
-            <a href="{{ route('guest.payment') }}" class="inline-flex btn-secondary text-primary font-label-bold text-sm px-5 py-2 rounded-full">
+            <a href="{{ route('guest.payment') }}" class="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-all shadow-sm">
                 Cek Tagihan
             </a>
-            <a href="{{ route('customer.login') }}" class="btn-primary text-white font-label-bold text-label-bold px-6 py-2 rounded-full flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">account_balance_wallet</span>
+            <a href="{{ route('customer.login') }}" class="flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
+                <span class="material-symbols-outlined text-[18px]">account_circle</span>
                 Portal Pelanggan
             </a>
-                </div>
+        </div>
         
         <!-- Mobile menu button -->
         <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden text-primary p-2">
@@ -213,17 +212,17 @@
             <a href="#keunggulan" @click="mobileMenuOpen = false" class="text-on-surface font-label-bold">Keunggulan</a>
             <a href="#paket" @click="mobileMenuOpen = false" class="text-on-surface font-label-bold">Paket Internet</a>
             <a href="#hotspot" @click="mobileMenuOpen = false" class="text-on-surface font-label-bold">Hotspot</a>
-            <hr class="border-white/10">
-            <a href="{{ route('guest.payment') }}" class="text-center btn-secondary text-primary font-label-bold text-label-bold px-6 py-3 rounded-full">
+            <hr class="border-white/10 my-2">
+            <a href="{{ route('admin.login') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all">
+                <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                Login Admin
+            </a>
+            <a href="{{ route('guest.payment') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-all">
                 Cek Tagihan
             </a>
-            <a href="{{ route('customer.login') }}" class="text-center btn-primary text-white font-label-bold text-label-bold px-6 py-3 rounded-full flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-sm">account_balance_wallet</span>
+            <a href="{{ route('customer.login') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
+                <span class="material-symbols-outlined text-[18px]">account_circle</span>
                 Portal Pelanggan
-            </a>
-            <a href="{{ route('admin.login') }}" class="text-center text-on-surface-variant hover:text-primary font-label-bold flex items-center justify-center gap-2 py-2">
-                <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
-                Login Admin
             </a>
         </div>
     </div>
@@ -245,11 +244,13 @@
             <p class="font-body-lg text-body-lg text-on-surface-variant mb-stack-lg max-w-2xl mx-auto">
                 Rasakan kecepatan internet tanpa batas dengan teknologi Full Fiber Optic dari {{ $companyName }}. Stabil, cepat, dan dapat diandalkan untuk segala kebutuhan digital Anda.
             </p>
-            <div class="flex flex-col sm:flex-row justify-center gap-stack-md">
-                <a class="btn-primary text-white font-label-bold text-label-bold px-8 py-4 rounded-full text-center" href="#paket">
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+                <a class="flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25 hover:-translate-y-1" href="#paket">
+                    <span class="material-symbols-outlined">rocket_launch</span>
                     Lihat Paket Internet
                 </a>
-                <a class="btn-secondary text-primary font-label-bold text-label-bold px-8 py-4 rounded-full text-center" href="https://wa.me/{{ preg_replace('/\D/', '', $companyPhone) }}" target="_blank">
+                <a class="flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-bold bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-all shadow-sm hover:-translate-y-1" href="https://wa.me/{{ preg_replace('/\D/', '', $companyPhone) }}" target="_blank">
+                    <span class="material-symbols-outlined">forum</span>
                     Hubungi Kami
                 </a>
             </div>
