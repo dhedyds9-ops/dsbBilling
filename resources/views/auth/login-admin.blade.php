@@ -54,7 +54,7 @@
         <!-- Brand -->
         <div class="text-center mb-8">
             <a href="{{ route('home') }}" class="inline-block text-4xl font-heading font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 transition-all">
-                dsBilling
+                {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
             </a>
             <p class="mt-2 text-sm text-slate-400 font-medium tracking-wide uppercase">Workspace Access</p>
         </div>

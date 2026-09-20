@@ -59,8 +59,8 @@
             <div class="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
             
             <div class="text-center mb-8">
-                <a href="{{ route('home') }}" class="inline-block text-3xl font-heading font-black tracking-tight text-white mb-2">
-                    dsBilling
+                <a href="{{ route('home') }}" class="inline-block text-4xl font-heading font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 transition-all">
+                    {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
                 </a>
                 <h1 class="text-xl font-heading font-semibold text-blue-400">Customer Portal</h1>
                 <p class="text-slate-400 mt-2 text-sm">Manage your billing and services</p>

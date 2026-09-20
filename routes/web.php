@@ -6,7 +6,13 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 // ==================== PUBLIC ROUTES ====================
-Route::get('/', fn() => view('landing'))->name('home');
+Route::get('/', function () {
+    $packagesPppoe = \App\Models\ISP\ServiceProfile::where('is_active', true)->where('service_type', 'PPPoE')->orderBy('price')->take(3)->get();
+    $packagesHotspot = \App\Models\ISP\ServiceProfile::where('is_active', true)->where('service_type', 'Hotspot')->orderBy('price')->take(3)->get();
+    $packagesVoucher = \App\Models\ISP\ServiceProfile::where('is_active', true)->where('service_type', 'Voucher')->orderBy('price')->take(4)->get();
+
+    return view('landing', compact('packagesPppoe', 'packagesHotspot', 'packagesVoucher'));
+})->name('home');
 Route::get('/coming-soon', fn() => view('coming-soon'))->name('coming-soon');
 
 Route::get('/payment', [\App\Http\Controllers\GuestPaymentController::class, 'index'])->name('guest.payment');
