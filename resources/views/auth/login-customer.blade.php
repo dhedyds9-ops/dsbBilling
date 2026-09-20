@@ -8,7 +8,7 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,134 +22,142 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                         heading: ['Hanken Grotesk', 'sans-serif'],
-                    },
-                    colors: {
-                        slate: {
-                            850: '#151e2e',
-                            900: '#0f172a',
-                        },
-                        blue: {
-                            400: '#60a5fa',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                        }
                     }
                 }
             }
         }
     </script>
-    <style>
-        body { 
-            background-color: #0f172a;
-            background-image: 
-                radial-gradient(at 100% 100%, hsla(253,16%,7%,1) 0, transparent 50%), 
-                radial-gradient(at 0% 100%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
-                radial-gradient(at 50% 50%, hsla(339,49%,30%,0.05) 0, transparent 50%);
-            background-attachment: fixed;
-        }
-    </style>
 </head>
-<body class="font-sans text-slate-300 antialiased min-h-screen flex items-center justify-center p-4">
+<body class="font-sans text-slate-300 antialiased bg-slate-950 min-h-screen flex flex-row-reverse">
 
-    <div class="w-full max-w-md relative z-10">
+    <!-- Right Side: Branding / Visual (Hidden on Mobile) -->
+    <div class="hidden lg:flex w-1/2 relative overflow-hidden bg-slate-900 flex-col justify-between p-12 border-l border-white/5">
+        <!-- Abstract Background Effects -->
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-emerald-900/30 to-transparent pointer-events-none"></div>
         
-        <!-- Login Card -->
-        <div class="bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
-            <!-- Glow effect -->
-            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
-            
-            <div class="text-center mb-8">
-                <a href="{{ route('home') }}" class="inline-block text-4xl font-heading font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 transition-all">
+        <!-- Logo -->
+        <div class="relative z-10 text-right">
+            <a href="{{ route('home') }}" class="inline-flex flex-row-reverse items-center gap-2 text-4xl font-heading font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-l from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 transition-all">
+                @php $companyLogo = \App\Models\Setting::getValue('company.logo_url', null); @endphp
+                @if($companyLogo)
+                    <img src="{{ asset('storage/' . $companyLogo) }}" alt="Logo" class="h-10 w-auto object-contain">
+                @else
                     {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
-                </a>
-                <h1 class="text-xl font-heading font-semibold text-blue-400">Customer Portal</h1>
-                <p class="text-slate-400 mt-2 text-sm">Manage your billing and services</p>
+                @endif
+            </a>
+            <div class="mt-2 text-emerald-400/80 font-medium tracking-widest text-xs uppercase letter-spacing-2">Portal Pelanggan</div>
+        </div>
+
+        <!-- Hero Text -->
+        <div class="relative z-10 mb-10 text-right">
+            <h1 class="text-5xl font-heading font-extrabold text-white leading-tight mb-4 ml-auto">
+                Layanan Internet<br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-l from-emerald-400 to-teal-400">Tanpa Batas.</span>
+            </h1>
+            <p class="text-slate-400 text-lg max-w-md ml-auto">
+                Cek tagihan, kelola layanan, dan dapatkan bantuan teknis 24/7 melalui portal pelanggan interaktif kami.
+            </p>
+        </div>
+        
+        <!-- Footer Info -->
+        <div class="relative z-10 flex items-center justify-between text-sm text-slate-500 flex-row-reverse">
+            <span>&copy; {{ date('Y') }} {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}</span>
+            <span class="flex items-center gap-1 flex-row-reverse"><span class="material-symbols-outlined text-[16px]">support_agent</span> 24/7 Support</span>
+        </div>
+    </div>
+
+    <!-- Left Side: Login Form -->
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
+        <div class="absolute top-4 left-4 lg:hidden">
+            <a href="{{ route('home') }}" class="text-2xl font-heading font-black text-emerald-500">
+                {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
+            </a>
+        </div>
+
+        <div class="w-full max-w-md">
+            <div class="text-center lg:text-left mb-10">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 mb-6 lg:hidden border border-emerald-500/20">
+                    <span class="material-symbols-outlined text-2xl">account_circle</span>
+                </div>
+                <h2 class="text-3xl font-heading font-bold text-white mb-2">Selamat Datang</h2>
+                <p class="text-slate-400">Masuk untuk mengelola layanan internet Anda.</p>
             </div>
 
             <!-- Session Status -->
             @if (session('status'))
-                <div class="mb-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm text-center">
-                    {{ session('status') }}
+                <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex items-start gap-3">
+                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                    <div>{{ session('status') }}</div>
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('login') }}" x-data="{ showPassword: false }">
+            <form method="POST" action="{{ route('login') }}" x-data="{ showPassword: false }" class="space-y-6">
                 @csrf
                 <input type="hidden" name="login_type" value="customer">
 
                 <!-- Identity / Login -->
-                <div class="mb-5">
-                    <label for="login" class="block text-sm font-medium text-slate-300 mb-2">Email, Username, or Phone</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <span class="material-symbols-outlined text-slate-500 text-xl">person</span>
+                <div>
+                    <label for="login" class="block text-sm font-semibold text-slate-300 mb-2">Email / Username / Nomor HP</label>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-emerald-400 transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">person</span>
                         </div>
                         <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username"
-                            class="block w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors sm:text-sm"
-                            placeholder="Your credential">
+                            class="block w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-slate-700/50 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
+                            placeholder="Masukkan kredensial Anda">
                     </div>
                     @error('login')
-                        <p class="mt-2 text-sm text-red-400 pl-2">{{ $message }}</p>
+                        <p class="mt-2 text-sm text-red-400 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">error</span> {{ $message }}</p>
                     @enderror
                 </div>
 
                 <!-- Password -->
-                <div class="mb-6">
-                    <div class="flex justify-between items-center mb-2">
-                        <label for="password" class="block text-sm font-medium text-slate-300">Password</label>
-                        @if (Route::has('password.request'))
-                            <a href="{{ route('password.request') }}" class="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                                Forgot password?
-                            </a>
-                        @endif
-                    </div>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <span class="material-symbols-outlined text-slate-500 text-xl">lock</span>
+                <div>
+                    <label for="password" class="block text-sm font-semibold text-slate-300 mb-2">Kata Sandi</label>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-emerald-400 transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">lock</span>
                         </div>
                         <input id="password" x-bind:type="showPassword ? 'text' : 'password'" name="password" required autocomplete="current-password"
-                            class="block w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors sm:text-sm"
-                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
-                        <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none">
-                            <span class="material-symbols-outlined" x-text="showPassword ? 'visibility_off' : 'visibility'">visibility</span>
+                            class="block w-full pl-12 pr-12 py-4 bg-slate-900/50 border border-slate-700/50 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
+                            placeholder="••••••••">
+                        <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors focus:outline-none">
+                            <span class="material-symbols-outlined text-[20px]" x-text="showPassword ? 'visibility_off' : 'visibility'">visibility</span>
                         </button>
                     </div>
                     @error('password')
-                        <p class="mt-2 text-sm text-red-400 pl-2">{{ $message }}</p>
+                        <p class="mt-2 text-sm text-red-400 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">error</span> {{ $message }}</p>
                     @enderror
                 </div>
 
                 <!-- Remember Me -->
-                <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                        <input id="remember_me" type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-900/60 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-800">
-                        <label for="remember_me" class="ml-2 block text-sm text-slate-400 cursor-pointer">
-                            Keep me signed in
+                        <input id="remember_me" type="checkbox" name="remember" class="w-5 h-5 rounded border-slate-700 bg-slate-900/50 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-950 transition-colors cursor-pointer">
+                        <label for="remember_me" class="ml-3 block text-sm text-slate-400 cursor-pointer hover:text-slate-300 transition-colors">
+                            Ingat sesi saya
                         </label>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-2xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-emerald-500 transition-all">
-                    Sign In
-                    <span class="material-symbols-outlined ml-2 text-lg">login</span>
+                <button type="submit" class="w-full flex justify-center items-center gap-2 py-4 px-4 border border-transparent rounded-2xl shadow-lg shadow-emerald-500/20 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-emerald-500 transition-all transform hover:-translate-y-0.5">
+                    Masuk ke Portal
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
             </form>
-        </div>
 
-        <div class="mt-8 flex flex-col gap-4 text-center">
-            <p class="text-sm text-slate-500">
-                Are you an admin? 
-                <a href="{{ route('admin.login') }}" class="font-medium text-slate-300 hover:text-white transition-colors underline decoration-slate-600 hover:decoration-slate-400 underline-offset-4">
-                    Admin Portal
+            <div class="mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <a href="{{ route('home') }}" class="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px]">home</span>
+                    Kembali ke Beranda
                 </a>
-            </p>
-            
-            <a href="{{ route('home') }}" class="inline-flex items-center justify-center gap-2 text-sm text-slate-400 hover:text-blue-400 transition-colors mx-auto mt-4 px-4 py-2 rounded-full border border-slate-700 hover:border-blue-500/50 hover:bg-blue-500/10">
-                <span class="material-symbols-outlined text-lg">arrow_back</span>
-                Kembali ke Halaman Utama
-            </a>
+                <a href="{{ route('admin.login') }}" class="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5 flex-row-reverse">
+                    <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                    Admin Area
+                </a>
+            </div>
         </div>
     </div>
-
 </body>
 </html>
