@@ -35,6 +35,11 @@ class Settings extends AdminComponent
         if (!empty($acsConfig)) {
             $this->genieAcsForm = array_merge($this->genieAcsForm, $acsConfig);
         }
+        
+        // Auto-generate Webhook URL if empty, based on current app domain
+        if (empty($this->genieAcsForm['webhook_url'])) {
+            $this->genieAcsForm['webhook_url'] = url('/api/v1/acs/events');
+        }
     }
 
     public function testGenieAcs()
