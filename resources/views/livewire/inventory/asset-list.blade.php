@@ -1,9 +1,10 @@
-<div class="p-6 space-y-6">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Network Assets</h1>
-            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Manajemen inventaris perangkat jaringan dsBilling</p>
-        </div>
+@section('page_title')
+    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">inventory_2</span>
+    <span class="text-lg">Network Assets</span>
+@endsection
+
+<div class="space-y-5 pb-10">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex gap-3">
             <button wire:click="$toggle('showFilters')" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center gap-2 text-slate-900 dark:text-slate-100">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -232,3 +233,5 @@
     </div>
     @endif
 </div>
+
+

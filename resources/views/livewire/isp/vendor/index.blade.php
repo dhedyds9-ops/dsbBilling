@@ -1,7 +1,4 @@
-<div class="max-w-7xl mx-auto p-3">
-    <!-- Breadcrumb -->
-    <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
-
+<div class="space-y-5 pb-10">
     <!-- Success/Error Flash Message -->
     <div class="mb-3">
         @if(session()->has('success'))
@@ -27,11 +24,7 @@
     </div>
 
     <!-- Header -->
-    <div class="flex justify-between items-center mb-3">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Vendors</h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-1">Kelola semua vendor perangkat jaringan</p>
-        </div>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
         <div x-data="{ open: false }" class="relative inline-block text-left">
             <div>
                 <button @click="open = !open" type="button" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm shadow-primary-500/20">
