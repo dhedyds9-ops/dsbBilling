@@ -383,6 +383,8 @@ class Show extends AdminComponent
             $this->loadDeviceStatus(); // Refresh status display
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengganti WiFi: ' . $e->getMessage());
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal mengganti WiFi: ' . $e->getMessage()]);
+            $this->showWifiModal = false;
         }
     }
 
