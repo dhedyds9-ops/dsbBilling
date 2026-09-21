@@ -219,8 +219,14 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target WLAN</label>
                         <select wire:model.live="wlanTarget" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                            <option value="1">WLAN 1 (Utama - 2.4GHz)</option>
-                            <option value="5">WLAN 5 (Utama - 5GHz)</option>
+                            @if(!empty($availableWlans))
+                                @foreach($availableWlans as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            @else
+                                <option value="1">WLAN 1 (Utama - 2.4GHz)</option>
+                                <option value="5">WLAN 5 (Utama - 5GHz)</option>
+                            @endif
                         </select>
                     </div>
                     <div>
