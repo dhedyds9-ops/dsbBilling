@@ -10,6 +10,7 @@ class Show extends AdminComponent
     public $deviceId;
     public $device;
 
+    public $wifiEnabled = true;
     public $wifiSsid = '';
     public $wifiPassword = '';
     public $wifiSecurity = 'WPA2PSK';
@@ -243,7 +244,9 @@ class Show extends AdminComponent
             $wlanIndex = $this->wlanTarget === '1' ? '1' : '5';
             
             // Coba beberapa path untuk SSID
-            $this->wifiSsid = 
+            $this->wifiSsid =
+                $this->wifiEnabled = (bool) ($this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.Enable") ?? true);
+                $this->wifiSsid = 
                 $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.SSID")
                 ?? $this->extractParam($params, "Device.WiFi.SSID.{$wlanIndex}.SSID")
                 ?? '';
