@@ -313,7 +313,7 @@ class GenieACSDriver
         try {
             $params = $this->getDeviceParameters($deviceId);
             return isset($params['_lastInform'])
-                && abs(now()->diffInMinutes(\Carbon\Carbon::parse($params['_lastInform']))) < 1440;
+                && abs(now()->diffInMinutes(\Carbon\Carbon::parse($params['_lastInform']))) < 15;
         } catch (\Exception $e) {
             return false;
         }
@@ -510,5 +510,23 @@ class GenieACSDriver
             report($e);
             return false;
         }
+    }
+
+    public function updateWifiSsidAndPassword(string $deviceId, string $ssid, ?string $password = null, string $vendor = 'default'): bool
+    {
+        $params = [
+            $this->getWifiParameterPath($vendor, 'ssid') => $ssid,
+        ];
+        
+        if ($password !== null) {
+            $secPath = $this->getWifiParameterPath($vendor, 'security_mode');
+            $secValue = str_contains($secPath, 'BeaconType') ? '11i' : 'WPA2-Personal';
+            
+            $params[$this->getWifiParameterPath($vendor, 'wpa_passphrase')] = $password;
+            $params[$this->getWifiParameterPath($vendor, 'wpa_pre_shared_key')] = $password;
+            $params[$secPath] = $secValue;
+        }
+
+        return $this->setParameterValues($deviceId, $params);
     }
 }

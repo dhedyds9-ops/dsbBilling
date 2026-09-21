@@ -83,7 +83,7 @@ class Index extends BaseACSComponent
                 }
                 
                 $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-                $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 1440) ? 'online' : 'offline';
+                $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 15) ? 'online' : 'offline';
 
                 $serialNumber = $deviceData['_deviceId']['_SerialNumber'] ?? 
                                 $deviceData['InternetGatewayDevice']['DeviceInfo']['SerialNumber']['_value'] ?? $deviceId;
@@ -213,5 +213,20 @@ class Index extends BaseACSComponent
                         ->paginate($this->perPage);
 
         return view('livewire.acs.device.index', compact('devices'));
+    }
+
+    public function summon($uuid)
+    {
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $success = $driver->summonDevice($uuid);
+            if ($success) {
+                session()->flash('success', "Perintah summon berhasil dikirim ke perangkat ($uuid).");
+            } else {
+                session()->flash('error', "Gagal melakukan summon. Perangkat mungkin mati atau IP tidak terjangkau.");
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error: ' . $e->getMessage());
+        }
     }
 }
