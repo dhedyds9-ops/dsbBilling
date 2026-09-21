@@ -253,6 +253,12 @@ class Show extends AdminComponent
                 ?? $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.KeyPassphrase")
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase")
                 ?? '';
+
+            // Coba path Security
+            $this->wifiSecurity = 
+                $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType")
+                ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled")
+                ?? 'WPA2PSK';
             
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengambil data WiFi saat ini: ' . $e->getMessage());
@@ -264,6 +270,7 @@ class Show extends AdminComponent
         $this->validate([
             'wifiSsid' => 'required|string|min:3',
             'wifiPassword' => 'nullable|string|min:8',
+            'wifiSecurity' => 'required|string',
         ]);
 
         try {
@@ -296,8 +303,8 @@ class Show extends AdminComponent
                 $paramsToSet[$ssidCandidates[0]] = $this->wifiSsid;
             }
             
-            // Deteksi path Password yang benar jika password diisi
-            if (!empty($this->wifiPassword)) {
+            // Deteksi path Password yang benar jika password diisi (dan bukan Open)
+            if (!empty($this->wifiPassword) && !in_array($this->wifiSecurity, ['None', 'Basic', 'Open'])) {
                 $passCandidates = [
                     "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.PreSharedKey.1.KeyPassphrase",
                     "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.KeyPassphrase",
@@ -315,6 +322,21 @@ class Show extends AdminComponent
                 if (!$passSet && count($passCandidates) > 0) {
                     $paramsToSet[$passCandidates[0]] = $this->wifiPassword;
                 }
+            }
+            
+            // Set Security Mode
+            $secCandidates = [
+                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType",
+                "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled",
+            ];
+            foreach ($secCandidates as $path) {
+                if ($this->pathExists($params, $path)) {
+                    $paramsToSet[$path] = $this->wifiSecurity;
+                    break;
+                }
+            }
+            if (!isset($paramsToSet[$secCandidates[0]]) && !isset($paramsToSet[$secCandidates[1]])) {
+                $paramsToSet[$secCandidates[0]] = $this->wifiSecurity;
             }
             
             // Dapatkan ID device yang sebenarnya (karena bisa jadi uuid/mac bukan OUI-PC-SN)

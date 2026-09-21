@@ -214,7 +214,7 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?timeout=3000&connection_request", $payload);
             if ($response->successful()) {
                 return true;
             }
@@ -239,7 +239,7 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?timeout=3000&connection_request", $payload);
             if ($response->successful()) {
                 return true;
             }
@@ -257,7 +257,7 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?timeout=3000&connection_request", $payload);
             return $response->successful();
         } catch (ConnectionException|RequestException $e) {
             if ($e instanceof RequestException && $e->response && $e->response->status() === 404) {

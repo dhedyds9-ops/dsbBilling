@@ -217,6 +217,16 @@
                         @error('wifiSsid') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Security Mode</label>
+                        <select wire:model.live="wifiSecurity" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
+                            <option value="None">Open / None (Tanpa Password)</option>
+                            <option value="WPA2PSK">WPA2-PSK (Standar)</option>
+                            <option value="WPAPSKWPA2PSK">WPA/WPA2-PSK (Mixed)</option>
+                            <option value="Basic">WEP (Tidak Disarankan)</option>
+                        </select>
+                        @error('wifiSecurity') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
                         <input type="text" wire:model="wifiPassword" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
                         <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Minimal 8 karakter. Biarkan sama jika tidak ingin mengganti sandi.</p>
