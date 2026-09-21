@@ -333,24 +333,13 @@ class GenieACSDriver
     public function upsertProvision(string $provisionName, string $javascriptCode, int $weight = 0): bool
     {
         try {
-            $existing = Http::withBasicAuth($this->username, $this->password)
-                ->timeout($this->timeout)
-                ->get("{$this->baseUrl}/provisions/{$provisionName}");
-            $method = $existing->successful() ? 'put' : 'post';
-            $url = $existing->successful()
-                ? "{$this->baseUrl}/provisions/{$provisionName}"
-                : "{$this->baseUrl}/provisions";
-            $payload = array_merge(
-                $existing->successful() ? [] : ['_id' => $provisionName],
-                [
-                    'weight' => $weight,
-                    'script' => $javascriptCode,
-                ]
-            );
+            // In GenieACS v1.2, you simply PUT the raw javascript string to /provisions/{name}
+            $url = "{$this->baseUrl}/provisions/{$provisionName}";
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
-                ->asJson()
-                ->{$method}($url, $payload);
+                ->withBody($javascriptCode, 'text/plain')
+                ->put($url);
+            
             return $response->successful();
         } catch (Exception $e) {
             report($e);
