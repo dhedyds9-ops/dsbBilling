@@ -324,19 +324,35 @@ class Show extends AdminComponent
                 }
             }
             
-            // Set Security Mode
-            $secCandidates = [
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType",
-                "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled",
+            // Translasi Security Mode berdasarkan versi TR
+            $secMode = $this->wifiSecurity;
+            $tr098Modes = [
+                'WPA2PSK' => '11i',
+                'WPAPSKWPA2PSK' => 'WPAand11i',
+                'Basic' => 'Basic',
+                'None' => 'None',
             ];
-            foreach ($secCandidates as $path) {
+            $tr181Modes = [
+                'WPA2PSK' => 'WPA2-Personal',
+                'WPAPSKWPA2PSK' => 'WPA-WPA2-Personal',
+                'Basic' => 'WEP-128',
+                'None' => 'None',
+            ];
+
+            $secCandidates = [
+                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType" => $tr098Modes,
+                "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled" => $tr181Modes,
+            ];
+
+            foreach ($secCandidates as $path => $mapping) {
                 if ($this->pathExists($params, $path)) {
-                    $paramsToSet[$path] = $this->wifiSecurity;
+                    $paramsToSet[$path] = $mapping[$secMode] ?? $secMode;
                     break;
                 }
             }
-            if (!isset($paramsToSet[$secCandidates[0]]) && !isset($paramsToSet[$secCandidates[1]])) {
-                $paramsToSet[$secCandidates[0]] = $this->wifiSecurity;
+            // Fallback
+            if (!isset($paramsToSet[array_keys($secCandidates)[0]]) && !isset($paramsToSet[array_keys($secCandidates)[1]])) {
+                $paramsToSet[array_keys($secCandidates)[0]] = $tr098Modes[$secMode] ?? $secMode;
             }
             
             // Dapatkan ID device yang sebenarnya (karena bisa jadi uuid/mac bukan OUI-PC-SN)
