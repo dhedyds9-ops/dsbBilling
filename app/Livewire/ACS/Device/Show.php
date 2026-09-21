@@ -187,14 +187,62 @@ class Show extends AdminComponent
     }
 
     public $wlanTarget = '1';
+    public $availableWlans = [];
     public $wifiSaving = false;
     public $cachedDeviceParams = null;
+
+        private function getAvailableWlans()
+    {
+        $wlans = [];
+        $params = $this->cachedDeviceParams;
+        if (!$params) return [];
+
+        // Check TR-098
+        $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] ?? [];
+        if (is_array($wlanNode)) {
+            foreach ($wlanNode as $key => $node) {
+                if (is_numeric($key) && is_array($node)) {
+                    $ssid = $node['SSID']['_value'] ?? '';
+                    $name = $ssid ? "WLAN $key ($ssid)" : "WLAN $key";
+                    $wlans[$key] = $name;
+                }
+            }
+        }
+
+        // Check TR-181 if empty
+        if (empty($wlans)) {
+            $wlanNode = $params['Device']['WiFi']['SSID'] ?? [];
+            if (is_array($wlanNode)) {
+                foreach ($wlanNode as $key => $node) {
+                    if (is_numeric($key) && is_array($node)) {
+                        $ssid = $node['SSID']['_value'] ?? '';
+                        $name = $ssid ? "WLAN $key ($ssid)" : "WLAN $key";
+                        $wlans[$key] = $name;
+                    }
+                }
+            }
+        }
+
+        if (empty($wlans)) {
+            $wlans = [
+                '1' => 'WLAN 1 (Utama - 2.4GHz)',
+                '5' => 'WLAN 5 (Utama - 5GHz)'
+            ];
+        }
+
+        return $wlans;
+    }
 
     public function openWifiModal()
     {
         $this->showWifiModal = true;
         $this->cachedDeviceParams = null;
         $this->loadWifiCredentials();
+        $this->availableWlans = $this->getAvailableWlans();
+        if (!isset($this->availableWlans[$this->wlanTarget])) {
+            $this->wlanTarget = array_key_first($this->availableWlans) ?? '1';
+            $this->loadWifiCredentials();
+        }
     }
 
     public function updatedWlanTarget()
@@ -234,31 +282,26 @@ class Show extends AdminComponent
     {
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            
-            // Cache params agar tidak perlu fetch ulang saat save
             if (!$this->cachedDeviceParams) {
                 $this->cachedDeviceParams = $driver->getDeviceParameters($this->device->uuid);
             }
             $params = $this->cachedDeviceParams;
             
-            $wlanIndex = $this->wlanTarget === '1' ? '1' : '5';
+            $wlanIndex = $this->wlanTarget;
             
-            // Coba beberapa path untuk SSID
-            $this->wifiSsid =
-                $this->wifiEnabled = (bool) ($this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.Enable") ?? true);
-                $this->wifiSsid = 
+            $this->wifiEnabled = (bool) ($this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.Enable") ?? true);
+            
+            $this->wifiSsid = 
                 $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.SSID")
                 ?? $this->extractParam($params, "Device.WiFi.SSID.{$wlanIndex}.SSID")
                 ?? '';
             
-            // Coba beberapa path untuk Password
             $this->wifiPassword = 
                 $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.PreSharedKey.1.KeyPassphrase")
                 ?? $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.KeyPassphrase")
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase")
                 ?? '';
 
-            // Coba path Security
             $this->wifiSecurity = 
                 $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType")
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled")
@@ -279,7 +322,7 @@ class Show extends AdminComponent
 
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $wlanIndex = $this->wlanTarget === '1' ? 1 : 5;
+            $wlanIndex = $this->wlanTarget;
             
             // Fetch parameter device untuk deteksi path yang benar
             if (!$this->cachedDeviceParams) {
