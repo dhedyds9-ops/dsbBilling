@@ -218,7 +218,15 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                
+            // Trigger connection request asynchronously without blocking
+            try {
+                Http::withBasicAuth($this->username, $this->password)
+                    ->timeout(1)
+                    ->asJson()
+                    ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", ['name' => 'refreshObject', 'objectName' => '']);
+            } catch (\Exception $e) {}
             if ($response->successful()) {
                 return true;
             }
@@ -243,7 +251,15 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                
+            // Trigger connection request asynchronously without blocking
+            try {
+                Http::withBasicAuth($this->username, $this->password)
+                    ->timeout(1)
+                    ->asJson()
+                    ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", ['name' => 'refreshObject', 'objectName' => '']);
+            } catch (\Exception $e) {}
             if ($response->successful()) {
                 return true;
             }
@@ -261,7 +277,15 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                
+            // Trigger connection request asynchronously without blocking
+            try {
+                Http::withBasicAuth($this->username, $this->password)
+                    ->timeout(1)
+                    ->asJson()
+                    ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", ['name' => 'refreshObject', 'objectName' => '']);
+            } catch (\Exception $e) {}
             return $response->successful();
         } catch (ConnectionException|RequestException $e) {
             if ($e instanceof RequestException && $e->response && $e->response->status() === 404) {
@@ -300,7 +324,7 @@ class GenieACSDriver
         try {
             $response = Http::timeout(5)
                 ->withBasicAuth($this->username, $this->password)
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", [
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", [
                     'name' => 'refreshObject',
                     'objectName' => ''
                 ]);
