@@ -39,7 +39,7 @@
             <button wire:click="openWifiModal" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:bg-indigo-900/50 border border-indigo-200 rounded-lg text-sm font-semibold transition-colors">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">wifi</span> Ganti WiFi
             </button>
-            <livewire:acs.device.wan-manager :device="$device" />
+            @livewire(\App\Livewire\ACS\Device\WanManager::class, ['device' => $device])
             <button wire:click="rebootDevice" wire:confirm="Yakin ingin merestart modem ini dari jarak jauh?" class="inline-flex items-center justify-center px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/50 border border-amber-200 rounded-lg text-sm font-semibold transition-colors">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">restart_alt</span> Reboot
             </button>
