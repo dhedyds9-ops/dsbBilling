@@ -1,0 +1,93 @@
+<div>
+    <button wire:click="openModal" class="inline-flex items-center justify-center px-4 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:bg-purple-900/50 border border-purple-200 rounded-lg text-sm font-semibold transition-colors">
+        <span class="material-symbols-outlined notranslate mr-2" translate="no" style="font-size:18px">settings_ethernet</span>
+        Pengaturan Lanjutan
+    </button>
+
+    @if($showWanModal)
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" x-data="{ init() { $wire.loadWans() } }">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Manajemen Koneksi WAN & Binding</h3>
+                <button wire:click="$set('showWanModal', false)" class="text-slate-400 hover:text-slate-600 dark:text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no">close</span>
+                </button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto">
+                @if(session()->has('error'))
+                    <div class="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/30 dark:text-red-400">
+                        {{ session('error') }}
+                    </div>
+                @endif
+                @if(session()->has('success'))
+                    <div class="p-3 mb-4 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/30 dark:text-green-400">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
+                @if($isLoading)
+                    <div class="flex flex-col items-center justify-center py-12">
+                        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
+                        <p class="text-slate-500">Menyinkronkan data WAN dengan GenieACS...</p>
+                    </div>
+                @else
+                    <div class="mb-4 flex justify-between items-center">
+                        <h4 class="font-semibold text-slate-700 dark:text-slate-300">Daftar Koneksi WAN Aktif</h4>
+                        <button class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded shadow hover:bg-indigo-700" title="Fitur Tambah WAN Sedang Dalam Pengembangan">
+                            + Tambah WAN Baru
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <table class="w-full text-sm text-left text-slate-500 dark:text-slate-400">
+                            <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700/50 dark:text-slate-300">
+                                <tr>
+                                    <th class="px-4 py-3">Nama Koneksi</th>
+                                    <th class="px-4 py-3">Tipe</th>
+                                    <th class="px-4 py-3 text-center">VLAN</th>
+                                    <th class="px-4 py-3 text-center">NAT</th>
+                                    <th class="px-4 py-3">Keterangan</th>
+                                    <th class="px-4 py-3 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($wanConnections as $wan)
+                                <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                    <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{{ $wan['name'] }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                                            {{ $wan['type'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-center font-mono text-xs">{{ $wan['vlan'] ?? '-' }}</td>
+                                    <td class="px-4 py-3 text-center">
+                                        @if($wan['nat'])
+                                            <span class="text-emerald-500 material-symbols-outlined text-sm" translate="no">check_circle</span>
+                                        @else
+                                            <span class="text-slate-300 material-symbols-outlined text-sm" translate="no">cancel</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-xs">
+                                        {{ $wan['username'] ? 'User: ' . $wan['username'] : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium" title="Fitur Edit Sedang Dalam Pengembangan">Edit / Binding</button>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                        Tidak ada koneksi WAN yang terdeteksi atau format tidak didukung (Bukan TR-098).
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
