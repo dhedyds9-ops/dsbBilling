@@ -25,7 +25,120 @@
 
         {{-- TOOLBAR & FILTER --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div class="flex items-center justify-end gap-2">
+        <div x-data="{ open: false }" class="relative inline-block text-left">
+            <div>
+                <button @click="open = !open" type="button" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm shadow-primary-500/20">
+                    <span class="material-symbols-outlined notranslate" style="font-size:20px" translate="no">manage_accounts</span>
+                    Manajemen Vendor
+                    <span class="material-symbols-outlined notranslate" style="font-size:20px" translate="no">expand_more</span>
+                </button>
+            </div>
+            <div x-show="open" @click.away="open = false" x-transition class="origin-top-left absolute left-0 mt-2 w-64 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
+                <div class="py-1">
+                    <a href="{{ route('isp.vendors.create') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">add</span>
+                        Tambah Vendor
+                    </a>
+                </div>
+                <div class="py-1">
+                    <button
+                        type="button"
+                        wire:click="confirmBulkDelete"
+                        wire:loading.attr="disabled"
+                        @if(empty($selectedVendors)) disabled @endif
+                        class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedVendors)) text-gray-300 cursor-not-allowed @else text-red-600 hover:bg-red-50 dark:bg-red-900/30 @endif">
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">delete</span>
+                        Hapus Yang Dipilih
+                        <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
+                    </button>
+                </div>
+                <div class="py-1">
+                    <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
+                    <button type="button" wire:click="export" class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">download</span>
+                        Export Vendor
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="flex-1 relative sm:w-64">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="search"
+                       placeholder="Cari nama vendor..."
+                       class="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+            </div>
+            <select wire:model.live="filters.status" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <option value="">Semua Status</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+            </select>
+            <select wire:model.live="perPage" class="hidden sm:block pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <option value="10">10 Baris</option>
+                <option value="25">25 Baris</option>
+                <option value="50">50 Baris</option>
+                <option value="100">100 Baris</option>
+            </select>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer ml-1 bg-slate-50 dark:bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+                Sampah
+            </label>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900/50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left">
+                            <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Vendor</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kode</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kontak</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    @forelse($vendors as $vendor)
+                        <tr wire:key="{{ $vendor->id }}" class="hover:bg-gray-50 dark:bg-gray-900/50 transition-colors @if($vendor->trashed()) bg-red-50 dark:bg-red-900/30 @endif">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="checkbox" wire:model.live="selectedVendors" value="{{ $vendor->id }}" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500" @if($vendor->trashed()) disabled @endif />
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if($vendor->trashed())
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900/50 text-red-800">Dihapus</span>
+                                @else
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $vendor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200' }}">
+                                        {{ $vendor->status === 'active' ? 'Aktif' : 'Nonaktif' }}
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                    <a href="{{ route('isp.vendors.show', $vendor->id) }}" class="hover:text-primary-600 transition-colors">
+                                        {{ $vendor->name }}
+                                    </a>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="font-mono text-sm text-gray-900 dark:text-gray-100">{{ $vendor->code }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $vendor->contact_person ?? '-' }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ $vendor->email ?? '-' }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex items-center justify-end gap-2">
                                     <a href="{{ route('isp.vendors.show', $vendor->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-gray-50 hover:bg-blue-50 dark:bg-gray-800 dark:hover:bg-blue-900/30 rounded-md transition-colors" title="Detail">
                                         <span class="material-symbols-outlined notranslate" style="font-size: 18px;" translate="no">visibility</span>
                                     </a>
