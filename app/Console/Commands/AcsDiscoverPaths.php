@@ -13,7 +13,7 @@ class AcsDiscoverPaths extends Command
     public function handle()
     {
         $sn = $this->argument('sn');
-        $device = ACSDevice::where('serial_number', $sn)->first();
+        $device = ACSDevice::where('serial_number', 'LIKE', '%' . trim($sn) . '%')->first();
         if (!$device) {
             $this->error("Device with SN {$sn} not found in database.");
             return;
