@@ -1681,7 +1681,7 @@
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([odc.latitude, odc.longitude]);
 
-                        var distanceStr = calculatePolylineDistanceMeters(pathPoints);
+                        var distanceRaw = calculatePolylineDistanceMeters(pathPoints); var distanceStr = (distanceRaw !== null && distanceRaw > 0) ? formatDistance(distanceRaw) : null;
                         
                         var poly;
                         if (L.polyline && L.polyline.antPath) {
@@ -1725,7 +1725,7 @@
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([odp.latitude, odp.longitude]);
 
-                        var distanceStr = calculatePolylineDistanceMeters(pathPoints);
+                        var distanceRaw = calculatePolylineDistanceMeters(pathPoints); var distanceStr = (distanceRaw !== null && distanceRaw > 0) ? formatDistance(distanceRaw) : null;
                         
                         var poly;
                         if (L.polyline && L.polyline.antPath) {
@@ -1774,7 +1774,7 @@
                                 opacity: 0.8,
                                 dashArray: '5, 5'
                             }).addTo(lines);
-                            var distanceStr = calculatePolylineDistanceMeters(pathPoints); if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
+                            var distanceRaw = calculatePolylineDistanceMeters(pathPoints); var distanceStr = (distanceRaw !== null && distanceRaw > 0) ? formatDistance(distanceRaw) : null; if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
 
                             if (editMode) {
                                 poly.on('click', function(e) {
@@ -1799,7 +1799,7 @@
                                 opacity: 0.8,
                                 dashArray: '5, 5'
                             }).addTo(lines);
-                            var distanceStr = calculatePolylineDistanceMeters(pathPoints); if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
+                            var distanceRaw = calculatePolylineDistanceMeters(pathPoints); var distanceStr = (distanceRaw !== null && distanceRaw > 0) ? formatDistance(distanceRaw) : null; if (distanceStr) poly.bindTooltip(distanceStr, {permanent: true, direction: 'center', className: 'distance-tooltip text-[10px] font-bold bg-white/70 px-1 py-0 border-none shadow-none rounded text-gray-800'});
 
                             if (editMode) {
                                 poly.on('click', function(e) {
@@ -1841,7 +1841,7 @@
                         (waypoints[key] || []).forEach(function(p){ pathPoints.push([p.lat, p.lng]); });
                         pathPoints.push([customer.latitude, customer.longitude]);
                         
-                        var distanceStr = calculatePolylineDistanceMeters(pathPoints);
+                        var distanceRaw = calculatePolylineDistanceMeters(pathPoints); var distanceStr = (distanceRaw !== null && distanceRaw > 0) ? formatDistance(distanceRaw) : null;
 
                         var poly;
                         if (isOnline && L.polyline && L.polyline.antPath) {
@@ -3427,4 +3427,5 @@
 </script>
 @endpush
 </div>
+
 
