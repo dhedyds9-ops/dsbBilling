@@ -63,16 +63,45 @@ class Index extends BaseACSComponent
                     $deviceId = $deviceData['_id'] ?? null;
                     if (!$deviceId) continue;
 
-                $mac = $deviceData['VirtualParameters']['pppoeMac']['_value'] ??
-                       $deviceData['VirtualParameters']['PonMac']['_value'] ??
-                       $deviceData['InternetGatewayDevice']['WANDevice'][1]['WANConnectionDevice'][1]['WANPPPConnection'][1]['MACAddress']['_value'] ?? 
-                       $deviceData['Device']['WANDevice'][1]['WANConnectionDevice'][1]['WANPPPConnection'][1]['MACAddress']['_value'] ?? null;
-                       
+                // Dynamic IP & MAC Extraction
+                $ip = null;
+                $mac = null;
+                $wanDevices = $deviceData['InternetGatewayDevice']['WANDevice'] ?? $deviceData['Device']['WANDevice'] ?? [];
+                if (is_array($wanDevices)) {
+                    foreach ($wanDevices as $wdIdx => $wdNode) {
+                        if ($wdIdx === '_object' || !is_array($wdNode)) continue;
+                        $connDevices = $wdNode['WANConnectionDevice'] ?? [];
+                        if (is_array($connDevices)) {
+                            foreach ($connDevices as $cdIdx => $connNode) {
+                                if ($cdIdx === '_object' || !is_array($connNode)) continue;
+                                
+                                $pppConns = $connNode['WANPPPConnection'] ?? [];
+                                if (is_array($pppConns)) {
+                                    foreach ($pppConns as $pIdx => $ppp) {
+                                        if ($pIdx === '_object' || !is_array($ppp)) continue;
+                                        if (!empty($ppp['ExternalIPAddress']['_value'])) $ip = $ip ?: $ppp['ExternalIPAddress']['_value'];
+                                        if (!empty($ppp['MACAddress']['_value'])) $mac = $mac ?: $ppp['MACAddress']['_value'];
+                                    }
+                                }
+                                
+                                $ipConns = $connNode['WANIPConnection'] ?? [];
+                                if (is_array($ipConns)) {
+                                    foreach ($ipConns as $iIdx => $ipc) {
+                                        if ($iIdx === '_object' || !is_array($ipc)) continue;
+                                        if (!empty($ipc['ExternalIPAddress']['_value'])) $ip = $ip ?: $ipc['ExternalIPAddress']['_value'];
+                                        if (!empty($ipc['MACAddress']['_value'])) $mac = $mac ?: $ipc['MACAddress']['_value'];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                $mac = $mac ?? $deviceData['VirtualParameters']['pppoeMac']['_value'] ?? $deviceData['VirtualParameters']['PonMac']['_value'] ?? null;
+                $ip = $ip ?? $deviceData['VirtualParameters']['pppoeIP']['_value'] ?? null;
+                
                 $model = $deviceData['_deviceId']['_ProductClass'] ?? 
                          $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? null;
-                         
-                $ip = $deviceData['VirtualParameters']['pppoeIP']['_value'] ??
-                      $deviceData['InternetGatewayDevice']['WANDevice'][1]['WANConnectionDevice'][1]['WANPPPConnection'][1]['ExternalIPAddress']['_value'] ?? null;
                 
                 $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
                               $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;

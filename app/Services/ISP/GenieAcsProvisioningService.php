@@ -16,6 +16,26 @@ class GenieAcsProvisioningService
     }
 
     public const DEFAULT_PROVISIONS = [
+        'dsBilling_Telemetry' => [
+            'weight' => 5,
+            'script' => <<<'JS'
+// dsBilling telemetry provision (runs on every inform to fetch important diagnostics)
+const now = Date.now();
+declare("InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower", {value: now});
+declare("Device.Optical.1.Transceiver.RxPower", {value: now});
+
+// Refresh LAN Hosts periodically
+declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.MACAddress", {value: now});
+declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.IPAddress", {value: now});
+declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.HostName", {value: now});
+declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.Active", {value: now});
+JS,
+        ],
         'dsBilling_DefaultWifi' => [
             'weight' => 10,
             'script' => <<<'JS'
