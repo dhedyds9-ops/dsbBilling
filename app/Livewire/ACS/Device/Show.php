@@ -12,6 +12,7 @@ class Show extends AdminComponent
 
     public $wifiSsid = '';
     public $wifiPassword = '';
+    public $wifiSecurity = 'WPA2PSK';
     public $showWifiModal = false;
     public $connectedDevices = [];
     public $deviceStatus = [];
