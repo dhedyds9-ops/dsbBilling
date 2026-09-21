@@ -4,128 +4,164 @@
 @endsection
 
 <div class="space-y-5 pb-10">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex gap-3">
-            <button wire:click="$toggle('showFilters')" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
-                Filter
-            </button>
-            <button wire:click="create" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Tambah Asset
-            </button>
+
+    {{-- SESSION FLASH --}}
+    @if(session('success'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+            {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+            {{ session('error') }}
+        </div>
+    @endif
+
+    {{-- KPI CARDS --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {{-- Total --}}
+        <div class="relative overflow-x-auto rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-md bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-indigo-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">inventory_2</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">Total</h3>
+                <div class="text-4xl font-black text-indigo-700 dark:text-indigo-300 mb-3">{{ number_format($stats['total']) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">semua aset</div>
+            </div>
+        </div>
+        
+        {{-- In Use --}}
+        <div wire:click="$set('filters.status','in_use')" class="relative overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-emerald-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">check_circle</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2">In Use</h3>
+                <div class="text-4xl font-black text-emerald-700 dark:text-emerald-300 mb-3">{{ number_format($stats['in_use']) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">sedang digunakan</div>
+            </div>
+        </div>
+
+        {{-- Available --}}
+        <div wire:click="$set('filters.status','available')" class="relative overflow-x-auto rounded-xl border border-blue-200 dark:border-blue-800/60 shadow-md bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-blue-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">inbox</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-2">Available</h3>
+                <div class="text-4xl font-black text-blue-700 dark:text-blue-300 mb-3">{{ number_format($stats['available']) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">tersedia di gudang</div>
+            </div>
+        </div>
+
+        {{-- Maintenance --}}
+        <div wire:click="$set('filters.status','maintenance')" class="relative overflow-x-auto rounded-xl border border-amber-200 dark:border-amber-800/60 shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-400 rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 text-amber-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">build</span>
+            </div>
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest mb-2">Maintenance</h3>
+                <div class="text-4xl font-black text-amber-700 dark:text-amber-300 mb-3">{{ number_format($stats['maintenance']) }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">sedang perbaikan</div>
+            </div>
         </div>
     </div>
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <x-base.card class="bg-gradient-to-br from-indigo-500 to-indigo-600 border-none text-white">
-            <div class="text-indigo-100 text-sm font-medium">Total Asset</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <div class="text-3xl font-bold">{{ $stats['total'] }}</div>
+    {{-- TOOLBAR & FILTER --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+            <button wire:click="create" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
+                Tambah Asset
+            </button>
+        </div>
+        
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="flex-1 relative sm:w-64">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="filters.search"
+                       placeholder="Cari kode, nama, SN..."
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
             </div>
-        </x-base.card>
-        <x-base.card class="bg-white dark:bg-slate-800">
-            <div class="text-slate-500 dark:text-slate-400 text-sm font-medium">In Use</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <div class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['in_use'] }}</div>
-            </div>
-        </x-base.card>
-        <x-base.card class="bg-white dark:bg-slate-800">
-            <div class="text-slate-500 dark:text-slate-400 text-sm font-medium">Available</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <div class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['available'] }}</div>
-            </div>
-        </x-base.card>
-        <x-base.card class="bg-white dark:bg-slate-800">
-            <div class="text-slate-500 dark:text-slate-400 text-sm font-medium">Maintenance</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <div class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['maintenance'] }}</div>
-            </div>
-        </x-base.card>
-        <x-base.card class="bg-white dark:bg-slate-800">
-            <div class="text-slate-500 dark:text-slate-400 text-sm font-medium">Retired</div>
-            <div class="mt-2 flex items-baseline gap-2">
-                <div class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ $stats['retired'] }}</div>
-            </div>
-        </x-base.card>
+            <select wire:model.live="filters.status" class="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <option value="all">Semua Status</option>
+                <option value="in_use">In Use</option>
+                <option value="available">Available</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="retired">Retired</option>
+            </select>
+            <select wire:model.live="perPage" class="hidden sm:block px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <option value="15">15 Baris</option>
+                <option value="25">25 Baris</option>
+                <option value="50">50 Baris</option>
+                <option value="100">100 Baris</option>
+            </select>
+        </div>
     </div>
 
-    {{-- Filters --}}
-    @if(isset($showFilters) && $showFilters)
-        <x-base.card>
-            <div class="p-4">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cari</label>
-                        <input type="text" wire:model.live.debounce.300ms="filters.search" placeholder="Nama, Kode, atau SN..." class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-slate-100">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
-                        <select wire:model.live="filters.status" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-slate-100">
-                            <option value="all">Semua Status</option>
-                            <option value="in_use">In Use</option>
-                            <option value="available">Available</option>
-                            <option value="maintenance">Maintenance</option>
-                            <option value="retired">Retired</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </x-base.card>
-    @endif
-
     {{-- Data Table --}}
-    <x-base.card :padding="false">
-        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-            <table class="w-full">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
                 <thead>
-                    <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Kode & Nama</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">SN / Mac</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Vendor / Kategori</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Tanggal Pembelian</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80">
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Kode & Nama</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">SN / Mac</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Vendor / Kategori</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Tgl Pembelian</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                     @forelse($assets as $asset)
-                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300">
-                            <td class="px-6 py-4">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <td class="px-4 py-3">
                                 <div class="font-medium text-slate-900 dark:text-slate-100">{{ $asset->name }}</div>
                                 <div class="text-xs text-slate-500">{{ $asset->code }}</div>
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-3">
                                 <div class="text-sm font-mono">{{ $asset->serial_number ?: '-' }}</div>
                                 <div class="text-xs text-slate-500">{{ $asset->mac_address }}</div>
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-3">
                                 <div class="text-sm">{{ $asset->vendor ? $asset->vendor->name : '-' }}</div>
                                 <div class="text-xs text-slate-500">{{ $asset->category_id ?: '-' }}</div>
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                    @if($asset->status === 'in_use') bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-emerald-400
-                                    @elseif($asset->status === 'available') bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400
-                                    @elseif($asset->status === 'maintenance') bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400
-                                    @else bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider 
+                                    @if($asset->status === 'in_use') bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400
+                                    @elseif($asset->status === 'available') bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400
+                                    @elseif($asset->status === 'maintenance') bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400
+                                    @else bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400
                                     @endif
                                 ">
+                                    <span class="w-1.5 h-1.5 rounded-full 
+                                        @if($asset->status === 'in_use') bg-emerald-500
+                                        @elseif($asset->status === 'available') bg-indigo-500
+                                        @elseif($asset->status === 'maintenance') bg-amber-500
+                                        @else bg-slate-500
+                                        @endif
+                                    "></span>
                                     {{ ucfirst(str_replace('_', ' ', $asset->status)) }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-sm">{{ $asset->purchase_date ? \Carbon\Carbon::parse($asset->purchase_date)->format('d/m/Y') : '-' }}</td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-2">
-                                    <button wire:click="edit('{{ $asset->id }}')" class="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                            <td class="px-4 py-3 text-sm">{{ $asset->purchase_date ? \Carbon\Carbon::parse($asset->purchase_date)->format('d/m/Y') : '-' }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex justify-end gap-1">
+                                    <button wire:click="edit('{{ $asset->id }}')" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Edit">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </button>
-                                    <button wire:click="delete('{{ $asset->id }}')" wire:confirm="Yakin ingin menghapus aset ini?" class="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                                    <button wire:click="delete('{{ $asset->id }}')" wire:confirm="Yakin ingin menghapus aset ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Hapus">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>
@@ -133,7 +169,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="6" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 mb-2" translate="no" style="font-size:48px">inventory_2</span>
                                 <p class="text-lg">Belum ada data asset</p>
                             </td>
@@ -148,7 +184,7 @@
                 {{ $assets->links() }}
             </div>
         @endif
-    </x-base.card>
+    </div>
 
     {{-- MODAL CREATE / EDIT --}}
     @if($isModalOpen)
@@ -233,5 +269,7 @@
     </div>
     @endif
 </div>
+
+
 
 

@@ -23,26 +23,20 @@
         @endif
     </div>
 
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+        {{-- TOOLBAR & FILTER --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div x-data="{ open: false }" class="relative inline-block text-left">
             <div>
                 <button @click="open = !open" type="button" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm shadow-primary-500/20">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
+                    <span class="material-symbols-outlined notranslate" style="font-size:20px" translate="no">manage_accounts</span>
                     Manajemen Vendor
-                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <span class="material-symbols-outlined notranslate" style="font-size:20px" translate="no">expand_more</span>
                 </button>
             </div>
-            <div x-show="open" @click.away="open = false" x-transition class="origin-top-right absolute right-0 mt-2 w-64 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
+            <div x-show="open" @click.away="open = false" x-transition class="origin-top-left absolute left-0 mt-2 w-64 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
                 <div class="py-1">
                     <a href="{{ route('isp.vendors.create') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">add</span>
                         Tambah Vendor
                     </a>
                 </div>
@@ -53,9 +47,7 @@
                         wire:loading.attr="disabled"
                         @if(empty($selectedVendors)) disabled @endif
                         class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedVendors)) text-gray-300 cursor-not-allowed @else text-red-600 hover:bg-red-50 dark:bg-red-900/30 @endif">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">delete</span>
                         Hapus Yang Dipilih
                         <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
                     </button>
@@ -63,96 +55,42 @@
                 <div class="py-1">
                     <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
                     <button type="button" wire:click="export" class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">download</span>
                         Export Vendor
                     </button>
                 </div>
-                <div class="py-1">
-                    <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
-                    <button
-                        type="button"
-                        wire:click="bulkActivate"
-                        wire:loading.attr="disabled"
-                        @if(empty($selectedVendors)) disabled @endif
-                        class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedVendors)) text-gray-300 cursor-not-allowed @else text-green-600 hover:bg-green-50 dark:bg-green-900/30 @endif">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Aktifkan Yang Dipilih
-                        <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                    </button>
-                    <button
-                        type="button"
-                        wire:click="bulkDeactivate"
-                        wire:loading.attr="disabled"
-                        @if(empty($selectedVendors)) disabled @endif
-                        class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedVendors)) text-gray-300 cursor-not-allowed @else text-orange-600 hover:bg-orange-50 @endif">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
-                        Nonaktifkan Yang Dipilih
-                        <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                    </button>
-                </div>
             </div>
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="flex-1 relative sm:w-64">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="search"
+                       placeholder="Cari nama vendor..."
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+            </div>
+            <select wire:model.live="filters.status" class="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <option value="">Semua Status</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+            </select>
+            <select wire:model.live="perPage" class="hidden sm:block px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <option value="10">10 Baris</option>
+                <option value="25">25 Baris</option>
+                <option value="50">50 Baris</option>
+                <option value="100">100 Baris</option>
+            </select>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer ml-1 bg-slate-50 dark:bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+                Sampah
+            </label>
         </div>
     </div>
 
-    <!-- Selected Counter -->
-    @if(!empty($selectedVendors))
-        <div class="mb-3 flex items-center gap-2">
-            <span class="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-medium">
-                {{ count($selectedVendors) }} Vendor Dipilih
-            </span>
-            <button wire:click="selectedVendors = []; selectAll = false" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-300">
-                Batal Pilih
-            </button>
-        </div>
-    @endif
-
-    <!-- Toolbar -->
-    <x-base.card class="mb-3">
-        <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <!-- Search -->
-            <div class="w-full lg:w-1/3">
-                <label for="search" class="sr-only">Search</label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                    <input wire:model.live.debounce.300ms="search" type="text" class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-slate-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all dark:bg-slate-900 dark:text-slate-100" placeholder="Cari nama vendor..." />
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="flex items-center gap-3 flex-wrap">
-                <div>
-                    <select wire:model.live="filters.status" class="block w-full pl-3 pr-10 py-2.5 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-lg transition-all dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">Semua Status</option>
-                        <option value="active">Aktif</option>
-                        <option value="inactive">Nonaktif</option>
-                    </select>
-                </div>
-                <!-- Show Trashed Toggle -->
-                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
-                    Tampilkan Vendor Dihapus
-                </label>
-                <button wire:click="resetFilters" class="p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-800 rounded-lg transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </x-base.card>
-
-    <!-- Table -->
-    <x-base.card class="overflow-hidden">
+    <!-- Data Table -->
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-900/50">
@@ -313,7 +251,7 @@
                 {{ $vendors->links() }}
             </div>
         @endif
-    </x-base.card>
+    </div>
 
     <!-- Delete Confirmation Modal -->
     @if($showDeleteModal)
@@ -354,3 +292,4 @@
         </div>
     @endif
 </div>
+
