@@ -79,23 +79,23 @@ class MapApiController extends Controller
                 $model = $id ? Odc::find($id) : new Odc();
                 if ($model) {
                     $model->name = $request->input('name');
-                    $model->olt_id = $request->input('olt_id');
-                    $model->address = $request->input('area');
-                    if (!$id) $model->code = $request->input('cable_no') ?: $request->input('name');
-                    $model->description = "PON Port: " . $request->input('pon_port') . " | Color: " . $request->input('color');
-                    if (!$model->port_count) $model->port_count = 144;
+                    $model->code = $request->input('code') ?: $request->input('name');
+                    $model->address = $request->input('address');
+                    $model->description = $request->input('description');
+                    $model->port_count = $request->input('port_count') ?: 144;
+                    if ($request->has('olt_id')) $model->olt_id = $request->input('olt_id');
                 }
                 break;
             case 'odp':
                 $model = $id ? Odp::find($id) : new Odp();
                 if ($model) {
                     $model->name = $request->input('name');
-                    $model->odc_id = $request->input('odc_id');
-                    $model->address = $request->input('kampung');
-                    if (!$id) $model->code = $request->input('name');
-                    $model->description = "Color: " . $request->input('color') . " | ODC Port: " . $request->input('odc_port');
-                    if (!$model->split_ratio) $model->split_ratio = 8;
-                    if (!$model->port_count) $model->port_count = 8;
+                    $model->code = $request->input('code') ?: $request->input('name');
+                    $model->address = $request->input('address');
+                    $model->description = $request->input('description');
+                    $model->port_count = $request->input('port_count') ?: 8;
+                    $model->split_ratio = $request->input('split_ratio') ?: 8;
+                    if ($request->has('odc_id')) $model->odc_id = $request->input('odc_id');
                 }
                 break;
             case 'htb':
@@ -103,8 +103,11 @@ class MapApiController extends Controller
                     $model = $id ? DistributionBox::find($id) : new DistributionBox();
                     if ($model) {
                         $model->name = $request->input('name');
-                        $model->odp_id = $request->input('odp_id') ?: null;
-                        if (!$id) $model->code = $request->input('name');
+                        $model->code = $request->input('code') ?: $request->input('name');
+                        $model->address = $request->input('address');
+                        $model->description = $request->input('description');
+                        $model->port_count = $request->input('port_count') ?: 8;
+                        if ($request->has('odp_id')) $model->odp_id = $request->input('odp_id') ?: null;
                     }
                 }
                 break;
@@ -113,9 +116,10 @@ class MapApiController extends Controller
                     $model = $id ? JointClosure::find($id) : new JointClosure();
                     if ($model) {
                         $model->name = $request->input('name');
-                        $model->odc_id = $request->input('odc_id');
+                        $model->code = $request->input('code') ?: $request->input('name');
+                        $model->address = $request->input('address');
                         $model->description = $request->input('description');
-                        if (!$id) $model->code = $request->input('name');
+                        if ($request->has('odc_id')) $model->odc_id = $request->input('odc_id');
                     }
                 }
                 break;

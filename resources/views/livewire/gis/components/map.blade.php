@@ -93,37 +93,17 @@
                         <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_name" name="name" required>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="odc_pon_port" class="form-label">{{ __('Port PON') }}</label>
-                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_pon_port" name="pon_port" required placeholder="e.g. 01">
-                        </div>
+                        
                         <div class="col-md-6 mb-3">
                             <label for="odc_area" class="form-label">{{ __('Area') }}</label>
-                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_area" name="area" required placeholder="e.g. CI">
+                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_address" name="address" required placeholder="e.g. CI">
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="odc_color" class="form-label">{{ __('Warna Tube / Fiber') }}</label>
-                            <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odc_color" name="color" required>
-                                <option value="">{{ __('Pilih Warna') }}</option>
-                                <option value="BLUE" data-code="B">Blue (Biru)</option>
-                                <option value="ORANGE" data-code="O">Orange (Oranye)</option>
-                                <option value="GREEN" data-code="G">Green (Hijau)</option>
-                                <option value="BROWN" data-code="C">Brown (Coklat)</option>
-                                <option value="SLATE" data-code="S">Slate (Abu-abu)</option>
-                                <option value="WHITE" data-code="P">White (Putih)</option>
-                                <option value="RED" data-code="M">Red (Merah)</option>
-                                <option value="BLACK" data-code="H">Black (Hitam)</option>
-                                <option value="YELLOW" data-code="K">Yellow (Kuning)</option>
-                                <option value="VIOLET" data-code="U">Violet (Ungu)</option>
-                                <option value="ROSE" data-code="P">Rose (Pink)</option>
-                                <option value="AQUA" data-code="T">Aqua (Tosca)</option>
-                            </select>
-                        </div>
+                        
                         <div class="col-md-6 mb-3">
                             <label for="odc_cable_no" class="form-label">{{ __('No Kabel') }}</label>
-                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_cable_no" name="cable_no" required placeholder="e.g. 01">
+                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_code" name="code" required placeholder="e.g. 01">
                         </div>
                     </div>
                     <div class="row">
@@ -138,7 +118,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="odc_capacity" class="form-label">{{ __('Kapasitas') }}</label>
-                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_capacity" name="capacity" value="48" required>
+                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odc_port_count" name="port_count" value="48" required>
                     </div>
                     <div class="mb-3">
                         <label for="odc_olt" class="form-label">{{ __('OLT') }}</label>
@@ -180,7 +160,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="odp_kampung" class="form-label">{{ __('Kampung') }}</label>
-                        <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_kampung" name="kampung" required>
+                        <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_address" name="address" required>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -194,17 +174,9 @@
                     </div>
                     <div class="mb-3">
                         <label for="odp_capacity" class="form-label">{{ __('Kapasitas') }}</label>
-                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_capacity" name="capacity" value="8" required>
+                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_port_count" name="port_count" value="8" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="odp_region" class="form-label">{{ __('Wilayah') }}</label>
-                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odp_region" name="region_id">
-                            <option value="">{{ __('Pilih Wilayah') }}</option>
-                            @foreach($regions as $region)
-                                <option value="{{ $region->id }}">{{ $region->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    
                     <div class="mb-3">
                         <label for="odp_odc" class="form-label">{{ __('Uplink ODC') }}</label>
                         <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odp_odc" name="odc_id">
@@ -214,23 +186,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="odp_color" class="form-label">{{ __('Warna Uplink') }}</label>
-                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odp_color" name="color">
-                            <option value="#0000FF" style="color: blue;">Blue (Biru)</option>
-                            <option value="#FFA500" style="color: orange;">Orange (Oranye)</option>
-                            <option value="#008000" style="color: green;">Green (Hijau)</option>
-                            <option value="#A52A2A" style="color: brown;">Brown (Coklat)</option>
-                            <option value="#808080" style="color: grey;">Slate (Abu-abu)</option>
-                            <option value="#FFFFFF" style="background-color: #ddd;">White (Putih)</option>
-                            <option value="#FF0000" style="color: red;">Red (Merah)</option>
-                            <option value="#000000">Black (Hitam)</option>
-                            <option value="#FFFF00" style="background-color: #333; color: yellow;">Yellow (Kuning)</option>
-                            <option value="#EE82EE" style="color: violet;">Violet (Ungu)</option>
-                            <option value="#FFC0CB" style="color: pink; background-color: #333;">Rose (Merah Muda)</option>
-                            <option value="#40E0D0" style="color: turquoise; background-color: #333;">Aqua (Tosca)</option>
-                        </select>
-                    </div>
+                    
                     <div class="mb-3">
                         <label for="odp_description" class="form-label">{{ __('Deskripsi') }}</label>
                         <textarea class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_description" name="description"></textarea>
@@ -335,7 +291,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="closure_capacity" class="form-label">{{ __('Kapasitas') }}</label>
-                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="closure_capacity" name="capacity" value="24" required>
+                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="closure_capacity" name="port_count" value="24" required>
                     </div>
                     <div class="mb-3">
                         <label for="closure_region" class="form-label">{{ __('Wilayah') }}</label>
@@ -2950,15 +2906,15 @@
                 document.getElementById('odc_name').value = odc.name;
                 document.getElementById('odc_lat').value = odc.latitude;
                 document.getElementById('odc_lng').value = odc.longitude;
-                document.getElementById('odc_capacity').value = odc.capacity;
+                document.getElementById('odc_port_count').value = odc.port_count || '';
                 document.getElementById('odc_olt').value = odc.olt_id;
                 document.getElementById('odc_description').value = odc.description || '';
                 
                 // New Fields
-                document.getElementById('odc_pon_port').value = odc.pon_port || '';
-                document.getElementById('odc_area').value = odc.area || '';
-                document.getElementById('odc_color').value = odc.color || '';
-                document.getElementById('odc_cable_no').value = odc.cable_no || '';
+                
+                document.getElementById('odc_address').value = odc.address || '';
+                
+                document.getElementById('odc_code').value = odc.code || '';
 
                 document.getElementById('odcModalLabel').innerText = '{{ __('Edit ODC') }}';
                 var odcModal = new bootstrap.Modal(document.getElementById('odcModal'));
@@ -2973,14 +2929,14 @@
                 document.getElementById('odp_name').value = odp.name;
                 document.getElementById('odp_lat').value = odp.latitude;
                 document.getElementById('odp_lng').value = odp.longitude;
-                document.getElementById('odp_capacity').value = odp.capacity;
+                document.getElementById('odp_port_count').value = odp.port_count || '';
                 document.getElementById('odp_region').value = odp.region_id;
                 document.getElementById('odp_odc').value = odp.odc_id;
                 document.getElementById('odp_color').value = odp.color || '#fd7e14';
                 document.getElementById('odp_description').value = odp.description || '';
                 
                 // New Fields
-                document.getElementById('odp_kampung').value = odp.kampung || '';
+                document.getElementById('odp_address').value = odp.address || '';
 
                 document.getElementById('odpModalLabel').innerText = '{{ __('Edit ODP') }}';
                 var odpModal = new bootstrap.Modal(document.getElementById('odpModal'));
@@ -3427,5 +3383,6 @@
 </script>
 @endpush
 </div>
+
 
 
