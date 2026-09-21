@@ -122,7 +122,7 @@ class Show extends AdminComponent
             // Find WAN IP & MAC dynamically by scanning TR-098 WANDevice
             $wanIp = null;
             $wanMac = null;
-            $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? [];
+            $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? $params['Device']['WANDevice'] ?? [];
             if (is_array($wanDevices)) {
                 foreach ($wanDevices as $wdIndex => $wdNode) {
                     if (!is_numeric($wdIndex) || !is_array($wdNode)) continue;

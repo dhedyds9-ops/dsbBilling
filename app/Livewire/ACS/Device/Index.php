@@ -88,25 +88,31 @@ class Index extends BaseACSComponent
                 $serialNumber = $deviceData['_deviceId']['_SerialNumber'] ?? 
                                 $deviceData['InternetGatewayDevice']['DeviceInfo']['SerialNumber']['_value'] ?? $deviceId;
 
-                $firmware = $deviceData['InternetGatewayDevice']['DeviceInfo']['SoftwareVersion']['_value'] ??
-                            $deviceData['Device']['DeviceInfo']['SoftwareVersion']['_value'] ?? null;
-                            
-                $hardware = $deviceData['InternetGatewayDevice']['DeviceInfo']['HardwareVersion']['_value'] ??
-                            $deviceData['Device']['DeviceInfo']['HardwareVersion']['_value'] ?? null;
+                $extract = function($path) use ($deviceData) {
+                    $parts = explode('.', $path);
+                    $node = $deviceData;
+                    foreach ($parts as $p) {
+                        if (!is_array($node) || !array_key_exists($p, $node)) return null;
+                        $node = $node[$p];
+                    }
+                    return isset($node['_value']) ? $node['_value'] : null;
+                };
 
-                $pppoeUsername = $deviceData['VirtualParameters']['pppoeUsername']['_value'] ?? 
-                                 $deviceData['InternetGatewayDevice']['WANDevice'][1]['WANConnectionDevice'][1]['WANPPPConnection'][1]['Username']['_value'] ?? 
-                                 $deviceData['Device']['WANDevice'][1]['WANConnectionDevice'][1]['WANPPPConnection'][1]['Username']['_value'] ?? null;
+                $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion');
+                $hardware = $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion') ?? $extract('Device.DeviceInfo.HardwareVersion');
+                
+                $pppoeUsername = $extract('VirtualParameters.pppoeUsername') ?? 
+                                 $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username') ?? 
+                                 $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username');
 
-                $rxPower = $deviceData['InternetGatewayDevice']['WANDevice'][1]['X_FH_GponInterfaceConfig']['RXPower']['_value']
-                        ?? $deviceData['InternetGatewayDevice']['WANDevice'][1]['X_ZTE-COM_WANPONInterfaceConfig']['RXPower']['_value']
-                        ?? $deviceData['InternetGatewayDevice']['WANDevice'][1]['X_HW_PONInterfaceConfig']['RXPower']['_value']
-                        ?? $deviceData['VirtualParameters']['RXPower']['_value']
-                        ?? $deviceData['InternetGatewayDevice']['WANDevice'][1]['WANPONInterfaceConfig'][1]['X_ZTE-COM_RxPower']['_value'] 
-                        ?? $deviceData['InternetGatewayDevice']['WANDevice'][1]['WANPONInterfaceConfig'][1]['X_HW_RxPower']['_value'] 
-                        ?? $deviceData['InternetGatewayDevice']['WANDevice'][1]['WANEponInterfaceConfig'][1]['RxPower']['_value']
-                        ?? $deviceData['Device']['Optical'][1]['Transceiver']['RxPower']['_value']
-                        ?? null;
+                $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
+                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
+                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
+                        ?? $extract('VirtualParameters.RXPower')
+                        ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower') 
+                        ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower') 
+                        ?? $extract('InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower')
+                        ?? $extract('Device.Optical.1.Transceiver.RxPower');
                 
                 if ($rxPower !== null && is_numeric($rxPower)) {
                     $rxPower = (float)$rxPower;
@@ -128,6 +134,7 @@ class Index extends BaseACSComponent
                     'status' => $status,
                     'last_inform' => $lastInform,
                     'firmware_version' => $firmware,
+                    'software_version' => $firmware,
                     'hardware_version' => $hardware,
                     'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
                     'oui' => $deviceData['_deviceId']['_OUI'] ?? null,
