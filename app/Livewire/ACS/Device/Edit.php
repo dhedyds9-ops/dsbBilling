@@ -114,14 +114,49 @@ class Edit extends BaseACSComponent
             $newStatus = $this->acs_online ? 'online' : 'offline';
             $this->status = $newStatus;
 
-            // === IP ADDRESS ===
-            // Coba ambil dari berbagai path TR-069/TR-181
-            $ip = $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress')
-                ?? $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress')
-                ?? $extract('VirtualParameters.pppoeIP')
-                ?? $extract('VirtualParameters.IPTR069')
-                ?? $extract('Device.DHCPv4.Client.1.IPAddress')
-                ?? $extract('Device.IP.Interface.1.IPv4Address.1.IPAddress');
+            // === IP & MAC ADDRESS (Smart Dynamic Extraction) ===
+            $ip = null;
+            $mac = null;
+            $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? $params['Device']['WANDevice'] ?? [];
+            if (is_array($wanDevices)) {
+                foreach ($wanDevices as $wdNode) {
+                    if (!is_array($wdNode)) continue;
+                    $connDevices = $wdNode['WANConnectionDevice'] ?? [];
+                    if (is_array($connDevices)) {
+                        foreach ($connDevices as $connNode) {
+                            if (!is_array($connNode)) continue;
+                            
+                            $pppConns = $connNode['WANPPPConnection'] ?? [];
+                            if (is_array($pppConns)) {
+                                foreach ($pppConns as $ppp) {
+                                    if (is_array($ppp) && !empty($ppp['ExternalIPAddress']['_value'])) {
+                                        $ip = $ppp['ExternalIPAddress']['_value'];
+                                    }
+                                    if (is_array($ppp) && !empty($ppp['MACAddress']['_value'])) {
+                                        $mac = $ppp['MACAddress']['_value'];
+                                    }
+                                }
+                            }
+                            
+                            $ipConns = $connNode['WANIPConnection'] ?? [];
+                            if (is_array($ipConns)) {
+                                foreach ($ipConns as $ipc) {
+                                    if (is_array($ipc) && !empty($ipc['ExternalIPAddress']['_value'])) {
+                                        $ip = $ip ?: $ipc['ExternalIPAddress']['_value'];
+                                    }
+                                    if (is_array($ipc) && !empty($ipc['MACAddress']['_value'])) {
+                                        $mac = $mac ?: $ipc['MACAddress']['_value'];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback
+            $ip = $ip ?? $extract('VirtualParameters.pppoeIP') ?? $extract('Device.DHCPv4.Client.1.IPAddress');
+            $mac = $mac ?? $extract('VirtualParameters.pppoeMac') ?? $extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress');
 
             if ($ip && $ip !== '0.0.0.0') {
                 $this->acs_ip_address = $ip;
@@ -129,14 +164,6 @@ class Edit extends BaseACSComponent
             } else {
                 $this->acs_ip_address = $this->ip_address ?: '-';
             }
-
-            // === MAC ADDRESS ===
-            // Coba ambil dari berbagai path TR-069/TR-181
-            $mac = $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.MACAddress')
-                ?? $extract('VirtualParameters.pppoeMac')
-                ?? $extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress')
-                ?? $extract('Device.Ethernet.Interface.1.MACAddress')
-                ?? $extract('Device.WiFi.SSID.1.MACAddress');
 
             if ($mac) {
                 $this->acs_mac_address = strtoupper($mac);

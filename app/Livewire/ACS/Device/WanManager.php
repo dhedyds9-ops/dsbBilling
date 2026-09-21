@@ -12,6 +12,16 @@ class WanManager extends Component
     public $wanConnections = [];
     public $isLoading = false;
 
+    // Form Edit State
+    public $isEditing = false;
+    public $editFullPath = '';
+    public $formName = '';
+    public $formType = '';
+    public $formVlan = '';
+    public $formNat = false;
+    public $formUsername = '';
+    public $formPassword = '';
+
     public function mount(ACSDevice $device)
     {
         $this->device = $device;
@@ -143,11 +153,94 @@ class WanManager extends Component
             'username' => $username,
             'service_list' => $serviceList,
             'port_bind' => $portBind,
+            'fullPath' => $fullPath,
         ];
     }
 
     public function render()
     {
         return view('livewire.acs.device.wan-manager');
+    }
+
+    public function editWan($fullPath)
+    {
+        $wan = collect($this->wanConnections)->firstWhere('fullPath', $fullPath);
+        if (!$wan) {
+            session()->flash('error', 'Koneksi WAN tidak ditemukan.');
+            return;
+        }
+
+        $this->isEditing = true;
+        $this->editFullPath = $fullPath;
+        $this->formName = $wan['name'];
+        $this->formType = $wan['type'];
+        $this->formVlan = $wan['vlan'] ?? '';
+        $this->formNat = $wan['nat'] ? true : false;
+        $this->formUsername = $wan['username'] ?? '';
+        $this->formPassword = ''; // Password selalu kosong demi keamanan
+    }
+
+    public function cancelEdit()
+    {
+        $this->isEditing = false;
+        $this->editFullPath = '';
+    }
+
+    public function saveWan()
+    {
+        if (!$this->editFullPath) return;
+
+        $parameters = [];
+
+        // Note: For ZTE, VLAN is often in X_ZTE-COM_VLANIDMark at the parent WANConnectionDevice level
+        // Path Example: InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1
+        $pathParts = explode('.', $this->editFullPath);
+        array_pop($pathParts); array_pop($pathParts);
+        $parentPath = implode('.', $pathParts); // InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1
+
+        $vendor = strtolower($this->device->vendor->name ?? '');
+
+        // === Username & Password (Only for PPPoE) ===
+        if ($this->formType === 'PPPoE') {
+            if (!empty($this->formUsername)) {
+                $parameters[] = ["{$this->editFullPath}.Username", $this->formUsername, 'xsd:string'];
+            }
+            if (!empty($this->formPassword)) {
+                $parameters[] = ["{$this->editFullPath}.Password", $this->formPassword, 'xsd:string'];
+            }
+        }
+
+        // === NAT ===
+        $parameters[] = ["{$this->editFullPath}.NATEnabled", $this->formNat ? true : false, 'xsd:boolean'];
+
+        // === VLAN ===
+        if ($this->formVlan !== '') {
+            $vlanId = (int) $this->formVlan;
+            if (strpos($vendor, 'zte') !== false) {
+                $parameters[] = ["{$parentPath}.X_ZTE-COM_VLANIDMark", $vlanId, 'xsd:unsignedInt'];
+            } elseif (strpos($vendor, 'huawei') !== false || strpos($vendor, 'ecomtech') !== false) {
+                $parameters[] = ["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN", $vlanId, 'xsd:unsignedInt'];
+            } elseif (strpos($vendor, 'fiberhome') !== false) {
+                $parameters[] = ["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark", $vlanId, 'xsd:unsignedInt'];
+            } else {
+                // Generic fallback if standard VLANID is supported directly
+                $parameters[] = ["{$this->editFullPath}.VLANID", $vlanId, 'xsd:unsignedInt'];
+            }
+        }
+
+        try {
+            $driver = new GenieACSDriver();
+            $success = $driver->setParameterValues($this->device->uuid, $parameters);
+
+            if ($success) {
+                session()->flash('success', 'Task pembaruan WAN berhasil dikirim ke perangkat. Perubahan akan berlaku sebentar lagi.');
+                $this->isEditing = false;
+                $this->loadWans(); // Reload
+            } else {
+                session()->flash('error', 'Gagal mengirim task pembaruan WAN ke GenieACS.');
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error: ' . $e->getMessage());
+        }
     }
 }

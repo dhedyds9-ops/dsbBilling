@@ -78,7 +78,7 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-right">
-                                        <button class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium" title="Fitur Edit Sedang Dalam Pengembangan">Edit / Binding</button>
+                                        <button wire:click="editWan('{{ $wan['fullPath'] }}')" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Edit Profil</button>
                                     </td>
                                 </tr>
                                 @empty
@@ -91,6 +91,53 @@
                             </tbody>
                         </table>
                     </div>
+
+                    @if($isEditing)
+                    <div class="mt-6 border border-slate-200 dark:border-slate-700 rounded-lg p-5 bg-slate-50 dark:bg-slate-800/50" id="wanEditForm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size: 20px;">edit_square</span>
+                                Edit WAN: {{ $formName }}
+                            </h4>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                {{ $formType }}
+                            </span>
+                        </div>
+
+                        <form wire:submit.prevent="saveWan" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- VLAN & NAT -->
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">VLAN ID</label>
+                                    <input type="number" wire:model="formVlan" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-sm focus:ring-2 focus:ring-indigo-500" placeholder="Kosongkan jika Untagged">
+                                </div>
+                                <div class="flex items-end pb-2">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" wire:model="formNat" class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600">
+                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Aktifkan NAT (Internet)</span>
+                                    </label>
+                                </div>
+
+                                <!-- Credentials (PPPoE only) -->
+                                @if($formType === 'PPPoE')
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Username PPPoE</label>
+                                    <input type="text" wire:model="formUsername" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-sm focus:ring-2 focus:ring-indigo-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Password PPPoE</label>
+                                    <input type="password" wire:model="formPassword" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-sm focus:ring-2 focus:ring-indigo-500" placeholder="Kosongkan jika tidak ingin mengubah password">
+                                </div>
+                                @endif
+                            </div>
+
+                            <div class="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
+                                <button type="button" wire:click="cancelEdit" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600">Batal</button>
+                                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded shadow hover:bg-indigo-700">Simpan Perubahan & Kirim ke ACS</button>
+                            </div>
+                        </form>
+                    </div>
+                    @endif
                 @endif
             </div>
         </div>
