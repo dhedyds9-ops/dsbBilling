@@ -209,7 +209,7 @@ class GenieACSDriver
                 if ($type === 'xsd:unsignedInt' && str_contains($path, 'SSID')) {
                     $type = 'xsd:string';
                 }
-                $parameterValues[] = ['name' => $path, 'value' => $value, 'type' => $type];
+                $parameterValues[] = [$path, $value, $type];
             }
             if (count($parameterValues) === 0) {
                 return false;
