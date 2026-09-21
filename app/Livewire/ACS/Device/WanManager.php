@@ -71,7 +71,8 @@ class WanManager extends Component
                 if (is_array($ppp)) {
                     foreach ($ppp as $pIndex => $pNode) {
                         if (!is_numeric($pIndex) || !is_array($pNode)) continue;
-                        $wans[] = $this->extractWanData($pNode, 'PPPoE', "$wdIndex.$cdIndex.$pIndex");
+                        $fullPath = "InternetGatewayDevice.WANDevice.$wdIndex.WANConnectionDevice.$cdIndex.WANPPPConnection.$pIndex";
+                        $wans[] = $this->extractWanData($pNode, 'PPPoE', "$wdIndex.$cdIndex.$pIndex", $fullPath);
                     }
                 }
 
@@ -80,7 +81,8 @@ class WanManager extends Component
                 if (is_array($ip)) {
                     foreach ($ip as $iIndex => $iNode) {
                         if (!is_numeric($iIndex) || !is_array($iNode)) continue;
-                        $wans[] = $this->extractWanData($iNode, 'IPoE', "$wdIndex.$cdIndex.$iIndex");
+                        $fullPath = "InternetGatewayDevice.WANDevice.$wdIndex.WANConnectionDevice.$cdIndex.WANIPConnection.$iIndex";
+                        $wans[] = $this->extractWanData($iNode, 'IPoE', "$wdIndex.$cdIndex.$iIndex", $fullPath);
                     }
                 }
             }
@@ -88,7 +90,7 @@ class WanManager extends Component
         return $wans;
     }
 
-    private function extractWanData($node, $type, $pathIndex)
+    private function extractWanData($node, $type, $pathIndex, $fullPath = '')
     {
         // Extract basic data
         $name = $node['Name']['_value'] ?? "WAN $pathIndex";

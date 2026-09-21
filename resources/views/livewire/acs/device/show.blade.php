@@ -137,6 +137,14 @@
                         <span class="text-slate-500 dark:text-slate-400">Last Inform</span>
                         <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->last_inform?->format('d/m/Y H:i') ?? '-' }}</span>
                     </div>
+                    <div class="p-3 flex justify-between bg-indigo-50/50 dark:bg-indigo-900/10">
+                        <span class="text-slate-500 dark:text-slate-400 font-medium">WAN IP</span>
+                        <span class="font-bold text-indigo-700 dark:text-indigo-400">{{ $deviceStatus['wan_ip'] ?? '-' }}</span>
+                    </div>
+                    <div class="p-3 flex justify-between bg-indigo-50/50 dark:bg-indigo-900/10">
+                        <span class="text-slate-500 dark:text-slate-400 font-medium">WAN MAC</span>
+                        <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">{{ $deviceStatus['wan_mac'] ?? '-' }}</span>
+                    </div>
                 </div>
             </div>
         </div>

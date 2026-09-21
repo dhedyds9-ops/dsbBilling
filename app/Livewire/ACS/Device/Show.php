@@ -71,23 +71,42 @@ class Show extends AdminComponent
             };
 
             // Common TR-069 Paths for PON
-            $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
+            $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
+                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
+                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
                     ?? $extract('VirtualParameters.RXPower')
                     ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower') 
+                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower') 
                     ?? $extract('InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower')
                     ?? $extract('Device.Optical.1.Transceiver.RxPower');
+                    
             if ($rxPower !== null && is_numeric($rxPower)) {
                 $rxPower = (float)$rxPower;
-                if ($rxPower > 1000 || $rxPower < -1000) $rxPower /= 1000;
+                // Fiberhome reports as -19.03, ZTE as -22.01 (already in dBm)
+                // If it's something like -22010, then divide by 1000
+                if ($rxPower < -500 || $rxPower > 500) {
+                    $rxPower /= 1000;
+                } elseif ($rxPower < -50 || $rxPower > 50) {
+                    $rxPower /= 100;
+                }
             }
 
-            $txPower = $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower')
+            $txPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower')
+                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower')
+                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower')
+                    ?? $extract('VirtualParameters.TXPower')
                     ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower')
+                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower')
                     ?? $extract('InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.TxPower')
                     ?? $extract('Device.Optical.1.Transceiver.TxPower');
+                    
             if ($txPower !== null && is_numeric($txPower)) {
                 $txPower = (float)$txPower;
-                if ($txPower > 1000 || $txPower < -1000) $txPower /= 1000;
+                if ($txPower < -500 || $txPower > 500) {
+                    $txPower /= 1000;
+                } elseif ($txPower < -50 || $txPower > 50) {
+                    $txPower /= 100;
+                }
             }
 
             // PPPoE
@@ -100,6 +119,49 @@ class Show extends AdminComponent
             $ssid1 = $extract('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID') ?? $extract('Device.WiFi.SSID.1.SSID');
             $ssid2 = $extract('InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID') ?? $extract('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID') ?? $extract('Device.WiFi.SSID.2.SSID');
 
+            // Find WAN IP & MAC dynamically by scanning TR-098 WANDevice
+            $wanIp = null;
+            $wanMac = null;
+            $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? [];
+            if (is_array($wanDevices)) {
+                foreach ($wanDevices as $wdIndex => $wdNode) {
+                    if (!is_numeric($wdIndex) || !is_array($wdNode)) continue;
+                    $connDevices = $wdNode['WANConnectionDevice'] ?? [];
+                    if (!is_array($connDevices)) continue;
+                    foreach ($connDevices as $cdIndex => $cdNode) {
+                        if (!is_numeric($cdIndex) || !is_array($cdNode)) continue;
+                        
+                        // Check PPPoE
+                        $ppp = $cdNode['WANPPPConnection'] ?? [];
+                        if (is_array($ppp)) {
+                            foreach ($ppp as $pIndex => $pNode) {
+                                if (!is_numeric($pIndex) || !is_array($pNode)) continue;
+                                if (isset($pNode['ExternalIPAddress']['_value']) && $pNode['ExternalIPAddress']['_value'] && $pNode['ExternalIPAddress']['_value'] !== '0.0.0.0') {
+                                    $wanIp = $pNode['ExternalIPAddress']['_value'];
+                                }
+                                if (isset($pNode['MACAddress']['_value']) && $pNode['MACAddress']['_value']) {
+                                    $wanMac = $pNode['MACAddress']['_value'];
+                                }
+                            }
+                        }
+                        
+                        // Check IPoE
+                        $ip = $cdNode['WANIPConnection'] ?? [];
+                        if (is_array($ip)) {
+                            foreach ($ip as $iIndex => $iNode) {
+                                if (!is_numeric($iIndex) || !is_array($iNode)) continue;
+                                if (isset($iNode['ExternalIPAddress']['_value']) && $iNode['ExternalIPAddress']['_value'] && $iNode['ExternalIPAddress']['_value'] !== '0.0.0.0') {
+                                    $wanIp = $iNode['ExternalIPAddress']['_value'];
+                                }
+                                if (isset($iNode['MACAddress']['_value']) && $iNode['MACAddress']['_value']) {
+                                    $wanMac = $iNode['MACAddress']['_value'];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             $this->deviceStatus = [
                 'rx_power' => $rxPower !== null ? round($rxPower, 2) . ' dBm' : '-',
                 'tx_power' => $txPower !== null ? round($txPower, 2) . ' dBm' : '-',
@@ -107,6 +169,8 @@ class Show extends AdminComponent
                 'pppoe_password' => $pppoePass ?: '-',
                 'ssid_1' => $ssid1 ?: '-',
                 'ssid_2' => $ssid2 ?: '-',
+                'wan_ip' => $wanIp ?: '-',
+                'wan_mac' => $wanMac ?: '-',
             ];
         } catch (\Exception $e) {
             $this->deviceStatus = [];
