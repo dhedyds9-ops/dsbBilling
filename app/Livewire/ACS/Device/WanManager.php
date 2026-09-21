@@ -84,10 +84,21 @@ class WanManager extends Component
         // Find VLAN ID (usually inside WANEthernetLinkConfig of the parent WANConnectionDevice)
         // But for UI display simplicity, we can fetch it if it's stored inside the node (ZTE sometimes puts it in X_ZTE-COM_VLANID)
         // For now, we'll try common paths
-        $vlan = $node['X_BROADCOM_COM_VLANID']['_value'] ?? 
+        $vlan = $node['VLANID']['_value'] ??
+                $node['X_BROADCOM_COM_VLANID']['_value'] ?? 
                 $node['X_ZTE-COM_VLANID']['_value'] ?? 
                 $node['X_HW_VLAN']['_value'] ?? 
                 null;
+                
+        $serviceList = $node['X_FH_ServiceList']['_value'] ?? 
+                       $node['X_ZTE-COM_ServiceList']['_value'] ?? 
+                       $node['X_HW_ServiceList']['_value'] ?? 
+                       '-';
+                       
+        $portBind = $node['X_FH_LanInterface']['_value'] ?? 
+                    $node['X_ZTE-COM_PortBind']['_value'] ?? 
+                    $node['X_HW_LANBinding']['_value'] ?? 
+                    '';
                 
         // Username for PPPoE
         $username = $node['Username']['_value'] ?? null;
@@ -99,6 +110,8 @@ class WanManager extends Component
             'nat' => $nat,
             'vlan' => $vlan,
             'username' => $username,
+            'service_list' => $serviceList,
+            'port_bind' => $portBind,
         ];
     }
 

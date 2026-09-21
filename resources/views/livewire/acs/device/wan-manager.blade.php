@@ -69,7 +69,13 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-xs">
-                                        {{ $wan['username'] ? 'User: ' . $wan['username'] : '-' }}
+                                        @if($wan['username'])
+                                            <div><span class="font-semibold">User:</span> {{ $wan['username'] }}</div>
+                                        @endif
+                                        <div><span class="font-semibold">Service:</span> {{ $wan['service_list'] }}</div>
+                                        @if($wan['port_bind'])
+                                            <div class="truncate max-w-[200px]" title="{{ $wan['port_bind'] }}"><span class="font-semibold">Bind:</span> {{ $wan['port_bind'] }}</div>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-right">
                                         <button class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium" title="Fitur Edit Sedang Dalam Pengembangan">Edit / Binding</button>
