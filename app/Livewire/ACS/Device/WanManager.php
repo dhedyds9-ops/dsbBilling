@@ -28,6 +28,19 @@ class WanManager extends Component
         try {
             $driver = new GenieACSDriver();
             $params = $driver->getDeviceParameters($this->device->uuid);
+
+        // Pre-process ZTE Port Bindings
+        $this->zteBindings = [];
+        if (isset($params['InternetGatewayDevice']['X_ZTE-COM_PortBinding']) && is_array($params['InternetGatewayDevice']['X_ZTE-COM_PortBinding'])) {
+            foreach ($params['InternetGatewayDevice']['X_ZTE-COM_PortBinding'] as $key => $bindingNode) {
+                if ($key === '_object' || !is_array($bindingNode)) continue;
+                $wanIf = $bindingNode['WANInterface']['_value'] ?? '';
+                $lanIf = $bindingNode['LANInterface']['_value'] ?? '';
+                if ($wanIf && $lanIf) {
+                    $this->zteBindings[$wanIf] = $lanIf;
+                }
+            }
+        }
             $vendor = strtolower($this->device->vendor ?? 'default');
             
             $this->wanConnections = $this->parseWanConnections($params, $vendor);
@@ -101,6 +114,8 @@ class WanManager extends Component
             $portBind = $node['X_FH_LanInterface']['_value'];
         } elseif (isset($node['X_ZTE-COM_PortBind']['_value'])) {
             $portBind = $node['X_ZTE-COM_PortBind']['_value'];
+        } elseif ($fullPath && isset($this->zteBindings[$fullPath])) {
+            $portBind = $this->zteBindings[$fullPath];
         } elseif (isset($node['X_HW_LANBinding']['_value'])) {
             $portBind = $node['X_HW_LANBinding']['_value'];
         } elseif (isset($node['X_HW_LANBIND']) && is_array($node['X_HW_LANBIND'])) {
