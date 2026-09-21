@@ -1,4 +1,4 @@
-﻿@section('page_title')
+@section('page_title')
     <div class="flex items-center gap-2">
         <a href="{{ route('isp.routers.index') }}" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Kembali">
             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">arrow_back</span>
@@ -132,3 +132,5 @@
         </form>
     </div>
 </div>
+
+

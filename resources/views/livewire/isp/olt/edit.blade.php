@@ -20,7 +20,19 @@
             {{ session('error') }}
         </div>
     @endif
-
+    @if ($errors->any())
+        <div class="flex items-start gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm">
+            <span class="material-symbols-outlined notranslate mt-0.5" translate="no" style="font-size:18px">error</span>
+            <div>
+                <p class="font-bold mb-1">Peringatan Validasi:</p>
+                <ul class="list-disc pl-4 space-y-0.5 text-red-600 dark:text-red-400">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div class="p-6">
         <form wire:submit.prevent="save" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -146,6 +158,7 @@
         </form>
     </div></div>
 </div>
+
 
 
 

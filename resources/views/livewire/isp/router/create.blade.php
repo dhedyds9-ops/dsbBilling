@@ -23,6 +23,16 @@
                 {{ session('info') }}
             </x-feedback.alert>
         @endif
+        @if ($errors->any())
+            <x-feedback.alert variant="danger">
+                <strong>Peringatan Validasi:</strong>
+                <ul class="list-disc pl-5 mt-1">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </x-feedback.alert>
+        @endif
     </div>
 
     @section('page_title')
@@ -154,3 +164,5 @@
     </div>
 </div>
 </div>
+
+
