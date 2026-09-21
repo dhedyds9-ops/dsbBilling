@@ -75,6 +75,18 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
+### D. Keamanan SSL / HTTPS (Let's Encrypt)
+Untuk mengamankan password login admin Anda, **sangat disarankan** memasang SSL/HTTPS untuk Web UI. Namun, **biarkan domain CWMP tetap menggunakan HTTP biasa**.
+
+Kenapa CWMP dibiarkan HTTP? Karena banyak modem (ONT) lawas atau *firmware* bawaan yang memiliki masalah kompatibilitas sertifikat SSL. Jika Anda memaksa HTTPS di CWMP, jutaan modem jadul berisiko terputus dari server.
+
+Untuk memasang SSL di Web UI menggunakan Certbot:
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d acs.domainanda.com
+```
+Ikuti instruksi di layar, dan web UI Anda akan otomatis memiliki gembok hijau (HTTPS).
+
 ---
 
 ## 4. Konfigurasi Port Forwarding (Mikrotik NAT)
