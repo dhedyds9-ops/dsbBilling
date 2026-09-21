@@ -103,6 +103,7 @@ class MenuRegistry
                             ['label' => 'Data OLT', 'route' => 'isp.olts.index', 'active' => 'isp.olts.*'],
                             ['label' => 'Data ODC', 'route' => 'isp.odcs.index', 'active' => 'isp.odcs.*'],
                             ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*'],
+                            ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*'],
                             ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
                         ]
                     ],
@@ -226,6 +227,7 @@ class MenuRegistry
                         'label' => 'Inventory',
                         'icon' => 'inventory',
                         'items' => [
+                            ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*'],
                             ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
                         ]
                     ]
@@ -461,6 +463,7 @@ class MenuRegistry
         return $filtered;
     }
 }
+
 
 
 

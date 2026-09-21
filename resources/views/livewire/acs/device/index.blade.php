@@ -88,6 +88,7 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">MAC Address</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Model / Vendor</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">IP Address</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Optical Power</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Software Ver.</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
                     </tr>
@@ -118,6 +119,20 @@
                                     @endif
                                 @endif
                             </td>
+                            <td class="px-4 py-3 font-mono text-xs">
+                                @if($device->signal)
+                                    @php
+                                        $sigVal = (float) $device->signal;
+                                        $sigColor = "text-slate-500 dark:text-slate-400";
+                                        if ($sigVal < -27) $sigColor = "text-rose-600 dark:text-rose-400 font-bold";
+                                        elseif ($sigVal < -24) $sigColor = "text-amber-600 dark:text-amber-400 font-bold";
+                                        elseif ($sigVal <= -8 && $sigVal != 0) $sigColor = "text-emerald-600 dark:text-emerald-400 font-bold";
+                                    @endphp
+                                    <span class="{{ $sigColor }}">{{ $device->signal }} dBm</span>
+                                @else
+                                    <span class="text-slate-400">-</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3">{{ $device->software_version ?? '-' }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-1">
@@ -135,7 +150,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-12 text-center">
+                            <td colspan="8" class="px-4 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
                                     <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">router</span>
                                     <div class="text-sm font-medium text-slate-900 dark:text-slate-100">Belum ada data Device</div>
