@@ -493,24 +493,7 @@ class GenieACSDriver
         ]);
     }
 
-    public function setParameterValues(string $deviceId, array $parameters): bool
-    {
-        try {
-            // $parameters should be an array of arrays: [ ["Path.To.Param", "Value", "xsd:string"], ... ]
-            $payload = [
-                'name' => 'setParameterValues',
-                'parameterValues' => $parameters
-            ];
-            $response = \Illuminate\Support\Facades\Http::withBasicAuth($this->username, $this->password)
-                ->timeout($this->timeout)
-                ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
-            return $response->successful();
-        } catch (\Exception $e) {
-            report($e);
-            return false;
-        }
-    }
+
 
     public function updateWifiSsidAndPassword(string $deviceId, string $ssid, ?string $password = null, string $vendor = 'default'): bool
     {

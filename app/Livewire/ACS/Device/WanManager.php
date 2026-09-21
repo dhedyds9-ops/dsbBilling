@@ -203,28 +203,28 @@ class WanManager extends Component
         // === Username & Password (Only for PPPoE) ===
         if ($this->formType === 'PPPoE') {
             if (!empty($this->formUsername)) {
-                $parameters[] = ["{$this->editFullPath}.Username", $this->formUsername, 'xsd:string'];
+                $parameters["{$this->editFullPath}.Username"] = $this->formUsername;
             }
             if (!empty($this->formPassword)) {
-                $parameters[] = ["{$this->editFullPath}.Password", $this->formPassword, 'xsd:string'];
+                $parameters["{$this->editFullPath}.Password"] = $this->formPassword;
             }
         }
 
         // === NAT ===
-        $parameters[] = ["{$this->editFullPath}.NATEnabled", $this->formNat ? true : false, 'xsd:boolean'];
+        $parameters["{$this->editFullPath}.NATEnabled"] = $this->formNat ? true : false;
 
         // === VLAN ===
         if ($this->formVlan !== '') {
             $vlanId = (int) $this->formVlan;
             if (strpos($vendor, 'zte') !== false) {
-                $parameters[] = ["{$parentPath}.X_ZTE-COM_VLANIDMark", $vlanId, 'xsd:unsignedInt'];
+                $parameters["{$parentPath}.X_ZTE-COM_VLANIDMark"] = $vlanId;
             } elseif (strpos($vendor, 'huawei') !== false || strpos($vendor, 'ecomtech') !== false) {
-                $parameters[] = ["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN", $vlanId, 'xsd:unsignedInt'];
+                $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
             } elseif (strpos($vendor, 'fiberhome') !== false) {
-                $parameters[] = ["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark", $vlanId, 'xsd:unsignedInt'];
+                $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = $vlanId;
             } else {
                 // Generic fallback if standard VLANID is supported directly
-                $parameters[] = ["{$this->editFullPath}.VLANID", $vlanId, 'xsd:unsignedInt'];
+                $parameters["{$this->editFullPath}.VLANID"] = $vlanId;
             }
         }
 
