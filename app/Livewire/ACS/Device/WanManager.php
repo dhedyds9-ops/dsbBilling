@@ -93,12 +93,26 @@ class WanManager extends Component
         $serviceList = $node['X_FH_ServiceList']['_value'] ?? 
                        $node['X_ZTE-COM_ServiceList']['_value'] ?? 
                        $node['X_HW_ServiceList']['_value'] ?? 
+                       $node['X_HW_SERVICELIST']['_value'] ?? 
                        '-';
                        
-        $portBind = $node['X_FH_LanInterface']['_value'] ?? 
-                    $node['X_ZTE-COM_PortBind']['_value'] ?? 
-                    $node['X_HW_LANBinding']['_value'] ?? 
-                    '';
+        $portBind = '';
+        if (isset($node['X_FH_LanInterface']['_value'])) {
+            $portBind = $node['X_FH_LanInterface']['_value'];
+        } elseif (isset($node['X_ZTE-COM_PortBind']['_value'])) {
+            $portBind = $node['X_ZTE-COM_PortBind']['_value'];
+        } elseif (isset($node['X_HW_LANBinding']['_value'])) {
+            $portBind = $node['X_HW_LANBinding']['_value'];
+        } elseif (isset($node['X_HW_LANBIND']) && is_array($node['X_HW_LANBIND'])) {
+            $binds = [];
+            foreach ($node['X_HW_LANBIND'] as $k => $v) {
+                if ($k === '_object' || $k === '_writable' || $k === '_timestamp') continue;
+                if (isset($v['_value']) && ($v['_value'] == 1 || strtolower($v['_value']) == 'true')) {
+                    $binds[] = $k;
+                }
+            }
+            $portBind = implode(', ', $binds);
+        }
                 
         // Username for PPPoE
         $username = $node['Username']['_value'] ?? null;
