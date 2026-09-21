@@ -228,6 +228,28 @@ class GenieACSDriver
         }
     }
 
+    public function provisionPppoe(string $deviceId, string $username, string $password, ?string $vlanId = null): bool
+    {
+        try {
+            $payload = [
+                'name' => 'run_provision',
+                'provision' => 'dsBilling_Setup_WAN',
+                'args' => [$username, $password, $vlanId ?? ""]
+            ];
+            $response = Http::withBasicAuth($this->username, $this->password)
+                ->timeout($this->timeout)
+                ->asJson()
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+            if ($response->successful()) {
+                return true;
+            }
+            $body = (string)$response->body();
+            throw new Exception("provisionPppoe HTTP {$response->status()}: {$body}");
+        } catch (Exception $e) {
+            throw new Exception("GenieACS PPPoE Provisioning failed: " . $e->getMessage(), 0, $e);
+        }
+    }
+
     public function rebootDevice(string $deviceId): bool
     {
         try {

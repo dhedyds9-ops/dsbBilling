@@ -98,13 +98,32 @@ class ServiceProvisioningEngine
             // Update to PROVISIONING
             $customerService->update(['service_status' => 'PROVISIONING']);
 
-            // The actual parameter setting would be mapping-based
-            // e.g. mapping for ZTE F670L vs F609 vs FiberHome
-            // This is just a conceptual placeholder
-            // $mapping = OnuParameterMapping::where(...)->first();
-            // $acsDriver->setParameterValues(...);
+            // Get credentials from the database
+            $username = $customerService->username;
+            $password = $customerService->password;
+            $vlanId = $customerService->attributes['vlan_id'] ?? null;
 
-            // Mock successful TR-069 SetParameterValues call
+            // Trigger the smart Multi-Vendor WAN setup via GenieACS!
+            if ($username && $password && $onu->genieacs_device_id) {
+                try {
+                    $this->acsDriver->provisionPppoe(
+                        $onu->genieacs_device_id, 
+                        $username, 
+                        $password, 
+                        $vlanId
+                    );
+                    Log::info("Successfully sent PPPoE auto-config for {$username} to GenieACS.");
+                } catch (\Exception $e) {
+                    Log::error("Failed to provision PPPoE: " . $e->getMessage());
+                    return [
+                        'status' => 'ERROR',
+                        'message' => 'Gagal mengirim konfigurasi PPPoE ke ONT via TR-069: ' . $e->getMessage()
+                    ];
+                }
+            } else {
+                Log::warning("Skipping ACS PPPoE provision: Missing username/password or device_id.");
+            }
+
             // Crucial: Set to PENDING_VERIFICATION, not ACTIVE immediately
             $customerService->update([
                 'tr069_status' => 'PENDING_VERIFICATION'

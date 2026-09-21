@@ -75,6 +75,56 @@ if (mgmtUsers.path) {
 }
 JS,
         ],
+        'dsBilling_Setup_WAN' => [
+            'weight' => 40,
+            'script' => <<<'JS'
+let pppoeUser = args[0];
+let pppoePass = args[1];
+let vlanId = args[2];
+
+if (!pppoeUser || !pppoePass) {
+    return;
+}
+
+let brandDecl = declare("DeviceID.Manufacturer", {value: 1});
+let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
+let pppPath = "";
+let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
+
+if (wanDevices.size) {
+    for (let p of wanDevices) {
+        pppPath = p.path.replace(".Username", "");
+        break; 
+    }
+}
+
+if (pppPath !== "") {
+    declare(pppPath + ".Username", {value: Date.now()}, {value: pppoeUser});
+    declare(pppPath + ".Password", {value: Date.now()}, {value: pppoePass});
+    declare(pppPath + ".ConnectionTrigger", {value: Date.now()}, {value: "AlwaysOn"});
+}
+
+if (vlanId && pppPath !== "") {
+    let match = pppPath.match(/WANConnectionDevice\.(\d+)\./);
+    if (match) {
+        let wanIdx = match[1];
+        let vlanPath = "";
+        
+        if (brand.indexOf("ZTE") !== -1) {
+            vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_ZTE-COM_VLANID";
+        } else if (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== -1) {
+            vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".WANEthernetLinkConfig.X_HW_VLAN";
+        } else if (brand.indexOf("FiberHome") !== -1) {
+            vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_FH_WANGponLinkConfig.VLANIDMark";
+        }
+        
+        if (vlanPath !== "") {
+            declare(vlanPath, {value: Date.now()}, {value: parseInt(vlanId)});
+        }
+    }
+}
+JS,
+        ],
     ];
 
     public function publishDefaultProvisions(): array
