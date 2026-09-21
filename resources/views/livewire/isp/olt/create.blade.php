@@ -37,17 +37,17 @@
         <form wire:submit.prevent="save" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kode OLT</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kode OLT <span class="text-red-500">*</span></label>
                     <input type="text" wire:model="code" placeholder="Masukkan kode OLT" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     @error('code') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama OLT</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama OLT <span class="text-red-500">*</span></label>
                     <input type="text" wire:model="name" placeholder="Masukkan nama OLT" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POP</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POP <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                     <select wire:model="pop_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Pilih POP</option>
                         @foreach($pops as $pop)
@@ -56,7 +56,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Vendor</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Vendor <span class="text-red-500">*</span></label>
                     <select wire:model="vendor_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Pilih Vendor</option>
                         @foreach($vendors as $vendor)
@@ -65,23 +65,23 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                     <input type="text" wire:model="model" placeholder="Masukkan model" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Serial Number</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Serial Number <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                     <input type="text" wire:model="serial_number" placeholder="Masukkan serial number" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IP Address</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IP Address <span class="text-red-500">*</span></label>
                     <input type="text" wire:model="ip_address" placeholder="Masukkan IP address" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah Port</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah Port <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                     <input type="number" wire:model="port_count" placeholder="Masukkan jumlah port" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status <span class="text-red-500">*</span></label>
                     <select wire:model="status" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="active">Aktif</option>
                         <option value="inactive">Nonaktif</option>
@@ -90,7 +90,7 @@
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                 <textarea wire:model="description" rows="3" placeholder="Masukkan deskripsi OLT" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100"></textarea>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -119,11 +119,11 @@
                         <input type="number" wire:model="snmp_port" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Community (Read)</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Community (Read) <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                         <input type="text" wire:model="snmp_community_read" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Community (Write)</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SNMP Community (Write) <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                         <input type="text" wire:model="snmp_community_write" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     </div>
                 </div>
@@ -155,5 +155,6 @@
         </form>
     </div></div>
 </div>
+
 
 
