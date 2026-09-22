@@ -100,9 +100,24 @@ class LoginRequest extends FormRequest
                 $u = \App\Models\User::find($customerByCode->user_id);
                 if ($u) return $u;
             } else {
-                $u = \App\Models\User::whereRaw('LOWER(whatsapp) = ? OR LOWER(email) = ?', [
-                    mb_strtolower($customerByCode->phone), mb_strtolower($customerByCode->email)
-                ])->first();
+                // Auto-heal agressive (Phone 08 vs 62, Name, etc)
+                $cleanPhone = preg_replace('/[^0-9]/', '', (string)$customerByCode->phone);
+                $phone0 = $cleanPhone;
+                $phone62 = $cleanPhone;
+                if (str_starts_with($cleanPhone, '62')) $phone0 = '0' . substr($cleanPhone, 2);
+                elseif (str_starts_with($cleanPhone, '0')) $phone62 = '62' . substr($cleanPhone, 1);
+                
+                $u = \App\Models\User::where(function($q) use ($phone0, $phone62, $customerByCode) {
+                    if ($phone0 && $phone62) {
+                        $q->whereRaw('LOWER(whatsapp) IN (?, ?)', [$phone0, $phone62]);
+                    }
+                    if ($customerByCode->email) {
+                        $q->orWhereRaw('LOWER(email) = ?', [mb_strtolower($customerByCode->email)]);
+                    }
+                    $q->orWhereRaw('LOWER(name) = ?', [mb_strtolower($customerByCode->name)]);
+                })->whereHas('roles', function($q) {
+                    $q->where('name', 'customer');
+                })->first();
                 if ($u) {
                     $customerByCode->update(['user_id' => $u->id]);
                     return $u;
@@ -121,9 +136,23 @@ class LoginRequest extends FormRequest
                 $u = \App\Models\User::find($customer->user_id);
                 if ($u) return $u;
             } else {
-                $u = \App\Models\User::whereRaw('LOWER(whatsapp) = ? OR LOWER(email) = ?', [
-                    mb_strtolower($customer->phone), mb_strtolower($customer->email)
-                ])->first();
+                $cleanPhone = preg_replace('/[^0-9]/', '', (string)$customer->phone);
+                $phone0 = $cleanPhone;
+                $phone62 = $cleanPhone;
+                if (str_starts_with($cleanPhone, '62')) $phone0 = '0' . substr($cleanPhone, 2);
+                elseif (str_starts_with($cleanPhone, '0')) $phone62 = '62' . substr($cleanPhone, 1);
+                
+                $u = \App\Models\User::where(function($q) use ($phone0, $phone62, $customer) {
+                    if ($phone0 && $phone62) {
+                        $q->whereRaw('LOWER(whatsapp) IN (?, ?)', [$phone0, $phone62]);
+                    }
+                    if ($customer->email) {
+                        $q->orWhereRaw('LOWER(email) = ?', [mb_strtolower($customer->email)]);
+                    }
+                    $q->orWhereRaw('LOWER(name) = ?', [mb_strtolower($customer->name)]);
+                })->whereHas('roles', function($q) {
+                    $q->where('name', 'customer');
+                })->first();
                 if ($u) {
                     $customer->update(['user_id' => $u->id]);
                     return $u;
