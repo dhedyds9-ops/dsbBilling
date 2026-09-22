@@ -122,7 +122,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         @foreach($roles as $role)
                             <label class="relative flex cursor-pointer p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors {{ $selectedRoles == $role->id ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500 dark:border-indigo-500 ring-1 ring-indigo-500' : 'bg-white dark:bg-slate-800' }}">
-                                <input type="radio" wire:model="selectedRoles" value="{{ $role->id }}" class="sr-only">
+                                <input type="radio" wire:model.live="selectedRoles" value="{{ $role->id }}" class="sr-only">
                                 <div class="flex flex-col gap-1">
                                     <span class="text-sm font-bold text-slate-900 dark:text-white">{{ ucfirst($role->name) }}</span>
                                     <span class="text-xs text-slate-500 dark:text-slate-400">
