@@ -40,10 +40,10 @@ class Index extends AdminComponent
         $ownerId = auth()->id();
 
         $query = Customer::with([
-            'customerServices.serviceProfile',
-            'customerServices.service',
-            'customerServices.pppoeUser',
-            'customerServices.hotspotUser',
+            'customerServices' => function ($query) {
+                $query->withoutGlobalScope('branch_isolation')
+                      ->with(['serviceProfile', 'service', 'pppoeUser', 'hotspotUser']);
+            }
         ])->where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)
               ->orWhere('created_by', $ownerId);

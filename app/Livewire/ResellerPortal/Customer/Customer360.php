@@ -36,13 +36,12 @@ class Customer360 extends AdminComponent
     {
         if (!$this->customer) {
             $this->customer = \App\Models\CRM\Customer::with([
-                'customerServices.service',
-                'customerServices.serviceProfile',
-                'customerServices.onu.odp.odc',
-                'customerServices.onu.ponPort',
-                'customerServices.onu.olt',
-                'customerServices.pppoeUser',
-                'customerServices.hotspotUser',
+                'customerServices' => function ($query) {
+                    $query->withoutGlobalScope('branch_isolation')
+                          ->with([
+                              'service', 'serviceProfile', 'onu.odp.odc', 'onu.ponPort', 'onu.olt', 'pppoeUser', 'hotspotUser'
+                          ]);
+                },
                 'invoices',
                 'payments',
                 'contracts',
@@ -352,13 +351,12 @@ class Customer360 extends AdminComponent
         // Hydrate customer if not set
         if (!$this->customer) {
             $this->customer = \App\Models\CRM\Customer::with([
-                'customerServices.service',
-                'customerServices.serviceProfile',
-                'customerServices.onu.odp.odc',
-                'customerServices.onu.ponPort',
-                'customerServices.onu.olt',
-                'customerServices.pppoeUser',
-                'customerServices.hotspotUser',
+                'customerServices' => function ($query) {
+                    $query->withoutGlobalScope('branch_isolation')
+                          ->with([
+                              'service', 'serviceProfile', 'onu.odp.odc', 'onu.ponPort', 'onu.olt', 'pppoeUser', 'hotspotUser'
+                          ]);
+                },
                 'invoices',
                 'payments',
                 'contracts',
