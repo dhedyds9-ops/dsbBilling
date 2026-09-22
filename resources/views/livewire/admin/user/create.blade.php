@@ -146,43 +146,6 @@
                     <input type="checkbox" wire:model="is_active" id="is_active" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-600 dark:bg-slate-900 dark:text-slate-100">
                     <label for="is_active" class="text-sm font-medium text-slate-700 dark:text-slate-300">Akun Aktif</label>
                 </div>
-
-                <!-- Hak Akses (Permissions) -->
-                <div class="mt-8">
-                    <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-                        <span class="material-symbols-outlined notranslate text-amber-500" translate="no" style="font-size:18px">security</span>
-                        Hak Akses (Permission)
-                    </h3>
-                    <div class="flex items-center gap-3 mb-4">
-                        <button type="button" wire:click="checkAllPermissions" class="px-3 py-1.5 text-xs font-semibold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors">
-                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px;vertical-align:middle">check_box</span> Centang Semua
-                        </button>
-                        <button type="button" wire:click="uncheckAllPermissions" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px;vertical-align:middle">check_box_outline_blank</span> Hapus Semua
-                        </button>
-                    </div>
-
-                    <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
-                        @foreach($permissionsGrouped as $group => $permissions)
-                            <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-                                <button type="button" wire:click="toggleGroup('{{ $group }}')" class="flex items-center justify-between w-full text-left mb-3">
-                                    <span class="text-sm font-bold text-slate-900 dark:text-white">{{ $group }}</span>
-                                    <span class="text-xs text-slate-500 dark:text-slate-400">
-                                        {{ collect($permissions)->filter(fn($p) => in_array((string)$p->id, $selectedPermissions))->count() }}/{{ count($permissions) }}
-                                    </span>
-                                </button>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    @foreach($permissions as $permission)
-                                        <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                            <input type="checkbox" wire:model="selectedPermissions" value="{{ $permission->id }}" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-600">
-                                            <span class="text-xs text-slate-700 dark:text-slate-300">{{ $permission->display_name ?? $permission->name }}</span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
             </div>
             
             <div class="flex items-center justify-end gap-3 pt-6 mt-2 border-t border-slate-200 dark:border-slate-700">
