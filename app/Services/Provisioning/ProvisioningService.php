@@ -343,7 +343,7 @@ class ProvisioningService
                 $user->roles()->attach($role->id);
             }
 
-            $generatedCode = $data['customer_code'] ?? $user->customer_code ?? 'CUST-' . strtoupper(Str::random(8));
+            $generatedCode = $data['customer_code'] ?? $user->customer_code ?? \App\Services\CRM\CustomerCodeGenerator::generate();
             
             // Sync generated code back to user
             $user->update(['customer_code' => $generatedCode]);
