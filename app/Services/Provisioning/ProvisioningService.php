@@ -92,6 +92,7 @@ class ProvisioningService
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
+                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
                 'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
                 'attributes' => [
                     'name' => $data['name'],
@@ -233,6 +234,7 @@ class ProvisioningService
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
+                'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : null,
                 'activated_at' => isset($data['activation_date']) ? \Illuminate\Support\Carbon::parse($data['activation_date']) : now(),
                 'attributes' => [
                     'name' => $data['name'],
