@@ -414,7 +414,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
     });
 
     // ==================== RESELLER PORTAL ====================
-    Route::middleware(['role:reseller|administrator|manager'])->prefix('reseller-portal')->name('reseller-portal.')->group(function () {
+    Route::middleware(['role:reseller,administrator,manager'])->prefix('reseller-portal')->name('reseller-portal.')->group(function () {
         Route::get('/dashboard', \App\Livewire\ResellerPortal\Dashboard::class)->name('dashboard');
         
         // Placeholder routes for missing modules
