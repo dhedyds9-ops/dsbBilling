@@ -95,20 +95,20 @@
                 width: 100%;
             }
             .invoice-document {
-                background: #FFFFFF;
+                
                 width: 100%;
                 max-width: 210mm;
                 min-height: auto;
                 padding: 1.5rem;
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                 border-radius: 4px;
-                color: #111827;
+                
             }
         }
     </style>
 
     <!-- THE DOCUMENT -->
-    <article class="invoice-document relative overflow-hidden text-sm">
+    <article class="invoice-document relative overflow-hidden text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
         
         <!-- HEADER SECTION -->
         <header class="flex flex-row justify-between items-start gap-4  border-b border-slate-300 dark:border-slate-600 pb-4 mb-6">
