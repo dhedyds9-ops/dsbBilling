@@ -241,8 +241,6 @@ if ("{$vendor}".includes("zte")) {
 } else if ("{$vendor}".includes("fiberhome")) {
     declare(basePath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
     declare(basePath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
-} else if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
-    declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
 } else {
     declare(basePath + ".VLANID", {value: now}, {value: {$vlanId}});
 }
@@ -261,6 +259,11 @@ declare(pppPath + ".Name", {value: now}, {value: "dsBilling_" + connType + "_{$v
 
 if (!{$isPppoe}) {
     declare(pppPath + ".AddressingType", {value: now}, {value: "DHCP"});
+}
+
+if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
+    declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanId}});
+    declare(pppPath + ".X_HW_SERVICELIST", {value: now}, {value: "INTERNET"});
 }
 
 if ({$isPppoe}) {
@@ -317,7 +320,7 @@ modem terkonfigurasi.');
             if (strpos($vendor, 'zte') !== false) {
                 $parameters["{$parentPath}.X_ZTE-COM_VLANIDMark"] = $vlanId;
             } elseif (strpos($vendor, 'huawei') !== false || strpos($vendor, 'ecomtech') !== false) {
-                $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
+                $parameters["{$this->editFullPath}.X_HW_VLAN"] = $vlanId;
             } elseif (strpos($vendor, 'fiberhome') !== false) {
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = $vlanId;
             } else {
