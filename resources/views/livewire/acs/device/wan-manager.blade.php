@@ -34,7 +34,7 @@
                 @else
                     <div class="mb-4 flex justify-between items-center">
                         <h4 class="font-semibold text-slate-700 dark:text-slate-300">Daftar Koneksi WAN Aktif</h4>
-                        <button class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded shadow hover:bg-indigo-700" title="Fitur Tambah WAN Sedang Dalam Pengembangan">
+                        <button wire:click="createWan" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded shadow hover:bg-indigo-700">
                             + Tambah WAN Baru
                         </button>
                     </div>

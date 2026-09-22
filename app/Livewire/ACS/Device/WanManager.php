@@ -186,6 +186,97 @@ class WanManager extends Component
         $this->editFullPath = '';
     }
 
+    public function createWan()
+    {
+        $this->isEditing = false;
+        $this->isCreating = true;
+        $this->formType = 'PPPoE';
+        $this->formVlan = '';
+        $this->formUsername = '';
+        $this->formPassword = '';
+        $this->formNat = true;
+    }
+
+    public function cancelCreate()
+    {
+        $this->isCreating = false;
+    }
+
+    public function saveNewWan()
+    {
+        $this->validate([
+            'formType' => 'required|in:PPPoE,IP_Routed',
+        ]);
+        
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $vendor = strtolower($this->device->vendor->name ?? '');
+            
+            // Step 1: Tell GenieACS to run a custom provision script that adds the WAN dynamically
+            // This is 100x safer than guessing instance indexes via REST API
+            
+            $vlanId = (int) $this->formVlan;
+            $isPppoe = $this->formType === 'PPPoE' ? 'true' : 'false';
+            $natEnabled = $this->formNat ? 'true' : 'false';
+            $username = $this->formUsername;
+            $password = $this->formPassword;
+            
+            $script = <<<JS
+const now = Date.now();
+// Find next available WANConnectionDevice instance
+let wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*", {path: 1});
+let nextInst = 1;
+for (let p of wanConns) {
+    let parts = p.path.split(".");
+    let idx = parseInt(parts[parts.length - 1]);
+    if (idx >= nextInst) nextInst = idx + 1;
+}
+
+let basePath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + nextInst;
+declare(basePath, {path: 1}, {path: 1});
+
+// Vendor specific VLAN
+if ("{$vendor}".includes("zte")) {
+    declare(basePath + ".X_ZTE-COM_VLANIDMark", {value: now}, {value: {$vlanId}});
+} else if ("{$vendor}".includes("fiberhome")) {
+    declare(basePath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
+    declare(basePath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
+} else if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
+    declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
+} else {
+    declare(basePath + ".VLANID", {value: now}, {value: {$vlanId}});
+}
+
+// Add PPP Connection
+declare(basePath + ".WANPPPConnection.1", {path: 1}, {path: 1});
+let pppPath = basePath + ".WANPPPConnection.1";
+
+declare(pppPath + ".ConnectionType", {value: now}, {value: "PPPoE_Bridged"});
+declare(pppPath + ".NATEnabled", {value: now}, {value: {$natEnabled}});
+declare(pppPath + ".Enable", {value: now}, {value: true});
+declare(pppPath + ".Name", {value: now}, {value: "dsBilling_INTERNET_{$vlanId}"});
+
+if ({$isPppoe}) {
+    declare(pppPath + ".Username", {value: now}, {value: "{$username}"});
+    declare(pppPath + ".Password", {value: now}, {value: "{$password}"});
+}
+JS;
+
+            // Upsert a temporary provision
+            $provName = "temp_add_wan_" . $this->device->uuid;
+            $driver->upsertProvision($provName, $script);
+            
+            // Queue the provision task
+            $driver->addProvisionTask($this->device->uuid, $provName);
+            
+            session()->flash('success', 'Perintah pembuatan WAN berhasil dikirim ke GenieACS. Tunggu beberapa saat agar 
+modem terkonfigurasi.');
+            $this->isCreating = false;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal membuat WAN: ' . $e->getMessage());
+        }
+    }
+
     public function saveWan()
     {
         if (!$this->editFullPath) return;

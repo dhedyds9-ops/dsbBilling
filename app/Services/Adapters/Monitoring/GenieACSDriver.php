@@ -512,4 +512,19 @@ class GenieACSDriver
 
         return $this->setParameterValues($deviceId, $params);
     }
+
+    public function addProvisionTask(string $deviceId, string $provisionName): bool
+    {
+        try {
+            $payload = ['name' => 'provision', 'args' => ['provision' => $provisionName]];
+            $response = \Illuminate\Support\Facades\Http::withBasicAuth($this->username, $this->password)
+                ->timeout($this->timeout)
+                ->asJson()
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+            return $response->successful();
+        } catch (\Exception $e) {
+            report($e);
+            return false;
+        }
+    }
 }
