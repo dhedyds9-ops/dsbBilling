@@ -51,7 +51,7 @@ class WanManager extends Component
                 }
             }
         }
-            $vendor = strtolower($this->device->vendor ?? 'default');
+            $vendor = strtolower($this->device->vendor?->name ?? 'default');
             
             $this->wanConnections = $this->parseWanConnections($params, $vendor);
         } catch (\Exception $e) {
@@ -212,7 +212,7 @@ class WanManager extends Component
         
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $vendor = strtolower($this->device->vendor->name ?? '');
+            $vendor = strtolower($this->device->vendor?->name ?? 'default');
             
             // Step 1: Tell GenieACS to run a custom provision script that adds the WAN dynamically
             // This is 100x safer than guessing instance indexes via REST API
@@ -350,7 +350,7 @@ modem terkonfigurasi.');
         array_pop($pathParts); array_pop($pathParts);
         $parentPath = implode('.', $pathParts); // InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1
 
-        $vendor = strtolower($this->device->vendor->name ?? '');
+        $vendor = strtolower($this->device->vendor?->name ?? 'default');
 
         // === Username & Password (Only for PPPoE) ===
         if ($this->formType === 'PPPoE') {
