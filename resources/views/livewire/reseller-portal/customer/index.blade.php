@@ -166,6 +166,10 @@
                                 $username = $svc->hotspotUser->username ?? '-';
                                 $password = $svc->hotspotUser->password ?? '-';
                                 $layanan = 'Hotspot';
+                            } elseif ($svc) {
+                                $username = $svc->username ?? '-';
+                                $password = $svc->password ?? '-';
+                                $layanan = strtoupper($svc->service_type ?? '-');
                             }
                             
                             $paket = $svc?->serviceProfile?->name ?? '-';
