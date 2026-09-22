@@ -212,6 +212,7 @@ class Edit extends BaseACSComponent
                 $validated = $this->validate([
             'serial_number' => 'nullable|string|max:255',
             'vendor_id' => 'nullable|exists:vendors,id',
+            'customer_service_id' => 'nullable|exists:customer_services,id',
             'model' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'wifi_ssid' => 'nullable|string|max:255',
@@ -227,6 +228,7 @@ class Edit extends BaseACSComponent
         $this->device->update([
             'serial_number' => $validated['serial_number'],
             'vendor_id' => $validated['vendor_id'],
+            'customer_service_id' => $validated['customer_service_id'],
             'model' => $validated['model'],
             'notes' => $validated['notes'],
             'status' => $validated['status'],
@@ -240,13 +242,7 @@ class Edit extends BaseACSComponent
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $vendorName = $this->device->vendor?->name ?? 'default';
             
-            if ($this->wifi_ssid) {
-                $driver->updateWifiSsid($this->device->uuid, $this->wifi_ssid, $vendorName);
-            }
-            if ($this->wifi_password) {
-                $driver->updateWifiPassword($this->device->uuid, $this->wifi_password, $vendorName);
-            }
-        } catch (\Exception $e) {
+            catch (\Exception $e) {
             session()->flash('error', 'Device tersimpan, tapi gagal mengirim task WiFi ke GenieACS: ' . $e->getMessage());
             return redirect()->route('acs.devices.show', $this->deviceId);
         }
