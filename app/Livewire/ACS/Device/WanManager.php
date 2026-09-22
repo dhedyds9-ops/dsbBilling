@@ -10,10 +10,14 @@ class WanManager extends Component
     public ACSDevice $device;
     public $showWanModal = false;
     public $wanConnections = [];
+    public $zteBindings = [];
     public $isLoading = false;
 
     // Form Edit State
     public $isEditing = false;
+    public $isCreating = false;
+    public $bindLan = [];
+    public $bindWlan = [];
     public $editFullPath = '';
     public $formName = '';
     public $formType = '';
