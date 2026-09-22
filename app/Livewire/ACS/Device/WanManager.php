@@ -247,14 +247,21 @@ if ("{$vendor}".includes("zte")) {
     declare(basePath + ".VLANID", {value: now}, {value: {$vlanId}});
 }
 
-// Add PPP Connection
-declare(basePath + ".WANPPPConnection.1", {path: 1}, {path: 1});
-let pppPath = basePath + ".WANPPPConnection.1";
+// Add Connection Object
+let connType = {$isPppoe} ? "PPPoE_Bridged" : "IP_Routed";
+let connObj = {$isPppoe} ? "WANPPPConnection" : "WANIPConnection";
+let pppPath = basePath + "." + connObj + ".1";
 
-declare(pppPath + ".ConnectionType", {value: now}, {value: "PPPoE_Bridged"});
+declare(pppPath, {path: 1}, {path: 1});
+
+declare(pppPath + ".ConnectionType", {value: now}, {value: connType});
 declare(pppPath + ".NATEnabled", {value: now}, {value: {$natEnabled}});
 declare(pppPath + ".Enable", {value: now}, {value: true});
-declare(pppPath + ".Name", {value: now}, {value: "dsBilling_INTERNET_{$vlanId}"});
+declare(pppPath + ".Name", {value: now}, {value: "dsBilling_" + connType + "_{$vlanId}"});
+
+if (!{$isPppoe}) {
+    declare(pppPath + ".AddressingType", {value: now}, {value: "DHCP"});
+}
 
 if ({$isPppoe}) {
     declare(pppPath + ".Username", {value: now}, {value: "{$username}"});
