@@ -101,9 +101,6 @@
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <a href="{{ route('admin.users.show', $user->id) }}" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/30 flex items-center justify-center transition-colors">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
-                                    </a>
                                     <a href="{{ route('admin.users.edit', $user->id) }}" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:bg-amber-900/30 dark:hover:bg-amber-900/30 flex items-center justify-center transition-colors">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
