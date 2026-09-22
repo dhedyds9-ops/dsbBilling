@@ -54,7 +54,7 @@ class WanManager extends Component
             $vendor = strtolower($this->device->vendor?->name ?? 'default');
             
             $this->wanConnections = $this->parseWanConnections($params, $vendor);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             session()->flash('error', 'Gagal memuat WAN: ' . $e->getMessage());
         }
         $this->isLoading = false;
@@ -225,10 +225,10 @@ class WanManager extends Component
             
             // Build LAN/WLAN Bindings
             $bindPaths = [];
-            foreach ($this->bindLan as $l) {
+            foreach ((array) $this->bindLan as $l) {
                 $bindPaths[] = "InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.{$l}";
             }
-            foreach ($this->bindWlan as $w) {
+            foreach ((array) $this->bindWlan as $w) {
                 $bindPaths[] = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$w}";
             }
             $bindString = implode(',', $bindPaths);
@@ -333,7 +333,7 @@ JS;
             session()->flash('success', 'Perintah pembuatan WAN berhasil dikirim ke GenieACS. Tunggu beberapa saat agar 
 modem terkonfigurasi.');
             $this->isCreating = false;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             session()->flash('error', 'Gagal membuat WAN: ' . $e->getMessage());
         }
     }
@@ -392,7 +392,7 @@ modem terkonfigurasi.');
             } else {
                 session()->flash('error', 'Gagal mengirim task pembaruan WAN ke GenieACS.');
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             session()->flash('error', 'Error: ' . $e->getMessage());
         }
     }
