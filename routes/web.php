@@ -396,7 +396,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/users', \App\Livewire\Admin\User\Index::class)->name('users.index');
             Route::get('/users/create', \App\Livewire\Admin\User\Create::class)->name('users.create');
             Route::get('/users/{id}/edit', \App\Livewire\Admin\User\Edit::class)->name('users.edit');
-            Route::get('/users/{id}', \App\Livewire\Admin\User\Show::class)->name('users.show');
+
             
             Route::get('/audit-trail', \App\Livewire\Admin\AuditTrail\Index::class)->name('audit-trail.index');
             Route::get('/settings', \App\Livewire\Admin\Settings\Index::class)->name('settings.index');
