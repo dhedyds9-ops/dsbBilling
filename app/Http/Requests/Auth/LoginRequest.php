@@ -67,6 +67,18 @@ class LoginRequest extends FormRequest
             }
         }
 
+        // Jika user memiliki role customer, pastikan profil CRM Customer-nya ada!
+        if ($user->hasRole('customer')) {
+            $customerProfile = \App\Models\CRM\Customer::where('user_id', $user->id)->first();
+            if (!$customerProfile) {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'login' => 'Profil pelanggan Anda tidak ditemukan atau belum diproses. Silakan hubungi Admin.',
+                ]);
+            }
+        }
+
         // ALL users must be checked for password!
         if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
             RateLimiter::hit($this->throttleKey());
