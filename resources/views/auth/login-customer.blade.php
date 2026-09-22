@@ -98,14 +98,14 @@
 
                 <!-- Identity / Login -->
                 <div>
-                    <label for="login" class="block text-sm font-semibold text-slate-300 mb-2">Email / Username / Nomor HP</label>
+                    <label for="login" class="block text-sm font-semibold text-slate-300 mb-2">ID Pelanggan / Nomor HP / Username / Email</label>
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-emerald-400 transition-colors">
                             <span class="material-symbols-outlined text-[20px]">person</span>
                         </div>
                         <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username"
                             class="block w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-slate-700/50 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
-                            placeholder="Masukkan kredensial Anda">
+                            placeholder="Contoh: CUST-001, 0812xxx, atau budi">
                     </div>
                     @error('login')
                         <p class="mt-2 text-sm text-red-400 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">error</span> {{ $message }}</p>
