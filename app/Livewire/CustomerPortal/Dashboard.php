@@ -10,27 +10,38 @@ use Livewire\Attributes\Layout;
 #[Layout('layouts.customer-app')]
 class Dashboard extends Component
 {
-    public function render()
+    public $customer;
+
+    public function mount()
     {
-        $dashboardService = app(CustomerDashboardService::class);
-        $customer = auth()->user()->customer;
+        $user = auth()->user();
+        $this->customer = $user->customer;
         
-        if (!$customer) {
-            $user = auth()->user();
+        if (!$this->customer) {
             // AUTO-HEAL: Cari pelanggan yang yatim piatu (tidak punya user_id)
-            $customer = \App\Models\CRM\Customer::where('phone', $user->whatsapp)
+            $this->customer = \App\Models\CRM\Customer::where('phone', $user->whatsapp)
                 ->orWhere('email', $user->email)
                 ->orWhere('name', $user->name)
                 ->first();
                 
-            if ($customer && empty($customer->user_id)) {
-                $customer->update(['user_id' => $user->id]);
+            if ($this->customer && empty($this->customer->user_id)) {
+                $this->customer->update(['user_id' => $user->id]);
             } else {
-                abort(403, 'Profil pelanggan tidak ditemukan. Pastikan data pendaftaran Anda telah diproses Admin.');
+                auth()->logout();
+                session()->invalidate();
+                session()->regenerateToken();
+                
+                return redirect()->route('login.customer')->withErrors([
+                    'login' => 'Profil pelanggan Anda tidak ditemukan atau belum diproses. Silakan hubungi Admin.'
+                ]);
             }
         }
+    }
 
-        $data = $dashboardService->getDashboardData($customer->id);
+    public function render()
+    {
+        $dashboardService = app(CustomerDashboardService::class);
+        $data = $dashboardService->getDashboardData($this->customer->id);
 
         // Explicitly compute primary_service once as SSOT so blade never gets Undefined variable
         // (Blade computes it in @php block too, but this ensures it's bound via view()->with())
