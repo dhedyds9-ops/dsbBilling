@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\PPPoEUser;
+namespace App\Livewire\Isp\PPPoEUser;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\PPPoEUser;

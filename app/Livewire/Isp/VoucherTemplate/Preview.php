@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\VoucherTemplate;
+namespace App\Livewire\Isp\VoucherTemplate;
 
 use App\Models\ISP\VoucherTemplate;
 use App\Services\VoucherTemplate\TemplateRenderer;

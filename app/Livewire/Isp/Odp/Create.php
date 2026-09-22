@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Odp;
+namespace App\Livewire\Isp\Odp;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Odc;

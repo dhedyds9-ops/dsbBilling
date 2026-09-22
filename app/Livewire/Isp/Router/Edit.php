@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Router;
+namespace App\Livewire\Isp\Router;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Router as RouterModel;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\VoucherTemplate;
+namespace App\Livewire\Isp\VoucherTemplate;
 
 use App\Services\ISP\VoucherTemplate\Actions\ImportVoucherTemplateAction;
 use App\Services\VoucherTemplate\LegacyCompatibilityLayer;

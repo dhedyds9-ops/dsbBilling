@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\NetworkProfile;
+namespace App\Livewire\Isp\NetworkProfile;
 
 use App\Livewire\AdminComponent;
 use App\Models\Provisioning\NetworkProfile;

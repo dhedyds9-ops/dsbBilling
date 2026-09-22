@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP;
+namespace App\Livewire\Isp;
 
 use App\Livewire\AdminComponent;
 use Livewire\WithPagination;

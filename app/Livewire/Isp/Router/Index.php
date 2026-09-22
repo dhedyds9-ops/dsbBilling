@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\Router;
+namespace App\Livewire\Isp\Router;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Router as RouterModel;
 use App\Exports\RouterExport;
 use App\Imports\RouterImport;

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\Olt;
+namespace App\Livewire\Isp\Olt;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Olt as OltModel;
 use App\Exports\OltExport;
 use App\Imports\OltImport;

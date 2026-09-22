@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\Odp;
+namespace App\Livewire\Isp\Odp;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Odp as OdpModel;
 use App\Exports\OdpExport;
 use App\Imports\OdpImport;

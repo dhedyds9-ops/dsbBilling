@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Tower;
+namespace App\Livewire\Isp\Tower;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Tower as TowerModel;

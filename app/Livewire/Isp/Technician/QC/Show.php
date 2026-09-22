@@ -1,5 +1,5 @@
 <?php
-namespace App\Livewire\ISP\Technician\QC;
+namespace App\Livewire\Isp\Technician\QC;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;

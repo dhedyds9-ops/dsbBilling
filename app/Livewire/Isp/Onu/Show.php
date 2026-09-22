@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Onu;
+namespace App\Livewire\Isp\Onu;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Onu as OnuModel;

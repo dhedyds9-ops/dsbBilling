@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Technician\Tickets;
+namespace App\Livewire\Isp\Technician\Tickets;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;

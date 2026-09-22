@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\EVoucher;
+namespace App\Livewire\Isp\EVoucher;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\VoucherOrder;
 use Illuminate\Support\Facades\Log;
 

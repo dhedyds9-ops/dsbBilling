@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\Tower;
+namespace App\Livewire\Isp\Tower;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Tower as TowerModel;
 use App\Exports\TowerExport;
 use App\Imports\TowerImport;

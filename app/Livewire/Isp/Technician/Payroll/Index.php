@@ -1,5 +1,5 @@
 <?php
-namespace App\Livewire\ISP\Technician\Payroll;
+namespace App\Livewire\Isp\Technician\Payroll;
 
 use App\Models\Payroll;
 use Livewire\Component;

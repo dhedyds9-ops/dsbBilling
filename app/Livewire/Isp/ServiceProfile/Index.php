@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\ServiceProfile;
+namespace App\Livewire\Isp\ServiceProfile;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\ServiceProfile as ServiceProfileModel;
 use App\Models\ISP\ServiceProfileType;
 use App\Exports\ServiceProfileExport;

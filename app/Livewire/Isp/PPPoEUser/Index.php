@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\PPPoEUser;
+namespace App\Livewire\Isp\PPPoEUser;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\PPPoEUser;
 use App\Services\ISP\PPPoEService;
 use App\Exports\PPPoEUserExport;

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\Pop;
+namespace App\Livewire\Isp\Pop;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Pop as PopModel;
 use App\Exports\PopExport;
 use App\Imports\PopImport;

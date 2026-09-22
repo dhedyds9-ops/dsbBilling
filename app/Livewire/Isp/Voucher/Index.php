@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\Voucher;
+namespace App\Livewire\Isp\Voucher;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Voucher;
 use App\Exports\VoucherExport;
 use App\Imports\VoucherImport;

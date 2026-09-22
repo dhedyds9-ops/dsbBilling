@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\IpPool;
+namespace App\Livewire\Isp\IpPool;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\IpPool;

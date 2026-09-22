@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Livewire\ISP\IpPool;
+namespace App\Livewire\Isp\IpPool;
 
 use App\Integration\MikroTik\Services\RouterOSService;
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\IpPool;
 use App\Models\ISP\Pop;
 use App\Models\ISP\Router;

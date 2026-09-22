@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\UserOnline;
+namespace App\Livewire\Isp\UserOnline;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\PppActiveSession;
 use App\Models\ISP\HotspotActiveSession;
 use App\Models\ISP\Voucher;

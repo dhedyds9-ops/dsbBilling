@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\HotspotUser;
+namespace App\Livewire\Isp\HotspotUser;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\HotspotUser;
 use App\Exports\HotspotUserExport;
 use App\Imports\HotspotUserImport;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Vendor;
+namespace App\Livewire\Isp\Vendor;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Vendor as VendorModel;

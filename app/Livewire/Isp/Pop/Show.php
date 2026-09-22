@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Pop;
+namespace App\Livewire\Isp\Pop;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Pop as PopModel;

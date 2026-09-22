@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\HotspotUser;
+namespace App\Livewire\Isp\HotspotUser;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\ServiceProfile;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Technician;
+namespace App\Livewire\Isp\Technician;
 
 
 use Livewire\Component;

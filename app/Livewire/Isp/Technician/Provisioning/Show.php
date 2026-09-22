@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Technician\Provisioning;
+namespace App\Livewire\Isp\Technician\Provisioning;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;

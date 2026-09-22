@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\ServiceProfile;
+namespace App\Livewire\Isp\ServiceProfile;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\ServiceProfile as ServiceProfileModel;

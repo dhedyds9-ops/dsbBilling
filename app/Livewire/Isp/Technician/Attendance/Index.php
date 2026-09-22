@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\ISP\Technician\Attendance;
+namespace App\Livewire\Isp\Technician\Attendance;
 
 
 use Livewire\Component;

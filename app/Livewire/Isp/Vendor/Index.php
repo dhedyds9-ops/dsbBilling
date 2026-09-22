@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\ISP\Vendor;
+namespace App\Livewire\Isp\Vendor;
 
-use App\Livewire\ISP\BaseNetworkComponent;
+use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Vendor as VendorModel;
 use App\Exports\VendorExport;
 use App\Imports\VendorImport;
