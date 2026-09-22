@@ -195,6 +195,8 @@ class WanManager extends Component
         $this->formUsername = '';
         $this->formPassword = '';
         $this->formNat = true;
+        $this->bindLan = [1,2,3,4]; // Default select all LAN
+        $this->bindWlan = [1,5]; // Default select SSID1 and SSID5 (5Ghz)
     }
 
     public function cancelCreate()
@@ -220,6 +222,16 @@ class WanManager extends Component
             $natEnabled = $this->formNat ? 'true' : 'false';
             $username = $this->formUsername;
             $password = $this->formPassword;
+            
+            // Build LAN/WLAN Bindings
+            $bindPaths = [];
+            foreach ($this->bindLan as $l) {
+                $bindPaths[] = "InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.{$l}";
+            }
+            foreach ($this->bindWlan as $w) {
+                $bindPaths[] = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$w}";
+            }
+            $bindString = implode(',', $bindPaths);
             
             $script = <<<JS
 const now = Date.now();
@@ -259,6 +271,15 @@ declare(pppPath + ".Name", {value: now}, {value: "dsBilling_" + connType + "_{$v
 
 if (!{$isPppoe}) {
     declare(pppPath + ".AddressingType", {value: now}, {value: "DHCP"});
+}
+
+// Port Binding (Huawei & Fiberhome)
+if ("{$bindString}" !== "") {
+    if ("{$vendor}".includes("fiberhome")) {
+        declare(pppPath + ".X_FH_LanInterface", {value: now}, {value: "{$bindString}"});
+    } else if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
+        declare(pppPath + ".X_HW_LANBIND", {value: now}, {value: "{$bindString}"});
+    }
 }
 
 if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
