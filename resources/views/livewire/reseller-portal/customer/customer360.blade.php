@@ -1065,7 +1065,7 @@
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Reseller / Owner</label>
                         <select wire:model="edit_reseller_id" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
                             <option value="">-- Pilih Reseller --</option>
-                            @foreach(\App\Models\User::all() as $user)
+                            @foreach(\App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'reseller'))->whereDoesntHave('roles', fn($q) => $q->where('name', 'customer'))->where('is_active', true)->orderBy('name')->get() as $user)
                                 <option value="{{ $user->id }}">{{ $user->name }}</option>
                             @endforeach
                         </select>
