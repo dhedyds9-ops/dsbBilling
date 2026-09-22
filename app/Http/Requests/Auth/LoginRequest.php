@@ -91,42 +91,9 @@ class LoginRequest extends FormRequest
 
         private function resolveIdentity(string $identity): ?\App\Models\User
     {
-        $query = \App\Models\User::query();
         $lower = mb_strtolower(trim($identity));
         
-        // Bersihkan nomor HP dari spasi, strip, atau plus
-        $cleanPhone = preg_replace('/[^0-9]/', '', $identity);
-        
-        $phone0 = null;
-        $phone62 = null;
-        
-        if (!empty($cleanPhone)) {
-            $phone0 = $cleanPhone;
-            $phone62 = $cleanPhone;
-            if (str_starts_with($cleanPhone, '62')) {
-                $phone0 = '0' . substr($cleanPhone, 2);
-            } elseif (str_starts_with($cleanPhone, '0')) {
-                $phone62 = '62' . substr($cleanPhone, 1);
-            }
-        }
-
-        if (ctype_digit($cleanPhone) && strlen($cleanPhone) >= 10 && strlen($cleanPhone) <= 15) {
-            return $query->where(function($q) use ($lower, $phone0, $phone62) {
-                if ($phone0 && $phone62) {
-                    $q->whereRaw('LOWER(whatsapp) IN (?, ?)', [$phone0, $phone62]);
-                }
-                $q->orWhereRaw('LOWER(pppoe_username) = ?', [$lower])
-                  ->orWhereRaw('LOWER(customer_code) = ? OR LOWER(username) = ? OR LOWER(email) = ?', [$lower, $lower, $lower]);
-                  
-                if ($phone0 && $phone62) {
-                    $q->orWhereHas('customer', function($subQ) use ($phone0, $phone62) {
-                        $subQ->whereRaw('LOWER(phone) IN (?, ?)', [$phone0, $phone62]);
-                    });
-                }
-            })->first();
-        }
-
-        // Cek apakah identity adalah ID Pelanggan (code) di tabel customers
+        // 1. Coba cari di tabel customers (members) dulu berdasarkan code (ID Pelanggan)
         $customerByCode = \App\Models\CRM\Customer::whereRaw('LOWER(code) = ?', [$lower])->first();
         if ($customerByCode) {
             if ($customerByCode->user_id) {
@@ -143,7 +110,7 @@ class LoginRequest extends FormRequest
             }
         }
 
-        // Cek apakah username ini adalah username layanan PPPoE/Hotspot di tabel customer_services
+        // 2. Coba cari di tabel customer_services (PPPoE/Hotspot Username)
         $customerService = \App\Models\Customer\CustomerService::with('customer')
             ->whereRaw('LOWER(username) = ?', [$lower])
             ->first();
@@ -154,7 +121,6 @@ class LoginRequest extends FormRequest
                 $u = \App\Models\User::find($customer->user_id);
                 if ($u) return $u;
             } else {
-                // Auto-heal jika customer yatim piatu tapi punya phone/email yang sama dengan User
                 $u = \App\Models\User::whereRaw('LOWER(whatsapp) = ? OR LOWER(email) = ?', [
                     mb_strtolower($customer->phone), mb_strtolower($customer->email)
                 ])->first();
@@ -165,9 +131,20 @@ class LoginRequest extends FormRequest
             }
         }
 
-        if (str_contains($identity, '@')) {
-            return $query->whereRaw('LOWER(email) = ?', [$lower])->first()
-                ?? $query->whereRaw('LOWER(pppoe_username) = ? OR LOWER(customer_code) = ? OR LOWER(username) = ?', [$lower, $lower, $lower])->first();
+        // 3. Fallback ke tabel users utama (untuk email, whatsapp, username bawaan)
+        $query = \App\Models\User::query();
+        $cleanPhone = preg_replace('/[^0-9]/', '', $identity);
+        $phone0 = null;
+        $phone62 = null;
+        
+        if (!empty($cleanPhone) && strlen($cleanPhone) >= 9) {
+            $phone0 = $cleanPhone;
+            $phone62 = $cleanPhone;
+            if (str_starts_with($cleanPhone, '62')) {
+                $phone0 = '0' . substr($cleanPhone, 2);
+            } elseif (str_starts_with($cleanPhone, '0')) {
+                $phone62 = '62' . substr($cleanPhone, 1);
+            }
         }
 
         return $query->where(function ($q) use ($lower, $phone0, $phone62) {
