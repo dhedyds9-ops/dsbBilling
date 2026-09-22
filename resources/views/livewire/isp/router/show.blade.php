@@ -33,7 +33,11 @@
                 <span class="material-symbols-outlined notranslate text-[18px]" wire:loading.class="animate-spin" translate="no">refresh</span>
                 Segarkan Data
             </button>
-            <a href="{{ route('isp.routers.edit', $router->id) }}" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
+                          <button wire:click="generateProvisioningToken({{ $router->id }})" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
+                  <span class="material-symbols-outlined notranslate text-[18px]" translate="no">terminal</span>
+                  Skrip Auto Config
+              </button>
+              <a href="{{ route('isp.routers.edit', $router->id) }}" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-[18px]" translate="no">edit</span>
                 Edit
             </a>
@@ -542,4 +546,57 @@
             </script>
         @endif
     </div>
+
+    @if($showProvisioningModal)
+    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" wire:click="closeProvisioningModal"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-slate-200 dark:border-slate-700">
+                <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                    <h3 class="text-lg leading-6 font-bold text-slate-900 dark:text-white flex items-center gap-2" id="modal-title">
+                        <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">terminal</span>
+                        Skrip Auto Config Mikrotik
+                    </h3>
+                    <button wire:click="closeProvisioningModal" class="text-slate-400 hover:text-slate-500 focus:outline-none">
+                        <span class="material-symbols-outlined notranslate" translate="no">close</span>
+                    </button>
+                </div>
+                <div class="px-6 py-6">
+                    <div class="mb-4">
+                        <p class="text-sm text-slate-600 dark:text-slate-300">
+                            Jalankan perintah ini di Terminal (New Terminal) pada router Mikrotik Anda. Skrip ini akan secara otomatis mengunduh konfigurasi API dan Radius dari dsBilling dan menerapkannya ke router.
+                        </p>
+                        <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                            <p class="text-xs text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                                <span class="material-symbols-outlined notranslate text-[16px]" translate="no">warning</span>
+                                Token ini hanya berlaku 1 kali dan kedaluwarsa dalam {{ $provisioningExpires }}.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="relative bg-slate-900 rounded-xl p-4 overflow-hidden border border-slate-700 group">
+                        <div class="flex items-center gap-2 mb-3 border-b border-slate-700 pb-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="text-slate-400 text-xs font-mono ml-2">RouterOS Terminal</span>
+                        </div>
+                        <code class="text-emerald-400 text-sm font-mono break-all whitespace-pre-wrap select-all">/tool fetch url="{{ url('/api/v1/provision/router') }}" http-header-field="Authorization: Bearer {{ $provisioningToken }}" dst-path="provision.rsc"; /import provision.rsc; /file remove provision.rsc;</code>
+                        
+                        <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="navigator.clipboard.writeText('/tool fetch url=\'{{ url('/api/v1/provision/router') }}\' http-header-field=\'Authorization: Bearer {{ $provisioningToken }}\' dst-path=\'provision.rsc\'; /import provision.rsc; /file remove provision.rsc;'); alert('Skrip disalin!');" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg shadow-sm border border-slate-600 transition-colors" title="Copy to clipboard">
+                                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">content_copy</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+                    <button type="button" wire:click="closeProvisioningModal" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>

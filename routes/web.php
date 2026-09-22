@@ -86,22 +86,22 @@ $cs = fn() => view('coming-soon');
 
 // ==================== AUTHENTICATED ROUTES ====================
 Route::middleware(['auth'])->group(function () use ($cs) {
-    Route::get('/technician-portal/dashboard', \App\Livewire\ISP\Technician\Dashboard::class)->name('technician.dashboard');
+    Route::get('/technician-portal/dashboard', \App\Livewire\Isp\Technician\Dashboard::class)->name('technician.dashboard');
     Route::middleware(['workforce.checked_in'])->group(function () {
-        Route::get('/technician-portal/my-jobs', \App\Livewire\ISP\Technician\MyJobs\Index::class)->name('technician.my-jobs.index');
-        Route::get('/technician-portal/my-jobs/{job}', \App\Livewire\ISP\Technician\MyJobs\Show::class)->name('technician.my-jobs.show');
-        Route::get('/technician-portal/installation/wizard', \App\Livewire\ISP\Technician\Installation\Wizard::class)->name('technician.installation.wizard');
-        Route::get('/technician-portal/provisioning/{id}', \App\Livewire\ISP\Technician\Provisioning\Show::class)->name('technician.provisioning.show');
+        Route::get('/technician-portal/my-jobs', \App\Livewire\Isp\Technician\MyJobs\Index::class)->name('technician.my-jobs.index');
+        Route::get('/technician-portal/my-jobs/{job}', \App\Livewire\Isp\Technician\MyJobs\Show::class)->name('technician.my-jobs.show');
+        Route::get('/technician-portal/installation/wizard', \App\Livewire\Isp\Technician\Installation\Wizard::class)->name('technician.installation.wizard');
+        Route::get('/technician-portal/provisioning/{id}', \App\Livewire\Isp\Technician\Provisioning\Show::class)->name('technician.provisioning.show');
     });
-    Route::get('/technician-portal/attendance', \App\Livewire\ISP\Technician\Attendance\Index::class)->name('technician.attendance');
-    Route::get('/technician-portal/payroll', \App\Livewire\ISP\Technician\Payroll\Index::class)->name('technician.payroll.index');
-    Route::get('/technician-portal/payroll/{id}', \App\Livewire\ISP\Technician\Payroll\Show::class)->name('technician.payroll.show');
+    Route::get('/technician-portal/attendance', \App\Livewire\Isp\Technician\Attendance\Index::class)->name('technician.attendance');
+    Route::get('/technician-portal/payroll', \App\Livewire\Isp\Technician\Payroll\Index::class)->name('technician.payroll.index');
+    Route::get('/technician-portal/payroll/{id}', \App\Livewire\Isp\Technician\Payroll\Show::class)->name('technician.payroll.show');
     
     // Fallback/Dummy routes to prevent MenuRegistry crashes
     Route::get('/technician-portal/dummy', fn()=>'dummy')->name('technician.history');
     Route::get('/technician-portal/dummy2', fn()=>'dummy')->name('technician.my-jobs.psb');
     Route::get('/technician-portal/dummy3', fn()=>'dummy')->name('technician.my-jobs.maintenance');
-    Route::get('/technician-portal/tickets', \App\Livewire\ISP\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
+    Route::get('/technician-portal/tickets', \App\Livewire\Isp\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
     Route::get('/technician-portal/dummy5', fn()=>'dummy')->name('technician.installation.index');
     Route::get('/technician-portal/dummy6', fn()=>'dummy')->name('technician.installation.scan');
     Route::get('/technician-portal/dummy7', fn()=>'dummy')->name('technician.installation.register');
@@ -126,80 +126,80 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         // ==================== ISP CORE CRUD (EXISTING) ====================
         Route::prefix('isp')->name('isp.')->group(function () {
             // Voucher Templates
-            Route::get('/voucher-templates', \App\Livewire\ISP\VoucherTemplate\Index::class)->name('voucher-templates.index');
-            Route::get('/voucher-templates/create', \App\Livewire\ISP\VoucherTemplate\Editor::class)->name('voucher-templates.create');
-            Route::get('/voucher-templates/import', \App\Livewire\ISP\VoucherTemplate\Import::class)->name('voucher-templates.import');
-            Route::get('/voucher-templates/{id}/edit', \App\Livewire\ISP\VoucherTemplate\Editor::class)->name('voucher-templates.edit');
-            Route::get('/voucher-templates/{id}/preview', \App\Livewire\ISP\VoucherTemplate\Preview::class)->name('voucher-templates.preview');
-            Route::get('/voucher-templates/{id}/versions', \App\Livewire\ISP\VoucherTemplate\Versions::class)->name('voucher-templates.versions');
+            Route::get('/voucher-templates', \App\Livewire\Isp\VoucherTemplate\Index::class)->name('voucher-templates.index');
+            Route::get('/voucher-templates/create', \App\Livewire\Isp\VoucherTemplate\Editor::class)->name('voucher-templates.create');
+            Route::get('/voucher-templates/import', \App\Livewire\Isp\VoucherTemplate\Import::class)->name('voucher-templates.import');
+            Route::get('/voucher-templates/{id}/edit', \App\Livewire\Isp\VoucherTemplate\Editor::class)->name('voucher-templates.edit');
+            Route::get('/voucher-templates/{id}/preview', \App\Livewire\Isp\VoucherTemplate\Preview::class)->name('voucher-templates.preview');
+            Route::get('/voucher-templates/{id}/versions', \App\Livewire\Isp\VoucherTemplate\Versions::class)->name('voucher-templates.versions');
 
             // Service Profile = Profile PPPoE (referenced dari Profile Paket > Profile PPPoE
-            Route::get('/service-profiles', \App\Livewire\ISP\ServiceProfile\Index::class)->name('service-profiles.index');
-            Route::get('/service-profiles/create', \App\Livewire\ISP\ServiceProfile\Create::class)->name('service-profiles.create');
-            Route::get('/service-profiles/{id}/edit', \App\Livewire\ISP\ServiceProfile\Edit::class)->name('service-profiles.edit');
+            Route::get('/service-profiles', \App\Livewire\Isp\ServiceProfile\Index::class)->name('service-profiles.index');
+            Route::get('/service-profiles/create', \App\Livewire\Isp\ServiceProfile\Create::class)->name('service-profiles.create');
+            Route::get('/service-profiles/{id}/edit', \App\Livewire\Isp\ServiceProfile\Edit::class)->name('service-profiles.edit');
 
 
             // User Online = List Pelanggan > User Online (tabs PPPoE/Hotspot/Voucher + Kick)
-            Route::get('/user-online', \App\Livewire\ISP\UserOnline\Index::class)->name('user-online.index');
+            Route::get('/user-online', \App\Livewire\Isp\UserOnline\Index::class)->name('user-online.index');
 
             // PPPoE = List Pelanggan > User PPPoE
-            Route::get('/pppoe-users', \App\Livewire\ISP\PPPoEUser\Index::class)->name('pppoe-users.index');
-            Route::get('/pppoe-users/create', \App\Livewire\ISP\PPPoEUser\Create::class)->name('pppoe-users.create');
-            Route::get('/pppoe-users/{id}/edit', \App\Livewire\ISP\PPPoEUser\Edit::class)->name('pppoe-users.edit');
-            Route::get('/pppoe-users/{id}', \App\Livewire\ISP\PPPoEUser\Show::class)->name('pppoe-users.show');
+            Route::get('/pppoe-users', \App\Livewire\Isp\PPPoEUser\Index::class)->name('pppoe-users.index');
+            Route::get('/pppoe-users/create', \App\Livewire\Isp\PPPoEUser\Create::class)->name('pppoe-users.create');
+            Route::get('/pppoe-users/{id}/edit', \App\Livewire\Isp\PPPoEUser\Edit::class)->name('pppoe-users.edit');
+            Route::get('/pppoe-users/{id}', \App\Livewire\Isp\PPPoEUser\Show::class)->name('pppoe-users.show');
 
             // Hotspot = List Pelanggan > User Hotspot
-            Route::get('/hotspot-users', \App\Livewire\ISP\HotspotUser\Index::class)->name('hotspot-users.index');
-            Route::get('/hotspot-users/create', \App\Livewire\ISP\HotspotUser\Create::class)->name('hotspot-users.create');
-            Route::get('/hotspot-users/{id}/edit', \App\Livewire\ISP\HotspotUser\Edit::class)->name('hotspot-users.edit');
-            Route::get('/hotspot-users/{id}', \App\Livewire\ISP\HotspotUser\Show::class)->name('hotspot-users.show');
+            Route::get('/hotspot-users', \App\Livewire\Isp\HotspotUser\Index::class)->name('hotspot-users.index');
+            Route::get('/hotspot-users/create', \App\Livewire\Isp\HotspotUser\Create::class)->name('hotspot-users.create');
+            Route::get('/hotspot-users/{id}/edit', \App\Livewire\Isp\HotspotUser\Edit::class)->name('hotspot-users.edit');
+            Route::get('/hotspot-users/{id}', \App\Livewire\Isp\HotspotUser\Show::class)->name('hotspot-users.show');
 
             // Voucher (existing CRUD, List Pelanggan > User Voucher tabs biasa/E-Voucher
-            Route::get('/vouchers', \App\Livewire\ISP\Voucher\Index::class)->name('vouchers.index');
+            Route::get('/vouchers', \App\Livewire\Isp\Voucher\Index::class)->name('vouchers.index');
             Route::post('/vouchers/print', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print'])->name('vouchers.print');
-            Route::get('/evouchers', \App\Livewire\ISP\EVoucher\Index::class)->name('evouchers.index');
+            Route::get('/evouchers', \App\Livewire\Isp\EVoucher\Index::class)->name('evouchers.index');
 
             // Router & NAS = Jaringan > Router & NAS
-            Route::get('/routers', \App\Livewire\ISP\Router\Index::class)->name('routers.index');
-            Route::get('/routers/create', \App\Livewire\ISP\Router\Create::class)->name('routers.create');
-            Route::get('/routers/{id}/edit', \App\Livewire\ISP\Router\Edit::class)->name('routers.edit');
-            Route::get('/routers/{id}', \App\Livewire\ISP\Router\Show::class)->name('routers.show');
+            Route::get('/routers', \App\Livewire\Isp\Router\Index::class)->name('routers.index');
+            Route::get('/routers/create', \App\Livewire\Isp\Router\Create::class)->name('routers.create');
+            Route::get('/routers/{id}/edit', \App\Livewire\Isp\Router\Edit::class)->name('routers.edit');
+            Route::get('/routers/{id}', \App\Livewire\Isp\Router\Show::class)->name('routers.show');
 
             // Fiber Infrastructure = Jaringan > Fiber & ONU
-            Route::get('/olts', \App\Livewire\ISP\Olt\Index::class)->name('olts.index');
-            Route::get('/olts/create', \App\Livewire\ISP\Olt\Create::class)->name('olts.create');
-            Route::get('/olts/{id}/edit', \App\Livewire\ISP\Olt\Edit::class)->name('olts.edit');
-            Route::get('/olts/{id}', \App\Livewire\ISP\Olt\Show::class)->name('olts.show');
+            Route::get('/olts', \App\Livewire\Isp\Olt\Index::class)->name('olts.index');
+            Route::get('/olts/create', \App\Livewire\Isp\Olt\Create::class)->name('olts.create');
+            Route::get('/olts/{id}/edit', \App\Livewire\Isp\Olt\Edit::class)->name('olts.edit');
+            Route::get('/olts/{id}', \App\Livewire\Isp\Olt\Show::class)->name('olts.show');
 
-            Route::get('/onus', \App\Livewire\ISP\Onu\Index::class)->name('onus.index');
-            Route::get('/onus/create', \App\Livewire\ISP\Onu\Create::class)->name('onus.create');
-            Route::get('/onus/{id}/edit', \App\Livewire\ISP\Onu\Edit::class)->name('onus.edit');
-            Route::get('/onus/{id}', \App\Livewire\ISP\Onu\Show::class)->name('onus.show');
+            Route::get('/onus', \App\Livewire\Isp\Onu\Index::class)->name('onus.index');
+            Route::get('/onus/create', \App\Livewire\Isp\Onu\Create::class)->name('onus.create');
+            Route::get('/onus/{id}/edit', \App\Livewire\Isp\Onu\Edit::class)->name('onus.edit');
+            Route::get('/onus/{id}', \App\Livewire\Isp\Onu\Show::class)->name('onus.show');
 
-            Route::get('/odps', \App\Livewire\ISP\Odp\Index::class)->name('odps.index');
-            Route::get('/odps/create', \App\Livewire\ISP\Odp\Create::class)->name('odps.create');
-            Route::get('/odps/{id}/edit', \App\Livewire\ISP\Odp\Edit::class)->name('odps.edit');
-            Route::get('/odps/{id}', \App\Livewire\ISP\Odp\Show::class)->name('odps.show');
+            Route::get('/odps', \App\Livewire\Isp\Odp\Index::class)->name('odps.index');
+            Route::get('/odps/create', \App\Livewire\Isp\Odp\Create::class)->name('odps.create');
+            Route::get('/odps/{id}/edit', \App\Livewire\Isp\Odp\Edit::class)->name('odps.edit');
+            Route::get('/odps/{id}', \App\Livewire\Isp\Odp\Show::class)->name('odps.show');
 
-            Route::get('/odcs', \App\Livewire\ISP\Odc\Index::class)->name('odcs.index');
-            Route::get('/odcs/create', \App\Livewire\ISP\Odc\Create::class)->name('odcs.create');
-            Route::get('/odcs/{id}/edit', \App\Livewire\ISP\Odc\Edit::class)->name('odcs.edit');
-            Route::get('/odcs/{id}', \App\Livewire\ISP\Odc\Show::class)->name('odcs.show');
+            Route::get('/odcs', \App\Livewire\Isp\Odc\Index::class)->name('odcs.index');
+            Route::get('/odcs/create', \App\Livewire\Isp\Odc\Create::class)->name('odcs.create');
+            Route::get('/odcs/{id}/edit', \App\Livewire\Isp\Odc\Edit::class)->name('odcs.edit');
+            Route::get('/odcs/{id}', \App\Livewire\Isp\Odc\Show::class)->name('odcs.show');
 
-            Route::get('/pops', \App\Livewire\ISP\Pop\Index::class)->name('pops.index');
-            Route::get('/pops/create', \App\Livewire\ISP\Pop\Create::class)->name('pops.create');
-            Route::get('/pops/{id}/edit', \App\Livewire\ISP\Pop\Edit::class)->name('pops.edit');
-            Route::get('/pops/{id}', \App\Livewire\ISP\Pop\Show::class)->name('pops.show');
+            Route::get('/pops', \App\Livewire\Isp\Pop\Index::class)->name('pops.index');
+            Route::get('/pops/create', \App\Livewire\Isp\Pop\Create::class)->name('pops.create');
+            Route::get('/pops/{id}/edit', \App\Livewire\Isp\Pop\Edit::class)->name('pops.edit');
+            Route::get('/pops/{id}', \App\Livewire\Isp\Pop\Show::class)->name('pops.show');
 
-            Route::get('/towers', \App\Livewire\ISP\Tower\Index::class)->name('towers.index');
-            Route::get('/towers/create', \App\Livewire\ISP\Tower\Create::class)->name('towers.create');
-            Route::get('/towers/{id}/edit', \App\Livewire\ISP\Tower\Edit::class)->name('towers.edit');
-            Route::get('/towers/{id}', \App\Livewire\ISP\Tower\Show::class)->name('towers.show');
+            Route::get('/towers', \App\Livewire\Isp\Tower\Index::class)->name('towers.index');
+            Route::get('/towers/create', \App\Livewire\Isp\Tower\Create::class)->name('towers.create');
+            Route::get('/towers/{id}/edit', \App\Livewire\Isp\Tower\Edit::class)->name('towers.edit');
+            Route::get('/towers/{id}', \App\Livewire\Isp\Tower\Show::class)->name('towers.show');
 
-            Route::get('/vendors', \App\Livewire\ISP\Vendor\Index::class)->name('vendors.index');
-            Route::get('/vendors/create', \App\Livewire\ISP\Vendor\Create::class)->name('vendors.create');
-            Route::get('/vendors/{id}/edit', \App\Livewire\ISP\Vendor\Edit::class)->name('vendors.edit');
-            Route::get('/vendors/{id}', \App\Livewire\ISP\Vendor\Show::class)->name('vendors.show');
+            Route::get('/vendors', \App\Livewire\Isp\Vendor\Index::class)->name('vendors.index');
+            Route::get('/vendors/create', \App\Livewire\Isp\Vendor\Create::class)->name('vendors.create');
+            Route::get('/vendors/{id}/edit', \App\Livewire\Isp\Vendor\Edit::class)->name('vendors.edit');
+            Route::get('/vendors/{id}', \App\Livewire\Isp\Vendor\Show::class)->name('vendors.show');
         });
 
         // ==================== 3. LIST PELANGGAN ====================
@@ -517,7 +517,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
 require __DIR__.'/auth.php';
 
-Route::get('/test-livewire', \App\Livewire\ISP\Technician\Attendance\Index::class);
+Route::get('/test-livewire', \App\Livewire\Isp\Technician\Attendance\Index::class);
 
 
 

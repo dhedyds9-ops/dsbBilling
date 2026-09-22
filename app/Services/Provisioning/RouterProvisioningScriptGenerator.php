@@ -83,9 +83,53 @@ class RouterProvisioningScriptGenerator
         
         $lines[] = "";
         
-        // 4. Walled Garden (Isolir) Firewall Setup
+        // 4. VPN Failover Configuration (HA Setup)
+        // Check if application has VPN servers configured in .env (e.g., DSB_VPN_SERVERS=ip1,ip2)
+        $vpnServersStr = env('DSB_VPN_SERVERS', '');
+        $vpnServers = array_filter(array_map('trim', explode(',', $vpnServersStr)));
+        
+        if (count($vpnServers) > 0) {
+            $vpnUsername = "dsb_" . ($router->code ?? strtolower(Str::slug($router->name, '')));
+            $vpnPassword = substr($radiusSecret, 0, 10); // Simple deterministic password
+            $vpnInternalTarget = env('DSB_VPN_RADIUS_IP', '172.31.1.216'); // The Radius IP inside the VPN
+            $vpnInternalSrc = $router->vpn_ip ?? '172.30.8.x';
+            
+            $lines[] = "# 4. VPN Failover Configuration (High Availability)";
+            $lines[] = "/ppp profile add name=DSB-VPN use-encryption=yes change-tcp-mss=yes comment=\"managed-by=dsbilling\" || :put \"VPN Profile exists\"";
+            
+            foreach ($vpnServers as $index => $serverIp) {
+                $num = $index + 1;
+                $disabled = $num === 1 ? 'no' : 'yes'; // Only enable the first one by default
+                $lines[] = "/interface ovpn-client add disabled={$disabled} connect-to={$serverIp} name=\"DSB-VPN-{$num}\" profile=DSB-VPN user=\"{$vpnUsername}\" password=\"{$vpnPassword}\" comment=\"DSB VPN Server {$num}\" || :put \"VPN {$num} exists\"";
+            }
+            
+            $lines[] = "/system scheduler remove [find name=\"dsb_vpn_failover\"] || :put \"Old scheduler removed\"";
+            $lines[] = "/system scheduler add interval=10s name=dsb_vpn_failover on-event=\"{\\r\\
+    \\n:global dsbLastVpnIndex\\r\\
+    \\n:local targetIP \\\"{$vpnInternalTarget}\\\"\\r\\
+    \\n:local vpnIfaces [/interface find name~\\\"^DSB-VPN-\\\"]\\r\\
+    \\n:local vpnCount [:len \$vpnIfaces]\\r\\
+    \\n:if (\$vpnCount = 0) do={\\r\\
+    \\n    :return\\r\\
+    \\n}\\r\\
+    \\n:if ([:typeof \$dsbLastVpnIndex] = \\\"nothing\\\") do={\\r\\
+    \\n    :set dsbLastVpnIndex 0\\r\\
+    \\n}\\r\\
+    \\n:local pingResult [/ping \$targetIP count=5]\\r\\
+    \\n:if (\$pingResult = 0) do={\\r\\
+    \\n    :set dsbLastVpnIndex ((\$dsbLastVpnIndex + 1) % \$vpnCount)\\r\\
+    \\n    /interface set \$vpnIfaces disabled=yes\\r\\
+    \\n    :local selectedIface (\$vpnIfaces->\$dsbLastVpnIndex)\\r\\
+    \\n    /interface set \$selectedIface disabled=no\\r\\
+    \\n    :log warning \\\"DSB VPN Failover: Switching to VPN \$(\$dsbLastVpnIndex + 1)\\\"\\r\\
+    \\n}\\r\\
+}\" policy=read,write,policy,test start-time=startup comment=\"managed-by=dsbilling\"";
+            $lines[] = "";
+        }
+        
+        // 5. Walled Garden (Isolir) Firewall Setup
         $billingPort = parse_url($appUrl, PHP_URL_PORT) ?? 80;
-        $lines[] = "# 4. Walled Garden (Isolir) Firewall Setup";
+        $lines[] = "# 5. Walled Garden (Isolir) Firewall Setup";
         $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$host}\" comment=\"managed-by=dsbilling: Server\" || :put \"Whitelist Billing exists\"";
         $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"app.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" || :put \"Whitelist Midtrans exists\"";
         $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"api.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" || :put \"Whitelist Midtrans API exists\"";
