@@ -48,17 +48,33 @@ class UserQueryService
     }
 
     /**
-     * Dapatkan semua user dengan role Reseller.
-     * Gunakan untuk: dropdown reseller, scope customer reseller.
-     * Reseller ADALAH financial actor.
+     * Dapatkan semua user yang bisa menjadi Owner/Reseller di dropdown.
+     * Termasuk: administrator, manager, reseller.
+     * WAJIB DIKECUALIKAN: customer (role portal pelanggan).
      */
     public function getResellers(bool $activeOnly = true): Collection
     {
-        return User::whereHas('roles', fn($q) => $q->where('name', UserRole::Reseller->value))
+        return User::whereHas('roles', fn($q) => $q->whereIn('name', UserRole::backofficeRoles()))
+            // Keamanan ganda: pastikan TIDAK ada customer yang masuk
+            ->whereDoesntHave('roles', fn($q) => $q->where('name', UserRole::Customer->value))
             ->when($activeOnly, fn($q) => $q->where('is_active', true))
             ->orderBy('name')
             ->get();
     }
+
+    /**
+     * Dapatkan HANYA user dengan role Reseller (tidak termasuk admin/manager).
+     * Gunakan untuk konteks yang memang HANYA butuh reseller murni.
+     */
+    public function getResellersOnly(bool $activeOnly = true): Collection
+    {
+        return User::whereHas('roles', fn($q) => $q->where('name', UserRole::Reseller->value))
+            ->whereDoesntHave('roles', fn($q) => $q->where('name', UserRole::Customer->value))
+            ->when($activeOnly, fn($q) => $q->where('is_active', true))
+            ->orderBy('name')
+            ->get();
+    }
+
 
     // =============================================
     // FINANCIAL ACTOR QUERIES
