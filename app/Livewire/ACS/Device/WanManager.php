@@ -265,9 +265,7 @@ if (!basePath) {
 }
 
 // Vendor specific VLAN
-if ("{$vendor}".includes("zte")) {
-    declare(basePath + ".X_ZTE-COM_VLANIDMark", {value: now}, {value: {$vlanId}});
-} else if ("{$vendor}".includes("fiberhome")) {
+if ("{$vendor}".includes("fiberhome")) {
     declare(basePath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
     declare(basePath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
 } else {
@@ -296,12 +294,27 @@ if ("{$bindString}" !== "") {
         declare(pppPath + ".X_FH_LanInterface", {value: now}, {value: "{$bindString}"});
     } else if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
         declare(pppPath + ".X_HW_LANBIND", {value: now}, {value: "{$bindString}"});
+    } else if ("{$vendor}".includes("zte")) {
+        let bindings = declare("InternetGatewayDevice.X_ZTE-COM_PortBinding.*", {path: 1});
+        let bindIdx = 1;
+        for (let b of bindings) {
+            let bIdx = parseInt(b.path.split(".").pop());
+            if (bIdx >= bindIdx) bindIdx = bIdx + 1;
+        }
+        let bindPath = "InternetGatewayDevice.X_ZTE-COM_PortBinding." + bindIdx;
+        declare(bindPath, {path: 1}, {path: 1});
+        declare(bindPath + ".WANInterface", {value: now}, {value: pppPath});
+        declare(bindPath + ".LANInterface", {value: now}, {value: "{$bindString}"});
     }
 }
 
 if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
     declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanId}});
     declare(pppPath + ".X_HW_SERVICELIST", {value: now}, {value: "INTERNET"});
+} else if ("{$vendor}".includes("zte")) {
+    declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanId}});
+    declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
+    declare(pppPath + ".X_ZTE-COM_ServiceList", {value: now}, {value: "INTERNET"});
 }
 
 if ({$isPppoe}) {
@@ -356,7 +369,8 @@ modem terkonfigurasi.');
         if ($this->formVlan !== '') {
             $vlanId = (int) $this->formVlan;
             if (strpos($vendor, 'zte') !== false) {
-                $parameters["{$parentPath}.X_ZTE-COM_VLANIDMark"] = $vlanId;
+                $parameters["{$this->editFullPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                $parameters["{$this->editFullPath}.X_ZTE-COM_VLANEnable"] = 1;
             } elseif (strpos($vendor, 'huawei') !== false || strpos($vendor, 'ecomtech') !== false) {
                 $parameters["{$this->editFullPath}.X_HW_VLAN"] = $vlanId;
             } elseif (strpos($vendor, 'fiberhome') !== false) {
