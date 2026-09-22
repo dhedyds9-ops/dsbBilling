@@ -235,17 +235,34 @@ class WanManager extends Component
             
             $script = <<<JS
 const now = Date.now();
-// Find next available WANConnectionDevice instance
+// Find next available WANConnectionDevice instance or an empty slot
 let wanConns = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*", {path: 1});
-let nextInst = 1;
+let basePath = null;
+let maxIdx = 0;
+
 for (let p of wanConns) {
-    let parts = p.path.split(".");
-    let idx = parseInt(parts[parts.length - 1]);
-    if (idx >= nextInst) nextInst = idx + 1;
+    let idx = parseInt(p.path.split(".").pop());
+    if (idx > maxIdx) maxIdx = idx;
+    
+    // Check if slot is empty (no PPP and no IP connection)
+    let ppps = declare(p.path + ".WANPPPConnection.*", {path: 1});
+    let ips = declare(p.path + ".WANIPConnection.*", {path: 1});
+    
+    let hasPpp = false;
+    let hasIp = false;
+    for (let x of ppps) hasPpp = true;
+    for (let x of ips) hasIp = true;
+    
+    if (!hasPpp && !hasIp && !basePath) {
+        basePath = p.path;
+    }
 }
 
-let basePath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + nextInst;
-declare(basePath, {path: 1}, {path: 1});
+// If no empty slot is found, create a new one
+if (!basePath) {
+    basePath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + (maxIdx + 1);
+    declare(basePath, {path: 1}, {path: 1});
+}
 
 // Vendor specific VLAN
 if ("{$vendor}".includes("zte")) {
