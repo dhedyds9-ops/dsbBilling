@@ -104,7 +104,7 @@
                             </span>
                         </div>
 
-                        <form wire:submit.prevent="saveWan" class="space-y-4">
+                        <form wire:submit.prevent="{{ $isCreating ? 'saveNewWan' : 'saveWan' }}" class="space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- VLAN & NAT -->
                                 <div>
@@ -132,7 +132,7 @@
                             </div>
 
                             <div class="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
-                                <button type="button" wire:click="cancelEdit" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600">Batal</button>
+                                <button type="button" wire:click="{{ $isCreating ? 'cancelCreate' : 'cancelEdit' }}" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600">Batal</button>
                                 <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded shadow hover:bg-indigo-700">Simpan Perubahan & Kirim ke ACS</button>
                             </div>
                         </form>
