@@ -323,6 +323,28 @@ class ProvisioningService
 
     protected function findOrCreateCustomer(array $data, int $userId): Customer
     {
+        // === VALIDASI KEAMANAN: Cek jika nomor HP sudah dipakai oleh Admin/Reseller ===
+        $phone = $data['phone'];
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+        $phone0 = $cleanPhone;
+        $phone62 = $cleanPhone;
+        if (str_starts_with($cleanPhone, '62')) {
+            $phone0 = '0' . substr($cleanPhone, 2);
+        } elseif (str_starts_with($cleanPhone, '0')) {
+            $phone62 = '62' . substr($cleanPhone, 1);
+        }
+
+        $existingUser = \App\Models\User::whereRaw('LOWER(whatsapp) IN (?, ?)', [$phone0, $phone62])->first();
+        if ($existingUser) {
+            // Jika user yang ditemukan BUKAN customer, tolak dengan tegas!
+            if (!$existingUser->hasRole('customer')) {
+                throw new \InvalidArgumentException(
+                    "Nomor HP '{$phone}' sudah terdaftar sebagai akun pengurus/admin ({$existingUser->name}). " .
+                    "Tidak dapat mendaftarkan pelanggan baru dengan nomor HP yang sama."
+                );
+            }
+        }
+
         // Try to find by phone
         $customer = Customer::where('phone', $data['phone'])->first();
 
