@@ -80,15 +80,33 @@
                         @error('username') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                     </div>
 
-                    <div>
+                    <div x-data="{ show: false }">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password *</label>
-                        <input type="password" wire:model="password" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 placeholder-slate-400 dark:bg-slate-900 dark:text-slate-100" placeholder="Minimal 8 karakter">
+                        <div class="relative">
+                            <input x-ref="pwInput" :type="show ? 'text' : 'password'" wire:model="password" class="w-full px-4 py-2.5 pr-20 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 placeholder-slate-400" placeholder="Minimal 8 karakter">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
+                                <button type="button" @click="show = !show" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none transition-colors" title="Lihat Password">
+                                    <span class="material-symbols-outlined notranslate text-[20px]" x-text="show ? 'visibility_off' : 'visibility'" translate="no">visibility</span>
+                                </button>
+                                <button type="button" @click="navigator.clipboard.writeText($refs.pwInput.value); window.toast ? window.toast('Password disalin') : alert('Password disalin!')" class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 focus:outline-none transition-colors" title="Salin Password">
+                                    <span class="material-symbols-outlined notranslate text-[20px]" translate="no">content_copy</span>
+                                </button>
+                            </div>
+                        </div>
                         @error('password') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                     </div>
 
-                    <div>
+                    <div x-data="{ showConfirm: false }">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Konfirmasi Password *</label>
-                        <input type="password" wire:model="password_confirmation" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 placeholder-slate-400 dark:bg-slate-900 dark:text-slate-100" placeholder="Ketik ulang password">
+                        <div class="relative">
+                            <input :type="showConfirm ? 'text' : 'password'" wire:model="password_confirmation" class="w-full px-4 py-2.5 pr-12 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 placeholder-slate-400" placeholder="Ketik ulang password">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-2">
+                                <button type="button" @click="showConfirm = !showConfirm" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none transition-colors" title="Lihat Password">
+                                    <span class="material-symbols-outlined notranslate text-[20px]" x-text="showConfirm ? 'visibility_off' : 'visibility'" translate="no">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                        @error('password_confirmation') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>

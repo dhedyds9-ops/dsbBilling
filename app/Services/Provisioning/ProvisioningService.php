@@ -53,6 +53,32 @@ class ProvisioningService
             // Step 3: Get Service Profile (Single Source of Truth)
             $serviceProfile = \App\Models\ISP\ServiceProfile::find($data['service_profile_id'] ?? null) ?? \App\Models\ISP\ServiceProfile::first();
             $service = Service::first();
+            
+            // Auto-create default Service and Catalog if empty to prevent NOT NULL constraint
+            if (!$service) {
+                $catalog = \App\Models\ServiceCatalog\ServiceCatalog::firstOrCreate(
+                    ['name' => 'Layanan Internet'],
+                    [
+                        'uuid' => (string) Str::uuid(),
+                        'description' => 'Katalog Layanan Default',
+                        'is_active' => true,
+                        'created_by' => $userId,
+                        'updated_by' => $userId
+                    ]
+                );
+                
+                $service = Service::create([
+                    'uuid' => (string) Str::uuid(),
+                    'service_catalog_id' => $catalog->id,
+                    'name' => 'Default Internet Service',
+                    'description' => 'Auto-generated service',
+                    'type' => 'pppoe',
+                    'price' => 0,
+                    'is_active' => true,
+                    'created_by' => $userId,
+                    'updated_by' => $userId
+                ]);
+            }
 
             // Step 4: Create CustomerService
             $customerService = CustomerService::create([
@@ -168,6 +194,32 @@ class ProvisioningService
             // Step 3: Get Service Profile (Single Source of Truth)
             $serviceProfile = \App\Models\ISP\ServiceProfile::find($data['service_profile_id'] ?? null) ?? \App\Models\ISP\ServiceProfile::first();
             $service = Service::first();
+            
+            // Auto-create default Service and Catalog if empty to prevent NOT NULL constraint
+            if (!$service) {
+                $catalog = \App\Models\ServiceCatalog\ServiceCatalog::firstOrCreate(
+                    ['name' => 'Layanan Internet'],
+                    [
+                        'uuid' => (string) Str::uuid(),
+                        'description' => 'Katalog Layanan Default',
+                        'is_active' => true,
+                        'created_by' => $userId,
+                        'updated_by' => $userId
+                    ]
+                );
+                
+                $service = Service::create([
+                    'uuid' => (string) Str::uuid(),
+                    'service_catalog_id' => $catalog->id,
+                    'name' => 'Default Internet Service',
+                    'description' => 'Auto-generated service',
+                    'type' => 'pppoe',
+                    'price' => 0,
+                    'is_active' => true,
+                    'created_by' => $userId,
+                    'updated_by' => $userId
+                ]);
+            }
 
             // Step 4: Create CustomerService
             $customerService = CustomerService::create([
