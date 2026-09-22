@@ -21,7 +21,11 @@ class Customer extends Model
     protected $table = 'members';
 
     protected $fillable = [
+        'user_id',
         'code',
+        'reseller_id',
+        'latitude',
+        'longitude',
         'name',
         'phone',
         'email',

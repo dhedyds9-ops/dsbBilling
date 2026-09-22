@@ -334,6 +334,7 @@ class ProvisioningService
                 'whatsapp' => $data['phone'],
                 'customer_code' => $data['customer_code'] ?? null,
                 'username' => $data['customer_code'] ?? null,
+                'pppoe_username' => $data['username'] ?? null,
                 'password' => \Illuminate\Support\Facades\Hash::make('123456'),
                 'is_active' => true,
             ]);
