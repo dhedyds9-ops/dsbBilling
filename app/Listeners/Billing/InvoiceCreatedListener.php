@@ -14,7 +14,7 @@ class InvoiceCreatedListener
     public function handle(InvoiceCreatedEvent $event): void
     {
         try {
-            $invoice = \App\Models\Billing\Invoice::where('uuid', $event->invoiceUuid)->first();
+            $invoice = \App\Models\Billing\Invoice::where('uuid', $event->invoiceId)->first();
             if ($invoice) {
                 // Send WhatsApp notification
                 $this->waService->notifyInvoiceCreated($invoice);
