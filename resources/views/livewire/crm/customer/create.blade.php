@@ -48,6 +48,20 @@
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Owner / Reseller</label>
+                    <select wire:model="reseller_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">Kantor Pusat (HQ)</option>
+                        @if(isset($resellers))
+                            @foreach($resellers as $reseller)
+                                <option value="{{ $reseller->id }}">{{ $reseller->name }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                    @error('reseller_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Alamat</label>

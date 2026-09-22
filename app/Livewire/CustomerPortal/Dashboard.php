@@ -16,7 +16,18 @@ class Dashboard extends Component
         $customer = auth()->user()->customer;
         
         if (!$customer) {
-            abort(403, 'Profil pelanggan tidak ditemukan.');
+            $user = auth()->user();
+            // AUTO-HEAL: Cari pelanggan yang yatim piatu (tidak punya user_id)
+            $customer = \App\Models\CRM\Customer::where('phone', $user->whatsapp)
+                ->orWhere('email', $user->email)
+                ->orWhere('name', $user->name)
+                ->first();
+                
+            if ($customer && empty($customer->user_id)) {
+                $customer->update(['user_id' => $user->id]);
+            } else {
+                abort(403, 'Profil pelanggan tidak ditemukan. Pastikan data pendaftaran Anda telah diproses Admin.');
+            }
         }
 
         $data = $dashboardService->getDashboardData($customer->id);
