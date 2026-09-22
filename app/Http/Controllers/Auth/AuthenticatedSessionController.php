@@ -36,6 +36,15 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('reseller-portal.dashboard', absolute: false));
         }
         
+        // Administrator dan Manager juga bisa mengakses reseller portal jika intended ke sana
+        if ($user->hasRole('administrator') || $user->hasRole('manager')) {
+            $intended = session()->get('url.intended', '');
+            if (str_contains($intended, 'reseller-portal')) {
+                return redirect()->intended(route('reseller-portal.dashboard', absolute: false));
+            }
+            return redirect()->intended(route('dashboard', absolute: false));
+        }
+
         if ($user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
             return redirect()->intended(route('technician.dashboard', absolute: false));
         }
@@ -46,6 +55,7 @@ class AuthenticatedSessionController extends Controller
         }
         
         return redirect()->intended(route('dashboard', absolute: false));
+
     }
 
     public function destroy(Request $request): RedirectResponse
