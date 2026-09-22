@@ -126,11 +126,26 @@ class LoginRequest extends FormRequest
             })->first();
         }
 
-        // Cek apakah username ini adalah username Hotspot
-        $hotspotUser = \App\Models\ISP\HotspotUser::with('customerService.customer')->whereRaw('LOWER(username) = ?', [$lower])->first();
-        if ($hotspotUser && $hotspotUser->customerService && $hotspotUser->customerService->customer && $hotspotUser->customerService->customer->user_id) {
-            $u = \App\Models\User::find($hotspotUser->customerService->customer->user_id);
-            if ($u) return $u;
+        // Cek apakah username ini adalah username layanan PPPoE/Hotspot di tabel customer_services
+        $customerService = \App\Models\Customer\CustomerService::with('customer')
+            ->whereRaw('LOWER(username) = ?', [$lower])
+            ->first();
+            
+        if ($customerService && $customerService->customer) {
+            $customer = $customerService->customer;
+            if ($customer->user_id) {
+                $u = \App\Models\User::find($customer->user_id);
+                if ($u) return $u;
+            } else {
+                // Auto-heal jika customer yatim piatu tapi punya phone/email yang sama dengan User
+                $u = \App\Models\User::whereRaw('LOWER(whatsapp) = ? OR LOWER(email) = ?', [
+                    mb_strtolower($customer->phone), mb_strtolower($customer->email)
+                ])->first();
+                if ($u) {
+                    $customer->update(['user_id' => $u->id]);
+                    return $u;
+                }
+            }
         }
 
         if (str_contains($identity, '@')) {
