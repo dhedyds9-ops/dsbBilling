@@ -174,19 +174,7 @@ class Edit extends BaseACSComponent
 
                         $this->acs_error = '';
 
-            // === WIFI CREDENTIALS ===
-            try {
-                $vendorName = $this->device->vendor?->name ?? 'default';
-                $creds = $driver->getWifiCredentials($this->device->uuid, $vendorName);
-                if (!empty($creds['ssid'])) {
-                    $this->wifi_ssid = $creds['ssid'];
-                }
-                if (!empty($creds['password'])) {
-                    $this->wifi_password = $creds['password'];
-                }
-            } catch (\Exception $e) {
-                // Ignore wifi fetch errors
-            }
+
 
         } catch (\Exception $e) {
             $this->acs_error = 'Tidak dapat terhubung ke GenieACS: ' . $e->getMessage();
@@ -237,17 +225,7 @@ class Edit extends BaseACSComponent
             'updated_by' => $validated['updated_by'],
         ]);
         
-        // Push to GenieACS if changed
-        try {
-            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $vendorName = $this->device->vendor?->name ?? 'default';
-            
-            catch (\Exception $e) {
-            session()->flash('error', 'Device tersimpan, tapi gagal mengirim task WiFi ke GenieACS: ' . $e->getMessage());
-            return redirect()->route('acs.devices.show', $this->deviceId);
-        }
-
-        session()->flash('success', 'Device dan pengaturan WiFi berhasil diperbarui!');
+        session()->flash('success', 'Device berhasil diperbarui!');
         return redirect()->route('acs.devices.show', $this->deviceId);
     }
 
