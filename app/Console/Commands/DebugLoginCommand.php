@@ -6,50 +6,62 @@ use Illuminate\Console\Command;
 use App\Models\CRM\Customer;
 use App\Models\User;
 use App\Models\Customer\CustomerService;
+use Illuminate\Support\Facades\Hash;
 
 class DebugLoginCommand extends Command
 {
-    protected $signature = 'debug:login {identity}';
+    protected $signature = 'debug:login {identity} {password?}';
     protected $description = 'Debug why an identity cannot login';
 
     public function handle()
     {
         $identity = $this->argument('identity');
-        $this->info("Debugging identity: " . $identity);
+        $password = $this->argument('password') ?: '123456';
+        $this->info("Debugging identity: " . $identity . " with password: " . $password);
         
         $customer = Customer::where('code', $identity)->first();
         if ($customer) {
-            $this->info("[Customer Table] Found Customer! ID: {$customer->id}, Name: {$customer->name}, Phone: {$customer->phone}, Email: {$customer->email}");
-            if ($customer->user_id) {
-                $this->info("[Customer Table] user_id is SET to: {$customer->user_id}");
-                $user = User::find($customer->user_id);
-                if ($user) {
-                    $this->info("[User Table] User found! Username: {$user->username}, Phone: {$user->whatsapp}, Active: {$user->is_active}");
-                } else {
-                    $this->error("[User Table] ERROR: User ID {$customer->user_id} DOES NOT EXIST in users table!");
-                }
-            } else {
-                $this->error("[Customer Table] user_id is NULL (Orphaned Customer)!");
-                
-                // Try to find matching user manually
-                $u = User::where('whatsapp', $customer->phone)->orWhere('whatsapp', '0'.substr($customer->phone, 2))->orWhere('whatsapp', '62'.substr($customer->phone, 1))->first();
-                if ($u) {
-                    $this->info("[User Table] Found a User that matches this customer's phone! User ID: {$u->id}, Phone: {$u->whatsapp}");
-                    $customer->update(['user_id' => $u->id]);
-                    $this->info("=> AUTO-HEALED! Try logging in now.");
-                } else {
-                    $this->error("[User Table] Could not find ANY User with phone matching {$customer->phone}!");
-                    $this->error("=> This means NO PORTAL LOGIN was ever created for this customer!");
-                }
-            }
+            $this->info("[Customer Table] Found Customer! ID: {$customer->id}");
         } else {
             $this->error("[Customer Table] No customer found with code {$identity}");
         }
         
-        // Also check Users table
-        $userDir = User::where('customer_code', $identity)->first();
+        $userDir = User::where('customer_code', $identity)->orWhere('username', $identity)->first();
         if ($userDir) {
-            $this->info("[User Table] Found User by customer_code! ID: {$userDir->id}, Username: {$userDir->username}");
+            $this->info("[User Table] Found User! ID: {$userDir->id}, Username: {$userDir->username}");
+            
+            // Check Role
+            $hasRole = $userDir->hasRole('customer');
+            if ($hasRole) {
+                $this->info("-> Role Check: PASS (User has 'customer' role)");
+            } else {
+                $this->error("-> Role Check: FAIL (User DOES NOT have 'customer' role!) => This will cause 'Kredensial tidak cocok'");
+                
+                // Fix Role
+                $role = \App\Models\Role::where('name', 'customer')->first();
+                if ($role) {
+                    $userDir->roles()->attach($role->id);
+                    $this->info("   [!] AUTO-FIXED: Attached 'customer' role to user!");
+                }
+            }
+            
+            // Check Password
+            $passCheck = Hash::check($password, $userDir->password);
+            if ($passCheck) {
+                $this->info("-> Password Check: PASS (Password matches)");
+            } else {
+                $this->error("-> Password Check: FAIL (Password is NOT {$password}) => This will cause 'Kredensial tidak cocok'");
+            }
+            
+            // Check Active
+            if ($userDir->is_active) {
+                $this->info("-> Status Check: PASS (User is active)");
+            } else {
+                $this->error("-> Status Check: FAIL (User is inactive) => This will cause 'Akun belum aktif'");
+            }
+            
+        } else {
+            $this->error("[User Table] User not found at all!");
         }
     }
 }
