@@ -126,6 +126,23 @@ class LoginRequest extends FormRequest
             })->first();
         }
 
+        // Cek apakah identity adalah ID Pelanggan (code) di tabel customers
+        $customerByCode = \App\Models\CRM\Customer::whereRaw('LOWER(code) = ?', [$lower])->first();
+        if ($customerByCode) {
+            if ($customerByCode->user_id) {
+                $u = \App\Models\User::find($customerByCode->user_id);
+                if ($u) return $u;
+            } else {
+                $u = \App\Models\User::whereRaw('LOWER(whatsapp) = ? OR LOWER(email) = ?', [
+                    mb_strtolower($customerByCode->phone), mb_strtolower($customerByCode->email)
+                ])->first();
+                if ($u) {
+                    $customerByCode->update(['user_id' => $u->id]);
+                    return $u;
+                }
+            }
+        }
+
         // Cek apakah username ini adalah username layanan PPPoE/Hotspot di tabel customer_services
         $customerService = \App\Models\Customer\CustomerService::with('customer')
             ->whereRaw('LOWER(username) = ?', [$lower])
