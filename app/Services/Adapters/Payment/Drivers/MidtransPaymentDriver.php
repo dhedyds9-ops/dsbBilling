@@ -97,11 +97,19 @@ final class MidtransPaymentDriver implements PaymentGatewayDriverInterface
                 'duration' => (int)$req->expiryMinutes,
             ],
         ];
+
+        // Midtrans Snap API doesn't accept payment_notification_url in the body.
+        // We use X-Override-Notification header instead.
+        $overrideNotificationUrl = null;
         if (!empty($this->config['callback_url']) || !empty($req->callbackUrl)) {
-            $payload['payment_notification_url'] = $req->callbackUrl ?: $this->config['callback_url'];
+            $overrideNotificationUrl = $req->callbackUrl ?: $this->config['callback_url'];
         }
-        if (!empty($req->successRedirectUrl)) $payload['finish_redirect_url'] = $req->successRedirectUrl;
-        if (!empty($req->failureRedirectUrl)) $payload['error_redirect_url'] = $req->failureRedirectUrl;
+
+        // Custom redirect URLs (not native to Midtrans body, but handled by Snap settings in dashboard usually,
+        // though Snap API does accept custom callbacks in some params, let's keep them if applicable, 
+        // or just ignore them since Midtrans uses dashboard config for redirects)
+        if (!empty($req->successRedirectUrl)) $payload['callbacks']['finish'] = $req->successRedirectUrl;
+        if (!empty($req->failureRedirectUrl)) $payload['callbacks']['error'] = $req->failureRedirectUrl;
 
         if (!empty($req->paymentMethodCode)) {
             $payload['enabled_payments'] = match ($req->paymentMethodCode) {
@@ -118,8 +126,13 @@ final class MidtransPaymentDriver implements PaymentGatewayDriverInterface
         }
 
         try {
+            $headers = ['Accept' => 'application/json', 'Content-Type' => 'application/json'];
+            if ($overrideNotificationUrl) {
+                $headers['X-Override-Notification'] = $overrideNotificationUrl;
+            }
+
             $http = Http::withBasicAuth($serverKey, '')
-                ->withHeaders(['Accept' => 'application/json', 'Content-Type' => 'application/json'])
+                ->withHeaders($headers)
                 ->timeout(20);
             if (app()->isLocal()) $http->withoutVerifying();
             $resp = $http->post($this->baseUrl() . '/snap/v1/transactions', $payload);

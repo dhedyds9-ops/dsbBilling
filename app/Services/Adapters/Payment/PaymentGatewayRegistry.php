@@ -9,6 +9,7 @@ use App\Services\Adapters\Payment\Drivers\DuitkuPaymentDriver;
 use App\Services\Adapters\Payment\Drivers\MidtransPaymentDriver;
 use App\Services\Adapters\Payment\Drivers\TripayPaymentDriver;
 use App\Services\Adapters\Payment\Drivers\XenditPaymentDriver;
+use App\Services\Adapters\Payment\Drivers\IpaymuPaymentDriver;
 use App\Services\Pengaturan\PaymentGatewaySettingsService;
 use App\Services\Adapters\BaseAdapterRegistry;
 
@@ -25,6 +26,7 @@ final class PaymentGatewayRegistry extends BaseAdapterRegistry
         'duitku' => DuitkuPaymentDriver::class,
         'tripay' => TripayPaymentDriver::class,
         'xendit' => XenditPaymentDriver::class,
+        'ipaymu' => IpaymuPaymentDriver::class,
     ];
 
     public function __construct(

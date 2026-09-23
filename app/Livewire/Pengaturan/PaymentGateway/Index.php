@@ -154,6 +154,23 @@ class Index extends AdminComponent
         ],
     ];
 
+    public array $ipaymu = [
+        'enabled'           => false,
+        'va_number'         => '',
+        'api_key_sandbox'   => '',
+        'api_key_production'=> '',
+        'enabled_channels'  => [
+            'qris'             => true,
+            'va_bca'           => true,
+            'va_mandiri'       => true,
+            'va_bni'           => true,
+            'va_bri'           => true,
+            'va_cimb'          => true,
+            'cstore_alfamart'  => true,
+            'cstore_indomaret' => true,
+        ],
+    ];
+
     public array $manualBank = [
         'enabled'            => true,
         'auto_approve_manual'=> false,
@@ -207,6 +224,9 @@ class Index extends AdminComponent
         }
         if (isset($all['tripay'])) {
             $this->tripay = array_merge($this->tripay, $all['tripay']);
+        }
+        if (isset($all['ipaymu'])) {
+            $this->ipaymu = array_merge($this->ipaymu, $all['ipaymu']);
         }
         if (isset($all['manual_transfer'])) {
             $this->manualBank['accounts']           = $all['manual_transfer']['bank_accounts'] ?? [];
@@ -287,6 +307,18 @@ class Index extends AdminComponent
             $svc->save('tripay', $this->tripay);
             $this->savedStatus = 'saved';
             session()->flash('success', 'Konfigurasi Tripay berhasil disimpan.');
+        } catch (Throwable $e) {
+            $this->savedStatus = 'error';
+            session()->flash('error', 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    public function saveIpaymu(\App\Services\Pengaturan\PaymentGatewaySettingsService $svc): void
+    {
+        try {
+            $svc->save('ipaymu', $this->ipaymu);
+            $this->savedStatus = 'saved';
+            session()->flash('success', 'Konfigurasi iPaymu berhasil disimpan.');
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
             session()->flash('error', 'Gagal: ' . $e->getMessage());
@@ -454,6 +486,26 @@ class Index extends AdminComponent
             $this->balanceInfo = $resp->successful()
                 ? '✅ OK — ' . json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
                 : '❌ HTTP ' . $resp->status() . ': ' . $resp->body();
+        } catch (Throwable $e) {
+            $this->balanceInfo = 'Error: ' . $e->getMessage();
+        }
+    }
+
+    public function testIpaymuBalance(): void
+    {
+        $this->balanceInfo = null;
+        try {
+            $key = $this->general['mode'] === 'sandbox'
+                ? $this->ipaymu['api_key_sandbox']
+                : $this->ipaymu['api_key_production'];
+            
+            if (empty($key) || empty($this->ipaymu['va_number'])) { 
+                $this->balanceInfo = '⚠️ API key / VA Number belum diisi.'; 
+                return; 
+            }
+            // iPaymu requires signature generation to hit their API. 
+            // We just show a placeholder since hitting their balance API requires full signature calculation.
+            $this->balanceInfo = 'ℹ️ Fitur cek koneksi iPaymu akan diimplementasikan bersama signature generation.';
         } catch (Throwable $e) {
             $this->balanceInfo = 'Error: ' . $e->getMessage();
         }

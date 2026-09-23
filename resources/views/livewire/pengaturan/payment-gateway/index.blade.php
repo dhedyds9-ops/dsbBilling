@@ -22,7 +22,7 @@
 
   <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
     <nav class="flex items-center gap-1 text-sm font-medium overflow-x-auto flex-wrap">
-      @foreach(['midtrans'=>'Midtrans','xendit'=>'Xendit','duitku'=>'Duitku','tripay'=>'Tripay','manual'=>'Bank Manual','ewallet'=>'e-Wallet Manual','general'=>'Umum'] as $k=>$l)
+      @foreach(['midtrans'=>'Midtrans','xendit'=>'Xendit','duitku'=>'Duitku','tripay'=>'Tripay','ipaymu'=>'iPaymu','manual'=>'Bank Manual','ewallet'=>'e-Wallet Manual','general'=>'Umum'] as $k=>$l)
         <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">{{ $l }}</button>
       @endforeach
     </nav>
@@ -200,6 +200,37 @@
           </div>
         </div>
 
+      @elseif($activeTab === 'ipaymu')
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
+            <span class="font-semibold text-slate-900 dark:text-slate-100">iPaymu Payment Gateway</span>
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="ipaymu.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan iPaymu</label>
+          </div>
+          <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">VA Number</label><input type="text" wire:model="ipaymu.va_number" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:model="ipaymu.api_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Production</label><input type="password" wire:model="ipaymu.api_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
+            
+            <div class="md:col-span-2">
+              <div class="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Aktif Channels (iPaymu)</div>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                @foreach(array_keys($ipaymu['enabled_channels']) as $p)
+                  <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 p-1.5 rounded bg-slate-50 dark:bg-slate-700/40"><input type="checkbox" wire:model="ipaymu.enabled_channels.{{$p}}" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> {{ $p }}</label>
+                @endforeach
+              </div>
+            </div>
+            
+            <div class="md:col-span-2 flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
+              <button type="button" wire:click="saveIpaymu" wire:loading.attr="disabled" wire:target="saveIpaymu" class="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60">
+                <span wire:loading.remove wire:target="saveIpaymu" class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
+                <span wire:loading wire:target="saveIpaymu" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:16px">sync</span>
+                <span wire:loading.remove wire:target="saveIpaymu">Simpan iPaymu</span>
+                <span wire:loading wire:target="saveIpaymu">Menyimpan...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
       @elseif($activeTab === 'manual')
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
@@ -275,7 +306,7 @@
     </form>
 
     <aside class="space-y-4">
-        @if(in_array($activeTab, ['midtrans','xendit','tripay']))
+        @if(in_array($activeTab, ['midtrans','xendit','tripay','ipaymu']))
           <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
             <div class="font-semibold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-1.5">
               <span class="material-symbols-outlined notranslate text-indigo-600" translate="no" style="font-size:16px">account_balance_wallet</span>
@@ -297,6 +328,11 @@
                   <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">monitoring</span>
                   Cek Koneksi Tripay
                 </button>
+              @elseif($activeTab==='ipaymu')
+                <button wire:click="testIpaymuBalance" wire:loading.attr="disabled" wire:target="testIpaymuBalance" class="w-full px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60">
+                  <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">monitoring</span>
+                  Cek Koneksi iPaymu
+                </button>
               @endif
             </div>
             {{-- ✅ Fixed: balanceInfo sekarang di dalam card, bukan di luar --}}
@@ -315,6 +351,7 @@
               ['xendit.enabled', 'Xendit', $xendit['enabled'] ?? false],
               ['duitku.enabled', 'Duitku', $duitku['enabled'] ?? false],
               ['tripay.enabled', 'Tripay', $tripay['enabled'] ?? false],
+              ['ipaymu.enabled', 'iPaymu', $ipaymu['enabled'] ?? false],
               ['manual.enabled', 'Bank Transfer', $manualBank['enabled'] ?? false],
               ['ewallet', 'e-Wallet Manual', $ewalletManual['enabled'] ?? false],
             ];
