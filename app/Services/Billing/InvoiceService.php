@@ -63,8 +63,10 @@ class InvoiceService
             ]);
 
             // Fetch customer profile to get settlement prices if missing
-            $customer = \App\Models\User::with('serviceProfile')->find($customerId);
-            $sp = $customer ? $customer->serviceProfile : null;
+            $customer = \App\Models\CRM\Customer::with('customerServices.serviceProfile')->find($customerId);
+            $sp = $customer && $customer->customerServices->isNotEmpty() 
+                ? $customer->customerServices->first()->serviceProfile 
+                : null;
             
             $defOwner = $sp ? ($sp->owner_settlement_price ?: $sp->owner_price) : 0;
             $defBranch = $sp ? $sp->branch_settlement_price : 0;
@@ -135,8 +137,10 @@ class InvoiceService
             $invoice->items()->delete();
 
             // Fetch customer profile to get settlement prices if missing
-            $customer = \App\Models\User::with('serviceProfile')->find($customerId);
-            $sp = $customer ? $customer->serviceProfile : null;
+            $customer = \App\Models\CRM\Customer::with('customerServices.serviceProfile')->find($customerId);
+            $sp = $customer && $customer->customerServices->isNotEmpty() 
+                ? $customer->customerServices->first()->serviceProfile 
+                : null;
             
             $defOwner = $sp ? ($sp->owner_settlement_price ?: $sp->owner_price) : 0;
             $defBranch = $sp ? $sp->branch_settlement_price : 0;
