@@ -156,13 +156,13 @@
                             $layanan = '-';
                             if ($svc && $svc->pppoeUser) {
                                 $isOnline = $svc->pppoeUser->is_online ?? false;
-                                $ipAddress = $svc->pppoeUser->static_ip ?? '-';
+                                $ipAddress = $svc->pppoeUser->static_ip ?? 'Dynamic';
                                 $username = $svc->pppoeUser->username ?? '-';
                                 $password = $svc->pppoeUser->password ?? '-';
                                 $layanan = 'PPPoE';
                             } elseif ($svc && $svc->hotspotUser) {
                                 $isOnline = $svc->hotspotUser->is_online ?? false;
-                                $ipAddress = $svc->hotspotUser->static_ip ?? '-';
+                                $ipAddress = $svc->hotspotUser->static_ip ?? 'Dynamic';
                                 $username = $svc->hotspotUser->username ?? '-';
                                 $password = $svc->hotspotUser->password ?? '-';
                                 $layanan = 'Hotspot';

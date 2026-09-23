@@ -102,7 +102,11 @@ class Customer360 extends AdminComponent
             'edit_branch_id'   => 'nullable|exists:branches,id',
         ]);
 
-        $this->getCustomer()->update([
+        $customer = $this->getCustomer();
+        $oldResellerId = $customer->reseller_id;
+        $newResellerId = $this->edit_reseller_id ?: null;
+
+        $customer->update([
             'name'        => $this->edit_name,
             'phone'       => $this->edit_phone,
             'email'       => $this->edit_email,
@@ -110,11 +114,41 @@ class Customer360 extends AdminComponent
             'latitude'    => $this->edit_latitude,
             'longitude'   => $this->edit_longitude,
             'status'      => $this->edit_status,
-            'reseller_id' => $this->edit_reseller_id ?: null,
+            'reseller_id' => $newResellerId,
             'branch_id'   => $this->edit_branch_id   ?: null,
             'notes'       => $this->edit_notes,
             'updated_by'  => auth()->id(),
         ]);
+
+        // Cascade reseller_id changes to all child services if changed
+        if ($oldResellerId !== $newResellerId) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($customer, $newResellerId) {
+                // Get all services bypassing branch scope (since Admin is running this)
+                $services = \App\Models\Customer\CustomerService::withoutGlobalScope('branch_isolation')
+                    ->where('customer_id', $customer->id)
+                    ->get();
+                
+                foreach ($services as $service) {
+                    $service->update(['reseller_id' => $newResellerId]);
+                    
+                    // Update PPPoE User
+                    $pppoe = \App\Models\ISP\PPPoEUser::withoutGlobalScope('branch_isolation')
+                        ->where('customer_service_id', $service->id)
+                        ->first();
+                    if ($pppoe) {
+                        $pppoe->update(['reseller_id' => $newResellerId]);
+                    }
+
+                    // Update Hotspot User
+                    $hotspot = \App\Models\ISP\HotspotUser::withoutGlobalScope('branch_isolation')
+                        ->where('customer_service_id', $service->id)
+                        ->first();
+                    if ($hotspot) {
+                        $hotspot->update(['reseller_id' => $newResellerId]);
+                    }
+                }
+            });
+        }
 
         $this->showEditModal = false;
         $this->getCustomer()->refresh();
