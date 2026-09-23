@@ -175,8 +175,7 @@ class PaymentGatewaySettingsService
 
     protected function generateCallbackUrl(string $key): string
     {
-        $base = config('app.url', url('/'));
-        return rtrim($base, '/') . "/api/payment/webhook/{$key}/" . md5(config('app.key') . $key);
+        return url("/api/payment/webhook/{$key}/" . md5(config('app.key') . $key));
     }
 
     public function getAll(): array
