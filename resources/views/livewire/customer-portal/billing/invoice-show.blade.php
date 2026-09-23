@@ -39,12 +39,11 @@
                             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Pilih Payment Gateway</label>
                             <div class="relative">
                                 <select wire:model.live="selectedGateway"
-                                        class="w-full appearance-none px-4 py-3 pr-10 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all dark:bg-slate-900 dark:text-slate-100">
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all dark:bg-slate-900 dark:text-slate-100">
                                     @foreach($gatewayOptions as $k => $label)
                                         <option value="{{ $k }}">{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                <span class="material-symbols-outlined text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
                             </div>
                         </div>
 
@@ -53,7 +52,7 @@
                             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 mt-3">Pilih Saluran Pembayaran (Channel)</label>
                             <div class="relative">
                                 <select wire:model.live="selectedPaymentMethod"
-                                        class="w-full appearance-none px-4 py-3 pr-10 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all dark:bg-slate-900 dark:text-slate-100">
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all dark:bg-slate-900 dark:text-slate-100">
                                     @foreach($this->groupedPaymentMethodOptions() as $category => $methods)
                                         <optgroup label="{{ $category }}">
                                             @foreach($methods as $m)
@@ -62,7 +61,6 @@
                                         </optgroup>
                                     @endforeach
                                 </select>
-                                <span class="material-symbols-outlined text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
                             </div>
                         </div>
                         @endif
