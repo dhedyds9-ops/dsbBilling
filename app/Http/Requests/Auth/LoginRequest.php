@@ -67,17 +67,7 @@ class LoginRequest extends FormRequest
             }
         }
 
-        // Jika user memiliki role customer, pastikan profil CRM Customer-nya ada!
-        if ($user->hasRole('customer')) {
-            $customerProfile = \App\Models\CRM\Customer::where('user_id', $user->id)->first();
-            if (!$customerProfile) {
-                RateLimiter::hit($this->throttleKey());
-
-                throw ValidationException::withMessages([
-                    'login' => 'Profil pelanggan Anda tidak ditemukan atau belum diproses. Silakan hubungi Admin.',
-                ]);
-            }
-        }
+        // Profil CRM Customer akan dicek & di-link otomatis (auto-heal) di Dashboard.php
 
         // ALL users must be checked for password!
         if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
@@ -126,7 +116,7 @@ class LoginRequest extends FormRequest
                     if ($customerByCode->email) {
                         $q->orWhereRaw('LOWER(email) = ?', [mb_strtolower($customerByCode->email)]);
                     }
-                    $q->orWhereRaw('LOWER(name) = ?', [mb_strtolower($customerByCode->name)]);
+                    if ($customerByCode->code) { $q->orWhereRaw('LOWER(username) = ?', [mb_strtolower($customerByCode->code)]); }
                 })->whereHas('roles', function($q) {
                     $q->where('name', 'customer');
                 })->first();
@@ -234,3 +224,4 @@ class LoginRequest extends FormRequest
         return Str::transliterate(Str::lower($this->string('login')).'|'.$this->ip());
     }
 }
+

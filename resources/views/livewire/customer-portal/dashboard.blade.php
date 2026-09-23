@@ -58,7 +58,7 @@
                             <span class="material-symbols-outlined text-[12px]">person</span>
                             {{ $pppoe_user?->username ?? $hotspot_user?->username }}
                         </div>
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider {{ $pppoe_user ? 'bg-blue-500/20 text-blue-100 border border-blue-400/30' : 'bg-orange-500/20 text-orange-100 border border-orange-400/30' }}">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider {{ $pppoe_user ? 'bg-white/20 text-white border border-white/30' : 'bg-white/20 text-white border border-white/30' }}">
                             {{ $pppoe_user ? 'PPPoE' : 'Hotspot' }}
                         </span>
                     </div>
