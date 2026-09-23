@@ -57,6 +57,19 @@
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
         }
+
+        /* ====================================================
+           GLOBAL PRINT RESET
+           Ensures the dark-mode root background (dark:bg-slate-900
+           on <html>) never bleeds into the printed page.
+           ==================================================== */
+        @media print {
+            html, body {
+                background: #ffffff !important;
+                background-color: #ffffff !important;
+                color: #111827 !important;
+            }
+        }
     </style>
 
     <!-- Styles -->
