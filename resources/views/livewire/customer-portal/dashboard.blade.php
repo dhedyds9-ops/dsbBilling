@@ -61,8 +61,8 @@
                     @endif
                 </div>
                 
-                <!-- Icon -->
-                <div class="flex-shrink-0 relative pl-2">
+                <!-- Icon and Action -->
+                <div class="flex-shrink-0 relative pl-2 flex flex-col items-center gap-3">
                     <div class="absolute inset-0 bg-emerald-400/20 dark:bg-teal-500/10 rounded-full blur-xl animate-pulse"></div>
                     <div class="relative w-16 h-16 
                         bg-gradient-to-tr from-white/10 to-white/20 dark:from-white/5 dark:to-white/10 
@@ -73,6 +73,14 @@
                             {{ $pppoe_user ? 'router' : ($hotspot_user ? 'wifi' : 'signal_wifi_off') }}
                         </span>
                     </div>
+                    
+                    @if(isset($total_outstanding) && $total_outstanding > 0)
+                    <a href="{{ route('customer-portal.billing.invoice-list') }}" 
+                       class="relative z-10 w-full text-center bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg border border-rose-400/50 transition-transform hover:scale-105 active:scale-95"
+                       title="Bayar Tagihan">
+                        Bayar Tagihan
+                    </a>
+                    @endif
                 </div>
             </div>
             
