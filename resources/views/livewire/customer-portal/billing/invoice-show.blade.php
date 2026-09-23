@@ -147,23 +147,23 @@
                             </div>
                         @endif
 
-                        <button type="button"
+                                                <button type="button"
                                 wire:click="proceedPay"
                                 wire:loading.attr="disabled"
                                 wire:target="proceedPay"
                                 class="w-full relative inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white text-sm font-bold shadow-lg shadow-teal-600/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
-                            <span wire:loading.remove wire:target="proceedPay" class="material-symbols-outlined text-[20px]">
-                                {{ in_array($selectedGateway, ['manual_transfer','manual_ewallet'], true) ? 'check_circle' : 'arrow_forward' }}
-                            </span>
-                            <span wire:loading.remove wire:target="proceedPay">
-                                {{ in_array($selectedGateway, ['manual_transfer','manual_ewallet'], true) ? 'Saya Sudah Transfer' : 'Bayar Sekarang' }}
-                            </span>
+                            <div wire:loading.remove wire:target="proceedPay" class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[20px]">
+                                    {{ in_array($selectedGateway, ['manual_transfer','manual_ewallet'], true) ? 'check_circle' : 'arrow_forward' }}
+                                </span>
+                                <span>
+                                    {{ in_array($selectedGateway, ['manual_transfer','manual_ewallet'], true) ? 'Saya Sudah Transfer' : 'Bayar Sekarang' }}
+                                </span>
+                            </div>
 
-                            <div wire:loading wire:target="proceedPay" class="absolute inset-0 bg-teal-900/30 backdrop-blur-[1px] flex items-center justify-center rounded-xl">
-                                <div class="flex items-center gap-2 text-white font-bold">
-                                    <span class="material-symbols-outlined animate-spin">autorenew</span>
-                                    Memproses...
-                                </div>
+                            <div wire:loading.flex wire:target="proceedPay" class="hidden items-center gap-2">
+                                <span class="material-symbols-outlined animate-spin">autorenew</span>
+                                <span>Memproses...</span>
                             </div>
                         </button>
                     </div>
@@ -181,6 +181,7 @@
         
     </div>
 </div>
+
 
 
 
