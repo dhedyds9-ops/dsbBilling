@@ -48,6 +48,25 @@
                             </div>
                         </div>
 
+                        @if(count($this->groupedPaymentMethodOptions()) > 0)
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 mt-3">Pilih Saluran Pembayaran (Channel)</label>
+                            <div class="relative">
+                                <select wire:model.live="selectedPaymentMethod"
+                                        class="w-full appearance-none px-4 py-3 pr-10 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all dark:bg-slate-900 dark:text-slate-100">
+                                    @foreach($this->groupedPaymentMethodOptions() as $category => $methods)
+                                        <optgroup label="{{ $category }}">
+                                            @foreach($methods as $m)
+                                                <option value="{{ $m['code'] }}">{{ $m['label'] }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                                <span class="material-symbols-outlined text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                            </div>
+                        </div>
+                        @endif
+
                         @if($selectedGateway === 'manual_transfer')
                             <div class="border-2 border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                                 <div class="bg-slate-50 dark:bg-slate-800 p-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
