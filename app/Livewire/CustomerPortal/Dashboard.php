@@ -19,9 +19,9 @@ class Dashboard extends Component
         
         if (!$this->customer) {
             // AUTO-HEAL: Cari pelanggan yang yatim piatu (tidak punya user_id)
-            $this->customer = \App\Models\CRM\Customer::where('phone', $user->whatsapp)
+            $this->customer = \App\Models\CRM\Customer::where('code', $user->username)
+                ->orWhere('phone', $user->whatsapp)
                 ->orWhere('email', $user->email)
-                ->orWhere('name', $user->name)
                 ->first();
                 
             if ($this->customer && empty($this->customer->user_id)) {

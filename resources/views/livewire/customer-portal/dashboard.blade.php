@@ -51,12 +51,16 @@
                         @endif
                     </p>
 
-                    <!-- Username badge -->
+                    <!-- Username & Type badge -->
                     @if($pppoe_user || $hotspot_user)
-                    <div class="mt-2 inline-flex items-center gap-1 text-[10px] font-mono 
-                        text-teal-100 dark:text-slate-400">
-                        <span class="material-symbols-outlined text-[12px]">person</span>
-                        {{ $pppoe_user?->username ?? $hotspot_user?->username }}
+                    <div class="mt-2 flex items-center gap-2">
+                        <div class="inline-flex items-center gap-1 text-[10px] font-mono text-teal-100 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-[12px]">person</span>
+                            {{ $pppoe_user?->username ?? $hotspot_user?->username }}
+                        </div>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider {{ $pppoe_user ? 'bg-blue-500/20 text-blue-100 border border-blue-400/30' : 'bg-orange-500/20 text-orange-100 border border-orange-400/30' }}">
+                            {{ $pppoe_user ? 'PPPoE' : 'Hotspot' }}
+                        </span>
                     </div>
                     @endif
                 </div>
@@ -78,7 +82,7 @@
                     <a href="{{ route('customer-portal.billing.invoice-list') }}" 
                        class="relative z-10 w-full text-center bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg border border-rose-400/50 transition-transform hover:scale-105 active:scale-95"
                        title="Bayar Tagihan">
-                        Bayar Tagihan
+                        Bayar Rp{{ number_format($total_outstanding, 0, ',', '.') }}
                     </a>
                     @endif
                 </div>

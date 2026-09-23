@@ -172,13 +172,17 @@
 
         <!-- Bottom Navigation Bar (Fixed) -->
         <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] print-hide">
-            <a href="{{ route('customer-portal.dashboard') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.dashboard') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
+            <a href="{{ route('customer-portal.dashboard') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.dashboard') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
                 <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.dashboard') ? 'fill' : '' }}" style="font-size:24px">home</span>
                 <span class="text-[10px] font-semibold">Home</span>
             </a>
+            <a href="{{ route('customer-portal.billing.invoice-list') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.billing.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
+                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.billing.*') ? 'fill' : '' }}" style="font-size:24px">receipt_long</span>
+                <span class="text-[10px] font-semibold">Tagihan</span>
+            </a>
             <a href="{{ route('customer-portal.info') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.info') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.info') ? 'fill' : '' }}" style="font-size:24px">info</span>
-                <span class="text-[10px] font-semibold">Info</span>
+                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.info') ? 'fill' : '' }}" style="font-size:24px">notifications</span>
+                <span class="text-[10px] font-semibold">Notifikasi</span>
             </a>
             <a href="{{ route('customer-portal.support.ticket-list') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.support.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
                 <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.support.*') ? 'fill' : '' }}" style="font-size:24px">support_agent</span>
