@@ -29,7 +29,7 @@ class ReapDeadRadiusSessionsCommand extends Command
             })
             ->orWhere(function ($q) use ($timeoutSec) {
                 $q->whereNull('acct_start_time')
-                    ->whereRaw("TIMESTAMPDIFF(SECOND, created_at, NOW()) >= {$timeoutSec}");
+                    ->whereRaw("TIMESTAMPDIFF(SECOND, received_at, NOW()) >= {$timeoutSec}");
             })
             ->count();
 
@@ -41,7 +41,7 @@ class ReapDeadRadiusSessionsCommand extends Command
 
         $updated = 0;
         RadiusAccounting::query()
-            ->select(['id', 'acct_start_time', 'created_at', 'acct_session_time'])
+            ->select(['id', 'acct_start_time', 'received_at', 'acct_session_time'])
             ->whereNull('acct_stop_time')
             ->where(function ($q) use ($timeoutSec) {
                 $q->whereNotNull('acct_start_time')
@@ -49,7 +49,7 @@ class ReapDeadRadiusSessionsCommand extends Command
             })
             ->orWhere(function ($q) use ($timeoutSec) {
                 $q->whereNull('acct_start_time')
-                    ->whereRaw("TIMESTAMPDIFF(SECOND, created_at, NOW()) >= {$timeoutSec}");
+                    ->whereRaw("TIMESTAMPDIFF(SECOND, received_at, NOW()) >= {$timeoutSec}");
             })
             ->chunkById($chunk, function ($rows) use (&$updated, $timeoutSec) {
                 foreach ($rows as $row) {
