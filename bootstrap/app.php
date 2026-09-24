@@ -1,0 +1,31 @@
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+
+$app = Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'job_function' => \App\Http\Middleware\JobFunctionMiddleware::class,
+            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'radius.nas_secret' => \App\Http\Middleware\Radius\VerifyNasSecret::class,
+            'verify.license' => \App\Http\Middleware\VerifyLicense::class,
+            'workforce.checked_in' => \App\Http\Middleware\EnsureWorkforceCheckedIn::class,
+        ]);
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
+        //
+    })->create();
+
+// Override the package manifest path to storage/framework/cache
+$app->instance('path.packages', $app->storagePath('framework/cache'));
+
+return $app;
