@@ -190,6 +190,13 @@ class CDataOltDriver extends BaseOltDriver
                 $snmpPort = (($ponPort >> 8) & 0xFF) - 1;
             }
             
+            // Coba fetch RX Power menggunakan OID lama, jika gagal baru fallback ke status saja.
+            $baseOld = $this->onuInfoOid . '.' . $ponPort;
+            $rxTest = $this->snmp->walk($baseOld . '.6');
+            if (!empty($rxTest)) {
+                goto old_branch_snmp;
+            }
+
             if ($this->cachedOnuStatuses === null) {
                 $this->cachedOnuStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [];
             }
@@ -238,6 +245,7 @@ class CDataOltDriver extends BaseOltDriver
             return $results;
         }
 
+        old_branch_snmp:
         $results   = [];
         $base      = $this->onuInfoOid . '.' . $ponPort;
         $serials   = $this->snmp->walk($base . '.2');
