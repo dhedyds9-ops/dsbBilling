@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Auth;
 
 // ==================== PUBLIC ROUTES ====================
 Route::get('/', function () {
-    $packagesPppoe = \App\Models\ISP\ServiceProfile::where('is_active', true)->whereIn('service_type', ['pppoe', 'PPPoE', 'PPPOE'])->orderBy('price')->take(3)->get();
-    $packagesHotspot = \App\Models\ISP\ServiceProfile::where('is_active', true)->whereIn('service_type', ['hotspot', 'Hotspot', 'HOTSPOT'])->orderBy('price')->take(3)->get();
-    $packagesVoucher = \App\Models\ISP\ServiceProfile::where('is_active', true)->whereIn('service_type', ['voucher', 'Voucher', 'VOUCHER'])->orderBy('price')->take(4)->get();
+    $packagesPppoe = \App\Models\ISP\ServiceProfile::where('status', 'active')->whereIn('service_type', ['pppoe', 'PPPoE', 'PPPOE'])->orderBy('base_price')->take(3)->get();
+    $packagesHotspot = \App\Models\ISP\ServiceProfile::where('status', 'active')->whereIn('service_type', ['hotspot', 'Hotspot', 'HOTSPOT'])->orderBy('base_price')->take(3)->get();
+    $packagesVoucher = \App\Models\ISP\ServiceProfile::where('status', 'active')->whereIn('service_type', ['voucher', 'Voucher', 'VOUCHER'])->orderBy('base_price')->take(4)->get();
 
     // Jika database kosong, berikan data dummy agar UI landing page tetap cantik
     if ($packagesPppoe->isEmpty()) {
