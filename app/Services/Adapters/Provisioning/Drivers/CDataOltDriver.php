@@ -190,12 +190,7 @@ class CDataOltDriver extends BaseOltDriver
                 $snmpPort = (($ponPort >> 8) & 0xFF) - 1;
             }
             
-            // Coba fetch RX Power menggunakan OID lama, jika gagal baru fallback ke status saja.
-            $baseOld = $this->onuInfoOid . '.' . $ponPort;
-            $rxTest = $this->snmp->walk($baseOld . '.6');
-            if (!empty($rxTest)) {
-                goto old_branch_snmp;
-            }
+
 
             if ($this->cachedOnuStatuses === null) {
                 $this->cachedOnuStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [];
@@ -210,6 +205,12 @@ class CDataOltDriver extends BaseOltDriver
                 ->get()
                 ->keyBy('onu_id_on_olt');
 
+            $baseOld = $this->onuInfoOid . '.' . $ponPort;
+            $rxRaw   = $this->snmp->walk($baseOld . '.6') ?: [];
+            $txRaw   = $this->snmp->walk($baseOld . '.7') ?: [];
+            if (empty($txRaw)) $txRaw = $this->snmp->walk($baseOld . '.5') ?: [];
+            $tempRaw = $this->snmp->walk($baseOld . '.8') ?: [];
+
             foreach ($statuses as $idx => $statusVal) {
                 $cleanOid = str_replace('iso', '.1', $idx);
                 $parts = explode('.', $cleanOid);
@@ -223,15 +224,45 @@ class CDataOltDriver extends BaseOltDriver
                         $serial = $dbOnu ? $dbOnu->serial_number : "CDATA-GPON-{$ponPort}-{$onuId}";
                         $mac = $dbOnu ? $dbOnu->mac_address : null;
                         
+                        $rxVal = null;
+                        $rxRawVal = (int)($rxRaw[$onuId] ?? 0);
+                        if ($rxRawVal < 0 && $rxRawVal > -65536) {
+                            $rxVal = round($rxRawVal / 100, 2);
+                        } elseif ($rxRawVal > 65536) {
+                            $rxVal = round(10 * log10($rxRawVal / 10000), 2);
+                        } elseif ($rxRawVal > 0 && $rxRawVal < 2000) {
+                            $rxVal = round($rxRawVal / 10 - 50, 2);
+                        }
+
+                        $txVal = null;
+                        $txRawVal = (int)($txRaw[$onuId] ?? 0);
+                        if ($txRawVal !== 0) {
+                            if ($txRawVal < 0 && $txRawVal > -65536) {
+                                $txVal = round($txRawVal / 100, 2);
+                            } elseif ($txRawVal > 65536) {
+                                $txVal = round(10 * log10($txRawVal / 10000), 2);
+                            } elseif ($txRawVal > 0 && $txRawVal < 2000) {
+                                $txVal = round($txRawVal / 10 - 50, 2);
+                            }
+                        }
+
+                        $tempVal = null;
+                        if (!empty($tempRaw[$onuId]) && is_numeric($tempRaw[$onuId])) {
+                            $t = (int)$tempRaw[$onuId];
+                            if ($t !== 0 && $t < 65535) {
+                                $tempVal = $t > 1000 ? round($t / 100, 1) : $t;
+                            }
+                        }
+
                         $results[] = [
                             'pon_port'         => $ponPort,
                             'onu_index'        => $onuId,
                             'serial_number'    => $serial,
                             'mac_address'      => $mac,
-                            'rx_power_dbm'     => null,
-                            'tx_power_dbm'     => null,
+                            'rx_power_dbm'     => $rxVal,
+                            'tx_power_dbm'     => $txVal,
                             'snr_db'           => null,
-                            'temperature'      => null,
+                            'temperature'      => $tempVal,
                             'firmware_version' => $dbOnu ? $dbOnu->firmware_version : null,
                             'model'            => $dbOnu ? $dbOnu->model : null,
                             'status'           => match ((int)$statusVal) {
@@ -245,7 +276,6 @@ class CDataOltDriver extends BaseOltDriver
             return $results;
         }
 
-        old_branch_snmp:
         $results   = [];
         $base      = $this->onuInfoOid . '.' . $ponPort;
         $serials   = $this->snmp->walk($base . '.2');
