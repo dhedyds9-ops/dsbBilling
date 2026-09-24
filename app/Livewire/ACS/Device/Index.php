@@ -120,7 +120,7 @@ class Index extends BaseACSComponent
                 }
                 
                 $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-                $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 15) ? 'online' : 'offline';
+                $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 6) ? 'online' : 'offline';
 
                 $serialNumber = $deviceData['_deviceId']['_SerialNumber'] ?? 
                                 $deviceData['InternetGatewayDevice']['DeviceInfo']['SerialNumber']['_value'] ?? $deviceId;
