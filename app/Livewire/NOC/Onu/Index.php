@@ -13,9 +13,15 @@ class Index extends AdminComponent
 {
     use WithPagination;
 
+    #[\Livewire\Attributes\Url]
     public string $search = '';
+    
+    #[\Livewire\Attributes\Url]
     public string $statusFilter = 'all';
+    
+    #[\Livewire\Attributes\Url]
     public string $oltFilter   = '';
+    
     #[\Livewire\Attributes\Url]
     public string $ponFilter   = '';
     public string $sortField   = 'serial_number';

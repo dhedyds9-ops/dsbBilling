@@ -215,7 +215,7 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                             {{-- ONU Online --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if($onuOnline > 0)
-                                    <a href="{{ route('isp.onus.index', ['oltFilter' => $olt->id]) }}"
+                                    <a href="{{ route('isp.onus.index', ['oltFilter' => $olt->id, 'statusFilter' => 'online']) }}"
                                         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors">
                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                                         {{ $onuOnline }}
