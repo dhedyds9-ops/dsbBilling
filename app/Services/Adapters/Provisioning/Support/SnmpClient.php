@@ -214,7 +214,7 @@ class SnmpClient
     {
         try {
             $cmd = sprintf(
-                'snmpwalk -O q -v %s -c %s -t %d -r %d %s %s 2>/dev/null',
+                'snmpwalk -O n -v %s -c %s -t %d -r %d %s %s 2>/dev/null',
                 escapeshellarg($this->version),
                 escapeshellarg($this->community),
                 (int)($this->timeout / 1000000),
