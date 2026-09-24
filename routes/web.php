@@ -523,3 +523,18 @@ Route::get('/test-livewire', \App\Livewire\Isp\Technician\Attendance\Index::clas
 
 
 
+
+Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Request $request) {
+    $request->validate(['logo' => 'required|image|max:2048']);
+    if ($request->hasFile('logo')) {
+        $type = $request->query('type', 'logo');
+        $key = 'logo_url';
+        $prefix = 'company/logo';
+        if ($type === 'partner') { $key = 'partner_logo_url'; $prefix = 'company/partner'; }
+        if ($type === 'stamp') { $key = 'stamp_url'; $prefix = 'company/stamp'; }
+        
+        $path = $request->file('logo')->storePublicly($prefix, 'public');
+        app(\App\Services\Pengaturan\CompanySettingsService::class)->save([$key => \Illuminate\Support\Facades\Storage::url($path)]);
+    }
+    return back()->with('success', 'Gambar berhasil diperbarui!');
+})->name('pengaturan.perusahaan.upload-logo');

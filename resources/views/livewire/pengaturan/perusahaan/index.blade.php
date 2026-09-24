@@ -24,7 +24,15 @@
     </div>
   </div>
 
-    <!-- Tampilkan error validasi jika ada -->
+      <!-- Tampilkan error validasi jika ada -->
+  @if(session('success'))
+    <div class="m-4 p-4 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+      <div class="font-bold flex items-center gap-2">
+        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">check_circle</span>
+        {{ session('success') }}
+      </div>
+    </div>
+  @endif
   @if($errors->any())
     <div class="m-4 p-4 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
       <div class="font-bold mb-1">Gagal menyimpan, silakan periksa kembali:</div>
@@ -155,10 +163,13 @@
               @endif
             </div>
             <div class="flex-1">
-              <input type="file" wire:model="logoFile" id="logoUpload" class="hidden dark:bg-slate-900 dark:text-slate-100">
-              <label for="logoUpload" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-md cursor-pointer hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">upload</span>Pilih Logo
-              </label>
+              <form action="{{ route('pengaturan.perusahaan.upload-logo') }}" method="POST" enctype="multipart/form-data" class="inline-block">
+                @csrf
+                <input type="file" name="logo" id="logoUploadNative" class="hidden" onchange="this.form.submit()">
+                <label for="logoUploadNative" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-md cursor-pointer hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+                  <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">upload</span>Pilih & Simpan Logo
+                </label>
+              </form>
               @if ($company['logo_url'] ?? false)
                 <button wire:click="resetLogo" type="button" class="ml-2 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600">Hapus</button>
               @endif
@@ -198,10 +209,13 @@
               @endif
             </div>
             <div class="flex-1">
-              <input type="file" wire:model="stampFile" id="stampUpload" class="hidden dark:bg-slate-900 dark:text-slate-100">
-              <label for="stampUpload" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-md cursor-pointer hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">upload</span>Pilih Cap
-              </label>
+              <form action="{{ route('pengaturan.perusahaan.upload-logo') }}?type=stamp" method="POST" enctype="multipart/form-data" class="inline-block">
+                @csrf
+                <input type="file" name="logo" id="stampUploadNative" class="hidden" onchange="this.form.submit()">
+                <label for="stampUploadNative" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-md cursor-pointer hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+                  <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">upload</span>Pilih & Simpan Cap
+                </label>
+              </form>
               @if ($company['stamp_url'] ?? false)
                 <button wire:click="resetStamp" type="button" class="ml-2 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600">Hapus</button>
               @endif
