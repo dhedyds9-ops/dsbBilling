@@ -155,7 +155,7 @@
           <div>
             <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Logo Perusahaan</label>
             <div class="flex items-start gap-3">
-              <div class="w-24 h-24 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 flex items-center justify-center overflow-hidden">
+              <div class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden">
               @if ($company['logo_url'] ?? false)
                 <img src="{{ $company['logo_url'] }}" class="w-full h-full object-contain" alt="logo">
               @else
@@ -179,7 +179,7 @@
           <div>
             <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Logo Mitra / Partner</label>
             <div class="flex items-start gap-3">
-              <div class="w-24 h-24 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 flex items-center justify-center overflow-hidden">
+              <div class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden">
               @if ($company['partner_logo_url'] ?? false)
                 <img src="{{ $company['partner_logo_url'] }}" class="w-full h-full object-contain" alt="partner logo">
               @else
@@ -201,7 +201,7 @@
           <div>
             <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Cap / Stempel Perusahaan</label>
             <div class="flex items-start gap-3">
-              <div class="w-24 h-24 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 flex items-center justify-center overflow-hidden">
+              <div class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden">
               @if ($company['stamp_url'] ?? false)
                 <img src="{{ $company['stamp_url'] }}" class="w-full h-full object-contain" alt="stamp">
               @else
