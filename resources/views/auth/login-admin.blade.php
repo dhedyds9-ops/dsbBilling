@@ -41,7 +41,7 @@
             <a href="{{ route('home') }}" class="inline-flex items-center gap-2 text-4xl font-heading font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 transition-all">
                 @php $companyLogo = \App\Models\Setting::getValue('company.logo_url', null); @endphp
                 @if($companyLogo)
-                    <img src="{{ asset('storage/' . $companyLogo) }}" alt="Logo" class="h-10 w-auto object-contain">
+                    <img src="{{ asset($companyLogo) }}" alt="Logo" class="h-10 w-auto object-contain">
                 @else
                     {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
                 @endif

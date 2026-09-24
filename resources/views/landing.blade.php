@@ -171,7 +171,7 @@
         <!-- Brand -->
         <a href="{{ route('home') }}" class="flex items-center gap-2 font-display-lg text-headline-lg font-black text-primary tracking-tighter">
             @if($companyLogo)
-                <img src="{{ asset('storage/' . $companyLogo) }}" alt="{{ $companyName }}" class="h-10 w-auto object-contain">
+                <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" class="h-10 w-auto object-contain">
             @else
                 {{ $companyName }}
             @endif
