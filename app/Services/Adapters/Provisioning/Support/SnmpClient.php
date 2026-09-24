@@ -54,13 +54,13 @@ class SnmpClient
     {
         try {
             if (PHP_OS_FAMILY === 'Windows') {
-                $where = @shell_exec('where snmpget 2>&1');
+                $where = @shell_exec('where snmpget 2>nul');
                 if ($where !== null && trim($where) !== '' && !str_contains($where, 'Could not find files')) {
                     return true;
                 }
                 return false;
             }
-            $which = @shell_exec('command -v snmpget 2>&1');
+            $which = @shell_exec('command -v snmpget 2>/dev/null');
             return $which !== null && trim($which) !== '';
         } catch (Exception) {
             return false;
@@ -172,7 +172,7 @@ class SnmpClient
         return str_contains($lower, 'is not recognized')
             || str_contains($lower, 'not found')
             || str_contains($lower, 'no such file or directory')
-            || str_contains($lower, 'cannot find')
+            /* || str_contains($lower, 'cannot find') */
             || str_contains($lower, 'the term \'')
             || str_contains($lower, 'is not an internal or external command')
             || str_contains($lower, 'timeout:')
@@ -185,7 +185,7 @@ class SnmpClient
     {
         try {
             $cmd = sprintf(
-                'snmpget -O qv -v %s -c %s -t %d -r %d %s %s 2>&1',
+                'snmpget -O qv -v %s -c %s -t %d -r %d %s %s 2>/dev/null',
                 escapeshellarg($this->version),
                 escapeshellarg($this->community),
                 (int)($this->timeout / 1000000),
@@ -214,7 +214,7 @@ class SnmpClient
     {
         try {
             $cmd = sprintf(
-                'snmpwalk -O q -v %s -c %s -t %d -r %d %s %s 2>&1',
+                'snmpwalk -O q -v %s -c %s -t %d -r %d %s %s 2>/dev/null',
                 escapeshellarg($this->version),
                 escapeshellarg($this->community),
                 (int)($this->timeout / 1000000),
@@ -250,4 +250,5 @@ class SnmpClient
         }
     }
 }
+
 
