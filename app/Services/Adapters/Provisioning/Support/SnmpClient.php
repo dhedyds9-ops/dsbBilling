@@ -82,11 +82,17 @@ class SnmpClient
             return false;
         }
         if (self::$extSnmpAvailable) {
-            $result = @snmpget($this->host, $this->community, $oid, $this->timeout * 1000000, $this->retries);
-            if ($result === false) {
-                return false;
+            // Coba dengan fungsi bawaan PHP
+            // Set SNMP options agar tidak error MIB
+            @snmp_set_oid_numeric_print(true);
+            @snmp_set_quick_print(true);
+            @snmp_set_valueretrieval(SNMP_VALUE_PLAIN);
+            
+            $result = @snmpget($this->host, $this->community, $oid, $this->timeout, $this->retries);
+            if ($result !== false) {
+                return $this->parseValue($result);
             }
-            return $this->parseValue($result);
+            // Jika gagal (mungkin karena MIB), JANGAN langsung false, tapi fallback ke CLI!
         }
         return $this->fallbackSnmpGet($oid);
     }
@@ -97,7 +103,7 @@ class SnmpClient
             return [];
         }
         if (self::$extSnmpAvailable) {
-            $result = @snmprealwalk($this->host, $this->community, $oid, $this->timeout * 1000000, $this->retries);
+            $result = @snmprealwalk($this->host, $this->community, $oid, $this->timeout, $this->retries);
             if ($result === false) {
                 return [];
             }
@@ -113,7 +119,7 @@ class SnmpClient
     public function set(string $oid, string $type, mixed $value): bool
     {
         if (self::$extSnmpAvailable && function_exists('snmpset')) {
-            return @snmpset($this->host, $this->community, $oid, $type, $value, $this->timeout * 1000000, $this->retries);
+            return @snmpset($this->host, $this->community, $oid, $type, $value, $this->timeout, $this->retries);
         }
         return false;
     }
