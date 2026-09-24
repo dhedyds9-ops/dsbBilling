@@ -144,12 +144,22 @@ class Index extends AdminComponent
         return 'ONLINE';
     }
 
+    #[Computed]
+    public function ponPorts()
+    {
+        if (empty($this->oltFilter) || $this->oltFilter === 'all') {
+            return collect();
+        }
+        return \App\Models\ISP\PonPort::where('olt_id', $this->oltFilter)->orderBy('port_index')->get();
+    }
+
     #[\Livewire\Attributes\Layout('layouts.noc')]
     public function render()
     {
         return view('livewire.noc.onu.index', [
             'onus'    => $this->onus,
             'olts'    => $this->olts,
+            'ponPorts' => $this->ponPorts,
             'summary' => $this->summary,
         ]);
     }

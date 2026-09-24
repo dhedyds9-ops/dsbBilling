@@ -66,6 +66,7 @@ class Index extends BaseIndex
         return view('livewire.isp.onu.index-v2', [
             'onus'    => $this->onus,
             'olts'    => $this->olts,
+            'ponPorts' => $this->ponPorts,
             'summary' => $this->summary,
         ]);
     }

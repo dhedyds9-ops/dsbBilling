@@ -13,20 +13,29 @@
             <span class="px-2 py-1 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs font-semibold">{{ $summary['low_rx'] }} Low RX</span>
         </div>
         <div class="flex items-center gap-2">
-            <select wire:model.live="oltFilter" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="oltFilter" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="">All OLT</option>
                 @foreach($olts as $olt)
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="{{ $olt->id }}">{{ $olt->name }}</option>
                 @endforeach
             </select>
-            <select wire:model.live="statusFilter" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+            
+            @if(!empty($oltFilter) && $oltFilter !== 'all')
+            <select wire:model.live="ponFilter" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="">All PON</option>
+                @foreach($ponPorts as $pon)
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="{{ $pon->id }}">{{ $pon->name }}</option>
+                @endforeach
+            </select>
+            @endif
+<select wire:model.live="statusFilter" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="all">All Status</option>
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="online">Online</option>
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="offline">Offline</option>
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="los">LOS / Critical RX</option>
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="low_rx">Low RX (-30 to -27)</option>
             </select>
-            <select wire:model.live="perPage" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="perPage" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="25">25 Baris</option>
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="50">50 Baris</option>
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="100">100 Baris</option>

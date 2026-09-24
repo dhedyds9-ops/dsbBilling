@@ -13,20 +13,29 @@
             <span class="noc-count-warning">{{ $summary['low_rx'] }} Low RX</span>
         </div>
         <div class="flex items-center gap-2">
-            <select wire:model.live="oltFilter" class="noc-input px-2 py-1 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="oltFilter" class="noc-input px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
                 <option value="">All OLT</option>
                 @foreach($olts as $olt)
                 <option value="{{ $olt->id }}">{{ $olt->name }}</option>
                 @endforeach
             </select>
-            <select wire:model.live="statusFilter" class="noc-input px-2 py-1 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+            
+            @if(!empty($oltFilter) && $oltFilter !== 'all')
+            <select wire:model.live="ponFilter" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="">All PON</option>
+                @foreach($ponPorts as $pon)
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="{{ $pon->id }}">{{ $pon->name }}</option>
+                @endforeach
+            </select>
+            @endif
+<select wire:model.live="statusFilter" class="noc-input px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
                 <option value="all">All Status</option>
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
                 <option value="los">LOS / Critical RX</option>
                 <option value="low_rx">Low RX (-30 to -27)</option>
             </select>
-            <select wire:model.live="perPage" class="noc-input px-2 py-1 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="perPage" class="noc-input px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
                 <option value="25">25 Baris</option>
                 <option value="50">50 Baris</option>
                 <option value="100">100 Baris</option>
