@@ -87,7 +87,29 @@
                         <span class="text-slate-500 dark:text-slate-400 opacity-60">/</span>
                         <span class="font-mono text-slate-500 dark:text-slate-400">{{ $onu->ponPort->name ?? '-' }}</span>
                     </td>
-                    <td class="p-3 text-slate-500 dark:text-slate-400">{{ $onu->customerService->customer->name ?? '-' }}</td>
+                    <td class="p-3 text-slate-500 dark:text-slate-400">
+                        @if($editingOnuId === $onu->id)
+                            <div class="flex items-center gap-1">
+                                <select wire:model="selectedCustomerId" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none w-40">
+                                    <option value="">- Kosongkan -</option>
+                                    @foreach($this->allCustomers as $c)
+                                        <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }})</option>
+                                    @endforeach
+                                </select>
+                                <button wire:click="assignCustomer({{ $onu->id }})" class="p-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded" title="Simpan">
+                                    <span class="material-symbols-outlined notranslate" style="font-size:14px">check</span>
+                                </button>
+                                <button wire:click="cancelEditCustomer" class="p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded" title="Batal">
+                                    <span class="material-symbols-outlined notranslate" style="font-size:14px">close</span>
+                                </button>
+                            </div>
+                        @else
+                            <div class="flex items-center gap-2 group cursor-pointer" wire:click="editCustomer({{ $onu->id }}, '{{ $onu->customerService->customer_id ?? '' }}')">
+                                <span>{{ $onu->customerService->customer->name ?? '-' }}</span>
+                                <span class="material-symbols-outlined notranslate opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-500 transition-opacity" style="font-size:14px">edit</span>
+                            </div>
+                        @endif
+                    </td>
                     <td class="p-3 font-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm-1) . ' dBm' : '-' }}</td>
                     <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm-1) . ' dBm' : '-' }}</td>
                     <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->temperature ?? '-' }}</td>
