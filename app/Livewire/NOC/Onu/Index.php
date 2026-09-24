@@ -72,13 +72,7 @@ class Index extends AdminComponent
                     $service->save();
                     session()->flash('success', 'ONU berhasil dipasangkan ke pelanggan ' . $service->customer->name);
                 } else {
-                    // Create a placeholder service if none exists
-                    $service = \App\Models\Customer\CustomerService::create([
-                        'customer_id' => $this->selectedCustomerId,
-                        'onu_id' => $onu->id,
-                        'status' => 'active',
-                    ]);
-                    session()->flash('success', 'ONU dipasangkan ke pelanggan baru');
+                    throw new \Exception('Pelanggan ini belum memiliki Layanan (Internet/Hotspot). Silakan buat layanan untuk pelanggan ini terlebih dahulu di menu Pelanggan.');
                 }
             } else {
                 session()->flash('success', 'ONU berhasil dilepas dari pelanggan');
