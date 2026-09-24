@@ -143,13 +143,11 @@ class HsgqOltDriver extends BaseOltDriver
                 $this->cachedOnuTemps = [];
 
                 $parseIdx = function($idx) {
+                    // Di HSGQ, nilai $idx bisa berupa "16777473" (untuk status/serial) 
+                    // atau "16777473.1.1" (untuk RX/TX power).
+                    // Bagian PERTAMA dari string tersebut selalu merupakan ONU Index yang utuh!
                     $parts = explode('.', $idx);
-                    if (count($parts) >= 2) {
-                        $onuId = (int)array_pop($parts);
-                        $port = (int)array_pop($parts);
-                        return $port + $onuId;
-                    }
-                    return (int)$idx;
+                    return (int)$parts[0];
                 };
 
                 foreach ($rawSerials as $idx => $val) {
