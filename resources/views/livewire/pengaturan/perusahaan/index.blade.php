@@ -17,12 +17,24 @@
         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">mail</span>
         Test Email
       </button>
-      <button wire:click="save" class="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors">
+      <button wire:click="save" wire:loading.attr="disabled" class="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors">
         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
         Simpan Pengaturan
       </button>
     </div>
   </div>
+
+    <!-- Tampilkan error validasi jika ada -->
+  @if($errors->any())
+    <div class="m-4 p-4 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
+      <div class="font-bold mb-1">Gagal menyimpan, silakan periksa kembali:</div>
+      <ul class="list-disc pl-5 text-sm">
+        @foreach($errors->all() as $err)
+          <li>{{ $err }}</li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
 
   <div class="p-4 grid grid-cols-1 xl:grid-cols-3 gap-4">
     <form class="xl:col-span-2 space-y-4">
@@ -143,7 +155,7 @@
               @endif
             </div>
             <div class="flex-1">
-              <input type="file" wire:model="logoUpload" id="logoUpload" class="hidden dark:bg-slate-900 dark:text-slate-100">
+              <input type="file" wire:model="logoFile" id="logoUpload" class="hidden dark:bg-slate-900 dark:text-slate-100">
               <label for="logoUpload" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-md cursor-pointer hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">upload</span>Pilih Logo
               </label>
@@ -186,7 +198,7 @@
               @endif
             </div>
             <div class="flex-1">
-              <input type="file" wire:model="stampUpload" id="stampUpload" class="hidden dark:bg-slate-900 dark:text-slate-100">
+              <input type="file" wire:model="stampFile" id="stampUpload" class="hidden dark:bg-slate-900 dark:text-slate-100">
               <label for="stampUpload" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-md cursor-pointer hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">upload</span>Pilih Cap
               </label>
