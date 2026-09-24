@@ -22,6 +22,7 @@ class ServiceProfile extends Model
         'tenant_id',
         'branch_id',
         'visibility',
+        'show_on_landing',
         'code',
         'name',
         'description',
@@ -130,6 +131,7 @@ class ServiceProfile extends Model
         'owner_price' => 'decimal:2',
         'reseller_price' => 'decimal:2',
         'is_free' => 'boolean',
+        'show_on_landing' => 'boolean',
         'duration_value' => 'integer',
         'quota_value' => 'integer',
         'promo_price' => 'decimal:2',
@@ -228,4 +230,5 @@ class ServiceProfile extends Model
         return $activeCount * $price;
     }
 }
+
 

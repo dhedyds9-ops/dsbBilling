@@ -171,6 +171,15 @@
                             </select>
                             @error('status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Tampilkan di Landing Page</label>
+                            <label class="relative inline-flex items-center cursor-pointer mt-1">
+                                <input type="checkbox" wire:model="show_on_landing" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                <span class="ml-3 text-sm font-medium text-slate-600 dark:text-slate-400" x-text="$wire.show_on_landing ? 'Ya, Tampilkan' : 'Sembunyikan'"></span>
+                            </label>
+                            @error('show_on_landing') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
                     </div>
                 </div>
 
