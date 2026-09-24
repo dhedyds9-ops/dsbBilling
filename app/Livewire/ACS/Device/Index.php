@@ -52,7 +52,7 @@ class Index extends BaseACSComponent
         try {
             $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $query = [
-                'projection' => '_id,_deviceId,_lastInform,VirtualParameters,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection,Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL,InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower,InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower,InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower,InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower,InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower,InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower,Device.Optical.1.Transceiver.RxPower'
+                'projection' => '_id,_deviceId,_lastInform,VirtualParameters,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
             ];
             $devices = $acsService->listDevices($query, 5000);
             $count = 0;
@@ -101,7 +101,15 @@ class Index extends BaseACSComponent
                 $ip = $ip ?? $deviceData['VirtualParameters']['pppoeIP']['_value'] ?? null;
                 
                 $model = $deviceData['_deviceId']['_ProductClass'] ?? 
-                         $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? null;
+                         $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? 
+                         $deviceData['Device']['DeviceInfo']['ProductClass']['_value'] ?? 
+                         $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? 
+                         $deviceData['Device']['DeviceInfo']['ModelName']['_value'] ?? null;
+                
+                // If model is empty string, try fallback
+                if (empty(trim($model))) {
+                    $model = $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? null;
+                }
                 
                 $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
                               $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
@@ -127,21 +135,47 @@ class Index extends BaseACSComponent
                     return isset($node['_value']) ? $node['_value'] : null;
                 };
 
-                $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion');
+                $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion') ?? $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion');
                 $hardware = $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion') ?? $extract('Device.DeviceInfo.HardwareVersion');
                 
                 $pppoeUsername = $extract('VirtualParameters.pppoeUsername') ?? 
                                  $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username') ?? 
                                  $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username');
 
-                $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
-                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
-                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
-                        ?? $extract('VirtualParameters.RXPower')
-                        ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower') 
-                        ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower') 
-                        ?? $extract('InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower')
-                        ?? $extract('Device.Optical.1.Transceiver.RxPower');
+                // Mencari RX Power lebih cerdas (Iterasi WANDevice)
+                $rxPower = $extract('VirtualParameters.RXPower') ?? $extract('Device.Optical.1.Transceiver.RxPower');
+                if ($rxPower === null && is_array($wanDevices)) {
+                    // Cari konfigurasi PON yang ada didalam WANDevice
+                    foreach ($wanDevices as $wdIdx => $wdNode) {
+                        if ($wdIdx === '_object' || !is_array($wdNode)) continue;
+                        
+                        $possibleKeys = [
+                            'X_FH_GponInterfaceConfig' => 'RXPower',
+                            'X_ZTE-COM_WANPONInterfaceConfig' => 'RXPower',
+                            'X_HW_PONInterfaceConfig' => 'RXPower',
+                            'WANPONInterfaceConfig' => ['1', 'X_ZTE-COM_RxPower'],
+                            'WANEponInterfaceConfig' => ['1', 'RxPower'],
+                            'WANGPONInterfaceConfig' => ['1', 'RxPower'],
+                            'X_BROADCOM_COM_PONInterfaceConfig' => 'RxPower'
+                        ];
+                        
+                        foreach ($possibleKeys as $k => $v) {
+                            if (isset($wdNode[$k])) {
+                                if (is_array($v)) {
+                                    if (isset($wdNode[$k][$v[0]][$v[1]]['_value'])) {
+                                        $rxPower = $wdNode[$k][$v[0]][$v[1]]['_value'];
+                                        break 2;
+                                    }
+                                } else {
+                                    if (isset($wdNode[$k][$v]['_value'])) {
+                                        $rxPower = $wdNode[$k][$v]['_value'];
+                                        break 2;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 if ($rxPower !== null && is_numeric($rxPower)) {
                     $rxPower = (float)$rxPower;
