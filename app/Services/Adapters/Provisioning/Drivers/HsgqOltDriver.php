@@ -143,10 +143,12 @@ class HsgqOltDriver extends BaseOltDriver
                 $this->cachedOnuTemps = [];
 
                 $parseIdx = function($idx) {
-                    // Di HSGQ, nilai $idx bisa berupa "16777473" (untuk status/serial) 
-                    // atau "16777473.1.1" (untuk RX/TX power).
-                    // Bagian PERTAMA dari string tersebut selalu merupakan ONU Index yang utuh!
-                    $parts = explode('.', $idx);
+                    // Bersihkan base OID jika gagal di-strip oleh SnmpClient (misal di localhost/php-snmp)
+                    // Hapus awalan .1.3.6.1.4.1.50224.3.12.x.x.x.
+                    $clean = preg_replace('/^(\.?iso|\.?1)\.3\.6\.1\.4\.1\.50224\.3\.12\.\d+\.\d+\.\d+\./i', '', $idx);
+                    
+                    // Setelah bersih, nilai $clean sisa "16777473" atau "16777473.1.1"
+                    $parts = explode('.', $clean);
                     return (int)$parts[0];
                 };
 
