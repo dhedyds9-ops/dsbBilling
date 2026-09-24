@@ -21,15 +21,17 @@ class ReapDeadRadiusSessionsCommand extends Command
         $chunk = (int)$this->option('chunk');
         $dry = (bool)$this->option('dry-run');
 
+        $timeoutDate = now()->subSeconds($timeoutSec);
         $total = RadiusAccounting::query()
             ->whereNull('acct_stop_time')
-            ->where(function ($q) use ($timeoutSec) {
-                $q->whereNotNull('acct_start_time')
-                    ->whereRaw("TIMESTAMPDIFF(SECOND, acct_start_time, NOW()) >= {$timeoutSec}");
-            })
-            ->orWhere(function ($q) use ($timeoutSec) {
-                $q->whereNull('acct_start_time')
-                    ->whereRaw("TIMESTAMPDIFF(SECOND, received_at, NOW()) >= {$timeoutSec}");
+            ->where(function ($q) use ($timeoutDate) {
+                $q->where(function ($q2) use ($timeoutDate) {
+                    $q2->whereNotNull('acct_start_time')
+                       ->where('acct_start_time', '<=', $timeoutDate);
+                })->orWhere(function ($q2) use ($timeoutDate) {
+                    $q2->whereNull('acct_start_time')
+                       ->where('created_at', '<=', $timeoutDate);
+                });
             })
             ->count();
 
@@ -43,13 +45,14 @@ class ReapDeadRadiusSessionsCommand extends Command
         RadiusAccounting::query()
             ->select(['id', 'acct_start_time', 'received_at', 'acct_session_time'])
             ->whereNull('acct_stop_time')
-            ->where(function ($q) use ($timeoutSec) {
-                $q->whereNotNull('acct_start_time')
-                    ->whereRaw("TIMESTAMPDIFF(SECOND, acct_start_time, NOW()) >= {$timeoutSec}");
-            })
-            ->orWhere(function ($q) use ($timeoutSec) {
-                $q->whereNull('acct_start_time')
-                    ->whereRaw("TIMESTAMPDIFF(SECOND, received_at, NOW()) >= {$timeoutSec}");
+            ->where(function ($q) use ($timeoutDate) {
+                $q->where(function ($q2) use ($timeoutDate) {
+                    $q2->whereNotNull('acct_start_time')
+                       ->where('acct_start_time', '<=', $timeoutDate);
+                })->orWhere(function ($q2) use ($timeoutDate) {
+                    $q2->whereNull('acct_start_time')
+                       ->where('created_at', '<=', $timeoutDate);
+                });
             })
             ->chunkById($chunk, function ($rows) use (&$updated, $timeoutSec) {
                 foreach ($rows as $row) {
