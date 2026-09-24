@@ -26,6 +26,7 @@ class Index extends AdminComponent
     public string $ponFilter   = '';
     public string $sortField   = 'serial_number';
     public string $sortDirection = 'asc';
+    #[\Livewire\Attributes\Url]
     public int $perPage = 25;
 
     public function configure(): void
@@ -109,7 +110,7 @@ class Index extends AdminComponent
                 in_array($this->sortField, ['serial_number', 'status', 'rx_power_dbm', 'last_seen_at', 'name']),
                 fn ($q) => $q->orderBy($this->sortField, $this->sortDirection)
             )
-            ->paginate($this->perPage);
+            ->paginate($this->perPage === 0 ? 1000000 : $this->perPage);
     }
 
     #[Computed]

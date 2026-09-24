@@ -26,6 +26,12 @@
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="los">LOS / Critical RX</option>
                 <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="low_rx">Low RX (-30 to -27)</option>
             </select>
+            <select wire:model.live="perPage" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="25">25 Baris</option>
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="50">50 Baris</option>
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="100">100 Baris</option>
+                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="0">All</option>
+            </select>
             <input type="text" wire:model.live.debounce.400ms="search" placeholder="SN / MAC / Pelanggan" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 text-xs rounded border focus:outline-none w-56 dark:bg-slate-900 dark:text-slate-100">
             
             <button wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline ({{ $summary['offline'] }} ONU) dari database lokal? (Ini tidak menghapus dari OLT fisik)" type="button" class="bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors">
