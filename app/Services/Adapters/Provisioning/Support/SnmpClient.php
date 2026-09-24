@@ -82,7 +82,7 @@ class SnmpClient
             return false;
         }
         if (self::$extSnmpAvailable) {
-            $result = @snmpget($this->host, $this->community, $oid, $this->timeout, $this->retries);
+            $result = @snmpget($this->host, $this->community, $oid, $this->timeout * 1000000, $this->retries);
             if ($result === false) {
                 return false;
             }
@@ -97,7 +97,7 @@ class SnmpClient
             return [];
         }
         if (self::$extSnmpAvailable) {
-            $result = @snmprealwalk($this->host, $this->community, $oid, $this->timeout, $this->retries);
+            $result = @snmprealwalk($this->host, $this->community, $oid, $this->timeout * 1000000, $this->retries);
             if ($result === false) {
                 return [];
             }
@@ -113,7 +113,7 @@ class SnmpClient
     public function set(string $oid, string $type, mixed $value): bool
     {
         if (self::$extSnmpAvailable && function_exists('snmpset')) {
-            return @snmpset($this->host, $this->community, $oid, $type, $value, $this->timeout, $this->retries);
+            return @snmpset($this->host, $this->community, $oid, $type, $value, $this->timeout * 1000000, $this->retries);
         }
         return false;
     }
@@ -244,3 +244,4 @@ class SnmpClient
         }
     }
 }
+
