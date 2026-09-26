@@ -94,6 +94,7 @@
                     ['route' => 'noc.routers.index',    'label' => 'Router',        'icon' => 'server'],
                     ['route' => 'noc.olts.index',       'label' => 'OLT',           'icon' => 'server-stack'],
                     ['route' => 'noc.onus.index',       'label' => 'ONU',           'icon' => 'router'],
+                    ['route' => 'acs.devices.index',    'label' => 'GenieACS Devices', 'icon' => 'wifi'],
                     ['route' => 'noc.pppoe.index',      'label' => 'Active Sessions',         'icon' => 'users'],
                     ['route' => 'noc.alarms.index',     'label' => 'Alarms',        'icon' => 'bell'],
                     ['route' => 'noc.provisioning.index','label' => 'Provisioning', 'icon' => 'list-checks'],
