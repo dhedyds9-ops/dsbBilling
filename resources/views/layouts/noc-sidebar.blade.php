@@ -41,7 +41,7 @@
                 @endcan
 
                 <li class="nav-item">
-                    <a href="{{ route('jaringan.fiber') }}" class="nav-link {{ request()->requestIs('jaringan.fiber') ? 'active' : '' }}">
+                    <a href="{{ route('jaringan.fiber') }}" class="nav-link {{ request()->routeIs('jaringan.fiber') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-project-diagram"></i>
                         <p>PON</p>
                     </a>
