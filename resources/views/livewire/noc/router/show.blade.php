@@ -61,23 +61,23 @@
         <div class="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3 content-start">
             <x-noc.card>
                 <div class="noc-summary-label">CPU Load</div>
-                <div class="noc-summary-value noc-mono {{ $log && $log->cpu_load > 80 ? 'text-red-500' : 'text-emerald-500' }}">{{ $log->cpu_load ?? '-' }}<span class="text-sm">%</span></div>
+                <div class="noc-summary-value noc-mono {{ $log && $log?->cpu_load > 80 ? 'text-red-500' : 'text-emerald-500' }}">{{ $log?->cpu_load ?? '-' }}<span class="text-sm">%</span></div>
             </x-noc.card>
             <x-noc.card>
                 <div class="noc-summary-label">Free Memory</div>
                 <div class="noc-summary-value noc-mono text-blue-500">
-                    @if($log && $log->total_memory)
-                        {{ round($log->free_memory / 1024 / 1024- 1) }}<span class="text-sm"> MB</span>
+                    @if($log && $log?->total_memory)
+                        {{ round($log?->free_memory / 1024 / 1024- 1) }}<span class="text-sm"> MB</span>
                     @else - @endif
                 </div>
             </x-noc.card>
             <x-noc.card>
                 <div class="noc-summary-label">Uptime</div>
-                <div class="text-xl font-bold noc-text noc-mono" style="font-size:1.1rem;">{{ $log->uptime ?? '-' }}</div>
+                <div class="text-xl font-bold noc-text noc-mono" style="font-size:1.1rem;">{{ $log?->uptime ?? '-' }}</div>
             </x-noc.card>
             <x-noc.card>
                 <div class="noc-summary-label">Identity</div>
-                <div class="text-sm font-bold noc-text truncate" title="{{ $log->identity }}">{{ $log->identity ?? '-' }}</div>
+                <div class="text-sm font-bold noc-text truncate" title="{{ $log?->identity }}">{{ $log?->identity ?? '-' }}</div>
             </x-noc.card>
         </div>
         
