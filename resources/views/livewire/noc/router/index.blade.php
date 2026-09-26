@@ -57,7 +57,7 @@
                     <td class="p-3  noc-mono noc-muted">{{ $r->ip_address }}</td>
                     <td class="p-3  noc-muted">{{ $r->vendor->name ?? '-' }} / {{ $r->model ?? '-' }}</td>
                     <td class="p-3  noc-muted">{{ $r->pop->name ?? '-' }}</td>
-                    <td class="p-3  noc-mono {{ $log && $log->cpu_load > 80 ? 'text-red-500' : 'text-emerald-500' }}">{{ $log->cpu_load ? $log->cpu_load . '%' : '-' }}</td>
+                    <td class="p-3  noc-mono {{ $log && $log->cpu_load > 80 ? 'text-red-500' : 'text-emerald-500' }}">{{ ($log && $log->cpu_load) ? $log->cpu_load . '%' : '-' }}</td>
                     <td class="p-3  noc-mono noc-muted">
                         @if($log && $log->total_memory)
                             {{ round((1 - $log->free_memory / $log->total_memory) * 100) }}%
@@ -65,11 +65,11 @@
                             -
                         @endif
                     </td>
-                    <td class="p-3  noc-mono noc-muted">{{ $log->uptime ?? '-' }}</td>
+                    <td class="p-3  noc-mono noc-muted">{{ $log?->uptime ?? '-' }}</td>
                     <td class="p-3">
                         <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ $status }}</span>
                     </td>
-                    <td class="p-3  noc-muted">{{ $log ? $log->created_at->diffForHumans() : ($r->last_seen_at ? $r->last_seen_at->diffForHumans() : '-') }}</td>
+                    <td class="p-3  noc-muted">{{ ($log && $log->created_at) ? $log->created_at->diffForHumans() : ($r->last_seen_at ? $r->last_seen_at->diffForHumans() : '-') }}</td>
                     <td class="p-3">
                         <a href="{{ route('noc.routers.show', $r->id) }}" class="text-blue-500 hover:text-blue-400">View</a>
                     </td>
