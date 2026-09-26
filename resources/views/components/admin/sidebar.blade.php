@@ -56,15 +56,7 @@
     <!-- Logo & Brand -->
     <div class="flex items-center h-16 px-4 border-b border-slate-200 dark:border-slate-700/50 shrink-0">
         <a href="{{ route('dashboard') }}" class="flex items-center justify-center w-full">
-            @if ($companyLogo)
-                <img src="{{ asset($companyLogo) }}" alt="Logo" class="h-8 max-w-[180px] object-contain">
-            @else
-                <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                </div>
-            @endif
+            <x-application-logo class="h-10 w-auto" />
         </a>
     </div>
 

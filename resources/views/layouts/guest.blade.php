@@ -21,14 +21,7 @@
                 @if($logoUrl)
                     <img src="{{ $logoUrl }}" class="w-auto h-12 object-contain" alt="Logo">
                 @else
-                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
-                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                    </div>
-                    <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                        {{ $companyName }}
-                    </span>
+                    <x-application-logo class="w-auto h-14" />
                 @endif
             </a>
         </div>

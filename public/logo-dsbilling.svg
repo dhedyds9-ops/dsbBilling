@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 160" width="100%" height="100%">
+    <defs>
+        <style>
+            /* Tema Biru Aplikasi (Primary) */
+            .primary { fill: #2563eb; }
+            /* Tema Abu-abu (Slate) */
+            .secondary { fill: #475569; }
+            
+            /* Teks Utama */
+            .text-main { 
+                fill: #1e293b; 
+                font-family: 'Segoe UI', system-ui, sans-serif; 
+                font-weight: 700; 
+                font-size: 68px; 
+                letter-spacing: -1.5px; 
+            }
+            .text-main-accent { fill: #2563eb; font-weight: 600; }
+            
+            /* Slogan */
+            .text-sub { 
+                fill: #475569; 
+                font-family: 'Segoe UI', system-ui, sans-serif; 
+                font-size: 17px; 
+                letter-spacing: 3.5px; 
+                font-weight: 500; 
+            }
+            
+            /* Dark Mode Adjustments */
+            @media (prefers-color-scheme: dark) {
+                .primary { fill: #3b82f6; }
+                .secondary { fill: #94a3b8; }
+                .text-main { fill: #f8fafc; }
+                .text-main-accent { fill: #60a5fa; }
+                .text-sub { fill: #94a3b8; }
+            }
+        </style>
+    </defs>
+
+    <!-- Shield & d-s Icon Group -->
+    <g transform="translate(10, 15)">
+        
+        <!-- Kiri: Elemen 'd' dan bingkai perisai -->
+        <!-- Pixel kotak kecil di kiri atas -->
+        <rect x="0" y="15" width="15" height="15" class="primary" />
+        <rect x="20" y="0" width="15" height="15" class="primary" />
+        <rect x="20" y="20" width="15" height="15" class="primary" />
+        
+        <!-- Garis tegak 'd' -->
+        <rect x="45" y="0" width="15" height="100" class="primary" rx="2" />
+        
+        <!-- Lingkaran/perut huruf 'd' -->
+        <path d="M20,40 L45,40 L45,55 L35,55 L35,80 L45,80 L45,95 L20,95 C15,95 15,90 15,85 L15,50 C15,45 15,40 20,40 Z" class="primary" />
+        
+        <!-- Kurva perisai kiri bawah -->
+        <path d="M15,105 L60,105 L60,135 L15,115 Z" class="primary" />
+
+
+        <!-- Kanan: Elemen 's' dan bingkai perisai -->
+        <!-- Garis atas perisai kanan -->
+        <path d="M65,10 L115,25 L115,40 L65,25 Z" class="secondary" />
+        
+        <!-- Bentuk huruf 's' -->
+        <path d="M65,45 L110,45 L110,60 L80,60 L80,75 L110,75 L110,105 L65,105 L65,90 L95,90 L95,75 L65,75 Z" class="secondary" rx="2" />
+        
+        <!-- Kurva perisai kanan bawah -->
+        <path d="M65,110 L110,110 L110,118 L65,138 Z" class="secondary" />
+
+        <!-- Elemen grid kecil di bawah perisai -->
+        <rect x="35" y="112" width="7" height="9" class="primary" />
+        <rect x="45" y="115" width="7" height="9" class="primary" />
+        <rect x="55" y="118" width="7" height="9" class="primary" />
+        
+        <rect x="67" y="118" width="7" height="9" class="secondary" />
+        <rect x="77" y="115" width="7" height="9" class="secondary" />
+        <rect x="87" y="112" width="7" height="9" class="secondary" />
+    </g>
+
+    <!-- Teks dsBilling -->
+    <g transform="translate(145, 95)">
+        <text class="text-main" x="0" y="0">ds<tspan class="text-main-accent">Billing</tspan></text>
+        <text class="text-sub" x="5" y="32">SECURE &amp; EFFICIENT</text>
+    </g>
+</svg>

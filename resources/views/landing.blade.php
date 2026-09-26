@@ -173,7 +173,7 @@
             @if($companyLogo)
                 <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" class="h-10 w-auto object-contain">
             @else
-                {{ $companyName }}
+                <x-application-logo class="h-10 w-auto" />
             @endif
         </a>
         

@@ -24,6 +24,13 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="{{ route('noc.routers.index') }}" class="nav-link {{ request()->routeIs('noc.routers.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-network-wired"></i>
+                        <p>Routers</p>
+                    </a>
+                </li>
+
                 @can('noc.olt.view')
                 <li class="nav-item">
                     <a href="{{ route('noc.olts.index') }}" class="nav-link {{ request()->routeIs('noc.olts.*') ? 'active' : '' }}">
@@ -34,9 +41,16 @@
                 @endcan
 
                 <li class="nav-item">
-                    <a href="{{ route('jaringan.fiber') }}" class="nav-link {{ request()->routeIs('jaringan.fiber') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-network-wired"></i>
+                    <a href="{{ route('jaringan.fiber') }}" class="nav-link {{ request()->requestIs('jaringan.fiber') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-project-diagram"></i>
                         <p>PON</p>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a href="{{ route('acs.devices.index') }}" class="nav-link {{ request()->routeIs('acs.devices.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-wifi"></i>
+                        <p>GenieACS Devices</p>
                     </a>
                 </li>
 
