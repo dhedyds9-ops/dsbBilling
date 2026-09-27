@@ -92,6 +92,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/technician-portal/my-jobs/{job}', \App\Livewire\Isp\Technician\MyJobs\Show::class)->name('technician.my-jobs.show');
         Route::get('/technician-portal/installation/wizard', \App\Livewire\Isp\Technician\Installation\Wizard::class)->name('technician.installation.wizard');
         Route::get('/technician-portal/provisioning/{id}', \App\Livewire\Isp\Technician\Provisioning\Show::class)->name('technician.provisioning.show');
+        Route::get('/technician-portal/audit', \App\Livewire\Isp\Technician\Audit\Form::class)->name('technician.audit.form');
     });
     Route::get('/technician-portal/attendance', \App\Livewire\Isp\Technician\Attendance\Index::class)->name('technician.attendance');
     Route::get('/technician-portal/payroll', \App\Livewire\Isp\Technician\Payroll\Index::class)->name('technician.payroll.index');

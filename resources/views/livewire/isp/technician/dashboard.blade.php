@@ -12,14 +12,19 @@
         </div>
         <div class="relative z-10 mt-4 flex gap-2">
             <a href="{{ route('technician.my-jobs.index') }}"
-               class="flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-1.5 transition-colors">
-                <span class="material-symbols-outlined" style="font-size:18px">assignment</span>
-                Tugas Saya
+               class="flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
+                <span class="material-symbols-outlined" style="font-size:20px">assignment</span>
+                Tugas
             </a>
             <a href="{{ route('technician.installation.wizard') }}"
-               class="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm">
-                <span class="material-symbols-outlined" style="font-size:18px">build_circle</span>
+               class="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                <span class="material-symbols-outlined" style="font-size:20px">build_circle</span>
                 Instalasi
+            </a>
+            <a href="{{ route('technician.audit.form') }}"
+               class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                <span class="material-symbols-outlined" style="font-size:20px">radar</span>
+                Sensus
             </a>
         </div>
     </div>
