@@ -1,4 +1,4 @@
-﻿@section('header_title', 'Instalasi Cepat')
+@section('header_title', 'Instalasi Cepat')
 
 <div class="space-y-4 p-4">
 
@@ -40,8 +40,8 @@
                 <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">person</span> Data Pelanggan
             </h3>
             <div class="bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl flex items-center shadow-inner mb-5">
-                <button wire:click="$set('is_new_customer', true)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ $is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Baru</button>
-                <button wire:click="$set('is_new_customer', false)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ !$is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Terdaftar</button>
+                <button wire:click="$set('is_new_customer', true)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ $is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Baru</button>
+                <button wire:click="$set('is_new_customer', false)" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all {{ !$is_new_customer ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">Terdaftar</button>
             </div>
             @if($is_new_customer)
                 <div class="space-y-4">

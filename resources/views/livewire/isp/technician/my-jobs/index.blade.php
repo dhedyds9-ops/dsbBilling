@@ -1,4 +1,4 @@
-﻿@section('header_title', 'Tugas Saya')
+@section('header_title', 'Tugas Saya')
 
 <div class="space-y-4 p-4">
 
@@ -10,14 +10,14 @@
         <div class="relative z-10">
             <p class="text-indigo-200 text-xs font-semibold mb-1">Daftar instalasi & survey lapangan</p>
             <div class="grid grid-cols-2 gap-3 mt-3">
-                <div class="bg-white dark:bg-slate-800/20 rounded-xl p-3 flex items-center justify-between">
+                <div class="bg-white/20 dark:bg-slate-800/20 rounded-xl p-3 flex items-center justify-between">
                     <div>
                         <p class="text-xs text-indigo-100">Tugas Aktif</p>
                         <h3 class="text-2xl font-black">{{ $stats['active'] ?? 0 }}</h3>
                     </div>
                     <span class="material-symbols-outlined opacity-80" style="font-size:28px">work</span>
                 </div>
-                <div class="bg-white dark:bg-slate-800/20 rounded-xl p-3 flex items-center justify-between">
+                <div class="bg-white/20 dark:bg-slate-800/20 rounded-xl p-3 flex items-center justify-between">
                     <div>
                         <p class="text-xs text-indigo-100">Selesai</p>
                         <h3 class="text-2xl font-black">{{ $stats['history'] ?? 0 }}</h3>

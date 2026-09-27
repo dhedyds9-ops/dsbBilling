@@ -12,7 +12,7 @@
         </div>
         <div class="relative z-10 mt-4 flex gap-2">
             <a href="{{ route('technician.my-jobs.index') }}"
-               class="flex-1 py-2.5 bg-white dark:bg-slate-800/20 hover:bg-white dark:bg-slate-800/30 border border-white/30 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-1.5 transition-colors">
+               class="flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-1.5 transition-colors">
                 <span class="material-symbols-outlined" style="font-size:18px">assignment</span>
                 Tugas Saya
             </a>
