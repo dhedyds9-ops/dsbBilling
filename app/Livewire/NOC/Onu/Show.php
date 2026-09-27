@@ -18,12 +18,64 @@ class Show extends AdminComponent
     {
         }
 
+    public $wanMode = 'pppoe';
+    public $wanUsername = '';
+    public $wanPassword = '';
+    public $wanVlanId = 10;
+    public $wanIpIndex = 1;
+
     public function mount($onu = null): void
     {
         parent::mount();
         $this->onuId        = (int) $onu;
         $this->activeModule = 'noc';
         $this->activePage   = 'onus';
+        $this->loadWanDefaults();
+    }
+
+    public function loadWanDefaults(): void
+    {
+        // Try to pre-fill from an associated customer/secret if applicable later
+        $this->wanVlanId = 10; 
+    }
+
+    public function pushWanConfig(): void
+    {
+        $onu = $this->onu();
+        if (!$onu->olt) {
+            $this->dispatch('toast', type: 'error', message: 'No OLT associated with this ONU.');
+            return;
+        }
+
+        try {
+            $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($onu->olt);
+            
+            $config = [
+                'mode' => $this->wanMode,
+                'vlan_id' => $this->wanVlanId,
+                'priority' => 0,
+                'ip_index' => $this->wanIpIndex,
+            ];
+
+            if ($this->wanMode === 'pppoe') {
+                if (empty($this->wanUsername)) {
+                    $this->dispatch('toast', type: 'error', message: 'Username is required for PPPoE.');
+                    return;
+                }
+                $config['username'] = $this->wanUsername;
+                $config['password'] = $this->wanPassword;
+            }
+
+            $success = $driver->pushOnuWanConfig($onu, $config);
+
+            if ($success) {
+                $this->dispatch('toast', type: 'success', message: 'WAN config pushed to ONU successfully!');
+            } else {
+                $this->dispatch('toast', type: 'error', message: 'Failed to push WAN config. Check OLT driver logs.');
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
+        }
     }
 
     public function setTab(string $tab): void

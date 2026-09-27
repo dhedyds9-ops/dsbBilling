@@ -191,11 +191,67 @@
     </div>
     @endif
 
-    @if(in_array($activeTab, ['service', 'provisioning']))
+    @if($activeTab === 'provisioning')
+    <div class="p-3 overflow-auto h-full noc-scroll flex flex-col md:flex-row gap-4">
+        {{-- OMCI WAN Provisioning Card --}}
+        <x-noc.card class="w-full md:w-[400px]">
+            <x-slot name="header">
+                <span class="text-xs font-bold noc-text-secondary uppercase tracking-widest">
+                    <i class="bi bi-hdd-network"></i> OMCI WAN Configuration
+                </span>
+            </x-slot>
+            
+            <div class="space-y-4 mt-2">
+                <div>
+                    <label class="block text-xs font-bold mb-1 noc-muted">WAN Mode</label>
+                    <select wire:model.live="wanMode" class="form-select text-sm w-full bg-slate-800 border-slate-700 text-white rounded">
+                        <option value="pppoe">PPPoE (Router)</option>
+                        <option value="dhcp">DHCP / IPoE</option>
+                    </select>
+                </div>
+
+                @if($wanMode === 'pppoe')
+                <div>
+                    <label class="block text-xs font-bold mb-1 noc-muted">PPPoE Username</label>
+                    <input type="text" wire:model="wanUsername" class="form-input text-sm w-full bg-slate-800 border-slate-700 text-white rounded" placeholder="user@isp.net">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 noc-muted">PPPoE Password</label>
+                    <input type="text" wire:model="wanPassword" class="form-input text-sm w-full bg-slate-800 border-slate-700 text-white rounded">
+                </div>
+                @endif
+
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold mb-1 noc-muted">VLAN ID</label>
+                        <input type="number" wire:model="wanVlanId" class="form-input text-sm w-full bg-slate-800 border-slate-700 text-white rounded">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold mb-1 noc-muted">IP Index</label>
+                        <input type="number" wire:model="wanIpIndex" class="form-input text-sm w-full bg-slate-800 border-slate-700 text-white rounded">
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-700">
+                    <button wire:click="pushWanConfig" wire:loading.attr="disabled" class="bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-2 text-sm w-full font-bold flex justify-center items-center gap-2 transition-colors">
+                        <i class="bi bi-send-fill" wire:loading.remove wire:target="pushWanConfig"></i>
+                        <i class="bi bi-arrow-repeat animate-spin" wire:loading wire:target="pushWanConfig"></i>
+                        Push to Modem (OMCI)
+                    </button>
+                    <p class="text-[10px] text-center mt-2 noc-muted">
+                        Ini akan mengeksekusi <code>ont ipconfig</code> di OLT secara remote.
+                    </p>
+                </div>
+            </div>
+        </x-noc.card>
+    </div>
+    @endif
+
+    @if($activeTab === 'service')
     <div class="p-3 h-full flex flex-col items-center justify-center text-center">
         <i class="bi bi-tools text-4xl noc-muted mb-2 opacity-50"></i>
         <div class="noc-muted opacity-70">
-            Modul {{ ucfirst($activeTab) }} sedang dikembangkan dan akan terintegrasi langsung.
+            Modul Service sedang dikembangkan.
         </div>
     </div>
     @endif
