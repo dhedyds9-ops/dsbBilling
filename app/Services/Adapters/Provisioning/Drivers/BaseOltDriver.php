@@ -299,4 +299,10 @@ abstract class BaseOltDriver implements OltDriverInterface
     abstract public function provisionOnu(Onu $onu, string $serialNumber, int $ponPort, string $profile = 'default'): bool;
     abstract public function setOnuAdminStatus(Onu $onu, string $status): bool;
     abstract public function setOnuBandwidthLimit(Onu $onu, int $downloadMbps, int $uploadMbps): bool;
+
+    public function pushOnuWanConfig(Onu $onu, array $config): bool
+    {
+        Log::warning("pushOnuWanConfig is not implemented for this OLT driver: " . static::class);
+        return false;
+    }
 }

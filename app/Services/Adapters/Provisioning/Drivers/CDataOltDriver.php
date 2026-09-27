@@ -453,18 +453,53 @@ class CDataOltDriver extends BaseOltDriver
             $onuId   = $onu->onu_id_on_olt ?? $onu->getKey();
             $this->initializeCli();
             $this->cli->execute('configure terminal');
-            $this->cli->execute("interface gpon 0/0/$ponPort");
+            $this->cli->execute("interface gpon 0/0");
             $cmd = match ($status) {
-                'enable'  => "onu modify $onuId admin-state up",
-                'disable' => "onu modify $onuId admin-state down",
-                'reset'   => "onu reset $onuId",
-                default   => "onu modify $onuId admin-state up"
+                'enable'  => "ont modify $ponPort $onuId admin-state up",
+                'disable' => "ont modify $ponPort $onuId admin-state down",
+                'reset'   => "ont reset $ponPort $onuId",
+                default   => "ont modify $ponPort $onuId admin-state up"
             };
             $this->cli->execute($cmd);
             $this->cli->execute('exit');
             $this->cli->execute('write');
             return true;
         } catch (\Exception) {
+            return false;
+        }
+    }
+
+    public function pushOnuWanConfig(Onu $onu, array $config): bool
+    {
+        try {
+            $ponPort = $onu->ponPort->port_number ?? $onu->pon_port ?? 0;
+            $onuId   = $onu->onu_index ?? $onu->onu_id_on_olt ?? $onu->getKey();
+
+            $mode = strtolower($config['mode'] ?? 'pppoe');
+            $vlanId = (int)($config['vlan_id'] ?? 10);
+            $priority = (int)($config['priority'] ?? 0);
+            $ipIndex = (int)($config['ip_index'] ?? 1);
+
+            $this->initializeCli();
+            $this->cli->execute('configure terminal');
+            $this->cli->execute('interface gpon 0/0');
+
+            if ($mode === 'pppoe') {
+                $user = $config['username'] ?? '';
+                $pass = $config['password'] ?? '';
+                $cmd = "ont ipconfig $ponPort $onuId ip-index $ipIndex pppoe username $user password $pass vlan $vlanId priority $priority";
+            } elseif ($mode === 'dhcp' || $mode === 'ipoe') {
+                $cmd = "ont ipconfig $ponPort $onuId ip-index $ipIndex dhcp vlan $vlanId priority $priority";
+            } else {
+                throw new \Exception("Unsupported WAN mode: $mode");
+            }
+
+            $this->cli->execute($cmd);
+            $this->cli->execute('exit');
+            $this->cli->execute('write');
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Failed to push WAN config to C-Data ONU {$onu->id}: " . $e->getMessage());
             return false;
         }
     }

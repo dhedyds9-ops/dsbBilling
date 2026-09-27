@@ -34,4 +34,10 @@ interface OltDriverInterface
     public function rebootOnu(Onu $onu): bool;
 
     public function getOnuSignal(Onu $onu): array;
+
+    /**
+     * Push WAN configuration (PPPoE/IPoE/Bridge) to the ONU via OMCI.
+     * $config array should contain keys like: 'mode', 'username', 'password', 'vlan_id'.
+     */
+    public function pushOnuWanConfig(Onu $onu, array $config): bool;
 }
