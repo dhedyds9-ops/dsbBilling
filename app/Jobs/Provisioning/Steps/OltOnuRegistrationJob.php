@@ -37,6 +37,27 @@ class OltOnuRegistrationJob extends BasePipelineStepJob
             throw new Exception("Gagal meregistrasi ONU ke OLT. OLT Driver mengembalikan false.");
         }
 
+        // 2. Injeksi Otomatis OMCI WAN (PPPoE / DHCP) jika data tersedia
+        if (!empty($cs->username) && !empty($cs->password)) {
+            $vlanId = $cs->networkProfile->vlan_id ?? 10; // Ambil VLAN dari profil jaringan, default 10
+            
+            $omciConfig = [
+                'mode'     => 'pppoe',
+                'username' => $cs->username,
+                'password' => $cs->password,
+                'vlan_id'  => $vlanId,
+                'ip_index' => 1,
+                'priority' => 0
+            ];
+            
+            try {
+                $driver->pushOnuWanConfig($onu, $omciConfig);
+            } catch (Exception $e) {
+                // Log error tapi jangan gagalkan pipeline, karena TR069 mungkin masih bisa mengambil alih
+                \Illuminate\Support\Facades\Log::warning("Gagal injeksi OMCI otomatis untuk ONU {$onu->id}: " . $e->getMessage());
+            }
+        }
+
         // Simpan konfigurasi ke NVRAM OLT agar persisten (opsional tapi best practice)
         $driver->saveConfig();
 
