@@ -138,13 +138,64 @@
 
         @if($currentStep === 5)
             <h3 class="text-base font-black mb-1 text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">qr_code_scanner</span> Scan ONU
+                <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">qr_code_scanner</span> Registrasi ONU
             </h3>
-            <p class="text-slate-400 text-xs mb-4">Scan barcode atau ketik manual Serial Number ONU.</p>
-            <div class="space-y-4">
-                <div class="relative">
-                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:22px">barcode</span>
-                    <input type="text" wire:model="onu_sn" class="w-full pl-12 pr-4 py-4 font-mono text-xl font-black tracking-widest border-2 border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase dark:bg-slate-900 dark:text-slate-100" placeholder="ZTEG1234..." autofocus>
+            <p class="text-slate-400 text-xs mb-4">Ketik manual atau gunakan kamera HP untuk scan Serial Number (SN).</p>
+            <div class="space-y-4" x-data="{
+                scannerOpen: false,
+                html5QrcodeScanner: null,
+                startScanner() {
+                    this.scannerOpen = true;
+                    // Load script if not loaded
+                    if (typeof Html5QrcodeScanner === 'undefined') {
+                        let script = document.createElement('script');
+                        script.src = 'https://unpkg.com/html5-qrcode';
+                        script.onload = () => this.initScanner();
+                        document.head.appendChild(script);
+                    } else {
+                        this.initScanner();
+                    }
+                },
+                initScanner() {
+                    this.$nextTick(() => {
+                        this.html5QrcodeScanner = new Html5QrcodeScanner(
+                            'reader', { fps: 10, qrbox: {width: 250, height: 100}, formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.QR_CODE ] }, false);
+                        this.html5QrcodeScanner.render(this.onScanSuccess.bind(this), this.onScanFailure.bind(this));
+                    });
+                },
+                onScanSuccess(decodedText, decodedResult) {
+                    @this.set('onu_sn', decodedText);
+                    this.closeScanner();
+                },
+                onScanFailure(error) {
+                    // ignore
+                },
+                closeScanner() {
+                    if (this.html5QrcodeScanner) {
+                        this.html5QrcodeScanner.clear();
+                    }
+                    this.scannerOpen = false;
+                }
+            }">
+                
+                <!-- Scanner UI (Hidden by default) -->
+                <div x-show="scannerOpen" style="display: none;" class="bg-black rounded-2xl overflow-hidden relative">
+                    <button type="button" @click="closeScanner" class="absolute top-2 right-2 z-50 bg-red-500 text-white p-2 rounded-full flex shadow-lg">
+                        <span class="material-symbols-outlined" style="font-size:20px">close</span>
+                    </button>
+                    <div id="reader" class="w-full bg-black min-h-[250px]"></div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="relative flex gap-2" x-show="!scannerOpen">
+                    <div class="relative flex-1">
+                        <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:22px">barcode</span>
+                        <input type="text" wire:model="onu_sn" class="w-full pl-12 pr-4 py-4 font-mono text-xl font-black tracking-widest border-2 border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase" placeholder="ZTEG1234..." autofocus>
+                    </div>
+                    <button type="button" @click="startScanner" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-4 flex flex-col items-center justify-center transition-colors shadow-md">
+                        <span class="material-symbols-outlined" style="font-size:24px">photo_camera</span>
+                        <span class="text-[10px] font-bold mt-0.5">SCAN</span>
+                    </button>
                 </div>
                 @error('onu_sn') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 <div class="grid grid-cols-2 gap-3">
