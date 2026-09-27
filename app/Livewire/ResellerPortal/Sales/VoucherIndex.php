@@ -62,7 +62,7 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
                 search: $this->search,
                 filters: $this->filters,
                 withTrashed: $this->showTrashed,
-            )->where('vouchers.type', '!=', 'evoucher')->where('vouchers.reseller_id', auth()->id());
+            )->where('vouchers.type', '!=', 'evoucher')->where('vouchers.reseller_id', auth()->user()->getEffectiveResellerId());
 
             $this->selectedIds = $query->pluck('id')->toArray();
         } else {
@@ -255,7 +255,7 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
         ]);
 
         try {
-            Log::info('Importing vouchers', ['user_id' => auth()->id()]);
+            Log::info('Importing vouchers', ['user_id' => auth()->user()->getEffectiveResellerId()]);
 
             Excel::import(new VoucherImport(auth()->user()), $this->importFile);
 
@@ -308,7 +308,7 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
                 'notes' => $this->notes,
             ];
 
-            $vouchers = $action->generateAdHocVouchers($attrs, (int) $this->quantity, (int) auth()->id());
+            $vouchers = $action->generateAdHocVouchers($attrs, (int) $this->quantity, (int) auth()->user()->getEffectiveResellerId());
 
             $this->showGenerateModal = false;
             
@@ -328,7 +328,7 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
             search: $this->search,
             filters: $this->filters,
             withTrashed: $this->showTrashed,
-        )->where('vouchers.type', '!=', 'evoucher')->where('vouchers.reseller_id', auth()->id());
+        )->where('vouchers.type', '!=', 'evoucher')->where('vouchers.reseller_id', auth()->user()->getEffectiveResellerId());
 
         $direction = strtolower($this->sortDirection) === 'asc' ? 'asc' : 'desc';
 
@@ -375,10 +375,10 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
         $statsQuery->limit(PHP_INT_MAX)->offset(0);
         
         $stats = [
-            'total' => Voucher::where('reseller_id', auth()->id())->where('type', '!=', 'evoucher')->count(),
-            'available' => Voucher::where('reseller_id', auth()->id())->where('type', '!=', 'evoucher')->where('status', 'available')->count(),
-            'used' => Voucher::where('reseller_id', auth()->id())->where('type', '!=', 'evoucher')->where('status', 'used')->count(),
-            'expired' => Voucher::where('reseller_id', auth()->id())->where('type', '!=', 'evoucher')->where('status', 'expired')->count(),
+            'total' => Voucher::where('reseller_id', auth()->user()->getEffectiveResellerId())->where('type', '!=', 'evoucher')->count(),
+            'available' => Voucher::where('reseller_id', auth()->user()->getEffectiveResellerId())->where('type', '!=', 'evoucher')->where('status', 'available')->count(),
+            'used' => Voucher::where('reseller_id', auth()->user()->getEffectiveResellerId())->where('type', '!=', 'evoucher')->where('status', 'used')->count(),
+            'expired' => Voucher::where('reseller_id', auth()->user()->getEffectiveResellerId())->where('type', '!=', 'evoucher')->where('status', 'expired')->count(),
         ];
 
         $voucherPools = \App\Models\ISP\VoucherPool::orderBy('id', 'desc')->get(['id', 'name', 'created_at']);

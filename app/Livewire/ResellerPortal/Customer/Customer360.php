@@ -112,7 +112,7 @@ class Customer360 extends AdminComponent
             'reseller_id' => $this->edit_reseller_id ?: null,
             'branch_id'   => $this->edit_branch_id   ?: null,
             'notes'       => $this->edit_notes,
-            'updated_by'  => auth()->id(),
+            'updated_by'  => auth()->user()->getEffectiveResellerId(),
         ]);
 
         $this->showEditModal = false;
@@ -176,8 +176,8 @@ class Customer360 extends AdminComponent
                 $userUpdateData['billing_cycle'] = 'monthly';
                 $userUpdateData['status'] = $cs->status ?? 'active';
                 $userUpdateData['uuid'] = (string) \Illuminate\Support\Str::uuid();
-                $userUpdateData['created_by'] = auth()->id();
-                $userUpdateData['updated_by'] = auth()->id();
+                $userUpdateData['created_by'] = auth()->user()->getEffectiveResellerId();
+                $userUpdateData['updated_by'] = auth()->user()->getEffectiveResellerId();
                 $userUpdateData['reseller_id'] = $cs->customer->reseller_id ?? null;
                 
                 if ($newType === 'pppoe') {

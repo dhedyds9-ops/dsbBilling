@@ -28,7 +28,7 @@ class Mutations extends AdminComponent
 
     public function render()
     {
-        $query = Payment::where('customer_id', Auth::id())
+        $query = Payment::where('customer_id', Auth::user()->getEffectiveResellerId())
             //->where('status', 'success') // or approved
             ;
             

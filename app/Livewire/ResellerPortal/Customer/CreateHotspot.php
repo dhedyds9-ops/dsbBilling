@@ -45,7 +45,7 @@ class CreateHotspot extends AdminComponent
         parent::mount();
         $this->activeModule = 'reseller-portal';
         $this->activePage = 'customers.index';
-        $this->reseller_id = auth()->id();
+        $this->reseller_id = auth()->user()->getEffectiveResellerId();
         $this->activation_date = date('Y-m-d');
         
         $this->breadcrumbs = [
@@ -83,7 +83,7 @@ class CreateHotspot extends AdminComponent
         }
 
         try {
-            $ownerId = auth()->id();
+            $ownerId = auth()->user()->getEffectiveResellerId();
             $ownershipData = [
                 'reseller_id' => $ownerId,
                 'branch_id'   => null,

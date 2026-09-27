@@ -45,7 +45,7 @@ trait HasResellerScope
             if ($user->hasRole(UserRole::Reseller->value)) {
                 $table = $builder->getQuery()->from;
                 $column = $table . '.reseller_id';
-                $builder->where($column, $user->id);
+                $builder->where($column, $user->getEffectiveResellerId());
                 return;
             }
 
@@ -80,7 +80,7 @@ trait HasResellerScope
             // Reseller login: force reseller_id ke dirinya sendiri (JANGAN percaya input)
             if ($user->hasRole(UserRole::Reseller->value)) {
                 if (in_array('reseller_id', $model->getFillable(), true)) {
-                    $model->reseller_id = $user->id;
+                    $model->reseller_id = $user->getEffectiveResellerId();
                 }
             }
 
@@ -102,7 +102,7 @@ trait HasResellerScope
 
             // Reseller hanya boleh update record miliknya
             if ($user->hasRole(UserRole::Reseller->value)) {
-                if (isset($model->reseller_id) && (int) $model->reseller_id !== (int) $user->id) {
+                if (isset($model->reseller_id) && (int) $model->reseller_id !== (int) $user->getEffectiveResellerId()) {
                     \Illuminate\Support\Facades\Log::warning('Reseller mencoba update record bukan miliknya', [
                         'user_id' => $user->id,
                         'model' => $model::class,
@@ -113,7 +113,7 @@ trait HasResellerScope
                 }
                 // SELALU inject reseller_id, mencegah Reseller memindahkan record ke reseller lain
                 if (in_array('reseller_id', $model->getFillable(), true)) {
-                    $model->reseller_id = $user->id;
+                    $model->reseller_id = $user->getEffectiveResellerId();
                 }
             }
 
@@ -129,7 +129,7 @@ trait HasResellerScope
             $user = auth()->user();
 
             if ($user->hasRole(UserRole::Reseller->value)) {
-                if (isset($model->reseller_id) && (int) $model->reseller_id !== (int) $user->id) {
+                if (isset($model->reseller_id) && (int) $model->reseller_id !== (int) $user->getEffectiveResellerId()) {
                     \Illuminate\Support\Facades\Log::warning('Reseller mencoba delete record bukan miliknya', [
                         'user_id' => $user->id,
                         'model' => $model::class,

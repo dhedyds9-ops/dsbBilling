@@ -27,7 +27,7 @@ class Payments extends AdminComponent
 
     public function render()
     {
-        $resellerId = Auth::id();
+        $resellerId = Auth::user()->getEffectiveResellerId();
 
         // Query payments where the customer belongs to this reseller
         $query = Payment::whereHas('customer', function ($q) use ($resellerId) {

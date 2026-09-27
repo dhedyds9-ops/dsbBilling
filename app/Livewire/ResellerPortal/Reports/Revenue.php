@@ -23,7 +23,7 @@ class Revenue extends AdminComponent
 
     public function render()
     {
-        $resellerId = Auth::id();
+        $resellerId = Auth::user()->getEffectiveResellerId();
         $currentMonth = now()->month;
         $currentYear = now()->year;
 

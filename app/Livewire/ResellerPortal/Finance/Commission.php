@@ -30,7 +30,7 @@ class Commission extends AdminComponent
     {
         // For MVP, we'll list vouchers sold as a proxy for commissions/margins
         // Assuming voucher price = sell price, and we just show an estimated margin
-        $query = Voucher::where('reseller_id', Auth::id())
+        $query = Voucher::where('reseller_id', Auth::user()->getEffectiveResellerId())
             ->where('status', 'used')
             ->with('serviceProfile');
             

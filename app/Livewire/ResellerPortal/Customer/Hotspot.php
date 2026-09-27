@@ -47,7 +47,7 @@ class Hotspot extends AdminComponent
 
     private function baseQuery()
     {
-        $ownerId = Auth::id();
+        $ownerId = Auth::user()->getEffectiveResellerId();
         return HotspotUser::where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
         });
@@ -104,10 +104,10 @@ class Hotspot extends AdminComponent
     {
         $hotspotUser = $this->baseQuery()->findOrFail($id);
         if ($hotspotUser->status === 'active') {
-            $service->suspendHotspotUser($hotspotUser->id, Auth::id());
+            $service->suspendHotspotUser($hotspotUser->id, Auth::user()->getEffectiveResellerId());
             session()->flash('success', "Hotspot berhasil di-suspend!");
         } else if ($hotspotUser->status === 'suspended') {
-            $service->reactivateHotspotUser($hotspotUser->id, Auth::id());
+            $service->reactivateHotspotUser($hotspotUser->id, Auth::user()->getEffectiveResellerId());
             session()->flash('success', "Hotspot berhasil diaktifkan kembali!");
         }
     }
@@ -115,7 +115,7 @@ class Hotspot extends AdminComponent
     public function delete($id, HotspotService $service)
     {
         $hotspotUser = $this->baseQuery()->findOrFail($id);
-        $service->terminateHotspotUser($hotspotUser->id, Auth::id());
+        $service->terminateHotspotUser($hotspotUser->id, Auth::user()->getEffectiveResellerId());
         $hotspotUser->delete();
         session()->flash('success', 'Hotspot berhasil dihapus!');
         $this->selectedIds = [];

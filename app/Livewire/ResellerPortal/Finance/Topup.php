@@ -52,14 +52,14 @@ class Topup extends AdminComponent
 
             Payment::create([
                 'uuid' => (string) Str::uuid(),
-                'customer_id' => Auth::id(), // Reseller ID
+                'customer_id' => Auth::user()->getEffectiveResellerId(), // Reseller ID
                 'amount' => $this->amount,
                 'currency' => 'IDR',
                 'method' => $this->method,
                 'status' => 'pending',
                 'reference_number' => 'RT-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(6)),
                 'gateway' => 'reseller_topup',
-                'created_by' => Auth::id(),
+                'created_by' => Auth::user()->getEffectiveResellerId(),
                 'gateway_transaction_id' => $this->notes, // Store notes here as fallback
             ]);
 
@@ -85,7 +85,7 @@ class Topup extends AdminComponent
 
     public function render()
     {
-        $query = Payment::where('customer_id', Auth::id())
+        $query = Payment::where('customer_id', Auth::user()->getEffectiveResellerId())
             ->where('gateway', 'reseller_topup');
 
         if ($this->search) {

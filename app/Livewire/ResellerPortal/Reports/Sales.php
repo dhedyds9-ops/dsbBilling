@@ -25,7 +25,7 @@ class Sales extends AdminComponent
 
     public function render()
     {
-        $resellerId = Auth::id();
+        $resellerId = Auth::user()->getEffectiveResellerId();
 
         // Total active customers
         $totalCustomers = User::where('reseller_id', $resellerId)->count();

@@ -21,7 +21,7 @@ class Edit extends AdminComponent
         $this->activeModule = 'reseller-portal';
         $this->activePage = 'customers.index';
         
-        $ownerId = auth()->id();
+        $ownerId = auth()->user()->getEffectiveResellerId();
         $customer = Customer::where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
         })->findOrFail($id);
@@ -50,7 +50,7 @@ class Edit extends AdminComponent
             'email' => 'nullable|email|max:255',
         ]);
 
-        $ownerId = auth()->id();
+        $ownerId = auth()->user()->getEffectiveResellerId();
         $customer = Customer::where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
         })->findOrFail($this->customerId);

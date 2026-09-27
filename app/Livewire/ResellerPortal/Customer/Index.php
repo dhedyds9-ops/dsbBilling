@@ -37,7 +37,7 @@ class Index extends AdminComponent
 
     public function render()
     {
-        $ownerId = auth()->id();
+        $ownerId = auth()->user()->getEffectiveResellerId();
 
         $query = Customer::with([
             'customerServices' => function ($query) {

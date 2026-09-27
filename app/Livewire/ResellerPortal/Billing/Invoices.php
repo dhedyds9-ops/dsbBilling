@@ -36,7 +36,7 @@ class Invoices extends AdminComponent
 
     public function viewDetail($id)
     {
-        $resellerId = Auth::id();
+        $resellerId = Auth::user()->getEffectiveResellerId();
         $this->selectedInvoice = Invoice::whereHas('customer', function ($q) use ($resellerId) {
             $q->where('reseller_id', $resellerId);
         })->with(['customer', 'items'])->find($id);
@@ -48,7 +48,7 @@ class Invoices extends AdminComponent
 
     public function openPaymentModal($id)
     {
-        $resellerId = Auth::id();
+        $resellerId = Auth::user()->getEffectiveResellerId();
         $invoice = Invoice::whereHas('customer', function ($q) use ($resellerId) {
             $q->where('reseller_id', $resellerId);
         })->findOrFail($id);
@@ -81,7 +81,7 @@ class Invoices extends AdminComponent
             app(\App\Services\Billing\PaymentService::class)->createPayment(
                 customerId: $invoice->customer_id,
                 amount: $this->paymentAmount,
-                userId: Auth::id(),
+                userId: Auth::user()->getEffectiveResellerId(),
                 invoiceIds: [$invoice->id],
                 currency: 'IDR',
                 method: $this->paymentMethod,
@@ -98,7 +98,7 @@ class Invoices extends AdminComponent
 
     public function render()
     {
-        $resellerId = Auth::id();
+        $resellerId = Auth::user()->getEffectiveResellerId();
 
         // Start querying invoices for customers belonging to this reseller
         $query = Invoice::whereHas('customer', function ($q) use ($resellerId) {

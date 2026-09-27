@@ -46,7 +46,7 @@ class Dashboard extends AdminComponent
     
     public function loadActivities()
     {
-        $ownerId = Auth::id();
+        $ownerId = Auth::user()->getEffectiveResellerId();
         $customerFilter = function ($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
         };
@@ -80,7 +80,7 @@ class Dashboard extends AdminComponent
 
     public function loadDashboardData()
     {
-        $ownerId = Auth::id();
+        $ownerId = Auth::user()->getEffectiveResellerId();
 
         // Subquery to filter customers owned by this reseller
         $customerFilter = function ($q) use ($ownerId) {

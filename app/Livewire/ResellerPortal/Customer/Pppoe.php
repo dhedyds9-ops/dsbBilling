@@ -47,7 +47,7 @@ class Pppoe extends AdminComponent
 
     private function baseQuery()
     {
-        $ownerId = Auth::id();
+        $ownerId = Auth::user()->getEffectiveResellerId();
         return PPPoEUser::where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
         });
@@ -104,10 +104,10 @@ class Pppoe extends AdminComponent
     {
         $pppoeUser = $this->baseQuery()->findOrFail($id);
         if ($pppoeUser->status === 'active') {
-            $service->suspendPPPoEUser($pppoeUser->id, Auth::id());
+            $service->suspendPPPoEUser($pppoeUser->id, Auth::user()->getEffectiveResellerId());
             session()->flash('success', "PPPoE berhasil di-suspend!");
         } else if ($pppoeUser->status === 'suspended') {
-            $service->reactivatePPPoEUser($pppoeUser->id, Auth::id());
+            $service->reactivatePPPoEUser($pppoeUser->id, Auth::user()->getEffectiveResellerId());
             session()->flash('success', "PPPoE berhasil diaktifkan kembali!");
         }
     }
@@ -115,7 +115,7 @@ class Pppoe extends AdminComponent
     public function delete($id, PPPoEService $service)
     {
         $pppoeUser = $this->baseQuery()->findOrFail($id);
-        $service->terminatePPPoEUser($pppoeUser->id, Auth::id());
+        $service->terminatePPPoEUser($pppoeUser->id, Auth::user()->getEffectiveResellerId());
         $pppoeUser->delete();
         session()->flash('success', 'PPPoE berhasil dihapus!');
         $this->selectedIds = [];

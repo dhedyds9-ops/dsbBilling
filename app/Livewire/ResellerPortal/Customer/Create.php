@@ -36,7 +36,7 @@ class Create extends AdminComponent
     public $billing_cycle = 'monthly';
     public $setup_fee;
     public $payment_status = 'unpaid';
-    public $reseller_id; // Will be set to auth()->id()
+    public $reseller_id; // Will be set to auth()->user()->getEffectiveResellerId()
 
     public $activation_date;
     public $status = 'active';
@@ -46,7 +46,7 @@ class Create extends AdminComponent
         parent::mount();
         $this->activeModule = 'reseller-portal';
         $this->activePage = 'customers.index';
-        $this->reseller_id = auth()->id();
+        $this->reseller_id = auth()->user()->getEffectiveResellerId();
         $this->activation_date = date('Y-m-d');
         
         $this->breadcrumbs = [
@@ -84,7 +84,7 @@ class Create extends AdminComponent
         }
 
         try {
-            $ownerId = auth()->id();
+            $ownerId = auth()->user()->getEffectiveResellerId();
             $ownershipData = [
                 'reseller_id' => $ownerId,
                 'branch_id'   => null,

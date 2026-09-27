@@ -19,7 +19,7 @@ class InvoiceShow extends AdminComponent
         $this->activePage = 'reseller-portal.billing.invoices';
         $this->invoiceId = $id;
         
-        $resellerId = Auth::id();
+        $resellerId = Auth::user()->getEffectiveResellerId();
         $this->invoice = Invoice::whereHas('customer', function ($q) use ($resellerId) {
             $q->where('reseller_id', $resellerId);
         })->with(['customer', 'items', 'payments'])->findOrFail($id);

@@ -172,7 +172,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                             @foreach($recentIncomes as $p)
-                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/30">
+                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/30">
                                     <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                         {{ $p->paid_at?->format('d M, H:i') ?? $p->created_at?->format('d M, H:i') }}
                                     </td>
@@ -258,7 +258,7 @@
                             @php
                                 $isOverdue = $inv->due_date && $inv->due_date->isPast();
                             @endphp
-                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50/70 dark:hover:bg-slate-700/30">
+                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/30">
                                 <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                                     {{ $inv->invoice_number ?? '-' }}
                                 </td>
