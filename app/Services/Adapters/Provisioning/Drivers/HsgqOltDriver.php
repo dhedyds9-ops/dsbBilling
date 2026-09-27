@@ -201,9 +201,10 @@ class HsgqOltDriver extends BaseOltDriver
                         'firmware_version' => $this->cachedOnuFws[$onuIndex] ?? null,
                         'model'            => $this->cachedOnuModels[$onuIndex] ?? null,
                         'status'           => (function() use ($statusVal, $onuIndex) {
+                            // Raw SNMP shows 1 for active ONUs on OID .22 (likely Admin/OperStatus)
                             $isOnline = match ($statusVal) {
-                                3, 4, 10 => true,
-                                default  => false
+                                1, 3, 4, 10 => true,
+                                default     => false
                             };
                             $rx = $this->cachedOnuRx[$onuIndex] ?? null;
                             if ($rx === null || $rx <= -40) {
@@ -336,8 +337,8 @@ class HsgqOltDriver extends BaseOltDriver
                 'status'           => (function() use ($statuses, $idx, $rx) {
                     $statusVal = (int)($statuses[$idx] ?? 0);
                     $isOnline = match ($statusVal) {
-                        3, 4, 10 => true,
-                        default  => false
+                        1, 3, 4, 10 => true,
+                        default     => false
                     };
                     if ($rx === null || $rx <= -40) {
                         $isOnline = false;
