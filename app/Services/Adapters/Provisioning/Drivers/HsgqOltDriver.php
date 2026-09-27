@@ -43,8 +43,9 @@ class HsgqOltDriver extends BaseOltDriver
             return $this->isNewBranch;
         }
 
-        $res = @$this->snmp->get('.1.3.6.1.4.1.50224.3.1.1.5.0');
-        return $this->isNewBranch = ($res !== false && $res !== '');
+        // Cek apakah OID status PON khusus HSGQ (50224) merespons
+        $res = @$this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.6');
+        return $this->isNewBranch = (!empty($res));
     }
 
     protected function cleanSnmpString(string $str): string
@@ -221,21 +222,34 @@ class HsgqOltDriver extends BaseOltDriver
 
         $results = [];
         $base = $this->onuInfoOid . '.' . $ponPort;
-        $serials    = $this->snmp->walk($this->onuInfoOid . '.1.' . $ponPort);
-        $statuses   = $this->snmp->walk($this->onuInfoOid . '.2.' . $ponPort);
-        $rxRaw      = $this->snmp->walk($this->onuInfoOid . '.5.' . $ponPort);
-        $txRaw      = $this->snmp->walk($this->onuInfoOid . '.6.' . $ponPort);
-        $snrRaw     = $this->snmp->walk($this->onuInfoOid . '.9.' . $ponPort);
-        $tempRaw    = $this->snmp->walk($this->onuInfoOid . '.10.' . $ponPort);
-        $macs       = $this->snmp->walk($this->onuInfoOid . '.7.' . $ponPort);
-        $firmwares  = $this->snmp->walk($this->onuInfoOid . '.12.' . $ponPort);
-        $models     = $this->snmp->walk($this->onuInfoOid . '.13.' . $ponPort);
+        
+        // Helper to extract clean ONU index from any OID variation
+        $extractIdx = function($arr) {
+            $cleaned = [];
+            if (is_array($arr)) {
+                foreach ($arr as $k => $v) {
+                    $parts = explode('.', str_replace('iso', '.1', $k));
+                    $cleaned[(int)end($parts)] = $v;
+                }
+            }
+            return $cleaned;
+        };
+
+        $serials    = $extractIdx($this->snmp->walk($this->onuInfoOid . '.1.' . $ponPort));
+        $statuses   = $extractIdx($this->snmp->walk($this->onuInfoOid . '.2.' . $ponPort));
+        $rxRaw      = $extractIdx($this->snmp->walk($this->onuInfoOid . '.5.' . $ponPort));
+        $txRaw      = $extractIdx($this->snmp->walk($this->onuInfoOid . '.6.' . $ponPort));
+        $snrRaw     = $extractIdx($this->snmp->walk($this->onuInfoOid . '.9.' . $ponPort));
+        $tempRaw    = $extractIdx($this->snmp->walk($this->onuInfoOid . '.10.' . $ponPort));
+        $macs       = $extractIdx($this->snmp->walk($this->onuInfoOid . '.7.' . $ponPort));
+        $firmwares  = $extractIdx($this->snmp->walk($this->onuInfoOid . '.12.' . $ponPort));
+        $models     = $extractIdx($this->snmp->walk($this->onuInfoOid . '.13.' . $ponPort));
 
         if (empty($txRaw)) {
-            $txRaw = $this->snmp->walk($this->onuInfoOid . '.3.' . $ponPort);
+            $txRaw = $extractIdx($this->snmp->walk($this->onuInfoOid . '.3.' . $ponPort));
         }
         if (empty($snrRaw)) {
-            $snrRaw = $this->snmp->walk($this->onuInfoOid . '.15.' . $ponPort);
+            $snrRaw = $extractIdx($this->snmp->walk($this->onuInfoOid . '.15.' . $ponPort));
         }
 
         foreach ($serials as $idx => $serial) {
