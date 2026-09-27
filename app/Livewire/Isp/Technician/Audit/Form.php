@@ -93,7 +93,7 @@ class Form extends Component
             "customers" => $customers,
             "olts" => Olt::all(),
             "services" => ServiceProfile::all(),
-        ])->layout("layouts.technician");
+        ])->layout("layouts.technician-app");
     }
 }
 
