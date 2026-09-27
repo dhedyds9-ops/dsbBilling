@@ -35,8 +35,17 @@ class AuthenticatedSessionController extends Controller
         if ($user->hasRole('reseller')) {
             return redirect()->intended(route('reseller-portal.dashboard', absolute: false));
         }
+
+        // 1. Cek Job Function khusus (Portal Spesifik)
+        if ($user->job_function === \App\Enums\JobFunction::TECHNICIAN->value || $user->hasRole('technician')) {
+            return redirect()->intended(route('technician.dashboard', absolute: false));
+        }
         
-        // Administrator dan Manager juga bisa mengakses reseller portal jika intended ke sana
+        if ($user->job_function === \App\Enums\JobFunction::NOC->value || $user->hasRole('noc')) {
+            return redirect()->intended(route('noc.overview', absolute: false));
+        }
+        
+        // 2. Administrator dan Manager (Staff Backoffice Umum)
         if ($user->hasRole('administrator') || $user->hasRole('manager')) {
             $intended = session()->get('url.intended', '');
             if (str_contains($intended, 'reseller-portal')) {
@@ -44,18 +53,9 @@ class AuthenticatedSessionController extends Controller
             }
             return redirect()->intended(route('dashboard', absolute: false));
         }
-
-        if ($user->hasRole('technician') || $user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
-            return redirect()->intended(route('technician.dashboard', absolute: false));
-        }
-        
-        if ($user->hasRole('noc') || $user->hasRole('noc_operator') || $user->hasRole('operator') || $user->hasRole('owner') || $user->job_function === \App\Enums\JobFunction::NOC->value) {
-            return redirect()->intended(route('noc.overview', absolute: false));
-        }
         
         // Default fallback
         return redirect()->intended(route('dashboard', absolute: false));
-
     }
 
     public function destroy(Request $request): RedirectResponse
