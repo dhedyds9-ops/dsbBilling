@@ -1,4 +1,4 @@
-﻿<div class="space-y-4 p-4">
+<div class="space-y-4 p-4">
 
     {{-- Hero Banner --}}
     <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
@@ -88,11 +88,11 @@
                     </div>
                     <div class="shrink-0 flex flex-col items-end gap-1.5">
                         @if($pipeline->status === 'completed')
-                            <span class="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 rounded-lg text-[10px] font-bold uppercase">Selesai</span>
+                            <span class="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] font-bold uppercase">Selesai</span>
                         @elseif($pipeline->status === 'failed')
-                            <span class="px-2 py-0.5 bg-red-50 dark:bg-red-900/30 text-red-700 rounded-lg text-[10px] font-bold uppercase">Gagal</span>
+                            <span class="px-2 py-0.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-[10px] font-bold uppercase">Gagal</span>
                         @else
-                            <span class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 rounded-lg text-[10px] font-bold uppercase">Proses</span>
+                            <span class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-[10px] font-bold uppercase">Proses</span>
                         @endif
                         <a href="{{ route('technician.provisioning.show', $pipeline->id) }}"
                            class="text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center gap-0.5 hover:underline">
@@ -104,7 +104,7 @@
             @empty
                 <div class="p-10 text-center">
                     <div class="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 dark:text-slate-400" style="font-size:32px">inbox</span>
+                        <span class="material-symbols-outlined text-slate-300 dark:text-slate-500" style="font-size:32px">inbox</span>
                     </div>
                     <p class="text-sm font-bold text-slate-900 dark:text-slate-100">Belum ada riwayat</p>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Gunakan Instalasi Cepat untuk memulai.</p>
