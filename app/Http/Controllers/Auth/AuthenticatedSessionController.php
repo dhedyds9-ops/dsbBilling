@@ -45,15 +45,15 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('dashboard', absolute: false));
         }
 
-        if ($user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
+        if ($user->hasRole('technician') || $user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
             return redirect()->intended(route('technician.dashboard', absolute: false));
         }
         
-        if ($user->job_function === \App\Enums\JobFunction::NOC->value || 
-            $user->hasRole('noc') || $user->hasRole('noc_operator') || $user->hasRole('operator') || $user->hasRole('owner')) {
+        if ($user->hasRole('noc') || $user->hasRole('noc_operator') || $user->hasRole('operator') || $user->hasRole('owner') || $user->job_function === \App\Enums\JobFunction::NOC->value) {
             return redirect()->intended(route('noc.overview', absolute: false));
         }
         
+        // Default fallback
         return redirect()->intended(route('dashboard', absolute: false));
 
     }
