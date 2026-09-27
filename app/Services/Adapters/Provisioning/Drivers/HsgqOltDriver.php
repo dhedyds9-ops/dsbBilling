@@ -319,12 +319,20 @@ class HsgqOltDriver extends BaseOltDriver
                 'temperature'      => $tempVal,
                 'firmware_version' => $fw,
                 'model'            => $modelVal,
-                'status'           => match ((int)($statuses[$idx] ?? 0)) {
-                    1, 101, 100 => 'online',
-                    2, 102, 0   => 'offline',
-                    3           => 'dying_gasp',
-                    default     => 'unknown'
-                },
+                'status'           => (function() use ($statuses, $idx, $rx) {
+                    $statusVal = (int)($statuses[$idx] ?? 0);
+                    $isOnline = match ($statusVal) {
+                        3, 4, 10 => true,
+                        default  => false
+                    };
+                    if ($rx === null || $rx <= -40) {
+                        $isOnline = false;
+                    }
+                    if ($statusVal === 0 && $rx !== null && $rx > -40) {
+                        $isOnline = true;
+                    }
+                    return $isOnline ? 'online' : 'offline';
+                })(),
             ];
         }
         return $results;
