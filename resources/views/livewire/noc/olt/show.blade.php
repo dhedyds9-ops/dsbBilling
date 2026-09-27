@@ -24,7 +24,7 @@
             <span class="noc-mono {{ $olt->temperature > 60 ? 'text-red-500' : 'text-emerald-500' }}">{{ $olt->temperature ?? '-' }} °C</span>
         </span>
         
-        <button wire:click="syncOlt" wire:loading.attr="disabled" class="btn btn-sm btn-primary ml-2 py-0.5 px-2 text-xs">
+        <button wire:click="syncOlt" wire:loading.attr="disabled" class="bg-blue-600 hover:bg-blue-500 text-white rounded ml-2 py-1 px-3 text-xs flex items-center gap-1 transition-colors">
             <i class="bi bi-arrow-repeat" wire:loading.class="animate-spin"></i> Sync Status
         </button>
     </div>
