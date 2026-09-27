@@ -20,12 +20,23 @@ class Index extends AdminComponent
 
     public function configure(): void
     {
-        }
+    }
 
     public function mount(): void
     {
         $this->activeModule = 'noc';
         $this->activePage   = 'olts';
+    }
+
+    public function syncAll(): void
+    {
+        try {
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            $results = $service->pollAll();
+            $this->dispatch('toast', type: 'success', message: "Sync complete: {$results['success']} success, {$results['failed']} failed.");
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Sync failed: ' . $e->getMessage());
+        }
     }
 
     public function updatedSearch(): void

@@ -10,6 +10,9 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <button wire:click="syncAll" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors" wire:loading.attr="disabled">
+                <i class="bi bi-arrow-repeat" wire:loading.class="animate-spin" wire:target="syncAll"></i> Sync All
+            </button>
             <select wire:model.live="statusFilter" class="noc-input px-2 py-1 text-sm rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
                 <option value="all">All Status</option>
                 <option value="online">Online</option>
