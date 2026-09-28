@@ -2,12 +2,12 @@
 
 namespace App\Livewire\Admin\Payroll;
 
+use App\Livewire\AdminComponent;
 use App\Models\Employee;
 use App\Models\Payroll;
-use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 
-class Generate extends Component
+class Generate extends AdminComponent
 {
     public $month;
     public $year;
@@ -17,6 +17,16 @@ class Generate extends Component
 
     public function mount()
     {
+        parent::mount();
+        $this->activeModule = 'admin';
+        $this->activePage = 'payroll';
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Administration', 'url' => route('admin.users.index')],
+            ['label' => 'Payroll', 'url' => route('admin.payroll.index')],
+            ['label' => 'Generate'],
+        ];
+
         $this->month = date('m');
         $this->year = date('Y');
         // Default cutoff: 26 prev month to 25 current month

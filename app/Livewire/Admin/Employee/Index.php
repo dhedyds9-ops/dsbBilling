@@ -2,19 +2,21 @@
 
 namespace App\Livewire\Admin\Employee;
 
+use App\Livewire\Admin\BaseAdminComponent;
 use App\Models\Employee;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class Index extends Component
+class Index extends BaseAdminComponent
 {
-    use WithPagination;
-
-    public $search = '';
-
-    public function updatingSearch()
+    public function mount()
     {
-        $this->resetPage();
+        parent::mount();
+        $this->activeModule = 'admin';
+        $this->activePage = 'employee';
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Administration', 'url' => route('admin.users.index')],
+            ['label' => 'Employees'],
+        ];
     }
 
     public function delete(Employee $employee)
@@ -25,9 +27,14 @@ class Index extends Component
 
     public function render()
     {
-        $employees = Employee::where('name', 'like', '%' . $this->search . '%')
-            ->orWhere('nik', 'like', '%' . $this->search . '%')
-            ->paginate(10);
+        $employees = Employee::when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('nik', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->paginate($this->perPage);
 
         return view('livewire.admin.employee.index', [
             'employees' => $employees,

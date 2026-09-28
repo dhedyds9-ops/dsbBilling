@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Admin\Payroll;
 
+use App\Livewire\AdminComponent;
 use App\Models\Payroll;
-use Livewire\Component;
 
-class Edit extends Component
+class Edit extends AdminComponent
 {
     public Payroll $payroll;
     public $base_salary;
@@ -17,6 +17,16 @@ class Edit extends Component
 
     public function mount($id)
     {
+        parent::mount();
+        $this->activeModule = 'admin';
+        $this->activePage = 'payroll';
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Administration', 'url' => route('admin.users.index')],
+            ['label' => 'Payroll', 'url' => route('admin.payroll.index')],
+            ['label' => 'Edit'],
+        ];
+
         $this->payroll = Payroll::with('employee')->findOrFail($id);
         $this->base_salary = $this->payroll->base_salary;
         $this->allowances = $this->payroll->allowances;
@@ -24,7 +34,6 @@ class Edit extends Component
         $this->net_salary = $this->payroll->net_salary;
         $this->notes = $this->payroll->notes;
         $this->status = $this->payroll->status;
-        $this->dispatch('set-active-menu', module: 'kepegawaian', page: 'payroll');
     }
 
     public function calculateNet()
@@ -65,6 +74,6 @@ class Edit extends Component
 
     public function render()
     {
-        return view('livewire.admin.payroll.edit')->layout('layouts.app');
+        return view('livewire.admin.payroll.edit')->layout('layouts.enterprise');
     }
 }

@@ -2,20 +2,29 @@
 
 namespace App\Livewire\Admin\Payroll;
 
+use App\Livewire\AdminComponent;
 use App\Models\Payroll;
-use Livewire\Component;
 use App\Services\WhatsApp\WhatsAppService;
 use App\Models\Setting;
 use Carbon\Carbon;
 
-class Show extends Component
+class Show extends AdminComponent
 {
     public Payroll $payroll;
 
     public function mount($id)
     {
+        parent::mount();
+        $this->activeModule = 'admin';
+        $this->activePage = 'payroll';
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Administration', 'url' => route('admin.users.index')],
+            ['label' => 'Payroll', 'url' => route('admin.payroll.index')],
+            ['label' => 'Detail'],
+        ];
+
         $this->payroll = Payroll::with('employee')->findOrFail($id);
-        $this->dispatch('set-active-menu', module: 'kepegawaian', page: 'payroll');
     }
 
     public function sendWhatsApp()
@@ -74,6 +83,6 @@ class Show extends Component
     public function render()
     {
         return view('livewire.admin.payroll.show')
-            ->layout('layouts.app');
+            ->layout('layouts.enterprise');
     }
 }

@@ -91,7 +91,7 @@
                         <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
                     @endforeach
                 </select>
-                @error('user_id') <span class="text-red-500 text-sm mt-1 block">{{  }}</span> @enderror
+                @error('user_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
             </div>
 
             <!-- Status -->

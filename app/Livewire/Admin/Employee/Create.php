@@ -2,11 +2,23 @@
 
 namespace App\Livewire\Admin\Employee;
 
+use App\Livewire\AdminComponent;
 use App\Models\Employee;
-use Livewire\Component;
 
-class Create extends Component
+class Create extends AdminComponent
 {
+    public function mount()
+    {
+        parent::mount();
+        $this->activeModule = 'admin';
+        $this->activePage = 'employee';
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Administration', 'url' => route('admin.users.index')],
+            ['label' => 'Employees', 'url' => route('admin.employee.index')],
+            ['label' => 'Create'],
+        ];
+    }
     public $nik;
     public $name;
     public $position;

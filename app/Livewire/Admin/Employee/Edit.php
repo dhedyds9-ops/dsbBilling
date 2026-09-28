@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Admin\Employee;
 
+use App\Livewire\AdminComponent;
 use App\Models\Employee;
-use Livewire\Component;
 
-class Edit extends Component
+class Edit extends AdminComponent
 {
     public Employee $employee;
     public $nik;
@@ -43,9 +43,18 @@ class Edit extends Component
 
     public function mount($id)
     {
+        parent::mount();
+        $this->activeModule = 'admin';
+        $this->activePage = 'employee';
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Administration', 'url' => route('admin.users.index')],
+            ['label' => 'Employees', 'url' => route('admin.employee.index')],
+            ['label' => 'Edit'],
+        ];
+
         $this->employee = \App\Models\Employee::findOrFail($id);
         $employee = $this->employee;
-        $this->dispatch('set-active-menu', module: 'kepegawaian', page: 'data-pegawai');
         $this->nik = $employee->nik;
         $this->name = $employee->name;
         $this->position = $employee->position;

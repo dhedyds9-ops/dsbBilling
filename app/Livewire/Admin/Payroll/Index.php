@@ -2,19 +2,25 @@
 
 namespace App\Livewire\Admin\Payroll;
 
+use App\Livewire\Admin\BaseAdminComponent;
 use App\Models\Payroll;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class Index extends Component
+class Index extends BaseAdminComponent
 {
-    use WithPagination;
-
     public $month;
     public $year;
 
     public function mount()
     {
+        parent::mount();
+        $this->activeModule = 'admin';
+        $this->activePage = 'payroll';
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Administration', 'url' => route('admin.users.index')],
+            ['label' => 'Payroll'],
+        ];
+        
         $this->month = date('m');
         $this->year = date('Y');
     }
