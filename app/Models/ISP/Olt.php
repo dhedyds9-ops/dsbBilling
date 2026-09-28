@@ -234,5 +234,10 @@ class Olt extends Model
             }
         );
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class);
+    }
 }
 
