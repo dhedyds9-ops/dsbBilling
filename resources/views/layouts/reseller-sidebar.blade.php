@@ -10,10 +10,30 @@
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 
-                <li class="nav-item">
+                                <li class="nav-item">
                     <a href="{{ route('reseller-portal.dashboard') }}" class="nav-link {{ request()->routeIs('reseller-portal.dashboard') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
                         <p>Dashboard</p>
+                    </a>
+                </li>
+
+                <li class="nav-header">NETWORK & GIS</li>
+                <li class="nav-item">
+                    <a href="{{ route('reseller-portal.network.olts.index') }}" class="nav-link {{ request()->routeIs('reseller-portal.network.olts.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-server"></i>
+                        <p>Data OLT (Read-Only)</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('reseller-portal.network.odcs.index') }}" class="nav-link {{ request()->routeIs('reseller-portal.network.odcs.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-hub"></i>
+                        <p>Data ODC (Read-Only)</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('reseller-portal.network.odps.index') }}" class="nav-link {{ request()->routeIs('reseller-portal.network.odps.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-sitemap"></i>
+                        <p>Data ODP (Read-Only)</p>
                     </a>
                 </li>
 
@@ -122,6 +142,8 @@
         </nav>
     </div>
 </aside>
+
+
 
 
 

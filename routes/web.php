@@ -469,11 +469,17 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/commission', \App\Livewire\ResellerPortal\Reports\Commission::class)->name('commission');
         });
 
-        Route::prefix('sales')->name('sales.')->group(function() {
+                Route::prefix('sales')->name('sales.')->group(function() {
             Route::get('/voucher', \App\Livewire\ResellerPortal\Sales\VoucherIndex::class)->name('voucher');
             Route::post('/voucher/print', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print'])->name('voucher.print');
             Route::post('/voucher', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'print']);
             Route::get('/voucher/preview-template/{id}', [\App\Http\Controllers\ISP\VoucherPrintController::class, 'previewTemplate']);
+        });
+
+        Route::prefix('network')->name('network.')->group(function() {
+            Route::get('/olts', \App\Livewire\ResellerPortal\Network\Olt\Index::class)->name('olts.index');
+            Route::get('/odcs', \App\Livewire\ResellerPortal\Network\Odc\Index::class)->name('odcs.index');
+            Route::get('/odps', \App\Livewire\ResellerPortal\Network\Odp\Index::class)->name('odps.index');
         });
         
         Route::get('/service-profiles', $comingSoon)->name('service-profiles.index');
@@ -553,3 +559,4 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
 })->name('pengaturan.perusahaan.upload-logo');
 Route::get('/test-noc-render', function() { return view('layouts.noc', ['slot' => 'TEST CONTENT', 'nocNav' => []]); });
 Route::get('/noc-acs-test', function() { return view('livewire.acs.device.index', ['devices' => \Illuminate\Pagination\LengthAwarePaginator::make([], 0, 10), 'isNocLayout' => true]); });
+
