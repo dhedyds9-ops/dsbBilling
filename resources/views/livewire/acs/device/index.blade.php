@@ -1,4 +1,4 @@
-<div>
+<div class="{{ $isNocLayout ? 'noc-bg noc-text' : '' }}">
     <!-- Flash Messages -->
     <div class="mb-4 px-4 sm:px-0">
         @if(session()->has('success'))
