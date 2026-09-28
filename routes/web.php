@@ -478,6 +478,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
         Route::prefix('network')->name('network.')->group(function() {
             Route::get('/olts', \App\Livewire\ResellerPortal\Network\Olt\Index::class)->name('olts.index');
+            Route::get('/olts/{id}', \App\Livewire\ResellerPortal\Network\Olt\Show::class)->name('olts.show');
             Route::get('/odcs', \App\Livewire\ResellerPortal\Network\Odc\Index::class)->name('odcs.index');
             Route::get('/odps', \App\Livewire\ResellerPortal\Network\Odp\Index::class)->name('odps.index');
         });

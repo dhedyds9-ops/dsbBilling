@@ -21,7 +21,9 @@
                         <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Nama OLT</th>
                         <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">IP Address</th>
                         <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Model</th>
+                        <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700 text-center">ONU (Aktif/Total)</th>
                         <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Status</th>
+                        <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="text-sm divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -30,6 +32,15 @@
                             <td class="px-5 py-4 text-slate-800 dark:text-slate-200 font-medium">{{ $olt->name }}</td>
                             <td class="px-5 py-4 text-slate-600 dark:text-slate-400">{{ $olt->ip_address }}</td>
                             <td class="px-5 py-4 text-slate-600 dark:text-slate-400">{{ $olt->model ?? '-' }}</td>
+                            <td class="px-5 py-4 text-center text-slate-600 dark:text-slate-400">
+                                @php
+                                    $aktif = $olt->onu_active_count ?? 0;
+                                    $kapasitas = $olt->onu_capacity ?? ($olt->pon_port_count * 64) ?? 0;
+                                    $percent = $kapasitas > 0 ? ($aktif / $kapasitas) * 100 : 0;
+                                    $color = $percent > 80 ? 'text-red-500' : 'text-emerald-500';
+                                @endphp
+                                <span class="{{ $color }} font-bold">{{ $aktif }}</span> / {{ $kapasitas }}
+                            </td>
                             <td class="px-5 py-4">
                                 @if($olt->status == 'active')
                                     <span class="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-lg">Aktif</span>
@@ -37,10 +48,16 @@
                                     <span class="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold rounded-lg">Nonaktif</span>
                                 @endif
                             </td>
+                            <td class="px-5 py-4">
+                                <a href="{{ route('reseller-portal.network.olts.show', $olt->id) }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-medium transition-colors">
+                                    <span class="material-symbols-outlined notranslate" style="font-size: 16px" translate="no">visibility</span>
+                                    Lihat ONU
+                                </a>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-5 py-8 text-center text-slate-500">Tidak ada data OLT di wilayah ini.</td>
+                            <td colspan="6" class="px-5 py-8 text-center text-slate-500">Tidak ada data OLT di wilayah ini.</td>
                         </tr>
                     @endforelse
                 </tbody>
