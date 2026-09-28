@@ -70,6 +70,6 @@ class RoleMiddleware
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
-        return new \Illuminate\Http\RedirectResponse(route('login'))->with('error', 'Akun Anda tidak memiliki Role Akses (Minimal Manager/Administrator). Hubungi Super Admin.');
+        return redirect()->route('login')->with('error', 'Akun Anda tidak memiliki Role Akses (Minimal Manager/Administrator). Hubungi Super Admin.');
     }
 }
