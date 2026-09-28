@@ -20,7 +20,7 @@
 
   <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
     <nav class="flex items-center gap-1 text-sm font-medium overflow-x-auto">
-      @foreach(['radius'=>'Radius Engine','radius_client'=>'Radius Client'] as $k=>$l)
+      @foreach(['radius'=>'Radius Engine','radius_client'=>'Radius Client','zabbix'=>'Zabbix API'] as $k=>$l)
         <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">{{ $l }}</button>
       @endforeach
     </nav>
@@ -111,6 +111,44 @@
               <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
               Simpan Radius Client
             </button>
+          </div>
+        </div>
+      </div>
+        @elseif($activeTab === 'zabbix')
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 font-semibold text-slate-900 dark:text-slate-100 flex justify-between items-center">
+            <span>Kredensial Zabbix API</span>
+            <button type="button" wire:click="testZabbix" class="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Test Koneksi</button>
+          </div>
+          <div class="p-4 space-y-3 text-sm">
+            <div>
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">URL API Zabbix</label>
+              <input type="url" wire:model="zabbixForm.url" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono" placeholder="http://192.168.100.2/zabbix/api_jsonrpc.php">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Username</label>
+                <input type="text" wire:model="zabbixForm.username" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100" placeholder="Admin">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
+                <input type="password" wire:model="zabbixForm.password" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100" placeholder="zabbix">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 h-fit">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined notranslate text-blue-600 dark:text-blue-400" translate="no" style="font-size: 24px;">info</span>
+            <div class="text-sm text-blue-800 dark:text-blue-300">
+              <p class="font-semibold mb-1">Integrasi Zabbix (NOC Monitoring)</p>
+              <p class="mb-2">dsBilling dapat menarik metrik dari Zabbix secara real-time via API (JSON-RPC) untuk ditampilkan di Dasbor NOC Anda.</p>
+              <ul class="list-disc pl-4 space-y-1 text-xs">
+                <li>Pastikan URL diakhiri dengan <code>/api_jsonrpc.php</code></li>
+                <li>Gunakan user dengan hak akses minimal Read-Only ke Host.</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

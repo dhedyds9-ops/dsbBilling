@@ -354,7 +354,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
                 Route::get('/onus/{onu}', \App\Livewire\NOC\Onu\Show::class)->name('onus.show');
                 Route::get('/pppoe', \App\Livewire\NOC\Pppoe\Index::class)->name('pppoe.index');
                 Route::get('/topology', \App\Livewire\NOC\Topology\Index::class)->name('topology.index');
-                Route::get('/settings', \App\Livewire\NOC\Settings::class)->name('settings');
+                
             });
         });
 

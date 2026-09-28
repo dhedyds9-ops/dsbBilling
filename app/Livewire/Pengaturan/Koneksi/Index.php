@@ -16,6 +16,7 @@ class Index extends AdminComponent
     public array $tabs = [
         'radius' => 'Radius Server',
         'radius_client' => 'Client/Secret',
+        'zabbix' => 'Zabbix API',
     ];
 
     public string $activeTab = 'radius';
@@ -68,6 +69,10 @@ class Index extends AdminComponent
             if (!empty($radiusClientConfig)) {
                 $this->radiusClient = array_merge($this->radiusClient, $radiusClientConfig);
             }
+            
+            $this->zabbixForm['url'] = \App\Models\Setting::getValue('zabbix.url', 'http://127.0.0.1/zabbix/api_jsonrpc.php');
+            $this->zabbixForm['username'] = \App\Models\Setting::getValue('zabbix.username', 'Admin');
+            $this->zabbixForm['password'] = \App\Models\Setting::getValue('zabbix.password', 'zabbix');
         } catch (Throwable $e) {
             Log::error('Koneksi loadSettings failed', ['e' => $e->getMessage()]);
         }
@@ -141,12 +146,42 @@ class Index extends AdminComponent
         }
     }
 
+    public function saveZabbix(): void
+    {
+        try {
+            \App\Models\Setting::setValue('zabbix.url', $this->zabbixForm['url']);
+            \App\Models\Setting::setValue('zabbix.username', $this->zabbixForm['username']);
+            \App\Models\Setting::setValue('zabbix.password', $this->zabbixForm['password']);
+            
+            $this->savedStatus = 'saved';
+            $this->dispatch('toast', type: 'success', message: 'Konfigurasi Zabbix disimpan.');
+        } catch (Throwable $e) {
+            $this->savedStatus = 'error';
+            $this->addError('zabbixForm', 'Gagal simpan: ' . $e->getMessage());
+        }
+    }
+
+    public function testZabbix(): void
+    {
+        $this->saveZabbix();
+        $service = new \App\Services\ZabbixService();
+        if ($service->testConnection()) {
+            $this->radiusTestResult = 'OK: Koneksi Zabbix API Berhasil!';
+            $this->dispatch('toast', type: 'success', message: 'Koneksi Zabbix API Berhasil!');
+        } else {
+            $this->radiusTestResult = 'ERROR: Koneksi Zabbix API Gagal.';
+            $this->dispatch('toast', type: 'error', message: 'Koneksi Zabbix API Gagal.');
+        }
+    }
+
     public function save(\App\Services\Pengaturan\ConnectionSettingsService $service): void
     {
         if ($this->activeTab === 'radius') {
             $this->saveRadius($service);
         } elseif ($this->activeTab === 'radius_client') {
             $this->saveRadiusClient($service);
+        } elseif ($this->activeTab === 'zabbix') {
+            $this->saveZabbix();
         }
     }
 
@@ -155,3 +190,4 @@ class Index extends AdminComponent
         return view('livewire.pengaturan.koneksi.index');
     }
 }
+

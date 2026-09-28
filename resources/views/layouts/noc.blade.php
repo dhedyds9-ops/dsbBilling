@@ -104,7 +104,7 @@
                     ['route' => 'noc.topology.index',   'label' => 'Impact Analysis',           'icon' => 'impact'],
                     ['route' => 'gis.map',              'label' => 'Live Mapping',  'icon' => 'map'],
                     ['route' => 'gis.index',            'label' => 'GIS Dashboard', 'icon' => 'globe'],
-                    ['route' => 'noc.settings',         'label' => 'Zabbix Settings', 'icon' => 'gear'],
+                    
                 ]);
             @endphp
             @foreach($nocNav as $item)
