@@ -65,7 +65,11 @@ class RoleMiddleware
             return new \Illuminate\Http\RedirectResponse(route('dashboard'));
         }
 
-        // User tanpa role yang valid: kembali ke login
-        return new \Illuminate\Http\RedirectResponse(route('login'));
+        // User tanpa role yang valid: Logout dan kembali ke login
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return new \Illuminate\Http\RedirectResponse(route('login'))->with('error', 'Akun Anda tidak memiliki Role Akses (Minimal Manager/Administrator). Hubungi Super Admin.');
     }
 }
