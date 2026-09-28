@@ -41,7 +41,7 @@ class Edit extends AdminComponent
         ];
     }
 
-    public function mount($id)
+    public function mount($id = null)
     {
         parent::mount();
         $this->activeModule = 'admin';

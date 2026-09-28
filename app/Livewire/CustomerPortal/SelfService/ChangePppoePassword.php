@@ -23,7 +23,8 @@ class ChangePppoePassword extends Component
     public function savePassword(CustomerSelfServiceService $selfService)
     {
         $this->validate();
-        $result = $selfService->changePppoePassword(Auth::id(), $this->newPassword);
+        $customerId = Auth::user()->customer?->id ?? 0;
+        $result = $selfService->changePppoePassword($customerId, $this->newPassword);
         $this->message = $result['message'];
         $this->messageType = $result['success'] ? 'success' : 'error';
         $this->reset(['newPassword', 'confirmPassword']);

@@ -37,13 +37,18 @@ class CustomerSelfServiceService
         }
 
         $pppoeUser->update([
-            'password' => Hash::make($newPassword),
+            'password' => $newPassword, // RADIUS requires cleartext, not hashed
         ]);
 
-        // You can dispatch PPPoE Provision Job here to sync with router
-        // \App\Jobs\AAA\ProvisionPPPoEUserJob::dispatch($pppoeUser);
+        // Kick active session so the user is forced to reconnect with the new password
+        try {
+            $kickService = app(\App\Services\ISP\Session\SessionKickService::class);
+            $kickService->kickUsernameGlobally($pppoeUser->username, Auth::user());
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to kick PPPoE user after password change: ' . $e->getMessage());
+        }
 
-        return ['success' => true, 'message' => 'Password PPPoE berhasil diubah'];
+        return ['success' => true, 'message' => 'Password PPPoE berhasil diubah! Anda harus menghubungkan ulang router dengan kredensial baru.'];
     }
 
     public function getOnuWifiCredentials(int $customerId, int $onuId): array
@@ -106,7 +111,7 @@ class CustomerSelfServiceService
             // Update credentials
             $this->hotspotService->updateHotspotUserCredentials(
                 $hotspotUserId,
-                $customerId, // Use customer's user id (Auth::id()) for updated_by
+                Auth::id(), // Use customer's user id (Auth::id()) for updated_by
                 $newUsername,
                 $newPassword
             );

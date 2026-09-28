@@ -25,7 +25,7 @@ class Profile extends Component
         if ($profile) {
             $this->name = $profile->name;
             $this->email = $profile->email;
-            $this->phone = $profile->phone;
+            $this->phone = $profile->whatsapp;
         }
     }
 
@@ -33,7 +33,8 @@ class Profile extends Component
     {
         $this->validate([
             'name' => 'required',
-            'email' => 'required|email',
+            'email' => 'required|email|unique:users,email,' . Auth::id(),
+            'phone' => 'nullable|unique:users,whatsapp,' . Auth::id(),
         ]);
 
         $result = $profileService->updateProfile(Auth::id(), [

@@ -12,7 +12,7 @@ class Show extends AdminComponent
 {
     public Payroll $payroll;
 
-    public function mount($id)
+    public function mount($id = null)
     {
         parent::mount();
         $this->activeModule = 'admin';

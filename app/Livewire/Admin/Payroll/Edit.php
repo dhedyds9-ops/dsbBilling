@@ -15,7 +15,7 @@ class Edit extends AdminComponent
     public $notes;
     public $status;
 
-    public function mount($id)
+    public function mount($id = null)
     {
         parent::mount();
         $this->activeModule = 'admin';
