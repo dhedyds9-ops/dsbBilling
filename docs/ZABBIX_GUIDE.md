@@ -132,3 +132,33 @@ Setelah selesai setup, Anda akan diarahkan ke halaman Login. Gunakan kredensial 
 *   **Password:** zabbix *(semua huruf kecil)*
 
 Selesai! Zabbix sekarang sudah terinstal. Anda bisa mulai memasukkan IP Router/OLT Anda ke dalam Zabbix, lalu mengambil Host ID-nya untuk disalin ke kolom zabbix_host_id pada portal admin dsBilling.
+
+---
+
+## ?? Pemecahan Masalah (Troubleshooting)
+
+Berikut adalah beberapa *error* yang paling sering terjadi saat instalasi awal dan cara mengatasinya:
+
+### 1. Error: "System locale C en_US Fail" (Di Halaman Web)
+Zabbix mewajibkan server memiliki bahasa Inggris Amerika (`en_US.UTF-8`). Jika gagal, jalankan perintah berikut di terminal:
+```bash
+sudo locale-gen en_US.UTF-8
+sudo update-locale LANG=en_US.UTF-8
+# Restart PHP FPM (sesuaikan versi PHP Anda)
+sudo systemctl restart php8.1-fpm
+```
+Setelah itu refresh/reload halaman Web Zabbix Anda.
+
+### 2. Error: "The table 'dbversion' was not found" (Di Halaman Web)
+Ini terjadi jika proses injeksi/impor database (Tahap 3) gagal, terputus di tengah jalan, atau Anda menekan `Ctrl+C` saat proses sedang berjalan (proses ini butuh 1-5 menit).
+**Solusinya:** Hapus database dan ulangi injeksi secara penuh.
+```bash
+# Hapus dan buat ulang database bersih
+mysql -u root -e "DROP DATABASE IF EXISTS zabbix; CREATE DATABASE zabbix character set utf8mb4 collate utf8mb4_bin; SET GLOBAL log_bin_trust_function_creators = 1;"
+
+# Lakukan penyuntikan ulang (PENTING: Jangan tekan Ctrl+C, tunggu 1-5 menit sampai selesai)
+zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mysql -u root zabbix
+
+# Kunci kembali database
+mysql -u root -e "set global log_bin_trust_function_creators = 0;"
+```
