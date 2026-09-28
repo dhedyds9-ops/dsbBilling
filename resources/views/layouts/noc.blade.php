@@ -214,7 +214,7 @@
     {{-- ============================================================
          MAIN CONTENT AREA
          ============================================================ --}}
-    <main class="flex-1 overflow-hidden noc-scroll">
+    <main class="flex-1 overflow-y-auto noc-scroll">
         {{ $slot ?? '' }}
         @yield('content')
     </main>
