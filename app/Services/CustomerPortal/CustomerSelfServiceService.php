@@ -20,36 +20,7 @@ class CustomerSelfServiceService
         protected HotspotService $hotspotService
     ) {}
 
-    public function changePppoePassword(int $customerId, string $newPassword): array
-    {
-        $customerService = CustomerService::where('customer_id', $customerId)
-            ->where('status', 'active')
-            ->first();
 
-        if (!$customerService) {
-            return ['success' => false, 'message' => 'Layanan tidak ditemukan'];
-        }
-
-        $pppoeUser = PPPoEUser::where('customer_service_id', $customerService->id)->first();
-
-        if (!$pppoeUser) {
-            return ['success' => false, 'message' => 'PPPoE User tidak ditemukan'];
-        }
-
-        $pppoeUser->update([
-            'password' => $newPassword, // RADIUS requires cleartext, not hashed
-        ]);
-
-        // Kick active session so the user is forced to reconnect with the new password
-        try {
-            $kickService = app(\App\Services\ISP\Session\SessionKickService::class);
-            $kickService->kickUsernameGlobally($pppoeUser->username, Auth::user());
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to kick PPPoE user after password change: ' . $e->getMessage());
-        }
-
-        return ['success' => true, 'message' => 'Password PPPoE berhasil diubah! Anda harus menghubungkan ulang router dengan kredensial baru.'];
-    }
 
     public function getOnuWifiCredentials(int $customerId, int $onuId): array
     {

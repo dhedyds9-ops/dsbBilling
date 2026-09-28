@@ -26,12 +26,7 @@
                 </li>
 
                 <!-- Self Service -->
-                <li class="nav-item">
-                    <a href="{{ route('customer-portal.self-service.change-pppoe-password') }}" class="nav-link {{ request()->routeIs('customer-portal.self-service.change-pppoe-password') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-wifi"></i>
-                        <p>Ganti Password PPPoE</p>
-                    </a>
-                </li>
+
                 
                 <li class="nav-item">
                     <a href="{{ route('customer-portal.self-service.change-onu-wifi-password') }}" class="nav-link {{ request()->routeIs('customer-portal.self-service.change-onu-wifi-password') ? 'active' : '' }}">

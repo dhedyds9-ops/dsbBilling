@@ -501,8 +501,6 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
         
         Route::prefix('self-service')->name('self-service.')->group(function () {
-            Route::get('/change-pppoe-password', \App\Livewire\CustomerPortal\SelfService\ChangePppoePassword::class)
-                ->name('change-pppoe-password');
             Route::get('/change-onu-wifi-password', \App\Livewire\CustomerPortal\SelfService\ChangeOnuWifiPassword::class)
                 ->name('change-onu-wifi-password');
             Route::get('/change-hotspot-credentials', \App\Livewire\CustomerPortal\SelfService\ChangeHotspotCredentials::class)
