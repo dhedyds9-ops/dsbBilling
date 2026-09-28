@@ -26,7 +26,7 @@
 
 {{-- Tabs --}}
 <div class="flex-none px-3 border-b noc-border flex items-center gap-1 overflow-x-auto noc-scroll noc-panel-bg">
-    @foreach(['overview' => 'Overview', 'interfaces' => 'Net Monitor', 'sessions' => 'Active Sessions', 'health' => 'Health History', 'traffic' => 'Traffic', 'alarms' => 'Alarms', 'logs' => 'Logs'] as $k => $l)
+    @foreach(['overview' => 'Overview', 'interfaces' => 'Net Monitor', 'zabbix' => 'Zabbix (Live)', 'sessions' => 'Active Sessions', 'health' => 'Health History', 'traffic' => 'Traffic', 'alarms' => 'Alarms', 'logs' => 'Logs'] as $k => $l)
     <button wire:click="setTab('{{ $k }}')"
         class="px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors
                {{ $activeTab === $k ? 'noc-tab-active' : 'noc-tab-inactive' }}">
@@ -37,6 +37,46 @@
 
 {{-- Content --}}
 <div class="flex-1 overflow-hidden noc-scroll">
+
+    @if($activeTab === 'zabbix')
+    <div class="p-4 h-full overflow-y-auto noc-scroll">
+        @if(empty($router->zabbix_host_id))
+            <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                <i class="bi bi-monitor text-5xl mb-3 opacity-50"></i>
+                <p class="text-lg">Zabbix Host ID tidak dikonfigurasi</p>
+                <p class="text-sm mt-1">Edit router ini di panel Admin dan masukkan Host ID Zabbix.</p>
+            </div>
+        @else
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @forelse($zabbixMetrics as $item)
+                    @php
+                        $value = $item['lastvalue'] ?? 0;
+                        $units = $item['units'] ?? '';
+                        $name = $item['name'] ?? 'Unknown Item';
+                        
+                        // Basic format for large numbers
+                        if ($units === 'bps' || $units === 'B' || str_contains(strtolower($name), 'traffic')) {
+                            if ($value > 1000000000) { $value = round($value/1000000000, 2); $units = 'Gbps'; }
+                            elseif ($value > 1000000) { $value = round($value/1000000, 2); $units = 'Mbps'; }
+                            elseif ($value > 1000) { $value = round($value/1000, 2); $units = 'Kbps'; }
+                        }
+                    @endphp
+                    <div class="noc-panel-bg border border-slate-700/50 rounded-xl p-4 flex flex-col justify-between hover:border-cyan-500/50 transition-colors">
+                        <div class="text-xs text-gray-400 mb-2 truncate" title="{{ $name }}">{{ $name }}</div>
+                        <div class="text-2xl font-bold text-cyan-400">
+                            {{ $value }} <span class="text-sm font-normal text-cyan-700">{{ $units }}</span>
+                        </div>
+                    </div>
+                @empty
+                    <div class="col-span-3 text-center text-gray-500 py-10">
+                        <i class="bi bi-arrow-repeat animate-spin text-2xl inline-block mb-2"></i>
+                        <p>Mengambil data dari Zabbix API...</p>
+                    </div>
+                @endforelse
+            </div>
+        @endif
+    </div>
+    @endif
 
     @if($activeTab === 'overview')
     <div class="p-3 flex gap-3 overflow-auto noc-scroll h-full">

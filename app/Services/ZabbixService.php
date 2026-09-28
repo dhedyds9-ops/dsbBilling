@@ -140,3 +140,4 @@ class ZabbixService
         return $this->request('item.get', $params);
     }
 }
+

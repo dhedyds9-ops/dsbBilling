@@ -17,6 +17,7 @@ class Show extends AdminComponent
 {
     public int $routerId;
     public string $activeTab = 'overview';
+    public array $zabbixMetrics = [];
     public string $sessionSubTab = 'pppoe';
     public string $searchSession = '';
     public string $trafficPeriod = '1h';
@@ -24,6 +25,25 @@ class Show extends AdminComponent
     // Net Monitor (Live Interfaces) state
     public array $selectedInterfaces = [];
     public array $lastTrafficState = [];
+
+    public function fetchZabbixData()
+    {
+        if (empty($this->router->zabbix_host_id)) return;
+        try {
+            $service = new \App\Services\ZabbixService();
+            $this->zabbixMetrics = $service->getHostItems($this->router->zabbix_host_id);
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Zabbix Error: ' . $e->getMessage());
+        }
+    }
+
+    public function setTab(string $tab): void
+    {
+        $this->activeTab = $tab;
+        if ($tab === 'zabbix') {
+            $this->fetchZabbixData();
+        }
+    }
 
     public function updatingSearchSession()
     {
@@ -312,6 +332,7 @@ class Show extends AdminComponent
         ]);
     }
 }
+
 
 
 
