@@ -29,7 +29,7 @@
                 <span wire:loading wire:target="syncDevices" class="material-symbols-outlined notranslate mr-1.5 animate-spin" translate="no" style="font-size:18px">sync</span>
                 Sinkronisasi
             </button>
-            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all">
+            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 {{ request()->routeIs('noc.*') ? 'noc-panel-bg noc-text noc-border hover:brightness-110' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300' }} text-sm font-medium rounded-lg shadow-sm transition-all">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">download</span>
                 Export
             </button>
@@ -47,12 +47,12 @@
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search"
                        placeholder="Cari SN, MAC, Model, IP PPPoE/TR069..."
-                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
+                       class="w-full pl-9 pr-4 py-2 {{ request()->routeIs('noc.*') ? 'noc-panel-bg noc-text noc-border placeholder-gray-500 focus:ring-emerald-500 focus:border-transparent' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 transition-all">
             </div>
             
             {{-- Status Filter --}}
             <select wire:model.live="filters.status"
-                    class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                    class="pl-3 pr-8 py-2 {{ request()->routeIs('noc.*') ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
                 <option value="">Semua Status</option>
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
@@ -60,7 +60,7 @@
             
             {{-- Per Page --}}
             <select wire:model.live="perPage"
-                    class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                    class="pl-3 pr-8 py-2 {{ request()->routeIs('noc.*') ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
                 <option value="10">10 / halaman</option>
                 <option value="25">25 / halaman</option>
                 <option value="50">50 / halaman</option>
@@ -78,11 +78,11 @@
     </div>
 
     {{-- DATA TABLE --}}
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+    <div class="{{ request()->routeIs('noc.*') ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead>
-                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80">
+                    <tr class="border-b {{ request()->routeIs('noc.*') ? 'noc-border noc-text bg-black/20' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80' }} text-xs uppercase tracking-wider">
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Serial Number</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">MAC Address</th>
@@ -93,29 +93,29 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                <tbody class="divide-y {{ request()->routeIs('noc.*') ? 'noc-divide noc-text' : 'divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300' }}">
                     @forelse($devices as $device)
-                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50 transition-colors">
+                        <tr class="{{ request()->routeIs('noc.*') ? 'hover:bg-emerald-900/10' : 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50' }} transition-colors">
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider {{ $device->status === 'online' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400' }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $device->status === 'online' ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
                                     {{ $device->status }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{{ $device->serial_number }}</td>
+                            <td class="px-4 py-3 font-medium {{ request()->routeIs('noc.*') ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->serial_number }}</td>
                             <td class="px-4 py-3 font-mono text-xs">{{ $device->mac_address ?? '-' }}</td>
                             <td class="px-4 py-3">
-                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ $device->model ?? '-' }}</div>
-                                <div class="text-[11px] text-slate-500 dark:text-slate-400">{{ $device->vendor->name ?? $device->vendor ?? '-' }}</div>
+                                <div class="font-medium {{ request()->routeIs('noc.*') ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->model ?? '-' }}</div>
+                                <div class="text-[11px] {{ request()->routeIs('noc.*') ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $device->vendor->name ?? $device->vendor ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-3">
-                                <div class="font-mono text-xs text-slate-900 dark:text-slate-100" title="PPPoE IP">{{ $device->ip_address ?? '-' }}</div>
+                                <div class="font-mono text-xs {{ request()->routeIs('noc.*') ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}" title="PPPoE IP">{{ $device->ip_address ?? '-' }}</div>
                                 @if($device->connection_request_url)
                                     @php
                                         $tr069Ip = parse_url($device->connection_request_url, PHP_URL_HOST);
                                     @endphp
                                     @if($tr069Ip && $tr069Ip !== $device->ip_address)
-                                        <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400" title="TR069 IP (Connection Request)">{{ $tr069Ip }}</div>
+                                        <div class="font-mono text-[11px] {{ request()->routeIs('noc.*') ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}" title="TR069 IP (Connection Request)">{{ $tr069Ip }}</div>
                                     @endif
                                 @endif
                             </td>
@@ -161,9 +161,9 @@
                     @empty
                         <tr>
                             <td colspan="8" class="px-4 py-12 text-center">
-                                <div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
-                                    <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">router</span>
-                                    <div class="text-sm font-medium text-slate-900 dark:text-slate-100">Belum ada data Device</div>
+                                <div class="flex flex-col items-center justify-center {{ request()->routeIs('noc.*') ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">
+                                    <span class="material-symbols-outlined notranslate {{ request()->routeIs('noc.*') ? 'text-gray-500' : 'text-slate-300 dark:text-slate-600 dark:text-slate-400' }} mb-3" translate="no" style="font-size:48px">router</span>
+                                    <div class="text-sm font-medium {{ request()->routeIs('noc.*') ? 'text-gray-200' : 'text-slate-900 dark:text-slate-100' }}">Belum ada data Device</div>
                                     <div class="text-xs mt-1">Tambahkan device TR-069 baru untuk mulai monitoring.</div>
                                 </div>
                             </td>
@@ -174,7 +174,7 @@
         </div>
 
         @if($devices->hasPages())
-            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
+            <div class="px-4 py-3 border-t {{ request()->routeIs('noc.*') ? 'noc-border noc-panel-bg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80' }}">
                 {{ $devices->links() }}
             </div>
         @endif

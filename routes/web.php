@@ -328,7 +328,19 @@ Route::middleware(['auth'])->group(function () use ($cs) {
                 // === NOC ===
         Route::prefix('noc')->name('noc.')->group(function () {
             Route::get('/', \App\Livewire\NOC\Overview::class)->name('overview');
-            Route::get('/acs/devices', \App\Livewire\ACS\Device\Index::class)->name('acs.devices.index');
+            
+            Route::prefix('acs')->name('acs.')->group(function () {
+                Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
+                Route::get('/devices', \App\Livewire\ACS\Device\Index::class)->name('devices.index');
+                Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
+                Route::get('/devices/{id}', \App\Livewire\ACS\Device\Show::class)->name('devices.show');
+                Route::get('/tasks', \App\Livewire\ACS\Task\Index::class)->name('tasks.index');
+                Route::get('/alarms', \App\Livewire\ACS\Alarm\Index::class)->name('alarms.index');
+                Route::get('/firmware', \App\Livewire\ACS\Firmware\Index::class)->name('firmware.index');
+                Route::get('/firmware/create', \App\Livewire\ACS\Firmware\Create::class)->name('firmware.create');
+                Route::get('/firmware/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('firmware.edit');
+                Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
+            });
             Route::middleware(['workforce.checked_in'])->group(function () {
                 Route::get('/alarms', \App\Livewire\NOC\Alarms\Index::class)->name('alarms.index');
                 Route::get('/alarms/{alarm}', \App\Livewire\NOC\Alarms\Show::class)->name('alarms.show');
