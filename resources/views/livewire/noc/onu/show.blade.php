@@ -217,7 +217,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold mb-1 noc-muted">PPPoE Password</label>
-                    <input type="text" wire:model="wanPassword" class="form-input text-sm w-full bg-slate-800 border-slate-700 text-white rounded">
+                    <input type="password" wire:model="wanPassword" class="form-input text-sm w-full bg-slate-800 border-slate-700 text-white rounded">
                 </div>
                 @endif
 
@@ -248,11 +248,27 @@
     @endif
 
     @if($activeTab === 'service')
-    <div class="p-3 h-full flex flex-col items-center justify-center text-center">
-        <i class="bi bi-tools text-4xl noc-muted mb-2 opacity-50"></i>
-        <div class="noc-muted opacity-70">
-            Modul Service sedang dikembangkan.
+    <div class="p-3 h-full overflow-auto noc-scroll">
+        @if($onu->customerService)
+        <x-noc.card>
+            <x-slot name="header">
+                <span class="text-xs font-bold text-blue-500 uppercase tracking-widest">Customer Service Detail</span>
+            </x-slot>
+            <dl class="space-y-2 text-xs">
+                <div class="flex justify-between"><dt class="noc-muted">Customer Name</dt><dd class="noc-text-secondary font-bold">{{ $onu->customerService->customer->name ?? '-' }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">Customer Code</dt><dd class="noc-mono noc-text-secondary">{{ $onu->customerService->customer->code ?? '-' }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">Service Type</dt><dd class="noc-text-secondary">{{ strtoupper($onu->customerService->service_type ?? '-') }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">Status</dt><dd class="noc-text-secondary">{{ $onu->customerService->status ?? '-' }}</dd></div>
+            </dl>
+        </x-noc.card>
+        @else
+        <div class="flex flex-col items-center justify-center text-center h-full">
+            <i class="bi bi-x-circle text-4xl noc-muted mb-2 opacity-50"></i>
+            <div class="noc-muted opacity-70">
+                No customer service associated with this ONU.
+            </div>
         </div>
+        @endif
     </div>
     @endif
 

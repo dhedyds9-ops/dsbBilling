@@ -197,47 +197,54 @@ class Show extends AdminComponent
     public function liveInterfaces(): array
     {
         if ($this->activeTab !== 'interfaces') return [];
-        $stats = app(\App\Services\Adapters\Monitoring\MikroTikDriver::class)->getInterfaceStats($this->router);
         
-        $now = microtime(true);
-        $result = [];
-        $newLastTraffic = [];
-        
-                foreach ($stats as $iface) {
-            $name = $iface['name'];
-            $rx = (int) ($iface['rx-byte'] ?? 0);
-            $tx = (int) ($iface['tx-byte'] ?? 0);
+        try {
+            $router = $this->router;
+            // Short timeout for live polling so we don't hang the UI/FPM workers
+            $router->timeout = 3;
+            $stats = app(\App\Services\Adapters\Monitoring\MikroTikDriver::class)->getInterfaceStats($router);
             
-            // Prefer Mikrotik's native monitor-traffic bps (matches Winbox exactly)
-            $rx_bps = isset($iface['rx-bps']) && $iface['rx-bps'] > 0 ? (float) $iface['rx-bps'] : 0;
-            $tx_bps = isset($iface['tx-bps']) && $iface['tx-bps'] > 0 ? (float) $iface['tx-bps'] : 0;
+            $now = microtime(true);
+            $result = [];
+            $newLastTraffic = [];
             
-            // Fallback manual calculation only if native is 0
-            if ($rx_bps == 0 && $tx_bps == 0 && isset($this->lastTrafficState[$name])) {
-                $prev = $this->lastTrafficState[$name];
-                $timeDiff = $now - $prev['time'];
-                if ($timeDiff > 0) {
-                    $rx_bps = max(0, ($rx - $prev['rx']) * 8 / $timeDiff);
-                    $tx_bps = max(0, ($tx - $prev['tx']) * 8 / $timeDiff);
+            foreach ($stats as $iface) {
+                $name = $iface['name'];
+                $rx = (int) ($iface['rx-byte'] ?? 0);
+                $tx = (int) ($iface['tx-byte'] ?? 0);
+                
+                // Prefer Mikrotik's native monitor-traffic bps (matches Winbox exactly)
+                $rx_bps = isset($iface['rx-bps']) && $iface['rx-bps'] > 0 ? (float) $iface['rx-bps'] : 0;
+                $tx_bps = isset($iface['tx-bps']) && $iface['tx-bps'] > 0 ? (float) $iface['tx-bps'] : 0;
+                
+                // Fallback manual calculation only if native is 0
+                if ($rx_bps == 0 && $tx_bps == 0 && isset($this->lastTrafficState[$name])) {
+                    $prev = $this->lastTrafficState[$name];
+                    $timeDiff = $now - $prev['time'];
+                    if ($timeDiff > 0) {
+                        $rx_bps = max(0, ($rx - $prev['rx']) * 8 / $timeDiff);
+                        $tx_bps = max(0, ($tx - $prev['tx']) * 8 / $timeDiff);
+                    }
                 }
+                
+                $newLastTraffic[$name] = [
+                    'time' => $now,
+                    'rx' => $rx,
+                    'tx' => $tx,
+                ];
+                
+                $iface['rx_bps'] = $rx_bps;
+                $iface['tx_bps'] = $tx_bps;
+                $result[] = $iface;
             }
             
-            $newLastTraffic[$name] = [
-                'time' => $now,
-                'rx' => $rx,
-                'tx' => $tx,
-            ];
-            
-            $iface['rx_bps'] = $rx_bps;
-            $iface['tx_bps'] = $tx_bps;
-            $result[] = $iface;
+            $this->lastTrafficState = $newLastTraffic;
+            $this->dispatch('traffic-updated', traffic: $result);
+            return $result;
+        } catch (\Exception $e) {
+            // Log error or dispatch toast (optional) if it's repeatedly failing, but for computed property, just return empty array
+            return [];
         }
-        
-        $this->lastTrafficState = $newLastTraffic;
-        
-        $this->dispatch('traffic-updated', traffic: $result);
-        
-        return $result;
     }
 
     public function toggleInterfaceSelection(string $name): void
@@ -253,7 +260,13 @@ class Show extends AdminComponent
     public function liveLogs(): array
     {
         if ($this->activeTab !== 'logs') return [];
-        return app(\App\Services\Adapters\Monitoring\MikroTikDriver::class)->getLogs($this->router, 30);
+        try {
+            $router = $this->router;
+            $router->timeout = 3;
+            return app(\App\Services\Adapters\Monitoring\MikroTikDriver::class)->getLogs($router, 30);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     public function rebootRouter(): void
