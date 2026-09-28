@@ -106,6 +106,13 @@
                 </li>
                 @endcan
 
+                <li class="nav-item">
+                    <a href="{{ route('noc.settings') }}" class="nav-link {{ request()->routeIs('noc.settings') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-cogs"></i>
+                        <p>Settings Zabbix</p>
+                    </a>
+                </li>
+
                 @can('audit.view')
                 <li class="nav-item">
                     <a href="{{ route('admin.audit-trail.index') }}" class="nav-link {{ request()->routeIs('admin.audit-trail.*') ? 'active' : '' }}">
