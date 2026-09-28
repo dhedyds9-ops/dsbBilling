@@ -14,7 +14,7 @@
     @endif
 
     {{-- HEADER BAR --}}
-    <div class="px-5 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl flex items-center justify-between flex-wrap gap-4">
+    <div class="px-5 py-4 {{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} shadow-sm rounded-xl flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-4">
             <a href="{{ route('acs.devices.index') }}" class="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:bg-slate-800 transition-colors" title="Kembali ke Daftar">
                 <span class="material-symbols-outlined notranslate" translate="no">arrow_back</span>
@@ -107,8 +107,8 @@
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {{-- Device Details Table --}}
         <div class="xl:col-span-1 space-y-6">
-            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
-                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                     <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:18px">info</span>
                     Informasi Sistem
                 </div>
@@ -151,8 +151,8 @@
 
         {{-- Connected Devices (Hosts) --}}
         <div class="xl:col-span-2 space-y-6">
-            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
-                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+            <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined notranslate text-emerald-500 dark:text-emerald-400" translate="no" style="font-size:18px">devices</span>
                         Perangkat yang Terhubung ke Modem
@@ -163,7 +163,7 @@
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
-                        <thead class="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500 dark:text-slate-400">
+                        <thead class="{{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} text-xs uppercase text-slate-500 dark:text-slate-400">
                             <tr>
                                 <th class="px-4 py-3 font-semibold">Hostname</th>
                                 <th class="px-4 py-3 font-semibold">IP Address</th>
@@ -173,7 +173,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                             @forelse($connectedDevices ?? [] as $host)
-                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                <tr class="hover:{{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }}">
                                     <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                                         {{ $host['HostName'] ?? 'Unknown Device' }}
                                     </td>
@@ -203,7 +203,7 @@
     {{-- MODAL GANTI WIFI --}}
     @if($showWifiModal)
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+        <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800' }} rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
             <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ganti Nama/Pass WiFi</h3>
                 <button wire:click="$set('showWifiModal', false)" class="text-slate-400 hover:text-slate-600 dark:text-slate-400">
@@ -213,7 +213,7 @@
             
             <form wire:submit.prevent="saveWifi">
                                 <div class="p-5 space-y-4">
-                    <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center justify-between p-3 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} rounded-xl border border-slate-100 dark:border-slate-800">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Status WiFi (SSID)</label>
                             <p class="text-xs text-slate-500 dark:text-slate-400">Aktifkan atau matikan pancaran sinyal WiFi ini.</p>
@@ -260,8 +260,8 @@
                         @error('wifiPassword') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
                 </div></div>
-                <div class="px-5 py-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
-                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50">Batal</button>
+                <div class="px-5 py-3 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
+                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-sm font-medium {{ $isNocLayout ? 'noc-text noc-panel-bg noc-border' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:{{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }}' }} rounded-lg">Batal</button>
                     <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span> Kirim ke Modem
                     </button>

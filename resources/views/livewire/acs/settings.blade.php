@@ -31,7 +31,7 @@
         </div>
       </div>
 
-      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+      <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-lg overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 font-semibold text-slate-900 dark:text-slate-100 text-sm">
             Kredensial & URL Server
         </div>
@@ -43,22 +43,22 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Base URL (UI/API) <span class="text-rose-500">*</span></label>
-              <input type="text" wire:model="genieAcsForm.base_url" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="http://127.0.0.1:7557">
+              <input type="text" wire:model="genieAcsForm.base_url" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="http://127.0.0.1:7557">
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">File Server URL (FS) <span class="text-rose-500">*</span></label>
-              <input type="text" wire:model="genieAcsForm.fs_url" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="http://127.0.0.1:7567">
+              <input type="text" wire:model="genieAcsForm.fs_url" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="http://127.0.0.1:7567">
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Username API</label>
-              <input type="text" wire:model="genieAcsForm.username" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm " placeholder="(Opsional)">
+              <input type="text" wire:model="genieAcsForm.username" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} placeholder:text-slate-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm " placeholder="(Opsional)">
             </div>
             <div x-data="{ show: false }">
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Password API</label>
               <div class="relative">
-                  <input x-bind:type="show ? 'text' : 'password'" wire:model="genieAcsForm.password" class="w-full px-3 py-2 pr-10 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="(Opsional)">
+                  <input x-bind:type="show ? 'text' : 'password'" wire:model="genieAcsForm.password" class="w-full px-3 py-2 pr-10 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} placeholder:text-slate-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="(Opsional)">
                   <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                       <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px" x-text="show ? 'visibility_off' : 'visibility'">visibility</span>
                   </button>
@@ -85,18 +85,18 @@
         </div>
       </div>
       
-      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+      <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-lg overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 font-semibold text-slate-900 dark:text-slate-100 text-sm">
             Parameter TR-069
         </div>
         <div class="p-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Port TR-069 (CPE)</label>
-              <input type="number" wire:model="genieAcsForm.tr069_port" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="7547">
+              <input type="number" wire:model="genieAcsForm.tr069_port" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="7547">
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">CWMP Version</label>
-              <select wire:model="genieAcsForm.cwmp_version" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ">
+              <select wire:model="genieAcsForm.cwmp_version" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ">
                 <option value="1-0">1.0</option>
                 <option value="1-1">1.1</option>
                 <option value="1-2">1.2</option>
@@ -106,15 +106,15 @@
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Timeout (detik)</label>
-              <input type="number" wire:model="genieAcsForm.timeout" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="10">
+              <input type="number" wire:model="genieAcsForm.timeout" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="10">
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Retry Count</label>
-              <input type="number" wire:model="genieAcsForm.retry_count" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="3">
+              <input type="number" wire:model="genieAcsForm.retry_count" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="3">
             </div>
             <div class="col-span-2">
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Webhook URL (dsBilling Ingest)</label>
-              <input type="text" wire:model="genieAcsForm.webhook_url" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="https://billing.domain.com/api/v1/acs/events">
+              <input type="text" wire:model="genieAcsForm.webhook_url" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} font-mono text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="https://billing.domain.com/api/v1/acs/events">
               <div class="mt-2">
                 <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input type="checkbox" wire:model="genieAcsForm.webhook_enabled" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 "> 
@@ -126,20 +126,20 @@
       </div>
     </div>
     
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 h-fit sticky top-4">
+    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-lg p-4 h-fit sticky top-4">
       <div class="font-semibold text-slate-900 dark:text-slate-100 mb-3 text-sm">Informasi Parameter Default</div>
       <div class="space-y-3">
           <div>
             <label class="block text-[11px] uppercase tracking-wider font-medium text-slate-500 dark:text-slate-400 mb-1">Default OUI</label>
-            <input type="text" wire:model="genieAcsForm.default_oui" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="001122">
+            <input type="text" wire:model="genieAcsForm.default_oui" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="001122">
           </div>
           <div>
             <label class="block text-[11px] uppercase tracking-wider font-medium text-slate-500 dark:text-slate-400 mb-1">Product Class</label>
-            <input type="text" wire:model="genieAcsForm.default_product_class" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="HG8245H">
+            <input type="text" wire:model="genieAcsForm.default_product_class" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="HG8245H">
           </div>
           <div>
             <label class="block text-[11px] uppercase tracking-wider font-medium text-slate-500 dark:text-slate-400 mb-1">Software Version</label>
-            <input type="text" wire:model="genieAcsForm.default_software_version" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="V3R015C10S103">
+            <input type="text" wire:model="genieAcsForm.default_software_version" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="V3R015C10S103">
           </div>
       </div>
       <div class="mt-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">

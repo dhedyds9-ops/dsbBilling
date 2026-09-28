@@ -34,11 +34,11 @@
     </div>
 
     {{-- DATA TABLE --}}
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead>
-                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80">
+                    <tr class="border-b {{ $isNocLayout ? 'noc-border noc-text bg-black/20' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80' }} text-xs uppercase tracking-wider">
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">File Name</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Version</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Product Class</th>

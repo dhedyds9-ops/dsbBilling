@@ -59,14 +59,14 @@
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
       {{-- Recent Devices --}}
-      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between">
           <div class="font-semibold text-slate-900 dark:text-slate-100 text-sm">Perangkat Terbaru</div>
           <a href="{{ route('acs.devices.index') }}" class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">Lihat Semua &rarr;</a>
         </div>
         <div class="divide-y divide-slate-100 dark:divide-slate-700/50 flex-1">
           @forelse($recentDevices ?? [] as $device)
-            <div class="p-4 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between">
+            <div class="p-4 {{ $isNocLayout ? 'hover:bg-emerald-900/10' : 'hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50' }} transition-colors flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm uppercase shadow-sm">
                   {{ substr($device->serial_number ?? 'D', 0, 1) }}
@@ -90,14 +90,14 @@
       </div>
 
       {{-- Recent Tasks --}}
-      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between">
           <div class="font-semibold text-slate-900 dark:text-slate-100 text-sm">Tugas (Tasks) Terbaru</div>
           <a href="{{ route('acs.tasks.index') }}" class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">Lihat Semua &rarr;</a>
         </div>
         <div class="divide-y divide-slate-100 dark:divide-slate-700/50 flex-1">
           @forelse($recentTasks ?? [] as $task)
-            <div class="p-4 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between">
+            <div class="p-4 {{ $isNocLayout ? 'hover:bg-emerald-900/10' : 'hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50' }} transition-colors flex items-center justify-between">
               <div>
                 <div class="font-medium text-sm text-slate-900 dark:text-slate-100">{{ ucfirst($task->type) }}</div>
                 <div class="text-xs text-slate-500 dark:text-slate-400">{{ $task->created_at?->format('d/m/Y H:i') ?? '-' }}</div>

@@ -4,7 +4,7 @@
   <div class="space-y-5 pb-10">
     <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
         <div class="flex items-center gap-2">
-            <button wire:click="$refresh" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all">
+            <button wire:click="$refresh" class="inline-flex items-center justify-center px-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border hover:brightness-110' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700' }} text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">refresh</span>
                 Refresh Data
             </button>
@@ -12,11 +12,11 @@
     </div>
 
     {{-- DATA TABLE --}}
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead>
-                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80">
+                    <tr class="border-b {{ $isNocLayout ? 'noc-border noc-text bg-black/20' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80' }} text-xs uppercase tracking-wider">
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Severity</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Device</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Alarm Deskripsi</th>
@@ -24,7 +24,7 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                <tbody class="divide-y {{ $isNocLayout ? 'noc-divide noc-text' : 'divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300' }}">
                     @forelse($alarms ?? [] as $alarm)
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-4 py-3">

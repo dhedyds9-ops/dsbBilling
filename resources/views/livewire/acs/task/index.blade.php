@@ -4,7 +4,7 @@
   <div class="space-y-5 pb-10">
     <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
         <div class="flex items-center gap-2">
-            <button wire:click="$refresh" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all">
+            <button wire:click="$refresh" class="inline-flex items-center justify-center px-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border hover:brightness-110' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300' }} text-sm font-medium rounded-lg shadow-sm transition-all">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">refresh</span>
                 Refresh Data
             </button>
@@ -12,11 +12,11 @@
     </div>
 
     {{-- DATA TABLE --}}
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead>
-                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80">
+                    <tr class="border-b {{ $isNocLayout ? 'noc-border noc-text bg-black/20' : 'border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80' }}">
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Device</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Type</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
@@ -24,10 +24,10 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                <tbody class="divide-y {{ $isNocLayout ? 'noc-divide noc-text' : 'divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300' }}">
                     @forelse($tasks as $task)
-                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                        <tr class="{{ $isNocLayout ? 'hover:bg-emerald-900/10' : 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50' }} transition-colors">
+                            <td class="px-4 py-3 font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">
                                 {{ $task->device?->serial_number ?? '-' }}
                             </td>
                             <td class="px-4 py-3">
@@ -56,9 +56,9 @@
                     @empty
                         <tr>
                             <td colspan="5" class="px-4 py-12 text-center">
-                                <div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
-                                    <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">pending_actions</span>
-                                    <div class="text-sm font-medium text-slate-900 dark:text-slate-100">Belum ada Task</div>
+                                <div class="flex flex-col items-center justify-center {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">
+                                    <span class="material-symbols-outlined notranslate {{ $isNocLayout ? 'text-gray-500' : 'text-slate-300 dark:text-slate-600 dark:text-slate-400' }} mb-3" translate="no" style="font-size:48px">pending_actions</span>
+                                    <div class="text-sm font-medium {{ $isNocLayout ? 'text-gray-200' : 'text-slate-900 dark:text-slate-100' }}">Belum ada Task</div>
                                 </div>
                             </td>
                         </tr>
@@ -68,7 +68,7 @@
         </div>
 
         @if(method_exists($tasks, 'hasPages') && $tasks->hasPages())
-            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
+            <div class="px-4 py-3 border-t {{ $isNocLayout ? 'noc-border noc-panel-bg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80' }}">
                 {{ $tasks->links() }}
             </div>
         @endif
