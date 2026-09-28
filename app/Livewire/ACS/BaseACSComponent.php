@@ -43,11 +43,12 @@ abstract class BaseACSComponent extends AdminComponent
         parent::mount();
     }
 
-    public function layout()
+    public function rendering($view, $data)
     {
         if (request()->routeIs('noc.*') || request()->is('noc/*')) {
-            return 'layouts.noc';
+            $view->layout('layouts.noc');
+        } else {
+            $view->layout('layouts.enterprise');
         }
-        return 'layouts.enterprise';
     }
 }
