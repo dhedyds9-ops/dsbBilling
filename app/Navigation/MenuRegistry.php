@@ -338,6 +338,7 @@ class MenuRegistry
                         'label' => 'Network & GIS',
                         'icon' => 'public',
                         'items' => [
+                            ['label' => 'Peta Satelit', 'route' => 'reseller-portal.network.map', 'active' => 'reseller-portal.network.map'],
                             ['label' => 'Data OLT', 'route' => 'reseller-portal.network.olts.index', 'active' => 'reseller-portal.network.olts.*'],
                             ['label' => 'Data ODC', 'route' => 'reseller-portal.network.odcs.index', 'active' => 'reseller-portal.network.odcs.*'],
                             ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*'],
