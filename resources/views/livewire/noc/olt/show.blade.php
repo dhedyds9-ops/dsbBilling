@@ -136,6 +136,7 @@
                     <tr class="text-slate-500 dark:text-slate-400">
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">Name</th>
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">SN</th>
+                        <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">Pelanggan</th>
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">Port / ODP</th>
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">Status</th>
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">Rx Power</th>
@@ -148,6 +149,7 @@
                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover transition-colors">
                         <td class="p-3  font-medium noc-text">{{ $onu->name }}</td>
                         <td class="p-3  font-mono noc-muted">{{ $onu->serial_number }}</td>
+                        <td class="p-3  noc-text">{{ $onu->customerService?->customer?->name ?? '-' }}</td>
                         <td class="p-3  noc-muted">
                             <div>{{ $onu->ponPort->name ?? '-' }}</div>
                             <div class="text-[10px]">{{ $onu->odp->name ?? '' }}</div>
@@ -160,12 +162,13 @@
                         </td>
                         <td class="p-3  noc-muted">{{ $onu->last_seen_at?->diffForHumans(short: true) ?? '-' }}</td>
                         <td class="p-3  text-right">
+                            <a href="{{ route('isp.onus.edit', $onu->id) }}" class="text-blue-600 hover:underline mr-2">Edit</a>
                             <a href="{{ route('noc.onus.show', $onu->id) }}" class="text-primary-600 hover:underline">View</a>
                         </td>
                     </tr>
                     @empty
                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td colspan="7" class="p-3  text-center noc-muted">No ONUs found.</td>
+                        <td colspan="8" class="p-3  text-center noc-muted">No ONUs found.</td>
                     </tr>
                     @endforelse
                 </tbody>
