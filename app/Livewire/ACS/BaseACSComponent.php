@@ -15,6 +15,7 @@ abstract class BaseACSComponent extends AdminComponent
     public $perPage = 10;
     public $filters = [];
     public $showFilters = false;
+    public bool $isNocLayout = false;
 
     public function sortBy($field)
     {
@@ -41,6 +42,7 @@ abstract class BaseACSComponent extends AdminComponent
     public function mount()
     {
         parent::mount();
+        $this->isNocLayout = request()->routeIs('noc.*') || request()->is('noc/*');
     }
 
     public function rendering($view, $data)
