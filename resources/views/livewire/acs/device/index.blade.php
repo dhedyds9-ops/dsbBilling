@@ -19,7 +19,7 @@
     </div>
   @include('livewire.acs._tabs')
 
-  <div class="space-y-5 pb-10">
+  <div class="{{ $isNocLayout ? 'h-full flex flex-col' : 'space-y-5 pb-10' }}">
     
     {{-- TOOLBAR & FILTER --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -78,7 +78,7 @@
     </div>
 
     {{-- DATA TABLE --}}
-    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-xl shadow-sm overflow-hidden">
+    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border flex-1 overflow-auto noc-scroll' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden' }}">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead>
