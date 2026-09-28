@@ -48,7 +48,7 @@
                 </li>
                 
                 <li class="nav-item">
-                    <a href="{{ route('acs.devices.index') }}" class="nav-link {{ request()->routeIs('acs.devices.*') ? 'active' : '' }}">
+                    <a href="{{ route('noc.acs.devices.index') }}" class="nav-link {{ request()->routeIs('noc.acs.devices.*') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-wifi"></i>
                         <p>GenieACS Devices</p>
                     </a>

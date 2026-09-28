@@ -37,4 +37,15 @@ abstract class BaseACSComponent extends AdminComponent
     {
         $this->resetPage();
     }
+
+    public function mount()
+    {
+        parent::mount();
+        
+        if (request()->routeIs('noc.*') || request()->is('noc/*')) {
+            $this->layout('layouts.noc');
+        } else {
+            $this->layout('layouts.enterprise');
+        }
+    }
 }

@@ -92,6 +92,8 @@
                     <td class="p-3 noc-muted">{{ $onu->last_seen_at ? $onu->last_seen_at->diffForHumans() : '-' }}</td>
                     <td class="p-3">
                         <a href="{{ route('noc.onus.show', $onu->id) }}" class="text-blue-500 hover:text-blue-400">View</a>
+                        <span class="mx-1 noc-muted opacity-50">|</span>
+                        <a href="{{ route('isp.onus.edit', $onu->id) }}" class="text-emerald-500 hover:text-emerald-400">Edit</a>
                     </td>
                 </tr>
                 @empty
