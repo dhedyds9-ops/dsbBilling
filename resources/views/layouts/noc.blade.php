@@ -1,5 +1,5 @@
 <x-layouts.base
-    html-class="h-full dark"
+    html-class="h-full dark" html-attributes="style='background-color: #0a0e1a !important;'"
     body-class="noc-root h-screen overflow-hidden flex flex-col"
 >
     <x-slot:bodyAttributes>
