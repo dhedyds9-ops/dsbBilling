@@ -49,6 +49,7 @@ class Odp extends Model
         'used_port_count',
         'reserved_port_count',
         'status',
+        'branch_id',
         'installation_date',
         'last_maintenance_at',
         'attributes',
@@ -69,6 +70,15 @@ class Odp extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeForReseller($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        if ($user && $user->hasRole('reseller')) {
+            return $query->where('branch_id', $user->branch_id);
+        }
+        return $query;
     }
 
     public function scopeHasGps($query)
@@ -186,5 +196,10 @@ class Odp extends Model
     public function getPopAttribute()
     {
         return $this->olt?->pop ?? $this->odc?->pop;
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class);
     }
 }

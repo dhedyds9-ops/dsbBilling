@@ -109,6 +109,15 @@ class Onu extends Model
         return $query->where('status', 'active');
     }
 
+    public function scopeForReseller($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        if ($user && $user->hasRole('reseller')) {
+            return $query->where('branch_id', $user->branch_id);
+        }
+        return $query;
+    }
+
     public function scopeOnline($query)
     {
         return $query->where('status', 'active')->whereNotNull('last_seen_at')

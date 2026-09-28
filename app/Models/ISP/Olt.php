@@ -124,6 +124,15 @@ class Olt extends Model
         return $query->where('status', 'active');
     }
 
+    public function scopeForReseller($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        if ($user && $user->hasRole('reseller')) {
+            return $query->where('branch_id', $user->branch_id);
+        }
+        return $query;
+    }
+
     public function scopeReachable($query)
     {
         return $query->where('status', 'active')->whereNotNull('ip_address');

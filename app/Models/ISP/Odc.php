@@ -38,6 +38,7 @@ class Odc extends Model
         'port_count',
         'active_port_count',
         'status',
+        'branch_id',
         'created_by',
         'updated_by',
     ];
@@ -50,6 +51,15 @@ class Odc extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeForReseller($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        if ($user && $user->hasRole('reseller')) {
+            return $query->where('branch_id', $user->branch_id);
+        }
+        return $query;
     }
 
     public function olt()
@@ -100,5 +110,10 @@ class Odc extends Model
     public function updatedBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'updated_by');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class);
     }
 }
