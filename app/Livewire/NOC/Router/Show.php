@@ -62,13 +62,7 @@ class Show extends AdminComponent
         $this->activePage   = 'routers';
     }
 
-    public function setTab(string $tab): void
-    {
-        $allowed = ['overview', 'sessions', 'health', 'traffic', 'alarms', 'interfaces', 'logs'];
-        if (in_array($tab, $allowed)) {
-            $this->activeTab = $tab;
-        }
-    }
+
 
     public function setSessionSubTab(string $sub): void
     {
@@ -332,6 +326,7 @@ class Show extends AdminComponent
         ]);
     }
 }
+
 
 
 
