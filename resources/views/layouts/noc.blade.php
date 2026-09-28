@@ -70,6 +70,7 @@
     {{-- ============================================================
          NOC TOP BAR
          ============================================================ --}}
+    <div class="fixed inset-0" style="background-color: #0a0e1a !important; z-index: -50; width: 100vw; height: 100vh;"></div>
     <header class="flex-none h-10 flex items-center px-3 gap-3 border-b" style="background:#111827;border-color:#1f2937;">
 
         {{-- Logo + Label --}}
