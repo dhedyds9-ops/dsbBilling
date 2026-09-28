@@ -54,14 +54,7 @@
                     </a>
                 </li>
 
-                @can('onu.view')
-                <li class="nav-item">
-                    <a href="{{ route('noc.onus.index') }}" class="nav-link {{ request()->routeIs('noc.onus.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-hdd"></i>
-                        <p>ONU</p>
-                    </a>
-                </li>
-                @endcan
+
 
                 <li class="nav-item">
                     <a href="{{ route('noc.topology.index') }}" class="nav-link {{ request()->routeIs('noc.topology.*') ? 'active' : '' }}">

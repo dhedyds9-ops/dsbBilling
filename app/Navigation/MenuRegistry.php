@@ -178,7 +178,7 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Router / MikroTik', 'route' => 'noc.routers.index', 'active' => 'noc.routers.*'],
                             ['label' => 'OLT', 'route' => 'noc.olts.index', 'active' => 'noc.olts.*'],
-                            ['label' => 'ONU', 'route' => 'noc.onus.index', 'active' => 'noc.onus.*'],
+
                             ['label' => 'Active Sessions', 'route' => 'noc.pppoe.index', 'active' => 'noc.pppoe.*'],
                         ]
                     ],
