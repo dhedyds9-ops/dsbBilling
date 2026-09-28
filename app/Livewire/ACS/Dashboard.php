@@ -2,13 +2,13 @@
 
 namespace App\Livewire\ACS;
 
-use App\Livewire\AdminComponent;
+use App\Livewire\ACS\BaseACSComponent;
 use App\Models\ACS\ACSDevice;
 use App\Models\ACS\DeviceTask;
 use App\Models\ACS\ACSAlarm;
 use App\Models\ACS\ProvisionQueue;
 
-class Dashboard extends AdminComponent
+class Dashboard extends BaseACSComponent
 {
     public function mount()
     {

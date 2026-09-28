@@ -2,11 +2,11 @@
 
 namespace App\Livewire\ACS;
 
-use App\Livewire\AdminComponent;
+use App\Livewire\ACS\BaseACSComponent;
 use App\Services\Pengaturan\ConnectionSettingsService;
 use App\Models\Setting;
 
-class Settings extends AdminComponent
+class Settings extends BaseACSComponent
 {
     public array $genieAcsForm = [
         'base_url' => 'http://127.0.0.1:7557',
