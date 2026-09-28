@@ -28,6 +28,7 @@ class Index extends AdminComponent
 
         return view('livewire.reseller-portal.network.odc.index', [
             'odcs' => $odcs
-        ])->layout('layouts.reseller-portal');
+        ]);
     }
 }
+

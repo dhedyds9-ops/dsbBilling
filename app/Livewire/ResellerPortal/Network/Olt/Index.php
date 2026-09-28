@@ -28,6 +28,7 @@ class Index extends AdminComponent
 
         return view('livewire.reseller-portal.network.olt.index', [
             'olts' => $olts
-        ])->layout('layouts.reseller-portal');
+        ]);
     }
 }
+
