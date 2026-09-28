@@ -1,4 +1,4 @@
-<div class="h-full flex flex-col noc-bg">
+<div class="h-full flex flex-col noc-bg w-full" style="background-color: #0a0e1a !important; min-height: 100vh;">
     {{-- Header --}}
     <div class="flex-none px-4 py-3 border-b noc-border flex items-center justify-between noc-panel-bg">
         <div class="flex items-center gap-3">

@@ -1,4 +1,4 @@
-<div class="{{ $isNocLayout ? 'noc-bg noc-text' : '' }}">
+<div class="{{ $isNocLayout ? 'noc-bg noc-text h-full flex flex-col w-full' : '' }}" style="{{ $isNocLayout ? 'background-color: #0a0e1a !important; min-height: 100vh;' : '' }}">
     <!-- Flash Messages -->
     <div class="mb-4 px-4 sm:px-0">
         @if(session()->has('success'))

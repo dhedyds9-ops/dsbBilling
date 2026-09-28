@@ -551,3 +551,4 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
     return back()->with('success', 'Gambar berhasil diperbarui!');
 })->name('pengaturan.perusahaan.upload-logo');
 Route::get('/test-noc-render', function() { return view('layouts.noc', ['slot' => 'TEST CONTENT', 'nocNav' => []]); });
+Route::get('/noc-acs-test', function() { return view('livewire.acs.device.index', ['devices' => \Illuminate\Pagination\LengthAwarePaginator::make([], 0, 10), 'isNocLayout' => true]); });

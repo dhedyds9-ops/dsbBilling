@@ -1,7 +1,7 @@
 {{--
  NOC: Active Sessions Index
 --}}
-<div class="h-full flex flex-col noc-bg">
+<div class="h-full flex flex-col noc-bg w-full" style="background-color: #0a0e1a !important; min-height: 100vh;">
     <div class="flex-none px-3 py-2 border-b noc-border flex flex-col sm:flex-row items-center justify-between gap-3 noc-panel-bg">
         <div class="flex items-center gap-3">
             <h1 class="text-base font-bold noc-text">Active Sessions</h1>
