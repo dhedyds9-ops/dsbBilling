@@ -1,4 +1,4 @@
-<div>
+<div class="{{ $isNocLayout ? 'noc-bg noc-text h-full flex flex-col w-full' : '' }}" style="{{ $isNocLayout ? 'background-color: #0a0e1a !important; min-height: 100vh;' : '' }}">
   @php
     ob_start();
   @endphp
@@ -32,7 +32,7 @@
       </div>
 
       <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-lg overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 font-semibold text-slate-900 dark:text-slate-100 text-sm">
+        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 {{ $isNocLayout ? 'noc-panel-bg noc-border noc-text' : 'bg-slate-50/60 dark:bg-slate-900/30' }} font-semibold text-slate-900 dark:text-slate-100 text-sm">
             Kredensial & URL Server
         </div>
         <div class="p-4 space-y-4">
@@ -86,7 +86,7 @@
       </div>
       
       <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-lg overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 font-semibold text-slate-900 dark:text-slate-100 text-sm">
+        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 {{ $isNocLayout ? 'noc-panel-bg noc-border noc-text' : 'bg-slate-50/60 dark:bg-slate-900/30' }} font-semibold text-slate-900 dark:text-slate-100 text-sm">
             Parameter TR-069
         </div>
         <div class="p-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -142,7 +142,7 @@
             <input type="text" wire:model="genieAcsForm.default_software_version" class="w-full px-3 py-2 {{ $isNocLayout ? 'noc-border noc-panel-bg noc-text rounded-md' : 'border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100' }} text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 " placeholder="V3R015C10S103">
           </div>
       </div>
-      <div class="mt-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+      <div class="mt-4 p-3 {{ $isNocLayout ? 'noc-panel-bg noc-border noc-text' : 'bg-slate-50 dark:bg-slate-700/50' }} rounded text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
         Nilai ini akan digunakan sebagai *fallback* ketika menambahkan CPE secara manual tanpa data registrasi awal (Inform).
       </div>
     </div>
