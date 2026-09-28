@@ -74,6 +74,7 @@ class Olt extends Model
         'ip_address',
         'username',
         'password',
+        'zabbix_host_id',
         'enable_secret',
         'port_count',
         'pon_port_count',
@@ -113,6 +114,7 @@ class Olt extends Model
 
     protected $hidden = [
         'password',
+        'zabbix_host_id',
         'enable_secret',
         'snmp_community_write',
     ];

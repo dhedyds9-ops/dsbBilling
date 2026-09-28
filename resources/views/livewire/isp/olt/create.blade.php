@@ -103,7 +103,18 @@
                     <input type="password" wire:model="password" placeholder="Masukkan password" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                 </div>
             </div>
-            <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
+                            {{-- Zabbix Mapping --}}
+                <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4"><i class="bi bi-monitor-heart mr-1 text-red-500"></i> Integrasi Zabbix (Opsional)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Zabbix Host ID</label>
+                            <input type="text" wire:model="zabbix_host_id" placeholder="Contoh: 10085" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                            <p class="mt-1 text-xs text-slate-500">Host ID Zabbix untuk menarik metrik suhu & CPU.</p>
+                        </div>
+                    </div>
+                </div>
+              <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
                 <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Pengaturan SNMP</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>

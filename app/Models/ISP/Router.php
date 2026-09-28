@@ -29,6 +29,7 @@ class Router extends Model
         'ip_address',
         'username',
         'password',
+        'zabbix_host_id',
         'radius_secret',
         'status',
         'api_port',

@@ -139,6 +139,17 @@
                         <input type="password" wire:model="password" placeholder="Kosongkan untuk auto-generate" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
                     </div>
 
+                                        {{-- Zabbix Mapping --}}
+                    <div class="md:col-span-2 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/60">
+                        <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3"><i class="bi bi-monitor-heart mr-1"></i> Integrasi Zabbix (Opsional)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Zabbix Host ID</label>
+                                <input type="text" wire:model="zabbix_host_id" placeholder="Contoh: 10084" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
+                                <p class="mt-1 text-xs text-slate-500">ID perangkat ini di aplikasi Zabbix untuk menarik grafik bandwidth ke Dasbor NOC.</p>
+                            </div>
+                        </div>
+                    </div>
                     <div class="md:col-span-2 pt-2">
                         <label class="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 cursor-pointer hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 transition-colors">
                             <input type="checkbox" wire:model="use_ssl" class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-90 dark:bg-slate-900 dark:text-slate-1000">
