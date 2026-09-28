@@ -22,11 +22,12 @@
                 --noc-critical: #ef4444;
                 --noc-info: #3b82f6;
             }
-            html.dark, .noc-root {
+            html, body, html.dark, body.dark, .noc-root { background: #0a0e1a !important; background-color: #0a0e1a !important;
                 background-color: var(--noc-bg) !important;
                 color: var(--noc-text) !important;
             }
             /* Utility Classes */
+            .noc-bg { background-color: var(--noc-bg) !important; }
             .noc-panel-bg { background-color: var(--noc-panel) !important; }
             .noc-bg { background-color: var(--noc-bg) !important; }
             .noc-border { 
