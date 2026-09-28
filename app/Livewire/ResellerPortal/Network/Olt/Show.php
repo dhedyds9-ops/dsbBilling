@@ -18,7 +18,7 @@ class Show extends AdminComponent
     public $editOnuId = null;
     public $editOnuName = '';
 
-    public function mount($id)
+    public function mount($id = null)
     {
         parent::mount();
         $this->olt = Olt::forReseller()->findOrFail($id);
