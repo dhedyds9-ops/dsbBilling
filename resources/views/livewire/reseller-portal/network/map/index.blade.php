@@ -3,68 +3,71 @@
     <span class="text-lg text-[#00e5ff] font-bold">Peta Topologi (Reseller)</span>
 @endsection
 
-@push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-    /* NOC/Cyberpunk Style Overrides */
-    .noc-map-container {
-        background-color: #0a0e1a;
-        border: 1px solid rgba(0, 229, 255, 0.3);
-        box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
-        border-radius: 0.75rem;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-    .noc-map-header {
-        background-color: rgba(10, 14, 26, 0.8);
-        border-bottom: 1px solid rgba(0, 229, 255, 0.2);
-        color: #00e5ff;
-    }
-    #reseller-map { height: calc(100vh - 200px); min-height: 500px; width: 100%; z-index: 1; background-color: #0a0e1a; }
-    
-    .map-smart-toolbar {
-        background: rgba(17, 24, 39, 0.95);
-        border-bottom: 1px solid rgba(0, 229, 255, 0.2);
-        padding: 0.5rem 1rem;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
-    
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.75rem;
-        color: #94a3b8;
-        background: rgba(0,0,0,0.4);
-        padding: 0.25rem 0.75rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-    
-    .pulsing-icon {
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 0 10px currentColor;
-    }
-    
-    /* Connection lines styling */
-    .connection-line {
-        filter: drop-shadow(0 0 4px currentColor);
-    }
-    .connection-online {
-        animation: dash 30s linear infinite;
-        filter: drop-shadow(0 0 6px rgba(0, 242, 255, 0.8));
-    }
-    @keyframes dash {
-        to { stroke-dashoffset: -1000; }
-    }
-</style>
-@endpush
-
 <div class="space-y-5 pb-10">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* NOC/Cyberpunk Style Overrides */
+        .noc-map-container {
+            background-color: #0a0e1a;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .noc-map-header {
+            background-color: rgba(10, 14, 26, 0.8);
+            border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+            color: #00e5ff;
+        }
+        #reseller-map { height: calc(100vh - 200px); min-height: 500px; width: 100%; z-index: 1; background-color: #0a0e1a; }
+        
+        .map-smart-toolbar {
+            background: rgba(17, 24, 39, 0.95);
+            border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            background: rgba(0,0,0,0.4);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .pulsing-icon {
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        /* Connection lines styling */
+        .connection-line {
+            filter: drop-shadow(0 0 4px currentColor);
+        }
+        .connection-online {
+            animation: dash 30s linear infinite;
+            filter: drop-shadow(0 0 6px rgba(0, 242, 255, 0.8));
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+        
+        /* Sembunyikan default background putih popup leaflet */
+        .noc-popup .leaflet-popup-content-wrapper { background: transparent; padding: 0; box-shadow: none; }
+        .noc-popup .leaflet-popup-tip { background: #111827; border: 1px solid rgba(255,255,255,0.2); }
+        .noc-popup .leaflet-popup-content { margin: 0; }
+    </style>
+    
     <div class="noc-map-container">
         <div class="px-4 py-3 noc-map-header flex justify-between items-center">
             <h5 class="font-bold m-0 flex items-center gap-2">
@@ -95,9 +98,7 @@
 
         <div id="reseller-map" wire:ignore></div>
     </div>
-</div>
 
-@push('scripts')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener('livewire:initialized', function () {
@@ -222,10 +223,4 @@ document.addEventListener('livewire:initialized', function () {
     }
 });
 </script>
-<style>
-    /* Sembunyikan default background putih popup leaflet */
-    .noc-popup .leaflet-popup-content-wrapper { background: transparent; padding: 0; box-shadow: none; }
-    .noc-popup .leaflet-popup-tip { background: #111827; border: 1px solid rgba(255,255,255,0.2); }
-    .noc-popup .leaflet-popup-content { margin: 0; }
-</style>
-@endpush
+</div>
