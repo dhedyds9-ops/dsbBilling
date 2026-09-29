@@ -166,7 +166,8 @@ class CDataOltDriver extends BaseOltDriver
                         $mac = null;
                         if (!empty($macsCTC[$onuId])) {
                             $macStr = is_string($macsCTC[$onuId]) ? $macsCTC[$onuId] : (string)$macsCTC[$onuId];
-                            if (strpos($macStr, 'Hex-STRING:') !== false || preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr))) {
+                            $macStr = str_ireplace(['Hex-STRING:', 'STRING:', '"'], '', $macStr);
+                            if (preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr)) || strpos($macsCTC[$onuId], 'Hex-STRING') !== false) {
                                 $hexClean = preg_replace('/[^A-F0-9]/i', '', $macStr);
                             } else {
                                 $hexClean = strtoupper(bin2hex($macStr));
@@ -355,6 +356,14 @@ class CDataOltDriver extends BaseOltDriver
             } catch (\Throwable) {}
         }
         $macsCTC = $this->macsCache[$ponPort] ?? [];
+        if (empty($macsCTC) && $ponPort > 1000000) {
+            $actualPort = $ponPort & 0xFF;
+            $macsCTC = $this->macsCache[$actualPort] ?? [];
+            if (empty($macsCTC)) {
+                $actualPort2 = ($ponPort >> 8) & 0xFF;
+                $macsCTC = $this->macsCache[$actualPort2] ?? [];
+            }
+        }
         
         $firmwares = $this->snmp->walk($base . '.11');
         $models    = $this->snmp->walk($base . '.12');
@@ -408,8 +417,9 @@ class CDataOltDriver extends BaseOltDriver
             if (!empty($rawMac)) {
                 $macStr = is_string($rawMac) ? $rawMac : (string)$rawMac;
                 
+                $macStr = str_ireplace(['Hex-STRING:', 'STRING:', '"'], '', $macStr);
                 // Handle "Hex-STRING: xx xx" from snmpwalk
-                if (strpos($macStr, 'Hex-STRING:') !== false || preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr))) {
+                if (preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr)) || strpos((string)$rawMac, 'Hex-STRING') !== false) {
                     $hexClean = preg_replace('/[^A-F0-9]/i', '', $macStr);
                 } else {
                     $hexClean = strtoupper(bin2hex($macStr));
