@@ -135,9 +135,16 @@ class CDataOltDriver extends BaseOltDriver
                         foreach ($allCtcMacs as $fullIndex => $val) {
                             if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
                                 $ifIndex = (int)$m[1];
-                                $pPort = (($ifIndex >> 12) & 0xFF) - 128;
+                                $pPort1 = (($ifIndex >> 12) & 0xFF) - 128;
+                                $pPort2 = ($ifIndex >> 8) & 0xFF;
                                 $oId = $ifIndex & 0xFFF;
-                                $this->macsCache[$pPort][$oId] = $val;
+                                
+                                if ($pPort1 >= 0 && $pPort1 <= 64) {
+                                    $this->macsCache[$pPort1][$oId] = $val;
+                                }
+                                if ($pPort2 >= 0 && $pPort2 <= 64) {
+                                    $this->macsCache[$pPort2][$oId] = $val;
+                                }
                             }
                         }
                     } catch (\Throwable) {}
@@ -333,10 +340,16 @@ class CDataOltDriver extends BaseOltDriver
                 foreach ($allCtcMacs as $fullIndex => $val) {
                     if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
                         $ifIndex = (int)$m[1];
-                        // The port byte is typically 0x80 + port (128 + port)
-                        $pPort = (($ifIndex >> 12) & 0xFF) - 128;
+                        $pPort1 = (($ifIndex >> 12) & 0xFF) - 128;
+                        $pPort2 = ($ifIndex >> 8) & 0xFF;
                         $oId = $ifIndex & 0xFFF;
-                        $this->macsCache[$pPort][$oId] = $val;
+                        
+                        if ($pPort1 >= 0 && $pPort1 <= 64) {
+                            $this->macsCache[$pPort1][$oId] = $val;
+                        }
+                        if ($pPort2 >= 0 && $pPort2 <= 64) {
+                            $this->macsCache[$pPort2][$oId] = $val;
+                        }
                     }
                 }
             } catch (\Throwable) {}
