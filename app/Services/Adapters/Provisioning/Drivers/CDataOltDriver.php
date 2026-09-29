@@ -130,9 +130,8 @@ class CDataOltDriver extends BaseOltDriver
                 try {
                     $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
                     foreach ($allCtcMacs as $fullIndex => $val) {
-                        $parts = explode('.', $fullIndex);
-                        if (count($parts) >= 1) {
-                            $ifIndex = (int)$parts[0];
+                        if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
+                            $ifIndex = (int)$m[1];
                             $pPort = (($ifIndex >> 12) & 0xFF) - 128;
                             $oId = $ifIndex & 0xFFF;
                             if ($pPort === $portNum || $pPort === $ponPort) {
@@ -326,9 +325,8 @@ class CDataOltDriver extends BaseOltDriver
         $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
         $macsCTC = [];
         foreach ($allCtcMacs as $fullIndex => $val) {
-            $parts = explode('.', $fullIndex);
-            if (count($parts) >= 1) {
-                $ifIndex = (int)$parts[0];
+            if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
+                $ifIndex = (int)$m[1];
                 // The port byte is typically 0x80 + port (128 + port)
                 $pPort = (($ifIndex >> 12) & 0xFF) - 128;
                 $oId = $ifIndex & 0xFFF;
