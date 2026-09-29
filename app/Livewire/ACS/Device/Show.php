@@ -5,7 +5,7 @@ namespace App\Livewire\ACS\Device;
 use App\Livewire\AdminComponent;
 use App\Models\ACS\ACSDevice;
 
-class Show extends AdminComponent
+class Show extends \App\Livewire\ACS\BaseACSComponent
 {
     public $deviceId;
     public $device;
