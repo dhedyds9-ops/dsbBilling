@@ -182,7 +182,7 @@ class Onu extends Model
 
     public function acsDevice()
     {
-        return $this->hasOne(\App\Models\ACS\ACSDevice::class);
+        return $this->hasOne(\App\Models\ACS\ACSDevice::class, 'serial_number', 'serial_number');
     }
 
     public function customerService()
