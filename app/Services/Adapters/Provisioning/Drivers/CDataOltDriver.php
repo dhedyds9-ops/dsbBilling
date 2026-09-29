@@ -22,6 +22,8 @@ class CDataOltDriver extends BaseOltDriver
 
     protected string $ponPortStatusOid = '.1.3.6.1.4.1.51810.1.1.2.1.1.2';
     protected string $onuInfoOid       = '.1.3.6.1.4.1.51810.1.3.1.1';
+    
+    protected ?array $macsCache = null;
 
     protected string $onuTxOid         = '.1.3.6.1.4.1.51810.1.3.1.1';
     protected string $onuTempOid       = '.1.3.6.1.4.1.51810.1.3.1.1';
@@ -125,21 +127,22 @@ class CDataOltDriver extends BaseOltDriver
                 // Hanya exit dari interface mode ke config mode, jangan sampai log out
                 $this->cli->execute('exit');
                 
-                // Fetch MACs via CTC OID
-                $macsCTC = [];
-                try {
-                    $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
-                    foreach ($allCtcMacs as $fullIndex => $val) {
-                        if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
-                            $ifIndex = (int)$m[1];
-                            $pPort = (($ifIndex >> 12) & 0xFF) - 128;
-                            $oId = $ifIndex & 0xFFF;
-                            if ($pPort === $portNum || $pPort === $ponPort) {
-                                $macsCTC[$oId] = $val;
+                // Fetch MACs via CTC OID (cached per instance)
+                if ($this->macsCache === null) {
+                    $this->macsCache = [];
+                    try {
+                        $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
+                        foreach ($allCtcMacs as $fullIndex => $val) {
+                            if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
+                                $ifIndex = (int)$m[1];
+                                $pPort = (($ifIndex >> 12) & 0xFF) - 128;
+                                $oId = $ifIndex & 0xFFF;
+                                $this->macsCache[$pPort][$oId] = $val;
                             }
                         }
-                    }
-                } catch (\Throwable) {}
+                    } catch (\Throwable) {}
+                }
+                $macsCTC = $this->macsCache[$portNum] ?? ($this->macsCache[$ponPort] ?? []);
 
                 $onuList = [];
                 // Parse show ont info
@@ -322,19 +325,23 @@ class CDataOltDriver extends BaseOltDriver
         $biasRaw   = $this->snmp->walk($base . '.10');
         $macs      = $this->snmp->walk($base . '.4');
         
-        $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
-        $macsCTC = [];
-        foreach ($allCtcMacs as $fullIndex => $val) {
-            if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
-                $ifIndex = (int)$m[1];
-                // The port byte is typically 0x80 + port (128 + port)
-                $pPort = (($ifIndex >> 12) & 0xFF) - 128;
-                $oId = $ifIndex & 0xFFF;
-                if ($pPort === $ponPort) {
-                    $macsCTC[$oId] = $val;
+        // Cache the entire CTC MAC table once per polling cycle
+        if ($this->macsCache === null) {
+            $this->macsCache = [];
+            try {
+                $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
+                foreach ($allCtcMacs as $fullIndex => $val) {
+                    if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
+                        $ifIndex = (int)$m[1];
+                        // The port byte is typically 0x80 + port (128 + port)
+                        $pPort = (($ifIndex >> 12) & 0xFF) - 128;
+                        $oId = $ifIndex & 0xFFF;
+                        $this->macsCache[$pPort][$oId] = $val;
+                    }
                 }
-            }
+            } catch (\Throwable) {}
         }
+        $macsCTC = $this->macsCache[$ponPort] ?? [];
         
         $firmwares = $this->snmp->walk($base . '.11');
         $models    = $this->snmp->walk($base . '.12');
