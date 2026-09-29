@@ -151,6 +151,10 @@ class CDataOltDriver extends BaseOltDriver
                     } catch (\Throwable) {}
                 }
                 $macsCTC = $this->macsCache[$portNum] ?? ($this->macsCache[$ponPort] ?? []);
+                $macsRaw = [];
+                try {
+                    $macsRaw = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.4.' . $ponPort) ?: [];
+                } catch (\Throwable) {}
 
                 $onuList = [];
                 // Parse show ont info
@@ -165,10 +169,22 @@ class CDataOltDriver extends BaseOltDriver
                         $runState = strtolower($m[5]);
 
                         $mac = null;
-                        if (!empty($macsCTC[$onuId])) {
-                            $macStr = is_string($macsCTC[$onuId]) ? $macsCTC[$onuId] : (string)$macsCTC[$onuId];
+                        $rawMac = $macsCTC[$onuId] ?? $macsRaw[$onuId] ?? null;
+                        
+                        // If completely missing, try searching globally in macsCache
+                        if (empty($rawMac)) {
+                            foreach ($this->macsCache as $portMacs) {
+                                if (!empty($portMacs[$onuId])) {
+                                    $rawMac = $portMacs[$onuId];
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!empty($rawMac)) {
+                            $macStr = is_string($rawMac) ? $rawMac : (string)$rawMac;
                             $macStr = str_ireplace(['Hex-STRING:', 'STRING:', '"'], '', $macStr);
-                            if (preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr)) || strpos($macsCTC[$onuId], 'Hex-STRING') !== false) {
+                            if (preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr)) || strpos((string)$rawMac, 'Hex-STRING') !== false) {
                                 $hexClean = preg_replace('/[^A-F0-9]/i', '', $macStr);
                             } else {
                                 $hexClean = strtoupper(bin2hex($macStr));
