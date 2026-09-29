@@ -53,7 +53,6 @@
                     <th class="p-3 font-semibold" wire:click="sort('serial_number')">Serial {!! $sortField === 'serial_number' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('mac_address')">MAC {!! $sortField === 'mac_address' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">IP Host</th>
-                    <th class="p-3 font-semibold" wire:click="sort('name')">Name {!! $sortField === 'name' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">OLT / PON</th>
                     <th class="p-3 font-semibold">Pelanggan</th>
                     <th class="p-3 font-semibold" wire:click="sort('rx_power_dbm')">RX Power {!! $sortField === 'rx_power_dbm' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
@@ -80,7 +79,6 @@
                     <td class="p-3 noc-mono noc-text font-medium">{{ $onu->serial_number }}</td>
                     <td class="p-3 noc-mono noc-text-secondary">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
                     <td class="p-3 noc-mono noc-text-secondary">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
-                    <td class="p-3 noc-text-secondary">{{ $onu->name ?? '-' }}</td>
                     <td class="p-3 noc-muted">
                         <span class="noc-muted">{{ $onu->olt?->name ?? '-' }}</span>
                         <span class="noc-muted opacity-60">/</span>
