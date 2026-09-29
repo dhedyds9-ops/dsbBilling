@@ -30,7 +30,7 @@ class AcsMonitorAlarms extends Command
             return 1;
         }
 
-        $localDevices = ACSDevice::all()->keyBy('uuid');
+        $localDevices = ACSDevice::withTrashed()->get()->keyBy('uuid');
 
         foreach ($acsDevices as $deviceData) {
             $deviceId = $deviceData['_id'];
@@ -50,7 +50,7 @@ class AcsMonitorAlarms extends Command
                     $ip = $parsedUrl['host'] ?? null;
                 }
                 
-                $device = ACSDevice::updateOrCreate(
+                $device = ACSDevice::withTrashed()->updateOrCreate(
                     ['uuid' => $deviceId],
                     [
                         'serial_number' => $sn,
@@ -59,6 +59,7 @@ class AcsMonitorAlarms extends Command
                         'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
                         'product_class' => $deviceData['_deviceId']['_ProductClass'] ?? null,
                         'status' => 'online', // Initial assumption if we just got it
+                        'deleted_at' => null, // Restore if soft deleted
                     ]
                 );
                 $localDevices->put($deviceId, $device);
