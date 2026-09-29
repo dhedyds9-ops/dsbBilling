@@ -291,6 +291,7 @@ class CDataOltDriver extends BaseOltDriver
         $voltRaw   = $this->snmp->walk($base . '.9');
         $biasRaw   = $this->snmp->walk($base . '.10');
         $macs      = $this->snmp->walk($base . '.4');
+        $macsCTC   = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11.' . $ponPort) ?: [];
         $firmwares = $this->snmp->walk($base . '.11');
         $models    = $this->snmp->walk($base . '.12');
 
@@ -339,10 +340,18 @@ class CDataOltDriver extends BaseOltDriver
             }
 
             $mac = null;
-            if (!empty($macs[$idx])) {
-                $macStr = is_string($macs[$idx]) ? $macs[$idx] : (string)$macs[$idx];
-                $hex = strtoupper(bin2hex($macStr) ?: $macStr);
-                $hexClean = substr(preg_replace('/[^A-F0-9]/i', '', $hex), 0, 12);
+            $rawMac = $macsCTC[$idx] ?? $macs[$idx] ?? null;
+            if (!empty($rawMac)) {
+                $macStr = is_string($rawMac) ? $rawMac : (string)$rawMac;
+                
+                // Handle "Hex-STRING: xx xx" from snmpwalk
+                if (strpos($macStr, 'Hex-STRING:') !== false || preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr))) {
+                    $hexClean = preg_replace('/[^A-F0-9]/i', '', $macStr);
+                } else {
+                    $hexClean = strtoupper(bin2hex($macStr));
+                }
+                
+                $hexClean = substr(preg_replace('/[^A-F0-9]/i', '', $hexClean), 0, 12);
                 if (strlen($hexClean) === 12) {
                     $mac = implode(':', str_split($hexClean, 2));
                 }
