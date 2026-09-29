@@ -43,7 +43,7 @@
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover transition-colors">
                     <td class="p-3  noc-text font-medium">{{ $olt->name }}</td>
                     <td class="p-3  noc-mono noc-muted">{{ $olt->ip_address }}</td>
-                    <td class="p-3  noc-muted">{{ $olt->vendor->name ?? '-' }} / {{ $olt->model ?? '-' }}</td>
+                    <td class="p-3  noc-muted">{{ $olt->vendor?->name ?? '-' }} / {{ $olt->model ?? '-' }}</td>
                     <td class="p-3  noc-mono {{ $olt->temperature > 60 ? 'text-red-500' : 'text-emerald-500' }}">{{ $olt->temperature ?? '-' }} °C</td>
                     <td class="p-3  noc-mono noc-muted">{{ $olt->onu_active_count ?? 0 }}</td>
                     <td class="p-3">

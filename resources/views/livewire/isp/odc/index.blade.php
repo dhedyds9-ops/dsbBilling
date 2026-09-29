@@ -122,10 +122,10 @@
                                 <span class="font-mono text-sm text-gray-900 dark:text-slate-100">{{ $odc->code }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900 dark:text-slate-100">{{ $odc->olt->name ?? '-' }}</div>
+                                <div class="text-sm font-medium text-gray-900 dark:text-slate-100">{{ $odc->olt?->name ?? '-' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ $odc->pop->name ?? '-' }}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ $odc->pop?->name ?? '-' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end gap-2">

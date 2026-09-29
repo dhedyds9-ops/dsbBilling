@@ -135,6 +135,7 @@ class Index extends AdminComponent
                 'ponPort:id,name,port_number',
                 'customerService:id,onu_id,customer_id',
                 'customerService.customer:id,name,code',
+                'acsDevice:id,onu_id,ip_address'
             ])
             ->select([
                 'id', 'name', 'serial_number', 'mac_address', 'status',
@@ -160,6 +161,18 @@ class Index extends AdminComponent
                        ->orWhereHas('customerService.customer', function ($cq) {
                            $cq->where('name', 'like', "%{$this->search}%")
                               ->orWhere('code', 'like', "%{$this->search}%");
+                       })
+                       ->orWhereHas('acsDevice', function ($aq) {
+                           $aq->where('ip_address', 'like', "%{$this->search}%");
+                       })
+                       ->orWhereHas('olt', function ($oq) {
+                           $oq->where('name', 'like', "%{$this->search}%");
+                       })
+                       ->orWhereHas('odp', function ($odpq) {
+                           $odpq->where('name', 'like', "%{$this->search}%");
+                       })
+                       ->orWhereHas('ponPort', function ($pq) {
+                           $pq->where('name', 'like', "%{$this->search}%");
                        });
                 });
             })

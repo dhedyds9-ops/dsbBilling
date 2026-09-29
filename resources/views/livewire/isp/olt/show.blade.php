@@ -78,11 +78,11 @@
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">POP</label>
-                            <p class="text-slate-900 dark:text-slate-100 text-sm">{{ $olt->pop->name ?? '-' }}</p>
+                            <p class="text-slate-900 dark:text-slate-100 text-sm">{{ $olt->pop?->name ?? '-' }}</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Vendor</label>
-                            <p class="text-slate-900 dark:text-slate-100 text-sm">{{ $olt->vendor->name ?? '-' }}</p>
+                            <p class="text-slate-900 dark:text-slate-100 text-sm">{{ $olt->vendor?->name ?? '-' }}</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Model</label>

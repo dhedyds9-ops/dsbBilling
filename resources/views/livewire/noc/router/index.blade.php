@@ -55,8 +55,8 @@
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover">
                     <td class="p-3  font-medium noc-text">{{ $r->name }}</td>
                     <td class="p-3  noc-mono noc-muted">{{ $r->ip_address }}</td>
-                    <td class="p-3  noc-muted">{{ $r->vendor->name ?? '-' }} / {{ $r->model ?? '-' }}</td>
-                    <td class="p-3  noc-muted">{{ $r->pop->name ?? '-' }}</td>
+                    <td class="p-3  noc-muted">{{ $r->vendor?->name ?? '-' }} / {{ $r->model ?? '-' }}</td>
+                    <td class="p-3  noc-muted">{{ $r->pop?->name ?? '-' }}</td>
                     <td class="p-3  noc-mono {{ $log && $log->cpu_load > 80 ? 'text-red-500' : 'text-emerald-500' }}">{{ ($log && $log->cpu_load) ? $log->cpu_load . '%' : '-' }}</td>
                     <td class="p-3  noc-mono noc-muted">
                         @if($log && $log->total_memory)

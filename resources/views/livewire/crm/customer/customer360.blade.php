@@ -581,12 +581,12 @@
                                                 <span class="material-symbols-outlined text-slate-300" style="font-size: 14px;">arrow_forward</span>
                                                 <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                                                     <span class="material-symbols-outlined text-slate-400" style="font-size: 16px;">lan</span>
-                                                    <span>PON: {{ $service->onu->formatted_pon_port ?? $service->onu->ponPort->name ?? '-' }}</span>
+                                                    <span>PON: {{ $service->onu?->formatted_pon_port ?? $service->onu?->ponPort?->name ?? '-' }}</span>
                                                 </div>
                                                 <span class="material-symbols-outlined text-slate-300" style="font-size: 14px;">arrow_forward</span>
                                                 <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                                                     <span class="material-symbols-outlined text-slate-400" style="font-size: 16px;">device_hub</span>
-                                                    <span>ODP: {{ $service->onu->odp->name ?? '-' }}</span>
+                                                    <span>ODP: {{ $service->onu?->odp?->name ?? '-' }}</span>
                                                 </div>
                                             </div>
                                         @else

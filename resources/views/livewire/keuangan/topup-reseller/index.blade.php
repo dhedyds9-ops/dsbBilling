@@ -157,7 +157,7 @@
                                 'rejected', 'failed' => 'Ditolak',
                                 default => ucfirst($row->status ?? '-'),
                             };
-                            $resellerName = $row->reseller->name ?? $row->reseller_name ?? '-';
+                            $resellerName = $row->reseller?->name ?? $row->reseller_name ?? '-';
                             $submitterName = $row->submittedBy?->name ?? $row->submitted_by_name ?? '-';
                             $verifierName = $row->verifiedBy?->name ?? '-';
                         @endphp

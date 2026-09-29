@@ -39,10 +39,10 @@
                             <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50">
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
-                                        <x-display.avatar :name="$att->technician->name ?? 'Unknown'" size="sm" />
+                                        <x-display.avatar :name="$att->technician?->name ?? 'Unknown'" size="sm" />
                                         <div>
-                                            <p class="font-bold text-slate-900 dark:text-slate-100">{{ $att->technician->name ?? 'Unknown' }}</p>
-                                            <p class="text-[10px] font-black uppercase text-indigo-500 tracking-wider">{{ $att->technician->job_function ?? 'STAF' }}</p>
+                                            <p class="font-bold text-slate-900 dark:text-slate-100">{{ $att->technician?->name ?? 'Unknown' }}</p>
+                                            <p class="text-[10px] font-black uppercase text-indigo-500 tracking-wider">{{ $att->technician?->job_function ?? 'STAF' }}</p>
                                         </div>
                                     </div>
                                 </td>

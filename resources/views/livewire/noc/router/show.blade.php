@@ -15,7 +15,7 @@
     <div class="flex items-center gap-3 text-xs ml-auto">
         <span class="noc-muted">IP: <span class="noc-mono noc-text-secondary">{{ $router->ip_address }}</span></span>
         <span class="noc-muted">API: <span class="noc-mono noc-text-secondary">{{ $router->api_port ?? '-' }}</span></span>
-        <span class="noc-muted">Model: <span class="noc-text-secondary">{{ $router->vendor->name ?? '-' }} {{ $router->model ?? '' }}</span></span>
+        <span class="noc-muted">Model: <span class="noc-text-secondary">{{ $router->vendor?->name ?? '-' }} {{ $router->model ?? '' }}</span></span>
         <span class="noc-muted">RouterOS: <span class="noc-mono noc-text-secondary">{{ $router->routeros_version ?? '-' }}</span></span>
         
         <button wire:click="rebootRouter" wire:confirm="Are you sure you want to reboot this router ?? " class="btn btn-sm btn-danger ml-2 py-0.5 px-2 text-xs">
@@ -91,8 +91,8 @@
                 <div class="flex justify-between"><dt class="noc-muted">API Port</dt><dd class="noc-mono noc-text-secondary">{{ $router->api_port ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">COA Port</dt><dd class="noc-mono noc-text-secondary">{{ $router->coa_port ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Model</dt><dd class="noc-text-secondary">{{ $router->model ?? '-' }}</dd></div>
-                <div class="flex justify-between"><dt class="noc-muted">Vendor</dt><dd class="noc-text-secondary">{{ $router->vendor->name ?? '-' }}</dd></div>
-                <div class="flex justify-between"><dt class="noc-muted">POP</dt><dd class="noc-text-secondary">{{ $router->pop->name ?? '-' }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">Vendor</dt><dd class="noc-text-secondary">{{ $router->vendor?->name ?? '-' }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">POP</dt><dd class="noc-text-secondary">{{ $router->pop?->name ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">RouterOS</dt><dd class="noc-mono noc-text-secondary">{{ $router->routeros_version ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Last Seen</dt><dd class="noc-text-secondary">{{ $router->last_seen_at ? $router->last_seen_at->diffForHumans() : '-' }}</dd></div>
             </dl>

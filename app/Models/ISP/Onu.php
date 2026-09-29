@@ -180,6 +180,11 @@ class Onu extends Model
         return $this->hasOne(OnuSignal::class)->latest('measured_at');
     }
 
+    public function acsDevice()
+    {
+        return $this->hasOne(\App\Models\ACS\ACSDevice::class);
+    }
+
     public function customerService()
     {
         return $this->hasOne(\App\Models\Customer\CustomerService::class);

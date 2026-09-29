@@ -207,10 +207,10 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                                 <span class="font-mono text-sm text-gray-900 dark:text-slate-100">{{ $olt->code }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900 dark:text-slate-100">{{ $olt->pop->name ?? '-' }}</div>
+                                <div class="text-sm text-gray-900 dark:text-slate-100">{{ $olt->pop?->name ?? '-' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-600 dark:text-slate-300">{{ $olt->vendor->name ?? '-' }}</div>
+                                <div class="text-sm text-gray-600 dark:text-slate-300">{{ $olt->vendor?->name ?? '-' }}</div>
                             </td>
                             {{-- ONU Online --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">

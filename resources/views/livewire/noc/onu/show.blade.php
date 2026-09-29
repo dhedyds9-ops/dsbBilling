@@ -14,9 +14,9 @@
         <x-noc.stat-badge :status="$status" />
     </div>
     <div class="flex items-center gap-3 text-xs ml-auto">
-        <span class="noc-muted">OLT: <span class="noc-text-secondary">{{ $onu->olt->name ?? '-' }}</span></span>
-        <span class="noc-muted">PON: <span class="noc-mono noc-text-secondary">{{ $onu->ponPort->name ?? '-' }}</span></span>
-        <span class="noc-muted">ODP: <span class="noc-text-secondary">{{ $onu->odp->code ?? '-' }}</span></span>
+        <span class="noc-muted">OLT: <span class="noc-text-secondary">{{ $onu->olt?->name ?? '-' }}</span></span>
+        <span class="noc-muted">PON: <span class="noc-mono noc-text-secondary">{{ $onu->ponPort?->name ?? '-' }}</span></span>
+        <span class="noc-muted">ODP: <span class="noc-text-secondary">{{ $onu->odp?->code ?? '-' }}</span></span>
         <span class="noc-muted">RX: <span class="noc-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm-1) . ' dBm' : '-' }}</span></span>
         
         @if($canManage)

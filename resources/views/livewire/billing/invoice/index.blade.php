@@ -164,8 +164,8 @@
                                 </a>
                             </td>
                             <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                                <div class="font-medium">{{ $invoice->customer->name ?? '-' }}</div>
-                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $invoice->customer->code ?? '-' }}</div>
+                                <div class="font-medium">{{ $invoice->customer?->name ?? '-' }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $invoice->customer?->code ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
                                 {{ $invoice->issue_date?->format('d M Y') ?? '-' }}

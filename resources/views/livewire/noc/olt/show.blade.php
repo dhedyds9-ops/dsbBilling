@@ -18,7 +18,7 @@
 
     <div class="flex items-center gap-3 text-xs ml-auto">
         <span class="noc-muted">IP: <span class="noc-mono noc-text-secondary">{{ $olt->ip_address }}</span></span>
-        <span class="noc-muted">Model: <span class="noc-text-secondary">{{ $olt->vendor->name ?? '-' }} {{ $olt->model ?? '' }}</span></span>
+        <span class="noc-muted">Model: <span class="noc-text-secondary">{{ $olt->vendor?->name ?? '-' }} {{ $olt->model ?? '' }}</span></span>
         <span class="noc-muted">Uptime: <span class="noc-mono noc-text-secondary">{{ $olt->uptime_text ?? '-' }}</span></span>
         <span class="noc-muted">Temp:
             <span class="noc-mono {{ $olt->temperature > 60 ? 'text-red-500' : 'text-emerald-500' }}">{{ $olt->temperature ?? '-' }} °C</span>
@@ -55,7 +55,7 @@
                 <div class="flex justify-between"><dt class="noc-muted">IP Address</dt><dd class="noc-mono noc-text-secondary">{{ $olt->ip_address }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">SNMP Port</dt><dd class="noc-mono noc-text-secondary">{{ $olt->snmp_port ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Firmware</dt><dd class="noc-mono noc-text-secondary">{{ $olt->firmware_version ?? '-' }}</dd></div>
-                <div class="flex justify-between"><dt class="noc-muted">POP</dt><dd class="noc-text-secondary">{{ $olt->pop->name ?? '-' }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">POP</dt><dd class="noc-text-secondary">{{ $olt->pop?->name ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Last Polled</dt><dd class="noc-text-secondary">{{ $olt->last_polled_at ? $olt->last_polled_at->diffForHumans() : '-' }}</dd></div>
             </dl>
         </x-noc.card>
@@ -71,7 +71,7 @@
             </x-noc.card>
             <x-noc.card>
                 <div class="noc-summary-label">Active ONU</div>
-                <div class="noc-summary-value text-emerald-500 noc-mono">{{ $olt->active_onu_count ?? 0 }}</div>
+                <div class="noc-summary-value text-emerald-500 noc-mono">{{ $olt->onu_active_count ?? 0 }}</div>
             </x-noc.card>
             <x-noc.card>
                 <div class="noc-summary-label">Temperature</div>
@@ -151,8 +151,8 @@
                         <td class="p-3  font-mono noc-muted">{{ $onu->serial_number }}</td>
                         <td class="p-3  noc-text">{{ $onu->customerService?->customer?->name ?? '-' }}</td>
                         <td class="p-3  noc-muted">
-                            <div>{{ $onu->ponPort->name ?? '-' }}</div>
-                            <div class="text-[10px]">{{ $onu->odp->name ?? '' }}</div>
+                            <div>{{ $onu->ponPort?->name ?? '-' }}</div>
+                            <div class="text-[10px]">{{ $onu->odp?->name ?? '' }}</div>
                         </td>
                         <td class="p-3">
                             <x-noc.stat-badge :status="$this->getOnuStatus($onu)" />

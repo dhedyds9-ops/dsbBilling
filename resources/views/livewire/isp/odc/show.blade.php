@@ -49,11 +49,11 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">OLT</label>
-                        <p class="text-slate-900 dark:text-slate-100">{{ $odc->olt->name ?? '-' }}</p>
+                        <p class="text-slate-900 dark:text-slate-100">{{ $odc->olt?->name ?? '-' }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">POP</label>
-                        <p class="text-slate-900 dark:text-slate-100">{{ $odc->pop->name ?? '-' }}</p>
+                        <p class="text-slate-900 dark:text-slate-100">{{ $odc->pop?->name ?? '-' }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Jumlah Port</label>

@@ -61,7 +61,7 @@
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50">
                             <td class="px-6 py-3 text-slate-600 dark:text-slate-400">{{ $payment->created_at->format('d M Y H:i') }}</td>
                             <td class="px-6 py-3 font-mono text-slate-700 dark:text-slate-300 text-xs">{{ $payment->reference_number }}</td>
-                            <td class="px-6 py-3 text-slate-700 dark:text-slate-300">{{ $payment->customer->name ?? '-' }}</td>
+                            <td class="px-6 py-3 text-slate-700 dark:text-slate-300">{{ $payment->customer?->name ?? '-' }}</td>
                             <td class="px-6 py-3 text-slate-600 dark:text-slate-400 uppercase text-xs">{{ str_replace('_', ' ', $payment->method) }}</td>
                             <td class="px-6 py-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
                         </tr>

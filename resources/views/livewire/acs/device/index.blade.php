@@ -106,7 +106,7 @@
                             <td class="px-4 py-3 font-mono text-xs">{{ $device->mac_address ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->model ?? '-' }}</div>
-                                <div class="text-[11px] {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $device->vendor->name ?? $device->vendor ?? '-' }}</div>
+                                <div class="text-[11px] {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $device->vendor?->name ?? $device->vendor ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="font-mono text-xs {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}" title="PPPoE IP">{{ $device->ip_address ?? '-' }}</div>

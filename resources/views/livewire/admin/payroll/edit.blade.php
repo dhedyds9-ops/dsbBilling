@@ -1,7 +1,7 @@
 <div class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Edit Slip Gaji - {{ $payroll->employee->name ?? 'Karyawan' }}</h2>
+            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Edit Slip Gaji - {{ $payroll->employee?->name ?? 'Karyawan' }}</h2>
             <a href="{{ route('admin.payroll.index') }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900">&larr; Kembali</a>
         </div>
 

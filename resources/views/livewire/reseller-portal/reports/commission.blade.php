@@ -97,7 +97,7 @@
                                 <span class="text-xs text-slate-400">{{ $row->updated_at->format('H:i') }}</span>
                             </td>
                             <td class="px-6 py-3">
-                                <div class="font-medium text-slate-800 dark:text-slate-200">{{ $row->customer->name ?? '-' }}</div>
+                                <div class="font-medium text-slate-800 dark:text-slate-200">{{ $row->customer?->name ?? '-' }}</div>
                                 <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Inv: {{ $row->invoice_number }}</div>
                             </td>
                             <td class="px-6 py-3">

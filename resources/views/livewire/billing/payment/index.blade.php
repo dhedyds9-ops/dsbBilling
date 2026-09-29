@@ -157,7 +157,7 @@
                                 {{ $payment->reference_number ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                                <div class="font-medium">{{ $payment->customer->name ?? '-' }}</div>
+                                <div class="font-medium">{{ $payment->customer?->name ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
     @if($payment->invoices->count() > 0)

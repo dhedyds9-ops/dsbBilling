@@ -127,7 +127,7 @@ foreach ($this->tabs as $k => $label) {
                                 <td class="px-3 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ $r->id }}</td>
                                 <td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{{ $r->name }}</td>
                                 <td class="px-3 py-2 font-mono text-xs">{{ $r->host }}</td>
-                                <td class="px-3 py-2">{{ $r->pop->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->pop?->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right">{{ $r->ponPorts->count() ?? 0 }}</td>
                                 <td class="px-3 py-2 text-right">{{ $r->onus_count ?? 0 }}</td>
                                 <td class="px-3 py-2 text-right">{{ $r->onus_online ?? 0 }}</td>
@@ -137,10 +137,10 @@ foreach ($this->tabs as $k => $label) {
                             @elseif ($this->activeTab === 'onu')
                                 <td class="px-3 py-2 font-mono text-xs">{{ $r->code ?? $r->id }}</td>
                                 <td class="px-3 py-2 font-mono text-xs text-slate-700 dark:text-slate-200">{{ $r->serial_number }}</td>
-                                <td class="px-3 py-2">{{ $r->customer->name ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $r->olt->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->customer?->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->olt?->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right">{{ $r->pon_port }}</td>
-                                <td class="px-3 py-2">{{ $r->odp->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->odp?->name ?? '-' }}</td>
                                 <td class="px-3 py-2"><x-status-badge :status="$r->status" /></td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->rx_power ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->tx_power ?? '-' }}</td>
@@ -148,15 +148,15 @@ foreach ($this->tabs as $k => $label) {
                             @elseif ($this->activeTab === 'odp')
                                 <td class="px-3 py-2 font-medium">{{ $r->name }}</td>
                                 <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r->location ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $r->pop->name ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $r->olt->name ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $r->splitter->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->pop?->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->olt?->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->splitter?->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->port_total ?? 0 }}/{{ $r->port_used ?? 0 }}</td>
                             @elseif ($this->activeTab === 'odc')
                                 <td class="px-3 py-2 font-medium">{{ $r->name }}</td>
                                 <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r->location ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $r->pop->name ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $r->rack->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->pop?->name ?? '-' }}</td>
+                                <td class="px-3 py-2">{{ $r->rack?->name ?? '-' }}</td>
                                 <td class="px-3 py-2 text-right font-mono text-xs">{{ $r->port_total ?? 0 }}/{{ $r->port_used ?? 0 }}</td>
                             @elseif ($this->activeTab === 'pop')
                                 <td class="px-3 py-2 font-medium">{{ $r->name }}</td>

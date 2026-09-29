@@ -54,7 +54,7 @@
                 @forelse ($payrolls as $payroll)
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {{ $payroll->employee->name ?? 'N/A' }}
+                            {{ $payroll->employee?->name ?? 'N/A' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {{ $payroll->period_month }}/{{ $payroll->period_year }}
