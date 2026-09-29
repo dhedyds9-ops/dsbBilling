@@ -125,6 +125,23 @@ class CDataOltDriver extends BaseOltDriver
                 // Hanya exit dari interface mode ke config mode, jangan sampai log out
                 $this->cli->execute('exit');
                 
+                // Fetch MACs via CTC OID
+                $macsCTC = [];
+                try {
+                    $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
+                    foreach ($allCtcMacs as $fullIndex => $val) {
+                        $parts = explode('.', $fullIndex);
+                        if (count($parts) >= 1) {
+                            $ifIndex = (int)$parts[0];
+                            $pPort = (($ifIndex >> 12) & 0xFF) - 128;
+                            $oId = $ifIndex & 0xFFF;
+                            if ($pPort === $portNum || $pPort === $ponPort) {
+                                $macsCTC[$oId] = $val;
+                            }
+                        }
+                    }
+                } catch (\Throwable) {}
+
                 $onuList = [];
                 // Parse show ont info
                 // Format: "  0/0 1  1      FHTT91C67218     Active   Online  success  ..."
@@ -137,11 +154,25 @@ class CDataOltDriver extends BaseOltDriver
                         $sn = strtoupper($m[4]);
                         $runState = strtolower($m[5]);
 
+                        $mac = null;
+                        if (!empty($macsCTC[$onuId])) {
+                            $macStr = is_string($macsCTC[$onuId]) ? $macsCTC[$onuId] : (string)$macsCTC[$onuId];
+                            if (strpos($macStr, 'Hex-STRING:') !== false || preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr))) {
+                                $hexClean = preg_replace('/[^A-F0-9]/i', '', $macStr);
+                            } else {
+                                $hexClean = strtoupper(bin2hex($macStr));
+                            }
+                            $hexClean = substr(preg_replace('/[^A-F0-9]/i', '', $hexClean), 0, 12);
+                            if (strlen($hexClean) === 12) {
+                                $mac = implode(':', str_split($hexClean, 2));
+                            }
+                        }
+
                         $onuList[$onuId] = [
                             'pon_port'         => $ponPort,
                             'onu_index'        => $onuId,
                             'serial_number'    => $sn,
-                            'mac_address'      => null,
+                            'mac_address'      => $mac,
                             'rx_power_dbm'     => null,
                             'tx_power_dbm'     => null,
                             'snr_db'           => null,
