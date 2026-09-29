@@ -57,105 +57,108 @@
             </div>
         </div>
 
-        <div id="reseller-map" 
-             class="flex-1 w-full bg-[#0a0e1a]" 
-             wire:ignore
-             x-data="{
-                 initMap() {
-                     if(this.map) { this.map.remove(); }
-                     let map = window.L.map($el).setView([-6.2088, 106.8456], 12);
-                     this.map = map;
-                     
-                     let googleHybrid = window.L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google' });
-                     let osm = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: 'OSM' });
-                     let darkLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20, attribution: 'CARTO' });
-                     
-                     googleHybrid.addTo(map);
-                     window.L.control.layers({ 'Dark Mode': darkLayer, 'Satellite (Google)': googleHybrid, 'Street (OSM)': osm }).addTo(map);
-                     
-                     let linesLayer = window.L.layerGroup().addTo(map);
-                     let bounds = [];
-                     const popupOpt = { className: 'modern-map-popup' };
-                     
-                     const olts = window.mapData.olts;
-                     const odcs = window.mapData.odcs;
-                     const odps = window.mapData.odps;
-                     const customers = window.mapData.customers;
-                     
-                     olts.forEach(i => {
-                         if(i.latitude && i.longitude) {
-                             let icon = window.L.divIcon({ className: 'custom-icon icon-olt', html: '<i class=\"fa fa-server\"></i>', iconSize: [28,28] });
-                             window.L.marker([i.latitude, i.longitude], {icon}).addTo(map).bindPopup(`<h6 class=\"font-bold text-[#60a5fa] border-b border-gray-700 pb-2 mb-2\">OLT: ${i.name}</h6>IP: ${i.ip_address||'-'}`, popupOpt);
-                             bounds.push([i.latitude, i.longitude]);
-                         }
-                     });
-                     
-                     odcs.forEach(i => {
-                         if(i.latitude && i.longitude) {
-                             let icon = window.L.divIcon({ className: 'custom-icon icon-odc', html: '<i class=\"fa fa-hdd\"></i>', iconSize: [24,24] });
-                             window.L.marker([i.latitude, i.longitude], {icon}).addTo(map).bindPopup(`<h6 class=\"font-bold text-[#fbbf24] border-b border-gray-700 pb-2 mb-2\">ODC: ${i.name}</h6>Kode: ${i.code||'-'}`, popupOpt);
-                             bounds.push([i.latitude, i.longitude]);
-                             if(i.olt_id) {
-                                 let olt = olts.find(o => o.id == i.olt_id);
-                                 if(olt && olt.latitude && olt.longitude) { window.L.polyline([[olt.latitude, olt.longitude], [i.latitude, i.longitude]], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
-                             }
-                         }
-                     });
-                     
-                     odps.forEach(i => {
-                         if(i.latitude && i.longitude) {
-                             let icon = window.L.divIcon({ className: 'custom-icon icon-odp', html: '<i class=\"fa fa-box\"></i>', iconSize: [20,20] });
-                             window.L.marker([i.latitude, i.longitude], {icon}).addTo(map).bindPopup(`<h6 class=\"font-bold text-[#34d399] border-b border-gray-700 pb-2 mb-2\">ODP: ${i.name}</h6>Port: ${i.used_port_count||0}/${i.port_count||0}`, popupOpt);
-                             bounds.push([i.latitude, i.longitude]);
-                             if(i.odc_id) {
-                                 let odc = odcs.find(o => o.id == i.odc_id);
-                                 if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
-                             }
-                         }
-                     });
-                     
-                     customers.forEach(i => {
-                         if(i.latitude && i.longitude) {
-                             let statusClass = i.is_online ? 'icon-customer-online' : 'icon-customer-offline';
-                             let htmlIcon = i.is_online ? '<i class=\"fa fa-wifi text-green-400\"></i>' : '<i class=\"fa fa-times text-red-400\"></i>';
-                             let icon = window.L.divIcon({ className: `custom-icon icon-customer ${statusClass}`, html: htmlIcon, iconSize: [22,22] });
-                             window.L.marker([i.latitude, i.longitude], {icon}).addTo(map).bindPopup(`<h6 class=\"font-bold text-[#cbd5e1] border-b border-gray-700 pb-2 mb-2\">Pelanggan: ${i.name}</h6>ID: ${i.customer_id||'-'}<br>Status: ${i.is_online?'<span class=\"text-green-400\">Online</span>':'<span class=\"text-red-400\">Offline</span>'}`, popupOpt);
-                             bounds.push([i.latitude, i.longitude]);
-                             if(i.odp_id) {
-                                 let odp = odps.find(o => o.id == i.odp_id);
-                                 if(odp && odp.latitude && odp.longitude) {
-                                     let opts = i.is_online ? { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
-                                     window.L.polyline([[odp.latitude, odp.longitude], [i.latitude, i.longitude]], opts).addTo(linesLayer);
-                                 }
-                             }
-                         }
-                     });
-                     
-                     if (bounds.length > 0) { map.fitBounds(bounds, { padding: [50, 50] }); }
-                     
-                     setTimeout(() => { map.invalidateSize(); }, 500);
-                     setTimeout(() => { map.invalidateSize(); }, 1500);
-                 }
-             }"
-             x-init="
-                 if(typeof window.L !== 'undefined') {
-                     initMap();
-                 } else {
-                     let check = setInterval(() => {
-                         if(typeof window.L !== 'undefined') { clearInterval(check); initMap(); }
-                     }, 200);
-                 }
-             ">
-        </div>
+        <div id="reseller-map" class="flex-1 w-full bg-[#0a0e1a]" wire:ignore></div>
     </div>
 </div>
 
 <script>
-    // Menyimpan JSON ke global window untuk dibaca oleh AlpineJS tanpa bentrok kurung kurawal
+(function() {
     window.mapData = {
         olts: @json($olts),
         odcs: @json($odcs),
         odps: @json($odps),
         customers: @json($customers)
     };
+
+    let mapInstance = null;
+
+    function initResellerMap() {
+        const container = document.getElementById('reseller-map');
+        if (!container) return;
+        
+        if (typeof window.L === 'undefined') {
+            setTimeout(initResellerMap, 200);
+            return;
+        }
+
+        if (container._leaflet_id) { container._leaflet_id = null; }
+        if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+        container.innerHTML = "";
+
+        mapInstance = window.L.map('reseller-map').setView([-6.2088, 106.8456], 12);
+        
+        let googleHybrid = window.L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google' });
+        let osm = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: 'OSM' });
+        let darkLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20, attribution: 'CARTO' });
+        
+        googleHybrid.addTo(mapInstance);
+        window.L.control.layers({ 'Dark Mode': darkLayer, 'Satellite (Google)': googleHybrid, 'Street (OSM)': osm }).addTo(mapInstance);
+        
+        let linesLayer = window.L.layerGroup().addTo(mapInstance);
+        let bounds = [];
+        const popupOpt = { className: 'modern-map-popup' };
+        
+        const olts = window.mapData.olts;
+        const odcs = window.mapData.odcs;
+        const odps = window.mapData.odps;
+        const customers = window.mapData.customers;
+        
+        olts.forEach(i => {
+            if(i.latitude && i.longitude) {
+                let icon = window.L.divIcon({ className: 'custom-icon icon-olt', html: '<i class="fa fa-server"></i>', iconSize: [28,28] });
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#60a5fa] border-b border-gray-700 pb-2 mb-2">OLT: ${i.name}</h6>IP: ${i.ip_address||'-'}`, popupOpt);
+                bounds.push([i.latitude, i.longitude]);
+            }
+        });
+        
+        odcs.forEach(i => {
+            if(i.latitude && i.longitude) {
+                let icon = window.L.divIcon({ className: 'custom-icon icon-odc', html: '<i class="fa fa-hdd"></i>', iconSize: [24,24] });
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#fbbf24] border-b border-gray-700 pb-2 mb-2">ODC: ${i.name}</h6>Kode: ${i.code||'-'}`, popupOpt);
+                bounds.push([i.latitude, i.longitude]);
+                if(i.olt_id) {
+                    let olt = olts.find(o => o.id == i.olt_id);
+                    if(olt && olt.latitude && olt.longitude) { window.L.polyline([[olt.latitude, olt.longitude], [i.latitude, i.longitude]], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
+                }
+            }
+        });
+        
+        odps.forEach(i => {
+            if(i.latitude && i.longitude) {
+                let icon = window.L.divIcon({ className: 'custom-icon icon-odp', html: '<i class="fa fa-box"></i>', iconSize: [20,20] });
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#34d399] border-b border-gray-700 pb-2 mb-2">ODP: ${i.name}</h6>Port: ${i.used_port_count||0}/${i.port_count||0}`, popupOpt);
+                bounds.push([i.latitude, i.longitude]);
+                if(i.odc_id) {
+                    let odc = odcs.find(o => o.id == i.odc_id);
+                    if(odc && odc.latitude && odc.longitude) { window.L.polyline([[odc.latitude, odc.longitude], [i.latitude, i.longitude]], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer); }
+                }
+            }
+        });
+        
+        customers.forEach(i => {
+            if(i.latitude && i.longitude) {
+                let statusClass = i.is_online ? 'icon-customer-online' : 'icon-customer-offline';
+                let htmlIcon = i.is_online ? '<i class="fa fa-wifi text-green-400"></i>' : '<i class="fa fa-times text-red-400"></i>';
+                let icon = window.L.divIcon({ className: `custom-icon icon-customer ${statusClass}`, html: htmlIcon, iconSize: [22,22] });
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#cbd5e1] border-b border-gray-700 pb-2 mb-2">Pelanggan: ${i.name}</h6>ID: ${i.customer_id||'-'}<br>Status: ${i.is_online?'<span class="text-green-400">Online</span>':'<span class="text-red-400">Offline</span>'}`, popupOpt);
+                bounds.push([i.latitude, i.longitude]);
+                if(i.odp_id) {
+                    let odp = odps.find(o => o.id == i.odp_id);
+                    if(odp && odp.latitude && odp.longitude) {
+                        let opts = i.is_online ? { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
+                        window.L.polyline([[odp.latitude, odp.longitude], [i.latitude, i.longitude]], opts).addTo(linesLayer);
+                    }
+                }
+            }
+        });
+        
+        if (bounds.length > 0) { mapInstance.fitBounds(bounds, { padding: [50, 50] }); }
+        
+        setTimeout(() => { if(mapInstance) mapInstance.invalidateSize(); }, 500);
+    }
+
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initResellerMap); } 
+    else { initResellerMap(); }
+    document.addEventListener('livewire:navigated', initResellerMap);
+})();
 </script>
