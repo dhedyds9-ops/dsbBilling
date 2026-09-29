@@ -6,7 +6,6 @@
 <div class="space-y-5 pb-10">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* NOC/Cyberpunk Style Overrides */
         .noc-map-container {
             background-color: #0a0e1a;
             border: 1px solid rgba(0, 229, 255, 0.3);
@@ -50,7 +49,6 @@
             box-shadow: 0 0 10px currentColor;
         }
         
-        /* Connection lines styling */
         .connection-line {
             filter: drop-shadow(0 0 4px currentColor);
         }
@@ -62,7 +60,6 @@
             to { stroke-dashoffset: -1000; }
         }
         
-        /* Sembunyikan default background putih popup leaflet */
         .noc-popup .leaflet-popup-content-wrapper { background: transparent; padding: 0; box-shadow: none; }
         .noc-popup .leaflet-popup-tip { background: #111827; border: 1px solid rgba(255,255,255,0.2); }
         .noc-popup .leaflet-popup-content { margin: 0; }
@@ -98,129 +95,195 @@
 
         <div id="reseller-map" wire:ignore></div>
     </div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-document.addEventListener('livewire:initialized', function () {
-    const map = L.map('reseller-map').setView([-6.2088, 106.8456], 12);
-    
-    // Default to Google Satellite Hybrid (Like NOC)
-    var googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
-        maxZoom: 22,
-        subdomains:['mt0','mt1','mt2','mt3'],
-        attribution: 'Map data &copy; Google'
-    });
-    
-    var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-    });
-
-    googleHybrid.addTo(map);
-
-    // Add Layer Control
-    var baseMaps = {
-        "Satelit (Google)": googleHybrid,
-        "Peta Standar (OSM)": osm
-    };
-    L.control.layers(baseMaps).addTo(map);
-
-    const bounds = [];
-    const linesLayer = L.layerGroup().addTo(map);
-
-    function createIcon(color, shadowColor) {
-        return L.divIcon({
-            className: 'custom-icon',
-            html: <div class="pulsing-icon" style="background-color:  + color + ; color:  + shadowColor + ; width: 14px; height: 14px;"></div>,
-            iconSize: [14, 14],
-            iconAnchor: [7, 7]
-        });
-    }
-
-    const olts = @json($olts);
-    const odcs = @json($odcs);
-    const odps = @json($odps);
-    const customers = @json($customers);
-
-    const popupOptions = { className: 'noc-popup' };
-
-    olts.forEach(item => {
-        if(item.latitude && item.longitude) {
-            L.marker([item.latitude, item.longitude], {icon: createIcon('#3b82f6', '#60a5fa')})
-             .addTo(map)
-             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #3b82f6;"><b style="color:#60a5fa">OLT:</b> ' + item.name + '<br><b>IP:</b> ' + item.ip_address + '</div>', popupOptions);
-            bounds.push([item.latitude, item.longitude]);
-        }
-    });
-
-    odcs.forEach(item => {
-        if(item.latitude && item.longitude) {
-            L.marker([item.latitude, item.longitude], {icon: createIcon('#f97316', '#fb923c')})
-             .addTo(map)
-             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #f97316;"><b style="color:#fb923c">ODC:</b> ' + item.name + '<br><b>Kode:</b> ' + item.code + '</div>', popupOptions);
-            bounds.push([item.latitude, item.longitude]);
-            
-            // Draw line to OLT
-            if(item.olt_id) {
-                var olt = olts.find(o => o.id == item.olt_id);
-                if(olt && olt.latitude && olt.longitude) {
-                    L.polyline([
-                        [olt.latitude, olt.longitude],
-                        [item.latitude, item.longitude]
-                    ], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
-                }
-            }
-        }
-    });
-
-    odps.forEach(item => {
-        if(item.latitude && item.longitude) {
-            L.marker([item.latitude, item.longitude], {icon: createIcon('#10b981', '#34d399')})
-             .addTo(map)
-             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #10b981;"><b style="color:#34d399">ODP:</b> ' + item.name + '<br><b>Port Terpakai:</b> ' + (item.used_port_count||0) + '/' + (item.port_count||0) + '</div>', popupOptions);
-            bounds.push([item.latitude, item.longitude]);
-            
-            // Draw line to ODC
-            if(item.odc_id) {
-                var odc = odcs.find(o => o.id == item.odc_id);
-                if(odc && odc.latitude && odc.longitude) {
-                    L.polyline([
-                        [odc.latitude, odc.longitude],
-                        [item.latitude, item.longitude]
-                    ], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
-                }
-            }
-        }
-    });
-
-    customers.forEach(item => {
-        if(item.latitude && item.longitude) {
-            L.marker([item.latitude, item.longitude], {icon: createIcon('#d946ef', '#e879f9')})
-             .addTo(map)
-             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #d946ef;"><b style="color:#e879f9">Pelanggan:</b> ' + item.name + '<br><b>ID:</b> ' + item.customer_id + '</div>', popupOptions);
-            bounds.push([item.latitude, item.longitude]);
-            
-            // Draw line to ODP (assuming customer has odp_id from their onu)
-            if(item.odp_id) {
-                var odp = odps.find(o => o.id == item.odp_id);
-                if(odp && odp.latitude && odp.longitude) {
-                    var isOnline = item.is_online;
-                    var opts = isOnline ? 
-                        { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : 
-                        { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
-                        
-                    L.polyline([
-                        [odp.latitude, odp.longitude],
-                        [item.latitude, item.longitude]
-                    ], opts).addTo(linesLayer);
-                }
-            }
-        }
-    });
-
-    if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-    }
-});
-</script>
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" data-navigate-track></script>
+<script data-navigate-once>
+    let resellerMapInstance = null;
+
+    function initResellerMap() {
+        if (typeof L === 'undefined') {
+            setTimeout(initResellerMap, 100);
+            return;
+        }
+
+        const mapContainer = document.getElementById('reseller-map');
+        if (!mapContainer) return;
+
+        // Clear existing map instance if any (for wire:navigate)
+        if (resellerMapInstance) {
+            resellerMapInstance.remove();
+            resellerMapInstance = null;
+        }
+        
+        // Leaflet leaves a flag that prevents re-init, so clean it manually just in case
+        mapContainer._leaflet_id = null;
+
+        resellerMapInstance = L.map('reseller-map').setView([-6.2088, 106.8456], 12);
+        
+        var googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
+            maxZoom: 22,
+            subdomains:['mt0','mt1','mt2','mt3'],
+            attribution: 'Map data &copy; Google'
+        });
+        
+        var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        });
+
+        googleHybrid.addTo(resellerMapInstance);
+
+        var baseMaps = {
+            "Satelit (Google)": googleHybrid,
+            "Peta Standar (OSM)": osm
+        };
+        L.control.layers(baseMaps).addTo(resellerMapInstance);
+
+        const bounds = [];
+        const linesLayer = L.layerGroup().addTo(resellerMapInstance);
+
+        function createIcon(color, shadowColor) {
+            return L.divIcon({
+                className: 'custom-icon',
+                html: <div class="pulsing-icon" style="background-color:  + color + ; color:  + shadowColor + ; width: 14px; height: 14px;"></div>,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+        }
+
+        // We fetch data globally stored, or pass via script tags directly.
+        // But since this script runs once via data-navigate-once, we need a way to pass data on EVERY render!
+        // So we don't use data-navigate-once for the data part.
+    }
+</script>
+
+<script>
+    // This part runs every time the component renders
+    (function() {
+        const olts = @json($olts);
+        const odcs = @json($odcs);
+        const odps = @json($odps);
+        const customers = @json($customers);
+
+        function renderMapData() {
+            if (!resellerMapInstance || typeof L === 'undefined') {
+                setTimeout(renderMapData, 100);
+                return;
+            }
+            
+            // Clear all layers except tiles
+            resellerMapInstance.eachLayer((layer) => {
+                if (!layer._url) { // Not a tile layer
+                    resellerMapInstance.removeLayer(layer);
+                }
+            });
+            
+            const linesLayer = L.layerGroup().addTo(resellerMapInstance);
+            const bounds = [];
+
+            function createIcon(color, shadowColor) {
+                return L.divIcon({
+                    className: 'custom-icon',
+                    html: <div class="pulsing-icon" style="background-color:  + color + ; color:  + shadowColor + ; width: 14px; height: 14px;"></div>,
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+            }
+
+            const popupOptions = { className: 'noc-popup' };
+
+            olts.forEach(item => {
+                if(item.latitude && item.longitude) {
+                    L.marker([item.latitude, item.longitude], {icon: createIcon('#3b82f6', '#60a5fa')})
+                     .addTo(resellerMapInstance)
+                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #3b82f6;"><b style="color:#60a5fa">OLT:</b> ' + item.name + '<br><b>IP:</b> ' + item.ip_address + '</div>', popupOptions);
+                    bounds.push([item.latitude, item.longitude]);
+                }
+            });
+
+            odcs.forEach(item => {
+                if(item.latitude && item.longitude) {
+                    L.marker([item.latitude, item.longitude], {icon: createIcon('#f97316', '#fb923c')})
+                     .addTo(resellerMapInstance)
+                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #f97316;"><b style="color:#fb923c">ODC:</b> ' + item.name + '<br><b>Kode:</b> ' + item.code + '</div>', popupOptions);
+                    bounds.push([item.latitude, item.longitude]);
+                    
+                    if(item.olt_id) {
+                        var olt = olts.find(o => o.id == item.olt_id);
+                        if(olt && olt.latitude && olt.longitude) {
+                            L.polyline([
+                                [olt.latitude, olt.longitude],
+                                [item.latitude, item.longitude]
+                            ], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                        }
+                    }
+                }
+            });
+
+            odps.forEach(item => {
+                if(item.latitude && item.longitude) {
+                    L.marker([item.latitude, item.longitude], {icon: createIcon('#10b981', '#34d399')})
+                     .addTo(resellerMapInstance)
+                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #10b981;"><b style="color:#34d399">ODP:</b> ' + item.name + '<br><b>Port Terpakai:</b> ' + (item.used_port_count||0) + '/' + (item.port_count||0) + '</div>', popupOptions);
+                    bounds.push([item.latitude, item.longitude]);
+                    
+                    if(item.odc_id) {
+                        var odc = odcs.find(o => o.id == item.odc_id);
+                        if(odc && odc.latitude && odc.longitude) {
+                            L.polyline([
+                                [odc.latitude, odc.longitude],
+                                [item.latitude, item.longitude]
+                            ], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                        }
+                    }
+                }
+            });
+
+            customers.forEach(item => {
+                if(item.latitude && item.longitude) {
+                    L.marker([item.latitude, item.longitude], {icon: createIcon('#d946ef', '#e879f9')})
+                     .addTo(resellerMapInstance)
+                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #d946ef;"><b style="color:#e879f9">Pelanggan:</b> ' + item.name + '<br><b>ID:</b> ' + item.customer_id + '</div>', popupOptions);
+                    bounds.push([item.latitude, item.longitude]);
+                    
+                    if(item.odp_id) {
+                        var odp = odps.find(o => o.id == item.odp_id);
+                        if(odp && odp.latitude && odp.longitude) {
+                            var isOnline = item.is_online;
+                            var opts = isOnline ? 
+                                { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : 
+                                { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
+                                
+                            L.polyline([
+                                [odp.latitude, odp.longitude],
+                                [item.latitude, item.longitude]
+                            ], opts).addTo(linesLayer);
+                        }
+                    }
+                }
+            });
+
+            if (bounds.length > 0) {
+                resellerMapInstance.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        // Wait for page to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initResellerMap();
+                renderMapData();
+            });
+        } else {
+            initResellerMap();
+            renderMapData();
+        }
+
+        // Livewire navigation listener
+        document.addEventListener('livewire:navigated', () => {
+            initResellerMap();
+            renderMapData();
+        });
+    })();
+</script>
