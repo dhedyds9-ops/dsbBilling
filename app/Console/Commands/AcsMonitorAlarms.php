@@ -50,19 +50,32 @@ class AcsMonitorAlarms extends Command
                     $ip = $parsedUrl['host'] ?? null;
                 }
                 
-                $device = ACSDevice::withTrashed()->updateOrCreate(
-                    ['uuid' => $deviceId],
-                    [
-                        'serial_number' => $sn,
-                        'mac_address' => $mac,
-                        'ip_address' => $ip,
-                        'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
-                        'product_class' => $deviceData['_deviceId']['_ProductClass'] ?? null,
-                        'status' => 'online', // Initial assumption if we just got it
-                        'deleted_at' => null, // Restore if soft deleted
-                    ]
-                );
-                $localDevices->put($deviceId, $device);
+                try {
+                    $device = ACSDevice::withTrashed()->updateOrCreate(
+                        ['uuid' => $deviceId],
+                        [
+                            'serial_number' => $sn,
+                            'mac_address' => $mac,
+                            'ip_address' => $ip,
+                            'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
+                            'product_class' => $deviceData['_deviceId']['_ProductClass'] ?? null,
+                            'status' => 'online', // Initial assumption if we just got it
+                            'deleted_at' => null, // Restore if soft deleted
+                        ]
+                    );
+                    $localDevices->put($deviceId, $device);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->getCode() == 23000) {
+                        // Race condition with another process (like the Web UI) creating the device at the exact same time
+                        // We can just fetch it from the DB now
+                        $device = ACSDevice::withTrashed()->where('uuid', $deviceId)->first();
+                        if ($device) {
+                            $localDevices->put($deviceId, $device);
+                        }
+                    } else {
+                        throw $e;
+                    }
+                }
                 
                 try {
                     app(\App\Services\ISP\CorrelationService::class)->evaluateAcsDevice($device);
