@@ -42,14 +42,25 @@ class AcsMonitorAlarms extends Command
                     $mac = $deviceData['InternetGatewayDevice']['WANDevice']['1']['WANConnectionDevice']['1']['WANIPConnection']['1']['MACAddress']['_value'];
                 }
                 
-                $device = ACSDevice::create([
-                    'uuid' => $deviceId,
-                    'serial_number' => $sn,
-                    'mac_address' => $mac,
-                    'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
-                    'product_class' => $deviceData['_deviceId']['_ProductClass'] ?? null,
-                    'status' => 'online', // Initial assumption if we just got it
-                ]);
+                $ip = null;
+                $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
+                              $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
+                if ($connReqUrl) {
+                    $parsedUrl = parse_url($connReqUrl);
+                    $ip = $parsedUrl['host'] ?? null;
+                }
+                
+                $device = ACSDevice::updateOrCreate(
+                    ['uuid' => $deviceId],
+                    [
+                        'serial_number' => $sn,
+                        'mac_address' => $mac,
+                        'ip_address' => $ip,
+                        'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
+                        'product_class' => $deviceData['_deviceId']['_ProductClass'] ?? null,
+                        'status' => 'online', // Initial assumption if we just got it
+                    ]
+                );
                 $localDevices->put($deviceId, $device);
                 
                 try {
