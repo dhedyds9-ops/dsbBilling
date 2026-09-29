@@ -4,10 +4,7 @@
 @endsection
 
 <div class="h-[calc(100vh-100px)] w-full flex flex-col" style="min-height:600px;">
-    <!-- Sync CSS load to prevent invalidateSize issues -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <style>
         .map-smart-toolbar {
             display: flex; align-items: center; gap: 12px;
@@ -105,27 +102,9 @@
 (function() {
     let mapInstance = null;
 
-    function loadLeaflet(callback) {
-        if (typeof window.L === 'undefined') {
-            if (!document.getElementById('leaflet-js-reseller')) {
-                let script = document.createElement('script');
-                script.id = 'leaflet-js-reseller'; 
-                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                script.onload = () => { callback(); };
-                document.head.appendChild(script);
-            } else {
-                let check = setInterval(() => {
-                    if (typeof window.L !== 'undefined') { clearInterval(check); callback(); }
-                }, 100);
-            }
-        } else { 
-            callback(); 
-        }
-    }
-
     function buildMap() {
         const container = document.getElementById('reseller-map');
-        if (!container) return;
+        if (!container || typeof window.L === 'undefined') return;
 
         if (container._leaflet_id) { container._leaflet_id = null; }
         if (mapInstance) { mapInstance.remove(); mapInstance = null; }
@@ -143,7 +122,7 @@
             maxZoom: 20, attribution: '&copy; CARTO'
         });
 
-        // Default ke Satellite persis seperti NOC screenshot
+        // Default ke Satellite persis seperti NOC
         googleHybrid.addTo(mapInstance);
         window.L.control.layers({ 
             "Dark Mode": darkLayer, 
@@ -221,12 +200,10 @@
             mapInstance.fitBounds(bounds, { padding: [50, 50] }); 
         }
 
-        // Paksa render ulang ukuran agar Leaflet tidak memunculkan container 0x0
         setTimeout(() => {
             if(mapInstance) mapInstance.invalidateSize();
         }, 300);
 
-        // Fullscreen logic
         document.getElementById('btnFullscreen').onclick = function() {
             var mapContainer = document.getElementById('reseller-map').parentElement;
             if (!document.fullscreenElement) {
@@ -237,10 +214,9 @@
         };
     }
 
-    function initAll() { loadLeaflet(buildMap); }
-
-    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initAll); } 
-    else { initAll(); }
-    document.addEventListener('livewire:navigated', initAll);
+    // Leaflet global sekarang sudah ada dari layouts.enterprise!
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', buildMap); } 
+    else { buildMap(); }
+    document.addEventListener('livewire:navigated', buildMap);
 })();
 </script>
