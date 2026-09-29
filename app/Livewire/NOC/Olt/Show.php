@@ -127,12 +127,8 @@ class Show extends AdminComponent
     public function syncOlt(): void
     {
         try {
-            $result = app(\App\Services\ISP\OltPollingService::class)->pollOlt($this->olt);
-            if ($result['success']) {
-                $this->dispatch('toast', type: 'success', message: 'OLT data synced successfully.');
-            } else {
-                $this->dispatch('toast', type: 'error', message: 'Sync failed: ' . ($result['error'] ?? 'Unknown error'));
-            }
+            \App\Jobs\ISP\PollOltJob::dispatch($this->olt->id);
+            $this->dispatch('toast', type: 'success', message: 'Sinkronisasi OLT sedang berjalan di latar belakang.');
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
         }

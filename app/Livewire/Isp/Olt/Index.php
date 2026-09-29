@@ -302,19 +302,12 @@ class Index extends BaseNetworkComponent
         Log::info(__METHOD__);
         try {
             $olt = OltModel::findOrFail($id);
-            $service = app(\App\Services\ISP\OltPollingService::class);
-            $result = $service->pollOlt($olt);
+            \App\Jobs\ISP\PollOltJob::dispatch($olt->id);
             
-            if ($result['success'] ?? false) {
-                $msg = 'Berhasil sync OLT. ONU Online: ' . ($result['onu_online'] ?? 0);
-                session()->flash('success', $msg);
-                $this->dispatch('toast', type: 'success', message: $msg);
-            } else {
-                $err = $result['error'] ?? 'Gagal menghubungi OLT (SNMP)';
-                session()->flash('error', 'Sync gagal: ' . $err);
-                $this->dispatch('toast', type: 'error', message: 'Sync gagal: ' . $err);
-            }
-        } catch (Throwable $e) {
+            $msg = 'Sinkronisasi OLT ' . $olt->name . ' sedang berjalan di latar belakang.';
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
+        } catch (\Throwable $e) {
             Log::error('rowSync failed', ['id' => $id, 'err' => $e->getMessage()]);
             $this->dispatch('toast', type: 'error', message: 'Sync error: ' . $e->getMessage());
         }

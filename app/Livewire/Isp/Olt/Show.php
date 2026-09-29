@@ -48,13 +48,10 @@ class Show extends AdminComponent
     public function syncOlt()
     {
         try {
-            $service = app(\App\Services\ISP\OltPollingService::class);
-            $service->pollOlt($this->olt);
-            $this->olt->refresh();
-            $this->olt->load(['ponPorts', 'onus']);
-            session()->flash('success', 'Berhasil sinkronisasi dengan OLT.');
+            \App\Jobs\ISP\PollOltJob::dispatch($this->olt->id);
+            session()->flash('success', 'Sinkronisasi dengan OLT sedang berjalan di latar belakang.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal sinkronisasi: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memulai sinkronisasi: ' . $e->getMessage());
         }
     }
 

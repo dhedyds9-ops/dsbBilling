@@ -31,9 +31,12 @@ class Index extends AdminComponent
     public function syncAll(): void
     {
         try {
-            $service = app(\App\Services\ISP\OltPollingService::class);
-            $results = $service->pollAll();
-            $this->dispatch('toast', type: 'success', message: "Sync complete: {$results['success']} success, {$results['failed']} failed.");
+            $count = 0;
+            foreach (\App\Models\ISP\Olt::where('status', 'active')->get() as $olt) {
+                \App\Jobs\ISP\PollOltJob::dispatch($olt->id);
+                $count++;
+            }
+            $this->dispatch('toast', type: 'success', message: "Memulai sinkronisasi untuk {$count} OLT di latar belakang.");
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Sync failed: ' . $e->getMessage());
         }
