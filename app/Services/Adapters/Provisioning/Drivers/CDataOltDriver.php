@@ -137,13 +137,14 @@ class CDataOltDriver extends BaseOltDriver
                                 $ifIndex = (int)$m[1];
                                 $pPort1 = (($ifIndex >> 12) & 0xFF) - 128;
                                 $pPort2 = ($ifIndex >> 8) & 0xFF;
+                                $pPort3 = $pPort1 + 1;
+                                $pPort4 = $pPort2 + 1;
                                 $oId = $ifIndex & 0xFFF;
                                 
-                                if ($pPort1 >= 0 && $pPort1 <= 64) {
-                                    $this->macsCache[$pPort1][$oId] = $val;
-                                }
-                                if ($pPort2 >= 0 && $pPort2 <= 64) {
-                                    $this->macsCache[$pPort2][$oId] = $val;
+                                foreach ([$pPort1, $pPort2, $pPort3, $pPort4] as $p) {
+                                    if ($p >= 0 && $p <= 64) {
+                                        $this->macsCache[$p][$oId] = $val;
+                                    }
                                 }
                             }
                         }
@@ -343,13 +344,14 @@ class CDataOltDriver extends BaseOltDriver
                         $ifIndex = (int)$m[1];
                         $pPort1 = (($ifIndex >> 12) & 0xFF) - 128;
                         $pPort2 = ($ifIndex >> 8) & 0xFF;
+                        $pPort3 = $pPort1 + 1; // Zero-indexed offset
+                        $pPort4 = $pPort2 + 1; // Zero-indexed offset
                         $oId = $ifIndex & 0xFFF;
                         
-                        if ($pPort1 >= 0 && $pPort1 <= 64) {
-                            $this->macsCache[$pPort1][$oId] = $val;
-                        }
-                        if ($pPort2 >= 0 && $pPort2 <= 64) {
-                            $this->macsCache[$pPort2][$oId] = $val;
+                        foreach ([$pPort1, $pPort2, $pPort3, $pPort4] as $p) {
+                            if ($p >= 0 && $p <= 64) {
+                                $this->macsCache[$p][$oId] = $val;
+                            }
                         }
                     }
                 }
