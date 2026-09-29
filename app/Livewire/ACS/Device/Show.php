@@ -366,10 +366,23 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase")
                 ?? '';
 
-            $this->wifiSecurity = 
+            $rawSecurity = 
                 $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType")
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled")
-                ?? 'WPA2PSK';
+                ?? '';
+            
+            if (in_array($rawSecurity, ['11i', 'WPA2-Personal'])) {
+                $this->wifiSecurity = 'WPA2PSK';
+            } elseif (in_array($rawSecurity, ['WPAand11i', 'WPA-WPA2-Personal', 'WPA-Personal', 'WPA'])) {
+                $this->wifiSecurity = 'WPAPSKWPA2PSK';
+            } elseif (in_array($rawSecurity, ['Basic', 'WEP-128', 'WEP-64'])) {
+                $this->wifiSecurity = 'Basic';
+            } elseif (in_array($rawSecurity, ['None', 'Open'])) {
+                $this->wifiSecurity = 'None';
+            } else {
+                // Default ke WPA2PSK jika format tidak dikenal namun ada nilainya (misal 'WPA3', dll)
+                $this->wifiSecurity = $rawSecurity ? 'WPA2PSK' : 'None';
+            }
             
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengambil data WiFi saat ini: ' . $e->getMessage());
