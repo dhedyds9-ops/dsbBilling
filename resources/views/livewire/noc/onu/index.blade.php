@@ -78,7 +78,7 @@
                 @endphp
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover">
                     <td class="p-3 noc-mono noc-text font-medium">{{ $onu->serial_number }}</td>
-                    <td class="p-3 noc-mono noc-text-secondary">{{ $onu->mac_address ?? '-' }}</td>
+                    <td class="p-3 noc-mono noc-text-secondary">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
                     <td class="p-3 noc-mono noc-text-secondary">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
                     <td class="p-3 noc-text-secondary">{{ $onu->name ?? '-' }}</td>
                     <td class="p-3 noc-muted">

@@ -83,7 +83,7 @@
                 @endphp
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors ">
                     <td class="p-3 font-mono text-slate-800 dark:text-slate-200 font-medium">{{ $onu->serial_number }}</td>
-                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->mac_address ?? '-' }}</td>
+                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
                     <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
                     <td class="p-3 text-slate-600 dark:text-slate-300">{{ $onu->name ?? '-' }}</td>
                     <td class="p-3 text-slate-500 dark:text-slate-400">

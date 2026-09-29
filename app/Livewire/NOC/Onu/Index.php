@@ -135,7 +135,7 @@ class Index extends AdminComponent
                 'ponPort:id,name,port_number',
                 'customerService:id,onu_id,customer_id',
                 'customerService.customer:id,name,code',
-                'acsDevice:id,onu_id,serial_number,ip_address'
+                'acsDevice:id,onu_id,serial_number,ip_address,mac_address'
             ])
             ->select([
                 'id', 'name', 'serial_number', 'mac_address', 'status',
