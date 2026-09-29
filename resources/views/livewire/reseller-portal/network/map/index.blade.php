@@ -3,11 +3,7 @@
     <span class="text-lg text-[#00e5ff] font-bold">Peta Topologi (Reseller)</span>
 @endsection
 
-@push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-@endpush
-
-<div class="space-y-5 pb-10" x-data="resellerMap()">
+<div class="space-y-5 pb-10">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         .noc-map-container { background-color: #0a0e1a; border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); border-radius: 0.75rem; overflow: hidden; display: flex; flex-direction: column; }
@@ -48,132 +44,146 @@
     </div>
 </div>
 
-@script
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" data-navigate-track></script>
 <script>
-    Alpine.data('resellerMap', () => ({
-        map: null,
-        olts: @json($olts),
-        odcs: @json($odcs),
-        odps: @json($odps),
-        customers: @json($customers),
-        
-        init() {
-            // Kita gunakan interval untuk menunggu Leaflet ter-load dari CDN
-            const checkL = setInterval(() => {
-                if (typeof window.L !== 'undefined') {
-                    clearInterval(checkL);
-                    this.initMap();
-                }
-            }, 100);
-        },
-        
-        initMap() {
-            const container = document.getElementById('reseller-map');
-            if (!container) return;
-            
-            // Bersihkan instansiasi sebelumnya jika ada (SPA navigation)
-            if (container._leaflet_id) {
-                container._leaflet_id = null;
-            }
-            if (this.map) {
-                this.map.remove();
-            }
-            
-            this.map = window.L.map('reseller-map').setView([-6.2088, 106.8456], 12);
-            
-            var googleHybrid = window.L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
-                maxZoom: 22,
-                subdomains:['mt0','mt1','mt2','mt3'],
-                attribution: '&copy; Google'
-            });
-            var osm = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
-            });
+(function() {
+    let mapInstance = null;
+    let initInterval = null;
 
-            googleHybrid.addTo(this.map);
-            window.L.control.layers({ "Satelit (Google)": googleHybrid, "Peta Standar (OSM)": osm }).addTo(this.map);
+    function buildMap() {
+        const container = document.getElementById('reseller-map');
+        if (!container) return;
 
-            const linesLayer = window.L.layerGroup().addTo(this.map);
-            const bounds = [];
-
-            function createIcon(color, shadowColor) {
-                return window.L.divIcon({
-                    className: 'custom-icon',
-                    html: <div class="pulsing-icon" style="background-color:  + color + ; color:  + shadowColor + ; width: 14px; height: 14px;"></div>,
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
-                });
-            }
-
-            const popupOptions = { className: 'noc-popup' };
-
-            this.olts.forEach(item => {
-                if(item.latitude && item.longitude) {
-                    window.L.marker([item.latitude, item.longitude], {icon: createIcon('#3b82f6', '#60a5fa')})
-                     .addTo(this.map)
-                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #3b82f6;"><b style="color:#60a5fa">OLT:</b> ' + item.name + '<br><b>IP:</b> ' + (item.ip_address||'-') + '</div>', popupOptions);
-                    bounds.push([item.latitude, item.longitude]);
-                }
-            });
-
-            this.odcs.forEach(item => {
-                if(item.latitude && item.longitude) {
-                    window.L.marker([item.latitude, item.longitude], {icon: createIcon('#f97316', '#fb923c')})
-                     .addTo(this.map)
-                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #f97316;"><b style="color:#fb923c">ODC:</b> ' + item.name + '<br><b>Kode:</b> ' + (item.code||'-') + '</div>', popupOptions);
-                    bounds.push([item.latitude, item.longitude]);
-                    
-                    if(item.olt_id) {
-                        var olt = this.olts.find(o => o.id == item.olt_id);
-                        if(olt && olt.latitude && olt.longitude) {
-                            window.L.polyline([[olt.latitude, olt.longitude], [item.latitude, item.longitude]], 
-                                { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
-                        }
-                    }
-                }
-            });
-
-            this.odps.forEach(item => {
-                if(item.latitude && item.longitude) {
-                    window.L.marker([item.latitude, item.longitude], {icon: createIcon('#10b981', '#34d399')})
-                     .addTo(this.map)
-                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #10b981;"><b style="color:#34d399">ODP:</b> ' + item.name + '<br><b>Port Terpakai:</b> ' + (item.used_port_count||0) + '/' + (item.port_count||0) + '</div>', popupOptions);
-                    bounds.push([item.latitude, item.longitude]);
-                    
-                    if(item.odc_id) {
-                        var odc = this.odcs.find(o => o.id == item.odc_id);
-                        if(odc && odc.latitude && odc.longitude) {
-                            window.L.polyline([[odc.latitude, odc.longitude], [item.latitude, item.longitude]], 
-                                { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
-                        }
-                    }
-                }
-            });
-
-            this.customers.forEach(item => {
-                if(item.latitude && item.longitude) {
-                    window.L.marker([item.latitude, item.longitude], {icon: createIcon('#d946ef', '#e879f9')})
-                     .addTo(this.map)
-                     .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #d946ef;"><b style="color:#e879f9">Pelanggan:</b> ' + item.name + '<br><b>ID:</b> ' + (item.customer_id||'-') + '</div>', popupOptions);
-                    bounds.push([item.latitude, item.longitude]);
-                    
-                    if(item.odp_id) {
-                        var odp = this.odps.find(o => o.id == item.odp_id);
-                        if(odp && odp.latitude && odp.longitude) {
-                            var opts = item.is_online ? 
-                                { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : 
-                                { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
-                            window.L.polyline([[odp.latitude, odp.longitude], [item.latitude, item.longitude]], opts).addTo(linesLayer);
-                        }
-                    }
-                }
-            });
-
-            if (bounds.length > 0) {
-                this.map.fitBounds(bounds, { padding: [50, 50] });
-            }
+        // Leaflet belum terload dari CDN?
+        if (typeof window.L === 'undefined') {
+            if (!initInterval) initInterval = setInterval(buildMap, 200);
+            return;
         }
-    }));
+        
+        if (initInterval) {
+            clearInterval(initInterval);
+            initInterval = null;
+        }
+
+        // Bersihkan map lama jika SPA back/forward
+        if (container._leaflet_id) {
+            container._leaflet_id = null;
+        }
+        if (mapInstance) {
+            mapInstance.remove();
+            mapInstance = null;
+        }
+        
+        container.innerHTML = "";
+
+        mapInstance = window.L.map('reseller-map').setView([-6.2088, 106.8456], 12);
+        
+        var googleHybrid = window.L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
+            maxZoom: 22,
+            subdomains:['mt0','mt1','mt2','mt3'],
+            attribution: '&copy; Google'
+        });
+        var osm = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        });
+
+        googleHybrid.addTo(mapInstance);
+        window.L.control.layers({ "Satelit (Google)": googleHybrid, "Peta Standar (OSM)": osm }).addTo(mapInstance);
+
+        const linesLayer = window.L.layerGroup().addTo(mapInstance);
+        const bounds = [];
+
+        function createIcon(color, shadowColor) {
+            return window.L.divIcon({
+                className: 'custom-icon',
+                html: <div class="pulsing-icon" style="background-color:  + color + ; color:  + shadowColor + ; width: 14px; height: 14px;"></div>,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+        }
+
+        const popupOptions = { className: 'noc-popup' };
+        
+        const olts = @json($olts);
+        const odcs = @json($odcs);
+        const odps = @json($odps);
+        const customers = @json($customers);
+
+        olts.forEach(item => {
+            if(item.latitude && item.longitude) {
+                window.L.marker([item.latitude, item.longitude], {icon: createIcon('#3b82f6', '#60a5fa')})
+                 .addTo(mapInstance)
+                 .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #3b82f6;"><b style="color:#60a5fa">OLT:</b> ' + item.name + '<br><b>IP:</b> ' + (item.ip_address||'-') + '</div>', popupOptions);
+                bounds.push([item.latitude, item.longitude]);
+            }
+        });
+
+        odcs.forEach(item => {
+            if(item.latitude && item.longitude) {
+                window.L.marker([item.latitude, item.longitude], {icon: createIcon('#f97316', '#fb923c')})
+                 .addTo(mapInstance)
+                 .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #f97316;"><b style="color:#fb923c">ODC:</b> ' + item.name + '<br><b>Kode:</b> ' + (item.code||'-') + '</div>', popupOptions);
+                bounds.push([item.latitude, item.longitude]);
+                
+                if(item.olt_id) {
+                    var olt = olts.find(o => o.id == item.olt_id);
+                    if(olt && olt.latitude && olt.longitude) {
+                        window.L.polyline([[olt.latitude, olt.longitude], [item.latitude, item.longitude]], 
+                            { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                    }
+                }
+            }
+        });
+
+        odps.forEach(item => {
+            if(item.latitude && item.longitude) {
+                window.L.marker([item.latitude, item.longitude], {icon: createIcon('#10b981', '#34d399')})
+                 .addTo(mapInstance)
+                 .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #10b981;"><b style="color:#34d399">ODP:</b> ' + item.name + '<br><b>Port Terpakai:</b> ' + (item.used_port_count||0) + '/' + (item.port_count||0) + '</div>', popupOptions);
+                bounds.push([item.latitude, item.longitude]);
+                
+                if(item.odc_id) {
+                    var odc = odcs.find(o => o.id == item.odc_id);
+                    if(odc && odc.latitude && odc.longitude) {
+                        window.L.polyline([[odc.latitude, odc.longitude], [item.latitude, item.longitude]], 
+                            { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                    }
+                }
+            }
+        });
+
+        customers.forEach(item => {
+            if(item.latitude && item.longitude) {
+                window.L.marker([item.latitude, item.longitude], {icon: createIcon('#d946ef', '#e879f9')})
+                 .addTo(mapInstance)
+                 .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #d946ef;"><b style="color:#e879f9">Pelanggan:</b> ' + item.name + '<br><b>ID:</b> ' + (item.customer_id||'-') + '</div>', popupOptions);
+                bounds.push([item.latitude, item.longitude]);
+                
+                if(item.odp_id) {
+                    var odp = odps.find(o => o.id == item.odp_id);
+                    if(odp && odp.latitude && odp.longitude) {
+                        var opts = item.is_online ? 
+                            { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : 
+                            { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
+                        window.L.polyline([[odp.latitude, odp.longitude], [item.latitude, item.longitude]], opts).addTo(linesLayer);
+                    }
+                }
+            }
+        });
+
+        if (bounds.length > 0) {
+            mapInstance.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', buildMap);
+    } else {
+        buildMap();
+    }
+    
+    document.addEventListener('livewire:navigated', buildMap);
+
+})();
 </script>
-@endscript
