@@ -4,7 +4,6 @@
 @endsection
 
 <div class="space-y-5 pb-10">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         .noc-map-container { background-color: #0a0e1a; border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); border-radius: 0.75rem; overflow: hidden; display: flex; flex-direction: column; }
         .noc-map-header { background-color: rgba(10, 14, 26, 0.8); border-bottom: 1px solid rgba(0, 229, 255, 0.2); color: #00e5ff; }
@@ -35,7 +34,7 @@
             <div class="legend-item text-emerald-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span> ODP ({{ count($odps) }})</div>
             <div class="legend-item text-fuchsia-400"><span class="w-2.5 h-2.5 rounded-full bg-fuchsia-500 shadow-[0_0_8px_#d946ef]"></span> Pelanggan ({{ count($customers) }})</div>
             <div style="flex:1;"></div>
-            <button type="button" onclick="location.reload()" class="p-1.5 rounded bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition" title="Refresh">
+            <button type="button" onclick="location.reload()" class="p-1.5 rounded bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition" title="Refresh (Jika peta kosong)">
                 <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">refresh</span>
             </button>
         </div>
@@ -44,26 +43,54 @@
     </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" data-navigate-track></script>
 <script>
 (function() {
     let mapInstance = null;
-    let initInterval = null;
+
+    function loadLeaflet(callback) {
+        let cssLoaded = false;
+        let jsLoaded = false;
+
+        // Cek dan Load CSS
+        if (!document.getElementById('leaflet-css')) {
+            let link = document.createElement('link');
+            link.id = 'leaflet-css';
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(link);
+            cssLoaded = true;
+        } else {
+            cssLoaded = true;
+        }
+
+        // Cek dan Load JS
+        if (typeof window.L === 'undefined') {
+            if (!document.getElementById('leaflet-js')) {
+                let script = document.createElement('script');
+                script.id = 'leaflet-js';
+                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                script.onload = () => {
+                    jsLoaded = true;
+                    if (cssLoaded && jsLoaded) callback();
+                };
+                document.head.appendChild(script);
+            } else {
+                // Skrip sedang di-load oleh navigasi sebelumnya
+                let check = setInterval(() => {
+                    if (typeof window.L !== 'undefined') {
+                        clearInterval(check);
+                        callback();
+                    }
+                }, 100);
+            }
+        } else {
+            callback();
+        }
+    }
 
     function buildMap() {
         const container = document.getElementById('reseller-map');
         if (!container) return;
-
-        // Leaflet belum terload dari CDN?
-        if (typeof window.L === 'undefined') {
-            if (!initInterval) initInterval = setInterval(buildMap, 200);
-            return;
-        }
-        
-        if (initInterval) {
-            clearInterval(initInterval);
-            initInterval = null;
-        }
 
         // Bersihkan map lama jika SPA back/forward
         if (container._leaflet_id) {
@@ -177,13 +204,17 @@
         }
     }
 
+    function initAll() {
+        loadLeaflet(buildMap);
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', buildMap);
+        document.addEventListener('DOMContentLoaded', initAll);
     } else {
-        buildMap();
+        initAll();
     }
     
-    document.addEventListener('livewire:navigated', buildMap);
+    document.addEventListener('livewire:navigated', initAll);
 
 })();
 </script>
