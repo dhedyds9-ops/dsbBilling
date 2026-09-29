@@ -4,7 +4,10 @@
 @endsection
 
 <div class="h-[calc(100vh-100px)] w-full flex flex-col" style="min-height:600px;">
+    <!-- Sync CSS load to prevent invalidateSize issues -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         .map-smart-toolbar {
             display: flex; align-items: center; gap: 12px;
@@ -103,28 +106,21 @@
     let mapInstance = null;
 
     function loadLeaflet(callback) {
-        let cssLoaded = false;
-        let jsLoaded = false;
-
-        if (!document.getElementById('leaflet-css')) {
-            let link = document.createElement('link');
-            link.id = 'leaflet-css'; link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-            document.head.appendChild(link);
-            cssLoaded = true;
-        } else { cssLoaded = true; }
-
         if (typeof window.L === 'undefined') {
-            if (!document.getElementById('leaflet-js')) {
+            if (!document.getElementById('leaflet-js-reseller')) {
                 let script = document.createElement('script');
-                script.id = 'leaflet-js'; script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                script.onload = () => { jsLoaded = true; if (cssLoaded && jsLoaded) callback(); };
+                script.id = 'leaflet-js-reseller'; 
+                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                script.onload = () => { callback(); };
                 document.head.appendChild(script);
             } else {
                 let check = setInterval(() => {
                     if (typeof window.L !== 'undefined') { clearInterval(check); callback(); }
                 }, 100);
             }
-        } else { callback(); }
+        } else { 
+            callback(); 
+        }
     }
 
     function buildMap() {
@@ -143,9 +139,17 @@
         var osm = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19, attribution: '&copy; OpenStreetMap'
         });
+        var darkLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20, attribution: '&copy; CARTO'
+        });
 
+        // Default ke Satellite persis seperti NOC screenshot
         googleHybrid.addTo(mapInstance);
-        window.L.control.layers({ "Satelit (Google)": googleHybrid, "Peta Standar (OSM)": osm }).addTo(mapInstance);
+        window.L.control.layers({ 
+            "Dark Mode": darkLayer, 
+            "Satellite (Google)": googleHybrid, 
+            "Street (OSM)": osm 
+        }).addTo(mapInstance);
 
         const linesLayer = window.L.layerGroup().addTo(mapInstance);
         const bounds = [];
@@ -213,7 +217,14 @@
             }
         });
 
-        if (bounds.length > 0) { mapInstance.fitBounds(bounds, { padding: [50, 50] }); }
+        if (bounds.length > 0) { 
+            mapInstance.fitBounds(bounds, { padding: [50, 50] }); 
+        }
+
+        // Paksa render ulang ukuran agar Leaflet tidak memunculkan container 0x0
+        setTimeout(() => {
+            if(mapInstance) mapInstance.invalidateSize();
+        }, 300);
 
         // Fullscreen logic
         document.getElementById('btnFullscreen').onclick = function() {
