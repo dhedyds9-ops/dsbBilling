@@ -261,7 +261,7 @@
                     </div>
                 </div></div>
                 <div class="px-5 py-3 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
-                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-sm font-medium {{ $isNocLayout ? 'noc-text noc-panel-bg noc-border' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:{{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }}' }} rounded-lg">Batal</button>
+                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-sm font-medium {{ $isNocLayout ? 'noc-text noc-panel-bg noc-border hover:noc-panel-bg hover:noc-text' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/50' }} rounded-lg">Batal</button>
                     <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span> Kirim ke Modem
                     </button>
