@@ -13,13 +13,15 @@
         box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
         border-radius: 0.75rem;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
     .noc-map-header {
         background-color: rgba(10, 14, 26, 0.8);
         border-bottom: 1px solid rgba(0, 229, 255, 0.2);
         color: #00e5ff;
     }
-    #reseller-map { height: 75vh; width: 100%; z-index: 1; background-color: #0a0e1a; }
+    #reseller-map { height: calc(100vh - 200px); min-height: 500px; width: 100%; z-index: 1; background-color: #0a0e1a; }
     
     .map-smart-toolbar {
         background: rgba(17, 24, 39, 0.95);
@@ -47,11 +49,23 @@
         border: 2px solid white;
         box-shadow: 0 0 10px currentColor;
     }
+    
+    /* Connection lines styling */
+    .connection-line {
+        filter: drop-shadow(0 0 4px currentColor);
+    }
+    .connection-online {
+        animation: dash 30s linear infinite;
+        filter: drop-shadow(0 0 6px rgba(0, 242, 255, 0.8));
+    }
+    @keyframes dash {
+        to { stroke-dashoffset: -1000; }
+    }
 </style>
 @endpush
 
 <div class="space-y-5 pb-10">
-    <div class="noc-map-container flex flex-col">
+    <div class="noc-map-container">
         <div class="px-4 py-3 noc-map-header flex justify-between items-center">
             <h5 class="font-bold m-0 flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate" style="font-size:20px" translate="no">satellite_alt</span>
@@ -111,8 +125,8 @@ document.addEventListener('livewire:initialized', function () {
     L.control.layers(baseMaps).addTo(map);
 
     const bounds = [];
+    const linesLayer = L.layerGroup().addTo(map);
 
-    // Fungsi helper untuk icon menyala (glow)
     function createIcon(color, shadowColor) {
         return L.divIcon({
             className: 'custom-icon',
@@ -127,35 +141,80 @@ document.addEventListener('livewire:initialized', function () {
     const odps = @json($odps);
     const customers = @json($customers);
 
-    // Popup Style NOC
     const popupOptions = { className: 'noc-popup' };
 
     olts.forEach(item => {
-        L.marker([item.latitude, item.longitude], {icon: createIcon('#3b82f6', '#60a5fa')})
-         .addTo(map)
-         .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #3b82f6;"><b style="color:#60a5fa">OLT:</b> ' + item.name + '<br><b>IP:</b> ' + item.ip_address + '</div>', popupOptions);
-        bounds.push([item.latitude, item.longitude]);
+        if(item.latitude && item.longitude) {
+            L.marker([item.latitude, item.longitude], {icon: createIcon('#3b82f6', '#60a5fa')})
+             .addTo(map)
+             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #3b82f6;"><b style="color:#60a5fa">OLT:</b> ' + item.name + '<br><b>IP:</b> ' + item.ip_address + '</div>', popupOptions);
+            bounds.push([item.latitude, item.longitude]);
+        }
     });
 
     odcs.forEach(item => {
-        L.marker([item.latitude, item.longitude], {icon: createIcon('#f97316', '#fb923c')})
-         .addTo(map)
-         .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #f97316;"><b style="color:#fb923c">ODC:</b> ' + item.name + '<br><b>Kode:</b> ' + item.code + '</div>', popupOptions);
-        bounds.push([item.latitude, item.longitude]);
+        if(item.latitude && item.longitude) {
+            L.marker([item.latitude, item.longitude], {icon: createIcon('#f97316', '#fb923c')})
+             .addTo(map)
+             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #f97316;"><b style="color:#fb923c">ODC:</b> ' + item.name + '<br><b>Kode:</b> ' + item.code + '</div>', popupOptions);
+            bounds.push([item.latitude, item.longitude]);
+            
+            // Draw line to OLT
+            if(item.olt_id) {
+                var olt = olts.find(o => o.id == item.olt_id);
+                if(olt && olt.latitude && olt.longitude) {
+                    L.polyline([
+                        [olt.latitude, olt.longitude],
+                        [item.latitude, item.longitude]
+                    ], { color: '#6f42c1', weight: 3, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                }
+            }
+        }
     });
 
     odps.forEach(item => {
-        L.marker([item.latitude, item.longitude], {icon: createIcon('#10b981', '#34d399')})
-         .addTo(map)
-         .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #10b981;"><b style="color:#34d399">ODP:</b> ' + item.name + '<br><b>Port Terpakai:</b> ' + (item.used_port_count||0) + '/' + (item.port_count||0) + '</div>', popupOptions);
-        bounds.push([item.latitude, item.longitude]);
+        if(item.latitude && item.longitude) {
+            L.marker([item.latitude, item.longitude], {icon: createIcon('#10b981', '#34d399')})
+             .addTo(map)
+             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #10b981;"><b style="color:#34d399">ODP:</b> ' + item.name + '<br><b>Port Terpakai:</b> ' + (item.used_port_count||0) + '/' + (item.port_count||0) + '</div>', popupOptions);
+            bounds.push([item.latitude, item.longitude]);
+            
+            // Draw line to ODC
+            if(item.odc_id) {
+                var odc = odcs.find(o => o.id == item.odc_id);
+                if(odc && odc.latitude && odc.longitude) {
+                    L.polyline([
+                        [odc.latitude, odc.longitude],
+                        [item.latitude, item.longitude]
+                    ], { color: '#fd7e14', weight: 2, opacity: 0.8, className: 'connection-line' }).addTo(linesLayer);
+                }
+            }
+        }
     });
 
     customers.forEach(item => {
-        L.marker([item.latitude, item.longitude], {icon: createIcon('#d946ef', '#e879f9')})
-         .addTo(map)
-         .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #d946ef;"><b style="color:#e879f9">Pelanggan:</b> ' + item.name + '<br><b>ID:</b> ' + item.customer_id + '</div>', popupOptions);
-        bounds.push([item.latitude, item.longitude]);
+        if(item.latitude && item.longitude) {
+            L.marker([item.latitude, item.longitude], {icon: createIcon('#d946ef', '#e879f9')})
+             .addTo(map)
+             .bindPopup('<div style="background:#111827;color:#fff;padding:8px;border-radius:6px;border:1px solid #d946ef;"><b style="color:#e879f9">Pelanggan:</b> ' + item.name + '<br><b>ID:</b> ' + item.customer_id + '</div>', popupOptions);
+            bounds.push([item.latitude, item.longitude]);
+            
+            // Draw line to ODP (assuming customer has odp_id from their onu)
+            if(item.odp_id) {
+                var odp = odps.find(o => o.id == item.odp_id);
+                if(odp && odp.latitude && odp.longitude) {
+                    var isOnline = item.is_online;
+                    var opts = isOnline ? 
+                        { color: '#00f2fff3', weight: 3, opacity: 1.0, dashArray: '4, 8', className: 'connection-online' } : 
+                        { color: '#6b7280', weight: 2, opacity: 0.5, dashArray: '2, 6' };
+                        
+                    L.polyline([
+                        [odp.latitude, odp.longitude],
+                        [item.latitude, item.longitude]
+                    ], opts).addTo(linesLayer);
+                }
+            }
+        }
     });
 
     if (bounds.length > 0) {

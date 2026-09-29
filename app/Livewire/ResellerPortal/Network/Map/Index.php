@@ -23,27 +23,34 @@ class Index extends AdminComponent
 
     public function render()
     {
-        // Ambil data yang memiliki latitude & longitude
-        $olts = Olt::forReseller()->whereNotNull('latitude')->whereNotNull('longitude')->get();
-        $odcs = Odc::forReseller()->whereNotNull('latitude')->whereNotNull('longitude')->get();
-        $odps = Odp::forReseller()->whereNotNull('latitude')->whereNotNull('longitude')->get();
-        
-        // Ambil customer yang terikat ke Reseller
         $user = auth()->user();
-        $customers = Customer::whereNotNull('latitude')
+        $ownerId = $user->hasRole('reseller') ? $user->getEffectiveResellerId() : null;
+
+        $customers = Customer::with(['customerServices.onu'])
+            ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->where(function($q) use ($user) {
-                if ($user->hasRole('reseller')) {
-                    $ownerId = $user->getEffectiveResellerId();
+            ->where(function($q) use ($ownerId) {
+                if ($ownerId) {
                     $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
                 }
-            })->get();
+            })
+            ->get()
+            ->map(function ($c) {
+                $service = $c->customerServices->first();
+                $onu = $service?->onu;
+                
+                // Inject properties expected by map JS
+                $c->is_online = $service?->status === 'active';
+                $c->odp_id = $onu?->odp_id;
+                
+                return $c;
+            });
 
         return view('livewire.reseller-portal.network.map.index', [
-            'olts' => $olts,
-            'odcs' => $odcs,
-            'odps' => $odps,
             'customers' => $customers,
+            'odps' => Odp::forReseller()->get(),
+            'odcs' => Odc::forReseller()->get(),
+            'olts' => Olt::forReseller()->get(),
         ]);
     }
 }
