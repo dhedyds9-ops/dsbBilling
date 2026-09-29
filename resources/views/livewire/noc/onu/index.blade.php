@@ -51,6 +51,7 @@
             <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <tr class="text-slate-500 dark:text-slate-400">
                     <th class="p-3 font-semibold" wire:click="sort('serial_number')">Serial {!! $sortField === 'serial_number' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
+                    <th class="p-3 font-semibold" wire:click="sort('mac_address')">MAC {!! $sortField === 'mac_address' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('name')">Name {!! $sortField === 'name' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">OLT / PON</th>
                     <th class="p-3 font-semibold">Pelanggan</th>
@@ -76,13 +77,14 @@
                 @endphp
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover">
                     <td class="p-3 noc-mono noc-text font-medium">{{ $onu->serial_number }}</td>
+                    <td class="p-3 noc-mono noc-text-secondary">{{ $onu->mac_address ?? '-' }}</td>
                     <td class="p-3 noc-text-secondary">{{ $onu->name ?? '-' }}</td>
                     <td class="p-3 noc-muted">
-                        <span class="noc-muted">{{ $onu->olt->name ?? '-' }}</span>
+                        <span class="noc-muted">{{ $onu->olt?->name ?? '-' }}</span>
                         <span class="noc-muted opacity-60">/</span>
-                        <span class="noc-mono noc-muted">{{ $onu->ponPort->name ?? '-' }}</span>
+                        <span class="noc-mono noc-muted">{{ $onu->ponPort?->name ?? '-' }}</span>
                     </td>
-                    <td class="p-3 noc-muted">{{ $onu->customerService->customer->name ?? '-' }}</td>
+                    <td class="p-3 noc-muted">{{ $onu->customerService?->customer?->name ?? '-' }}</td>
                     <td class="p-3 noc-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm-1) . ' dBm' : '-' }}</td>
                     <td class="p-3 noc-mono noc-muted">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm-1) . ' dBm' : '-' }}</td>
                     <td class="p-3 noc-mono noc-muted">{{ $onu->temperature ?? '-' }}</td>

@@ -56,6 +56,7 @@
             <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <tr class="text-slate-500 dark:text-slate-400">
                     <th class="p-3 font-semibold" wire:click="sort('serial_number')">Serial {!! $sortField === 'serial_number' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
+                    <th class="p-3 font-semibold" wire:click="sort('mac_address')">MAC {!! $sortField === 'mac_address' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('name')">Name {!! $sortField === 'name' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">OLT / PON</th>
                     <th class="p-3 font-semibold">Pelanggan</th>
@@ -81,6 +82,7 @@
                 @endphp
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors ">
                     <td class="p-3 font-mono text-slate-800 dark:text-slate-200 font-medium">{{ $onu->serial_number }}</td>
+                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->mac_address ?? '-' }}</td>
                     <td class="p-3 text-slate-600 dark:text-slate-300">{{ $onu->name ?? '-' }}</td>
                     <td class="p-3 text-slate-500 dark:text-slate-400">
                         <span class="text-slate-500 dark:text-slate-400">{{ $onu->olt->name ?? '-' }}</span>
