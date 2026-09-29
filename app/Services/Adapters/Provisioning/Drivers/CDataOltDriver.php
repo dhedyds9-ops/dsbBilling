@@ -291,7 +291,22 @@ class CDataOltDriver extends BaseOltDriver
         $voltRaw   = $this->snmp->walk($base . '.9');
         $biasRaw   = $this->snmp->walk($base . '.10');
         $macs      = $this->snmp->walk($base . '.4');
-        $macsCTC   = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11.' . $ponPort) ?: [];
+        
+        $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
+        $macsCTC = [];
+        foreach ($allCtcMacs as $fullIndex => $val) {
+            $parts = explode('.', $fullIndex);
+            if (count($parts) >= 1) {
+                $ifIndex = (int)$parts[0];
+                // The port byte is typically 0x80 + port (128 + port)
+                $pPort = (($ifIndex >> 12) & 0xFF) - 128;
+                $oId = $ifIndex & 0xFFF;
+                if ($pPort === $ponPort) {
+                    $macsCTC[$oId] = $val;
+                }
+            }
+        }
+        
         $firmwares = $this->snmp->walk($base . '.11');
         $models    = $this->snmp->walk($base . '.12');
 
