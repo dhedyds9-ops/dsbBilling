@@ -53,7 +53,8 @@
             </x-slot>
             <dl class="space-y-2 text-xs">
                 <div class="flex justify-between"><dt class="noc-muted">Serial</dt><dd class="noc-mono noc-text-secondary">{{ $onu->serial_number }}</dd></div>
-                <div class="flex justify-between"><dt class="noc-muted">MAC</dt><dd class="noc-mono noc-text-secondary">{{ $onu->mac_address ?? '-' }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">MAC</dt><dd class="noc-mono noc-text-secondary">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</dd></div>
+                <div class="flex justify-between"><dt class="noc-muted">IP Host</dt><dd class="noc-mono noc-text-secondary">{{ $onu->acsDevice?->ip_address ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Model</dt><dd class="noc-text-secondary">{{ $onu->model ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Vendor</dt><dd class="noc-text-secondary">{{ $onu->vendor->name ?? '-' }}</dd></div>
                 <div class="flex justify-between"><dt class="noc-muted">Firmware</dt><dd class="noc-mono noc-text-secondary">{{ $onu->firmware_version ?? '-' }}</dd></div>

@@ -97,6 +97,7 @@ class Show extends AdminComponent
                 'vendor:id,name',
                 'customerService:id,onu_id,customer_id,service_type,status',
                 'customerService.customer:id,name,code',
+                'acsDevice:id,serial_number,ip_address,mac_address'
                 // Explicitly no wifi_password, admin_password (in $hidden)
             ])
             ->select([

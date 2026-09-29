@@ -38,7 +38,7 @@ class Show extends AdminComponent
         $this->activeModule = 'isp';
         $this->activePage = 'onus';
         $this->onuId = $id;
-        $this->onu = OnuModel::with(['olt', 'vendor', 'onuPorts'])->findOrFail($id);
+        $this->onu = OnuModel::with(['olt', 'vendor', 'onuPorts', 'acsDevice'])->findOrFail($id);
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Network', 'url' => route('isp.onus.index')],
