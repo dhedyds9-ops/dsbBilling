@@ -68,9 +68,9 @@ class Show extends AdminComponent
     public function recentOnus(): \Illuminate\Pagination\LengthAwarePaginator
     {
         return Onu::where('olt_id', $this->oltId)
-            ->with(['odp:id,name', 'ponPort:id,name', 'customerService.customer'])
+            ->with(['odp:id,name', 'ponPort:id,name', 'customerService.customer', 'acsDevice:id,serial_number,ip_address,mac_address'])
             ->select([
-                'id', 'name', 'serial_number', 'status',
+                'id', 'name', 'serial_number', 'mac_address', 'status',
                 'rx_power_dbm', 'tx_power_dbm', 'temperature',
                 'last_seen_at', 'olt_id', 'pon_port_id', 'odp_id',
             ])

@@ -152,9 +152,6 @@ class CDataOltDriver extends BaseOltDriver
                 }
                 $macsCTC = $this->macsCache[$portNum] ?? ($this->macsCache[$ponPort] ?? []);
                 $macsRaw = [];
-                try {
-                    $macsRaw = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.4.' . $ponPort) ?: [];
-                } catch (\Throwable) {}
 
                 $onuList = [];
                 // Parse show ont info

@@ -159,6 +159,7 @@ class OltPollingService
                 DB::transaction(function () use ($olt, $idx, $dbPort, $onus, &$onuOnline, &$onuOffline, &$updatedOnu, $thresholds, &$alerts) {
                     $rxWarn = $thresholds['onu_rx_power_warning_low'] ?? -25.0;
                     $rxCrit = $thresholds['onu_rx_power_critical_low'] ?? -28.0;
+                    $polledSns = [];
 
                     foreach ($onus as $item) {
                         $sn = $item['serial_number'] ?? null;
@@ -166,6 +167,7 @@ class OltPollingService
                             continue;
                         }
                         $snNormalized = strtoupper(trim($sn));
+                        $polledSns[] = $snNormalized;
                         $macAddress = null;
                         if (!empty($item['mac_address'])) {
                             $macCleaned = strtoupper(preg_replace('/[^A-F0-9]/i', '', trim($item['mac_address'])));
@@ -287,6 +289,24 @@ class OltPollingService
                         }
                         $updatedOnu++;
                     }
+                    
+                    // Mark ONUs as offline if they exist in DB for this port but were missing from OLT output
+                    if ($dbPort) {
+                        $missingOnus = \App\Models\ISP\Onu::where('olt_id', $olt->id)
+                            ->where('pon_port_id', $dbPort->id)
+                            ->whereNotIn('serial_number', $polledSns)
+                            ->get();
+                            
+                        foreach ($missingOnus as $mOnu) {
+                            $onuOffline++;
+                            if ($mOnu->status !== 'inactive') { // 'inactive' is Eloquent enum for offline
+                                $oldSt = 'online';
+                                $mOnu->update(['status' => 'inactive', 'rx_power_dbm' => null, 'tx_power_dbm' => null]);
+                                event(new \App\Events\ISP\OnuStatusChanged($mOnu->id, $oldSt, 'offline', null));
+                            }
+                        }
+                    }
+                    
                 });
             }
 
