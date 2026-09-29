@@ -182,6 +182,16 @@ class SimpleTelnet
             }
 
             $result .= $c;
+            
+            // Handle pagination "More" prompt for various OLTs (C-Data, ZTE)
+            if (preg_match('/(--More--|---- More(.*?)----|Press any key to continue)/i', substr($result, -50), $m)) {
+                $this->write(" "); // Send space to continue
+                // Reset the timer so we don't timeout during very long paginated outputs
+                $start = time();
+                // Strip the matched prompt from result so we don't match it infinitely
+                $result = substr($result, 0, -strlen($m[0]));
+            }
+
             if (preg_match($pattern, $result)) {
                 return $result;
             }
