@@ -25,10 +25,12 @@ class WanManager extends Component
     public $formNat = false;
     public $formUsername = '';
     public $formPassword = '';
+    public bool $isNocLayout = false;
 
     public function mount(ACSDevice $device)
     {
         $this->device = $device;
+        $this->isNocLayout = request()->routeIs('noc.*') || request()->is('noc/*');
     }
 
     public function openModal()
