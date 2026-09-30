@@ -403,11 +403,12 @@ class GenieACSDriver
                 foreach ($lanDev['Hosts']['Host'] as $idx => $host) {
                     if ($idx === '_object' || $idx === '_timestamp' || $idx === '_writable') continue;
                     $hosts[] = [
-                        'MACAddress' => $host['MACAddress']['_value'] ?? $host['MACAddress'] ?? 'Unknown',
-                        'IPAddress' => $host['IPAddress']['_value'] ?? $host['IPAddress'] ?? 'Unknown',
-                        'HostName' => $host['HostName']['_value'] ?? $host['HostName'] ?? 'Unknown',
-                        'Active' => (($host['Active']['_value'] ?? $host['Active'] ?? '0') == '1' || ($host['Active']['_value'] ?? $host['Active'] ?? '0') === true),
-                        'InterfaceType' => $host['InterfaceType']['_value'] ?? $host['InterfaceType'] ?? 'Unknown',
+                        'MACAddress' => isset($host['MACAddress']['_value']) ? $host['MACAddress']['_value'] : (is_scalar($host['MACAddress'] ?? null) ? $host['MACAddress'] : 'Unknown'),
+                        'IPAddress' => isset($host['IPAddress']['_value']) ? $host['IPAddress']['_value'] : (is_scalar($host['IPAddress'] ?? null) ? $host['IPAddress'] : 'Unknown'),
+                        'HostName' => isset($host['HostName']['_value']) ? $host['HostName']['_value'] : (is_scalar($host['HostName'] ?? null) ? $host['HostName'] : 'Unknown'),
+                        'Active' => (($host['Active']['_value'] ?? (is_scalar($host['Active'] ?? null) ? $host['Active'] : '0')) == '1' || ($host['Active']['_value'] ?? (is_scalar($host['Active'] ?? null) ? $host['Active'] : '0')) === true),
+                        'InterfaceType' => isset($host['InterfaceType']['_value']) ? $host['InterfaceType']['_value'] : (is_scalar($host['InterfaceType'] ?? null) ? $host['InterfaceType'] : 'Unknown'),
+                        'Layer1Interface' => isset($host['Layer1Interface']['_value']) ? $host['Layer1Interface']['_value'] : (is_scalar($host['Layer1Interface'] ?? null) ? $host['Layer1Interface'] : 'WLAN'),
                     ];
                 }
             }

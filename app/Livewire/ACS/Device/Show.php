@@ -163,14 +163,14 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             }
 
             $this->deviceStatus = [
-                'rx_power' => $rxPower !== null ? round($rxPower, 2) . ' dBm' : '-',
-                'tx_power' => $txPower !== null ? round($txPower, 2) . ' dBm' : '-',
-                'pppoe_username' => $pppoeUser ?: '-',
-                'pppoe_password' => $pppoePass ?: '-',
-                'ssid_1' => $ssid1 ?: '-',
-                'ssid_2' => $ssid2 ?: '-',
-                'wan_ip' => $wanIp ?: '-',
-                'wan_mac' => $wanMac ?: '-',
+                'rx_power' => $rxPower !== null ? round((float)$rxPower, 2) . ' dBm' : '-',
+                'tx_power' => $txPower !== null ? round((float)$txPower, 2) . ' dBm' : '-',
+                'pppoe_username' => is_scalar($pppoeUser) && $pppoeUser ? (string)$pppoeUser : '-',
+                'pppoe_password' => is_scalar($pppoePass) && $pppoePass ? (string)$pppoePass : '-',
+                'ssid_1' => is_scalar($ssid1) && $ssid1 ? (string)$ssid1 : '-',
+                'ssid_2' => is_scalar($ssid2) && $ssid2 ? (string)$ssid2 : '-',
+                'wan_ip' => is_scalar($wanIp) && $wanIp ? (string)$wanIp : '-',
+                'wan_mac' => is_scalar($wanMac) && $wanMac ? (string)$wanMac : '-',
             ];
         } catch (\Exception $e) {
             $this->deviceStatus = [];
