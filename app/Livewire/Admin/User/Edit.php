@@ -110,7 +110,7 @@ class Edit extends AdminComponent
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Administration', 'url' => route('admin.users.index')],
             ['label' => 'Users', 'url' => route('admin.users.index')],
-            ['label' => $this->user->name, 'url' => route('admin.users.show', $this->userId)],
+            ['label' => $this->user->name, 'url' => route('admin.users.edit', $this->userId)],
             ['label' => 'Edit'],
         ];
     }

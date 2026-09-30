@@ -25,7 +25,7 @@ class GenerateRecurringInvoiceJob implements ShouldQueue
         $userId = 1; // TODO: gunakan user system
 
         $invoiceService->createInvoice(
-            $contract,
+            $contract->customer_id,
             $userId,
             [
                 [
@@ -34,6 +34,10 @@ class GenerateRecurringInvoiceJob implements ShouldQueue
                     'unit_price' => $this->subscription->recurring_price,
                 ],
             ],
+            null,
+            null,
+            null,
+            $contract->id
         );
 
         $this->subscription->update([
