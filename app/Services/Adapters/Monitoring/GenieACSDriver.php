@@ -364,6 +364,22 @@ class GenieACSDriver
         }
     }
 
+    public function upsertVirtualParameter(string $vpName, string $javascriptCode): bool
+    {
+        try {
+            $url = "{$this->baseUrl}/virtual_parameters/{$vpName}";
+            $response = Http::withBasicAuth($this->username, $this->password)
+                ->timeout($this->timeout)
+                ->withBody($javascriptCode, 'text/plain')
+                ->put($url);
+            
+            return $response->successful();
+        } catch (\Exception $e) {
+            report($e);
+            return false;
+        }
+    }
+
     public function addDevice(string $deviceId, array $metadata = []): bool
     {
         try {
