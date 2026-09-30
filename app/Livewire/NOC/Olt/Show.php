@@ -43,7 +43,6 @@ class Show extends AdminComponent
     {
         return Olt::withoutTrashed()
             ->with(['vendor:id,name', 'pop:id,name'])
-            ->withCount(['onus', 'ponPorts'])
             ->select([
                 'id', 'name', 'code', 'model', 'ip_address',
                 'status', 'last_polled_at', 'temperature',
@@ -52,6 +51,7 @@ class Show extends AdminComponent
                 'snmp_version', 'snmp_port',
                 // Hidden: password, snmp_community_write — never returned by model due to $hidden
             ])
+            ->withCount(['onus', 'ponPorts'])
             ->findOrFail($this->oltId);
     }
 
