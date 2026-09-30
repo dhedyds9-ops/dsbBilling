@@ -95,8 +95,8 @@
 
     @if($activeTab === 'pon')
     <div class="p-3 h-full overflow-hidden flex flex-col">
-        <x-noc.card :noPadding="true" class="flex-1">
-            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+        <x-noc.card :noPadding="true" class="flex-1 overflow-x-auto noc-scroll">
+            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap min-w-max">
                 <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700"  style="background-color: var(--noc-subpanel);">
                     <tr class="text-slate-500 dark:text-slate-400">
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">Port Name</th>
@@ -130,8 +130,8 @@
 
     @if($activeTab === 'onus')
     <div class="p-3 h-full overflow-hidden flex flex-col">
-        <x-noc.card :noPadding="true" class="flex-1">
-            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+        <x-noc.card :noPadding="true" class="flex-1 overflow-x-auto noc-scroll">
+            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap min-w-max">
                 <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700"  style="background-color: var(--noc-subpanel);">
                     <tr class="text-slate-500 dark:text-slate-400">
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">SN</th>
@@ -206,8 +206,8 @@
 
     @if($activeTab === 'alarms')
     <div class="p-3 h-full overflow-hidden flex flex-col">
-        <x-noc.card :noPadding="true" class="flex-1">
-            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+        <x-noc.card :noPadding="true" class="flex-1 overflow-x-auto noc-scroll">
+            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap min-w-max">
                 <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700"  style="background-color: var(--noc-subpanel);">
                     <tr class="text-slate-500 dark:text-slate-400">
                         <th class="p-3 font-semibold" style="border-color: var(--noc-border); color: var(--noc-muted);">Level</th>
