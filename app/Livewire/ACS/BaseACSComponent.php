@@ -12,7 +12,7 @@ abstract class BaseACSComponent extends AdminComponent
     public $search = '';
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
-    public $perPage = 10;
+    public $perPage = 20;
     public $filters = [];
     public $showFilters = false;
     public bool $isNocLayout = false;

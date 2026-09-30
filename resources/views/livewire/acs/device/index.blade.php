@@ -61,10 +61,10 @@
             {{-- Per Page --}}
             <select wire:model.live="perPage"
                     class="pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
-                <option value="10">10 / halaman</option>
-                <option value="25">25 / halaman</option>
+                <option value="20">20 / halaman</option>
                 <option value="50">50 / halaman</option>
                 <option value="100">100 / halaman</option>
+                <option value="500">500 / halaman</option>
                 <option value="999999">Semua</option>
             </select>
             
