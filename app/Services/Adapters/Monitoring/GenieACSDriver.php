@@ -218,15 +218,8 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
                 
-            // Trigger connection request asynchronously without blocking
-            try {
-                Http::withBasicAuth($this->username, $this->password)
-                    ->timeout(1)
-                    ->asJson()
-                    ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", ['name' => 'refreshObject', 'objectName' => '']);
-            } catch (\Exception $e) {}
             if ($response->successful()) {
                 return true;
             }
@@ -251,15 +244,8 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
                 
-            // Trigger connection request asynchronously without blocking
-            try {
-                Http::withBasicAuth($this->username, $this->password)
-                    ->timeout(1)
-                    ->asJson()
-                    ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", ['name' => 'refreshObject', 'objectName' => '']);
-            } catch (\Exception $e) {}
             if ($response->successful()) {
                 return true;
             }
@@ -277,15 +263,8 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
                 
-            // Trigger connection request asynchronously without blocking
-            try {
-                Http::withBasicAuth($this->username, $this->password)
-                    ->timeout(1)
-                    ->asJson()
-                    ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", ['name' => 'refreshObject', 'objectName' => '']);
-            } catch (\Exception $e) {}
             return $response->successful();
         } catch (ConnectionException|RequestException $e) {
             if ($e instanceof RequestException && $e->response && $e->response->status() === 404) {
@@ -322,13 +301,23 @@ class GenieACSDriver
     public function summonDevice(string $deviceId): bool
     {
         try {
-            $response = Http::timeout(5)
-                ->withBasicAuth($this->username, $this->password)
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks", [
-                    'name' => 'refreshObject',
-                    'objectName' => ''
-                ]);
-            return $response->successful();
+            $tasks = [
+                ['name' => 'refreshObject', 'objectName' => 'InternetGatewayDevice.WANDevice'],
+                ['name' => 'refreshObject', 'objectName' => 'Device.WANDevice'],
+                ['name' => 'refreshObject', 'objectName' => 'Device.Optical']
+            ];
+            $success = false;
+            foreach ($tasks as $idx => $payload) {
+                $url = "{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks";
+                if ($idx === count($tasks) - 1) {
+                    $url .= "?connection_request";
+                }
+                $response = Http::timeout(5)
+                    ->withBasicAuth($this->username, $this->password)
+                    ->post($url, $payload);
+                if ($response->successful()) $success = true;
+            }
+            return $success;
         } catch (\Exception $e) {
             return false;
         }
