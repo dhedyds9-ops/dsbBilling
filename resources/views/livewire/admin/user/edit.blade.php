@@ -76,8 +76,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="md:col-span-2">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Username *</label>
-                        <input type="text" wire:model="username" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-slate-50 dark:bg-slate-900 dark:text-slate-100 opacity-70 dark:bg-slate-900 dark:text-slate-100" readonly>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Username tidak dapat diubah setelah dibuat.</p>
+                        <input type="text" wire:model="username" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 placeholder-slate-400">
                         @error('username') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                     </div>
 
