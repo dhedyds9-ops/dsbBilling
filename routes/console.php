@@ -112,3 +112,9 @@ Schedule::command('gacs:reconcile-states')
     ->timezone('Asia/Jakarta')
     ->name('GACS State Reconciliation Hourly')
     ->withoutOverlapping(30);
+
+// =================== DATA RETENTION / PRUNING ===================
+Schedule::command('model:prune')
+    ->dailyAt('03:00')
+    ->timezone('Asia/Jakarta')
+    ->name('Database Model Auto Pruning');

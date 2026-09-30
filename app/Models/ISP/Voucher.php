@@ -6,11 +6,12 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\MassPrunable;
 
 class Voucher extends Model
 {
     use \App\Traits\HasBranchScope;
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, MassPrunable;
 
     protected $table = 'vouchers';
 
@@ -113,5 +114,22 @@ class Voucher extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Tentukan query model mana yang sudah usang dan boleh di-prune (hard delete).
+     * Akan dijalankan otomatis jika schedule model:prune diaktifkan di Console/Kernel.
+     */
+    public function prunable()
+    {
+        return static::where(function ($query) {
+            // Hapus voucher yang sudah kedaluwarsa lebih dari 1 tahun
+            $query->where('status', 'expired')
+                  ->where('expires_at', '<=', now()->subYear());
+        })->orWhere(function ($query) {
+            // Atau voucher yang sudah dihapus (soft-delete) dari UI lebih dari 1 tahun yang lalu
+            $query->onlyTrashed()
+                  ->where('deleted_at', '<=', now()->subYear());
+        });
     }
 }
