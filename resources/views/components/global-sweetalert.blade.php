@@ -85,4 +85,23 @@
 
     window.addEventListener('toast', handleToast);
     window.addEventListener('notify', handleToast);
+
+    // Show toast for Laravel Session flash messages
+    document.addEventListener('DOMContentLoaded', function() {
+        @if(session()->has('success'))
+            Toast.fire({ icon: 'success', title: '{!! addslashes(session('success')) !!}' });
+        @endif
+
+        @if(session()->has('error'))
+            Toast.fire({ icon: 'error', title: '{!! addslashes(session('error')) !!}' });
+        @endif
+
+        @if(session()->has('warning'))
+            Toast.fire({ icon: 'warning', title: '{!! addslashes(session('warning')) !!}' });
+        @endif
+        
+        @if(session()->has('info'))
+            Toast.fire({ icon: 'info', title: '{!! addslashes(session('info')) !!}' });
+        @endif
+    });
 </script>

@@ -3,7 +3,15 @@
 ])
 
 <div
-    x-data="toastManager({ position: '{{ $position }}' })"
+    x-data="toastManager({ 
+        position: '{{ $position }}',
+        flashes: [
+            @if(session()->has('success')) { type: 'success', title: 'Berhasil', message: '{!! addslashes(session('success')) !!}' }, @endif
+            @if(session()->has('error')) { type: 'error', title: 'Error', message: '{!! addslashes(session('error')) !!}' }, @endif
+            @if(session()->has('warning')) { type: 'warning', title: 'Peringatan', message: '{!! addslashes(session('warning')) !!}' }, @endif
+            @if(session()->has('info')) { type: 'info', title: 'Info', message: '{!! addslashes(session('info')) !!}' }, @endif
+        ]
+    })"
     class="fixed z-[100] flex flex-col gap-3 pointer-events-none w-full max-w-sm px-4 sm:px-0 transition-all duration-300"
     :class="{
         'top-4 right-4 items-end': position === 'top-right',
@@ -90,6 +98,9 @@
             toasts: [],
             position: config.position || 'top-right',
             init() {
+                if (config.flashes) {
+                    config.flashes.forEach(flash => this.addToast(flash));
+                }
                 if (window.serverFlashes) {
                     window.serverFlashes.forEach(flash => this.addToast(flash));
                     window.serverFlashes = [];
