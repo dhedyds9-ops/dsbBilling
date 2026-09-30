@@ -152,6 +152,9 @@ class ConnectionSettingsService
         } elseif ($type === 'acs') {
             $data = [
                 'base_url' => $data['base_url'] ?? '',
+                'fs_url' => $data['fs_url'] ?? '',
+                'username' => $data['username'] ?? '',
+                'password' => $data['password'] ?? '',
                 'api_key' => $data['api_key'] ?? '',
                 'connection_request_username' => $data['connection_request_username'] ?? '',
                 'connection_request_password' => $data['connection_request_password'] ?? '',
