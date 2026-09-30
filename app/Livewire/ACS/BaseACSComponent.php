@@ -39,6 +39,16 @@ abstract class BaseACSComponent extends AdminComponent
         $this->resetPage();
     }
 
+    public function updatedFilters()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage()
+    {
+        $this->resetPage();
+    }
+
     public function mount()
     {
         parent::mount();

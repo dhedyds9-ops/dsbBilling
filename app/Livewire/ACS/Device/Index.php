@@ -143,35 +143,21 @@ class Index extends BaseACSComponent
                                  $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username');
 
                 // Mencari RX Power lebih cerdas (Iterasi WANDevice)
-                $rxPower = $extract('VirtualParameters.RXPower') ?? $extract('Device.Optical.1.Transceiver.RxPower');
+                $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
+                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
+                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
+                        ?? $extract('VirtualParameters.RXPower') 
+                        ?? $extract('Device.Optical.1.Transceiver.RxPower');
                 if ($rxPower === null && is_array($wanDevices)) {
                     // Cari konfigurasi PON yang ada didalam WANDevice
                     foreach ($wanDevices as $wdIdx => $wdNode) {
                         if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                        
-                        $possibleKeys = [
-                            'X_FH_GponInterfaceConfig' => 'RXPower',
-                            'X_ZTE-COM_WANPONInterfaceConfig' => 'RXPower',
-                            'X_HW_PONInterfaceConfig' => 'RXPower',
-                            'WANPONInterfaceConfig' => ['1', 'X_ZTE-COM_RxPower'],
-                            'WANEponInterfaceConfig' => ['1', 'RxPower'],
-                            'WANGPONInterfaceConfig' => ['1', 'RxPower'],
-                            'X_BROADCOM_COM_PONInterfaceConfig' => 'RxPower'
-                        ];
-                        
-                        foreach ($possibleKeys as $k => $v) {
-                            if (isset($wdNode[$k])) {
-                                if (is_array($v)) {
-                                    if (isset($wdNode[$k][$v[0]][$v[1]]['_value'])) {
-                                        $rxPower = $wdNode[$k][$v[0]][$v[1]]['_value'];
-                                        break 2;
-                                    }
-                                } else {
-                                    if (isset($wdNode[$k][$v]['_value'])) {
-                                        $rxPower = $wdNode[$k][$v]['_value'];
-                                        break 2;
-                                    }
-                                }
+                        $ponConfig = $wdNode['WANPONInterfaceConfig'] ?? $wdNode['WANEponInterfaceConfig'] ?? [];
+                        if (is_array($ponConfig)) {
+                            foreach ($ponConfig as $pcIndex => $pcNode) {
+                                if (!is_numeric($pcIndex) || !is_array($pcNode)) continue;
+                                $rxPower = $pcNode['X_ZTE-COM_RxPower']['_value'] ?? $pcNode['X_HW_RxPower']['_value'] ?? $pcNode['RxPower']['_value'] ?? null;
+                                if ($rxPower !== null) break 2;
                             }
                         }
                     }
