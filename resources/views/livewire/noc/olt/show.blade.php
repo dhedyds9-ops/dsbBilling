@@ -220,10 +220,56 @@
     </div>
     @endif
 
-    @if($activeTab === 'traffic' || $activeTab === 'events')
+    @if($activeTab === 'traffic')
+    <div class="p-3 h-full overflow-hidden flex flex-col">
+        <x-noc.card class="flex-1 flex flex-col">
+            <x-slot name="header">
+                <div class="flex justify-between items-center w-full">
+                    <span class="text-xs font-bold text-blue-400 uppercase tracking-widest"><i class="bi bi-activity mr-1"></i> Traffic Monitoring</span>
+                    <span class="text-xs text-slate-500">Live Simulation</span>
+                </div>
+            </x-slot>
+            <div class="flex-1 min-h-[300px] w-full" x-data="oltTrafficChart()" x-init="initChart()">
+                <div id="trafficChart" style="height: 100%; width: 100%;"></div>
+            </div>
+        </x-noc.card>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('oltTrafficChart', () => ({
+                initChart() {
+                    // Prevent re-initialization if chart already exists
+                    if (document.querySelector('#trafficChart .apexcharts-canvas')) return;
+                    
+                    const options = {
+                        chart: { type: 'area', height: '100%', parentHeightOffset: 0, toolbar: { show: false }, background: 'transparent' },
+                        theme: { mode: 'dark' },
+                        colors: ['#00e5ff', '#10b981'],
+                        stroke: { curve: 'smooth', width: 2 },
+                        dataLabels: { enabled: false },
+                        series: [
+                            { name: 'Download (Tx)', data: Array.from({length: 20}, () => Math.floor(Math.random() * 500) + 100) },
+                            { name: 'Upload (Rx)', data: Array.from({length: 20}, () => Math.floor(Math.random() * 200) + 50) }
+                        ],
+                        xaxis: { categories: Array.from({length: 20}, (_, i) => `-${20-i}m`), labels: { style: { colors: '#9ca3af' } }, axisBorder: { show: false }, axisTicks: { show: false } },
+                        yaxis: { labels: { style: { colors: '#9ca3af' }, formatter: (v) => v + ' Mbps' } },
+                        grid: { borderColor: '#1f2937', strokeDashArray: 4 },
+                        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
+                        legend: { position: 'top', horizontalAlign: 'right', labels: { colors: '#e5e7eb' } }
+                    };
+                    const chart = new ApexCharts(document.getElementById('trafficChart'), options);
+                    chart.render();
+                }
+            }));
+        });
+    </script>
+    @endif
+
+    @if($activeTab === 'events')
     <div class="p-3 h-full overflow-hidden flex flex-col justify-center items-center text-center">
         <i class="bi bi-tools text-4xl noc-muted mb-2 opacity-50"></i>
-        <div class="noc-muted opacity-70">{{ ucfirst($activeTab) }} monitoring module is under construction.</div>
+        <div class="noc-muted opacity-70">Events monitoring module is under construction.</div>
     </div>
     @endif
 
