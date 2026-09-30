@@ -151,7 +151,29 @@
                         <td class="p-3  font-mono noc-muted">{{ $onu->serial_number }}</td>
                         <td class="p-3  font-mono noc-muted">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
                         <td class="p-3  font-mono noc-muted">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
-                        <td class="p-3  noc-text">{{ $onu->customerService?->customer?->name ?? '-' }}</td>
+                        <td class="p-3 noc-text">
+                            @if($editingOnuId === $onu->id)
+                                <div class="flex items-center gap-1">
+                                    <select wire:model="selectedCustomerId" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-1 py-0.5 text-xs rounded border focus:outline-none w-32">
+                                        <option value="">- Kosongkan -</option>
+                                        @foreach($this->allCustomers as $c)
+                                            <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }})</option>
+                                        @endforeach
+                                    </select>
+                                    <button wire:click="assignCustomer({{ $onu->id }})" class="p-0.5 bg-blue-100/20 hover:bg-blue-200/40 text-blue-400 rounded" title="Simpan">
+                                        <i class="bi bi-check text-sm"></i>
+                                    </button>
+                                    <button wire:click="cancelEditCustomer" class="p-0.5 bg-red-100/20 hover:bg-red-200/40 text-red-400 rounded" title="Batal">
+                                        <i class="bi bi-x text-sm"></i>
+                                    </button>
+                                </div>
+                            @else
+                                <div class="flex items-center gap-2 group cursor-pointer" wire:click="editCustomer({{ $onu->id }}, '{{ $onu->customerService->customer_id ?? '' }}')">
+                                    <span>{{ $onu->customerService?->customer?->name ?? '-' }}</span>
+                                    <i class="bi bi-pencil-fill opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400 transition-opacity text-[10px]"></i>
+                                </div>
+                            @endif
+                        </td>
                         <td class="p-3  noc-muted">
                             <div>{{ $onu->ponPort?->name ?? '-' }}</div>
                             <div class="text-[10px]">{{ $onu->odp?->name ?? '' }}</div>

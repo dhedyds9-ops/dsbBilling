@@ -15,6 +15,9 @@ class Show extends AdminComponent
     public int $oltId;
     public string $activeTab = 'overview';
 
+    public $editingOnuId = null;
+    public $selectedCustomerId = '';
+
     // Polling: 60 seconds for device detail
     // Defined in view via wire:poll.60000ms
 
@@ -35,6 +38,58 @@ class Show extends AdminComponent
         $allowed = ['overview', 'pon', 'onus', 'traffic', 'alarms', 'events'];
         if (in_array($tab, $allowed)) {
             $this->activeTab = $tab;
+        }
+    }
+
+    #[Computed]
+    public function allCustomers()
+    {
+        return \App\Models\CRM\Customer::select('id', 'name', 'code')->orderBy('name')->get();
+    }
+
+    public function editCustomer($onuId, $currentCustomerId = null)
+    {
+        $this->editingOnuId = $onuId;
+        $this->selectedCustomerId = $currentCustomerId ?? '';
+    }
+
+    public function cancelEditCustomer()
+    {
+        $this->editingOnuId = null;
+        $this->selectedCustomerId = '';
+    }
+
+    public function assignCustomer($onuId)
+    {
+        try {
+            $onu = \App\Models\ISP\Onu::findOrFail($onuId);
+            
+            if ($onu->customerService) {
+                $onu->customerService->onu_id = null;
+                $onu->customerService->save();
+            }
+
+            if ($this->selectedCustomerId) {
+                $service = \App\Models\Customer\CustomerService::where('customer_id', $this->selectedCustomerId)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                
+                if ($service) {
+                    $service->onu_id = $onu->id;
+                    $service->save();
+                    $this->dispatch('toast', type: 'success', message: 'ONU berhasil dipasangkan ke pelanggan ' . $service->customer->name);
+                } else {
+                    throw new \Exception('Pelanggan ini belum memiliki Layanan (Internet/Hotspot). Silakan buat layanan untuk pelanggan ini terlebih dahulu di menu Pelanggan.');
+                }
+            } else {
+                $this->dispatch('toast', type: 'success', message: 'ONU berhasil dilepas dari pelanggan');
+            }
+            
+            $this->editingOnuId = null;
+            $this->selectedCustomerId = '';
+            
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengupdate pelanggan: ' . $e->getMessage());
         }
     }
 
