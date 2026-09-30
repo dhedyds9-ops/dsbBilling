@@ -70,62 +70,42 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 return isset($node['_value']) ? $node['_value'] : null;
             };
 
+            // PPPoE (Dynamic)
+            $pppoeUser = null;
+            $pppoePass = null;
+            $wanIp = null;
+            $wanMac = null;
+
             // Common TR-069 Paths for PON
             $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
                     ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
                     ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
-                    ?? $extract('VirtualParameters.RXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower') 
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower') 
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.RxPower')
-                    ?? $extract('Device.Optical.1.Transceiver.RxPower');
-                    
-            if ($rxPower !== null && is_numeric($rxPower)) {
-                $rxPower = (float)$rxPower;
-                // Fiberhome reports as -19.03, ZTE as -22.01 (already in dBm)
-                // If it's something like -22010, then divide by 1000
-                if ($rxPower < -500 || $rxPower > 500) {
-                    $rxPower /= 1000;
-                } elseif ($rxPower < -50 || $rxPower > 50) {
-                    $rxPower /= 100;
-                }
-            }
-
+                    ?? $extract('VirtualParameters.RXPower');
             $txPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower')
                     ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower')
                     ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower')
-                    ?? $extract('VirtualParameters.TXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.WANEponInterfaceConfig.1.TxPower')
-                    ?? $extract('Device.Optical.1.Transceiver.TxPower');
-                    
-            if ($txPower !== null && is_numeric($txPower)) {
-                $txPower = (float)$txPower;
-                if ($txPower < -500 || $txPower > 500) {
-                    $txPower /= 1000;
-                } elseif ($txPower < -50 || $txPower > 50) {
-                    $txPower /= 100;
-                }
-            }
+                    ?? $extract('VirtualParameters.TXPower');
 
-            // PPPoE
-            $pppoeUser = $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username')
-                      ?? $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username');
-            $pppoePass = $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Password')
-                      ?? $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Password');
-                      
-            // SSIDs
-            $ssid1 = $extract('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID') ?? $extract('Device.WiFi.SSID.1.SSID');
-            $ssid2 = $extract('InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID') ?? $extract('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID') ?? $extract('Device.WiFi.SSID.2.SSID');
-
-            // Find WAN IP & MAC dynamically by scanning TR-098 WANDevice
-            $wanIp = null;
-            $wanMac = null;
+            // Find WAN IP, MAC, PPPoE, and PON stats dynamically
             $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? $params['Device']['WANDevice'] ?? [];
             if (is_array($wanDevices)) {
                 foreach ($wanDevices as $wdIndex => $wdNode) {
                     if (!is_numeric($wdIndex) || !is_array($wdNode)) continue;
+                    
+                    // Try to find RX/TX in WANPONInterfaceConfig dynamically
+                    $ponConfig = $wdNode['WANPONInterfaceConfig'] ?? $wdNode['WANEponInterfaceConfig'] ?? [];
+                    if (is_array($ponConfig)) {
+                        foreach ($ponConfig as $pcIndex => $pcNode) {
+                            if (!is_numeric($pcIndex) || !is_array($pcNode)) continue;
+                            if ($rxPower === null) {
+                                $rxPower = $pcNode['X_ZTE-COM_RxPower']['_value'] ?? $pcNode['X_HW_RxPower']['_value'] ?? $pcNode['RxPower']['_value'] ?? null;
+                            }
+                            if ($txPower === null) {
+                                $txPower = $pcNode['X_ZTE-COM_TxPower']['_value'] ?? $pcNode['X_HW_TxPower']['_value'] ?? $pcNode['TxPower']['_value'] ?? null;
+                            }
+                        }
+                    }
+
                     $connDevices = $wdNode['WANConnectionDevice'] ?? [];
                     if (!is_array($connDevices)) continue;
                     foreach ($connDevices as $cdIndex => $cdNode) {
@@ -142,6 +122,12 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                                 if (isset($pNode['MACAddress']['_value']) && $pNode['MACAddress']['_value']) {
                                     $wanMac = $pNode['MACAddress']['_value'];
                                 }
+                                if (isset($pNode['Username']['_value']) && $pNode['Username']['_value']) {
+                                    $pppoeUser = $pNode['Username']['_value'];
+                                }
+                                if (isset($pNode['Password']['_value']) && $pNode['Password']['_value']) {
+                                    $pppoePass = $pNode['Password']['_value'];
+                                }
                             }
                         }
                         
@@ -156,6 +142,46 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                                 if (isset($iNode['MACAddress']['_value']) && $iNode['MACAddress']['_value']) {
                                     $wanMac = $iNode['MACAddress']['_value'];
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // TR-181 Transceiver fallback
+            if ($rxPower === null) $rxPower = $extract('Device.Optical.1.Transceiver.RxPower');
+            if ($txPower === null) $txPower = $extract('Device.Optical.1.Transceiver.TxPower');
+
+            if ($rxPower !== null && is_numeric($rxPower)) {
+                $rxPower = (float)$rxPower;
+                if ($rxPower < -500 || $rxPower > 500) {
+                    $rxPower /= 1000;
+                } elseif ($rxPower < -50 || $rxPower > 50) {
+                    $rxPower /= 100;
+                }
+            }
+
+            if ($txPower !== null && is_numeric($txPower)) {
+                $txPower = (float)$txPower;
+                if ($txPower < -500 || $txPower > 500) {
+                    $txPower /= 1000;
+                } elseif ($txPower < -50 || $txPower > 50) {
+                    $txPower /= 100;
+                }
+            }
+
+            // SSIDs (Dynamic search)
+            $ssid1 = null;
+            $ssid2 = null;
+            $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] ?? $params['Device']['WiFi']['SSID'] ?? [];
+            if (is_array($wlanNode)) {
+                foreach ($wlanNode as $key => $node) {
+                    if (is_numeric($key) && is_array($node)) {
+                        if (isset($node['SSID']['_value']) && $node['SSID']['_value']) {
+                            if ($ssid1 === null) {
+                                $ssid1 = $node['SSID']['_value'];
+                            } elseif ($ssid2 === null && $node['SSID']['_value'] !== $ssid1) {
+                                $ssid2 = $node['SSID']['_value'];
                             }
                         }
                     }
