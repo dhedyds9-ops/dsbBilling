@@ -227,7 +227,7 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                             {{-- ONU Offline --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if($onuOffline > 0)
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">
                                         {{ $onuOffline }}
                                     </span>
                                 @else
