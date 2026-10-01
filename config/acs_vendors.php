@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     /*
@@ -25,7 +25,7 @@ return [
     'zte' => [
         'wlan_enable' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable',
         'ssid' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID',
-        'wpa_passphrase' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase',
+        'wpa_passphrase' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
         'wpa_pre_shared_key' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
         'security_mode' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType',
         
@@ -58,3 +58,4 @@ return [
         'service_list' => 'X_FH_ServiceList',
     ],
 ];
+

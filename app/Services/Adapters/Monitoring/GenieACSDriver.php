@@ -32,13 +32,13 @@ class GenieACSDriver
 
     private function getWifiParameterPath(string $vendor = 'default', string $parameter = 'wpa_passphrase'): string
     {
-        $vendors = config('onu-vendors.vendors', []);
+        $vendors = config('acs_vendors', []);
         $vendorKey = strtolower(trim($vendor));
         if (!isset($vendors[$vendorKey])) {
             $fuzzy = collect(array_keys($vendors))->first(fn ($k) => str_contains($vendorKey, $k) || str_contains($k, $vendorKey));
             $vendorKey = $fuzzy ?? 'default';
         }
-        return $vendors[$vendorKey]['wifi_parameters'][$parameter] ?? $vendors['default']['wifi_parameters'][$parameter] ?? '';
+        return $vendors[$vendorKey][$parameter] ?? $vendors['default'][$parameter] ?? '';
     }
 
     public function listDevices(array $query = [], int $limit = 100): array
@@ -287,12 +287,31 @@ class GenieACSDriver
         }
     }
 
+    public static function calculateStatus(array $params): string
+    {
+        $lastInform = $params['_lastInform'] ?? null;
+        if (!$lastInform) return 'offline';
+
+        $informInterval = 300;
+        if (isset($params['InternetGatewayDevice']['ManagementServer']['PeriodicInformInterval']['_value'])) {
+            $informInterval = (int)$params['InternetGatewayDevice']['ManagementServer']['PeriodicInformInterval']['_value'];
+        } elseif (isset($params['Device']['ManagementServer']['PeriodicInformInterval']['_value'])) {
+            $informInterval = (int)$params['Device']['ManagementServer']['PeriodicInformInterval']['_value'];
+        }
+
+        $diffInSeconds = now()->diffInSeconds(\Carbon\Carbon::parse($lastInform));
+        $offlineThreshold = ($informInterval * 2) + 120;
+
+        if ($diffInSeconds <= $informInterval + 60) return 'online';
+        if ($diffInSeconds <= $offlineThreshold) return 'stale';
+        return 'offline';
+    }
+
     public function isDeviceOnline(string $deviceId): bool
     {
         try {
             $params = $this->getDeviceParameters($deviceId);
-            return isset($params['_lastInform'])
-                && abs(now()->diffInMinutes(\Carbon\Carbon::parse($params['_lastInform']))) < 15;
+            return self::calculateStatus($params) !== 'offline';
         } catch (\Exception $e) {
             return false;
         }
@@ -534,3 +553,5 @@ class GenieACSDriver
         }
     }
 }
+
+
