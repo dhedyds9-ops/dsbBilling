@@ -1,4 +1,4 @@
-# dsBilling - Enterprise ISP Management System
+﻿# dsBilling - Enterprise ISP Management System
 
 dsBilling adalah sistem penagihan, CRM, dan *provisioning* komprehensif untuk *Internet Service Provider* (ISP) berskala menengah hingga besar. Sistem ini mengintegrasikan Radius, pengelolaan Mikrotik, Auto-Configuration Server (TR-069 via GenieACS), serta pengelolaan HR dan Kepegawaian.
 
@@ -61,8 +61,21 @@ sudo composer install --optimize-autoloader --no-dev
 sudo cp .env.example .env
 sudo php artisan key:generate
 
-# Set default database ke SQLite untuk kemudahan instalasi
-sed -i 's/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/' .env
+# Instalasi & Penyiapan Database MySQL (MariaDB)
+sudo apt install -y mariadb-server
+sudo systemctl enable mariadb
+sudo systemctl start mariadb
+sudo mysql -e "CREATE DATABASE dsbilling_db;"
+sudo mysql -e "CREATE USER 'dsbilling_user'@'localhost' IDENTIFIED BY 'password_dsbilling';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON dsbilling_db.* TO 'dsbilling_user'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+
+# Konfigurasi koneksi MySQL ke file .env
+sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+sed -i 's/DB_DATABASE=.*/DB_DATABASE=dsbilling_db/' .env
+sed -i 's/DB_USERNAME=.*/DB_USERNAME=dsbilling_user/' .env
+sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=password_dsbilling/' .env
+sed -i '/DB_DATABASE=\/var/d' .env
 
 # Instal library frontend & kompilasi aset (Tailwind & Vite)
 npm install
@@ -72,11 +85,7 @@ npm run build
 ### 1.3 Eksekusi Database & Build Tampilan
 
 ```bash
-# Buat file database SQLite (Jika menggunakan MySQL, lewati bagian ini dan edit .env)
-sudo touch database/database.sqlite
-sudo chown www-data:www-data database/database.sqlite
-
-# Jalankan migrasi database
+# Jalankan migrasi tabel MySQL
 sudo php artisan migrate --force
 
 # Masukkan data awal (Seeder) & Akun Admin (Catat email & password yang muncul)
@@ -239,3 +248,4 @@ GENIEACS_BASE_URL=http://localhost:7557
 GENIEACS_USERNAME=admin
 GENIEACS_PASSWORD=admin
 ```
+
