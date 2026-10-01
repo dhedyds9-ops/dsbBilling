@@ -1,4 +1,4 @@
-@section('page_title', 'Detail MikroTik (Nas)')
+﻿@section('page_title', 'Detail MikroTik (Nas)')
 
 <div class="space-y-6">
     
@@ -160,7 +160,7 @@
             </div>
 
         @elseif($activeTab === 'interfaces')
-            <div wire:poll.2s="loadData" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div wire:poll.30s="loadData" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div class="overflow-x-auto relative">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                         <thead class="bg-slate-50 dark:bg-slate-800/80">

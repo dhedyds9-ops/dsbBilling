@@ -1,13 +1,13 @@
-<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.30s>
+﻿<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.60s>
     <div class="max-w-[1800px] mx-auto px-4 py-4">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h1 class="text-lg font-semibold noc-text tracking-tight">NOC · Provisioning Monitor</h1>
-                <p class="text-xs noc-muted mt-0.5"><span class="inline-block w-2 h-2 rounded-full noc-pulse bg-green-500 mr-1.5"></span>LIVE · auto refresh 30s · retry via PipelineOrchestrator</p>
+                <h1 class="text-lg font-semibold noc-text tracking-tight">NOC Â· Provisioning Monitor</h1>
+                <p class="text-xs noc-muted mt-0.5"><span class="inline-block w-2 h-2 rounded-full noc-pulse bg-green-500 mr-1.5"></span>LIVE Â· auto refresh 30s Â· retry via PipelineOrchestrator</p>
             </div>
             <div class="flex items-center gap-2">
                 @if(Route::has('noc.overview'))
-                    <a href="{{ route('noc.overview') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline">← Overview</a>
+                    <a href="{{ route('noc.overview') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline">â† Overview</a>
                 @endif
             </div>
         </div>
@@ -41,7 +41,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
                         <div class="md:col-span-7">
                             <label class="noc-section-label">Search</label>
-                            <input wire:model.live.debounce.250ms="search" type="text" placeholder="UUID- customer name- code…"
+                            <input wire:model.live.debounce.250ms="search" type="text" placeholder="UUID- customer name- codeâ€¦"
                                    class="w-full noc-input border rounded px-2.5 py-1.5 text-sm dark:bg-slate-900 dark:text-slate-100">
                         </div>
                         <div class="md:col-span-3">
@@ -91,9 +91,9 @@
                                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover transition">
                                         <td class="p-3">
                                             @if(Route::has('noc.provisioning.show'))
-                                                <a href="{{ route('noc.provisioning.show', $p->id) }}" class="text-blue-500 hover:text-blue-400 font-mono text-[11px]">{{ substr($p->uuid, 0, 12) }}…</a>
+                                                <a href="{{ route('noc.provisioning.show', $p->id) }}" class="text-blue-500 hover:text-blue-400 font-mono text-[11px]">{{ substr($p->uuid, 0, 12) }}â€¦</a>
                                             @else
-                                                <span class="font-mono text-[11px] noc-muted">{{ substr($p->uuid, 0, 12) }}…</span>
+                                                <span class="font-mono text-[11px] noc-muted">{{ substr($p->uuid, 0, 12) }}â€¦</span>
                                             @endif
                                         </td>
                                         <td class="p-3">
@@ -101,7 +101,7 @@
                                                 <div class="noc-text">{{ $customer->name }}</div>
                                                 <div class="text-[10px] noc-muted mt-0.5">{{ $customer->code }}</div>
                                             @else
-                                                <span class="noc-muted opacity-70">—</span>
+                                                <span class="noc-muted opacity-70">â€”</span>
                                             @endif
                                         </td>
                                         <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider {{ $statusClass }}">{{ $p->status }}</span></td>
@@ -112,14 +112,14 @@
                                                         <div class="h-full {{ $stepFail ? 'bg-red-500' : 'bg-emerald-500' }}" style="width: {{ ($stepDone / $stepTotal) * 100 }}%"></div>
                                                     @endif
                                                 </div>
-                                                <span class="text-[10px] noc-muted">{{ $stepDone }}/{{ $stepTotal }}{{ $stepFail ? " · {$stepFail}✗" : '' }}</span>
+                                                <span class="text-[10px] noc-muted">{{ $stepDone }}/{{ $stepTotal }}{{ $stepFail ? " Â· {$stepFail}âœ—" : '' }}</span>
                                             </div>
                                         </td>
                                         <td class="p-3">
                                             <div class="noc-text-secondary">{{ $p->created_at->format('M d H:i') }}</div>
                                             <div class="text-[10px] noc-muted mt-0.5">{{ $p->created_at->diffForHumans() }}</div>
                                         </td>
-                                        <td class="p-3  noc-muted">{{ $p->createdBy->name ?: '—' }}</td>
+                                        <td class="p-3  noc-muted">{{ $p->createdBy->name ?: 'â€”' }}</td>
                                         <td class="p-3  text-right">
                                             <div class="inline-flex gap-1">
                                                 @if($p->status === 'failed')
@@ -182,7 +182,7 @@
                                 @endif
                             </div>
                         @empty
-                            <div class="text-center text-[11px] noc-muted opacity-70 py-4">No recent failures. All clear ✔</div>
+                            <div class="text-center text-[11px] noc-muted opacity-70 py-4">No recent failures. All clear âœ”</div>
                         @endforelse
                     </div>
                 </div>
@@ -200,6 +200,7 @@
         </div>
     </div>
 </div>
+
 
 
 

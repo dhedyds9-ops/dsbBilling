@@ -1,17 +1,17 @@
-{{--
- NOC Overview — Main Control Room
+﻿{{--
+ NOC Overview â€” Main Control Room
  Layout: Left Health Panel | Center Traffic + Alarms | Bottom Device Table
  Polling: 30 seconds
 --}}
 <div
     class="h-full flex flex-col overflow-hidden"
     style="background:#0a0e1a;"
-    wire:poll.30000ms="refreshData"
+    wire:poll.120000ms="refreshData"
     x-data="{ trafficChart: null }"
 >
 
 {{-- ============================================================
-     HEADER BAR — Network Health Summary
+     HEADER BAR â€” Network Health Summary
      ============================================================ --}}
 <div class="flex-none px-3 py-2 border-b flex items-center gap-4 flex-wrap" style="background:#111827;border-color:#1f2937;">
 
@@ -236,7 +236,7 @@
             <div class="flex items-center justify-between px-3 py-1.5 border-b" style="border-color:#1a2332;">
                 <span class="text-xs font-bold text-gray-300 uppercase tracking-widest">Active Alarms</span>
                 @if(Route::has('noc.alarms.index'))
-                <a href="{{ route('noc.alarms.index') }}" class="text-xs text-blue-400 hover:text-blue-300">View All →</a>
+                <a href="{{ route('noc.alarms.index') }}" class="text-xs text-blue-400 hover:text-blue-300">View All â†’</a>
                 @endif
             </div>
             @if($alarms->isEmpty())
@@ -280,7 +280,7 @@
             <span class="text-gray-500">Failed: <span class="text-gray-600 dark:text-gray-400 noc-mono">0</span></span>
             @endif
             @if(Route::has('noc.provisioning.index'))
-            <a href="{{ route('noc.provisioning.index') }}" class="ml-auto text-blue-400 hover:text-blue-300">View →</a>
+            <a href="{{ route('noc.provisioning.index') }}" class="ml-auto text-blue-400 hover:text-blue-300">View â†’</a>
             @endif
         </div>
     </div>
@@ -299,7 +299,7 @@
         <input
             type="text"
             wire:model.live.debounce.400ms="deviceSearch"
-            placeholder="Search device / IP / serial…"
+            placeholder="Search device / IP / serialâ€¦"
             class="flex-1 max-w-xs px-2 py-0.5 text-xs rounded border dark:bg-slate-900 dark:text-slate-100"
             style="background:#0d1117;border-color:#374151;color:#e5e7eb;"
         >
@@ -332,13 +332,13 @@
             <tbody class="divide-y" style="border-color:#1a2332;">
                 @forelse($devices as $device)
                 <tr class="hover:bg-gray-900/50 transition-colors">
-                    <td class="px-3 py-1.5 font-medium text-gray-300">{{ $device->name ?? '—' }}</td>
+                    <td class="px-3 py-1.5 font-medium text-gray-300">{{ $device->name ?? 'â€”' }}</td>
                     <td class="px-3 py-1.5">
                         <span class="px-1.5 py-0.5 rounded text-xs noc-mono" style="background:#1f2937;color:#9ca3af;">
-                            {{ $device->type ?? '—' }}
+                            {{ $device->type ?? 'â€”' }}
                         </span>
                     </td>
-                    <td class="px-3 py-1.5 noc-mono text-gray-400">{{ $device->ip ?? '—' }}</td>
+                    <td class="px-3 py-1.5 noc-mono text-gray-400">{{ $device->ip ?? 'â€”' }}</td>
                     <td class="px-3 py-1.5">
                         @php
                             $st = strtolower($device->status ?? 'unknown');
@@ -357,7 +357,7 @@
                         @if($device->last_seen)
                             {{ \Carbon\Carbon::parse($device->last_seen)->diffForHumans() }}
                         @else
-                            —
+                            â€”
                         @endif
                     </td>
                     <td class="px-3 py-1.5">
@@ -373,7 +373,7 @@
                         @if($deviceRoute && $numericId && Route::has($deviceRoute))
                         <a href="{{ route($deviceRoute, $numericId) }}" class="text-blue-400 hover:text-blue-300 text-xs">View</a>
                         @else
-                        <span class="text-gray-600 dark:text-gray-400">—</span>
+                        <span class="text-gray-600 dark:text-gray-400">â€”</span>
                         @endif
                     </td>
                 </tr>
@@ -390,18 +390,18 @@
     @if($devices->hasPages())
     <div class="px-3 py-1.5 flex items-center justify-between border-t" style="border-color:#1a2332;">
         <span class="text-xs text-gray-600 dark:text-gray-400">
-            {{ $devices->firstItem() }}–{{ $devices->lastItem() }} of {{ $devices->total() }}
+            {{ $devices->firstItem() }}â€“{{ $devices->lastItem() }} of {{ $devices->total() }}
         </span>
         <div class="flex gap-1">
             @if($devices->onFirstPage())
-                <span class="px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300">←</span>
+                <span class="px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300">â†</span>
             @else
-                <button wire:click="previousPage" class="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-200">←</button>
+                <button wire:click="previousPage" class="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-200">â†</button>
             @endif
             @if($devices->hasMorePages())
-                <button wire:click="nextPage" class="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-200">→</button>
+                <button wire:click="nextPage" class="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-200">â†’</button>
             @else
-                <span class="px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300">→</span>
+                <span class="px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300">â†’</span>
             @endif
         </div>
     </div>
@@ -409,6 +409,7 @@
 </div>
 
 </div>
+
 
 
 

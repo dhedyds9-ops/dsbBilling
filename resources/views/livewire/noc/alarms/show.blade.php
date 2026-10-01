@@ -1,13 +1,13 @@
-<div class="min-h-screen noc-text noc-mono noc-bg" wire:poll.30s>
+﻿<div class="min-h-screen noc-text noc-mono noc-bg" wire:poll.60s>
     <div class="max-w-[1400px] mx-auto px-4 py-4">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h1 class="text-lg font-semibold noc-text tracking-tight">NOC · Alarm #{{ $alarm->id }}</h1>
-                <p class="text-xs noc-muted mt-0.5"><span class="inline-block w-2 h-2 rounded-full noc-pulse bg-emerald-500 mr-1.5"></span>LIVE · auto refresh 30s</p>
+                <h1 class="text-lg font-semibold noc-text tracking-tight">NOC Â· Alarm #{{ $alarm->id }}</h1>
+                <p class="text-xs noc-muted mt-0.5"><span class="inline-block w-2 h-2 rounded-full noc-pulse bg-emerald-500 mr-1.5"></span>LIVE Â· auto refresh 30s</p>
             </div>
             <div class="flex items-center gap-2">
                 @if(Route::has('noc.alarms.index'))
-                    <a href="{{ route('noc.alarms.index') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline transition">← Alarms</a>
+                    <a href="{{ route('noc.alarms.index') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline transition">â† Alarms</a>
                 @endif
                 @if(Route::has('noc.overview'))
                     <a href="{{ route('noc.overview') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline transition">Overview</a>
@@ -51,7 +51,7 @@
                     <div class="grid grid-cols-2 gap-3 text-xs pt-3 border-t noc-border">
                         <div>
                             <div class="noc-section-label">Source</div>
-                            <div class="noc-text">{{ $alarm->source_name ?: '—' }}</div>
+                            <div class="noc-text">{{ $alarm->source_name ?: 'â€”' }}</div>
                             <div class="text-[10px] noc-muted mt-0.5">{{ $alarm->source_type ? class_basename($alarm->source_type).' #'.$alarm->source_id : 'Unspecified' }}</div>
                         </div>
                         <div>
@@ -65,7 +65,7 @@
                                 <div class="noc-text">{{ $alarm->acknowledgedBy->name }}</div>
                                 <div class="text-[10px] noc-muted mt-0.5">{{ $alarm->acknowledged_at->format('M d H:i') }}</div>
                             @else
-                                <div class="noc-muted opacity-70">—</div>
+                                <div class="noc-muted opacity-70">â€”</div>
                             @endif
                         </div>
                         <div>
@@ -74,7 +74,7 @@
                                 <div class="text-emerald-500">{{ $alarm->resolved_at->format('M d- Y H:i:s') }}</div>
                                 <div class="text-[10px] noc-muted mt-0.5">{{ $alarm->resolved_at->diffForHumans() }}</div>
                             @else
-                                <div class="noc-muted opacity-70">—</div>
+                                <div class="noc-muted opacity-70">â€”</div>
                             @endif
                         </div>
                     </div>
@@ -98,14 +98,14 @@
                     @if($alarm->status !== 'resolved')
                         <div class="border noc-border rounded p-4 noc-panel-bg">
                             <div class="noc-section-label mb-2 font-semibold text-blue-500">Acknowledge Alarm</div>
-                            <textarea wire:model="ackNote" rows="2" placeholder="Optional note…"
+                            <textarea wire:model="ackNote" rows="2" placeholder="Optional noteâ€¦"
                                       class="w-full border rounded px-2.5 py-1.5 text-xs noc-text focus:outline-none focus:border-primary-600 mb-2 noc-input dark:bg-slate-900 dark:text-slate-100"></textarea>
                             <button wire:click="acknowledge" class="w-full py-1.5 text-xs font-semibold bg-blue-900 hover:bg-blue-800 border border-blue-700 rounded text-blue-200 transition">Acknowledge</button>
                         </div>
 
                         <div class="border noc-border rounded p-4 noc-panel-bg">
                             <div class="noc-section-label mb-2 font-semibold text-emerald-500">Resolve Alarm</div>
-                            <textarea wire:model="resolveNote" rows="2" placeholder="Resolution note…"
+                            <textarea wire:model="resolveNote" rows="2" placeholder="Resolution noteâ€¦"
                                       class="w-full border rounded px-2.5 py-1.5 text-xs noc-text focus:outline-none focus:border-green-600 mb-2 noc-input dark:bg-slate-900 dark:text-slate-100"></textarea>
                             <button wire:click="resolve" class="w-full py-1.5 text-xs font-semibold bg-green-900 hover:bg-green-800 border border-green-700 rounded text-green-200 transition">Mark Resolved</button>
                         </div>
@@ -173,6 +173,7 @@
         </div>
     </div>
 </div>
+
 
 
 

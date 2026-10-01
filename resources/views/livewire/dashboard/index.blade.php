@@ -1,4 +1,4 @@
-<div class="space-y-6 pb-10" wire:poll.30s="loadData">
+﻿<div class="space-y-6 pb-10" wire:poll.300s="loadData">
     {{-- A. HEADER SECTION --}}
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
@@ -501,4 +501,5 @@
     </script>
     @endpush
 </div>
+
 

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Jobs\ISP\CheckOverdueInvoicesJob;
 use App\Jobs\Monitoring\RunCollectorJob;
@@ -39,9 +39,9 @@ Schedule::command('radius:reap-dead-sessions --timeout=3600')
     ->name('Reap Dead Radius Accounting Sessions');
 
 Schedule::command('radius:resolve-lifecycle-fk --limit=5000')
-    ->everyFiveMinutes()
+    ->everyFifteenMinutes()
     ->timezone('Asia/Jakarta')
-    ->withoutOverlapping(5)
+    ->withoutOverlapping(15)
     ->name('Resolve Radius Accounting Lifecycle FK Backfill');
 
 Schedule::command('radius:nas-map-device')
@@ -51,31 +51,31 @@ Schedule::command('radius:nas-map-device')
     ->name('Map radius_nas to nas_devices by IP address');
 
 Schedule::command('voucher:reap-expired')
-    ->everyFiveMinutes()
+    ->everyFifteenMinutes()
     ->timezone('Asia/Jakarta')
-    ->withoutOverlapping(5)
+    ->withoutOverlapping(15)
     ->name('Reap Expired Vouchers');
 
 // =================== ISP FIBER POLLING ===================
 Schedule::call(function (OltPollingService $polling) {
     $polling->pollAll();
 })
-    ->everyFiveMinutes()
+    ->everyFifteenMinutes()
     ->timezone('Asia/Jakarta')
     ->name('OLT / ONU SNMP Signal Polling')
     ->withoutOverlapping(5);
 
 // =================== ROUTER (MIKROTIK) POLLING ===================
 Schedule::job(new RunCollectorJob(RouterCollector::class))
-    ->everyMinute()
+    ->everyFiveMinutes()
     ->timezone('Asia/Jakarta')
     ->name('MikroTik Router Status Polling')
     ->withoutOverlapping(1);
 
 Schedule::command('acs:monitor-alarms')
-    ->everyFiveMinutes()
+    ->everyFifteenMinutes()
     ->timezone('Asia/Jakarta')
-    ->withoutOverlapping(5)
+    ->withoutOverlapping(15)
     ->name('ACS Alarms Polling');
 
 Schedule::call(function (OdpOccupancyService $svc) {
@@ -118,3 +118,4 @@ Schedule::command('model:prune')
     ->dailyAt('03:00')
     ->timezone('Asia/Jakarta')
     ->name('Database Model Auto Pruning');
+

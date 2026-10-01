@@ -1,13 +1,13 @@
-<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.15s>
+﻿<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.60s>
     <div class="max-w-[1400px] mx-auto px-4 py-4">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h1 class="text-lg font-semibold noc-text tracking-tight">NOC · Pipeline #{{ $pipeline->id }}</h1>
-                <p class="text-xs noc-muted mt-0.5"><span class="inline-block w-2 h-2 rounded-full noc-pulse bg-emerald-500 mr-1.5"></span>LIVE · UUID <span class="font-mono">{{ $pipeline->uuid }}</span></p>
+                <h1 class="text-lg font-semibold noc-text tracking-tight">NOC Â· Pipeline #{{ $pipeline->id }}</h1>
+                <p class="text-xs noc-muted mt-0.5"><span class="inline-block w-2 h-2 rounded-full noc-pulse bg-emerald-500 mr-1.5"></span>LIVE Â· UUID <span class="font-mono">{{ $pipeline->uuid }}</span></p>
             </div>
             <div class="flex items-center gap-2">
                 @if(Route::has('noc.provisioning.index'))
-                    <a href="{{ route('noc.provisioning.index') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline transition">← Pipelines</a>
+                    <a href="{{ route('noc.provisioning.index') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline transition">â† Pipelines</a>
                 @endif
                 @if(Route::has('noc.overview'))
                     <a href="{{ route('noc.overview') }}" class="px-3 py-1.5 text-xs border rounded noc-btn-outline transition">Overview</a>
@@ -37,7 +37,7 @@
                         </div>
                         @if($pipeline->status === 'failed')
                             <button wire:click="retry" onclick="return confirm('Retry failed steps via PipelineOrchestrator ?? ')"
-                                    class="px-3 py-1.5 text-xs font-semibold bg-yellow-900 hover:bg-yellow-800 border border-yellow-700 rounded text-yellow-200 transition">↻ Retry Pipeline</button>
+                                    class="px-3 py-1.5 text-xs font-semibold bg-yellow-900 hover:bg-yellow-800 border border-yellow-700 rounded text-yellow-200 transition">â†» Retry Pipeline</button>
                         @endif
                     </div>
 
@@ -54,14 +54,14 @@
                         </div>
                         <div>
                             <div class="noc-section-label">Triggered By</div>
-                            <div class="noc-text">{{ $pipeline->createdBy->name ?: '—' }}</div>
+                            <div class="noc-text">{{ $pipeline->createdBy->name ?: 'â€”' }}</div>
                         </div>
                         <div>
                             <div class="noc-section-label">Error</div>
                             @if($pipeline->error_message)
                                 <div class="text-red-500 text-[11px]">{{ $pipeline->error_message }}</div>
                             @else
-                                <div class="noc-muted">—</div>
+                                <div class="noc-muted">â€”</div>
                             @endif
                         </div>
                     </div>
@@ -89,8 +89,8 @@
                                 <div class="flex items-start gap-3 p-2.5 rounded noc-bg border noc-border">
                                     <div class="flex flex-col items-center">
                                         <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold {{ $stepStatusClass }}">
-                                            @if($step->status === 'completed') ✓
-                                            @elseif($step->status === 'failed') ✗
+                                            @if($step->status === 'completed') âœ“
+                                            @elseif($step->status === 'failed') âœ—
                                             @elseif($step->status === 'running') <span class="w-2 h-2 noc-pulse rounded-full bg-current"></span>
                                             @else {{ $step->order }}
                                             @endif
@@ -107,7 +107,7 @@
                                         <div class="text-[10px] noc-muted mb-1">
                                             <span class="uppercase tracking-wider">{{ $step->step_type }}</span>
                                             @if($step->started_at || $step->completed_at || $step->failed_at)
-                                                <span class="mx-1.5">·</span>
+                                                <span class="mx-1.5">Â·</span>
                                                 @if($step->started_at && !$step->completed_at && !$step->failed_at)
                                                     started {{ $step->started_at->diffForHumans() }}
                                                 @elseif($step->completed_at)
@@ -175,6 +175,7 @@
         </div>
     </div>
 </div>
+
 
 
 

@@ -1,4 +1,4 @@
-<div>
+﻿<div>
     @section('page_title')
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
@@ -11,7 +11,7 @@
         </div>
     @endsection
 
-    <div class="space-y-4" wire:poll.10s>
+    <div class="space-y-4" wire:poll.60s>
         {{-- KPI CARDS --}}
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             {{-- PPPoE --}}

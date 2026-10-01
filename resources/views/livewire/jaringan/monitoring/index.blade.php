@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /** @var \App\Livewire\Jaringan\Monitoring\Index $this */
 /** @var mixed $rows */
 $summaryItems = $this->getSummaryItems();
@@ -39,7 +39,7 @@ $filterConfig = $this->getFilterConfig();
             </div>
         </div>
     @elseif ($this->activeTab === 'realtime')
-        <div class="flex-1 overflow-auto min-h-0" wire:poll.15s="refreshAll">
+        <div class="flex-1 overflow-auto min-h-0" wire:poll.60s="refreshAll">
             <div class="p-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
                 <div class="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                     <div class="flex items-center justify-between mb-2">
@@ -177,7 +177,7 @@ $filterConfig = $this->getFilterConfig();
                             <td class="px-3 py-2 w-32"><x-progress-bar :val="$r['cpu_pct']" :color="$r['cpu_pct'] > 85 ? 'red' : ($r['cpu_pct'] > 60 ? 'amber' : 'emerald')" /></td>
                             <td class="px-3 py-2 w-32"><x-progress-bar :val="$r['mem_pct']" :color="$r['mem_pct'] > 85 ? 'red' : ($r['mem_pct'] > 60 ? 'amber' : 'blue')" /></td>
                             <td class="px-3 py-2 w-32"><x-progress-bar :val="$r['disk_pct']" color="slate" /></td>
-                            <td class="px-3 py-2 text-right font-mono text-xs tabular-nums {{ $r['temp_c'] > 65 ? 'text-red-600 dark:text-red-400 font-semibold' : '' }}">{{ $r['temp_c'] }}°C</td>
+                            <td class="px-3 py-2 text-right font-mono text-xs tabular-nums {{ $r['temp_c'] > 65 ? 'text-red-600 dark:text-red-400 font-semibold' : '' }}">{{ $r['temp_c'] }}Â°C</td>
                             <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ $r['uptime'] }}</td>
                             <td class="px-3 py-2 font-mono text-xs">{{ $r['firmware_version'] }}</td>
                             <td class="px-3 py-2"><x-status-badge :status="$r['status']" /></td>
@@ -287,3 +287,4 @@ $filterConfig = $this->getFilterConfig();
 
     @include('partials.enterprise.confirm-modal')
 </div>
+

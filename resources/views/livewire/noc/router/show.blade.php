@@ -1,4 +1,4 @@
-{{--
+﻿{{--
  NOC: Router Detail View
  Tabs: Overview | Sessions | Health | Traffic | Alarms | Interfaces | Logs
  Polling: 60 seconds
@@ -138,7 +138,7 @@
     @endif
 
     @if($activeTab === 'interfaces')
-    <div class="h-full flex flex-col md:flex-row bg-[#0b1120]" wire:poll.2s>
+    <div class="h-full flex flex-col md:flex-row bg-[#0b1120]" wire:poll.30s>
         <!-- Sidebar: List of interfaces -->
         <div class="w-full md:w-64 border-r border-gray-800 flex flex-col h-full bg-[#111827]">
             <div class="p-3 border-b border-gray-800 flex justify-between items-center bg-[#1e293b]">
@@ -387,7 +387,7 @@
                         <th class="p-3 font-semibold text-xs" style="color: var(--noc-muted);">MAC (Caller-ID)</th>
                         <th class="p-3 font-semibold text-xs" style="color: var(--noc-muted);">Uptime</th>
                         <th class="p-3 font-semibold text-xs" style="color: var(--noc-muted);">Rx / Tx</th>
-                        <th class="p-3 font-semibold text-xs" style="color: var(--noc-muted);">Rate ↓ / ↑</th>
+                        <th class="p-3 font-semibold text-xs" style="color: var(--noc-muted);">Rate â†“ / â†‘</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y" style="border-color: var(--noc-border); background-color: var(--noc-panel);">
@@ -401,12 +401,12 @@
                         <td class="p-3 font-mono noc-muted text-xs">{{ $s->caller_id ?? '-' }}</td>
                         <td class="p-3 font-mono noc-muted text-xs">{{ $s->uptime ?? '-' }}</td>
                         <td class="p-3 font-mono text-xs">
-                            <span class="text-emerald-500">↓ {{ number_format(($s->bytes_in ?? 0) / 1024 / 1024, 1) }} MB</span><br>
-                            <span class="text-blue-400">↑ {{ number_format(($s->bytes_out ?? 0) / 1024 / 1024, 1) }} MB</span>
+                            <span class="text-emerald-500">â†“ {{ number_format(($s->bytes_in ?? 0) / 1024 / 1024, 1) }} MB</span><br>
+                            <span class="text-blue-400">â†‘ {{ number_format(($s->bytes_out ?? 0) / 1024 / 1024, 1) }} MB</span>
                         </td>
                         <td class="p-3 font-mono text-xs">
-                            <span class="text-emerald-500">↓ {{ $s->rate_down ?? '-' }}</span><br>
-                            <span class="text-blue-400">↑ {{ $s->rate_up ?? '-' }}</span>
+                            <span class="text-emerald-500">â†“ {{ $s->rate_down ?? '-' }}</span><br>
+                            <span class="text-blue-400">â†‘ {{ $s->rate_up ?? '-' }}</span>
                         </td>
                     </tr>
                     @empty
@@ -445,8 +445,8 @@
                         </td>
                         <td class="p-3 font-mono noc-muted text-xs">{{ $s->uptime ?? '-' }}</td>
                         <td class="p-3 font-mono text-xs">
-                            <span class="text-emerald-500">↓ {{ number_format(($s->bytes_in ?? 0) / 1024 / 1024, 1) }} MB</span><br>
-                            <span class="text-blue-400">↑ {{ number_format(($s->bytes_out ?? 0) / 1024 / 1024, 1) }} MB</span>
+                            <span class="text-emerald-500">â†“ {{ number_format(($s->bytes_in ?? 0) / 1024 / 1024, 1) }} MB</span><br>
+                            <span class="text-blue-400">â†‘ {{ number_format(($s->bytes_out ?? 0) / 1024 / 1024, 1) }} MB</span>
                         </td>
                     </tr>
                     @empty
@@ -483,8 +483,8 @@
                         </td>
                         <td class="p-3 font-mono noc-muted text-xs">{{ $sess->uptime }}</td>
                         <td class="p-3 font-mono text-xs">
-                            <span class="text-emerald-500">↓ {{ $sess->rate_down ?? '-' }}</span><br>
-                            <span class="text-blue-500">↑ {{ $sess->rate_up ?? '-' }}</span>
+                            <span class="text-emerald-500">â†“ {{ $sess->rate_down ?? '-' }}</span><br>
+                            <span class="text-blue-500">â†‘ {{ $sess->rate_up ?? '-' }}</span>
                         </td>
                         <td class="p-3 noc-muted text-xs">{{ $sess->session_started_at?->format('d M H:i:s') }}</td>
                     </tr>
@@ -591,6 +591,7 @@
     @endif
 </div>
 </div>
+
 
 
 
