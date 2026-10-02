@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Src\Domain\Voucher\Actions\ManageVoucherAction;
+use App\Models\ISP\Voucher;
 
 class VoucherImport implements ToModel, WithHeadingRow, WithValidation
 {
@@ -19,7 +19,7 @@ class VoucherImport implements ToModel, WithHeadingRow, WithValidation
 
     public function model(array $row)
     {
-        $action = app(ManageVoucherAction::class);
+        
         
         $data = [
             'code' => $row['kode_voucher'] ?? $row['code'] ?? null,
@@ -35,7 +35,7 @@ class VoucherImport implements ToModel, WithHeadingRow, WithValidation
         ];
         
         try {
-            return $action->create($data, $this->user);
+            return Voucher::create(array_merge($data, ["created_by" => $this->user->id]));
         } catch (\Exception $e) {
             Log::error('Import failed for row', [
                 'row' => $row,

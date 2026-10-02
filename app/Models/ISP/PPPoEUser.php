@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PPPoEUser extends Model
 {
-    use \App\Traits\HasBranchScope;
+    use \App\Traits\HasBranchScope, \App\Traits\HasResellerScope;
     use HasFactory, SoftDeletes;
 
     protected $table = 'pppoe_users';
@@ -69,3 +69,4 @@ class PPPoEUser extends Model
         return $this->hasOne(\App\Models\ISP\RadiusAccounting::class, 'pppoe_user_id')->latestOfMany('acct_start_time');
     }
 }
+

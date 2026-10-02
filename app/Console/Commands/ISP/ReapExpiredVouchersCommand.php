@@ -4,7 +4,7 @@ namespace App\Console\Commands\ISP;
 
 use App\Models\ISP\Voucher;
 use Illuminate\Console\Command;
-use Src\Domain\Voucher\Actions\ExpireVoucherAction;
+
 
 class ReapExpiredVouchersCommand extends Command
 {
@@ -12,8 +12,7 @@ class ReapExpiredVouchersCommand extends Command
     protected $description = 'Scan voucher status used + expires_at < now() → mark expired, terminate hotspot user, decrement active counter';
 
     public function __construct(
-        private readonly ExpireVoucherAction $expireVoucher,
-    ) {
+            ) {
         parent::__construct();
     }
 

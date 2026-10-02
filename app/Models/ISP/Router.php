@@ -18,6 +18,7 @@ class Router extends Model
     const STATUS_UNKNOWN = 'unknown';
     const STATUS_DISABLED = 'disabled';
 
+    protected $hidden = ['password', 'api_password', 'radius_secret', 'zabbix_host_id'];
     protected $fillable = [
         'pop_id',
         'vendor_id',
@@ -153,4 +154,5 @@ class Router extends Model
         return self::STATUS_ONLINE;
     }
 }
+
 

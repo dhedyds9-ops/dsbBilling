@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, \App\Traits\HasResellerScope, \App\Traits\HasBranchScope;
 
     protected $table = 'members';
 

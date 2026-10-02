@@ -12,6 +12,11 @@ class GenieAcsWebhookController extends Controller
 {
     public function handleEvent(Request $request)
     {
+        $expectedToken = env('GENIEACS_WEBHOOK_TOKEN', 'default-secret-token');
+        if ($request->header('X-Webhook-Token') !== $expectedToken) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
         // Example Payload from GenieACS Provision Script:
         // { "event": "0 BOOT", "device": "000000-MODEL-12345", "timestamp": "2026-08-19T10:00:00Z" }
         

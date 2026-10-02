@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class HotspotUser extends Model
 {
-    use \App\Traits\HasBranchScope;
+    use \App\Traits\HasBranchScope, \App\Traits\HasResellerScope;
     use HasFactory, SoftDeletes;
 
     protected $table = 'hotspot_users';
@@ -71,3 +71,4 @@ class HotspotUser extends Model
         return $this->hasOne(\App\Models\ISP\RadiusAccounting::class, 'hotspot_user_id')->latestOfMany('acct_start_time');
     }
 }
+

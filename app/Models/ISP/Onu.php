@@ -14,6 +14,7 @@ class Onu extends Model
     use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 
+    protected $hidden = ['wifi_password', 'admin_password'];
     protected $fillable = [
         'olt_id',
         'pon_port_id',

@@ -50,113 +50,20 @@ use App\Repositories\GIS\MapLayerRepository;
 use App\Repositories\GIS\CoordinateReferenceSystemRepository;
 use App\Repositories\Voucher\EloquentVoucherRepository;
 use Illuminate\Support\ServiceProvider;
-use Src\Domain\CRM\CoverageCheckRepositoryInterface;
-use Src\Domain\CRM\CustomerActivationRepositoryInterface;
-use Src\Domain\CRM\InstallationChecklistRepositoryInterface;
-use Src\Domain\CRM\InstallationRepositoryInterface;
-use Src\Domain\CRM\LeadRepositoryInterface;
-use Src\Domain\CRM\MaterialUsageRepositoryInterface;
-use Src\Domain\CRM\ProspectRepositoryInterface;
-use Src\Domain\CRM\QualityControlRepositoryInterface;
-use Src\Domain\CRM\QuotationRepositoryInterface;
-use Src\Domain\CRM\SurveyRepositoryInterface;
-use Src\Domain\Provisioning\CapacityManagementRepositoryInterface;
-use Src\Domain\Provisioning\DeviceAssignmentRepositoryInterface;
-use Src\Domain\Provisioning\IPAllocationRepositoryInterface;
-use Src\Domain\Provisioning\PortReservationRepositoryInterface;
-use Src\Domain\Provisioning\QueueAllocationRepositoryInterface;
-use Src\Domain\Provisioning\ResourceAssignmentRepositoryInterface;
-use Src\Domain\Provisioning\ResourceReservationRepositoryInterface;
-use Src\Domain\Provisioning\ServiceInstanceRepositoryInterface;
-use Src\Domain\Provisioning\VLANAllocationRepositoryInterface;
-use Src\Domain\Billing\InvoiceRepositoryInterface;
-use Src\Domain\Billing\InvoiceItemRepositoryInterface;
-use Src\Domain\Billing\SubscriptionRepositoryInterface;
-use Src\Domain\Billing\BillingCycleRepositoryInterface;
-use Src\Domain\Workforce\Repositories\AttendanceRepositoryInterface;
-use Src\Domain\Workforce\Repositories\GPSHistoryRepositoryInterface;
-use Src\Domain\Workforce\Repositories\GeofenceRepositoryInterface;
-use Src\Domain\Workforce\Repositories\RouteHistoryRepositoryInterface;
-use Src\Domain\Workforce\Repositories\RouteOptimizationRepositoryInterface;
-use Src\Domain\Workforce\Repositories\QCInspectionRepositoryInterface;
-use Src\Domain\Workforce\Repositories\QCChecklistRepositoryInterface;
-use Src\Domain\Workforce\Repositories\QCResultRepositoryInterface;
-use Src\Domain\Workforce\Repositories\QCApprovalRepositoryInterface;
-use Src\Domain\Workforce\Repositories\SyncTaskRepositoryInterface;
-use Src\Domain\Workforce\Repositories\SyncQueueRepositoryInterface;
-use Src\Domain\Workforce\Repositories\SyncConflictRepositoryInterface;
-use Src\Domain\Workforce\Repositories\SyncHistoryRepositoryInterface;
-use Src\Domain\GIS\Repositories\GeoPointRepositoryInterface;
-use Src\Domain\GIS\Repositories\GeoRouteRepositoryInterface;
-use Src\Domain\GIS\Repositories\GeoPathRepositoryInterface;
-use Src\Domain\GIS\Repositories\GeoPolygonRepositoryInterface;
-use Src\Domain\GIS\Repositories\GeoAreaRepositoryInterface;
-use Src\Domain\GIS\Repositories\CoverageAreaRepositoryInterface;
-use Src\Domain\GIS\Repositories\ServiceAreaRepositoryInterface;
-use Src\Domain\GIS\Repositories\MapLayerRepositoryInterface;
-use Src\Domain\GIS\Repositories\CoordinateReferenceSystemRepositoryInterface;
-use Src\Domain\Voucher\Repositories\VoucherRepositoryInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
     public array $bindings = [
         // CRM Repositories
-        ProspectRepositoryInterface::class => ProspectRepository::class,
-        SurveyRepositoryInterface::class => SurveyRepository::class,
-        InstallationRepositoryInterface::class => InstallationRepository::class,
-        LeadRepositoryInterface::class => LeadRepository::class,
-        CoverageCheckRepositoryInterface::class => CoverageCheckRepository::class,
-        QuotationRepositoryInterface::class => QuotationRepository::class,
-        InstallationChecklistRepositoryInterface::class => InstallationChecklistRepository::class,
-        MaterialUsageRepositoryInterface::class => MaterialUsageRepository::class,
-        QualityControlRepositoryInterface::class => QualityControlRepository::class,
-        CustomerActivationRepositoryInterface::class => CustomerActivationRepository::class,
-
+                                                                                
         // Provisioning Repositories
-        ServiceInstanceRepositoryInterface::class => ServiceInstanceRepository::class,
-        ResourceReservationRepositoryInterface::class => ResourceReservationRepository::class,
-        ResourceAssignmentRepositoryInterface::class => ResourceAssignmentRepository::class,
-        CapacityManagementRepositoryInterface::class => CapacityManagementRepository::class,
-        PortReservationRepositoryInterface::class => PortReservationRepository::class,
-        VLANAllocationRepositoryInterface::class => VlanAllocationRepository::class,
-        IPAllocationRepositoryInterface::class => IpAllocationRepository::class,
-        QueueAllocationRepositoryInterface::class => QueueAllocationRepository::class,
-        DeviceAssignmentRepositoryInterface::class => DeviceAssignmentRepository::class,
-        ProvisionPipelineRepositoryInterface::class => ProvisionPipelineRepository::class,
-
+                                                                                
         // Billing Repositories
-        InvoiceRepositoryInterface::class => InvoiceRepository::class,
-        InvoiceItemRepositoryInterface::class => InvoiceItemRepository::class,
-        SubscriptionRepositoryInterface::class => SubscriptionRepository::class,
-        BillingCycleRepositoryInterface::class => BillingCycleRepository::class,
-
+                                
         // Workforce Repositories
-        GPSHistoryRepositoryInterface::class => GPSHistoryRepository::class,
-        GeofenceRepositoryInterface::class => GeofenceRepository::class,
-        AttendanceRepositoryInterface::class => AttendanceRepository::class,
-        RouteHistoryRepositoryInterface::class => RouteHistoryRepository::class,
-        RouteOptimizationRepositoryInterface::class => RouteOptimizationRepository::class,
-        QCInspectionRepositoryInterface::class => QCInspectionRepository::class,
-        QCChecklistRepositoryInterface::class => QCChecklistRepository::class,
-        QCResultRepositoryInterface::class => QCResultRepository::class,
-        QCApprovalRepositoryInterface::class => QCApprovalRepository::class,
-        SyncTaskRepositoryInterface::class => SyncTaskRepository::class,
-        SyncQueueRepositoryInterface::class => SyncQueueRepository::class,
-        SyncConflictRepositoryInterface::class => SyncConflictRepository::class,
-        SyncHistoryRepositoryInterface::class => SyncHistoryRepository::class,
-        GeoPointRepositoryInterface::class => GeoPointRepository::class,
-        GeoRouteRepositoryInterface::class => GeoRouteRepository::class,
-        GeoPathRepositoryInterface::class => GeoPathRepository::class,
-        GeoPolygonRepositoryInterface::class => GeoPolygonRepository::class,
-        GeoAreaRepositoryInterface::class => GeoAreaRepository::class,
-        CoverageAreaRepositoryInterface::class => CoverageAreaRepository::class,
-        ServiceAreaRepositoryInterface::class => ServiceAreaRepository::class,
-        MapLayerRepositoryInterface::class => MapLayerRepository::class,
-        CoordinateReferenceSystemRepositoryInterface::class => CoordinateReferenceSystemRepository::class,
-
+                                                                                                                                                                                
         // Voucher Repositories
-        VoucherRepositoryInterface::class => EloquentVoucherRepository::class,
-    ];
+            ];
 
     public function register(): void
     {
