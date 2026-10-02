@@ -118,3 +118,37 @@ Jika server Proxy terpisah Anda menggunakan **Nginx Proxy Manager (Web UI)**, An
    send_timeout 300;
    `
 4. Klik **Save**.
+
+---
+
+## 3. Panduan Membuat & Memasang SSL (HTTPS) Gratis
+
+Agar aplikasi dsBilling Anda aman dan gembok hijau menyala (HTTPS), Anda wajib memasang sertifikat SSL. Jika Anda menggunakan server Nginx Terpisah (Manual CLI), ikuti langkah Certbot berikut.
+
+### Langkah 3.1: Instalasi Certbot (Let's Encrypt)
+Jalankan perintah ini di **Server Reverse Proxy** (server yang memegang domain):
+`bash
+sudo apt update
+sudo apt install -y certbot python3-certbot-nginx
+`
+
+### Langkah 3.2: Buat Sertifikat SSL Otomatis
+Jalankan perintah ini untuk menerbitkan sertifikat dan membiarkan Certbot mengedit konfigurasi Nginx Anda secara otomatis:
+`bash
+# Ganti demo.mstore.id dengan domain asli Anda
+sudo certbot --nginx -d demo.mstore.id
+`
+
+Saat ditanya, pilih:
+- Masukkan Email Anda (untuk peringatan pembaruan SSL).
+- Tekan **Y** untuk menyetujui syarat layanan.
+- Pilih **2 (Redirect)** ketika ditanya apakah ingin melempar ( *redirect* ) HTTP ke HTTPS.
+
+### Langkah 3.3: (Opsional) Mengaktifkan Perpanjangan Otomatis
+Sertifikat Let's Encrypt berlaku 90 hari. Agar diperpanjang otomatis, tes proses perpanjangannya:
+`bash
+sudo certbot renew --dry-run
+`
+Jika sukses, SSL Anda akan diperpanjang otomatis setiap 60 hari tanpa perlu disentuh lagi!
+
+*(Catatan: Jika Anda menggunakan **Nginx Proxy Manager**, pembuatan SSL jauh lebih mudah. Cukup masuk ke Tab **SSL** saat mengedit Proxy Host, pilih "Request a new SSL Certificate", centang "Force SSL", setujui ToS, lalu tekan Save).*
