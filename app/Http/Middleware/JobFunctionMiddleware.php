@@ -23,10 +23,7 @@ class JobFunctionMiddleware
         }
 
         // 1. Job Function hanya berlaku untuk Manager atau Reseller
-        $allowedRoles = [\App\Enums\UserRole::Manager->value, \App\Enums\UserRole::Reseller->value];
-        $userRole = $user->roles->first()->name ?? null;
-
-        if (!in_array($userRole, $allowedRoles)) {
+        if (!$user->hasRole(\App\Enums\UserRole::Manager->value) && !$user->hasRole(\App\Enums\UserRole::Reseller->value)) {
             return abort(403, 'Unauthorized portal access.');
         }
 

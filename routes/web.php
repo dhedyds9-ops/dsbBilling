@@ -85,7 +85,7 @@ Route::get('/login-as-admin', function () {
 $cs = fn() => view('coming-soon');
 
 // ==================== AUTHENTICATED ROUTES ====================
-Route::middleware(['auth'])->group(function () use ($cs) {
+Route::middleware(['auth', 'role:administrator,manager', 'job_function:TECHNICIAN'])->group(function () use ($cs) {
     Route::get('/technician-portal/dashboard', \App\Livewire\Isp\Technician\Dashboard::class)->name('technician.dashboard');
     Route::middleware(['workforce.checked_in'])->group(function () {
         Route::get('/technician-portal/my-jobs', \App\Livewire\Isp\Technician\MyJobs\Index::class)->name('technician.my-jobs.index');
@@ -326,7 +326,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
 
                 // === NOC ===
-        Route::prefix('noc')->name('noc.')->group(function () {
+        Route::prefix('noc')->name('noc.')->middleware(['job_function:NOC'])->group(function () {
             Route::get('/', \App\Livewire\NOC\Overview::class)->name('overview');
             
             Route::prefix('acs')->name('acs.')->group(function () {

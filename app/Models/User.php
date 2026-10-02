@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Models;
 
@@ -128,6 +128,11 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\CRM\Customer::class, 'user_id', 'id');
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole(\App\Enums\UserRole::Administrator->value);
+    }
+
     public function hasRole(string|array $role): bool
     {
         if (is_array($role)) {
@@ -197,3 +202,4 @@ class User extends Authenticatable
         return null;
     }
 }
+
