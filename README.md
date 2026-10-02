@@ -1,4 +1,4 @@
-﻿# dsBilling - Enterprise ISP Management System
+# dsBilling - Enterprise ISP Management System
 
 dsBilling adalah sistem penagihan, CRM, dan *provisioning* komprehensif untuk *Internet Service Provider* (ISP) berskala menengah hingga besar. Sistem ini mengintegrasikan Radius, pengelolaan Mikrotik, Auto-Configuration Server (TR-069 via GenieACS), serta pengelolaan HR dan Kepegawaian.
 
@@ -86,28 +86,25 @@ npm run build
 
 ```bash
 # Jalankan migrasi tabel MySQL
-sudo php artisan migrate --force
+php artisan migrate --force
 
 # Masukkan data awal (Seeder) & Akun Admin (Catat email & password yang muncul)
-sudo php artisan db:seed
+php artisan db:seed
 
 # Kompilasi cache
-sudo php artisan optimize
-sudo php artisan view:cache
+php artisan optimize:clear
+
+# 🚨 PENTING: Kembalikan hak akses ke Web Server (Nginx) agar tidak Error 500
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
 ```
 
-### 1.4 Konfigurasi Nginx (Web Server)
+### 1.4 Konfigurasi Nginx (Web Server) & Reverse Proxy
 
-```bash
-sudo nano /etc/nginx/sites-available/dsbilling
-```
-*(Isi konfigurasi standar Nginx Laravel yang mengarah ke `/var/www/dsbilling/public` dan PHP 8.2 FPM).*
+Konfigurasi Nginx untuk dsBilling membutuhkan aturan *Timeout* khusus (300 detik) agar proses berat seperti sinkronisasi GenieACS (TR-069) tidak terputus (Error 504). 
 
-```bash
-sudo ln -s /etc/nginx/sites-available/dsbilling /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
+Bagi Anda yang menggunakan 1 Server (Nginx lokal) maupun 2 Server Terpisah (menggunakan Nginx Reverse Proxy / Nginx Proxy Manager), **silakan baca panduan konfigurasinya secara lengkap di sini:**
+👉 **[Panduan Lengkap Konfigurasi Nginx & Proxy](docs/NGINX_PROXY_GUIDE.md)**
 
 ### 1.5 Setup Pekerja Latar Belakang (Supervisor / Queue) & Cron
 
@@ -248,5 +245,6 @@ GENIEACS_BASE_URL=http://localhost:7557
 GENIEACS_USERNAME=admin
 GENIEACS_PASSWORD=admin
 ```
+
 
 
