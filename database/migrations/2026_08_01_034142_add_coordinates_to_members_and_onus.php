@@ -27,8 +27,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('members_and_onus', function (Blueprint $table) {
-            //
+        Schema::table('members', function (Blueprint $table) {
+            $table->dropColumn(['latitude', 'longitude']);
+        });
+
+        Schema::table('onus', function (Blueprint $table) {
+            $table->dropColumn(['latitude', 'longitude']);
         });
     }
 };

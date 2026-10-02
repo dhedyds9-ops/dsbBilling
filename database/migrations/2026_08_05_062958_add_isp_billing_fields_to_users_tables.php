@@ -33,8 +33,18 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users_tables', function (Blueprint $table) {
-            //
+        Schema::table('pppoe_users', function (Blueprint $table) {
+            $table->dropForeign(['odp_id']);
+            $table->dropColumn(['mac_address', 'static_ip', 'odp_id', 'port_number']);
+        });
+
+        Schema::table('hotspot_users', function (Blueprint $table) {
+            $table->dropColumn(['mac_address', 'static_ip']);
+        });
+
+        Schema::table('members', function (Blueprint $table) {
+            $table->dropForeign(['owner_id']);
+            $table->dropColumn(['owner_id']);
         });
     }
 };
