@@ -428,7 +428,9 @@ class Index extends BaseEnterpriseList
             foreach ($userQuery->getResellers() as $r) {
                 $resellers[(string)$r->id] = $r->name;
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
 
         return [
             ['key' => 'reseller_id', 'label' => 'Reseller', 'type' => 'select', 'options' => $resellers],

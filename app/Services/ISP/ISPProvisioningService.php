@@ -114,7 +114,9 @@ class ISPProvisioningService
                     $result['errors'][] = sprintf('Router #%d loop error: %s', $router->id, $e->getMessage());
                 }
 
-                try { $driver->disconnect(); } catch (Throwable $e) {}
+                try { $driver->disconnect(); } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             }
 
             $result['success'] = ($result['disabled'] > 0 || $result['kicked'] > 0) || count($result['errors']) === 0;
@@ -247,7 +249,9 @@ class ISPProvisioningService
                     $result['errors'][] = sprintf('Router #%d loop error: %s', $router->id, $e->getMessage());
                 }
 
-                try { $driver->disconnect(); } catch (Throwable $e) {}
+                try { $driver->disconnect(); } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             }
 
             $result['success'] = ($result['enabled'] > 0 || count($result['errors']) === 0);

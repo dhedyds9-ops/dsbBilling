@@ -158,7 +158,8 @@ class FinancialStatementService
                     $expenseTotal += $amt;
                 }
             } catch (\Throwable) {
-            }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
         }
 
         if ($expenseTotal === 0) {
@@ -207,7 +208,8 @@ class FinancialStatementService
                     ->whereIn('category', ['operasional', 'pegawai', 'marketing', 'lain'])
                     ->sum('amount');
             } catch (\Throwable) {
-            }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
         }
         if ($operatingExpense === 0) {
             $operatingExpense = round($operatingIncome * 0.3, 2);
@@ -278,7 +280,8 @@ class FinancialStatementService
                     $grandTotal += $amt;
                 }
             } catch (\Throwable) {
-            }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
         }
 
         if (count($rows) === 0) {
@@ -458,6 +461,7 @@ class FinancialStatementService
                 $customerTotals[$cid]['total'] += $outstanding;
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         $arTotal = array_sum(array_column($buckets, 'total'));
@@ -495,7 +499,8 @@ class FinancialStatementService
                     ->betweenDates($start->toDateString(), $end->toDateString())
                     ->sum('amount');
             } catch (\Throwable) {
-            }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
         }
         if ($totalExpense === 0) {
             $totalExpense = round($totalRevenue * 0.4, 2);
@@ -509,6 +514,7 @@ class FinancialStatementService
                 ->get()
                 ->sum(fn($i) => max(0, (float) ($i->total_amount - $i->paid_amount)));
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         return [

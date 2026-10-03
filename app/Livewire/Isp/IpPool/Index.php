@@ -122,7 +122,9 @@ class Index extends BaseNetworkComponent
                         $failedCount++;
                     }
                 }
-                try { $driver->disconnect(); } catch (Throwable $e) {}
+                try { $driver->disconnect(); } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             }
 
             Log::info('Sync IP Pool ke MikroTik SELESAI', [
@@ -224,7 +226,9 @@ class Index extends BaseNetworkComponent
                                 $network = $longParts[0] . '.' . $longParts[1] . '.' . $longParts[2] . '.0';
                                 $netmask = '255.255.255.0';
                             }
-                        } catch (Throwable $e) {}
+                        } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
                     }
                     foreach (array_slice($segments, 1) as $seg) {
                         if (str_contains($seg, '-')) {
@@ -284,7 +288,9 @@ class Index extends BaseNetworkComponent
                     }
                 }
 
-                try { $driver->disconnect(); } catch (Throwable $e) {}
+                try { $driver->disconnect(); } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             }
 
             $okCount = $routers->count() - $failedRouters;

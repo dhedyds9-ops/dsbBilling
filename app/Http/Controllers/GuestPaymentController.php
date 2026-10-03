@@ -100,7 +100,9 @@ class GuestPaymentController extends Controller
                     $activeGateways[$k] = $g;
                 }
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
 
         return view('guest.payment', compact(
             'query',

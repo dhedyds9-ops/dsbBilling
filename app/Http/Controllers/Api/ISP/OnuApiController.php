@@ -104,7 +104,8 @@ class OnuApiController extends Controller
             try {
                 $this->genieAcs->syncDeviceFromBilling($onu);
             } catch (Exception) {
-            }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             return response()->json(['success' => true, 'data' => $onu]);
         } catch (Exception $e) {
             DB::rollBack();

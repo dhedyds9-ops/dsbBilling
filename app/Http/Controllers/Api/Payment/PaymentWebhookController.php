@@ -47,6 +47,7 @@ final class PaymentWebhookController extends Controller
                 return response()->json(['ok' => false, 'status' => 'rate_limited'], 429);
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         // 1. Validate driver key known
@@ -84,6 +85,7 @@ final class PaymentWebhookController extends Controller
                 ], 200);
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         // 5. Get driver instance (enabled atau tidak, kita tetap try verify karena payment bisa datang
@@ -126,6 +128,7 @@ final class PaymentWebhookController extends Controller
         try {
             Cache::put($dedupKey, time(), now()->addDays(7));
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         $status = match (true) {
@@ -175,7 +178,8 @@ final class PaymentWebhookController extends Controller
                     $service->processMutation($mut);
                     $processed++;
                 } catch (\Throwable) {
-                }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             }
         }
         return response()->json(['ok' => true, 'processed' => $processed]);

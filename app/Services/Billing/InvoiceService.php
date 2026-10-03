@@ -41,10 +41,11 @@ class InvoiceService
         ) {
             $resolvedInvoiceNumber = $invoiceNumber ?? 'INV-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6));
 
-            $totalAmount = 0;
+            $totalAmount = 0.0;
             foreach ($items as $itemData) {
-                $totalAmount += ($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0);
+                $totalAmount += round(($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0), 2);
             }
+            $totalAmount = round($totalAmount, 2);
 
             $invoice = $this->invoiceRepository->create([
                 'uuid' => (string) Str::uuid(),
@@ -72,10 +73,12 @@ class InvoiceService
             $defBranch = $sp ? $sp->branch_settlement_price : 0;
             $defReseller = $sp ? ($sp->reseller_settlement_price ?: $sp->reseller_price) : 0;
 
+            $insertData = [];
+            $now = now();
             foreach ($items as $itemData) {
-                $subtotal = ($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0);
+                $subtotal = round(($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0), 2);
 
-                $this->invoiceItemRepository->create([
+                $insertData[] = [
                     'uuid' => (string) Str::uuid(),
                     'invoice_id' => $invoice->id,
                     'description' => $itemData['description'],
@@ -87,7 +90,12 @@ class InvoiceService
                     'subtotal' => $subtotal,
                     'created_by' => $userId,
                     'updated_by' => $userId,
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+            if (!empty($insertData)) {
+                \App\Models\Billing\InvoiceItem::insert($insertData);
             }
 
             Event::dispatch(new InvoiceCreatedEvent(
@@ -116,10 +124,11 @@ class InvoiceService
             $invoice, $customerId, $userId, $items, $issueDate, $dueDate,
             $invoiceNumber, $contractId, $currency, $status
         ) {
-            $totalAmount = 0;
+            $totalAmount = 0.0;
             foreach ($items as $itemData) {
-                $totalAmount += ($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0);
+                $totalAmount += round(($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0), 2);
             }
+            $totalAmount = round($totalAmount, 2);
 
             $invoice->update([
                 'customer_id' => $customerId,
@@ -146,10 +155,12 @@ class InvoiceService
             $defBranch = $sp ? $sp->branch_settlement_price : 0;
             $defReseller = $sp ? ($sp->reseller_settlement_price ?: $sp->reseller_price) : 0;
 
+            $insertData = [];
+            $now = now();
             foreach ($items as $itemData) {
-                $subtotal = ($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0);
+                $subtotal = round(($itemData['quantity'] ?? 1) * ($itemData['unit_price'] ?? 0), 2);
 
-                $this->invoiceItemRepository->create([
+                $insertData[] = [
                     'uuid' => (string) Str::uuid(),
                     'invoice_id' => $invoice->id,
                     'description' => $itemData['description'],
@@ -161,7 +172,12 @@ class InvoiceService
                     'subtotal' => $subtotal,
                     'created_by' => $userId,
                     'updated_by' => $userId,
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+            if (!empty($insertData)) {
+                \App\Models\Billing\InvoiceItem::insert($insertData);
             }
 
             return $invoice->load('items');
@@ -171,10 +187,14 @@ class InvoiceService
     public function applyPayment(int $invoiceId, float $amount, int $userId): Invoice
     {
         return DB::transaction(function () use ($invoiceId, $amount, $userId) {
-            $invoice = $this->invoiceRepository->find($invoiceId);
+            $invoice = Invoice::lockForUpdate()->find($invoiceId);
+            if (!$invoice) {
+                throw new \Exception("Invoice not found.");
+            }
 
-            $newPaidAmount = $invoice->paid_amount + $amount;
-            $status = $newPaidAmount >= $invoice->total_amount ? 'paid' : 'partial';
+            // Prevent floating point errors using round with 2 decimal precision
+            $newPaidAmount = round($invoice->paid_amount + $amount, 2);
+            $status = $newPaidAmount >= round($invoice->total_amount, 2) ? 'paid' : 'partial';
 
             $invoice->update([
                 'paid_amount' => $newPaidAmount,

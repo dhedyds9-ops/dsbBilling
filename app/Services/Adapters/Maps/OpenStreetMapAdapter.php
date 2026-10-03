@@ -10,7 +10,7 @@ class OpenStreetMapAdapter implements MapsAdapterInterface
     public function getDistance(GPSCoordinate $start, GPSCoordinate $end): float
     {
         // OSRM (Open Source Routing Machine) is typically used with OpenStreetMap
-        $response = Http::get("http://router.project-osrm.org/route/v1/driving/{$start->longitude},{$start->latitude};{$end->longitude},{$end->latitude}", [
+        $response = Http::timeout(5)->get("http://router.project-osrm.org/route/v1/driving/{$start->longitude},{$start->latitude};{$end->longitude},{$end->latitude}", [
             'overview' => 'false',
         ]);
 
@@ -23,7 +23,7 @@ class OpenStreetMapAdapter implements MapsAdapterInterface
 
     public function getTravelTime(GPSCoordinate $start, GPSCoordinate $end): int
     {
-        $response = Http::get("http://router.project-osrm.org/route/v1/driving/{$start->longitude},{$start->latitude};{$end->longitude},{$end->latitude}", [
+        $response = Http::timeout(5)->get("http://router.project-osrm.org/route/v1/driving/{$start->longitude},{$start->latitude};{$end->longitude},{$end->latitude}", [
             'overview' => 'false',
         ]);
 
@@ -37,7 +37,7 @@ class OpenStreetMapAdapter implements MapsAdapterInterface
 
     public function geocode(string $address): ?GPSCoordinate
     {
-        $response = Http::get('https://nominatim.openstreetmap.org/search', [
+        $response = Http::timeout(5)->get('https://nominatim.openstreetmap.org/search', [
             'q' => $address,
             'format' => 'json',
             'limit' => 1,
@@ -55,7 +55,7 @@ class OpenStreetMapAdapter implements MapsAdapterInterface
 
     public function reverseGeocode(GPSCoordinate $coordinate): ?string
     {
-        $response = Http::get('https://nominatim.openstreetmap.org/reverse', [
+        $response = Http::timeout(5)->get('https://nominatim.openstreetmap.org/reverse', [
             'lat' => $coordinate->latitude,
             'lon' => $coordinate->longitude,
             'format' => 'json',

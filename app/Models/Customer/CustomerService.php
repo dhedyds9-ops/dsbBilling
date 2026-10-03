@@ -2,6 +2,8 @@
 
 namespace App\Models\Customer;
 
+use App\Traits\HasResellerScope;
+
 use App\Models\CRM\Customer;
 use App\Models\ISP\Onu;
 use App\Models\ISP\ServiceProfile;
@@ -14,7 +16,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 
 class CustomerService extends Model
-{
+ {
+    use HasResellerScope;
+
     use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 

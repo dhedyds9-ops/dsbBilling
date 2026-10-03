@@ -77,6 +77,7 @@ class SessionKickService
         try {
             $session->delete();
         } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         $this->deleteOnlineSessionsFor(
@@ -150,6 +151,7 @@ class SessionKickService
         try {
             $session->delete();
         } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         $this->deleteOnlineSessionsFor(

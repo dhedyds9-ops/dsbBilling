@@ -233,6 +233,7 @@ class AccountingController extends Controller
             $online['from_radius'] = \App\Models\ISP\OnlineSession::query()->sourceRadius()->count();
             $online['from_router'] = \App\Models\ISP\OnlineSession::query()->sourcePoller()->count();
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         $voucherStats = null;
@@ -251,12 +252,14 @@ class AccountingController extends Controller
                 'expiring_within_24h' => $expiringSoon,
             ];
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         $performance = null;
         try {
             $performance = $this->metrics->all();
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         return response()->json([

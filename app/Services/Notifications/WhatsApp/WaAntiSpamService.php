@@ -88,6 +88,7 @@ final class WaAntiSpamService
             Redis::connection()->incr($dayKey);
             Redis::connection()->expire($dayKey, 86400);
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
     }
 

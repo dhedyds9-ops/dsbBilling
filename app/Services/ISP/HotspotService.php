@@ -38,7 +38,9 @@ class HotspotService
                         if ($r && $r instanceof Router) {
                             $routers[$r->id] = $r;
                         }
-                    } catch (Throwable $e) {}
+                    } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
                 }
             }
             if (empty($routers)) {
@@ -112,7 +114,9 @@ class HotspotService
                 if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
                     Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'active'));
                 }
-            } catch (Throwable $e) {}
+            } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
 
             return $hotspotUser;
         });
@@ -136,7 +140,9 @@ class HotspotService
                 if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
                     Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'suspended'));
                 }
-            } catch (Throwable $e) {}
+            } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
 
             return $hotspotUser;
         });
@@ -161,7 +167,9 @@ class HotspotService
                 if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
                     Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'terminated'));
                 }
-            } catch (Throwable $e) {}
+            } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
 
             return $hotspotUser;
         });
@@ -198,7 +206,9 @@ class HotspotService
                 if (class_exists(\App\Events\ISP\HotspotUserCredentialsChangedEvent::class)) {
                     Event::dispatch(new \App\Events\ISP\HotspotUserCredentialsChangedEvent($hotspotUser, array_keys($updateData)));
                 }
-            } catch (Throwable $e) {}
+            } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
 
             return $hotspotUser;
         });
@@ -238,7 +248,9 @@ class HotspotService
                 if (!$driver->connect()) continue;
                 $driver->disconnectHotspotUser($username);
                 $driver->disconnect();
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
         }
     }
 }

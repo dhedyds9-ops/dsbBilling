@@ -148,7 +148,9 @@ class CDataOltDriver extends BaseOltDriver
                                 }
                             }
                         }
-                    } catch (\Throwable) {}
+                    } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
                 }
                 $macsCTC = $this->macsCache[$portNum] ?? ($this->macsCache[$ponPort] ?? []);
                 $macsRaw = [];
@@ -368,7 +370,9 @@ class CDataOltDriver extends BaseOltDriver
                         }
                     }
                 }
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
         }
         $macsCTC = $this->macsCache[$ponPort] ?? [];
         if (empty($macsCTC) && $ponPort > 1000000) {

@@ -68,13 +68,15 @@ class FiberServiceSuspensionListener implements ShouldQueue
                         'pay-your-bill-' . substr(md5((string)$onu->id), 0, 6)
                     );
                 } catch (Throwable) {
-                }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
 
                 if ($onu->odp_id) {
                     try {
                         $this->odpOccupancy->recalculateOne($onu->odp);
                     } catch (Throwable) {
-                    }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
                 }
             });
             Log::info('Fiber suspension done', ['uuid' => $uuid, 'onu_id' => $onu->id]);

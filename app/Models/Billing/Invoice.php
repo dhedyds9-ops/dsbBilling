@@ -2,6 +2,8 @@
 
 namespace App\Models\Billing;
 
+use App\Traits\HasResellerScope;
+
 use App\Models\CRM\Customer;
 use App\Models\User;
 use App\Models\Payment\Payment;
@@ -10,7 +12,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
-{
+ {
+    use HasResellerScope;
+
     use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 

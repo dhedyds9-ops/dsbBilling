@@ -21,7 +21,7 @@ class Index extends BaseCrmComponent
     public $activation_prospect_name = '';
     
     public $pppoe_username = '';
-    public $pppoe_password = 'password123';
+    public $pppoe_password = '';
     public $service_profile_id = '';
     public $network_profile_id = '';
 
@@ -53,7 +53,7 @@ class Index extends BaseCrmComponent
         $companySuffix = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $companyName));
         $this->pppoe_username = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $survey->prospect->name)) . '@' . $companySuffix;
         
-        $this->pppoe_password = 'password123';
+        $this->pppoe_password = \Illuminate\Support\Str::random(8);
         $this->service_profile_id = '';
         $this->network_profile_id = '';
 

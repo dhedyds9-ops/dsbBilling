@@ -87,7 +87,8 @@ class OltApiController extends Controller
                     try {
                         $all[] = $drv->getOnuRxPower($idx);
                     } catch (Exception) {
-                    }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
                 }
             }
             return response()->json(['success' => true, 'data' => array_merge(...$all)]);

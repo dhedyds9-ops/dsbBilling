@@ -2,13 +2,17 @@
 
 namespace App\Models\Support;
 
+use App\Traits\HasResellerScope;
+
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Ticket extends Model
-{
+ {
+    use HasResellerScope;
+
     use HasFactory, \App\Traits\HasBranchScope;
 
     protected $fillable = [

@@ -286,7 +286,8 @@ class OltPollingService
                                 'measured_at' => now(),
                             ]);
                         } catch (Throwable) {
-                        }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
                         $updatedOnu++;
                     }
                     
@@ -328,7 +329,8 @@ class OltPollingService
             try {
                 $olt->update(['status' => 'inactive', 'last_polled_at' => now()]);
             } catch (Throwable) {
-            }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             return [
                 'success' => false,
                 'olt_id' => $olt->id,

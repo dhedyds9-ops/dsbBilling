@@ -80,7 +80,9 @@ class SyncVouchersToMikrotikListener implements ShouldQueue
                         if ($r && $r instanceof Router) {
                             $routers[$r->id] = $r;
                         }
-                    } catch (\Throwable $e) {}
+                    } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
                 }
             }
             if (empty($routers)) {

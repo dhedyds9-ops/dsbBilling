@@ -120,7 +120,8 @@ if (!function_exists('voucher_asset')) {
                     return (string) asset('');
                 }
             } catch (\Throwable) {
-            }
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
             return '';
         }
 
@@ -133,6 +134,7 @@ if (!function_exists('voucher_asset')) {
                 return (string) asset($trimmed);
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         try {
@@ -140,6 +142,7 @@ if (!function_exists('voucher_asset')) {
                 return (string) url($trimmed);
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         try {
@@ -147,6 +150,7 @@ if (!function_exists('voucher_asset')) {
                 return (string) \Illuminate\Support\Facades\URL::to('/' . $trimmed);
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         return '/' . $trimmed;

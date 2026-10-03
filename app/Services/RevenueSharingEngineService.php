@@ -102,8 +102,9 @@ class RevenueSharingEngineService
                 'updated_by' => $user->id,
             ]);
 
+            $itemsToInsert = [];
             foreach ($preview['items'] as $item) {
-                RevenueShareItem::create([
+                $itemsToInsert[] = [
                     'batch_id' => $batch->id,
                     'member_id' => $item['member']->id,
                     'member_revenue' => $item['member_revenue'],
@@ -112,7 +113,12 @@ class RevenueSharingEngineService
                     'net_share' => $item['net_share'],
                     'created_by' => $user->id,
                     'updated_by' => $user->id,
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            if (!empty($itemsToInsert)) {
+                RevenueShareItem::insert($itemsToInsert);
             }
 
             // Log audit trail

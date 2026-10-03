@@ -2,6 +2,8 @@
 
 namespace App\Models\ISP;
 
+use App\Traits\HasResellerScope;
+
 use App\Models\Master\Branch;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceProfile extends Model
-{
+ {
+    use HasResellerScope;
+
     use \App\Traits\HasBranchScope;
     use SoftDeletes;
 

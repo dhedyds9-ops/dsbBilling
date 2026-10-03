@@ -2,6 +2,8 @@
 
 namespace App\Models\Payment;
 
+use App\Traits\HasResellerScope;
+
 use App\Models\CRM\Customer;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,7 +11,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
-{
+ {
+    use HasResellerScope;
+
     use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 

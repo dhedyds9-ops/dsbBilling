@@ -163,7 +163,9 @@ class Index extends Component
                     'time' => $payment->created_at->diffForHumans(),
                 ];
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
         $this->activities = $recentActivities;
 
         // 6. Chart Data

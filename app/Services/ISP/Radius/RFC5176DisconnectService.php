@@ -256,6 +256,7 @@ class RFC5176DisconnectService
                 $pos += $attrLen;
             }
         } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         return null;
     }

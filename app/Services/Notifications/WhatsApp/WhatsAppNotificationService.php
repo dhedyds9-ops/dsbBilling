@@ -173,6 +173,7 @@ final class WhatsAppNotificationService
                 }
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         $txt = $this->template->serviceReactivated([
             'customer_name' => $customer->name ?? $customer->full_name ?? 'Pelanggan',
@@ -341,6 +342,7 @@ final class WhatsAppNotificationService
                 if (strtolower((string)($sess->radius_state ?? 'online')) === 'online') $status = 'online';
             }
         } catch (\Throwable) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         return $this->template->botResponseStatus([
             'customer_name' => $customer->name ?? ($customer->full_name ?? 'Pelanggan'),

@@ -23,6 +23,7 @@ class GenieACSDriver
         try {
             $settings = \App\Models\Setting::getValue('connection.acs', []);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         $this->baseUrl = rtrim($settings['base_url'] ?? config('genieacs.base_url', 'http://localhost:7557'), '/');
         $this->username = $settings['connection_request_username'] ?? $settings['username'] ?? config('genieacs.username', 'admin');

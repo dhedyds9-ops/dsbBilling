@@ -13,7 +13,7 @@ class GoogleMapsAdapter implements MapsAdapterInterface
 
     public function getDistance(GPSCoordinate $start, GPSCoordinate $end): float
     {
-        $response = Http::get('https://maps.googleapis.com/maps/api/distancematrix/json', [
+        $response = Http::timeout(5)->get('https://maps.googleapis.com/maps/api/distancematrix/json', [
             'origins' => "{$start->latitude},{$start->longitude}",
             'destinations' => "{$end->latitude},{$end->longitude}",
             'key' => $this->apiKey,
@@ -28,7 +28,7 @@ class GoogleMapsAdapter implements MapsAdapterInterface
 
     public function getTravelTime(GPSCoordinate $start, GPSCoordinate $end): int
     {
-        $response = Http::get('https://maps.googleapis.com/maps/api/distancematrix/json', [
+        $response = Http::timeout(5)->get('https://maps.googleapis.com/maps/api/distancematrix/json', [
             'origins' => "{$start->latitude},{$start->longitude}",
             'destinations' => "{$end->latitude},{$end->longitude}",
             'key' => $this->apiKey,
@@ -44,7 +44,7 @@ class GoogleMapsAdapter implements MapsAdapterInterface
 
     public function geocode(string $address): ?GPSCoordinate
     {
-        $response = Http::get('https://maps.googleapis.com/maps/api/geocode/json', [
+        $response = Http::timeout(5)->get('https://maps.googleapis.com/maps/api/geocode/json', [
             'address' => $address,
             'key' => $this->apiKey,
         ]);
@@ -61,7 +61,7 @@ class GoogleMapsAdapter implements MapsAdapterInterface
 
     public function reverseGeocode(GPSCoordinate $coordinate): ?string
     {
-        $response = Http::get('https://maps.googleapis.com/maps/api/geocode/json', [
+        $response = Http::timeout(5)->get('https://maps.googleapis.com/maps/api/geocode/json', [
             'latlng' => "{$coordinate->latitude},{$coordinate->longitude}",
             'key' => $this->apiKey,
         ]);
