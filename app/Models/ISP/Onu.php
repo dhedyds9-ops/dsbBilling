@@ -100,10 +100,7 @@ class Onu extends Model
         'attributes' => 'array',
     ];
 
-    protected $hidden = [
-        'wifi_password',
-        'admin_password',
-    ];
+
 
     public function scopeActive($query)
     {
