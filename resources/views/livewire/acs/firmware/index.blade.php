@@ -2,7 +2,7 @@
   @php
     ob_start();
   @endphp
-    <a href="{{ route('acs.firmware.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+    <a href="{{ route($isNocLayout ? 'noc.acs.firmware.create' : 'acs.firmware.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
       <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">upload</span>
       Upload Firmware
     </a>
@@ -81,7 +81,10 @@
                             <td colspan="6" class="px-4 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
                                     <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">system_update_alt</span>
-                                    <div class="text-sm font-medium text-slate-900 dark:text-slate-100">Belum ada Firmware</div>
+                                    <div class="text-sm font-medium text-slate-900 dark:text-slate-100 mb-4">Belum ada Firmware</div>
+                                    <a href="{{ route($isNocLayout ? 'noc.acs.firmware.create' : 'acs.firmware.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-medium rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+                                        <span class="material-symbols-outlined notranslate mr-1.5" style="font-size:18px">upload</span> Upload File Firmware Sekarang
+                                    </a>
                                 </div>
                             </td>
                         </tr>
