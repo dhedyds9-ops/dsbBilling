@@ -1,1 +1,0 @@
-<?php $d = json_decode(file_get_contents("routes_data.json"), true); foreach($d as $r) { $uri = $r["uri"]; $mw = implode(",", (array)$r["middleware"]); if(str_contains($uri, "webhook") || str_contains($uri, "api")) echo "$uri => $mw\n"; }

@@ -1,1 +1,0 @@
-<?php $dir = __DIR__."/app/Models"; $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)); foreach($it as $f) { if($f->getExtension() == "php") { $c = file_get_contents($f->getPathname()); if(str_contains($c, "protected \$with =")) { echo basename($f->getPathname())." uses eager loading.\n"; } } }

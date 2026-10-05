@@ -1,1 +1,0 @@
-<?php $d = json_decode(file_get_contents("routes_data.json"), true); $mw = []; foreach($d as $r) { foreach((array)$r["middleware"] as $m) { $mw[$m] = ($mw[$m] ?? 0) + 1; } } arsort($mw); print_r($mw);
