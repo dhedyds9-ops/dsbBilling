@@ -48,6 +48,7 @@ class DatabaseSeeder extends Seeder
         $this->call(ChartOfAccountsSeeder::class);
         // Seed journals
         $this->call(JournalSeeder::class);
+        $this->call(VendorSeeder::class);
 
         }
 }

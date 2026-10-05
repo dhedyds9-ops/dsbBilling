@@ -4,42 +4,36 @@ namespace Database\Seeders;
 
 use App\Models\ISP\Vendor;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class VendorSeeder extends Seeder
 {
     public function run(): void
     {
-        $vendors = [
-            [
-                'code' => 'VEND-001',
-                'name' => 'Huawei',
-                'description' => 'Vendor perangkat jaringan Huawei',
-                'status' => 'active',
-            ],
-            [
-                'code' => 'VEND-002',
-                'name' => 'MikroTik',
-                'description' => 'Vendor perangkat jaringan MikroTik',
-                'status' => 'active',
-            ],
-            [
-                'code' => 'VEND-003',
-                'name' => 'Cisco',
-                'description' => 'Vendor perangkat jaringan Cisco',
-                'status' => 'active',
-            ],
-            [
-                'code' => 'VEND-004',
-                'name' => 'ZTE',
-                'description' => 'Vendor perangkat jaringan ZTE',
-                'status' => 'active',
-            ],
+        $brands = [
+            "ZTE" => "Vendor perangkat jaringan dan OLT ZTE",
+            "HUAWEI" => "Vendor perangkat jaringan dan OLT Huawei",
+            "FIBERHOME" => "Vendor perangkat jaringan dan OLT Fiberhome",
+            "NOKIA" => "Vendor perangkat jaringan dan OLT Nokia/Alcatel-Lucent",
+            "MIKROTIK" => "Vendor perangkat jaringan MikroTik RouterBOARD",
+            "TP-LINK" => "Vendor perangkat jaringan TP-Link",
+            "TENDA" => "Vendor perangkat jaringan Tenda",
+            "TOTOLINK" => "Vendor perangkat jaringan Totolink",
+            "V-SOL" => "Vendor perangkat jaringan OLT dan ONU V-SOL",
+            "HSGQ" => "Vendor perangkat jaringan OLT dan ONU HSGQ",
+            "UBIQUITI" => "Vendor perangkat jaringan nirkabel Ubiquiti",
+            "CISCO" => "Vendor perangkat jaringan Cisco",
         ];
 
-        foreach ($vendors as $vendor) {
+        foreach ($brands as $name => $description) {
+            $code = strtoupper(Str::slug($name));
             Vendor::firstOrCreate(
-                ['code' => $vendor['code']],
-                $vendor
+                ["name" => $name],
+                [
+                    "code" => $code,
+                    "description" => $description,
+                    "status" => "active",
+                ]
             );
         }
     }
