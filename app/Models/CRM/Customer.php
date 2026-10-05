@@ -18,7 +18,7 @@ class Customer extends Model
 {
     use SoftDeletes, \App\Traits\HasResellerScope, \App\Traits\HasBranchScope;
 
-    protected $table = 'members';
+    protected $table = 'customers';
 
     protected $fillable = [
         'user_id',

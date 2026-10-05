@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 class Onu extends Model
 {
     use \App\Traits\HasBranchScope;
-    use HasFactory, SoftDeletes;
+    use HasFactory, \App\Traits\HasUserAreaScope, SoftDeletes;
 
     protected $hidden = ['wifi_password', 'admin_password'];
     protected $fillable = [

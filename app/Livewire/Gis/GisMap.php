@@ -755,7 +755,7 @@ class GisMap extends Component
             'odp' => 'odps',
             'htb' => 'distribution_boxes',
             'closure' => 'joint_closures',
-            'customer' => 'members',
+            'customer' => 'customers',
             default => 'olts',
         };
 
@@ -778,8 +778,8 @@ class GisMap extends Component
         }
 
         if ($this->nodeFormType === 'customer') {
-            $rules['nodeFormPhone'] = ['required', 'numeric', 'digits_between:10,15', Rule::unique('members', 'phone')->ignore($this->editNodeId)];
-            $rules['nodeFormEmail'] = ['nullable', 'email', 'max:255', Rule::unique('members', 'email')->ignore($this->editNodeId)];
+            $rules['nodeFormPhone'] = ['required', 'numeric', 'digits_between:10,15', Rule::unique('customers', 'phone')->ignore($this->editNodeId)];
+            $rules['nodeFormEmail'] = ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($this->editNodeId)];
         }
 
         $this->validate($rules, [

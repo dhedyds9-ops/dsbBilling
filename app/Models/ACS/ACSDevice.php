@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ACSDevice extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, \App\Traits\HasUserAreaScope, SoftDeletes;
 
     protected $table = 'acs_devices';
 

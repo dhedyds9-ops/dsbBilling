@@ -40,7 +40,7 @@ class Index extends BaseACSComponent
 
     public function render()
     {
-        $query = ACSAlarm::with('device');
+        $query = ACSAlarm::forUserArea(auth()->user())->with('device');
 
         if ($this->search) {
             $query->where('message', 'like', '%' . $this->search . '%');

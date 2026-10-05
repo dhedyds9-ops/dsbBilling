@@ -43,17 +43,25 @@ class RouterProvisioningScriptGenerator
         if ($router->radius_secret !== $radiusSecret) {
             $router->update(['radius_secret' => $radiusSecret]);
             // Sync to RadiusNas
-            $radiusNas = \App\Models\ISP\RadiusNas::firstOrCreate(
-                ['nas_ip_address' => $router->ip_address],
-                [
-                    'uuid' => Str::uuid(),
-                    'nas_name' => $router->name,
-                    'nas_type' => 'mikrotik',
-                    'status' => 'active',
-                    'created_by' => 1,
-                    'updated_by' => 1
-                ]
-            );
+            try {
+                $radiusNas = \App\Models\ISP\RadiusNas::withoutGlobalScopes()->firstOrCreate(
+                    ['nas_ip_address' => $router->ip_address],
+                    [
+                        'uuid' => Str::uuid(),
+                        'nas_name' => $router->name,
+                        'nas_type' => 'mikrotik',
+                        'status' => 'active',
+                        'created_by' => 1,
+                        'updated_by' => 1
+                    ]
+                );
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($e->errorInfo[1] == 1062 || $e->errorInfo[1] == 19) {
+                    $radiusNas = \App\Models\ISP\RadiusNas::withoutGlobalScopes()->where('nas_ip_address', $router->ip_address)->firstOrFail();
+                } else {
+                    throw $e;
+                }
+            }
             $radiusNas->update(['nas_secret' => $radiusSecret]);
         }
 

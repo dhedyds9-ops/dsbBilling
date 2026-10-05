@@ -56,16 +56,24 @@ class ProvisioningService
             
             // Auto-create default Service and Catalog if empty to prevent NOT NULL constraint
             if (!$service) {
-                $catalog = \App\Models\ServiceCatalog\ServiceCatalog::firstOrCreate(
-                    ['name' => 'Layanan Internet'],
-                    [
-                        'uuid' => (string) Str::uuid(),
-                        'description' => 'Katalog Layanan Default',
-                        'is_active' => true,
-                        'created_by' => $userId,
-                        'updated_by' => $userId
-                    ]
-                );
+                try {
+                    $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->firstOrCreate(
+                        ['name' => 'Layanan Internet'],
+                        [
+                            'uuid' => (string) Str::uuid(),
+                            'description' => 'Katalog Layanan Default',
+                            'is_active' => true,
+                            'created_by' => $userId,
+                            'updated_by' => $userId
+                        ]
+                    );
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->errorInfo[1] == 1062 || $e->errorInfo[1] == 19) {
+                        $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->where('name', 'Layanan Internet')->firstOrFail();
+                    } else {
+                        throw $e;
+                    }
+                }
                 
                 $service = Service::create([
                     'uuid' => (string) Str::uuid(),
@@ -198,16 +206,24 @@ class ProvisioningService
             
             // Auto-create default Service and Catalog if empty to prevent NOT NULL constraint
             if (!$service) {
-                $catalog = \App\Models\ServiceCatalog\ServiceCatalog::firstOrCreate(
-                    ['name' => 'Layanan Internet'],
-                    [
-                        'uuid' => (string) Str::uuid(),
-                        'description' => 'Katalog Layanan Default',
-                        'is_active' => true,
-                        'created_by' => $userId,
-                        'updated_by' => $userId
-                    ]
-                );
+                try {
+                    $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->firstOrCreate(
+                        ['name' => 'Layanan Internet'],
+                        [
+                            'uuid' => (string) Str::uuid(),
+                            'description' => 'Katalog Layanan Default',
+                            'is_active' => true,
+                            'created_by' => $userId,
+                            'updated_by' => $userId
+                        ]
+                    );
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->errorInfo[1] == 1062 || $e->errorInfo[1] == 19) {
+                        $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->where('name', 'Layanan Internet')->firstOrFail();
+                    } else {
+                        throw $e;
+                    }
+                }
                 
                 $service = Service::create([
                     'uuid' => (string) Str::uuid(),

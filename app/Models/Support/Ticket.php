@@ -13,7 +13,7 @@ class Ticket extends Model
  {
     use HasResellerScope;
 
-    use HasFactory, \App\Traits\HasBranchScope;
+    use HasFactory, \App\Traits\HasUserAreaScope, \App\Traits\HasBranchScope;
 
     protected $fillable = [
         'uuid',

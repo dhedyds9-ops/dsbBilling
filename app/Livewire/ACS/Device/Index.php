@@ -218,7 +218,7 @@ class Index extends BaseACSComponent
                 }
 
                 // Penanganan SoftDeletes + Unique Constraint
-                $deviceRecord = \App\Models\ACS\ACSDevice::withTrashed()->where('uuid', $deviceId)->first();
+                $deviceRecord = \App\Models\ACS\ACSDevice::forUserArea(auth()->user())->withTrashed()->where('uuid', $deviceId)->first();
                 if ($deviceRecord) {
                     // Restore jika sempat terhapus
                     if ($deviceRecord->trashed()) {
@@ -247,7 +247,7 @@ class Index extends BaseACSComponent
 
     public function render()
     {
-        $query = ACSDevice::with(['customerService', 'asset', 'onu', 'olt', 'vendor']);
+        $query = ACSDevice::forUserArea(auth()->user())->with(['customerService', 'asset', 'onu', 'olt', 'vendor']);
 
         if ($this->search) {
             $query->where(function($q) {

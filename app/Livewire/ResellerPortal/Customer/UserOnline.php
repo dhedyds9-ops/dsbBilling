@@ -109,17 +109,17 @@ class UserOnline extends \App\Livewire\ISP\BaseNetworkComponent
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('pppoe_users')
                     ->join('customer_services', 'pppoe_users.customer_service_id', '=', 'customer_services.id')
-                    ->join('members', 'customer_services.customer_id', '=', 'members.id')
+                    ->join('customers', 'customer_services.customer_id', '=', 'customers.id')
                     ->whereRaw('pppoe_users.username = ppp_active_sessions.name')
-                    ->where('members.created_by', $user->id);
+                    ->where('customers.created_by', $user->id);
             });
             $hotspotQuery->whereExists(function ($sub) use ($user) {
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('hotspot_users')
                     ->join('customer_services', 'hotspot_users.customer_service_id', '=', 'customer_services.id')
-                    ->join('members', 'customer_services.customer_id', '=', 'members.id')
+                    ->join('customers', 'customer_services.customer_id', '=', 'customers.id')
                     ->whereRaw('hotspot_users.username = hotspot_active_sessions.user')
-                    ->where('members.created_by', $user->id);
+                    ->where('customers.created_by', $user->id);
             });
             $voucherQuery->whereExists(function ($sub) use ($user) {
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
