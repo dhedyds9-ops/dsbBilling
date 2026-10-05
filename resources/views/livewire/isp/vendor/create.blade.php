@@ -41,13 +41,13 @@
             <form wire:submit.prevent="save" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kode Vendor</label>
-                        <input type="text" wire:model="code" placeholder="Masukkan kode vendor" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kode Vendor <span class="text-xs text-slate-400 font-normal">(Otomatis/Bisa diubah)</span></label>
+                        <input type="text" wire:model="code" placeholder="Otomatis terisi dari nama" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         @error('code') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Vendor</label>
-                        <input type="text" wire:model="name" placeholder="Masukkan nama vendor" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                        <input type="text" wire:model.live="name" placeholder="Masukkan nama vendor" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div>

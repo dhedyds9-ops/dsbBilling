@@ -26,6 +26,15 @@ class Create extends AdminComponent
         ];
     }
 
+    
+    public function updatedName($value)
+    {
+        if (empty($this->code) && !empty($value)) {
+            // e.g. "Huawei Tech" -> "HUAWEI-TECH"
+            $this->code = strtoupper(\Illuminate\Support\Str::slug($value));
+        }
+    }
+
     public function save()
     {
         $this->validate([
