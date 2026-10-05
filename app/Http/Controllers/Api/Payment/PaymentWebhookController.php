@@ -46,7 +46,7 @@ final class PaymentWebhookController extends Controller
                 Log::warning('[PaymentWebhook] rate limited', ['driver' => $driver, 'ip' => $request->ip()]);
                 return response()->json(['ok' => false, 'status' => 'rate_limited'], 429);
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
@@ -84,7 +84,7 @@ final class PaymentWebhookController extends Controller
                     'duplicate' => true,
                 ], 200);
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
@@ -127,7 +127,7 @@ final class PaymentWebhookController extends Controller
         // 8. Mark payload SEEN → Cache 7 hari (anti replay next time)
         try {
             Cache::put($dedupKey, time(), now()->addDays(7));
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
@@ -177,7 +177,7 @@ final class PaymentWebhookController extends Controller
                 try {
                     $service->processMutation($mut);
                     $processed++;
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
             }

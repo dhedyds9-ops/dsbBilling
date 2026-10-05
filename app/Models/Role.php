@@ -23,4 +23,19 @@ class Role extends Model
     {
         return $this->belongsToMany(Permission::class);
     }
+
+    public static function hiddenInUserManagement(): array
+    {
+        return config('roles.hidden_roles', ['customer']);
+    }
+
+    public static function allSystemRoleNames(): array
+    {
+        return config('roles.system_roles', ['administrator', 'manager', 'reseller', 'customer']);
+    }
+
+    public function getIsSystemAttribute(): bool
+    {
+        return in_array($this->name, self::allSystemRoleNames(), true);
+    }
 }

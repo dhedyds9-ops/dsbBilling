@@ -51,6 +51,14 @@ return new class extends Migration
 
     public function up(): void
     {
+        // CREATE BACKUP TABLES FOR REVERSIBILITY
+        if (!Schema::hasTable('role_user_backup_20260818')) {
+            DB::statement('CREATE TABLE role_user_backup_20260818 AS SELECT * FROM role_user');
+        }
+        if (!Schema::hasTable('permission_role_backup_20260818')) {
+            DB::statement('CREATE TABLE permission_role_backup_20260818 AS SELECT * FROM permission_role');
+        }
+
         // Step 1: Pastikan role 'administrator' ada (insert jika belum)
         $adminRole = DB::table('roles')->where('name', 'administrator')->first();
         if (!$adminRole) {
@@ -122,21 +130,16 @@ return new class extends Migration
 
     public function down(): void
     {
-        // REVERSE: Kembalikan user dari role baru ke role lama
-        // Ini hanya bisa dilakukan jika role lama masih ada di tabel
-        foreach ($this->mapping as $oldRoleName => $newRoleName) {
-            $oldRole = DB::table('roles')->where('name', $oldRoleName)->first();
-            $newRole = DB::table('roles')->where('name', $newRoleName)->first();
+        if (Schema::hasTable('role_user_backup_20260818')) {
+            DB::table('role_user')->truncate();
+            DB::statement('INSERT INTO role_user SELECT * FROM role_user_backup_20260818');
+            Schema::dropIfExists('role_user_backup_20260818');
+        }
 
-            if (!$oldRole || !$newRole) {
-                continue;
-            }
-
-            // Get user_ids yang di-migrate (yang saat ini di new role)
-            // Tidak bisa 100% reverse karena kita tidak tahu user mana yang asalnya dari old role
-            // Tapi kita bisa set ulang jika role lama masih ada
-            // NOTE: down() ini tidak perfect karena kita tidak menyimpan state sebelumnya
-            // Untuk rollback production yang benar, gunakan backup database
+        if (Schema::hasTable('permission_role_backup_20260818')) {
+            DB::table('permission_role')->truncate();
+            DB::statement('INSERT INTO permission_role SELECT * FROM permission_role_backup_20260818');
+            Schema::dropIfExists('permission_role_backup_20260818');
         }
     }
 };
