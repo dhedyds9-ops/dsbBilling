@@ -3,7 +3,7 @@
 namespace App\Listeners\AAA;
 
 use App\Jobs\AAA\RemovePPPoEUserJob;
-use App\Models\AAA\PPPoEUser;
+use App\Models\ISP\PPPoEUser;
 use Src\Domain\AAA\Events\PPPoEUserSuspendedEvent;
 
 class PPPoEUserSuspendedListener

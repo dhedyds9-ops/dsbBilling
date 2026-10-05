@@ -3,7 +3,7 @@
 namespace App\Services\Provisioning;
 
 use App\Models\Customer\CustomerService;
-use App\Models\Customer\Contract;
+use App\Models\CRM\Contract;
 use App\Models\ServiceCatalog\Service;
 use App\Models\ISP\PPPoEUser;
 use App\Models\Provisioning\ServiceInstance;

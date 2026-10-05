@@ -7,7 +7,7 @@ use App\Jobs\Provisioning\RollbackProvisioningJob;
 use App\Jobs\Notifications\SendNotificationJob;
 use App\Models\AuditLog;
 use App\Models\CRM\Customer;
-use App\Models\Customer\Contract;
+use App\Models\CRM\Contract;
 use App\Models\Customer\CustomerService;
 use App\Models\Notification\Notification;
 use App\Models\Provisioning\ProvisionPipeline;

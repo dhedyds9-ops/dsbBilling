@@ -3,7 +3,7 @@
 namespace App\Models\Billing;
 
 use App\Models\CRM\Customer;
-use App\Models\Customer\Contract;
+use App\Models\CRM\Contract;
 use App\Models\Customer\CustomerService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

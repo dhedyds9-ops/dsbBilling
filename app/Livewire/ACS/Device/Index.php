@@ -176,7 +176,6 @@ class Index extends BaseACSComponent
                     } elseif ($rxPower < -50 || $rxPower > 50) {
                         $rxPower /= 100;
                     }
-                    $rxPower = round($rxPower); // Since migration is integer, we round it
                 }
 
                 $acsDeviceParams = [

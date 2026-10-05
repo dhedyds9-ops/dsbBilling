@@ -1,0 +1,1 @@
+<?php $d = json_decode(file_get_contents("routes_data.json"), true); foreach($d as $r) { if(empty($r["name"]) && !str_contains($r["uri"], "api") && !str_contains($r["uri"], "_debugbar") && !str_contains($r["uri"], "livewire")) echo "No Name: ".$r["uri"]."\n"; }

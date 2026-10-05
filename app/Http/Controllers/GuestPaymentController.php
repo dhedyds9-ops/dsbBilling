@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\CRM\Customer;
 use App\Models\Billing\Invoice;
-use App\Models\AAA\Voucher;
-use App\Models\AAA\HotspotUser;
-use App\Models\AAA\RadiusAccounting;
+use App\Models\ISP\Voucher;
+use App\Models\ISP\HotspotUser;
+use App\Models\ISP\RadiusAccounting;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 

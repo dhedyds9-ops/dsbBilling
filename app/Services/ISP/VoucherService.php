@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services\AAA;
+namespace App\Services\ISP;
 
-use App\Models\AAA\Voucher;
-use App\Models\AAA\VoucherPool;
-use App\Repositories\AAA\VoucherRepository;
-use App\Repositories\AAA\VoucherPoolRepository;
+use App\Models\ISP\Voucher;
+use App\Models\ISP\VoucherPool;
+use App\Repositories\ISP\VoucherRepository;
+use App\Repositories\ISP\VoucherPoolRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;

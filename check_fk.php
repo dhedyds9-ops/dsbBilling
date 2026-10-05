@@ -1,0 +1,1 @@
+<?php $dir = __DIR__."/database/migrations"; $files = glob("$dir/*.php"); foreach($files as $f) { $content = file_get_contents($f); if(preg_match_all("/foreignId\((.*?)\)/", $content, $m)) { foreach($m[0] as $fk) { if(!str_contains($content, "constrained") && !str_contains($content, "references")) { echo basename($f).": $fk\n"; } } } }

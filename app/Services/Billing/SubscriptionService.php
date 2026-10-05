@@ -3,7 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Models\Billing\Subscription;
-use App\Models\Customer\Contract;
+use App\Models\CRM\Contract;
 use App\Models\Customer\CustomerService;
 use App\Repositories\Billing\SubscriptionRepository;
 use Illuminate\Support\Facades\DB;

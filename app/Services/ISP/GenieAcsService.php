@@ -20,23 +20,21 @@ class GenieAcsService
 
     public function getDeviceParameters(int $customerId, int $onuId): array
     {
-        return $this->provisioningService->refreshAndSyncSignal(
-            $this->resolveCustomerOnu($customerId, $onuId)
-        );
+        $onu = $this->resolveCustomerOnu($customerId, $onuId);
+        return $this->genieACSDriver->getDeviceParameters($onu->genieacs_device_id);
     }
 
     public function getDeviceStatus(int $customerId, int $onuId): array
     {
-        return $this->provisioningService->refreshAndSyncSignal(
-            $this->resolveCustomerOnu($customerId, $onuId)
-        );
+        $onu = $this->resolveCustomerOnu($customerId, $onuId);
+        $isOnline = $this->genieACSDriver->isDeviceOnline($onu->genieacs_device_id);
+        return ['online' => $isOnline];
     }
 
     public function getDeviceSignal(int $customerId, int $onuId): array
     {
-        return $this->provisioningService->refreshAndSyncSignal(
-            $this->resolveCustomerOnu($customerId, $onuId)
-        );
+        $onu = $this->resolveCustomerOnu($customerId, $onuId);
+        return $this->genieACSDriver->getDeviceSignal($onu->genieacs_device_id);
     }
 
     public function getWifiCredentials(int $customerId, int $onuId): array

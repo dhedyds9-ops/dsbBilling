@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Repositories\AAA;
+namespace App\Repositories\ISP;
 
-use App\Models\AAA\Voucher;
+use App\Models\ISP\Voucher;
 use App\Repositories\BaseRepository;
 
 class VoucherRepository extends BaseRepository

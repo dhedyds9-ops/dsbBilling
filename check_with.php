@@ -1,0 +1,1 @@
+<?php $dir = __DIR__."/app/Livewire"; $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)); $withs = 0; foreach($it as $f) { if($f->getExtension() == "php") { $c = file_get_contents($f->getPathname()); $withs += substr_count($c, "::with(") + substr_count($c, "->with("); } } echo "Explicit eager loading calls in Livewire: $withs\n";

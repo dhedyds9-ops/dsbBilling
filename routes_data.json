@@ -1,0 +1,5382 @@
+[
+    {
+        "uri": "sanctum\/csrf-cookie",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Laravel\\Sanctum\\Http\\Controllers\\CsrfCookieController@show",
+        "name": "sanctum.csrf-cookie",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "livewire-e6575703\/update",
+        "methods": [
+            "POST"
+        ],
+        "action": "Livewire\\Mechanisms\\HandleRequests\\HandleRequests@handleUpdate",
+        "name": "default-livewire.update",
+        "middleware": [
+            "web",
+            "Livewire\\Mechanisms\\HandleRequests\\RequireLivewireHeaders"
+        ]
+    },
+    {
+        "uri": "livewire-e6575703\/livewire.js",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Livewire\\Mechanisms\\FrontendAssets\\FrontendAssets@returnJavaScriptAsFile",
+        "name": null,
+        "middleware": []
+    },
+    {
+        "uri": "livewire-e6575703\/livewire.min.js.map",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Livewire\\Mechanisms\\FrontendAssets\\FrontendAssets@maps",
+        "name": null,
+        "middleware": []
+    },
+    {
+        "uri": "livewire-e6575703\/livewire.csp.min.js.map",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Livewire\\Mechanisms\\FrontendAssets\\FrontendAssets@cspMaps",
+        "name": null,
+        "middleware": []
+    },
+    {
+        "uri": "livewire-e6575703\/upload-file",
+        "methods": [
+            "POST"
+        ],
+        "action": "Livewire\\Features\\SupportFileUploads\\FileUploadController@handle",
+        "name": "livewire.upload-file",
+        "middleware": []
+    },
+    {
+        "uri": "livewire-e6575703\/preview-file\/{filename}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Livewire\\Features\\SupportFileUploads\\FilePreviewController@handle",
+        "name": "livewire.preview-file",
+        "middleware": []
+    },
+    {
+        "uri": "livewire-e6575703\/js\/{component}.js",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": null,
+        "middleware": []
+    },
+    {
+        "uri": "livewire-e6575703\/css\/{component}.css",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": null,
+        "middleware": []
+    },
+    {
+        "uri": "livewire-e6575703\/css\/{component}.global.css",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": null,
+        "middleware": []
+    },
+    {
+        "uri": "api\/payment\/webhook\/{driver}\/{signatureToken}",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Payment\\PaymentWebhookController",
+        "name": "payment.webhook",
+        "middleware": [
+            "api",
+            "throttle:60,1"
+        ]
+    },
+    {
+        "uri": "api\/payment\/moota\/push",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Payment\\PaymentWebhookController@mootaPush",
+        "name": "payment.moota.push",
+        "middleware": [
+            "api",
+            "throttle:30,1"
+        ]
+    },
+    {
+        "uri": "api\/telegram\/webhook",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\TelegramWebhookController@handle",
+        "name": "telegram.webhook",
+        "middleware": [
+            "api"
+        ]
+    },
+    {
+        "uri": "api\/whatsapp\/webhook\/{driver}\/{sigToken}",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\WhatsApp\\WhatsAppWebhookController",
+        "name": "whatsapp.webhook",
+        "middleware": [
+            "api",
+            "throttle:180,1"
+        ]
+    },
+    {
+        "uri": "api\/whatsapp\/health\/{driver}\/{sigToken}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\WhatsApp\\WhatsAppWebhookController@health",
+        "name": "whatsapp.health",
+        "middleware": [
+            "api",
+            "throttle:60,1"
+        ]
+    },
+    {
+        "uri": "api\/v1\/radius\/accounting",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Radius\\AccountingController@ingest",
+        "name": "radius.accounting.ingest",
+        "middleware": [
+            "api",
+            "radius.nas_secret",
+            "throttle:radius.accounting"
+        ]
+    },
+    {
+        "uri": "api\/v1\/radius\/preauth",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Radius\\AccountingController@preAuth",
+        "name": "radius.accounting.preauth",
+        "middleware": [
+            "api",
+            "radius.nas_secret",
+            "throttle:radius.preauth"
+        ]
+    },
+    {
+        "uri": "api\/v1\/radius\/authorize",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Radius\\AccountingController@authorizeOnly",
+        "name": "radius.accounting.authorize",
+        "middleware": [
+            "api",
+            "radius.nas_secret",
+            "throttle:radius.preauth"
+        ]
+    },
+    {
+        "uri": "api\/v1\/radius\/accounting\/health",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Radius\\AccountingController@health",
+        "name": "radius.accounting.health",
+        "middleware": [
+            "api",
+            "radius.nas_secret"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@index",
+        "name": "isp.api.olts.index",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@show",
+        "name": "isp.api.olts.show",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/system-info",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@systemInfo",
+        "name": "isp.api.olts.system-info",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/pon-ports",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@ponPorts",
+        "name": "isp.api.olts.pon-ports",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/onus",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@onuList",
+        "name": "isp.api.olts.onus",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/discover-unregistered",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@discoverUnregistered",
+        "name": "isp.api.olts.discover-unregistered",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/execute-command",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@executeCommand",
+        "name": "isp.api.olts.execute-command",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/poll",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@poll",
+        "name": "isp.api.olts.poll",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/reboot",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@reboot",
+        "name": "isp.api.olts.reboot",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/{id}\/save-config",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@saveConfig",
+        "name": "isp.api.olts.save-config",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/olts\/poll-all",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OltApiController@pollAll",
+        "name": "isp.api.olts.poll-all",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/discover",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\OnuCapabilityController@discover",
+        "name": "isp.api.onus.discover",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/capabilities",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\OnuCapabilityController@getCapabilities",
+        "name": "isp.api.onus.capabilities",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/remediate\/dry-run",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\OnuCapabilityController@dryRunRemediation",
+        "name": "isp.api.onus.remediate.dry-run",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/remediate",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\OnuCapabilityController@remediate",
+        "name": "isp.api.onus.remediate.execute",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/remediation-jobs\/{uuid}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\OnuCapabilityController@getRemediationJob",
+        "name": "isp.api.onus.remediation.show",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/remediation-jobs\/{uuid}\/reconcile",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\OnuRemediationReconciliationController@reconcile",
+        "name": "isp.api.onus.remediation.reconcile",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@index",
+        "name": "isp.api.onus.index",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@show",
+        "name": "isp.api.onus.show",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@provision",
+        "name": "isp.api.onus.provision",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/status",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@setStatus",
+        "name": "isp.api.onus.set-status",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/signal",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@signal",
+        "name": "isp.api.onus.signal",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/history",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@history",
+        "name": "isp.api.onus.signal-history",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/wifi",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@wifi",
+        "name": "isp.api.onus.wifi",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/reboot",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@reboot",
+        "name": "isp.api.onus.reboot",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/factory-reset",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@factoryReset",
+        "name": "isp.api.onus.factory-reset",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/onus\/{id}\/bandwidth",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OnuApiController@setBandwidth",
+        "name": "isp.api.onus.set-bandwidth",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/odps",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OdpApiController@index",
+        "name": "isp.api.odps.index",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/odps\/problematic",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OdpApiController@problematic",
+        "name": "isp.api.odps.problematic",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/odps\/geojson",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OdpApiController@geojson",
+        "name": "isp.api.odps.geojson",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/odps\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OdpApiController@show",
+        "name": "isp.api.odps.show",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/odps\/{id}\/recalculate",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OdpApiController@recalculate",
+        "name": "isp.api.odps.recalculate",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/odps\/{id}\/geocode",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OdpApiController@geocode",
+        "name": "isp.api.odps.geocode",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/odps\/recalculate-all",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\OdpApiController@recalculateAll",
+        "name": "isp.api.odps.recalculate-all",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/devices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@listDevices",
+        "name": "isp.api.genieacs.list-devices",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/device-info",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@deviceInfo",
+        "name": "isp.api.genieacs.device-info",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/set-parameter-values",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@setParameterValues",
+        "name": "isp.api.genieacs.set-parameter-values",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/reboot-device",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@rebootDevice",
+        "name": "isp.api.genieacs.reboot-device",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/factory-reset",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@factoryReset",
+        "name": "isp.api.genieacs.factory-reset",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/tasks",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@tasks",
+        "name": "isp.api.genieacs.tasks",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/provisions",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@provisionsList",
+        "name": "isp.api.genieacs.provisions-list",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/publish-provisions",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@publishProvisions",
+        "name": "isp.api.genieacs.publish-provisions",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/customer-chain\/{customerId}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@customerChain",
+        "name": "isp.api.genieacs.customer-chain",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/v1\/isp\/genieacs\/diagnose-cs\/{customerServiceId}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\ISP\\GenieAcsApiController@customerServiceDiagnose",
+        "name": "isp.api.genieacs.diagnose-customer-service",
+        "middleware": [
+            "api",
+            "auth:sanctum",
+            "ability:isp:operate"
+        ]
+    },
+    {
+        "uri": "api\/user",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": null,
+        "middleware": [
+            "api",
+            "auth:sanctum"
+        ]
+    },
+    {
+        "uri": "api\/webhooks\/genieacs",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\GenieAcsWebhookController@handleEvent",
+        "name": "api.webhooks.genieacs",
+        "middleware": [
+            "api"
+        ]
+    },
+    {
+        "uri": "api\/v1\/router-provision\/bootstrap",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\RouterBootstrapController@bootstrap",
+        "name": "router-provision.bootstrap",
+        "middleware": [
+            "api"
+        ]
+    },
+    {
+        "uri": "api\/v1\/customer-services\/{id}\/provision",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Api\\Provisioning\\CustomerServiceProvisionController@provision",
+        "name": "api.customer-services.provision",
+        "middleware": [
+            "api",
+            "auth:sanctum"
+        ]
+    },
+    {
+        "uri": "up",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": null,
+        "middleware": []
+    },
+    {
+        "uri": "\/",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "home",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "coming-soon",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "coming-soon",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "payment",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\GuestPaymentController@index",
+        "name": "guest.payment",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "payment\/checkout",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\GuestPaymentController@checkout",
+        "name": "guest.payment.checkout",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "payment\/reset",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\GuestPaymentController@resetSession",
+        "name": "guest.payment.reset",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "buy-voucher-guest",
+        "methods": [
+            "POST"
+        ],
+        "action": "Closure",
+        "name": "buy-voucher-guest",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "buy-voucher",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Guest\\BuyVoucher",
+        "name": "buy-voucher.page",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "register-lead",
+        "methods": [
+            "POST"
+        ],
+        "action": "Closure",
+        "name": "register.lead",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "login-as-admin",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "login-as-admin",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dashboard",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Dashboard",
+        "name": "technician.dashboard",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/my-jobs",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\MyJobs\\Index",
+        "name": "technician.my-jobs.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "technician-portal\/my-jobs\/{job}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\MyJobs\\Show",
+        "name": "technician.my-jobs.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "technician-portal\/installation\/wizard",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Installation\\Wizard",
+        "name": "technician.installation.wizard",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "technician-portal\/provisioning\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Provisioning\\Show",
+        "name": "technician.provisioning.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "technician-portal\/audit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Audit\\Form",
+        "name": "technician.audit.form",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "technician-portal\/attendance",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Attendance\\Index",
+        "name": "technician.attendance",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/payroll",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Payroll\\Index",
+        "name": "technician.payroll.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/payroll\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Payroll\\Show",
+        "name": "technician.payroll.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.history",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy2",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.my-jobs.psb",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy3",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.my-jobs.maintenance",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/tickets",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Tickets\\Index",
+        "name": "technician.my-jobs.troubleshooting",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy5",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.installation.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy6",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.installation.scan",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy7",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.installation.register",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy8",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.installation.provision",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy9",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.installation.test",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy10",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.installation.docs",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy11",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.odp.search",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy12",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.odp.nearest",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy13",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.odp.ports",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy14",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.customers.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy15",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.customers.status",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "technician-portal\/dummy16",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "technician.customers.history",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "dashboard",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Dashboard\\Index",
+        "name": "dashboard",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/voucher-templates",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\VoucherTemplate\\Index",
+        "name": "isp.voucher-templates.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/voucher-templates\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\VoucherTemplate\\Editor",
+        "name": "isp.voucher-templates.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/voucher-templates\/import",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\VoucherTemplate\\Import",
+        "name": "isp.voucher-templates.import",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/voucher-templates\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\VoucherTemplate\\Editor",
+        "name": "isp.voucher-templates.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/voucher-templates\/{id}\/preview",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\VoucherTemplate\\Preview",
+        "name": "isp.voucher-templates.preview",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/voucher-templates\/{id}\/versions",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\VoucherTemplate\\Versions",
+        "name": "isp.voucher-templates.versions",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/service-profiles",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\ServiceProfile\\Index",
+        "name": "isp.service-profiles.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/service-profiles\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\ServiceProfile\\Create",
+        "name": "isp.service-profiles.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/service-profiles\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\ServiceProfile\\Edit",
+        "name": "isp.service-profiles.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/user-online",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\UserOnline\\Index",
+        "name": "isp.user-online.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pppoe-users",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\PPPoEUser\\Index",
+        "name": "isp.pppoe-users.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pppoe-users\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\PPPoEUser\\Create",
+        "name": "isp.pppoe-users.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pppoe-users\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\PPPoEUser\\Edit",
+        "name": "isp.pppoe-users.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pppoe-users\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\PPPoEUser\\Show",
+        "name": "isp.pppoe-users.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/hotspot-users",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\HotspotUser\\Index",
+        "name": "isp.hotspot-users.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/hotspot-users\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\HotspotUser\\Create",
+        "name": "isp.hotspot-users.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/hotspot-users\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\HotspotUser\\Edit",
+        "name": "isp.hotspot-users.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/hotspot-users\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\HotspotUser\\Show",
+        "name": "isp.hotspot-users.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/vouchers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Voucher\\Index",
+        "name": "isp.vouchers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/vouchers\/print",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\ISP\\VoucherPrintController@print",
+        "name": "isp.vouchers.print",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/evouchers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\EVoucher\\Index",
+        "name": "isp.evouchers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/routers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Router\\Index",
+        "name": "isp.routers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/routers\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Router\\Create",
+        "name": "isp.routers.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/routers\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Router\\Edit",
+        "name": "isp.routers.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/routers\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Router\\Show",
+        "name": "isp.routers.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/olts",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Olt\\Index",
+        "name": "isp.olts.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/olts\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Olt\\Create",
+        "name": "isp.olts.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/olts\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Olt\\Edit",
+        "name": "isp.olts.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/olts\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Olt\\Show",
+        "name": "isp.olts.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/onus",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Onu\\Index",
+        "name": "isp.onus.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/onus\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Onu\\Create",
+        "name": "isp.onus.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/onus\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Onu\\Edit",
+        "name": "isp.onus.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/onus\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Onu\\Show",
+        "name": "isp.onus.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odps",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odp\\Index",
+        "name": "isp.odps.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odps\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odp\\Create",
+        "name": "isp.odps.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odps\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odp\\Edit",
+        "name": "isp.odps.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odps\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odp\\Show",
+        "name": "isp.odps.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odcs",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odc\\Index",
+        "name": "isp.odcs.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odcs\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odc\\Create",
+        "name": "isp.odcs.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odcs\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odc\\Edit",
+        "name": "isp.odcs.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/odcs\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Odc\\Show",
+        "name": "isp.odcs.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pops",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Pop\\Index",
+        "name": "isp.pops.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pops\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Pop\\Create",
+        "name": "isp.pops.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pops\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Pop\\Edit",
+        "name": "isp.pops.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/pops\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Pop\\Show",
+        "name": "isp.pops.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/towers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Tower\\Index",
+        "name": "isp.towers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/towers\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Tower\\Create",
+        "name": "isp.towers.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/towers\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Tower\\Edit",
+        "name": "isp.towers.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/towers\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Tower\\Show",
+        "name": "isp.towers.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/vendors",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Vendor\\Index",
+        "name": "isp.vendors.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/vendors\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Vendor\\Create",
+        "name": "isp.vendors.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/vendors\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Vendor\\Edit",
+        "name": "isp.vendors.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "isp\/vendors\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Vendor\\Show",
+        "name": "isp.vendors.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "pelanggan\/voucher",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Pelanggan\\Voucher\\Index",
+        "name": "pelanggan.voucher",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "pelanggan\/isolir",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Pelanggan\\Isolir\\Index",
+        "name": "pelanggan.isolir",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/periode",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\PeriodeTagihan\\Index",
+        "name": "billing.periode.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/invoices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Invoice\\Index",
+        "name": "billing.invoices.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/invoices\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Invoice\\Create",
+        "name": "billing.invoices.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/invoices\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Invoice\\Edit",
+        "name": "billing.invoices.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/invoices\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Invoice\\Show",
+        "name": "billing.invoices.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/payments",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Payment\\Index",
+        "name": "billing.payments.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/payments\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Payment\\Create",
+        "name": "billing.payments.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/payments\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Payment\\Edit",
+        "name": "billing.payments.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "billing\/payments\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Billing\\Payment\\Show",
+        "name": "billing.payments.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "keuangan\/topup-reseller",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Keuangan\\TopupReseller\\Index",
+        "name": "keuangan.topup-reseller",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "keuangan\/income-harian",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Keuangan\\IncomeHarian\\Index",
+        "name": "keuangan.income-harian",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "keuangan\/income-periode",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Keuangan\\IncomePeriode\\Index",
+        "name": "keuangan.income-periode",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "keuangan\/pengeluaran",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Keuangan\\Pengeluaran\\Index",
+        "name": "keuangan.pengeluaran",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "keuangan\/laba-rugi",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Keuangan\\LabaRugi\\Index",
+        "name": "keuangan.laba-rugi",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "keuangan\/bhp-uso",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Keuangan\\BhpUso\\Index",
+        "name": "keuangan.bhp-uso",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "jaringan\/fiber",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Jaringan\\Fiber\\Index",
+        "name": "jaringan.fiber",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "jaringan\/monitoring",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Jaringan\\Monitoring\\Index",
+        "name": "jaringan.monitoring",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "support\/ticket",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Support\\Ticket\\Index",
+        "name": "support.ticket",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "support\/installation",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Support\\Installation\\Index",
+        "name": "support.installation",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "support\/maintenance",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Support\\Maintenance\\Index",
+        "name": "support.maintenance",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "laporan\/pendapatan",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Laporan\\Pendapatan\\Index",
+        "name": "laporan.pendapatan",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "laporan\/pelanggan",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Laporan\\Pelanggan\\Index",
+        "name": "laporan.pelanggan",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "laporan\/jaringan",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Laporan\\Jaringan\\Index",
+        "name": "laporan.jaringan",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "pengaturan\/perusahaan",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Pengaturan\\Perusahaan\\Index",
+        "name": "pengaturan.perusahaan",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "pengaturan\/koneksi",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Pengaturan\\Koneksi\\Index",
+        "name": "pengaturan.koneksi",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "pengaturan\/telegram",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Pengaturan\\Telegram\\Index",
+        "name": "pengaturan.telegram",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "pengaturan\/whatsapp",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Pengaturan\\WhatsApp\\Index",
+        "name": "pengaturan.whatsapp",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "pengaturan\/payment-gateway",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Pengaturan\\PaymentGateway\\Index",
+        "name": "pengaturan.payment-gateway",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/dashboard",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Dashboard",
+        "name": "acs.dashboard",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/devices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Device\\Index",
+        "name": "acs.devices.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/devices\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Device\\Edit",
+        "name": "acs.devices.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/devices\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Device\\Show",
+        "name": "acs.devices.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/tasks",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Task\\Index",
+        "name": "acs.tasks.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/alarms",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Alarm\\Index",
+        "name": "acs.alarms.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/firmware",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Firmware\\Index",
+        "name": "acs.firmware.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/firmware\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Firmware\\Create",
+        "name": "acs.firmware.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/firmware\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Firmware\\Edit",
+        "name": "acs.firmware.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "acs\/settings",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Settings",
+        "name": "acs.settings",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "gis",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Gis\\GisDashboard",
+        "name": "gis.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "gis\/map",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Gis\\GisMap",
+        "name": "gis.map",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "gis\/analytics",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Gis\\GisAnalytics",
+        "name": "gis.analytics",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "gis\/customer-map",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "gis.customer-map",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/connections",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@getConnections",
+        "name": "map.connections.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/connections\/save",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@saveConnection",
+        "name": "map.connections.save",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/location\/{type}\/{id}",
+        "methods": [
+            "PUT"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@updateLocation",
+        "name": "map.location.update",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/node\/{type}",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@storeNode",
+        "name": "map.node.store",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/node\/{type}\/{id}",
+        "methods": [
+            "PUT"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@updateNode",
+        "name": "map.node.update",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/wlan-status\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@wlanStatus",
+        "name": "map.wlan-status",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/wlan-update\/{id}",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@wlanUpdate",
+        "name": "map.wlan-update",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "map\/ping",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@ping",
+        "name": "map.ping",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "api\/network\/online-paths",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Gis\\MapApiController@onlinePaths",
+        "name": "api.network.online-paths",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "inventory\/assets",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Inventory\\AssetList",
+        "name": "inventory.assets.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "noc",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Overview",
+        "name": "noc.overview",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/dashboard",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Dashboard",
+        "name": "noc.acs.dashboard",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/devices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Device\\Index",
+        "name": "noc.acs.devices.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/devices\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Device\\Edit",
+        "name": "noc.acs.devices.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/devices\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Device\\Show",
+        "name": "noc.acs.devices.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/tasks",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Task\\Index",
+        "name": "noc.acs.tasks.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/alarms",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Alarm\\Index",
+        "name": "noc.acs.alarms.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/firmware",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Firmware\\Index",
+        "name": "noc.acs.firmware.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/firmware\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Firmware\\Create",
+        "name": "noc.acs.firmware.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/firmware\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Firmware\\Edit",
+        "name": "noc.acs.firmware.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/acs\/settings",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ACS\\Settings",
+        "name": "noc.acs.settings",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC"
+        ]
+    },
+    {
+        "uri": "noc\/alarms",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Alarms\\Index",
+        "name": "noc.alarms.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/alarms\/{alarm}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Alarms\\Show",
+        "name": "noc.alarms.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/provisioning",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Provisioning\\Index",
+        "name": "noc.provisioning.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/provisioning\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Provisioning\\Show",
+        "name": "noc.provisioning.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/routers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Router\\Index",
+        "name": "noc.routers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/routers\/{router}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Router\\Show",
+        "name": "noc.routers.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/olts",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Olt\\Index",
+        "name": "noc.olts.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/olts\/{olt}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Olt\\Show",
+        "name": "noc.olts.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/onus",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Onu\\Index",
+        "name": "noc.onus.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/onus\/{onu}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Onu\\Show",
+        "name": "noc.onus.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/pppoe",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Pppoe\\Index",
+        "name": "noc.pppoe.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "noc\/topology",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\NOC\\Topology\\Index",
+        "name": "noc.topology.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager",
+            "job_function:NOC",
+            "workforce.checked_in"
+        ]
+    },
+    {
+        "uri": "reports\/trial-balance",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Reports\\TrialBalance",
+        "name": "reports.trial-balance.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/customers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Customer\\Index",
+        "name": "crm.customers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/customers\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Customer\\Create",
+        "name": "crm.customers.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/customers\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Customer\\Edit",
+        "name": "crm.customers.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/customers\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Customer\\Customer360",
+        "name": "crm.customers.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/leads",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Lead\\Index",
+        "name": "crm.leads.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/leads\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Lead\\Create",
+        "name": "crm.leads.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/leads\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Lead\\Edit",
+        "name": "crm.leads.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/leads\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Lead\\Show",
+        "name": "crm.leads.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/surveys",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Survey\\Index",
+        "name": "crm.surveys.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/surveys\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Survey\\Create",
+        "name": "crm.surveys.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/surveys\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Survey\\Edit",
+        "name": "crm.surveys.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/surveys\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Survey\\Show",
+        "name": "crm.surveys.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/quotations",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Quotation\\Index",
+        "name": "crm.quotations.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/quotations\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Quotation\\Create",
+        "name": "crm.quotations.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/quotations\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Quotation\\Edit",
+        "name": "crm.quotations.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/quotations\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Quotation\\Show",
+        "name": "crm.quotations.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/contracts",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Contract\\Index",
+        "name": "crm.contracts.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/contracts\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Contract\\Create",
+        "name": "crm.contracts.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/contracts\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Contract\\Edit",
+        "name": "crm.contracts.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/contracts\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Contract\\Show",
+        "name": "crm.contracts.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/installations",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Installation\\Index",
+        "name": "crm.installations.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/installations\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Installation\\Create",
+        "name": "crm.installations.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/installations\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Installation\\Edit",
+        "name": "crm.installations.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/installations\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Installation\\Show",
+        "name": "crm.installations.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/activations",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Activation\\Index",
+        "name": "crm.activations.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/activations\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Activation\\Create",
+        "name": "crm.activations.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/activations\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Activation\\Edit",
+        "name": "crm.activations.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "crm\/activations\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Crm\\Activation\\Show",
+        "name": "crm.activations.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "workflow\/list",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Workflow\\WorkflowList",
+        "name": "workflow.list.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/users",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\User\\Index",
+        "name": "admin.users.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/users\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\User\\Create",
+        "name": "admin.users.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/users\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\User\\Edit",
+        "name": "admin.users.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/audit-trail",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\AuditTrail\\Index",
+        "name": "admin.audit-trail.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/settings",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Settings\\Index",
+        "name": "admin.settings.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/attendance",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Attendance\\Index",
+        "name": "admin.attendance.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/employee",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Employee\\Index",
+        "name": "admin.employee.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/employee\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Employee\\Create",
+        "name": "admin.employee.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/employee\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Employee\\Edit",
+        "name": "admin.employee.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/payroll",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Payroll\\Index",
+        "name": "admin.payroll.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/payroll\/generate",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Payroll\\Generate",
+        "name": "admin.payroll.generate",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/payroll\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Payroll\\Show",
+        "name": "admin.payroll.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "admin\/payroll\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Admin\\Payroll\\Edit",
+        "name": "admin.payroll.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/dashboard",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Dashboard",
+        "name": "reseller-portal.dashboard",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Index",
+        "name": "reseller-portal.customers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Create",
+        "name": "reseller-portal.customers.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/hotspot\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\CreateHotspot",
+        "name": "reseller-portal.customers.hotspot.create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/{id}\/edit",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Edit",
+        "name": "reseller-portal.customers.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/{id}\/detail",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Customer360",
+        "name": "reseller-portal.customers.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/pppoe",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Pppoe",
+        "name": "reseller-portal.customers.pppoe",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/hotspot",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Hotspot",
+        "name": "reseller-portal.customers.hotspot",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/user-online",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\UserOnline",
+        "name": "reseller-portal.customers.user-online",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/active",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Active",
+        "name": "reseller-portal.customers.active",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/customers\/isolated",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Customer\\Isolated",
+        "name": "reseller-portal.customers.isolated",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/finance\/balance",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Finance\\Balance",
+        "name": "reseller-portal.finance.balance",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/finance\/topup",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Finance\\Topup",
+        "name": "reseller-portal.finance.topup",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/finance\/mutations",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Finance\\Mutations",
+        "name": "reseller-portal.finance.mutations",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/billing\/invoices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Billing\\Invoices",
+        "name": "reseller-portal.billing.invoices",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/billing\/invoices\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Billing\\InvoiceShow",
+        "name": "reseller-portal.billing.invoices.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/billing\/payments",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Billing\\Payments",
+        "name": "reseller-portal.billing.payments",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/reports\/sales",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Reports\\Sales",
+        "name": "reseller-portal.reports.sales",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/reports\/sales\/print",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Reseller\\ReportPrintController@printSales",
+        "name": "reseller-portal.reports.sales.print",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/reports\/commission\/print",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Reseller\\ReportPrintController@printCommission",
+        "name": "reseller-portal.reports.commission.print",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/reports\/revenue",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Reports\\Revenue",
+        "name": "reseller-portal.reports.revenue",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/reports\/commission",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Reports\\Commission",
+        "name": "reseller-portal.reports.commission",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/sales\/voucher",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Sales\\VoucherIndex",
+        "name": "reseller-portal.sales.voucher",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/sales\/voucher\/print",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\ISP\\VoucherPrintController@print",
+        "name": "reseller-portal.sales.voucher.print",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/sales\/voucher",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\ISP\\VoucherPrintController@print",
+        "name": "reseller-portal.sales.",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/sales\/voucher\/preview-template\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\ISP\\VoucherPrintController@previewTemplate",
+        "name": "reseller-portal.sales.",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/network\/map",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Network\\Map\\Index",
+        "name": "reseller-portal.network.map",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/network\/olts",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Network\\Olt\\Index",
+        "name": "reseller-portal.network.olts.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/network\/olts\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Network\\Olt\\Show",
+        "name": "reseller-portal.network.olts.show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/network\/odcs",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Network\\Odc\\Index",
+        "name": "reseller-portal.network.odcs.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/network\/odps",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\Network\\Odp\\Index",
+        "name": "reseller-portal.network.odps.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/service-profiles",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\ComingSoon",
+        "name": "reseller-portal.service-profiles.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/pppoe-users",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\ComingSoon",
+        "name": "reseller-portal.pppoe-users.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/hotspot-users",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\ComingSoon",
+        "name": "reseller-portal.hotspot-users.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/vouchers",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\ComingSoon",
+        "name": "reseller-portal.vouchers.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/invoices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\ComingSoon",
+        "name": "reseller-portal.invoices.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/payments",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\ComingSoon",
+        "name": "reseller-portal.payments.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "reseller-portal\/reports",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\ResellerPortal\\ComingSoon",
+        "name": "reseller-portal.reports.index",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:reseller,administrator,manager"
+        ]
+    },
+    {
+        "uri": "customer-portal\/dashboard",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Dashboard",
+        "name": "customer-portal.dashboard",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/billing\/invoices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Billing\\InvoiceList",
+        "name": "customer-portal.billing.invoice-list",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/billing\/invoices\/{id}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Billing\\InvoiceShow",
+        "name": "customer-portal.billing.invoice-show",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/billing\/invoices\/{id}\/print-80mm",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\CustomerPortal\\InvoiceController@print80mm",
+        "name": "customer-portal.billing.invoice-print-80mm",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/support\/tickets",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Support\\TicketList",
+        "name": "customer-portal.support.ticket-list",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/support\/tickets\/create",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Support\\TicketCreate",
+        "name": "customer-portal.support.ticket-create",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/support\/contact",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Support\\ContactAdmin",
+        "name": "customer-portal.support.contact-admin",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/info",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Info",
+        "name": "customer-portal.info",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/connection-info",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\ConnectionInfo",
+        "name": "customer-portal.self-service.connection-info",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/speed-test",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\SelfService\\SpeedTest",
+        "name": "customer-portal.self-service.speed-test",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/profile",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\Profile\\Profile",
+        "name": "customer-portal.profile",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/self-service\/change-plan",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\SelfService\\ChangePlan",
+        "name": "customer-portal.self-service.change-plan",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/self-service\/active-sessions",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\SelfService\\ActiveSessions",
+        "name": "customer-portal.self-service.active-sessions",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/self-service\/connected-devices",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\SelfService\\ConnectedDevices",
+        "name": "customer-portal.self-service.connected-devices",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/self-service\/speedtest",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\SelfService\\SpeedTest",
+        "name": "customer-portal.self-service.speedtest",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/self-service\/change-onu-wifi-password",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\SelfService\\ChangeOnuWifiPassword",
+        "name": "customer-portal.self-service.change-onu-wifi-password",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "customer-portal\/self-service\/change-hotspot-credentials",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\CustomerPortal\\SelfService\\ChangeHotspotCredentials",
+        "name": "customer-portal.self-service.change-hotspot-credentials",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN",
+            "role:customer"
+        ]
+    },
+    {
+        "uri": "profile",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\ProfileController@edit",
+        "name": "profile.edit",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "profile",
+        "methods": [
+            "PATCH"
+        ],
+        "action": "App\\Http\\Controllers\\ProfileController@update",
+        "name": "profile.update",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "profile",
+        "methods": [
+            "DELETE"
+        ],
+        "action": "App\\Http\\Controllers\\ProfileController@destroy",
+        "name": "profile.destroy",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager",
+            "job_function:TECHNICIAN"
+        ]
+    },
+    {
+        "uri": "register",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\RegisteredUserController@create",
+        "name": "register",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "register",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\RegisteredUserController@store",
+        "name": null,
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "login\/admin",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController@create",
+        "name": "admin.login",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "login\/customer",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController@create",
+        "name": "customer.login",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "login",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController@create",
+        "name": "login",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "login",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController@store",
+        "name": null,
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "forgot-password",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\PasswordResetLinkController@create",
+        "name": "password.request",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "forgot-password",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\PasswordResetLinkController@store",
+        "name": "password.email",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "reset-password\/{token}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\NewPasswordController@create",
+        "name": "password.reset",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "reset-password",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\NewPasswordController@store",
+        "name": "password.store",
+        "middleware": [
+            "web",
+            "guest"
+        ]
+    },
+    {
+        "uri": "verify-email",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\EmailVerificationPromptController",
+        "name": "verification.notice",
+        "middleware": [
+            "web",
+            "auth"
+        ]
+    },
+    {
+        "uri": "verify-email\/{id}\/{hash}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\VerifyEmailController",
+        "name": "verification.verify",
+        "middleware": [
+            "web",
+            "auth",
+            "signed",
+            "throttle:6,1"
+        ]
+    },
+    {
+        "uri": "email\/verification-notification",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\EmailVerificationNotificationController@store",
+        "name": "verification.send",
+        "middleware": [
+            "web",
+            "auth",
+            "throttle:6,1"
+        ]
+    },
+    {
+        "uri": "confirm-password",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController@show",
+        "name": "password.confirm",
+        "middleware": [
+            "web",
+            "auth"
+        ]
+    },
+    {
+        "uri": "confirm-password",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\ConfirmablePasswordController@store",
+        "name": null,
+        "middleware": [
+            "web",
+            "auth"
+        ]
+    },
+    {
+        "uri": "password",
+        "methods": [
+            "PUT"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\PasswordController@update",
+        "name": "password.update",
+        "middleware": [
+            "web",
+            "auth"
+        ]
+    },
+    {
+        "uri": "logout",
+        "methods": [
+            "POST"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController@destroy",
+        "name": "logout",
+        "middleware": [
+            "web",
+            "auth"
+        ]
+    },
+    {
+        "uri": "logout",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Http\\Controllers\\Auth\\AuthenticatedSessionController@destroy",
+        "name": "logout.get",
+        "middleware": [
+            "web",
+            "auth"
+        ]
+    },
+    {
+        "uri": "test-livewire",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "App\\Livewire\\Isp\\Technician\\Attendance\\Index",
+        "name": null,
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "pengaturan\/perusahaan\/upload-logo",
+        "methods": [
+            "POST"
+        ],
+        "action": "Closure",
+        "name": "pengaturan.perusahaan.upload-logo",
+        "middleware": [
+            "web",
+            "auth",
+            "role:administrator,manager"
+        ]
+    },
+    {
+        "uri": "test-noc-render",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": null,
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "noc-acs-test",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": null,
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "uri": "storage\/{path}",
+        "methods": [
+            "GET",
+            "HEAD"
+        ],
+        "action": "Closure",
+        "name": "storage.local",
+        "middleware": []
+    },
+    {
+        "uri": "storage\/{path}",
+        "methods": [
+            "PUT"
+        ],
+        "action": "Closure",
+        "name": "storage.local.upload",
+        "middleware": []
+    }
+]

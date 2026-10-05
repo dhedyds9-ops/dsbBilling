@@ -2,7 +2,7 @@
 
 namespace App\Models\CRM;
 
-use App\Models\Customer\Contract;
+use App\Models\CRM\Contract;
 use App\Models\ISP\Onu;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

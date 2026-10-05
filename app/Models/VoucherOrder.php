@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\Billing\Invoice;
 use App\Models\ISP\ServiceProfile;
-use App\Models\AAA\Voucher;
+use App\Models\ISP\Voucher;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;

@@ -4,7 +4,7 @@ namespace App\Models\CRM;
 
 use App\Models\Billing\Invoice;
 use App\Models\CRM\Installation;
-use App\Models\Customer\Contract;
+use App\Models\CRM\Contract;
 use App\Models\Customer\CustomerService;
 use App\Models\Payment\Payment;
 use App\Models\User;

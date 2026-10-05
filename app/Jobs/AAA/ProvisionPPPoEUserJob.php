@@ -2,7 +2,7 @@
 
 namespace App\Jobs\AAA;
 
-use App\Models\AAA\PPPoEUser;
+use App\Models\ISP\PPPoEUser;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
