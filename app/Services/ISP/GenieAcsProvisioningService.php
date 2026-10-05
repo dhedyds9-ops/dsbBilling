@@ -217,7 +217,7 @@ JS,
                         'status' => !empty($signal['online']) ? 'online' : 'offline',
                         'measured_at' => now(),
                     ]);
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
             });

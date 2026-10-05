@@ -10,7 +10,7 @@ trait HasBranchScope
     public static function bootHasBranchScope()
     {
         static::addGlobalScope('branch_isolation', function (Builder $builder) {
-            if (auth()->check() && !auth()->user()->hasRole(UserRole::Administrator->value)) {
+            if (auth()->check() && !auth()->user()->isSuperAdmin()) {
                 $table = $builder->getQuery()->from;
 
                 static $columnsCache = [];
@@ -37,7 +37,7 @@ trait HasBranchScope
         });
 
         static::creating(function ($model) {
-            if (auth()->check() && !auth()->user()->hasRole(UserRole::Administrator->value)) {
+            if (auth()->check() && !auth()->user()->isSuperAdmin()) {
                 
                 // Set branch_id for Manager
                 if (auth()->user()->hasRole(UserRole::Manager->value) && empty($model->branch_id) && auth()->user()->branch_id) {
@@ -55,7 +55,7 @@ trait HasBranchScope
         });
 
         static::updating(function ($model) {
-            if (auth()->check() && !auth()->user()->hasRole(UserRole::Administrator->value)) {
+            if (auth()->check() && !auth()->user()->isSuperAdmin()) {
                 // Prevent Reseller from transferring ownership
                 if (auth()->user()->hasRole(UserRole::Reseller->value) && in_array('reseller_id', $model->getFillable(), true)) {
                     $effectiveResellerId = auth()->user()->getEffectiveResellerId();
