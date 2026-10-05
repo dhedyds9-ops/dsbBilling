@@ -11,10 +11,6 @@ class Create extends AdminComponent
     public $code;
     public $name;
     public $description;
-    public $phone;
-    public $email;
-    public $address;
-    public $contact_person;
     public $status = 'active';
 
     public function mount()
@@ -43,10 +39,6 @@ class Create extends AdminComponent
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,
-            'phone' => $this->phone,
-            'email' => $this->email,
-            'address' => $this->address,
-            'contact_person' => $this->contact_person,
             'status' => $this->status,
         ], Auth::user());
 

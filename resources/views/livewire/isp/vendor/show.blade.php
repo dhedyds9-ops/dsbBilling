@@ -72,22 +72,6 @@
                             <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nama</label>
                             <p class="text-slate-900 dark:text-slate-100">{{ $vendor->name }}</p>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Kontak Person</label>
-                            <p class="text-slate-900 dark:text-slate-100">{{ $vendor->contact_person ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Telepon</label>
-                            <p class="text-slate-900 dark:text-slate-100">{{ $vendor->phone ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Email</label>
-                            <p class="text-slate-900 dark:text-slate-100">{{ $vendor->email ?? '-' }}</p>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Alamat</label>
-                        <p class="text-slate-900 dark:text-slate-100">{{ $vendor->address ?? '-' }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Deskripsi</label>
