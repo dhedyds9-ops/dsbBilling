@@ -42,6 +42,12 @@
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
+                <div class="col-span-full">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">File Firmware (.bin / .img)</label>
+                    <input type="file" wire:model="file" class="w-full px-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700' }} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
+                    @error('file') <span class="text-sm text-red-500 mt-1">{{ $message }}</span> @enderror
+                    <div wire:loading wire:target="file" class="text-sm text-indigo-500 mt-1">Mengunggah file...</div>
+                </div>
             </div>
 
             <div class="flex justify-end gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">

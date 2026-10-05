@@ -32,6 +32,22 @@ class Firmware extends Model
         'release_date' => 'date',
     ];
 
+    public function getSizeAttribute()
+    {
+        if ($this->file_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->file_path)) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->size($this->file_path);
+        }
+        return null;
+    }
+
+    public function getFilenameAttribute()
+    {
+        if ($this->file_path) {
+            return basename($this->file_path);
+        }
+        return null;
+    }
+
     public function vendor()
     {
         return $this->belongsTo(\App\Models\ISP\Vendor::class);
