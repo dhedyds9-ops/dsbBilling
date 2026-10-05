@@ -51,4 +51,7 @@ interface RouterOSDriverInterface
     public function getHealth(): array;
     public function disconnectPppoeUser(string $username): bool;
     public function disconnectHotspotUser(string $username): bool;
+
+    public function getHotspotCookies(): array;
+    public function removeHotspotCookie(string $macAddress): bool;
 }

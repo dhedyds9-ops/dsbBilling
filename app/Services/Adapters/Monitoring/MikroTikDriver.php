@@ -506,4 +506,35 @@ class MikroTikDriver implements DeviceMonitorInterface
             return null;
         }
     }
+
+    public function getHotspotCookies($device): array
+    {
+        try {
+            $client = $this->getClient($device);
+            $query = new Query('/ip/hotspot/cookie/print');
+            return $client->query($query)->read();
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[MikroTikDriver] Error getting hotspot cookies: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function removeHotspotCookie($device, string $macAddress): bool
+    {
+        try {
+            $client = $this->getClient($device);
+            $query = (new Query('/ip/hotspot/cookie/print'))->where('mac-address', $macAddress);
+            $cookies = $client->query($query)->read();
+
+            if (!empty($cookies) && isset($cookies[0]['.id'])) {
+                $removeQuery = (new Query('/ip/hotspot/cookie/remove'))->equal('.id', $cookies[0]['.id']);
+                $client->query($removeQuery)->read();
+                return true;
+            }
+            return false;
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[MikroTikDriver] Error removing hotspot cookie: ' . $e->getMessage());
+            return false;
+        }
+    }
 }

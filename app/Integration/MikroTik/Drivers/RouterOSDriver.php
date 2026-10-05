@@ -889,4 +889,43 @@ class RouterOSDriver implements RouterOSDriverInterface
             return false;
         }
     }
+
+    public function getHotspotCookies(): array
+    {
+        $this->ensureConnected();
+
+        try {
+            return $this->retryEngine->execute(function () {
+                $query = new Query('/ip/hotspot/cookie/print');
+                return $this->connection->query($query)->read();
+            });
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[RouterOS] Failed to get hotspot cookies: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function removeHotspotCookie(string $macAddress): bool
+    {
+        $this->ensureConnected();
+
+        try {
+            return $this->retryEngine->execute(function () use ($macAddress) {
+                // Find cookie by MAC Address
+                $query = (new Query('/ip/hotspot/cookie/print'))->where('mac-address', $macAddress);
+                $cookies = $this->connection->query($query)->read();
+
+                if (!empty($cookies) && isset($cookies[0]['.id'])) {
+                    $removeQuery = (new Query('/ip/hotspot/cookie/remove'))->equal('.id', $cookies[0]['.id']);
+                    $this->connection->query($removeQuery)->read();
+                    return true;
+                }
+                
+                return false;
+            });
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[RouterOS] Failed to remove hotspot cookie for MAC ' . $macAddress . ': ' . $e->getMessage());
+            return false;
+        }
+    }
 }

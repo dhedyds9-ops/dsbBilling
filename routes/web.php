@@ -154,6 +154,7 @@ Route::middleware(['auth', 'role:administrator,manager', 'job_function:TECHNICIA
             Route::get('/hotspot-users/create', \App\Livewire\Isp\HotspotUser\Create::class)->name('hotspot-users.create');
             Route::get('/hotspot-users/{id}/edit', \App\Livewire\Isp\HotspotUser\Edit::class)->name('hotspot-users.edit');
             Route::get('/hotspot-users/{id}', \App\Livewire\Isp\HotspotUser\Show::class)->name('hotspot-users.show');
+            Route::get('/hotspot-cookies', \App\Livewire\Isp\HotspotCookie\Index::class)->name('hotspot-cookies.index');
 
             // Voucher (existing CRUD, List Pelanggan > User Voucher tabs biasa/E-Voucher
             Route::get('/vouchers', \App\Livewire\Isp\Voucher\Index::class)->name('vouchers.index');

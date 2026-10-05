@@ -68,6 +68,7 @@ class MenuRegistry
                             ['label' => 'Customer', 'route' => 'crm.customers.index', 'active' => 'crm.customers.*'],
                             ['label' => 'PPPoE', 'route' => 'isp.pppoe-users.index', 'active' => 'isp.pppoe-users.*'],
                             ['label' => 'Hotspot', 'route' => 'isp.hotspot-users.index', 'active' => 'isp.hotspot-users.*'],
+                            ['label' => 'Hotspot Cookies', 'route' => 'isp.hotspot-cookies.index', 'active' => 'isp.hotspot-cookies.*'],
                             ['label' => 'Voucher', 'route' => 'isp.vouchers.index', 'active' => 'isp.vouchers.*'],
                             ['label' => 'E-Voucher', 'route' => 'isp.evouchers.index', 'active' => 'isp.evouchers.*'],
                             ['label' => 'Online', 'route' => 'isp.user-online.index', 'active' => 'isp.user-online.*'],
