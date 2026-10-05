@@ -33,7 +33,7 @@ class InvoiceList extends Component
     {
         $invoice = \App\Models\Billing\Invoice::with('customer')->findOrFail($invoiceId);
         
-        if ($invoice->customer->user_id !== auth()->id()) {
+        if ($invoice->customer?->user_id !== auth()->id()) {
             abort(403);
         }
 

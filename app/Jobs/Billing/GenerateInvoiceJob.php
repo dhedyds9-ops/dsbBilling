@@ -71,6 +71,12 @@ class GenerateInvoiceJob implements ShouldQueue
                 'last_billing_date' => now(),
                 'next_billing_date' => $this->calculateNextBillingDate(),
             ]);
+
+            \Illuminate\Support\Facades\Event::dispatch(new \Src\Domain\Billing\Events\InvoiceCreatedEvent(
+                $invoice->uuid,
+                $invoice->customer_id,
+                $invoice->contract_id ?? 0
+            ));
         });
     }
 
