@@ -46,6 +46,7 @@ class MenuRegistry
                         'label' => '',
                         'items' => [
                           ['label' => 'Router / NAS', 'route' => 'isp.routers.index', 'active' => 'isp.routers.*'],
+                          ['label' => 'Data OLT', 'route' => 'isp.olts.index', 'active' => 'isp.olts.*'],
                         ]
                     ],
                      [
@@ -101,7 +102,6 @@ class MenuRegistry
                         'label' => 'Infrastruktur Fiber',
                         'icon' => 'hub',
                         'items' => [
-                            ['label' => 'Data OLT', 'route' => 'isp.olts.index', 'active' => 'isp.olts.*'],
                             ['label' => 'Data ODC', 'route' => 'isp.odcs.index', 'active' => 'isp.odcs.*'],
                             ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*'],
                             ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*'],
