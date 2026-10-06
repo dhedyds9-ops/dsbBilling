@@ -254,6 +254,14 @@
                     Hubungi Kami
                 </a>
             </div>
+            
+            <form action="{{ route('guest.payment') }}" method="GET" class="mt-12 max-w-xl mx-auto">
+                <div class="relative flex items-center group">
+                    <span class="material-symbols-outlined absolute left-5 text-on-surface-variant group-focus-within:text-primary transition-colors">receipt_long</span>
+                    <input type="text" name="q" placeholder="Cek tagihan (Ketik ID / Email / No. HP)..." required class="w-full pl-14 pr-36 py-4 bg-surface-container/50 border border-outline-variant/30 text-on-surface rounded-full focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary backdrop-blur-md transition-all shadow-xl placeholder:text-on-surface-variant/50">
+                    <button type="submit" class="absolute right-2 top-2 bottom-2 px-6 bg-primary text-on-primary rounded-full font-bold hover:bg-primary-fixed-dim transition-colors shadow-md">Cari</button>
+                </div>
+            </form>
         </div>
     </section>
 
