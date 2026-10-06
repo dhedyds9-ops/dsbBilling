@@ -130,7 +130,7 @@ class Create extends AdminComponent
             'is_active' => 'required|boolean',
             'password' => 'required|min:8|confirmed',
             'notes' => 'nullable|string',
-            'selectedRoles' => 'nullable|exists:roles,id',
+            'selectedRoles' => 'required|exists:roles,id',
         ]);
 
         $actor = \Illuminate\Support\Facades\Auth::user();
@@ -242,6 +242,7 @@ class Create extends AdminComponent
         return view('livewire.admin.user.create', compact('roles', 'permissionsGrouped'));
     }
 }
+
 
 
 

@@ -183,7 +183,7 @@ class Edit extends AdminComponent
             'username' => 'required|string|unique:users,username,' . $this->userId,
             'is_active' => 'required|boolean',
             'notes' => 'nullable|string',
-            'selectedRoles' => 'nullable|exists:roles,id',
+            'selectedRoles' => 'required|exists:roles,id',
             'is_balance_active' => 'boolean',
             'is_topup_enabled' => 'boolean',
             'ubah_saldo' => 'nullable|numeric',
