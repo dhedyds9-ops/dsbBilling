@@ -300,7 +300,7 @@
             <h2 class="font-headline-lg text-headline-lg text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Paket Internet Rumah</h2>
             <p class="text-on-surface-variant font-body-md text-body-md">Pilih paket yang sesuai dengan kebutuhan digital keluarga Anda.</p>
         </div>
-        <div class="flex  lg:grid lg:grid-cols-3 gap-gutter items-center pb-8 snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
+        <div class="flex  lg:grid lg:grid-cols-3 gap-gutter items-center pb-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
             @foreach($showPppoe as $index => $pkg)
                 @if($index == 1 || (count($showPppoe) == 1))
                     <!-- Package 2 (Popular) -->
@@ -375,7 +375,7 @@
                 <span class="material-symbols-outlined text-5xl text-primary/50" style="font-variation-settings: 'FILL' 0;">wifi_tethering</span>
             </div>
         </div>
-        <div class="flex  lg:grid lg:grid-cols-4 gap-4 sm:gap-6 pb-8 snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
+        <div class="flex  lg:grid lg:grid-cols-4 gap-4 sm:gap-6 pb-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
             @foreach($showHotspotVoucher as $hot)
             <div class="w-[75vw] sm:w-[280px] lg:w-auto shrink-0 snap-center relative bg-surface-container-high/80 rounded-xl overflow-hidden flex flex-col border border-white/10 shadow-lg h-full" style="mask-composite: source-in;">
                 <div class="p-6 flex-grow bg-gradient-to-br from-primary/10 to-secondary/5">
@@ -412,7 +412,7 @@
             <h2 class="font-headline-lg text-headline-lg text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Member Hotspot</h2>
             <p class="text-on-surface-variant font-body-md text-body-md">Langganan bulanan untuk akses tanpa batas di seluruh jaringan hotspot kami.</p>
             </div>
-        <div class="flex  lg:grid lg:grid-cols-3 gap-gutter pb-8 snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
+        <div class="flex  lg:grid lg:grid-cols-3 gap-gutter pb-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
             @foreach($showMemberHotspot as $index => $mem)
                 @if($index == 1 || (count($showMemberHotspot) == 1))
                     <div class="w-[85vw] sm:w-[350px] lg:w-auto shrink-0 snap-center glass-card p-8 rounded-[2rem] flex flex-col glow-hover transition-all duration-300 border-[1.5px] border-primary/30 bg-surface-container-high/80 shadow-[0_0_30px_rgba(6,182,212,0.1)] h-full">
