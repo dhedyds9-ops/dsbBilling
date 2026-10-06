@@ -190,9 +190,6 @@
                 <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
                 Admin
             </a>
-            <a href="{{ route('guest.payment') }}" class="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-all shadow-sm">
-                Cek Tagihan
-            </a>
             <a href="{{ route('customer.login') }}" class="flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
                 <span class="material-symbols-outlined text-[18px]">account_circle</span>
                 Portal Pelanggan
@@ -216,9 +213,6 @@
             <a href="{{ route('admin.login') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all">
                 <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
                 Login Admin
-            </a>
-            <a href="{{ route('guest.payment') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-all">
-                Cek Tagihan
             </a>
             <a href="{{ route('customer.login') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
                 <span class="material-symbols-outlined text-[18px]">account_circle</span>
