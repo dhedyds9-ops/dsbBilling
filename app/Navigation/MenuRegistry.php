@@ -297,7 +297,7 @@ class MenuRegistry
         return self::filterNavigationByPermissions($navigation);
     }
 
-    private static function buildResellerNavigation(): array
+        private static function buildResellerNavigation(): array
     {
         $navigation = [
             [
@@ -315,19 +315,19 @@ class MenuRegistry
                         'label' => 'List Pelanggan',
                         'icon' => 'people',
                         'items' => [
-                              ['label' => 'Customer', 'route' => 'reseller-portal.customers.index', 'active' => 'reseller-portal.customers.index'],
+                            ['label' => 'Semua Customer', 'route' => 'reseller-portal.customers.index', 'active' => 'reseller-portal.customers.index'],
                             ['label' => 'PPPoE', 'route' => 'reseller-portal.customers.pppoe', 'active' => 'reseller-portal.customers.pppoe'],
                             ['label' => 'Hotspot', 'route' => 'reseller-portal.customers.hotspot', 'active' => 'reseller-portal.customers.hotspot'],
                             ['label' => 'Voucher', 'route' => 'reseller-portal.sales.voucher', 'active' => 'reseller-portal.sales.voucher'],
-                            ['label' => 'Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online'],
-                            ['label' => 'Isolir', 'route' => 'pelanggan.isolir', 'active' => 'pelanggan.isolir'],
+                            ['label' => 'User Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online'],
+                            ['label' => 'Terisolir', 'route' => 'reseller-portal.customers.isolated', 'active' => 'reseller-portal.customers.isolated'],
                         ]
                     ],
                     [
                         'label' => 'Data Tagihan',
                         'icon' => 'receipt',
                         'items' => [
-                            ['label' => 'SemuaTagihan', 'route' => 'reseller-portal.billing.invoices', 'active' => 'reseller-portal.billing.invoices'],
+                            ['label' => 'Semua Tagihan', 'route' => 'reseller-portal.billing.invoices', 'active' => 'reseller-portal.billing.invoices'],
                             ['label' => 'Pembayaran', 'route' => 'reseller-portal.billing.payments', 'active' => 'reseller-portal.billing.payments'],
                         ]
                     ],
@@ -358,19 +358,7 @@ class MenuRegistry
                             ['label' => 'Pendapatan', 'route' => 'reseller-portal.reports.revenue', 'active' => 'reseller-portal.reports.revenue'],
                             ['label' => 'Komisi', 'route' => 'reseller-portal.reports.commission', 'active' => 'reseller-portal.reports.commission'],
                         ]
-                    ],
-                    [
-                        'label' => 'Support & Ticket',
-                        'icon' => 'support_agent',
-                        'items' => [
-                          ['label' => 'Tiket Bantuan', 'route' => 'support.ticket', 'active' => 'support.ticket'],
-                            ['label' => 'Calon Pelanggan', 'route' => 'crm.leads.index', 'active' => 'crm.leads.*'],
-                            ['label' => 'Survey', 'route' => 'crm.surveys.index', 'active' => 'crm.surveys.*'],
-                            ['label' => 'Aktivasi Layanan', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*'],
-                            ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance'], 
-                        ]
-                    ],
-
+                    ]
                 ]
             ]
         ];
@@ -470,6 +458,7 @@ class MenuRegistry
         return $filtered;
     }
 }
+
 
 
 
