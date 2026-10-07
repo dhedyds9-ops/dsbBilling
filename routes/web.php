@@ -99,23 +99,14 @@ Route::middleware(['auth', 'role:administrator,manager', 'job_function:TECHNICIA
     Route::get('/technician-portal/payroll/{id}', \App\Livewire\Isp\Technician\Payroll\Show::class)->name('technician.payroll.show');
     
     // Fallback/Dummy routes to prevent MenuRegistry crashes
-    Route::get('/technician-portal/dummy', fn()=>'dummy')->name('technician.history');
-    Route::get('/technician-portal/dummy2', fn()=>'dummy')->name('technician.my-jobs.psb');
-    Route::get('/technician-portal/dummy3', fn()=>'dummy')->name('technician.my-jobs.maintenance');
+        Route::get('/technician-portal/my-jobs/psb', \App\Livewire\Isp\Technician\MyJobs\Psb::class)->name('technician.my-jobs.psb');
+    Route::get('/technician-portal/my-jobs/maintenance', \App\Livewire\Isp\Technician\MyJobs\Maintenance::class)->name('technician.my-jobs.maintenance');
     Route::get('/technician-portal/tickets', \App\Livewire\Isp\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
-    Route::get('/technician-portal/dummy5', fn()=>'dummy')->name('technician.installation.index');
-    Route::get('/technician-portal/dummy6', fn()=>'dummy')->name('technician.installation.scan');
-    Route::get('/technician-portal/dummy7', fn()=>'dummy')->name('technician.installation.register');
-    Route::get('/technician-portal/dummy8', fn()=>'dummy')->name('technician.installation.provision');
-    Route::get('/technician-portal/dummy9', fn()=>'dummy')->name('technician.installation.test');
-    Route::get('/technician-portal/dummy10', fn()=>'dummy')->name('technician.installation.docs');
-    Route::get('/technician-portal/dummy11', fn()=>'dummy')->name('technician.odp.search');
-    Route::get('/technician-portal/dummy12', fn()=>'dummy')->name('technician.odp.nearest');
-    Route::get('/technician-portal/dummy13', fn()=>'dummy')->name('technician.odp.ports');
-    Route::get('/technician-portal/dummy14', fn()=>'dummy')->name('technician.customers.show');
-    Route::get('/technician-portal/dummy15', fn()=>'dummy')->name('technician.customers.status');
-    Route::get('/technician-portal/dummy16', fn()=>'dummy')->name('technician.customers.history');
-
+        Route::get('/technician-portal/installation/scan', \App\Livewire\Isp\Technician\Installation\Scan::class)->name('technician.installation.scan');
+    Route::get('/technician-portal/installation/register', \App\Livewire\Isp\Technician\Installation\Register::class)->name('technician.installation.register');
+                Route::get('/technician-portal/odp/search', \App\Livewire\Isp\Technician\Odp\Search::class)->name('technician.odp.search');
+    Route::get('/technician-portal/odp/nearest', \App\Livewire\Isp\Technician\Odp\Nearest::class)->name('technician.odp.nearest');
+                
 
 
     // ==================== STAFF / ADMIN AREA ====================
@@ -562,4 +553,7 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
 })->middleware(['auth', 'role:administrator,manager'])->name('pengaturan.perusahaan.upload-logo');
 Route::get('/test-noc-render', function() { return view('layouts.noc', ['slot' => 'TEST CONTENT', 'nocNav' => []]); });
 Route::get('/noc-acs-test', function() { return view('livewire.acs.device.index', ['devices' => \Illuminate\Pagination\LengthAwarePaginator::make([], 0, 10), 'isNocLayout' => true]); });
+
+
+
 

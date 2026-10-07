@@ -240,7 +240,7 @@ class MenuRegistry
         return self::filterNavigationByPermissions($navigation);
     }
 
-    private static function buildTechnicianNavigation(): array
+        private static function buildTechnicianNavigation(): array
     {
         $navigation = [
             [
@@ -253,46 +253,41 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Dashboard', 'route' => 'technician.dashboard', 'icon' => 'dashboard', 'active' => 'technician.dashboard'],
                             ['label' => 'Absensi', 'route' => 'technician.attendance', 'icon' => 'fingerprint', 'active' => 'technician.attendance'],
-                            ['label' => 'Riwayat Pekerjaan', 'route' => 'technician.history', 'icon' => 'history', 'active' => 'technician.history'],
                         ]
                     ],
                     [
-                        'label' => 'Tugas Saya',
+                        'label' => 'Pekerjaan Lapangan',
                         'icon' => 'work',
                         'items' => [
-                            ['label' => 'PSB', 'route' => 'technician.my-jobs.psb', 'active' => 'technician.my-jobs.psb'],
-                            ['label' => 'Maintenance', 'route' => 'technician.my-jobs.maintenance', 'active' => 'technician.my-jobs.maintenance'],
-                            ['label' => 'Troubleshooting', 'route' => 'technician.my-jobs.troubleshooting', 'active' => 'technician.my-jobs.troubleshooting'],
+                            ['label' => 'Daftar Semua Pekerjaan', 'route' => 'technician.my-jobs.index', 'active' => 'technician.my-jobs.index'],
+                            ['label' => 'Pemasangan Baru (PSB)', 'route' => 'technician.my-jobs.psb', 'active' => 'technician.my-jobs.psb'],
+                            ['label' => 'Jadwal Maintenance', 'route' => 'technician.my-jobs.maintenance', 'active' => 'technician.my-jobs.maintenance'],
+                            ['label' => 'Tiket Gangguan', 'route' => 'technician.my-jobs.troubleshooting', 'active' => 'technician.my-jobs.troubleshooting'],
                         ]
                     ],
                     [
-                        'label' => 'Instalasi',
-                        'icon' => 'build',
+                        'label' => 'Instalasi Perangkat',
+                        'icon' => 'router',
                         'items' => [
-                            ['label' => 'Instalasi', 'route' => 'technician.installation.index', 'active' => 'technician.installation.index'],
-                            ['label' => 'Scan ONU', 'route' => 'technician.installation.scan', 'active' => 'technician.installation.scan'],
-                            ['label' => 'Register ONU', 'route' => 'technician.installation.register', 'active' => 'technician.installation.register'],
-                            ['label' => 'Provisioning', 'route' => 'technician.installation.provision', 'active' => 'technician.installation.provision'],
-                            ['label' => 'Test Connection', 'route' => 'technician.installation.test', 'active' => 'technician.installation.test'],
-                            ['label' => 'Dokumentasi Instalasi', 'route' => 'technician.installation.docs', 'active' => 'technician.installation.docs'],
+                            ['label' => 'Wizard Instalasi', 'route' => 'technician.installation.wizard', 'active' => 'technician.installation.wizard'],
+                            ['label' => 'Scan Barcode ONU', 'route' => 'technician.installation.scan', 'active' => 'technician.installation.scan'],
+                            ['label' => 'Register ke OLT', 'route' => 'technician.installation.register', 'active' => 'technician.installation.register'],
                         ]
                     ],
                     [
-                        'label' => 'ODP',
+                        'label' => 'Jaringan Fiber (ODP)',
                         'icon' => 'share',
                         'items' => [
-                            ['label' => 'Cari ODP', 'route' => 'technician.odp.search', 'active' => 'technician.odp.search'],
-                            ['label' => 'ODP Terdekat', 'route' => 'technician.odp.nearest', 'active' => 'technician.odp.nearest'],
-                            ['label' => 'Port ODP', 'route' => 'technician.odp.ports', 'active' => 'technician.odp.ports'],
+                            ['label' => 'Pencarian ODP', 'route' => 'technician.odp.search', 'active' => 'technician.odp.search'],
+                            ['label' => 'ODP Terdekat (Maps)', 'route' => 'technician.odp.nearest', 'active' => 'technician.odp.nearest'],
                         ]
                     ],
                     [
-                        'label' => 'Pelanggan',
-                        'icon' => 'person',
+                        'label' => 'Laporan & Audit',
+                        'icon' => 'assignment',
                         'items' => [
-                            ['label' => 'Detail Pelanggan', 'route' => 'technician.customers.show', 'active' => 'technician.customers.show'],
-                            ['label' => 'Status Layanan', 'route' => 'technician.customers.status', 'active' => 'technician.customers.status'],
-                            ['label' => 'Riwayat Gangguan', 'route' => 'technician.customers.history', 'active' => 'technician.customers.history'],
+                            ['label' => 'Audit Pekerjaan', 'route' => 'technician.audit.form', 'active' => 'technician.audit.*'],
+                            ['label' => 'Slip Gaji', 'route' => 'technician.payroll.index', 'active' => 'technician.payroll.*'],
                         ]
                     ]
                 ]
@@ -475,6 +470,7 @@ class MenuRegistry
         return $filtered;
     }
 }
+
 
 
 
