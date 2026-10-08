@@ -4,8 +4,10 @@ namespace App\Livewire\Isp\Technician\MyJobs;
 
 use App\Models\Support\Ticket;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 use Livewire\WithPagination;
 
+#[Layout('layouts.technician-app')]
 class Maintenance extends Component
 {
     use WithPagination;
@@ -19,8 +21,7 @@ class Maintenance extends Component
             ->latest()
             ->paginate(10);
 
-        return view('livewire.isp.technician.my-jobs.maintenance', [
-            'jobs' => $jobs
-        ])->layout('layouts.noc', ['slot' => '']);
+        return view('livewire.isp.technician.my-jobs.maintenance', ['jobs' => $jobs]);
     }
 }
+

@@ -4,7 +4,9 @@ namespace App\Livewire\Isp\Technician\Odp;
 
 use App\Models\ISP\Odp;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 
+#[Layout('layouts.technician-app')]
 class Nearest extends Component
 {
     public float $latitude = -6.200000; // Default Jakarta
@@ -43,8 +45,6 @@ class Nearest extends Component
         $this->dispatch('odps-updated', odps: $this->odps);
     }
 
-    public function render()
-    {
-        return view('livewire.isp.technician.odp.nearest')->layout('layouts.noc', ['slot' => '']);
-    }
+    public function render() { return view('livewire.isp.technician.odp.nearest'); }
 }
+

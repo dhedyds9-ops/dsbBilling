@@ -7,7 +7,9 @@ use App\Models\ISP\Olt;
 use App\Models\ISP\Onu;
 use Illuminate\Support\Str;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 
+#[Layout('layouts.technician-app')]
 class Register extends Component
 {
     public $serialNumber = '';
@@ -52,8 +54,6 @@ class Register extends Component
         return redirect()->route('technician.installation.scan');
     }
 
-    public function render()
-    {
-        return view('livewire.isp.technician.installation.register')->layout('layouts.noc', ['slot' => '']);
-    }
+    public function render() { return view('livewire.isp.technician.installation.register'); }
 }
+

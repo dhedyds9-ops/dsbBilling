@@ -61,11 +61,25 @@
             <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">Layanan Karyawan</h2>
         </div>
         <div class="p-4 flex gap-3">
-            <a href="{{ route('technician.payroll.index') }}" class="flex-1 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-indigo-100 dark:border-indigo-800 text-center">
+                        <a href="{{ route('technician.payroll.index') }}" class="flex-1 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-indigo-100 dark:border-indigo-800 text-center">
                 <span class="material-symbols-outlined" style="font-size:28px">request_quote</span>
                 <span class="text-xs font-bold">Slip Gaji</span>
             </a>
-            <!-- Tambahkan menu lain di sini nanti -->
+            
+            <a href="{{ route('technician.installation.scan') }}" class="flex-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-blue-100 dark:border-blue-800 text-center">
+                <span class="material-symbols-outlined" style="font-size:28px">qr_code_scanner</span>
+                <span class="text-xs font-bold">Scan ONU</span>
+            </a>
+            
+            <a href="{{ route('technician.odp.nearest') }}" class="flex-1 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-emerald-100 dark:border-emerald-800 text-center">
+                <span class="material-symbols-outlined" style="font-size:28px">share_location</span>
+                <span class="text-xs font-bold">Peta ODP</span>
+            </a>
+
+            <a href="{{ route('technician.odp.search') }}" class="flex-1 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-amber-100 dark:border-amber-800 text-center">
+                <span class="material-symbols-outlined" style="font-size:28px">search</span>
+                <span class="text-xs font-bold">Cari ODP</span>
+            </a>
         </div>
     </div>
 
@@ -119,3 +133,4 @@
     </div>
 
 </div>
+

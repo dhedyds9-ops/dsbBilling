@@ -4,8 +4,10 @@ namespace App\Livewire\Isp\Technician\Odp;
 
 use App\Models\ISP\Odp;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 use Livewire\WithPagination;
 
+#[Layout('layouts.technician-app')]
 class Search extends Component
 {
     use WithPagination;
@@ -55,3 +57,4 @@ class Search extends Component
         ])->layout('layouts.noc', ['slot' => '']);
     }
 }
+

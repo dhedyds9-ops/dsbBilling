@@ -4,7 +4,9 @@ namespace App\Livewire\Isp\Technician\Installation;
 
 use App\Models\ISP\Onu;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 
+#[Layout('layouts.technician-app')]
 class Scan extends Component
 {
     public $serialNumber = '';
@@ -51,8 +53,6 @@ class Scan extends Component
         $this->scanResult = null;
     }
 
-    public function render()
-    {
-        return view('livewire.isp.technician.installation.scan')->layout('layouts.noc', ['slot' => '']);
-    }
+    public function render() { return view('livewire.isp.technician.installation.scan'); }
 }
+
