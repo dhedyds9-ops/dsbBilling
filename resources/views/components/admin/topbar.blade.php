@@ -49,12 +49,7 @@
             <span class="material-symbols-outlined transition-transform duration-300" :class="sidebarCollapsed ? '' : ''">menu</span>
         </button>
 
-        {{-- Page Title --}}
-        @hasSection('page_title')
-            <div class="hidden sm:flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100">
-                @yield('page_title')
-            </div>
-        @endif
+        
 
         {{-- Breadcrumbs --}}
         <x-admin.breadcrumbs :breadcrumbs="$breadcrumbs" />
@@ -113,3 +108,4 @@
         </div>
     </div>
 </header>
+

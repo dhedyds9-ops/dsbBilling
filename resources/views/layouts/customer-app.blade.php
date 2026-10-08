@@ -127,9 +127,7 @@
                                 Customer Portal
                             </span>
                         </div>
-                    </a>
-                @endif
-            </div>
+                    </a></div>
             
             <div class="flex items-center gap-1 shrink-0 -mr-1">
                 <button @click="darkMode = !darkMode; localStorage.setItem('dsb_dark_mode', darkMode ? '1' : '0')" class="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 rounded-full transition-colors">
@@ -207,6 +205,9 @@
     
 
 </x-layouts.base>
+
+
+
 
 
 

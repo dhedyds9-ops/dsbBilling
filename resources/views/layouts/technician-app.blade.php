@@ -36,10 +36,7 @@
                     </button>
                 @endif
 
-                @php $__headerTitle = trim($__env->yieldContent('header_title')); @endphp
-                @if(!empty($__headerTitle))
-                    <h1 class="text-lg font-bold text-indigo-800 dark:text-indigo-400 truncate">{{ $__headerTitle }}</h1>
-                @else
+                
                     <div class="flex items-center gap-2.5 min-w-0">
                         <div class="w-9 h-9 shrink-0 bg-gradient-to-br from-indigo-500 to-blue-600 text-white inline-flex items-center justify-center rounded-xl shadow-sm">
                             <span class="material-symbols-outlined" style="font-size:20px">engineering</span>
@@ -48,9 +45,7 @@
                             <span class="text-base font-extrabold text-indigo-800 dark:text-indigo-400 truncate">Technician</span>
                             <span class="text-[10px] font-medium text-slate-400 dark:text-slate-500 dark:text-slate-400 truncate">Portal Teknisi</span>
                         </div>
-                    </div>
-                @endif
-            </div>
+                    </div></div>
 
             <div class="flex items-center gap-1 shrink-0 -mr-1">
                 <livewire:notification-center />
@@ -106,4 +101,6 @@
     
 
 </x-layouts.base>
+
+
 
