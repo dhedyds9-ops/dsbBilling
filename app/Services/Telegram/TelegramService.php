@@ -95,4 +95,45 @@ class TelegramService
             }
         }
     }
+
+    public function sendOnuRedamanAlert(array $data, string $chatId = null): void
+    {
+        // Menyusun template sesuai request dari user
+        $message = "dsbilling Resume: Redaman TINGGI ?\n";
+        $message .= "---------------------------\n";
+        $message .= "Nomor ID: " . ($data['customer_id'] ?? '-') . "\n";
+        $message .= "ONU Status: ONLINE ?\n";
+        $message .= "CLID: " . ($data['clid'] ?? '-') . "\n";
+        $message .= "Port: " . ($data['port'] ?? '-') . "\n";
+        $message .= "ONT S/N: " . ($data['serial_number'] ?? '-') . "\n";
+        $message .= "OLT Rx dBm: " . ($data['olt_rx'] ?? '-') . "\n";
+        $message .= "ONU Rx dBm: " . ($data['onu_rx'] ?? '-') . " ?\n";
+        $message .= "ONU Type: " . ($data['onu_type'] ?? '-') . "\n";
+        $message .= "IP Global: " . ($data['ip_address'] ?? '-') . "\n";
+        $message .= "Jarak: " . ($data['distance'] ?? '-') . "\n";
+        $message .= "----------------------\n";
+        $message .= "Paket: " . ($data['package'] ?? '-') . " ??\n";
+        $message .= "Profile: " . ($data['profile_up'] ?? '-') . "\n";
+        $message .= "Profile: " . ($data['profile_down'] ?? '-') . "\n";
+        $message .= "----------------------\n";
+        $message .= "Mulai: " . ($data['start_time'] ?? '-') . "\n";
+        $message .= "Selesai: " . ($data['end_time'] ?? '') . "\n";
+        $message .= "Upload: " . ($data['upload'] ?? '-') . "\n";
+        $message .= "Download: " . ($data['download'] ?? '-') . "\n";
+        $message .= "Status Koneksi: " . ($data['connection_status'] ?? 'Online') . "\n";
+
+        // Jika chatId dispesifikasikan, kirim langsung
+        if ($chatId) {
+            $this->sendMessage($message, $chatId, 'HTML');
+            return;
+        }
+
+        // Broadcast ke semua NOC/Admin yang enable 'alarm' atau 'noc' di pengaturan
+        foreach ($this->chatIds as $chat) {
+            if (!empty($chat['enabled'])) {
+                $this->sendMessage($message, $chat['id'], 'HTML');
+            }
+        }
+    }
 }
+

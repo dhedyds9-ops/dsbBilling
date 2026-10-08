@@ -226,6 +226,78 @@ class Index extends AdminComponent
         }
     }
 
+    
+    public function sendTestRedaman(): void
+    {
+        try {
+            if (empty($this->bot['bot_token']) || empty($this->testChatId)) {
+                $this->testResult = 'Isi Bot Token dan Chat ID terlebih dahulu untuk test Redaman.';
+                return;
+            }
+
+            // Data simulasi untuk test
+            $data = [
+                'customer_id' => '121635119534',
+                'clid' => 'GPON00-D2-MLP-3BNG',
+                'port' => '1/1/01/9/25/1:2045',
+                'serial_number' => 'FHTTC1E921C6',
+                'olt_rx' => '-29.668',
+                'onu_rx' => '-25.69',
+                'onu_type' => 'HG6245N',
+                'ip_address' => '36.70.37.219',
+                'distance' => '5065',
+                'package' => 'HSIE300M',
+                'profile_up' => 'UP-337920KB0',
+                'profile_down' => 'DOWN-337920KB0',
+                'start_time' => '2026-07-03 04:52:38',
+                'end_time' => '',
+                'upload' => '66.59 GB',
+                'download' => '841.25 GB',
+                'connection_status' => 'Online',
+            ];
+
+            // Panggil format dari TelegramService
+            // Kita gunakan logic manual di sini khusus untuk direct return feedback test result
+            $message = "dsbilling Resume: Redaman TINGGI ?\n";
+            $message .= "---------------------------\n";
+            $message .= "Nomor ID: " . ($data['customer_id'] ?? '-') . "\n";
+            $message .= "ONU Status: ONLINE ?\n";
+            $message .= "CLID: " . ($data['clid'] ?? '-') . "\n";
+            $message .= "Port: " . ($data['port'] ?? '-') . "\n";
+            $message .= "ONT S/N: " . ($data['serial_number'] ?? '-') . "\n";
+            $message .= "OLT Rx dBm: " . ($data['olt_rx'] ?? '-') . "\n";
+            $message .= "ONU Rx dBm: " . ($data['onu_rx'] ?? '-') . " ?\n";
+            $message .= "ONU Type: " . ($data['onu_type'] ?? '-') . "\n";
+            $message .= "IP Global: " . ($data['ip_address'] ?? '-') . "\n";
+            $message .= "Jarak: " . ($data['distance'] ?? '-') . "\n";
+            $message .= "----------------------\n";
+            $message .= "Paket: " . ($data['package'] ?? '-') . " ??\n";
+            $message .= "Profile: " . ($data['profile_up'] ?? '-') . "\n";
+            $message .= "Profile: " . ($data['profile_down'] ?? '-') . "\n";
+            $message .= "----------------------\n";
+            $message .= "Mulai: " . ($data['start_time'] ?? '-') . "\n";
+            $message .= "Selesai: " . ($data['end_time'] ?? '') . "\n";
+            $message .= "Upload: " . ($data['upload'] ?? '-') . "\n";
+            $message .= "Download: " . ($data['download'] ?? '-') . "\n";
+            $message .= "Status Koneksi: " . ($data['connection_status'] ?? 'Online') . "\n";
+
+            $resp = \Illuminate\Support\Facades\Http::timeout(5)->post('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/sendMessage', [
+                'chat_id' => $this->testChatId,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+            ]);
+
+            if ($resp->successful() && ($resp->json('ok') ?? false)) {
+                $r = $resp->json('result') ?? [];
+                $this->testResult = 'OK: Peringatan Redaman (Msg #' . ($r['message_id'] ?? '?') . ') terkirim ke ' . $this->testChatId . '.';
+            } else {
+                $this->testResult = 'Gagal kirim format Redaman: ' . substr($resp->body(), 0, 250);
+            }
+        } catch (\Throwable $e) {
+            $this->testResult = 'ERROR: ' . $e->getMessage();
+        }
+    }
+
     public function addChatId(): void
     {
         $this->chatIds[] = ['id' => '', 'name' => 'Baru', 'type' => 'private', 'enabled' => true, 'events' => ''];
@@ -242,3 +314,4 @@ class Index extends AdminComponent
         return view('livewire.pengaturan.telegram.index');
     }
 }
+
