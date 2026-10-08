@@ -162,7 +162,7 @@ class SimpleTelnet
         $start = time();
         while (!feof($this->socket)) {
             if (time() - $start > $this->timeout) {
-                throw new Exception("Timeout waiting for pattern: $pattern");
+                \Illuminate\Support\Facades\Log::warning("Telnet Timeout Debug", ["pattern" => $pattern, "buffer" => $result]); throw new Exception("Timeout waiting for pattern: $pattern");
             }
             $c = fgetc($this->socket);
             if ($c === false) {
@@ -213,5 +213,6 @@ class SimpleTelnet
         $this->disconnect();
     }
 }
+
 
 
