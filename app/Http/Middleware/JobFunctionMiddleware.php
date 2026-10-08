@@ -28,7 +28,7 @@ class JobFunctionMiddleware
         }
 
         // 2. Cek apakah Job Function user ada di dalam daftar yang diizinkan
-        if (in_array($user->job_function, $functions)) {
+        if (in_array(strtoupper($user->job_function ?? ''), array_map('strtoupper', $functions))) {
             return $next($request);
         }
 
@@ -36,3 +36,4 @@ class JobFunctionMiddleware
         return abort(403, 'Unauthorized job function access.');
     }
 }
+

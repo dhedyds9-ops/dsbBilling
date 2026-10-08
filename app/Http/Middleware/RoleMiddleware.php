@@ -55,10 +55,10 @@ class RoleMiddleware
 
         if ($user->hasRole(UserRole::Manager->value)) {
             // Manager diarahkan berdasarkan job_function
-            if ($user->job_function === \App\Enums\JobFunction::NOC->value) {
+            if (strtoupper($user->job_function ?? '') === 'NOC') {
                 return new \Illuminate\Http\RedirectResponse(route('noc.overview'));
             }
-            if ($user->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
+            if (strtoupper($user->job_function ?? '') === 'TECHNICIAN') {
                 return new \Illuminate\Http\RedirectResponse(route('technician.dashboard'));
             }
             // Fallback manager portal
@@ -73,3 +73,4 @@ class RoleMiddleware
         return redirect()->route('login')->with('error', 'Akun Anda tidak memiliki Role Akses (Minimal Manager/Administrator). Hubungi Super Admin.');
     }
 }
+

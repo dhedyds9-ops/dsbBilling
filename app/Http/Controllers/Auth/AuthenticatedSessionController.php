@@ -37,11 +37,11 @@ class AuthenticatedSessionController extends Controller
         }
 
         // 1. Cek Job Function khusus (Portal Spesifik)
-        if ($user->job_function === \App\Enums\JobFunction::TECHNICIAN->value || $user->hasRole('technician')) {
+        if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole('technician')) {
             return redirect()->intended(route('technician.dashboard', absolute: false));
         }
         
-        if ($user->job_function === \App\Enums\JobFunction::NOC->value || $user->hasRole('noc')) {
+        if (strtoupper($user->job_function ?? '') === 'NOC' || $user->hasRole('noc')) {
             return redirect()->intended(route('noc.overview', absolute: false));
         }
         
@@ -66,3 +66,4 @@ class AuthenticatedSessionController extends Controller
         return redirect()->route('home');
     }
 }
+
