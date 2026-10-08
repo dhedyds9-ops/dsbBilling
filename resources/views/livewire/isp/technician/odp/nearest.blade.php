@@ -1,5 +1,5 @@
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">share_location</span>
@@ -7,8 +7,8 @@
             </h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Gunakan GPS perangkat Anda untuk menemukan titik ODP terdekat di sekitar lokasi instalasi.</p>
         </div>
-        <div class="flex items-center gap-3">
-            <select wire:model.live="radius" wire:change="loadNearestOdps" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 block p-2.5">
+        <div class="flex flex-col gap-2 w-full">
+            <select wire:model.live="radius" wire:change="loadNearestOdps" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
                 <option value="1">Radius 1 KM</option>
                 <option value="2">Radius 2 KM</option>
                 <option value="5">Radius 5 KM</option>
@@ -21,14 +21,14 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="flex flex-col gap-4">
         <!-- Peta -->
-        <div class="lg:col-span-2">
+        <div class="w-full">
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
                 <div id="map" style="height: 500px; width: 100%; z-index: 10;"></div>
                 
                 <div wire:loading wire:target="loadNearestOdps" class="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-20 flex items-center justify-center">
-                    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-xl flex items-center gap-3">
+                    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-xl flex flex-col gap-2 w-full">
                         <span class="material-symbols-outlined notranslate animate-spin text-indigo-600" translate="no">autorenew</span>
                         <span class="font-medium text-slate-900 dark:text-white">Mencari ODP...</span>
                     </div>
@@ -202,3 +202,4 @@
         }
     </script>
 </div>
+

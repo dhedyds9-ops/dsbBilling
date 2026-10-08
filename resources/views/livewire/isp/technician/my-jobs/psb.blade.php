@@ -1,5 +1,5 @@
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">add_circle</span>
@@ -11,7 +11,7 @@
 
     <div class="space-y-4">
         @forelse($jobs as $job)
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col md:flex-row gap-5 items-start md:items-center justify-between hover:border-indigo-500 transition-colors">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col gap-4 items-start justify-between hover:border-indigo-500 transition-colors">
                 <div class="flex gap-4">
                     <div class="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center font-bold shadow-inner shrink-0">
                         <span class="material-symbols-outlined notranslate" translate="no">person_add</span>
@@ -30,7 +30,7 @@
                     </div>
                 </div>
                 
-                <div class="flex md:flex-col gap-2 w-full md:w-auto mt-4 md:mt-0">
+                <div class="flex flex-col gap-2 w-full mt-2">
                     <a href="{{ route('technician.installation.wizard') }}?ticket={{ $job->id }}" class="flex-1 text-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
                         Mulai Instalasi
                     </a>
@@ -51,3 +51,4 @@
         {{ $jobs->links() }}
     </div>
 </div>
+

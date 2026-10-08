@@ -1,5 +1,5 @@
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">add_circle</span>
@@ -24,7 +24,7 @@
 
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <form wire:submit="registerOnu" class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex flex-col gap-6">
                 <!-- Data Perangkat -->
                 <div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
@@ -103,3 +103,4 @@
         </form>
     </div>
 </div>
+

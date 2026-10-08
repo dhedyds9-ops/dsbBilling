@@ -1,5 +1,5 @@
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">search</span>
@@ -11,8 +11,8 @@
 
     <!-- Filters -->
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="md:col-span-2">
+        <div class="flex flex-col gap-4">
+            <div class="w-full">
                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Cari Kode / Nama ODP</label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -44,7 +44,7 @@
     </div>
 
     <!-- Data Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative">
+    <div class="flex flex-col gap-4 relative">
         <div wire:loading class="absolute inset-0 z-10 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl flex items-center justify-center">
             <span class="material-symbols-outlined notranslate animate-spin text-4xl text-indigo-600" translate="no">autorenew</span>
         </div>
@@ -103,7 +103,7 @@
                 </div>
             </div>
         @empty
-            <div class="col-span-1 md:col-span-2 xl:col-span-3 py-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+            <div class="col-span-1 w-full xl:col-span-3 py-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
                 <span class="material-symbols-outlined notranslate text-5xl text-slate-300 dark:text-slate-600 mb-3" translate="no">search_off</span>
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">ODP Tidak Ditemukan</h3>
                 <p class="text-slate-500 dark:text-slate-400">Tidak ada ODP yang sesuai dengan filter pencarian Anda.</p>
@@ -116,3 +116,4 @@
         {{ $odps->links() }}
     </div>
 </div>
+

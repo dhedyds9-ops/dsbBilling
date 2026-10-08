@@ -1,5 +1,5 @@
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">qr_code_scanner</span>
@@ -9,7 +9,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="flex flex-col gap-4">
         <!-- Area Scan -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
             <form wire:submit="scanBarcode">
@@ -50,7 +50,7 @@
         </div>
 
         <!-- Hasil Scan -->
-        <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center justify-center min-h-[400px]">
+        <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center justify-center min-h-[250px]">
             @if(!$scanResult)
                 <div class="text-center text-slate-400 dark:text-slate-500">
                     <span class="material-symbols-outlined notranslate text-6xl mb-3 opacity-50" translate="no">search</span>
@@ -154,3 +154,4 @@
         }
     </style>
 </div>
+
