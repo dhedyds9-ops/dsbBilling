@@ -49,7 +49,7 @@ class Index extends BaseACSComponent
 
     public function syncDevices()
     {
-        `$this->syncDevicesBackground();
+        $this->syncDevicesBackground();
         
     }
 
@@ -284,5 +284,6 @@ class Index extends BaseACSComponent
         }
     }
 }
+
 
 
