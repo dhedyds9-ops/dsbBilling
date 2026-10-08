@@ -152,9 +152,7 @@ class OltPollingService
 
                 try {
                     $onus = $driver->getOnuRxPower($idx);
-                } catch (Throwable) {
-                    continue;
-                }
+                } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("ONU RxPower Failed for Port $idx", ["error" => $e->getMessage()]); continue; }
 
                 DB::transaction(function () use ($olt, $idx, $dbPort, $onus, &$onuOnline, &$onuOffline, &$updatedOnu, $thresholds, &$alerts) {
                     $rxWarn = $thresholds['onu_rx_power_warning_low'] ?? -25.0;
@@ -355,4 +353,5 @@ class OltPollingService
         }
     }
 }
+
 
