@@ -49,8 +49,8 @@ class Index extends BaseACSComponent
 
     public function syncDevices()
     {
-        \App\Jobs\ACS\MassSyncGenieAcsJob::dispatch();
-        session()->flash('success', "Proses sinkronisasi dengan GenieACS sedang berjalan di latar belakang. Silakan refresh halaman ini dalam beberapa menit.");
+        `$this->syncDevicesBackground();
+        
     }
 
     public function syncDevicesBackground()
@@ -284,4 +284,5 @@ class Index extends BaseACSComponent
         }
     }
 }
+
 
