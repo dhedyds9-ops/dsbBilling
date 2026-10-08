@@ -102,3 +102,4 @@ class CreateTenantCommand extends Command
         $this->info("============================================");
     }
 }
+
