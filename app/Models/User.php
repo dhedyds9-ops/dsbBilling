@@ -24,7 +24,7 @@ class User extends Authenticatable
         'job_function',
         'branch_id',
         'reseller_id',
-        'username',
+        'username', 'job_title',
         'email',
         'password',
         'uuid',
@@ -202,4 +202,5 @@ class User extends Authenticatable
         return null;
     }
 }
+
 

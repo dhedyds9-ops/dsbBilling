@@ -26,12 +26,12 @@ class Create extends AdminComponent
     protected function rules()
     {
         return [
-            'customer_id' => 'required|exists:members,id',
+            'customer_id' => 'required|exists:customers,id',
             'invoice_number' => 'required|unique:invoices,invoice_number',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'total_amount' => 'required|numeric|min:0',
-            'status' => 'required|in:pending,unpaid,paid,draft',
+            'status' => 'required|in:pending,unpaid,paid,draft,partial',
             'contract_id' => 'nullable|integer|exists:contracts,id',
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string|max:255',
@@ -196,3 +196,5 @@ class Create extends AdminComponent
         return view('livewire.billing.invoice.create', compact('customers'));
     }
 }
+
+

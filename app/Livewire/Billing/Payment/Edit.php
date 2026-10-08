@@ -44,7 +44,7 @@ class Edit extends AdminComponent
     public function save(PaymentService $paymentService)
     {
         $this->validate([
-            'customer_id' => 'required|exists:members,id',
+            'customer_id' => 'required|exists:customers,id',
             'amount' => 'required|numeric|min:0',
             'currency' => 'required|in:IDR,USD',
             'method' => 'required|in:bank_transfer,cash,credit_card,e_wallet',
@@ -97,3 +97,4 @@ class Edit extends AdminComponent
         return view('livewire.billing.payment.edit', compact('customers', 'invoices'));
     }
 }
+

@@ -32,7 +32,7 @@ class Edit extends AdminComponent
     protected function rules()
     {
         return [
-            'customer_id' => 'required|exists:members,id',
+            'customer_id' => 'required|exists:customers,id',
             'invoice_number' => 'required|unique:invoices,invoice_number,' . $this->invoiceId,
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
@@ -188,3 +188,5 @@ class Edit extends AdminComponent
         return view('livewire.billing.invoice.edit', compact('customers'));
     }
 }
+
+

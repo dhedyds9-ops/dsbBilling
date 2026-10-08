@@ -21,7 +21,7 @@ class Form extends Component
     public $longitude;
 
     protected $rules = [
-        "customer_id" => "required|exists:members,id",
+        "customer_id" => "required|exists:customers,id",
         "olt_id" => "required|exists:olts,id",
         "pon_port" => "required|integer|min:1",
         "onu_sn" => "required|string|max:100",
@@ -96,4 +96,5 @@ class Form extends Component
         ])->layout("layouts.technician-app");
     }
 }
+
 

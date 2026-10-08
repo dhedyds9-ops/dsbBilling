@@ -86,7 +86,7 @@ class Wizard extends Component
                     'new_customer_reseller_id' => 'nullable|exists:users,id',
                 ]);
             } else {
-                $this->validate(['customer_id' => 'required|exists:members,id']);
+                $this->validate(['customer_id' => 'required|exists:customers,id']);
             }
         } elseif ($this->currentStep === 2) {
             $this->validate(['service_profile_id' => 'required|exists:service_profiles,id']);
@@ -239,3 +239,4 @@ class Wizard extends Component
         ]);
     }
 }
+
