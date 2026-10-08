@@ -92,7 +92,7 @@ class TelnetSshClient
             $this->connection->write($this->enableSecret . "\n");
         } else {
             $this->connection->write("enable\n");
-            $out = $this->connection->read('/(Password:|#)/i');
+            $out = $this->connection->read('/(password|#)/i');
             if (str_contains(strtolower($out), 'password')) {
                 $this->connection->write($this->enableSecret . "\n");
                 $this->connection->read('/#/');
@@ -141,7 +141,7 @@ class SimpleTelnet
     {
         $this->read('/(User\s*name|Username|Login|login|user):/i');
         $this->write($username . "\n");
-        $this->read('/Password:/i');
+        $this->read('/password/i');
         $this->write($password . "\n");
         $this->read('/[>#]/');
     }
@@ -213,3 +213,5 @@ class SimpleTelnet
         $this->disconnect();
     }
 }
+
+
