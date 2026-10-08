@@ -1,4 +1,4 @@
-<div>
+<div class="p-4 pb-24">
     <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -116,4 +116,5 @@
         {{ $odps->links() }}
     </div>
 </div>
+
 

@@ -1,4 +1,4 @@
-<div class="space-y-4 p-4">
+<div class="space-y-4 p-4 pb-24">
 
     {{-- Hero Banner --}}
     <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
@@ -133,4 +133,5 @@
     </div>
 
 </div>
+
 

@@ -1,5 +1,5 @@
-<div>
-    <div class="mb-4 flex flex-col gap-2 justify-between">
+<div class="p-4 pb-24">
+    <div class="mb-6 flex flex-col gap-2 justify-between">
         <div>
             <h1 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">qr_code_scanner</span>
@@ -201,3 +201,5 @@
         }
     </script>
 </div>
+
+
