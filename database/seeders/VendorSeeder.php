@@ -21,6 +21,7 @@ class VendorSeeder extends Seeder
             "TOTOLINK" => "Vendor perangkat jaringan Totolink",
             "V-SOL" => "Vendor perangkat jaringan OLT dan ONU V-SOL",
             "HSGQ" => "Vendor perangkat jaringan OLT dan ONU HSGQ",
+            "C-DATA" => "Vendor perangkat jaringan OLT dan ONU C-Data",
             "UBIQUITI" => "Vendor perangkat jaringan nirkabel Ubiquiti",
             "CISCO" => "Vendor perangkat jaringan Cisco",
         ];
@@ -38,3 +39,4 @@ class VendorSeeder extends Seeder
         }
     }
 }
+
