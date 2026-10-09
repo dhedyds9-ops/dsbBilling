@@ -1779,7 +1779,7 @@
                                       <a href="{{ route('isp.routers.edit', $router->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Edit">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
-                                    <button wire:click="deleteRouter({{ $router->id }})" wire:confirm="Yakin ingin menghapus router ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Hapus">
+                                    <button wire:click="delete({{ $router->id }})" wire:confirm="Yakin ingin menghapus router ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Hapus">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>

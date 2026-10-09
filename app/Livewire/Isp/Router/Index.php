@@ -184,6 +184,45 @@ class Index extends BaseNetworkComponent
         }
     }
 
+    public function checkConnection($id)
+    {
+        Log::info(__METHOD__, ['router_id' => $id]);
+
+        try {
+            $router = RouterModel::findOrFail($id);
+
+            if (empty($router->ip_address) || empty($router->username) || empty($router->password)) {
+                session()->flash('error', 'Router ['.$router->name.']: Data koneksi tidak lengkap (IP, Username, atau Password kosong).');
+                return;
+            }
+
+            $tempRouter = clone $router;
+            $tempRouter->timeout = 5;
+
+            $service = app(\App\Integration\MikroTik\Services\RouterOSService::class);
+            $driver = $service->getDriver($tempRouter);
+
+            if ($driver->connect()) {
+                $identity = $driver->getIdentity();
+                $version = $driver->getRouterOSVersion();
+                $driver->disconnect();
+
+                $label = $router->name;
+                $extra = [];
+                if (!empty($identity)) $extra[] = 'Identity: '.$identity;
+                if (!empty($version)) $extra[] = 'v'.$version;
+                $extraStr = $extra ? ' ('.implode(' | ', $extra).')' : '';
+
+                session()->flash('success', 'Router ['.$label.']: Berhasil terhubung!'.$extraStr);
+            } else {
+                session()->flash('error', 'Router ['.$router->name.']: Gagal terhubung. Pastikan IP, Port, Username, dan Password benar serta Router aktif.');
+            }
+        } catch (Throwable $e) {
+            Log::error('Check Connection Router failed', ['router_id' => $id, 'message' => $e->getMessage()]);
+            session()->flash('error', 'Check Connection gagal: ' . $e->getMessage());
+        }
+    }
+
     public function confirmBulkDelete()
     {
         if (empty($this->selectedRouters)) {
