@@ -135,11 +135,14 @@ class OltPollingService
             $onuOnline = 0;
             $onuOffline = 0;
             $updatedOnu = 0;
+            $portErrors = [];
+            $activePortCount = 0;
 
             foreach ($ponPorts as $port) {
                 if ($port['status'] !== 'up') {
                     continue;
                 }
+                $activePortCount++;
                 $idx = (int)($port['port_index'] ?? 0);
                 if ($idx <= 0) {
                     continue;
@@ -152,7 +155,7 @@ class OltPollingService
 
                 try {
                     $onus = $driver->getOnuRxPower($idx);
-                } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("ONU RxPower Failed for Port $idx", ["error" => $e->getMessage()]); continue; }
+                } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("ONU RxPower Failed for Port $idx", ["error" => $e->getMessage()]); $portErrors[] = $e->getMessage(); continue; }
 
                 DB::transaction(function () use ($olt, $idx, $dbPort, $onus, &$onuOnline, &$onuOffline, &$updatedOnu, $thresholds, &$alerts) {
                     $rxWarn = $thresholds['onu_rx_power_warning_low'] ?? -25.0;
@@ -309,6 +312,8 @@ class OltPollingService
                 });
             }
 
+            if ($activePortCount > 0 && count($portErrors) === $activePortCount) { throw new \Exception(implode(', ', array_unique($portErrors))); }
+
             if ($updatedOnu > 0) {
                 $olt->update([
                     'onu_active_count' => $olt->onus()->where('status', 'active')->count(),
@@ -353,5 +358,6 @@ class OltPollingService
         }
     }
 }
+
 
 

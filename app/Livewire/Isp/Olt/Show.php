@@ -48,7 +48,7 @@ class Show extends AdminComponent
     public function syncOlt()
     {
         try {
-            app(\App\Services\ISP\OltPollingService::class)->pollOlt($this->olt);
+            $res = app(\App\Services\ISP\OltPollingService::class)->pollOlt($this->olt); if (isset($res['success']) && !$res['success']) throw new \Exception($res['message'] ?? 'Unknown error');
             session()->flash('success', 'Sinkronisasi dengan OLT berhasil diselesaikan.');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal memulai sinkronisasi: ' . $e->getMessage());
@@ -60,6 +60,7 @@ class Show extends AdminComponent
         return view('livewire.isp.olt.show');
     }
 }
+
 
 
 

@@ -302,7 +302,7 @@ class Index extends BaseNetworkComponent
         Log::info(__METHOD__);
         try {
             $olt = OltModel::findOrFail($id);
-            app(\App\Services\ISP\OltPollingService::class)->pollOlt($olt);
+            $res = app(\App\Services\ISP\OltPollingService::class)->pollOlt($olt); if (isset($res['success']) && !$res['success']) throw new \Exception($res['message'] ?? 'Unknown error');
             
             $msg = 'Sinkronisasi OLT ' . $olt->name . ' berhasil diselesaikan.';
             session()->flash('success', $msg);
@@ -337,4 +337,6 @@ class Index extends BaseNetworkComponent
         return view('livewire.isp.olt.index', compact('olts'));
     }
 }
+
+
 
