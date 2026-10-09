@@ -161,7 +161,8 @@ class CDataOltDriver extends BaseOltDriver
                 // Parse show ont info
                 // Format: "  0/0 1  1      FHTT91C67218     Active   Online  success  ..."
                 //          F/S P  ONT-ID  SN               CtrlFlag RunState ConfigState ...
-                foreach (explode("\n", $infoOut) as $line) {
+                $infoOut = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $infoOut);
+                  foreach (explode("\n", $infoOut) as $line) {
                     $line = trim($line);
                     // Match: digit/digit space digit(port)  digit(id)  SN  ControlFlag  RunState
                     if (preg_match('/^(\d+\/\d+)\s+(\d+)\s+(\d+)\s+([A-Z0-9:-]{12,17})\s+\w+\s+(Online|Offline)/i', $line, $m)) {
@@ -214,7 +215,8 @@ class CDataOltDriver extends BaseOltDriver
                 }
                 
                 // Parse show ont optical-info
-                foreach (explode("\n", $optOut) as $line) {
+                $optOut = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $optOut);
+                  foreach (explode("\n", $optOut) as $line) {
                     $line = trim($line);
                     $parts = preg_split('/\s+/', $line);
                     if (count($parts) >= 6 && is_numeric($parts[0])) {
@@ -630,6 +632,8 @@ class CDataOltDriver extends BaseOltDriver
         }
     }
 }
+
+
 
 
 
