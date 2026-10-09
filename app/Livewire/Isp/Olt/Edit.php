@@ -44,6 +44,7 @@ class Edit extends AdminComponent
     public $username;
     public $password;
     public $enable_secret;
+    public $zabbix_host_id;
 
     public $detectedInfo = null;
 
@@ -84,6 +85,7 @@ class Edit extends AdminComponent
         $this->username = $this->olt->username;
         $this->password = $this->olt->password;
         $this->enable_secret = $this->olt->enable_secret;
+        $this->zabbix_host_id = $this->olt->zabbix_host_id;
 
         $this->status = $this->olt->status;
         $this->breadcrumbs = [
@@ -222,6 +224,7 @@ class Edit extends AdminComponent
             'username' => $this->username,
             'password' => $this->password,
             'enable_secret' => $this->enable_secret,
+            'zabbix_host_id' => $this->zabbix_host_id,
 
             'status' => $this->status,
         ], Auth::user());

@@ -55,6 +55,12 @@ class Show extends AdminComponent
         }
     }
 
+    public function delete(): void
+    {
+        $this->olt->delete();
+        $this->redirectRoute('isp.olts.index', navigate: true);
+    }
+
     public function render()
     {
         return view('livewire.isp.olt.show');
