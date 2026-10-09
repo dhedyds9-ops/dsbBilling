@@ -253,9 +253,7 @@ class CDataOltDriver extends BaseOltDriver
                 $this->cachedOnuStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [];
             }
             $statuses = $this->cachedOnuStatuses;
-            if (empty($statuses)) {
-                return [];
-            }
+            if (empty($statuses)) { throw new \Exception('SNMP fallback failed: No ONU statuses found'); }
             
             $dbOnus = Onu::where('olt_id', $this->olt->id)
                 ->where('pon_port', $ponPort)
@@ -525,9 +523,7 @@ class CDataOltDriver extends BaseOltDriver
                 }
             }
             return $onus;
-        } catch (\Exception) {
-            return [];
-        }
+        } catch (\Exception $e) { throw $e; }
     }
 
     public function provisionOnu(Onu $onu, string $serialNumber, int $ponPort, string $profile = 'default'): bool
@@ -630,5 +626,7 @@ class CDataOltDriver extends BaseOltDriver
         }
     }
 }
+
+
 
 
