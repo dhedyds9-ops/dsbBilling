@@ -66,7 +66,7 @@ class TelnetSshClient
             return $output !== false ? (string)$output : '';
         }
         $output = '';
-        $this->connection->write($command . "\n");
+        $this->connection->write($command . "\r\n");
         if ($endMarker) {
             $output = $this->connection->read($endMarker);
         } else {
@@ -88,13 +88,13 @@ class TelnetSshClient
     protected function enterEnableMode(): void
     {
         if ($this->mode === 'ssh') {
-            $this->connection->write("enable\n");
-            $this->connection->write($this->enableSecret . "\n");
+            $this->connection->write("enable\r\n");
+            $this->connection->write($this->enableSecret . "\r\n");
         } else {
-            $this->connection->write("enable\n");
+            $this->connection->write("enable\r\n");
             $out = $this->connection->read('/(password|#)/i');
             if (str_contains(strtolower($out), 'password')) {
-                $this->connection->write($this->enableSecret . "\n");
+                $this->connection->write($this->enableSecret . "\r\n");
                 $this->connection->read('/#/');
             }
         }
@@ -140,9 +140,9 @@ class SimpleTelnet
     public function login(string $username, string $password): void
     {
         $this->read('/(User\s*name|Username|Login|login|user):/i');
-        $this->write($username . "\n");
+        $this->write($username . "\r\n");
         $this->read('/password/i');
-        $this->write($password . "\n");
+        $this->write($password . "\r\n");
         $this->read('/[>#]/');
     }
 
@@ -213,6 +213,7 @@ class SimpleTelnet
         $this->disconnect();
     }
 }
+
 
 
 

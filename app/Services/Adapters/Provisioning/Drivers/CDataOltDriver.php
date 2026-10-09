@@ -253,7 +253,7 @@ class CDataOltDriver extends BaseOltDriver
                 $this->cachedOnuStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [];
             }
             $statuses = $this->cachedOnuStatuses;
-            if (empty($statuses)) { throw new \Exception('SNMP fallback failed: No ONU statuses found'); }
+            
             
             $dbOnus = Onu::where('olt_id', $this->olt->id)
                 ->where('pon_port', $ponPort)
@@ -264,6 +264,7 @@ class CDataOltDriver extends BaseOltDriver
             $rxRaw   = $this->snmp->walk($baseOld . '.6') ?: [];
             $txRaw   = $this->snmp->walk($baseOld . '.7') ?: [];
             if (empty($txRaw)) $txRaw = $this->snmp->walk($baseOld . '.5') ?: [];
+            if (empty($statuses) && empty($rxRaw)) { throw new \Exception('SNMP fallback completely failed: No OID 13 and No RxPower'); }
             $tempRaw = $this->snmp->walk($baseOld . '.8') ?: [];
 
             // Fallback robust: Loop melalui ONU yang ada di Database untuk PON ini.
@@ -626,6 +627,8 @@ class CDataOltDriver extends BaseOltDriver
         }
     }
 }
+
+
 
 
 
