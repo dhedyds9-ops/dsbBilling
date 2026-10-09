@@ -88,7 +88,7 @@ class HsgqOltDriver extends BaseOltDriver
                     $portIdx = (int)end($parts);
                     
                     $cleanName = $this->cleanSnmpString($name);
-                    if (str_contains(strtoupper($cleanName), 'PON')) {
+                    if (true) { // removed PON check because some firmwares return 'Port X'
                         $statusVal = $statusMap[$portIdx] ?? 1;
                         $ports[] = [
                             'port_index' => $portIdx,
@@ -470,4 +470,6 @@ class HsgqOltDriver extends BaseOltDriver
         return $info;
     }
 }
+
+
 
