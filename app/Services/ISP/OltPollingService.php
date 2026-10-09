@@ -71,6 +71,8 @@ class OltPollingService
 
             DB::transaction(function () use ($olt, $systemInfo, $ponPorts, $driver) {
                 $updateData = [
+                    'status' => 'active',
+                    'last_polled_at' => now(),
                     'uptime_text' => $systemInfo['uptime'] ?? null,
                     'temperature' => $systemInfo['temperature'] ?? null,
                     'firmware_version' => $systemInfo['firmware'] ?? $olt->firmware_version,
@@ -360,6 +362,7 @@ class OltPollingService
         }
     }
 }
+
 
 
 
