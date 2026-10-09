@@ -312,7 +312,7 @@ class OltPollingService
                 });
             }
 
-            if ($activePortCount > 0 && count($portErrors) === $activePortCount) { throw new \Exception(implode(', ', array_unique($portErrors))); }
+            if (count($portErrors) > 0) { throw new \Exception("Gagal membaca " . count($portErrors) . " port PON. Kemungkinan Telnet/SNMP timeout. Detail: " . implode(', ', array_unique($portErrors))); }
 
             if ($updatedOnu > 0) {
                 $olt->update([
@@ -358,6 +358,9 @@ class OltPollingService
         }
     }
 }
+
+
+
 
 
 
