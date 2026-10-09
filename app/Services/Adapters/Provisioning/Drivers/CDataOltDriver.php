@@ -121,9 +121,11 @@ class CDataOltDriver extends BaseOltDriver
                 }
                 $this->initializeCli();
                 $this->cli->execute('config');
-                $this->cli->execute("interface gpon 0/0");
-                $infoOut = $this->cli->execute("show ont info $portNum all");
-                $optOut  = $this->cli->execute("show ont optical-info $portNum all");
+                $out = $this->cli->execute("interface gpon 0/0");
+                $isEpon = false;
+                if (str_contains(strtolower($out), 'unknown') || str_contains(strtolower($out), 'error')) { $this->cli->execute("interface epon 0/0"); $isEpon = true; }
+                $infoOut = $this->cli->execute($isEpon ? "show onu info $portNum all" : "show ont info $portNum all");
+                $optOut  = $this->cli->execute($isEpon ? "show onu optical-info $portNum all" : "show ont optical-info $portNum all");
                 // Hanya exit dari interface mode ke config mode, jangan sampai log out
                 $this->cli->execute('exit');
                 
@@ -162,12 +164,13 @@ class CDataOltDriver extends BaseOltDriver
                 foreach (explode("\n", $infoOut) as $line) {
                     $line = trim($line);
                     // Match: digit/digit space digit(port)  digit(id)  SN  ControlFlag  RunState
-                    if (preg_match('/^(\d+\/\d+)\s+(\d+)\s+(\d+)\s+([A-Z0-9]{12,16})\s+\w+\s+(Online|Offline)/i', $line, $m)) {
+                    if (preg_match('/^(\d+\/\d+)\s+(\d+)\s+(\d+)\s+([A-Z0-9:-]{12,17})\s+\w+\s+(Online|Offline)/i', $line, $m)) {
                         $onuId = (int)$m[3];
                         $sn = strtoupper($m[4]);
                         $runState = strtolower($m[5]);
 
                         $mac = null;
+                        if (str_contains($sn, ':') || str_contains($sn, '-')) { $mac = str_replace('-', ':', $sn); $sn = str_replace(':', '', $mac); }
                         $rawMac = $macsCTC[$onuId] ?? $macsRaw[$onuId] ?? null;
                         
                         // If completely missing, try searching globally in macsCache
@@ -627,6 +630,8 @@ class CDataOltDriver extends BaseOltDriver
         }
     }
 }
+
+
 
 
 
