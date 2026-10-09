@@ -129,11 +129,11 @@
                         </div>
                         <div class="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
                             <p class="text-xs text-emerald-600 dark:text-emerald-400 mb-1">ONU Online</p>
-                            <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{{ $olt->onus->where('last_seen_at', '>=', now()->subMinutes(5))->count() }}</p>
+                            <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{{ $olt->onus->where('status', 'active')->count() }}</p>
                         </div>
                         <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700">
                             <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">ONU Offline</p>
-                            <p class="text-2xl font-bold text-slate-600 dark:text-slate-400">{{ $olt->onus->filter(fn($o) => !$o->last_seen_at || $o->last_seen_at < now()->subMinutes(5))->count() }}</p>
+                            <p class="text-2xl font-bold text-slate-600 dark:text-slate-400">{{ $olt->onus->where('status', 'inactive')->count() }}</p>
                         </div>
                     </div>
 
@@ -187,3 +187,5 @@
     </div>
 
 </div>
+
+
