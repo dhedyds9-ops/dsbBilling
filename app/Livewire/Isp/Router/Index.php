@@ -203,8 +203,9 @@ class Index extends BaseNetworkComponent
             $driver = $service->getDriver($tempRouter);
 
             if ($driver->connect()) {
-                $identity = $driver->getIdentity();
-                $version = $driver->getRouterOSVersion();
+                $sysInfo = $driver->getSystemInfo();
+                $identity = $sysInfo['identity'] ?? '';
+                $version = $sysInfo['version'] ?? '';
                 $driver->disconnect();
 
                 $label = $router->name;
@@ -375,3 +376,4 @@ class Index extends BaseNetworkComponent
         return view('livewire.isp.router.index', compact('routers', 'onlineStatus', 'activeUsers', 'summary'));
     }
 }
+
