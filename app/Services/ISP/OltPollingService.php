@@ -107,7 +107,7 @@ class OltPollingService
                             'code' => $olt->code . '-PON-' . $portNumber,
                             'name' => $portName,
                             'port_number' => $portNumber,
-                            'type' => str_contains(strtolower($olt->vendor->name ?? ''), 'cdata') ? 'gpon' : 'epon',
+                            'type' => str_contains(strtolower($portName), 'gpon') ? 'gpon' : (str_contains(strtolower($portName), 'epon') ? 'epon' : (str_contains(strtolower($olt->model ?? ''), 'gpon') ? 'gpon' : 'epon')),
                             'status' => $portStatus,
                         ]);
                     } else {
@@ -359,6 +359,8 @@ class OltPollingService
         }
     }
 }
+
+
 
 
 
