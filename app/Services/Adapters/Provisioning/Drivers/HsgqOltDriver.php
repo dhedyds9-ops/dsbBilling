@@ -32,6 +32,7 @@ class HsgqOltDriver extends BaseOltDriver
     {
         parent::__construct($olt);
 
+        $ports = [];
         if ($this->checkIsNewBranch()) {
             $this->systemOids['sysTemperature'] = '.1.3.6.1.4.1.50224.3.1.1.18.0';
         }
@@ -66,6 +67,7 @@ class HsgqOltDriver extends BaseOltDriver
 
     public function getPonPortsStatus(): array
     {
+        $ports = [];
         if ($this->checkIsNewBranch()) {
             $names = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.2') ?: [];
             $ponNames = $this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.2') ?: [];
@@ -73,7 +75,6 @@ class HsgqOltDriver extends BaseOltDriver
             $statuses = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.6') ?: [];
             $ponStatuses = $this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.6') ?: [];
             foreach ($ponStatuses as $k => $v) { $statuses[$k] = $v; }
-            $ports = [];
             
             $statusMap = [];
             if ($statuses) {
@@ -129,6 +130,7 @@ class HsgqOltDriver extends BaseOltDriver
 
     public function getOnuRxPower(int $ponPort): array
     {
+        $ports = [];
         if ($this->checkIsNewBranch()) {
             if ($this->cachedOnuSerials === null) {
                 $rawSerials  = $this->snmp->walk('.1.3.6.1.4.1.50224.3.12.2.1.15') ?: [];
@@ -476,6 +478,7 @@ class HsgqOltDriver extends BaseOltDriver
         return $info;
     }
 }
+
 
 
 
