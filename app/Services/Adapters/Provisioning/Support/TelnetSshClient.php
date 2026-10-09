@@ -66,7 +66,7 @@ class TelnetSshClient
             return $output !== false ? (string)$output : '';
         }
         $output = '';
-        $this->connection->write($command . "\r\0");
+        $this->connection->write($command . "\n");
         if ($endMarker) {
             $output = $this->connection->read($endMarker);
         } else {
@@ -78,9 +78,9 @@ class TelnetSshClient
     protected function disablePager(): void
     {
         if ($this->mode === 'ssh') {
-            $this->connection->exec("terminal length 0\r\0");
+            $this->connection->exec("terminal length 0\n");
         } else {
-            $this->connection->write("terminal length 0\r\0");
+            $this->connection->write("terminal length 0\n");
             $this->connection->read('/[>#]/');
         }
     }
@@ -88,13 +88,13 @@ class TelnetSshClient
     protected function enterEnableMode(): void
     {
         if ($this->mode === 'ssh') {
-            $this->connection->write("enable\r\0");
-            $this->connection->write($this->enableSecret . "\r\0");
+            $this->connection->write("enable\n");
+            $this->connection->write($this->enableSecret . "\n");
         } else {
-            $this->connection->write("enable\r\0");
+            $this->connection->write("enable\n");
             $out = $this->connection->read('/(password|#)/i');
             if (str_contains(strtolower($out), 'password')) {
-                $this->connection->write($this->enableSecret . "\r\0");
+                $this->connection->write($this->enableSecret . "\n");
                 $this->connection->read('/#/');
             }
         }
@@ -140,9 +140,9 @@ class SimpleTelnet
     public function login(string $username, string $password): void
     {
         $this->read('/(User\s*name|Username|Login|login|user):/i');
-        $this->write($username . "\r\0");
+        usleep(300000); $this->write(trim($username) . "\n");
         $this->read('/password/i');
-        $this->write($password . "\r\0");
+        usleep(300000); $this->write(trim($password) . "\n");
         $this->read('/[>#]/');
     }
 
@@ -213,6 +213,9 @@ class SimpleTelnet
         $this->disconnect();
     }
 }
+
+
+
 
 
 
