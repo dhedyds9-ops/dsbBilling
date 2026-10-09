@@ -140,9 +140,9 @@ class SimpleTelnet
     public function login(string $username, string $password): void
     {
         $this->read('/(User\s*name|Username|Login|login|user):/i');
-        usleep(300000); $this->write(trim($username) . "\n");
-        $this->read('/password/i');
-        usleep(300000); $this->write(trim($password) . "\n");
+        usleep(300000); $this->write(trim($username) . "\r\n");
+        $this->read('/password:/i');
+        usleep(300000); $this->write(trim($password) . "\r\n");
         $this->read('/[>#]/');
     }
 
@@ -213,6 +213,8 @@ class SimpleTelnet
         $this->disconnect();
     }
 }
+
+
 
 
 
