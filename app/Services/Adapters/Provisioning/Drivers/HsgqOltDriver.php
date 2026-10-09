@@ -67,8 +67,12 @@ class HsgqOltDriver extends BaseOltDriver
     public function getPonPortsStatus(): array
     {
         if ($this->checkIsNewBranch()) {
-            $names = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.2');
-            $statuses = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.6');
+            $names = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.2') ?: [];
+            $ponNames = $this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.2') ?: [];
+            foreach ($ponNames as $k => $v) { $names[$k] = $v; }
+            $statuses = $this->snmp->walk('.1.3.6.1.4.1.50224.3.2.1.1.6') ?: [];
+            $ponStatuses = $this->snmp->walk('.1.3.6.1.4.1.50224.3.3.1.1.6') ?: [];
+            foreach ($ponStatuses as $k => $v) { $statuses[$k] = $v; }
             $ports = [];
             
             $statusMap = [];
@@ -88,7 +92,7 @@ class HsgqOltDriver extends BaseOltDriver
                     $portIdx = (int)end($parts);
                     
                     $cleanName = $this->cleanSnmpString($name);
-                    if (true) { // removed PON check because some firmwares return 'Port X'
+                    if (str_contains(strtoupper($cleanName), 'PON') || str_contains(strtoupper($cleanName), 'EPON') || str_contains(strtoupper($cleanName), 'GPON')) {
                         $statusVal = $statusMap[$portIdx] ?? 1;
                         $ports[] = [
                             'port_index' => $portIdx,
@@ -470,6 +474,9 @@ class HsgqOltDriver extends BaseOltDriver
         return $info;
     }
 }
+
+
+
 
 
 
