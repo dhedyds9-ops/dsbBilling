@@ -135,7 +135,7 @@ class Olt extends Model
 
     public function scopeReachable($query)
     {
-        return $query->where('status', 'active')->whereNotNull('ip_address');
+        return $query->whereNotNull('ip_address');
     }
 
     public function pop()
@@ -240,4 +240,5 @@ class Olt extends Model
         return $this->belongsTo(\App\Models\Master\Branch::class);
     }
 }
+
 

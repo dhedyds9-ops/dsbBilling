@@ -106,21 +106,23 @@ class HsgqOltDriver extends BaseOltDriver
                     }
                 }
             }
-            return $ports;
         }
 
-        $statuses = $this->snmp->walk($this->ponPortStatusOid);
-        $ports = [];
-        foreach ($statuses as $idx => $status) {
-            $ports[] = [
-                'port_index' => $idx,
-                'port_name' => "PON $idx",
-                'status' => match ((int)$status) {
-                    1, 101 => 'up',
-                    2, 102 => 'down',
-                    default => 'unknown'
-                },
-            ];
+        if (empty($ports)) {
+            $statuses = $this->snmp->walk($this->ponPortStatusOid);
+            if ($statuses) {
+                foreach ($statuses as $idx => $status) {
+                    $ports[] = [
+                        'port_index' => $idx,
+                        'port_name' => "GPON 0/0/" . $idx,
+                        'status' => match ((int)$status) {
+                            1, 101 => 'up',
+                            2, 102 => 'down',
+                            default => 'unknown'
+                        },
+                    ];
+                }
+            }
         }
         return $ports;
     }

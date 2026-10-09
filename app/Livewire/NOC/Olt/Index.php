@@ -32,7 +32,7 @@ class Index extends AdminComponent
     {
         try {
             $count = 0;
-            foreach (\App\Models\ISP\Olt::where('status', 'active')->get() as $olt) {
+            foreach (\App\Models\ISP\Olt::whereNotNull('ip_address')->get() as $olt) {
                 \App\Jobs\ISP\PollOltJob::dispatch($olt->id);
                 $count++;
             }
@@ -143,6 +143,7 @@ class Index extends AdminComponent
         ]);
     }
 }
+
 
 
 
