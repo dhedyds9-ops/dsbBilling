@@ -114,6 +114,7 @@ class OltPollingService
                         $dbPort->update([
                             'status' => $portStatus,
                             'name' => $portName,
+                            'type' => str_contains(strtolower($portName), 'gpon') ? 'gpon' : (str_contains(strtolower($portName), 'epon') ? 'epon' : (str_contains(strtolower($olt->model ?? ''), 'gpon') ? 'gpon' : 'epon')),
                         ]);
                     }
 
@@ -359,6 +360,7 @@ class OltPollingService
         }
     }
 }
+
 
 
 
