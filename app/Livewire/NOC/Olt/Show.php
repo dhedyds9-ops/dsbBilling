@@ -174,7 +174,7 @@ class Show extends AdminComponent
     public function getOnuStatus(Onu $onu): string
     {
         if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -30)) return 'LOS';
-        if (!$onu->last_seen_at || $onu->last_seen_at->diffInMinutes(now()) > 5) return 'OFFLINE';
+        if ($onu->status === 'inactive') return 'OFFLINE';
         if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) return 'LOW_RX';
         return 'ONLINE';
     }
@@ -202,6 +202,7 @@ class Show extends AdminComponent
         ]);
     }
 }
+
 
 
 

@@ -145,10 +145,8 @@ class Index extends AdminComponent
             ])
             ->when($this->oltFilter, fn ($q) => $q->where('olt_id', $this->oltFilter))
             ->when($this->ponFilter, fn ($q) => $q->where('pon_port_id', $this->ponFilter))
-            ->when($this->statusFilter === 'online', fn ($q) => $q->where('last_seen_at', '>=', $staleAt))
-            ->when($this->statusFilter === 'offline', fn ($q) => $q->where(function ($q) use ($staleAt) {
-                $q->whereNull('last_seen_at')->orWhere('last_seen_at', '<', $staleAt);
-            }))
+            ->when($this->statusFilter === 'online', fn ($q) => $q->where('status', 'active'))
+            ->when($this->statusFilter === 'offline', fn ($q) => $q->where('status', 'inactive'))
             ->when($this->statusFilter === 'los', fn ($q) => $q->where(function ($q) use ($rxCrit) {
                 $q->where('status', 'los')->orWhere('rx_power_dbm', '<', $rxCrit);
             }))
@@ -195,10 +193,8 @@ class Index extends AdminComponent
         $staleAt = now()->subMinutes(5);
         return [
             'total'   => Onu::withoutTrashed()->count(),
-            'online'  => Onu::withoutTrashed()->where('last_seen_at', '>=', $staleAt)->count(),
-            'offline' => Onu::withoutTrashed()->where(function ($q) use ($staleAt) {
-                $q->whereNull('last_seen_at')->orWhere('last_seen_at', '<', $staleAt);
-            })->count(),
+            'online'  => Onu::withoutTrashed()->where('status', 'active')->count(),
+            'offline' => Onu::withoutTrashed()->where('status', 'inactive')->count(),
             'los'     => Onu::withoutTrashed()->where(function ($q) {
                 $q->where('status', 'los')->orWhere('rx_power_dbm', '<', -30.0);
             })->count(),
@@ -209,7 +205,7 @@ class Index extends AdminComponent
     public function getOnuStatus(Onu $onu): string
     {
         if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -30)) return 'LOS';
-        if (!$onu->last_seen_at || $onu->last_seen_at->diffInMinutes(now()) > 5) return 'OFFLINE';
+        if ($onu->status === 'inactive') return 'OFFLINE';
         if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) return 'LOW_RX';
         return 'ONLINE';
     }
@@ -234,6 +230,9 @@ class Index extends AdminComponent
         ]);
     }
 }
+
+
+
 
 
 

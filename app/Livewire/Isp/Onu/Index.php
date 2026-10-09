@@ -24,7 +24,7 @@ class Index extends BaseIndex
         try {
             $onu = \App\Models\ISP\Onu::findOrFail($id);
             // Only allow deleting offline ONUs
-            $isOffline = !$onu->last_seen_at || $onu->last_seen_at < now()->subMinutes(5);
+            $isOffline = $onu->status === 'inactive';
             if (!$isOffline) {
                 session()->flash('error', 'Hanya ONU yang offline yang bisa dihapus.');
                 return;
@@ -40,9 +40,7 @@ class Index extends BaseIndex
     {
         try {
             $staleAt = now()->subMinutes(5);
-            $offlineOnus = \App\Models\ISP\Onu::where(function ($q) use ($staleAt) {
-                $q->whereNull('last_seen_at')->orWhere('last_seen_at', '<', $staleAt);
-            })->get();
+            $offlineOnus = \App\Models\ISP\Onu::where('status', 'inactive')->get();
 
             $count = $offlineOnus->count();
             if ($count === 0) {
@@ -71,4 +69,5 @@ class Index extends BaseIndex
         ]);
     }
 }
+
 
