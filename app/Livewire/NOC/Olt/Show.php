@@ -166,7 +166,7 @@ class Show extends AdminComponent
         if ($olt->status !== 'active') return 'OFFLINE';
         if (!$olt->last_polled_at) return 'UNKNOWN';
         // Handle potential timezone mismatch by allowing up to 24 hours or just checking if status is active
-        if (abs($olt->last_polled_at->diffInMinutes(now())) > 60 * 12) return 'OFFLINE';
+        if (abs($olt->last_polled_at->diffInMinutes(now())) > 60) return 'OFFLINE';
         if ($olt->temperature && $olt->temperature > 60) return 'WARNING';
         return 'ONLINE';
     }
@@ -202,6 +202,7 @@ class Show extends AdminComponent
         ]);
     }
 }
+
 
 
 

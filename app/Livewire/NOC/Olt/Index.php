@@ -65,7 +65,7 @@ class Index extends AdminComponent
     #[Computed]
     public function olts(): \Illuminate\Pagination\LengthAwarePaginator
     {
-        $staleAt = now()->subMinutes(15);
+        $staleAt = now()->subMinutes(60);
 
         $query = Olt::withoutTrashed()
             ->with(['vendor:id,name', 'pop:id,name'])
@@ -114,7 +114,7 @@ class Index extends AdminComponent
     #[Computed]
     public function summary(): array
     {
-        $staleAt = now()->subMinutes(15);
+        $staleAt = now()->subMinutes(60);
         return [
             'total'   => Olt::withoutTrashed()->count(),
             'online'  => Olt::withoutTrashed()->where('status', 'active')->where('last_polled_at', '>=', $staleAt)->count(),
@@ -129,7 +129,7 @@ class Index extends AdminComponent
     {
         if ($olt->status !== 'active') return 'OFFLINE';
         if (!$olt->last_polled_at) return 'UNKNOWN';
-        if ($olt->last_polled_at->diffInMinutes(now()) > 15) return 'OFFLINE';
+        if ($olt->last_polled_at->diffInMinutes(now()) > 60) return 'OFFLINE';
         if ($olt->temperature && $olt->temperature > 60) return 'WARNING';
         return 'ONLINE';
     }
@@ -143,6 +143,7 @@ class Index extends AdminComponent
         ]);
     }
 }
+
 
 
 
