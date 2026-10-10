@@ -82,6 +82,12 @@ class Show extends BaseNetworkComponent
             array_shift($data);
         }
         $this->liveTrafficData = $data;
+        
+        $this->dispatch('trafficUpdated', 
+            time: array_column($data, 'time'),
+            tx: array_column($data, 'tx'),
+            rx: array_column($data, 'rx')
+        );
     }
 
     public function mount($id = null)

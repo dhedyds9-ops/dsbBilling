@@ -793,36 +793,55 @@
                             </div>
                         </div>
                         
-                        <!-- Simple CSS Graph -->
-                        <div class="h-64 flex items-end gap-1 w-full border-b border-l border-slate-200 dark:border-slate-700 pb-2 pl-2 relative">
-                            <!-- Y-Axis labels -->
-                            <div class="absolute left-2 top-0 text-[11px] font-mono text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 rounded">{{ formatBits($max) }}</div>
-                            <div class="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-mono text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 rounded">{{ formatBits($max / 2) }}</div>
-                            <div class="absolute left-2 bottom-0 text-[11px] font-mono text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 rounded">0 bps</div>
-                            
-                            @foreach($liveTrafficData as $point)
-                                @php
-                                    $txHeight = ($point['tx'] / $max) * 100;
-                                    $rxHeight = ($point['rx'] / $max) * 100;
-                                @endphp
-                                <div class="flex-1 flex flex-col justify-end items-center gap-1 group relative h-full">
-                                    <div class="w-full flex justify-center gap-0.5 items-end h-full">
-                                        <div class="w-1/2 bg-blue-500 rounded-t-sm transition-all duration-300 min-h-[2px]" style="height: {{ $txHeight }}%"></div>
-                                        <div class="w-1/2 bg-green-500 rounded-t-sm transition-all duration-300 min-h-[2px]" style="height: {{ $rxHeight }}%"></div>
-                                    </div>
-                                </div>
-                            @endforeach
-                            
-                            @if(count($liveTrafficData) === 0)
-                                <div class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
-                                    Menunggu data...
-                                </div>
-                            @endif
+                        <!-- ApexCharts Graph -->
+                        <div class="w-full min-h-[280px]" x-data="{ chart: null }" x-init="
+                            if (typeof ApexCharts === 'undefined') {
+                                let s = document.createElement('script');
+                                s.src = 'https://cdn.jsdelivr.net/npm/apexcharts';
+                                s.onload = () => window.initRouterChart(chart);
+                                document.head.appendChild(s);
+                            } else {
+                                window.initRouterChart(chart);
+                            }
+                        " wire:ignore>
+                            <div id="routerTrafficChart"></div>
                         </div>
-                        <div class="flex justify-center gap-6 mt-4 text-xs font-bold text-slate-500">
-                            <div class="flex items-center gap-2"><div class="w-3 h-3 bg-blue-500 rounded-sm"></div> TX (Upload)</div>
-                            <div class="flex items-center gap-2"><div class="w-3 h-3 bg-green-500 rounded-sm"></div> RX (Download)</div>
-                        </div>
+                        
+                        <script>
+                        window.initRouterChart = function(chartObj) {
+                            if (document.querySelector('#routerTrafficChart .apexcharts-canvas')) return;
+                            
+                            var options = {
+                                series: [{ name: 'Upload (TX)', data: [] }, { name: 'Download (RX)', data: [] }],
+                                chart: { type: 'area', height: 280, fontFamily: 'inherit', toolbar: { show: false }, animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 2000 } }, background: 'transparent' },
+                                colors: ['#0ea5e9', '#10b981'],
+                                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
+                                dataLabels: { enabled: false },
+                                stroke: { curve: 'smooth', width: 2 },
+                                xaxis: { categories: [], axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: '#94a3b8' } } },
+                                yaxis: { labels: { style: { colors: '#94a3b8' }, formatter: function (value) { if (value >= 1000000000) return (value / 1000000000).toFixed(2) + ' Gbps'; if (value >= 1000000) return (value / 1000000).toFixed(2) + ' Mbps'; if (value >= 1000) return (value / 1000).toFixed(2) + ' Kbps'; return Math.round(value) + ' bps'; } }, min: 0 },
+                                grid: { borderColor: 'rgba(148, 163, 184, 0.1)' },
+                                theme: { mode: (document.documentElement.classList.contains('dark')) ? 'dark' : 'light' }
+                            };
+                            
+                            window.myRouterChart = new ApexCharts(document.getElementById("routerTrafficChart"), options);
+                            window.myRouterChart.render();
+                            
+                            window.addEventListener('trafficUpdated', (e) => {
+                                let detail = e.detail;
+                                if(Array.isArray(detail)) detail = detail[0];
+                                
+                                if(window.myRouterChart) {
+                                    window.myRouterChart.updateSeries([
+                                        { name: 'Upload (TX)', data: detail.tx },
+                                        { name: 'Download (RX)', data: detail.rx }
+                                    ]);
+                                    window.myRouterChart.updateOptions({ xaxis: { categories: detail.time } });
+                                }
+                            });
+                        };
+                        </script>
+                        
                     </div>
                 @else
                     <div class="p-12 text-center text-slate-500 dark:text-slate-400">
