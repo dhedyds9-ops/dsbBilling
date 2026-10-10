@@ -540,36 +540,66 @@ class MikroTikDriver implements DeviceMonitorInterface
 
     public function getDhcpServers($device): array
     {
-        return $this->execute($device, function ($driver) {
-            return $driver->getDhcpServers();
-        }, []);
+        try {
+            $client = $this->getClient($device);
+            if ($client) {
+                return $client->query(new \RouterOS\Query('/ip/dhcp-server/print'))->read();
+            }
+        } catch (\Throwable $e) {
+            // silent
+        }
+        return [];
     }
 
     public function getDhcpLeases($device): array
     {
-        return $this->execute($device, function ($driver) {
-            return $driver->getDhcpLeases();
-        }, []);
+        try {
+            $client = $this->getClient($device);
+            if ($client) {
+                return $client->query(new \RouterOS\Query('/ip/dhcp-server/lease/print'))->read();
+            }
+        } catch (\Throwable $e) {
+            // silent
+        }
+        return [];
     }
 
     public function getFirewallFilters($device): array
     {
-        return $this->execute($device, function ($driver) {
-            return $driver->getFirewallFilters();
-        }, []);
+        try {
+            $client = $this->getClient($device);
+            if ($client) {
+                return $client->query(new \RouterOS\Query('/ip/firewall/filter/print'))->read();
+            }
+        } catch (\Throwable $e) {
+            // silent
+        }
+        return [];
     }
 
     public function getFirewallNat($device): array
     {
-        return $this->execute($device, function ($driver) {
-            return $driver->getFirewallNat();
-        }, []);
+        try {
+            $client = $this->getClient($device);
+            if ($client) {
+                return $client->query(new \RouterOS\Query('/ip/firewall/nat/print'))->read();
+            }
+        } catch (\Throwable $e) {
+            // silent
+        }
+        return [];
     }
 
     public function getRoutes($device): array
     {
-        return $this->execute($device, function ($driver) {
-            return $driver->getRoutes();
-        }, []);
+        try {
+            $client = $this->getClient($device);
+            if ($client) {
+                return $client->query(new \RouterOS\Query('/ip/route/print'))->read();
+            }
+        } catch (\Throwable $e) {
+            // silent
+        }
+        return [];
     }
 }
