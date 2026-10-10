@@ -1,3 +1,4 @@
+@props(['activeTab' => 'overview'])
 @php
     $routerId = request()->route('id') ?? request()->route('router');
     $currentRoute = request()->route()->getName();
@@ -25,35 +26,35 @@
             </div>
 
             <!-- Dashboard/Ringkasan -->
-            <button wire:click="setActiveTab('overview')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'overview' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'overview']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'overview' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">dashboard</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Ringkasan Router</span>
-            </button>
+            </a>
             
-            <button wire:click="setActiveTab('interfaces')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'interfaces' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'interfaces']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'interfaces' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">settings_ethernet</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Interface</span>
-            </button>
+            </a>
             
-            <button wire:click="setActiveTab('ppp')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'ppp' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'ppp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'ppp' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">account_tree</span>
                 <span class="truncate" x-show="!sidebarCollapsed">PPPoE Active</span>
-            </button>
+            </a>
             
-            <button wire:click="setActiveTab('hotspot')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'hotspot' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'hotspot']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'hotspot' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">wifi</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Hotspot Active</span>
-            </button>
+            </a>
             
-            <button wire:click="setActiveTab('logs')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'logs' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'logs']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'logs' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">list_alt</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Log Router</span>
-            </button>
+            </a>
 
-            <button wire:click="setActiveTab('terminal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'terminal' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'terminal']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'terminal' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">terminal</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Web Terminal</span>
-            </button>
+            </a>
 
             <!-- Unimplemented menus -->
             @php

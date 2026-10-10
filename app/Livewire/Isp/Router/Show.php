@@ -11,6 +11,7 @@ class Show extends BaseNetworkComponent
 {
     public $routerId;
     public Router $router;
+    #[\Livewire\Attributes\Url]
     public string $activeTab = 'overview';
     public $systemInfo = [];
     public $isOnline = false;
@@ -186,7 +187,9 @@ class Show extends BaseNetworkComponent
 
     public function render()
     {
-        return view('livewire.isp.router.show')->layout('layouts.router-panel');
+        return view('livewire.isp.router.show')->layout('layouts.router-panel', ['activeTab' => $this->activeTab]);
     }
 }
+
+
 

@@ -103,7 +103,7 @@
 
     <!-- Sidebar -->
     <div class="print:hidden">
-        <x-router.sidebar />
+        <x-router.sidebar :activeTab="$activeTab" />
     </div>
 
     <!-- Main Content Area -->
@@ -145,3 +145,4 @@
 @include('components.global-sweetalert')
 </body>
 </html>
+
