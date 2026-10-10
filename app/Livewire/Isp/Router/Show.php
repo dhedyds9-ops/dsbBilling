@@ -153,7 +153,43 @@ class Show extends BaseNetworkComponent
         $this->showProvisioningModal = true;
     }
 
-    $code
+        public function disconnectPpp($username)
+    {
+        try {
+            $service = app(\App\Integration\MikroTik\Services\RouterOSService::class);
+            $driver = $service->getDriver($this->router);
+            if ($driver->connect()) {
+                if ($driver->disconnectPppoeUser($username)) {
+                    session()->flash('success', "User PPP {$username} berhasil diputuskan.");
+                } else {
+                    session()->flash('error', "Gagal memutuskan user PPP {$username}.");
+                }
+                $driver->disconnect();
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Error: ' . $e->getMessage());
+        }
+        $this->loadData();
+    }
+
+    public function disconnectHotspot($username)
+    {
+        try {
+            $service = app(\App\Integration\MikroTik\Services\RouterOSService::class);
+            $driver = $service->getDriver($this->router);
+            if ($driver->connect()) {
+                if ($driver->disconnectHotspotUser($username)) {
+                    session()->flash('success', "User Hotspot {$username} berhasil diputuskan.");
+                } else {
+                    session()->flash('error', "Gagal memutuskan user Hotspot {$username}.");
+                }
+                $driver->disconnect();
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Error: ' . $e->getMessage());
+        }
+        $this->loadData();
+    }
 
     public function closeProvisioningModal()
     {
@@ -192,6 +228,7 @@ class Show extends BaseNetworkComponent
         return view('livewire.isp.router.show')->layout('layouts.router-panel', ['activeTab' => $this->activeTab]);
     }
 }
+
 
 
 
