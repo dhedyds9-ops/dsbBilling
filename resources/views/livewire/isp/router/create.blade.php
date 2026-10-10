@@ -21,7 +21,7 @@
         <form wire:submit.prevent="save" class="p-6 md:p-8">
             <div class="mb-8">
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4">Informasi Dasar</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nama Router <span class="text-red-500">*</span></label>
                         <input type="text" wire:model="name" placeholder="Misal: Router Utama Jakarta" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
@@ -34,6 +34,14 @@
                             <option value="inactive">Nonaktif</option>
                         </select>
                         @error('status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Versi RouterOS <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
+                        <select wire:model="routeros_version" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
+                            <option value="">Pilih Versi (Otomatis jika kosong)</option>
+                            <option value="v7">RouterOS v7 (Rekomendasi)</option>
+                            <option value="v6">RouterOS v6</option>
+                        </select>
                     </div>
                 </div>
             </div>
