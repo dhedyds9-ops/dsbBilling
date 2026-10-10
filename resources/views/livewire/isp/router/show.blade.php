@@ -3,8 +3,11 @@
 <div class="space-y-6">
     
 
+    <!-- Tab Contents -->
+    <div class="mt-6">
+        @if($activeTab === 'overview')
     <!-- TopBar / Header Section -->
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
         <div class="flex items-center gap-4">
             <a href="{{ route('isp.routers.index') }}" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Kembali">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">arrow_back</span>
@@ -33,22 +36,16 @@
                 <span class="material-symbols-outlined notranslate text-[18px]" wire:loading.class="animate-spin" translate="no">refresh</span>
                 Segarkan Data
             </button>
-                          <button wire:click="generateProvisioningToken({{ $router->id }})" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
-                  <span class="material-symbols-outlined notranslate text-[18px]" translate="no">terminal</span>
-                  Skrip Auto Config
-              </button>
-              <a href="{{ route('isp.routers.edit', $router->id) }}" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
+            <button wire:click="generateProvisioningToken({{ $router->id }})" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
+                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">terminal</span>
+                Skrip Auto Config
+            </button>
+            <a href="{{ route('isp.routers.edit', $router->id) }}" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-[18px]" translate="no">edit</span>
                 Edit
             </a>
         </div>
     </div>
-
-
-
-    <!-- Tab Contents -->
-    <div class="mt-6">
-        @if($activeTab === 'overview')
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col justify-center">
                     <p class="text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2">
