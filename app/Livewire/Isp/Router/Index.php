@@ -214,7 +214,14 @@ class Index extends BaseNetworkComponent
                 if (!empty($version)) $extra[] = 'v'.$version;
                 $extraStr = $extra ? ' ('.implode(' | ', $extra).')' : '';
 
-                session()->flash('success', 'Router ['.$label.']: Berhasil terhubung!'.$extraStr);
+                                session()->flash('success', 'Router ['.$label.']: Berhasil terhubung!'.$extraStr);
+                
+                // Force sync background cache instantly so UI updates session counts
+                try {
+                    \App\Jobs\Monitoring\PollSingleRouterJob::dispatchSync($router);
+                } catch (\Throwable $th) {
+                    Log::warning('Failed to dispatchSync PollSingleRouterJob', ['msg' => $th->getMessage()]);
+                }
             } else {
                 session()->flash('error', 'Router ['.$router->name.']: Gagal terhubung. Pastikan IP, Port, Username, dan Password benar serta Router aktif.');
             }
