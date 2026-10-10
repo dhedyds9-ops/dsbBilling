@@ -153,6 +153,8 @@ class Show extends BaseNetworkComponent
         $this->showProvisioningModal = true;
     }
 
+    $code
+
     public function closeProvisioningModal()
     {
         $this->showProvisioningModal = false;
@@ -190,6 +192,7 @@ class Show extends BaseNetworkComponent
         return view('livewire.isp.router.show')->layout('layouts.router-panel', ['activeTab' => $this->activeTab]);
     }
 }
+
 
 
 

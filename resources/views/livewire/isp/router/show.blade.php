@@ -197,8 +197,14 @@
             </div>
 
         @elseif($activeTab === 'ppp')
-            <div class="space-y-6">
-                <!-- PPPoE Servers -->
+            <div class="space-y-6" x-data="{ subTab: 'active' }">
+<div class="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-2">
+<button @click="subTab = 'active'" :class="subTab === 'active' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">PPPoE Active</button>
+<button @click="subTab = 'servers'" :class="subTab === 'servers' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">PPPoE Servers</button>
+<button @click="subTab = 'profiles'" :class="subTab === 'profiles' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">PPPoE Profiles</button>
+</div>
+<div x-show="subTab === 'servers'">
+                  <!-- PPPoE Servers -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -230,7 +236,7 @@
                     </div>
                 </div>
 
-                <!-- PPPoE Profiles -->
+                </div><div x-show="subTab === 'profiles'"><!-- PPPoE Profiles -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -264,7 +270,7 @@
                     </div>
                 </div>
 
-                <!-- PPPoE Active -->
+                </div><div x-show="subTab === 'active'"><!-- PPPoE Active -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -279,8 +285,8 @@
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Username</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IP Address</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MAC Address</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uptime</th>
-                                </tr>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uptime</th><th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th></tr>
+<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                             </thead>
                             <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
                                 @forelse($pppActive as $session)
@@ -296,10 +302,11 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['address'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['caller-id'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{{ $session['uptime'] ?? '-' }}</td>
+<td class="px-6 py-4 whitespace-nowrap text-right"><button wire:click="disconnectPpp('{{ $session['name'] }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Kick"><span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span></button></td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+                                        <td colspan="5" class="px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
                                             <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 mb-3">
                                                 <span class="material-symbols-outlined notranslate text-slate-400" translate="no">dialpad</span>
                                             </div>
@@ -314,8 +321,14 @@
             </div>
 
         @elseif($activeTab === 'hotspot')
-            <div class="space-y-6">
-                <!-- Hotspot Servers -->
+            <div class="space-y-6" x-data="{ subTab: 'active' }">
+<div class="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-2">
+<button @click="subTab = 'active'" :class="subTab === 'active' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">Hotspot Active</button>
+<button @click="subTab = 'servers'" :class="subTab === 'servers' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">Hotspot Servers</button>
+<button @click="subTab = 'profiles'" :class="subTab === 'profiles' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">Hotspot Profiles</button>
+</div>
+<div x-show="subTab === 'servers'">
+                  <!-- Hotspot Servers -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -347,7 +360,7 @@
                     </div>
                 </div>
 
-                <!-- Hotspot Profiles -->
+                </div><div x-show="subTab === 'profiles'"><!-- Hotspot Profiles -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -379,7 +392,7 @@
                     </div>
                 </div>
 
-                <!-- Hotspot Active -->
+                </div><div x-show="subTab === 'active'"><!-- Hotspot Active -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -395,6 +408,7 @@
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IP Address</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MAC Address</th>
                                     <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uptime</th>
+<th class="px-6 py-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
@@ -411,10 +425,11 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['address'] ?? $session['ip'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-mono">{{ $session['mac-address'] ?? $session['mac'] ?? '-' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{{ $session['uptime'] ?? '-' }}</td>
+<td class="px-6 py-4 whitespace-nowrap text-right"><button wire:click="disconnectHotspot('{{ $session['user'] ?? $session['mac-address'] }}')" wire:confirm="Yakin ingin kick user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Kick"><span class="material-symbols-outlined notranslate text-[18px]" translate="no">power_settings_new</span></button></td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+                                        <td colspan="5" class="px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
                                             <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 mb-3">
                                                 <span class="material-symbols-outlined notranslate text-slate-400" translate="no">wifi</span>
                                             </div>
@@ -526,6 +541,40 @@
                     });
                 });
             </script>
+
+        @elseif($activeTab === 'dhcp')
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
+                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
+                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">lan</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">DHCP Server</h3>
+                <p class="text-slate-500 dark:text-slate-400 max-w-md">Modul pengelolaan DHCP Server sedang dalam tahap pengembangan (Coming Soon).</p>
+            </div>
+        @elseif($activeTab === 'firewall')
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
+                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
+                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">security</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Firewall</h3>
+                <p class="text-slate-500 dark:text-slate-400 max-w-md">Modul pengelolaan Firewall (Filter, NAT, Mangle) sedang dalam tahap pengembangan (Coming Soon).</p>
+            </div>
+        @elseif($activeTab === 'routing')
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
+                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
+                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">route</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Routing</h3>
+                <p class="text-slate-500 dark:text-slate-400 max-w-md">Modul pengelolaan Routing (BGP, OSPF, Static) sedang dalam tahap pengembangan (Coming Soon).</p>
+            </div>
+        @elseif($activeTab === 'traffic')
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
+                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
+                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">monitoring</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Traffic Monitoring</h3>
+                <p class="text-slate-500 dark:text-slate-400 max-w-md">Grafik lalu lintas jaringan (Traffic Monitoring) sedang dalam tahap pengembangan (Coming Soon).</p>
+            </div>
+
         @endif
     </div>
 
@@ -582,3 +631,7 @@
     </div>
     @endif
 </div>
+
+
+
+

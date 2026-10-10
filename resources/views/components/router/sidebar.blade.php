@@ -38,12 +38,12 @@
             
             <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'ppp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'ppp' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">account_tree</span>
-                <span class="truncate" x-show="!sidebarCollapsed">PPPoE Active</span>
+                <span class="truncate" x-show="!sidebarCollapsed">PPP</span>
             </a>
             
             <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'hotspot']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'hotspot' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">wifi</span>
-                <span class="truncate" x-show="!sidebarCollapsed">Hotspot Active</span>
+                <span class="truncate" x-show="!sidebarCollapsed">Hotspot</span>
             </a>
             
             <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'logs']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'logs' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
@@ -56,22 +56,25 @@
                 <span class="truncate" x-show="!sidebarCollapsed">Web Terminal</span>
             </a>
 
-            <!-- Unimplemented menus -->
-            @php
-                $unimplemented = [
-                    ['label' => 'DHCP Server', 'icon' => 'lan'],
-                    ['label' => 'Firewall', 'icon' => 'security'],
-                    ['label' => 'Routing', 'icon' => 'route'],
-                    ['label' => 'Traffic Monitoring', 'icon' => 'monitoring'],
-                ];
-            @endphp
-
-            @foreach($unimplemented as $item)
-                <button type="button" disabled class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed mt-2">
-                    <span class="material-symbols-outlined notranslate text-[20px]" translate="no">{{ $item['icon'] }}</span>
-                    <span class="truncate" x-show="!sidebarCollapsed">{{ $item['label'] }}</span>
-                </button>
-            @endforeach
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'dhcp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'dhcp' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+                <span class="material-symbols-outlined notranslate text-[20px]" translate="no">lan</span>
+                <span class="truncate" x-show="!sidebarCollapsed">DHCP Server</span>
+            </a>
+            
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'firewall']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'firewall' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+                <span class="material-symbols-outlined notranslate text-[20px]" translate="no">security</span>
+                <span class="truncate" x-show="!sidebarCollapsed">Firewall</span>
+            </a>
+            
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'routing']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'routing' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+                <span class="material-symbols-outlined notranslate text-[20px]" translate="no">route</span>
+                <span class="truncate" x-show="!sidebarCollapsed">Routing</span>
+            </a>
+            
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'traffic']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'traffic' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+                <span class="material-symbols-outlined notranslate text-[20px]" translate="no">monitoring</span>
+                <span class="truncate" x-show="!sidebarCollapsed">Traffic Monitoring</span>
+            </a>
         </div>
 
         <div class="pt-6">
@@ -86,4 +89,5 @@
         </div>
     </nav>
 </aside>
+
 
