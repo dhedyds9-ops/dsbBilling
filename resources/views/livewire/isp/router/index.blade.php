@@ -1770,6 +1770,9 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1">
+                                    <a href="{{ route('isp.routers.show', $router->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 transition-colors" title="Panel Router">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">router</span>
+                                    </a>
                                     <button wire:click="checkConnection({{ $router->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Check Connection">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">network_ping</span>
                                     </button>
@@ -2064,4 +2067,5 @@
         </div>
     </div>
     @endif
+
 

@@ -186,6 +186,7 @@ class Show extends BaseNetworkComponent
 
     public function render()
     {
-        return view('livewire.isp.router.show');
+        return view('livewire.isp.router.show')->layout('layouts.router-panel');
     }
 }
+

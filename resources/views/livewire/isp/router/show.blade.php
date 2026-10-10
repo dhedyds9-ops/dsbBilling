@@ -1,4 +1,4 @@
-﻿@section('page_title', 'Detail MikroTik (Nas)')
+@section('page_title', 'Detail MikroTik (Nas)')
 
 <div class="space-y-6">
     
@@ -44,25 +44,7 @@
         </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="border-b border-slate-200 dark:border-slate-700">
-        <nav class="-mb-px flex gap-8 overflow-x-auto hide-scrollbar" aria-label="Tabs">
-            @foreach([
-                'overview' => ['label' => 'Ringkasan', 'icon' => 'dashboard'],
-                'interfaces' => ['label' => 'Interface', 'icon' => 'settings_ethernet'],
-                'ppp' => ['label' => 'PPPoE (Server, Profil, Aktif)', 'icon' => 'dialpad'],
-                'hotspot' => ['label' => 'Hotspot (Server, Profil, Aktif)', 'icon' => 'wifi'],
-                'logs' => ['label' => 'Sistem Log', 'icon' => 'list_alt'],
-                'terminal' => ['label' => 'Web Terminal', 'icon' => 'terminal']
-            ] as $tabKey => $tabData)
-                <button type="button" wire:click="setActiveTab('{{ $tabKey }}')"
-                        class="py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap {{ $activeTab === $tabKey ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-300 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-600' }}">
-                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">{{ $tabData['icon'] }}</span>
-                    {{ $tabData['label'] }}
-                </button>
-            @endforeach
-        </nav>
-    </div>
+
 
     <!-- Tab Contents -->
     <div class="mt-6">
