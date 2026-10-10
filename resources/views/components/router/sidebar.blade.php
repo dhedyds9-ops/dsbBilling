@@ -28,7 +28,7 @@
             <!-- Dashboard/Ringkasan -->
             <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'overview']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'overview' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">dashboard</span>
-                <span class="truncate" x-show="!sidebarCollapsed">Ringkasan Router</span>
+                <span class="truncate" x-show="!sidebarCollapsed">Dashboard</span>
             </a>
             
             <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'interfaces']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'interfaces' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
@@ -84,7 +84,7 @@
             
             <a href="{{ route('isp.routers.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">arrow_back</span>
-                <span class="truncate" x-show="!sidebarCollapsed">Kembali ke Daftar</span>
+                <span class="truncate" x-show="!sidebarCollapsed">Billing</span>
             </a>
         </div>
     </nav>
