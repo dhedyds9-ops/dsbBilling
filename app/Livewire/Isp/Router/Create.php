@@ -182,12 +182,29 @@ class Create extends AdminComponent
         }
     }
 
-    public function save()
+        public function save()
     {
+        if (empty($this->code)) {
+            $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name ?? 'rt'));
+            $this->code = strtoupper($cleanName) . '-' . rand(100, 999);
+        }
+        
+        if (empty($this->username)) {
+            $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name ?? 'rt'));
+            $this->username = 'api.dsb.' . $cleanName;
+        }
+        if (empty($this->password)) {
+            $this->password = \Illuminate\Support\Str::random(16);
+        }
+        if (empty($this->radius_secret)) {
+            $this->radius_secret = \Illuminate\Support\Str::random(32);
+        }
+
         $this->validate([
-            'code' => 'required|unique:routers,code',
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
+            'ip_address' => 'required',
+            'api_port' => 'required|numeric',
         ]);
 
         $service = app(RouterService::class);
