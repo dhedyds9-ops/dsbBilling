@@ -796,9 +796,9 @@
                         <!-- Simple CSS Graph -->
                         <div class="h-64 flex items-end gap-1 w-full border-b border-l border-slate-200 dark:border-slate-700 pb-2 pl-2 relative">
                             <!-- Y-Axis labels -->
-                            <div class="absolute -left-2 top-0 -translate-x-full text-[10px] text-slate-400">{{ formatBits($max) }}</div>
-                            <div class="absolute -left-2 top-1/2 -translate-y-1/2 -translate-x-full text-[10px] text-slate-400">{{ formatBits($max / 2) }}</div>
-                            <div class="absolute -left-2 bottom-0 -translate-x-full text-[10px] text-slate-400">0 bps</div>
+                            <div class="absolute left-2 top-0 text-[11px] font-mono text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 rounded">{{ formatBits($max) }}</div>
+                            <div class="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-mono text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 rounded">{{ formatBits($max / 2) }}</div>
+                            <div class="absolute left-2 bottom-0 text-[11px] font-mono text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 rounded">0 bps</div>
                             
                             @foreach($liveTrafficData as $point)
                                 @php
@@ -807,8 +807,8 @@
                                 @endphp
                                 <div class="flex-1 flex flex-col justify-end items-center gap-1 group relative h-full">
                                     <div class="w-full flex justify-center gap-0.5 items-end h-full">
-                                        <div class="w-1/2 bg-blue-500 rounded-t-sm transition-all duration-300" style="height: {{ $txHeight }}%"></div>
-                                        <div class="w-1/2 bg-green-500 rounded-t-sm transition-all duration-300" style="height: {{ $rxHeight }}%"></div>
+                                        <div class="w-1/2 bg-blue-500 rounded-t-sm transition-all duration-300 min-h-[2px]" style="height: {{ $txHeight }}%"></div>
+                                        <div class="w-1/2 bg-green-500 rounded-t-sm transition-all duration-300 min-h-[2px]" style="height: {{ $rxHeight }}%"></div>
                                     </div>
                                 </div>
                             @endforeach

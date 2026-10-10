@@ -64,20 +64,24 @@ class Show extends BaseNetworkComponent
         if (!$this->selectedTrafficInterface || $this->activeTab !== 'traffic') return;
         
         $driver = new \App\Services\Adapters\Monitoring\MikroTikDriver();
+        \Illuminate\Support\Facades\Log::info('Updating traffic', ['interface' => $this->selectedTrafficInterface, 'router_pwd' => $this->router->password ? 'exists' : 'missing']);
         $stats = $driver->getTrafficStats($this->router, $this->selectedTrafficInterface);
+        \Illuminate\Support\Facades\Log::info('Stats', $stats);
         
         $this->liveTx = $stats['tx-bits-per-second'] ?? 0;
         $this->liveRx = $stats['rx-bits-per-second'] ?? 0;
         
-        $this->liveTrafficData[] = [
+        $data = $this->liveTrafficData;
+        $data[] = [
             'time' => now()->format('H:i:s'),
-            'tx' => $this->liveTx,
-            'rx' => $this->liveRx
+            'tx' => (int) $this->liveTx,
+            'rx' => (int) $this->liveRx
         ];
         
-        if (count($this->liveTrafficData) > 20) {
-            array_shift($this->liveTrafficData);
+        if (count($data) > 20) {
+            array_shift($data);
         }
+        $this->liveTrafficData = $data;
     }
 
     public function mount($id = null)

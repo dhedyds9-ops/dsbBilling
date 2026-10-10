@@ -187,8 +187,28 @@ class MikroTikDriver implements DeviceMonitorInterface
         }
     }
 
-    public function getTrafficStats($device): array
+    public function getTrafficStats($device, string $interface = ''): array
     {
+        try {
+            $client = $this->getClient($device);
+            if ($client && !empty($interface)) {
+                $query = new \RouterOS\Query('/interface/monitor-traffic');
+                $query->equal('interface', $interface);
+                $query->equal('once', '');
+                
+                $result = $client->query($query)->read();
+                \Illuminate\Support\Facades\Log::info('getTrafficStats result', ['interface' => $interface, 'result' => $result]);
+                
+                if (!empty($result) && isset($result[0])) {
+                    return [
+                        'rx-bits-per-second' => $result[0]['rx-bits-per-second'] ?? 0,
+                        'tx-bits-per-second' => $result[0]['tx-bits-per-second'] ?? 0,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('getTrafficStats error: ' . $e->getMessage());
+        }
         return [];
     }
 
@@ -546,7 +566,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                 return $client->query(new \RouterOS\Query('/ip/dhcp-server/print'))->read();
             }
         } catch (\Throwable $e) {
-            // silent
+            \Illuminate\Support\Facades\Log::error('getTrafficStats error: ' . $e->getMessage());
         }
         return [];
     }
@@ -559,7 +579,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                 return $client->query(new \RouterOS\Query('/ip/dhcp-server/lease/print'))->read();
             }
         } catch (\Throwable $e) {
-            // silent
+            \Illuminate\Support\Facades\Log::error('getTrafficStats error: ' . $e->getMessage());
         }
         return [];
     }
@@ -572,7 +592,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                 return $client->query(new \RouterOS\Query('/ip/firewall/filter/print'))->read();
             }
         } catch (\Throwable $e) {
-            // silent
+            \Illuminate\Support\Facades\Log::error('getTrafficStats error: ' . $e->getMessage());
         }
         return [];
     }
@@ -585,7 +605,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                 return $client->query(new \RouterOS\Query('/ip/firewall/nat/print'))->read();
             }
         } catch (\Throwable $e) {
-            // silent
+            \Illuminate\Support\Facades\Log::error('getTrafficStats error: ' . $e->getMessage());
         }
         return [];
     }
@@ -598,7 +618,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                 return $client->query(new \RouterOS\Query('/ip/route/print'))->read();
             }
         } catch (\Throwable $e) {
-            // silent
+            \Illuminate\Support\Facades\Log::error('getTrafficStats error: ' . $e->getMessage());
         }
         return [];
     }
