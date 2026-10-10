@@ -537,4 +537,39 @@ class MikroTikDriver implements DeviceMonitorInterface
             return false;
         }
     }
+
+    public function getDhcpServers(): array
+    {
+        return ->execute(, function () {
+            return ->getDhcpServers();
+        }, []);
+    }
+
+    public function getDhcpLeases(): array
+    {
+        return ->execute(, function () {
+            return ->getDhcpLeases();
+        }, []);
+    }
+
+    public function getFirewallFilters(): array
+    {
+        return ->execute(, function () {
+            return ->getFirewallFilters();
+        }, []);
+    }
+
+    public function getFirewallNat(): array
+    {
+        return ->execute(, function () {
+            return ->getFirewallNat();
+        }, []);
+    }
+
+    public function getRoutes(): array
+    {
+        return ->execute(, function () {
+            return ->getRoutes();
+        }, []);
+    }
 }

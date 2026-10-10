@@ -269,12 +269,22 @@
 
                 </div><div x-show="subTab === 'active'"><!-- PPPoE Active -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <span class="material-symbols-outlined notranslate text-indigo-500 text-[20px]" translate="no">dialpad</span>
-                            Koneksi PPPoE Aktif
-                        </h3>
-                    </div>
+                                          <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                          <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                              <span class="material-symbols-outlined notranslate text-indigo-500 text-[20px]" translate="no">dialpad</span>
+                              Koneksi PPPoE Aktif
+                          </h3>
+                          <div class="relative">
+                              <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">search</span>
+                              <input type="text" wire:model.live="searchPpp" placeholder="Cari username atau IP..." class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 w-64">
+                          </div>
+                      </div>
+                      @php
+    $filteredPppActive = collect($pppActive ?? [])->filter(function($session) use ($searchPpp) {
+        if (empty($searchPpp)) return true;
+        return stripos($session['name'] ?? '', $searchPpp) !== false || stripos($session['address'] ?? '', $searchPpp) !== false;
+    })->all();
+@endphp
                     <div class="overflow-x-auto relative">
                         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                             <thead class="bg-slate-50 dark:bg-slate-800/80">
@@ -392,11 +402,21 @@
                 </div><div x-show="subTab === 'active'"><!-- Hotspot Active -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <span class="material-symbols-outlined notranslate text-orange-500 text-[20px]" translate="no">wifi</span>
-                            Koneksi Hotspot Aktif
-                        </h3>
-                    </div>
+    <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <span class="material-symbols-outlined notranslate text-orange-500 text-[20px]" translate="no">wifi</span>
+        Koneksi Hotspot Aktif
+    </h3>
+    <div class="relative">
+        <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]" translate="no">search</span>
+        <input type="text" wire:model.live="searchHotspot" placeholder="Cari username atau IP..." class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 w-64">
+    </div>
+</div>
+@php
+    $filteredHotspotActive = collect($hotspotActive ?? [])->filter(function($session) use ($searchHotspot) {
+        if (empty($searchHotspot)) return true;
+        return stripos($session['user'] ?? '', $searchHotspot) !== false || stripos($session['address'] ?? '', $searchHotspot) !== false || stripos($session['mac-address'] ?? '', $searchHotspot) !== false;
+    })->all();
+@endphp
                     <div class="overflow-x-auto relative">
                         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                             <thead class="bg-slate-50 dark:bg-slate-800/80">
@@ -409,7 +429,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                                @forelse($hotspotActive as $session)
+                                @forelse($filteredHotspotActive as $session)
                                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center gap-3">
@@ -540,34 +560,262 @@
             </script>
 
         @elseif($activeTab === 'dhcp')
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
-                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
-                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">lan</span>
+            <div class="space-y-6">
+                <!-- DHCP Servers -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-blue-500 text-[20px]" translate="no">lan</span>
+                            DHCP Servers
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto relative">
+                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead class="bg-slate-50 dark:bg-slate-800/80">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Interface</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Address Pool</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lease Time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                                @forelse($dhcpServers ?? [] as $server)
+                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                        <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-bold">{{ $server['name'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $server['interface'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $server['address-pool'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $server['lease-time'] ?? '-' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="4" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada DHCP Server.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                <!-- DHCP Leases -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-blue-500 text-[20px]" translate="no">list_alt</span>
+                            DHCP Leases
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto relative">
+                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead class="bg-slate-50 dark:bg-slate-800/80">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Address</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MAC Address</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Server</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                                @forelse($dhcpLeases ?? [] as $lease)
+                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                        <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-mono text-[13px] font-bold">{{ $lease['address'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $lease['mac-address'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $lease['server'] ?? '-' }}</td>
+                                        <td class="px-6 py-3">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ ($lease['status'] ?? '') === 'bound' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800' }}">
+                                                {{ $lease['status'] ?? '-' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="4" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada DHCP Leases.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">DHCP Server</h3>
                 <p class="text-slate-500 dark:text-slate-400 max-w-md">Modul pengelolaan DHCP Server sedang dalam tahap pengembangan (Coming Soon).</p>
             </div>
         @elseif($activeTab === 'firewall')
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
-                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
-                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">security</span>
+            <div class="space-y-6" x-data="{ subTab: 'filter' }">
+                <div class="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-2">
+                    <button @click="subTab = 'filter'" :class="subTab === 'filter' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">Filter Rules</button>
+                    <button @click="subTab = 'nat'" :class="subTab === 'nat' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 dark:text-slate-400'" class="px-4 py-3 border-b-2 font-medium text-sm transition-colors">NAT Rules</button>
                 </div>
+
+                <div x-show="subTab === 'filter'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="overflow-x-auto relative">
+                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead class="bg-slate-50 dark:bg-slate-800/80">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Chain</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Protocol</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dst Port</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Comment</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                                @forelse($firewallFilters ?? [] as $rule)
+                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                        <td class="px-6 py-3 font-mono text-[13px] {{ ($rule['action'] ?? '') === 'drop' ? 'text-red-500' : 'text-slate-700 dark:text-slate-300' }}">{{ $rule['action'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $rule['chain'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono">{{ $rule['protocol'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono">{{ $rule['dst-port'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 text-sm">{{ $rule['comment'] ?? '-' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada Firewall Filter.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div x-show="subTab === 'nat'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="overflow-x-auto relative">
+                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead class="bg-slate-50 dark:bg-slate-800/80">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Chain</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Src Address</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Out Interface</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Comment</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                                @forelse($firewallNat ?? [] as $rule)
+                                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                        <td class="px-6 py-3 text-slate-700 dark:text-slate-300 font-mono text-[13px]">{{ $rule['action'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $rule['chain'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono">{{ $rule['src-address'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono">{{ $rule['out-interface'] ?? '-' }}</td>
+                                        <td class="px-6 py-3 text-slate-500 dark:text-slate-400 text-sm">{{ $rule['comment'] ?? '-' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada NAT Rules.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Firewall</h3>
                 <p class="text-slate-500 dark:text-slate-400 max-w-md">Modul pengelolaan Firewall (Filter, NAT, Mangle) sedang dalam tahap pengembangan (Coming Soon).</p>
             </div>
         @elseif($activeTab === 'routing')
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
-                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
-                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">route</span>
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined notranslate text-emerald-500 text-[20px]" translate="no">route</span>
+                        Tabel Routing
+                    </h3>
                 </div>
+                <div class="overflow-x-auto relative">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                        <thead class="bg-slate-50 dark:bg-slate-800/80">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dst Address</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Gateway</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Distance</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                            @forelse($routes ?? [] as $route)
+                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                    <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-mono text-[13px] font-bold">{{ $route['dst-address'] ?? '-' }}</td>
+                                    <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $route['gateway'] ?? '-' }}</td>
+                                    <td class="px-6 py-3 text-slate-500 dark:text-slate-400">{{ $route['distance'] ?? '-' }}</td>
+                                    <td class="px-6 py-3">
+                                        <div class="flex gap-1">
+                                            @if(($route['active'] ?? 'false') === 'true')
+                                                <span class="px-2 inline-flex text-[10px] font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                            @endif
+                                            @if(($route['dynamic'] ?? 'false') === 'true')
+                                                <span class="px-2 inline-flex text-[10px] font-semibold rounded-full bg-blue-100 text-blue-800">Dynamic</span>
+                                            @endif
+                                            @if(($route['static'] ?? 'false') === 'true')
+                                                <span class="px-2 inline-flex text-[10px] font-semibold rounded-full bg-slate-100 text-slate-800">Static</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada Routing Rules.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Routing</h3>
                 <p class="text-slate-500 dark:text-slate-400 max-w-md">Modul pengelolaan Routing (BGP, OSPF, Static) sedang dalam tahap pengembangan (Coming Soon).</p>
             </div>
         @elseif($activeTab === 'traffic')
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
-                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-4">
-                    <span class="material-symbols-outlined notranslate text-[32px]" translate="no">monitoring</span>
+            <div wire:poll.3s="loadData" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined notranslate text-indigo-500 text-[20px]" translate="no">monitoring</span>
+                        Traffic Monitoring (Live)
+                    </h3>
+                    <div class="flex items-center gap-2 text-xs font-semibold text-emerald-500 animate-pulse">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div> Live Update
+                    </div>
                 </div>
+                <div class="overflow-x-auto relative">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                        <thead class="bg-slate-50 dark:bg-slate-800/80">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Interface</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">TX (Upload)</th>
+                                <th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">RX (Download)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                            @forelse($interfaces ?? [] as $interface)
+                                @php
+                                    $txBps = $interface['tx-bps'] ?? 0;
+                                    $rxBps = $interface['rx-bps'] ?? 0;
+                                    
+                                    function formatBits($bits) {
+                                        if ($bits >= 1000000000) return number_format($bits / 1000000000, 2) . ' Gbps';
+                                        if ($bits >= 1000000) return number_format($bits / 1000000, 2) . ' Mbps';
+                                        if ($bits >= 1000) return number_format($bits / 1000, 2) . ' Kbps';
+                                        return $bits . ' bps';
+                                    }
+                                @endphp
+                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
+                                    <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-bold flex items-center gap-2">
+                                        <span class="material-symbols-outlined notranslate text-[18px] text-slate-400" translate="no">settings_ethernet</span>
+                                        {{ $interface['name'] ?? '-' }}
+                                    </td>
+                                    <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $interface['type'] ?? '-' }}</td>
+                                    <td class="px-6 py-3">
+                                        <span class="px-2 inline-flex text-[10px] font-semibold rounded-full {{ ($interface['status'] ?? '') === 'link-up' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800' }}">
+                                            {{ ($interface['status'] ?? '') === 'link-up' ? 'Up' : 'Down' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-3 text-right">
+                                        <div class="flex flex-col items-end">
+                                            <span class="font-bold text-blue-600 dark:text-blue-400">{{ formatBits($txBps) }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-3 text-right">
+                                        <div class="flex flex-col items-end">
+                                            <span class="font-bold text-green-600 dark:text-green-400">{{ formatBits($rxBps) }}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada data traffic.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Traffic Monitoring</h3>
                 <p class="text-slate-500 dark:text-slate-400 max-w-md">Grafik lalu lintas jaringan (Traffic Monitoring) sedang dalam tahap pengembangan (Coming Soon).</p>
             </div>
@@ -628,6 +876,12 @@
     </div>
     @endif
 </div>
+
+
+
+
+
+
 
 
 

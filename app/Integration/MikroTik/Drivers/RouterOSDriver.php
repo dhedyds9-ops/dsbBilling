@@ -928,4 +928,58 @@ class RouterOSDriver implements RouterOSDriverInterface
             return false;
         }
     }
+    public function getDhcpServers(): array
+    {
+        try {
+            return ->retryEngine->execute(function () {
+                return ->connection->query('/ip/dhcp-server/print')->read();
+            }) ?? [];
+        } catch (\Throwable ) {
+            return [];
+        }
+    }
+
+    public function getDhcpLeases(): array
+    {
+        try {
+            return ->retryEngine->execute(function () {
+                return ->connection->query('/ip/dhcp-server/lease/print')->read();
+            }) ?? [];
+        } catch (\Throwable ) {
+            return [];
+        }
+    }
+
+    public function getFirewallFilters(): array
+    {
+        try {
+            return ->retryEngine->execute(function () {
+                return ->connection->query('/ip/firewall/filter/print')->read();
+            }) ?? [];
+        } catch (\Throwable ) {
+            return [];
+        }
+    }
+
+    public function getFirewallNat(): array
+    {
+        try {
+            return ->retryEngine->execute(function () {
+                return ->connection->query('/ip/firewall/nat/print')->read();
+            }) ?? [];
+        } catch (\Throwable ) {
+            return [];
+        }
+    }
+
+    public function getRoutes(): array
+    {
+        try {
+            return ->retryEngine->execute(function () {
+                return ->connection->query('/ip/route/print')->read();
+            }) ?? [];
+        } catch (\Throwable ) {
+            return [];
+        }
+    }
 }
