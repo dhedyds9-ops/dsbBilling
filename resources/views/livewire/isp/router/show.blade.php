@@ -780,11 +780,13 @@
                                     $txBps = $interface['tx-bps'] ?? 0;
                                     $rxBps = $interface['rx-bps'] ?? 0;
                                     
-                                    function formatBits($bits) {
-                                        if ($bits >= 1000000000) return number_format($bits / 1000000000, 2) . ' Gbps';
-                                        if ($bits >= 1000000) return number_format($bits / 1000000, 2) . ' Mbps';
-                                        if ($bits >= 1000) return number_format($bits / 1000, 2) . ' Kbps';
-                                        return $bits . ' bps';
+                                    if (!function_exists('formatBits')) {
+                                        function formatBits($bits) {
+                                            if ($bits >= 1000000000) return number_format($bits / 1000000000, 2) . ' Gbps';
+                                            if ($bits >= 1000000) return number_format($bits / 1000000, 2) . ' Mbps';
+                                            if ($bits >= 1000) return number_format($bits / 1000, 2) . ' Kbps';
+                                            return $bits . ' bps';
+                                        }
                                     }
                                 @endphp
                                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
@@ -876,6 +878,7 @@
     </div>
     @endif
 </div>
+
 
 
 
