@@ -753,119 +753,98 @@
                 <p class="text-slate-500 dark:text-slate-400 max-w-md">Modul pengelolaan Routing (BGP, OSPF, Static) sedang dalam tahap pengembangan (Coming Soon).</p>
             </div>
         @elseif($activeTab === 'traffic')
-            <div wire:poll.3s="loadData" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+                        <div wire:poll.2s="updateTraffic" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <span class="material-symbols-outlined notranslate text-indigo-500 text-[20px]" translate="no">monitoring</span>
-                        Traffic Monitoring (Live)
+                        Live Traffic Graph
                     </h3>
-                    <div class="flex items-center gap-2 text-xs font-semibold text-emerald-500 animate-pulse">
-                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div> Live Update
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-emerald-500 animate-pulse">
+                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div> Live (2s)
+                        </div>
+                        <select wire:model.live="selectedTrafficInterface" class="border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 py-1.5 pl-3 pr-8">
+                            <option value="">-- Pilih Interface --</option>
+                            @foreach($interfaces ?? [] as $iface)
+                                <option value="{{ $iface['name'] }}">{{ $iface['name'] }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
-                <div class="overflow-x-auto relative">
-                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                        <thead class="bg-slate-50 dark:bg-slate-800/80">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Interface</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">TX (Upload)</th>
-                                <th class="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">RX (Download)</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                            @forelse($interfaces ?? [] as $interface)
-                                @php
-                                    $txBps = $interface['tx-bps'] ?? 0;
-                                    $rxBps = $interface['rx-bps'] ?? 0;
-                                    
-                                    if (!function_exists('formatBits')) {
-                                        function formatBits($bits) {
-                                            if ($bits >= 1000000000) return number_format($bits / 1000000000, 2) . ' Gbps';
-                                            if ($bits >= 1000000) return number_format($bits / 1000000, 2) . ' Mbps';
-                                            if ($bits >= 1000) return number_format($bits / 1000, 2) . ' Kbps';
-                                            return $bits . ' bps';
-                                        }
-                                    }
-                                @endphp
-                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
-                                    <td class="px-6 py-3 text-slate-900 dark:text-slate-100 font-bold flex items-center gap-2">
-                                        <span class="material-symbols-outlined notranslate text-[18px] text-slate-400" translate="no">settings_ethernet</span>
-                                        {{ $interface['name'] ?? '-' }}
-                                    </td>
-                                    <td class="px-6 py-3 text-slate-500 dark:text-slate-400 font-mono text-[13px]">{{ $interface['type'] ?? '-' }}</td>
-                                    <td class="px-6 py-3">
-                                        <span class="px-2 inline-flex text-[10px] font-semibold rounded-full {{ ($interface['status'] ?? '') === 'link-up' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800' }}">
-                                            {{ ($interface['status'] ?? '') === 'link-up' ? 'Up' : 'Down' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-3 text-right">
-                                        <div class="flex flex-col items-end">
-                                            <span class="font-bold text-blue-600 dark:text-blue-400">{{ formatBits($txBps) }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-3 text-right">
-                                        <div class="flex flex-col items-end">
-                                            <span class="font-bold text-green-600 dark:text-green-400">{{ formatBits($rxBps) }}</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 dark:text-slate-400">Tidak ada data traffic.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Traffic Monitoring</h3>
-                <p class="text-slate-500 dark:text-slate-400 max-w-md">Grafik lalu lintas jaringan (Traffic Monitoring) sedang dalam tahap pengembangan (Coming Soon).</p>
-            </div>
-
-        @endif
-    </div>
-
-    @if($showProvisioningModal)
-    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" wire:click="closeProvisioningModal"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-slate-200 dark:border-slate-700">
-                <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
-                    <h3 class="text-lg leading-6 font-bold text-slate-900 dark:text-white flex items-center gap-2" id="modal-title">
-                        <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">terminal</span>
-                        Skrip Auto Config Mikrotik
-                    </h3>
-                    <button wire:click="closeProvisioningModal" class="text-slate-400 hover:text-slate-500 focus:outline-none">
-                        <span class="material-symbols-outlined notranslate" translate="no">close</span>
-                    </button>
-                </div>
-                <div class="px-6 py-6">
-                    <div class="mb-4">
-                        <p class="text-sm text-slate-600 dark:text-slate-300">
-                            Jalankan perintah ini di Terminal (New Terminal) pada router Mikrotik Anda. Skrip ini akan secara otomatis mengunduh konfigurasi API dan Radius dari dsBilling dan menerapkannya ke router.
-                        </p>
-                        <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                            <p class="text-xs text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
-                                <span class="material-symbols-outlined notranslate text-[16px]" translate="no">warning</span>
-                                Token ini hanya berlaku 1 kali dan kedaluwarsa dalam {{ $provisioningExpires }}.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="relative bg-slate-900 rounded-xl p-4 overflow-hidden border border-slate-700 group">
-                        <div class="flex items-center gap-2 mb-3 border-b border-slate-700 pb-2">
-                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
-                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span class="text-slate-400 text-xs font-mono ml-2">RouterOS Terminal</span>
-                        </div>
-                        <code class="text-emerald-400 text-sm font-mono break-all whitespace-pre-wrap select-all">/tool fetch url="{{ url('/api/v1/provision/router') }}" http-header-field="Authorization: Bearer {{ $provisioningToken }}" dst-path="provision.rsc"; /import provision.rsc; /file remove provision.rsc;</code>
+                
+                @if($selectedTrafficInterface)
+                    @php
+                        if (!function_exists('formatBits')) {
+                            function formatBits($bits) {
+                                if ($bits >= 1000000000) return number_format($bits / 1000000000, 2) . ' Gbps';
+                                if ($bits >= 1000000) return number_format($bits / 1000000, 2) . ' Mbps';
+                                if ($bits >= 1000) return number_format($bits / 1000, 2) . ' Kbps';
+                                return $bits . ' bps';
+                            }
+                        }
                         
-                        <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="navigator.clipboard.writeText('/tool fetch url=\'{{ url('/api/v1/provision/router') }}\' http-header-field=\'Authorization: Bearer {{ $provisioningToken }}\' dst-path=\'provision.rsc\'; /import provision.rsc; /file remove provision.rsc;'); alert('Skrip disalin!');" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg shadow-sm border border-slate-600 transition-colors" title="Copy to clipboard">
-                                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">content_copy</span>
-                            </button>
+                        $maxTx = collect($liveTrafficData)->max('tx') ?? 1000000; // default max 1Mbps
+                        $maxRx = collect($liveTrafficData)->max('rx') ?? 1000000;
+                        $max = max($maxTx, $maxRx, 1000000); // minimum scale 1Mbps
+                    @endphp
+                    
+                    <div class="p-6">
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/50">
+                                <p class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-1">TX (Upload)</p>
+                                <p class="text-2xl font-black text-slate-900 dark:text-white">{{ formatBits($liveTx) }}</p>
+                            </div>
+                            <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800/50">
+                                <p class="text-sm font-bold text-green-600 dark:text-green-400 mb-1">RX (Download)</p>
+                                <p class="text-2xl font-black text-slate-900 dark:text-white">{{ formatBits($liveRx) }}</p>
+                            </div>
                         </div>
+                        
+                        <!-- Simple CSS Graph -->
+                        <div class="h-64 flex items-end gap-1 w-full border-b border-l border-slate-200 dark:border-slate-700 pb-2 pl-2 relative">
+                            <!-- Y-Axis labels -->
+                            <div class="absolute -left-2 top-0 -translate-x-full text-[10px] text-slate-400">{{ formatBits($max) }}</div>
+                            <div class="absolute -left-2 top-1/2 -translate-y-1/2 -translate-x-full text-[10px] text-slate-400">{{ formatBits($max / 2) }}</div>
+                            <div class="absolute -left-2 bottom-0 -translate-x-full text-[10px] text-slate-400">0 bps</div>
+                            
+                            @foreach($liveTrafficData as $point)
+                                @php
+                                    $txHeight = ($point['tx'] / $max) * 100;
+                                    $rxHeight = ($point['rx'] / $max) * 100;
+                                @endphp
+                                <div class="flex-1 flex flex-col justify-end items-center gap-1 group relative h-full">
+                                    <div class="w-full flex justify-center gap-0.5 items-end h-full">
+                                        <div class="w-1/2 bg-blue-500 rounded-t-sm transition-all duration-300" style="height: {{ $txHeight }}%"></div>
+                                        <div class="w-1/2 bg-green-500 rounded-t-sm transition-all duration-300" style="height: {{ $rxHeight }}%"></div>
+                                    </div>
+                                    <!-- Tooltip -->
+                                    <div class="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 bg-slate-900 text-white text-[10px] rounded py-1 px-2 pointer-events-none z-10 whitespace-nowrap shadow-lg">
+                                        {{ $point['time'] }}<br>
+                                        TX: {{ formatBits($point['tx']) }}<br>
+                                        RX: {{ formatBits($point['rx']) }}
+                                    </div>
+                                </div>
+                            @endforeach
+                            
+                            @if(count($liveTrafficData) === 0)
+                                <div class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
+                                    Menunggu data...
+                                </div>
+                            @endif
+                        </div>
+                        <div class="flex justify-center gap-6 mt-4 text-xs font-bold text-slate-500">
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 bg-blue-500 rounded-sm"></div> TX (Upload)</div>
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 bg-green-500 rounded-sm"></div> RX (Download)</div>
+                        </div>
+                    </div>
+                @else
+                    <div class="p-12 text-center text-slate-500 dark:text-slate-400">
+                        <span class="material-symbols-outlined notranslate text-[48px] mb-4 opacity-50" translate="no">monitoring</span>
+                        <p>Silakan pilih interface untuk mulai memonitor traffic.</p>
+                    </div>
+                @endif
+            </div>
+</div>
                     </div>
                 </div>
                 <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end">

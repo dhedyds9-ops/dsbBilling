@@ -27,11 +27,17 @@ class Show extends BaseNetworkComponent
     public $vpnServers = [];
     public string $searchPpp = '';
     public string $searchHotspot = '';
-    public $dhcpServers = [];
+        public $dhcpServers = [];
     public $dhcpLeases = [];
     public $firewallFilters = [];
     public $firewallNat = [];
     public $routes = [];
+    
+    // Traffic Graph
+    public string $selectedTrafficInterface = '';
+    public $liveTx = 0;
+    public $liveRx = 0;
+    public $liveTrafficData = [];
     public $hotspotServers = [];
     public $hotspotProfiles = [];
     public $walledGarden = [];
@@ -44,6 +50,35 @@ class Show extends BaseNetworkComponent
     public $provisioningToken = null;
     public $provisioningExpires = null;
     public bool $showProvisioningModal = false;
+
+        public function updatedSelectedTrafficInterface()
+    {
+        $this->liveTrafficData = [];
+        $this->liveTx = 0;
+        $this->liveRx = 0;
+        $this->updateTraffic();
+    }
+
+    public function updateTraffic()
+    {
+        if (!$this->selectedTrafficInterface || $this->activeTab !== 'traffic') return;
+        
+        $driver = new \App\Services\Adapters\Monitoring\MikroTikDriver();
+        $stats = $driver->getTrafficStats($this->router, $this->selectedTrafficInterface);
+        
+        $this->liveTx = $stats['tx-bits-per-second'] ?? 0;
+        $this->liveRx = $stats['rx-bits-per-second'] ?? 0;
+        
+        $this->liveTrafficData[] = [
+            'time' => now()->format('H:i:s'),
+            'tx' => $this->liveTx,
+            'rx' => $this->liveRx
+        ];
+        
+        if (count($this->liveTrafficData) > 20) {
+            array_shift($this->liveTrafficData);
+        }
+    }
 
     public function mount($id = null)
     {
@@ -99,8 +134,12 @@ class Show extends BaseNetworkComponent
             $this->firewallNat = $driver->getFirewallNat($this->router);
         } elseif ($this->activeTab === 'routing') {
             $this->routes = $driver->getRoutes($this->router);
-        } elseif ($this->activeTab === 'traffic') {
+                } elseif ($this->activeTab === 'traffic') {
             $this->interfaces = $driver->getInterfaceStats($this->router);
+            if (empty($this->selectedTrafficInterface) && count($this->interfaces) > 0) {
+                $this->selectedTrafficInterface = $this->interfaces[0]['name'] ?? '';
+                $this->updateTraffic();
+            }
         } elseif ($this->activeTab === 'logs') {
             $this->logs = $driver->getLogs($this->router, 100);
         }
