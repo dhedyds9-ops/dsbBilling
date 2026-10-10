@@ -1632,7 +1632,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-1.5">
                                     <span class="material-symbols-outlined notranslate text-emerald-500" translate="no" style="font-size:16px">people</span>
-                                    <span class="font-medium text-slate-700 dark:text-slate-300">{{ number_format($router->active_sessions_count) }}</span>
+                                    <span class="font-medium text-slate-700 dark:text-slate-300">{{ number_format($activeUsers[$router->id] ?? 0) }}</span>
                                 </div>
     @if($showProvisioningModal)
     <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
