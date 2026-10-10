@@ -538,38 +538,38 @@ class MikroTikDriver implements DeviceMonitorInterface
         }
     }
 
-    public function getDhcpServers(): array
+    public function getDhcpServers($device): array
     {
-        return ->execute(, function () {
-            return ->getDhcpServers();
+        return $this->execute($device, function ($driver) {
+            return $driver->getDhcpServers();
         }, []);
     }
 
-    public function getDhcpLeases(): array
+    public function getDhcpLeases($device): array
     {
-        return ->execute(, function () {
-            return ->getDhcpLeases();
+        return $this->execute($device, function ($driver) {
+            return $driver->getDhcpLeases();
         }, []);
     }
 
-    public function getFirewallFilters(): array
+    public function getFirewallFilters($device): array
     {
-        return ->execute(, function () {
-            return ->getFirewallFilters();
+        return $this->execute($device, function ($driver) {
+            return $driver->getFirewallFilters();
         }, []);
     }
 
-    public function getFirewallNat(): array
+    public function getFirewallNat($device): array
     {
-        return ->execute(, function () {
-            return ->getFirewallNat();
+        return $this->execute($device, function ($driver) {
+            return $driver->getFirewallNat();
         }, []);
     }
 
-    public function getRoutes(): array
+    public function getRoutes($device): array
     {
-        return ->execute(, function () {
-            return ->getRoutes();
+        return $this->execute($device, function ($driver) {
+            return $driver->getRoutes();
         }, []);
     }
 }

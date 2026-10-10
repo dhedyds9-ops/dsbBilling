@@ -931,10 +931,10 @@ class RouterOSDriver implements RouterOSDriverInterface
     public function getDhcpServers(): array
     {
         try {
-            return ->retryEngine->execute(function () {
-                return ->connection->query('/ip/dhcp-server/print')->read();
+            return $this->retryEngine->execute(function () {
+                return $this->connection->query('/ip/dhcp-server/print')->read();
             }) ?? [];
-        } catch (\Throwable ) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -942,10 +942,10 @@ class RouterOSDriver implements RouterOSDriverInterface
     public function getDhcpLeases(): array
     {
         try {
-            return ->retryEngine->execute(function () {
-                return ->connection->query('/ip/dhcp-server/lease/print')->read();
+            return $this->retryEngine->execute(function () {
+                return $this->connection->query('/ip/dhcp-server/lease/print')->read();
             }) ?? [];
-        } catch (\Throwable ) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -953,10 +953,10 @@ class RouterOSDriver implements RouterOSDriverInterface
     public function getFirewallFilters(): array
     {
         try {
-            return ->retryEngine->execute(function () {
-                return ->connection->query('/ip/firewall/filter/print')->read();
+            return $this->retryEngine->execute(function () {
+                return $this->connection->query('/ip/firewall/filter/print')->read();
             }) ?? [];
-        } catch (\Throwable ) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -964,10 +964,10 @@ class RouterOSDriver implements RouterOSDriverInterface
     public function getFirewallNat(): array
     {
         try {
-            return ->retryEngine->execute(function () {
-                return ->connection->query('/ip/firewall/nat/print')->read();
+            return $this->retryEngine->execute(function () {
+                return $this->connection->query('/ip/firewall/nat/print')->read();
             }) ?? [];
-        } catch (\Throwable ) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -975,10 +975,10 @@ class RouterOSDriver implements RouterOSDriverInterface
     public function getRoutes(): array
     {
         try {
-            return ->retryEngine->execute(function () {
-                return ->connection->query('/ip/route/print')->read();
+            return $this->retryEngine->execute(function () {
+                return $this->connection->query('/ip/route/print')->read();
             }) ?? [];
-        } catch (\Throwable ) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
