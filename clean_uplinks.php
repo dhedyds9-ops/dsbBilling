@@ -1,1 +1,0 @@
-<?php require 'vendor/autoload.php'; $app = require_once 'bootstrap/app.php'; $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class); $kernel->bootstrap(); \App\Models\ISP\PonPort::where('olt_id', 5)->whereRaw('UPPER(name) NOT LIKE ?', ['%PON%'])->delete(); echo 'Uplinks deleted.';
