@@ -25,6 +25,13 @@ class Show extends BaseNetworkComponent
     public $pppProfiles = [];
     public $pppSecrets = [];
     public $vpnServers = [];
+    public string $searchPpp = '';
+    public string $searchHotspot = '';
+    public $dhcpServers = [];
+    public $dhcpLeases = [];
+    public $firewallFilters = [];
+    public $firewallNat = [];
+    public $routes = [];
     public $hotspotServers = [];
     public $hotspotProfiles = [];
     public $walledGarden = [];
@@ -84,6 +91,16 @@ class Show extends BaseNetworkComponent
             $this->hotspotServers = $driver->getHotspotServers($this->router);
             $this->hotspotProfiles = $driver->getHotspotProfiles($this->router);
             $this->walledGarden = $driver->getWalledGarden($this->router);
+                } elseif ($this->activeTab === 'dhcp') {
+            $this->dhcpServers = $driver->getDhcpServers($this->router);
+            $this->dhcpLeases = $driver->getDhcpLeases($this->router);
+        } elseif ($this->activeTab === 'firewall') {
+            $this->firewallFilters = $driver->getFirewallFilters($this->router);
+            $this->firewallNat = $driver->getFirewallNat($this->router);
+        } elseif ($this->activeTab === 'routing') {
+            $this->routes = $driver->getRoutes($this->router);
+        } elseif ($this->activeTab === 'traffic') {
+            $this->interfaces = $driver->getInterfaceStats($this->router);
         } elseif ($this->activeTab === 'logs') {
             $this->logs = $driver->getLogs($this->router, 100);
         }
@@ -228,6 +245,7 @@ class Show extends BaseNetworkComponent
         return view('livewire.isp.router.show')->layout('layouts.router-panel', ['activeTab' => $this->activeTab]);
     }
 }
+
 
 
 
