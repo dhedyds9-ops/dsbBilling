@@ -32,8 +32,8 @@ class RouterProvisioningScriptGenerator
             ]);
         }
 
-        $lines[] = "/user group add name=dsb-api policy=api,read,write,policy,test,!local,!telnet,!ssh,!ftp,!reboot,!winbox,!password,!web,!sniff,!sensitive,!romon,!dude comment=\"managed-by=dsbilling\" || :put \"Group exists\"";
-        $lines[] = "/user add name=\"{$apiUsername}\" password=\"{$apiPassword}\" group=dsb-api comment=\"managed-by=dsbilling\" || :put \"User exists\"";
+        $lines[] = ":do { /user group add name=dsb-api policy=api,read,write,policy,test,!local,!telnet,!ssh,!ftp,!reboot,!winbox,!password,!web,!sniff,!sensitive,!romon,!dude comment=\"managed-by=dsbilling\" } on-error={ :put \"Group exists\" }";
+        $lines[] = ":do { /user add name=\"{$apiUsername}\" password=\"{$apiPassword}\" group=dsb-api comment=\"managed-by=dsbilling\" } on-error={ :put \"User exists\" }";
         $lines[] = "/ip service set api disabled=no";
         $lines[] = "";
 
@@ -65,9 +65,9 @@ class RouterProvisioningScriptGenerator
             $radiusNas->update(['nas_secret' => $radiusSecret]);
         }
 
-        $lines[] = "/radius add address=\"{$host}\" secret=\"{$radiusSecret}\" service=pppoe,hotspot comment=\"managed-by=dsbilling\" || :put \"Radius exists\"";
-        $lines[] = "/radius incoming set accept=yes port=3799 || :put \"Radius incoming configured\"";
-        $lines[] = "/ppp aaa set use-radius=yes interim-update=5m accounting=yes || :put \"PPP AAA configured\"";
+        $lines[] = ":do { /radius add address=\"{$host}\" secret=\"{$radiusSecret}\" service=pppoe,hotspot comment=\"managed-by=dsbilling\" } on-error={ :put \"Radius exists\" }";
+        $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :put \"Radius incoming configured\" }";
+        $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :put \"PPP AAA configured\" }";
         $lines[] = "";
 
         // 3. Network Profiles (VLANs and PPPoE Servers)
@@ -76,11 +76,11 @@ class RouterProvisioningScriptGenerator
         foreach ($profiles as $profile) {
             if ($profile->vlan_id) {
                 $vlanName = "dsb-vlan-{$profile->vlan_id}";
-                $lines[] = "/interface vlan add name=\"{$vlanName}\" vlan-id={$profile->vlan_id} interface=\"{$uplinkInterface}\" comment=\"managed-by=dsbilling\" || :put \"VLAN {$profile->vlan_id} exists\"";
+                $lines[] = ":do { /interface vlan add name=\"{$vlanName}\" vlan-id={$profile->vlan_id} interface=\"{$uplinkInterface}\" comment=\"managed-by=dsbilling\" } on-error={ :put \"VLAN {$profile->vlan_id} exists\" }";
                 
                 if ($profile->type === 'pppoe') {
                     $serverName = "dsb-pppoe-{$profile->vlan_id}";
-                    $lines[] = "/interface pppoe-server server add name=\"{$serverName}\" interface=\"{$vlanName}\" service-name=\"{$serverName}\" authentication=pap,chap,mschap1,mschap2 one-session-per-host=yes default-profile=default comment=\"managed-by=dsbilling\" disabled=no || :put \"PPPoE Server {$serverName} exists\"";
+                    $lines[] = ":do { /interface pppoe-server server add name=\"{$serverName}\" interface=\"{$vlanName}\" service-name=\"{$serverName}\" authentication=pap,chap,mschap1,mschap2 one-session-per-host=yes default-profile=default comment=\"managed-by=dsbilling\" disabled=no } on-error={ :put \"PPPoE Server {$serverName} exists\" }";
                 } elseif ($profile->type === 'hotspot') {
                     // Basic Hotspot bridge preparation (Actual Hotspot setup is complex and usually requires IP pool/DHCP)
                     // We prepare the interface.
@@ -103,15 +103,15 @@ class RouterProvisioningScriptGenerator
             $vpnInternalSrc = $router->vpn_ip ?? '172.30.8.x';
             
             $lines[] = "# 4. VPN Failover Configuration (High Availability)";
-            $lines[] = "/ppp profile add name=DSB-VPN use-encryption=yes change-tcp-mss=yes comment=\"managed-by=dsbilling\" || :put \"VPN Profile exists\"";
+            $lines[] = ":do { /ppp profile add name=DSB-VPN use-encryption=yes change-tcp-mss=yes comment=\"managed-by=dsbilling\" } on-error={ :put \"VPN Profile exists\" }";
             
             foreach ($vpnServers as $index => $serverIp) {
                 $num = $index + 1;
                 $disabled = $num === 1 ? 'no' : 'yes'; // Only enable the first one by default
-                $lines[] = "/interface ovpn-client add disabled={$disabled} connect-to={$serverIp} name=\"DSB-VPN-{$num}\" profile=DSB-VPN user=\"{$vpnUsername}\" password=\"{$vpnPassword}\" comment=\"DSB VPN Server {$num}\" || :put \"VPN {$num} exists\"";
+                $lines[] = ":do { /interface ovpn-client add disabled={$disabled} connect-to={$serverIp} name=\"DSB-VPN-{$num}\" profile=DSB-VPN user=\"{$vpnUsername}\" password=\"{$vpnPassword}\" comment=\"DSB VPN Server {$num}\" } on-error={ :put \"VPN {$num} exists\" }";
             }
             
-            $lines[] = "/system scheduler remove [find name=\"dsb_vpn_failover\"] || :put \"Old scheduler removed\"";
+            $lines[] = ":do { /system scheduler remove [find name=\"dsb_vpn_failover\"] } on-error={ :put \"Old scheduler removed\" }";
             $lines[] = "/system scheduler add interval=10s name=dsb_vpn_failover on-event=\"{\\r\\
     \\n:global dsbLastVpnIndex\\r\\
     \\n:local targetIP \\\"{$vpnInternalTarget}\\\"\\r\\
@@ -138,20 +138,20 @@ class RouterProvisioningScriptGenerator
         // 5. Walled Garden (Isolir) Firewall Setup
         $billingPort = parse_url($appUrl, PHP_URL_PORT) ?? 80;
         $lines[] = "# 5. Walled Garden (Isolir) Firewall Setup";
-        $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$host}\" comment=\"managed-by=dsbilling: Server\" || :put \"Whitelist Billing exists\"";
-        $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"app.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" || :put \"Whitelist Midtrans exists\"";
-        $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"api.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" || :put \"Whitelist Midtrans API exists\"";
-        $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"xendit.co\" comment=\"managed-by=dsbilling: Payment\" || :put \"Whitelist Xendit exists\"";
-        $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"whatsapp.com\" comment=\"managed-by=dsbilling: WA\" || :put \"Whitelist WA exists\"";
-        $lines[] = "/ip firewall address-list add list=ISOLIR_WHITELIST address=\"whatsapp.net\" comment=\"managed-by=dsbilling: WA\" || :put \"Whitelist WA Net exists\"";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$host}\" comment=\"managed-by=dsbilling: Server\" } on-error={ :put \"Whitelist Billing exists\" }";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"app.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Midtrans exists\" }";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"api.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Midtrans API exists\" }";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"xendit.co\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Xendit exists\" }";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"whatsapp.com\" comment=\"managed-by=dsbilling: WA\" } on-error={ :put \"Whitelist WA exists\" }";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"whatsapp.net\" comment=\"managed-by=dsbilling: WA\" } on-error={ :put \"Whitelist WA Net exists\" }";
         $lines[] = "";
-        $lines[] = "/ip firewall nat add chain=dstnat action=dst-nat to-addresses={$host} to-ports={$billingPort} protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=80 comment=\"managed-by=dsbilling: Redirect Isolir HTTP\" || :put \"NAT Isolir HTTP exists\"";
-        $lines[] = "/ip firewall nat add chain=dstnat action=dst-nat to-addresses={$host} to-ports={$billingPort} protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=443 comment=\"managed-by=dsbilling: Redirect Isolir HTTPS\" || :put \"NAT Isolir HTTPS exists\"";
+        $lines[] = ":do { /ip firewall nat add chain=dstnat action=dst-nat to-addresses={$host} to-ports={$billingPort} protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=80 comment=\"managed-by=dsbilling: Redirect Isolir HTTP\" } on-error={ :put \"NAT Isolir HTTP exists\" }";
+        $lines[] = ":do { /ip firewall nat add chain=dstnat action=dst-nat to-addresses={$host} to-ports={$billingPort} protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=443 comment=\"managed-by=dsbilling: Redirect Isolir HTTPS\" } on-error={ :put \"NAT Isolir HTTPS exists\" }";
         $lines[] = "";
-        $lines[] = "/ip firewall filter add chain=forward action=accept protocol=udp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" || :put \"Filter DNS UDP exists\"";
-        $lines[] = "/ip firewall filter add chain=forward action=accept protocol=tcp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" || :put \"Filter DNS TCP exists\"";
-        $lines[] = "/ip firewall filter add chain=forward action=accept src-address-list=ISOLIR_LIST dst-address-list=ISOLIR_WHITELIST comment=\"managed-by=dsbilling: Allow Isolir Whitelist\" || :put \"Filter Whitelist exists\"";
-        $lines[] = "/ip firewall filter add chain=forward action=drop src-address-list=ISOLIR_LIST comment=\"managed-by=dsbilling: Drop other Isolir Traffic\" || :put \"Filter Drop exists\"";
+        $lines[] = ":do { /ip firewall filter add chain=forward action=accept protocol=udp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" } on-error={ :put \"Filter DNS UDP exists\" }";
+        $lines[] = ":do { /ip firewall filter add chain=forward action=accept protocol=tcp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" } on-error={ :put \"Filter DNS TCP exists\" }";
+        $lines[] = ":do { /ip firewall filter add chain=forward action=accept src-address-list=ISOLIR_LIST dst-address-list=ISOLIR_WHITELIST comment=\"managed-by=dsbilling: Allow Isolir Whitelist\" } on-error={ :put \"Filter Whitelist exists\" }";
+        $lines[] = ":do { /ip firewall filter add chain=forward action=drop src-address-list=ISOLIR_LIST comment=\"managed-by=dsbilling: Drop other Isolir Traffic\" } on-error={ :put \"Filter Drop exists\" }";
         $lines[] = "";
 
         $lines[] = ":put \"\";";
