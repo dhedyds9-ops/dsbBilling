@@ -141,6 +141,19 @@ class User extends Authenticatable
         return $this->roles->contains('name', $role);
     }
 
+    public function hasAnyRole(...$roles): bool
+    {
+        $flattened = [];
+        foreach ($roles as $r) {
+            if (is_array($r)) {
+                $flattened = array_merge($flattened, $r);
+            } else {
+                $flattened[] = $r;
+            }
+        }
+        return $this->hasRole($flattened);
+    }
+
     public function hasPermission(string $permission): bool
     {
         // Bypass untuk administrator (Akses penuh)
