@@ -45,7 +45,8 @@ class Index extends BaseNetworkComponent
                     $q->where(function($sq) {
                         $sq->where('code', 'like', '%' . $this->search . '%')
                           ->orWhere('name', 'like', '%' . $this->search . '%')
-                          ->orWhere('model', 'like', '%' . $this->search . '%');
+                          ->orWhere('model', 'like', '%' . $this->search . '%')
+                          ->orWhere('ip_address', 'like', '%' . $this->search . '%');
                     });
                 })
                 ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
@@ -345,7 +346,8 @@ class Index extends BaseNetworkComponent
                 $q->where(function($sq) {
                     $sq->where('code', 'like', '%' . $this->search . '%')
                       ->orWhere('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('model', 'like', '%' . $this->search . '%');
+                      ->orWhere('model', 'like', '%' . $this->search . '%')
+                      ->orWhere('ip_address', 'like', '%' . $this->search . '%');
                 });
             })
             ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
