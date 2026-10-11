@@ -106,7 +106,12 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
                 Tambah OLT
             </a>
-            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all">
+            <button wire:click="syncAll" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-200 dark:shadow-none transition-all cursor-pointer" title="Sinkronkan status semua OLT">
+                <span class="material-symbols-outlined notranslate mr-1.5" wire:loading.class="animate-spin" wire:target="syncAll" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading.remove wire:target="syncAll">Sinkronkan Semua</span>
+                <span wire:loading wire:target="syncAll">Sinkronisasi...</span>
+            </button>
+            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">download</span>
                 Export
             </button>
@@ -186,6 +191,9 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    <button wire:click="rowSync({{ $olt->id }})" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 transition-colors cursor-pointer" title="Sinkronkan OLT Sekarang">
+                                        <span class="material-symbols-outlined notranslate" wire:loading.class="animate-spin" wire:target="rowSync({{ $olt->id }})" translate="no" style="font-size:18px">sync</span>
+                                    </button>
                                     <a href="{{ route('isp.olts.show', $olt->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail / PON Ports">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>

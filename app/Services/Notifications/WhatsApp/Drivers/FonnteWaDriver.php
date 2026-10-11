@@ -167,12 +167,29 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
     {
         $t0 = microtime(true);
         try {
-            $resp = Http::withToken($this->token())->timeout(10)->get($this->apiUrl() . '/devices');
+            // Fonnte endpoint: POST /device (device token) returns device_status = "connect" | "disconnect"
+            // GET /devices does NOT exist on Fonnte; it returns HTML/404, causing false "unreachable".
+            $resp = Http::withToken($this->token())
+                ->timeout(10)
+                ->post($this->apiUrl() . '/device');
+
             $ok = $resp->successful();
             $lat = (microtime(true) - $t0) * 1000;
-            return ['ok' => $ok, 'latency_ms' => round($lat, 1), 'message' => $ok ? 'Device API reachable' : $resp->body()];
+
+            $data = json_decode($resp->body(), true) ?: [];
+            $deviceStatus = strtolower(trim((string) ($data['device_status'] ?? '')));
+            $connected = $ok && in_array($deviceStatus, ['connect', 'connected', 'online'], true);
+
+            return [
+                'ok' => $ok,
+                'connected' => $connected,
+                'latency_ms' => round($lat, 1),
+                'message' => $ok
+                    ? ($connected ? 'Device connected' : ('Device disconnected' . (isset($data['reason']) ? ': ' . $data['reason'] : '')))
+                    : $resp->body(),
+            ];
         } catch (\Throwable $e) {
-            return ['ok' => false, 'latency_ms' => round((microtime(true) - $t0) * 1000, 1), 'message' => $e->getMessage()];
+            return ['ok' => false, 'connected' => false, 'latency_ms' => round((microtime(true) - $t0) * 1000, 1), 'message' => $e->getMessage()];
         }
     }
 }

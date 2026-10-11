@@ -313,6 +313,25 @@ class Index extends BaseNetworkComponent
         }
     }
 
+    public function syncAll()
+    {
+        Log::info(__METHOD__);
+        try {
+            $olts = OltModel::whereNotNull('ip_address')->get();
+            $count = 0;
+            foreach ($olts as $olt) {
+                \App\Jobs\ISP\PollOltJob::dispatch($olt->id);
+                $count++;
+            }
+            $msg = "Memulai sinkronisasi untuk {$count} OLT di latar belakang.";
+            session()->flash('success', $msg);
+            $this->dispatch('toast', type: 'success', message: $msg);
+        } catch (\Throwable $e) {
+            Log::error('syncAll failed', ['err' => $e->getMessage()]);
+            $this->dispatch('toast', type: 'error', message: 'Sync error: ' . $e->getMessage());
+        }
+    }
+
     public function render()
     {
         $query = OltModel::with(['pop', 'vendor'])
