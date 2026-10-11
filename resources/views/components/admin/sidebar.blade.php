@@ -83,7 +83,7 @@
                 <div>
                     @if($categoryLabel !== 'Dashboard' && $categoryLabel !== 'Dashboard Reseller')
                     <div class="px-3 mb-2 flex items-center gap-2">
-                        <p x-show="!sidebarCollapsed" class="text-[11px] font-medium text-blue-500/80 dark:text-blue-400 uppercase tracking-wider">
+                        <p x-show="!sidebarCollapsed" class="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                             {{ $categoryLabel }}
                         </p>
                     </div>
@@ -121,9 +121,9 @@
                                     @endphp
                                     <a
                                         href="{{ $itemUrl }}"
-                                        class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors {{ $itemIsActive ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:text-slate-100 dark:hover:text-slate-100' }}"
+                                        class="group flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors {{ $itemIsActive ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 font-medium' }}"
                                     >
-                                        <span class="material-symbols-outlined w-5 h-5 flex items-center justify-center {{ $itemIsActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $itemIcon }}</span>
+                                        <span class="material-symbols-outlined w-5 h-5 flex items-center justify-center transition-colors {{ $itemIsActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400' }}">{{ $itemIcon }}</span>
                                         <span x-show="!sidebarCollapsed" class="flex-1">{{ $itemLabel }}</span>
                                     </a>
                                 @endforeach
@@ -132,14 +132,14 @@
                                     <button
                                         type="button"
                                         @click="toggleGroup('{{ $groupId }}')"
-                                        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors {{ $groupHasActive ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:text-slate-100 dark:hover:text-slate-100' }}"
+                                        class="group w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors {{ $groupHasActive ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 font-medium' }}"
                                     >
-                                        <span class="material-symbols-outlined w-5 h-5 flex items-center justify-center {{ $groupHasActive ? 'text-blue-600 dark:text-blue-400' : ($category['icon_color'] ?? 'text-slate-700 dark:text-slate-300') }}">{{ $groupIcon }}</span>
+                                        <span class="material-symbols-outlined w-5 h-5 flex items-center justify-center transition-colors {{ $groupHasActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400' }}">{{ $groupIcon }}</span>
                                         <span x-show="!sidebarCollapsed" class="flex-1 text-left">{{ $groupLabel }}</span>
                                         <svg
                                             x-show="!sidebarCollapsed"
                                             x-bind:class="isOpen('{{ $groupId }}') ? 'rotate-180' : ''"
-                                            class="w-4 h-4 text-slate-400 transition-transform"
+                                            class="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-transform"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -174,7 +174,7 @@
 
                                                 <a
                                                     href="{{ $itemUrl }}"
-                                                    class="block px-3 py-2 text-sm rounded-lg transition-colors {{ $itemIsActive ? 'bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 dark:hover:text-slate-100 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50' }}"
+                                                    class="block px-3 py-2 text-sm rounded-lg transition-colors {{ $itemIsActive ? 'bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60' }}"
                                                 >
                                                     {{ $itemLabel }}
                                                 </a>

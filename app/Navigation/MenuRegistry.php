@@ -45,8 +45,8 @@ class MenuRegistry
                       [
                         'label' => '',
                         'items' => [
-                          ['label' => 'Router / NAS', 'route' => 'isp.routers.index', 'active' => 'isp.routers.*'],
-                          ['label' => 'Data OLT', 'route' => 'isp.olts.index', 'active' => 'isp.olts.*'],
+                          ['label' => 'Router / NAS', 'route' => 'isp.routers.index', 'icon' => 'router', 'active' => 'isp.routers.*'],
+                          ['label' => 'Data OLT', 'route' => 'isp.olts.index', 'icon' => 'developer_board', 'active' => 'isp.olts.*'],
                         ]
                     ],
                      [
@@ -218,7 +218,7 @@ class MenuRegistry
                     ],
                                         [
                         'label' => 'Spatial & Analytics',
-                        'icon' => 'globe',
+                        'icon' => 'public',
                         'items' => [
                             ['label' => 'GIS Dashboard', 'route' => 'gis.index', 'active' => 'gis.index'],
                             ['label' => 'Live Mapping', 'route' => 'gis.map', 'active' => 'gis.map'],
