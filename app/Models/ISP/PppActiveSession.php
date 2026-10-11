@@ -40,6 +40,6 @@ class PppActiveSession extends Model
 
     public function pppoeUser()
     {
-        return $this->belongsTo(\App\Models\ISP\PppoeUser::class, 'name', 'username');
+        return $this->belongsTo(\App\Models\ISP\PPPoEUser::class, 'name', 'username');
     }
 }
