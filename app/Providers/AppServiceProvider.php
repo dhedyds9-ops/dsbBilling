@@ -63,7 +63,8 @@ class AppServiceProvider extends ServiceProvider
         // Workforce Repositories
                                                                                                                                                                                 
         // Voucher Repositories
-            ];
+        \Src\Domain\Voucher\Repositories\VoucherRepositoryInterface::class => EloquentVoucherRepository::class,
+    ];
 
     public function register(): void
     {
