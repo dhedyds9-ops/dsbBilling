@@ -3,7 +3,7 @@
 namespace App\Livewire\ACS\Task;
 
 use App\Livewire\ACS\BaseACSComponent;
-use App\Models\ISP\OnuConfigurationJob;
+use App\Models\ACS\DeviceTask;
 
 class Index extends BaseACSComponent
 {
@@ -22,17 +22,23 @@ class Index extends BaseACSComponent
 
     public function delete($id)
     {
-        $task = OnuConfigurationJob::findOrFail($id);
+        $task = DeviceTask::findOrFail($id);
         $task->delete();
         session()->flash('success', 'Task berhasil dihapus!');
     }
 
     public function render()
     {
-        $query = OnuConfigurationJob::with(['onu', 'customerService.customer']);
+        $query = DeviceTask::with('device');
 
         if ($this->search) {
-            $query->whereHas('onu', function($q) { $q->where('serial_number', 'like', '%' . $this->search . '%'); });
+            $query->where(function($q) {
+                $q->where('type', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('device', function($sub) {
+                      $sub->where('serial_number', 'like', '%' . $this->search . '%')
+                          ->orWhere('mac_address', 'like', '%' . $this->search . '%');
+                  });
+            });
         }
 
         if ($this->filters['status']) {
@@ -43,7 +49,7 @@ class Index extends BaseACSComponent
             $query->where('type', $this->filters['type']);
         }
 
-        $tasks = $query->orderBy($this->sortField, $this->sortDirection)->paginate($this->perPage);
+        $tasks = $query->orderBy($this->sortField ?: 'created_at', $this->sortDirection ?: 'desc')->paginate($this->perPage);
 
         return view('livewire.acs.task.index', compact('tasks'));
     }

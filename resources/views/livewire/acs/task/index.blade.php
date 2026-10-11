@@ -28,10 +28,16 @@
                     @forelse($tasks as $task)
                         <tr class="{{ $isNocLayout ? 'hover:bg-emerald-900/10' : 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50' }} transition-colors">
                             <td class="px-4 py-3 font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">
-                                {{ $task->device?->serial_number ?? '-' }}
+                                @if($task->device)
+                                    <a href="{{ route($isNocLayout ? 'noc.acs.devices.show' : 'acs.devices.show', $task->device->id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                        {{ $task->device->serial_number ?? $task->device->mac_address ?? 'Device #' . $task->device->id }}
+                                    </a>
+                                @else
+                                    <span class="text-slate-400">-</span>
+                                @endif
                             </td>
-                            <td class="px-4 py-3">
-                                {{ ucfirst($task->type) }}
+                            <td class="px-4 py-3 font-mono text-xs">
+                                {{ ucwords(str_replace('_', ' ', $task->type)) }}
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider 
