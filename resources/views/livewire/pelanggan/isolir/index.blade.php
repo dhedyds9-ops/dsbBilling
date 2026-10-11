@@ -126,6 +126,7 @@
                 class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
             </label>
           </th>
+          <th class="w-32 px-3 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aksi</th>
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('username')">
             Username{!! $sortIcon('username') !!}
           </th>
@@ -150,8 +151,7 @@
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('last_due_date')">
             Jatuh Tempo Terakhir{!! $sortIcon('last_due_date') !!}
           </th>
-          <th class="w-32 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aksi</th>
-        </tr>
+          </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
         @forelse ($rows as $row)
@@ -166,6 +166,19 @@
                 <input type="checkbox" value="{{ $displayId }}" wire:model.live="selected"
                   class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
               </label>
+            </td>
+            <td class="px-3 py-2 text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1">
+                @if($row->status === 'isolated')
+                  <button wire:click="restoreOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1 rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100" title="Pulihkan">
+                    <span class="material-symbols-outlined text-[16px]">lock_open</span>
+                  </button>
+                @else
+                  <button wire:click="isolateOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100" title="Isolir">
+                    <span class="material-symbols-outlined text-[16px]">lock</span>
+                  </button>
+                @endif
+              </div>
             </td>
             <td class="px-3 py-2">
               <div class="flex items-center gap-2">

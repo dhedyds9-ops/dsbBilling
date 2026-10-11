@@ -101,6 +101,7 @@
                     <th class="px-4 py-3 font-semibold">
                         <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-slate-300 dark:border-slate-600 rounded dark:bg-slate-900 dark:text-slate-100">
                     </th>
+                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Nama Paket</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Jenis</th>
@@ -115,8 +116,7 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Komisi Reseller</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Owner</th>
                     @endif
-                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
-                </tr>
+                    </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                 @forelse($profiles as $profile)

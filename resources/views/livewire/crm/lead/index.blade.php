@@ -114,17 +114,30 @@
             <table class="w-full text-sm text-left">
                 <thead class="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
+                        <th class="px-6 py-4 whitespace-nowrap text-center">Aksi</th>
                         <th class="px-6 py-4 whitespace-nowrap">Nama Lead</th>
                         <th class="px-6 py-4 whitespace-nowrap">Kontak</th>
                         <th class="px-6 py-4 whitespace-nowrap">Alamat / Sumber</th>
                         <th class="px-6 py-4 whitespace-nowrap">Status</th>
                         <th class="px-6 py-4 whitespace-nowrap">Tgl Dibuat</th>
-                        <th class="px-6 py-4 whitespace-nowrap text-right">Aksi</th>
-                    </tr>
+                        </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     @forelse($leads as $lead)
                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors group">
+                        <td class="px-6 py-4 text-center whitespace-nowrap">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <a href="{{ route('crm.leads.show', $lead->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Lihat">
+                                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                </a>
+                                <a href="{{ route('crm.leads.edit', $lead->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
+                                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                </a>
+                                <button wire:click="delete({{ $lead->id }})" wire:confirm="Yakin ingin menghapus lead ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors" title="Hapus">
+                                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                </button>
+                            </div>
+                        </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full {{ $lead->status === 'converted' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' }} flex items-center justify-center font-bold flex-shrink-0">

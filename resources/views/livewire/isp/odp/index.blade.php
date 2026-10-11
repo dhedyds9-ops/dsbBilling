@@ -83,19 +83,32 @@
                         <th scope="col" class="px-6 py-3 text-left">
                             <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-slate-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
                         </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nama ODP</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Alamat</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Kode</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">ODC</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
-                    </tr>
+                        </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($odps as $odp)
                         <tr wire:key="{{ $odp->id }}" class="hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-800 dark:hover:bg-slate-700/50 dark:bg-slate-800 transition-colors @if($odp->trashed()) bg-red-50 dark:bg-red-900/30 @endif">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <input type="checkbox" wire:model.live="selectedOdps" value="{{ $odp->id }}" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-slate-600 rounded focus:ring-primary-500" @if($odp->trashed()) disabled @endif />
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('isp.odps.show', $odp->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                    </a>
+                                    <a href="{{ route('isp.odps.edit', $odp->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    <button wire:click="delete({{ $odp->id }})" wire:confirm="Yakin ingin menghapus ODP ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($odp->trashed())
@@ -122,20 +135,7 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900 dark:text-slate-100">{{ $odp->odc->name ?? '-' }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('isp.odps.show', $odp->id) }}" class="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded hover:bg-indigo-100 dark:bg-indigo-900/50 transition-colors" title="Detail">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">visibility</span>
-                                    </a>
-                                    <a href="{{ route('isp.odps.edit', $odp->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded hover:bg-amber-100 dark:bg-amber-900/50 transition-colors" title="Edit">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
-                                    </a>
-                                    <button type="button" wire:click="delete({{ $odp->id }})" wire:confirm="Yakin ingin menghapus ODP ini?" class="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100 dark:bg-red-900/50 transition-colors" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                            </tr>
                     @empty
                         <tr>
                             <td colspan="10" class="px-6 py-16 text-center">

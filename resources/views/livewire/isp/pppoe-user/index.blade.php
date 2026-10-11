@@ -149,6 +149,7 @@
                         <th class="px-4 py-3 text-left font-semibold">
                             <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </th>
+                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
                             <button wire:click="sortBy('id')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                                 ID
@@ -173,7 +174,7 @@
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tgl Login</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tgl Logout</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tgl Isolir</th>
-                        <th class="px-4 py-3 text-right font-semibold whitespace-nowrap">Aksi</th>
+                        
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -206,6 +207,21 @@
                         <tr class="{{ $rowBg }}">
                             <td class="px-4 py-3">
                                 <input type="checkbox" wire:model.live="selectedIds" value="{{ $user->id }}" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600">
+                            </td>
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center gap-1">
+                                    <a href="{{ route('isp.pppoe-users.edit', $user->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    @if(isset($user->customer->id))
+                                        <a href="{{ route('crm.customers.show', $user->customer->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">account_circle</span>
+                                        </a>
+                                    @endif
+                                    <button wire:click="delete({{ $user->id }}, null)" onclick="confirm('Yakin ingin menghapus user ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
                             </td>
                             <td class="px-4 py-3 font-mono text-xs {{ $idColor }}">
                                   <div class="flex items-center gap-2">
@@ -299,21 +315,6 @@
                             </td>
                             <td class="px-4 py-3 {{ $textSecondary }} text-xs">
                                 {{ $user->subscription->next_billing_date ? \Carbon\Carbon::parse($user->subscription->next_billing_date)->format('d-m-Y') : '-' }}
-                            </td>
-                            <td class="px-4 py-3 text-right whitespace-nowrap">
-                                <div class="flex items-center justify-end gap-1">
-                                    <a href="{{ route('isp.pppoe-users.edit', $user->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
-                                    </a>
-                                    @if(isset($user->customer->id))
-                                        <a href="{{ route('crm.customers.show', $user->customer->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">account_circle</span>
-                                        </a>
-                                    @endif
-                                    <button wire:click="delete({{ $user->id }}, null)" onclick="confirm('Yakin ingin menghapus user ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
-                                    </button>
-                                </div>
                             </td>
                         </tr>
                     @empty

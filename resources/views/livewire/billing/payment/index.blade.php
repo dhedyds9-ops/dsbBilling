@@ -137,6 +137,7 @@
                         <th class="px-4 py-3 w-10 text-center">
                             <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-600 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                         </th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">No. Referensi</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Pelanggan</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Invoice</th>
@@ -144,14 +145,25 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Metode</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Nominal</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
-                    </tr>
+                        </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($payments as $payment)
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-4 py-3 text-center">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $payment->id }}" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-600 cursor-pointer">
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <a href="{{ route('billing.payments.show', $payment->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                    </a>
+                                    @if(auth()->user()->hasRole('administrator'))
+                                        <button wire:click="delete({{ $payment->id }})" onclick="confirm('Yakin ingin menghapus data pembayaran ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors" title="Hapus">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                        </button>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                                 {{ $payment->reference_number ?? '-' }}

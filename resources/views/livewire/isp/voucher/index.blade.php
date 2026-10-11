@@ -122,6 +122,7 @@
                             <th class="px-4 py-3 text-left font-semibold">
                                 <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
                             </th>
+                            <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Id</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Username</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Password</th>
@@ -133,8 +134,7 @@
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Jatuh Tempo</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner Data</th>
                             <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
-                            <th class="px-4 py-3 text-right font-semibold whitespace-nowrap">Aksi</th>
-                        </tr>
+                            </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                         @forelse($vouchers as $voucher)
@@ -168,6 +168,16 @@
                             <tr class="{{ $rowBg }}">
                                 <td class="px-4 py-3">
                                     <input type="checkbox" wire:model.live="selectedIds" value="{{ $voucher->id }}" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm focus:ring-indigo-500">
+                                </td>
+                                <td class="px-4 py-3 text-center whitespace-nowrap">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button wire:click="printSingle({{ $voucher->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Cetak Voucher & Batch">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
+                                        </button>
+                                        <button wire:click="delete({{ $voucher->id }})" onclick="confirm('Yakin ingin menghapus voucher ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                        </button>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 {{ $textSecondary }} font-mono text-xs">
                                     {{ $voucher->id }}
@@ -223,18 +233,7 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-right whitespace-nowrap">
-                                    <div class="flex items-center justify-end gap-1">
-                                        <button wire:click="printSingle({{ $voucher->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Cetak Voucher & Batch">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
-                                        </button>
-
-                                        <button wire:click="delete({{ $voucher->id }})" onclick="confirm('Yakin ingin menghapus voucher ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
+                                </tr>
                         @empty
                             <tr>
                                 <td colspan="12" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">

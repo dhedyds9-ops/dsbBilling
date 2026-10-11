@@ -162,6 +162,7 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                         <th scope="col" class="px-6 py-3 text-left">
                             <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-slate-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
                         </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nama OLT</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Alamat</th>
@@ -170,8 +171,7 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Vendor</th>
                         <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">ONU Online</th>
                         <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ONU Offline</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
-                    </tr>
+                        </tr>
 
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
@@ -183,6 +183,19 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                         <tr wire:key="{{ $olt->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 dark:bg-slate-800 transition-colors @if($olt->trashed()) bg-red-50 dark:bg-red-900/20 @endif">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <input type="checkbox" wire:model.live="selectedOlts" value="{{ $olt->id }}" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-slate-600 rounded focus:ring-primary-500" @if($olt->trashed()) disabled @endif />
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('isp.olts.show', $olt->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail / PON Ports">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                    </a>
+                                    <a href="{{ route('isp.olts.edit', $olt->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    <button wire:click="delete({{ $olt->id }})" wire:confirm="Yakin ingin menghapus OLT ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($olt->trashed())
@@ -235,28 +248,7 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                                 @endif
                             </td>
                             {{-- Aksi --}}
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div class="flex items-center justify-end gap-1.5">
-                                    {{-- Sinkron --}}
-                                    <button type="button" wire:click="rowSync({{ $olt->id }})" wire:loading.attr="disabled"
-                                        class="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 transition-colors" title="Sinkronisasi">
-                                        <span class="material-symbols-outlined notranslate" wire:loading.class="animate-spin" wire:target="rowSync({{ $olt->id }})" translate="no" style="font-size:16px">sync</span>
-                                    </button>
-                                    {{-- Detail --}}
-                                    <a href="{{ route('isp.olts.show', $olt->id) }}" class="p-1.5 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-600 transition-colors" title="Detail">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">visibility</span>
-                                    </a>
-                                    {{-- Edit --}}
-                                    <a href="{{ route('isp.olts.edit', $olt->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-800/50 transition-colors" title="Edit">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
-                                    </a>
-                                    {{-- Hapus --}}
-                                    <button type="button" wire:click="delete({{ $olt->id }})" wire:confirm="Yakin ingin menghapus OLT ini?" class="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 transition-colors" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                            </tr>
 
                     @empty
                         <tr>

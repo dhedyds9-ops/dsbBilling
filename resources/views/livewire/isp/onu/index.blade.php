@@ -158,19 +158,32 @@
                         <th scope="col" class="px-6 py-3 text-left">
                             <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-slate-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
                         </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nama ONU</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Kode</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">OLT</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Vendor</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
-                    </tr>
+                        </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($onus as $onu)
                         <tr wire:key="{{ $onu->id }}" class="hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-800 transition-colors @if($onu->trashed()) bg-red-50 dark:bg-red-900/30 @endif">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <input type="checkbox" wire:model.live="selectedOnus" value="{{ $onu->id }}" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-slate-600 rounded focus:ring-primary-500" @if($onu->trashed()) disabled @endif />
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('isp.onus.show', $onu->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                    </a>
+                                    <a href="{{ route('isp.onus.edit', $onu->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    <button wire:click="delete({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($onu->trashed())
@@ -197,90 +210,7 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-600 dark:text-gray-400">{{ $onu->vendor->name ?? '-' }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div x-data="{ open: false }" class="relative inline-block text-left">
-                                    <div>
-                                        <button @click="open = !open" type="button" class="inline-flex items-center gap-1 p-2.5 text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:bg-slate-700 rounded-lg transition-colors">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                    <div x-show="open" @click.away="open = false" x-transition class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
-                                        @if(!$onu->trashed())
-                                            <div class="py-1">
-                                                <a href="{{ route('isp.onus.show', $onu->id) }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-800">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                    Lihat Detail
-                                                </a>
-                                                <a href="{{ route('isp.onus.edit', $onu->id) }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-800">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                    Edit
-                                                </a>
-                                                <button
-                                                    type="button"
-                                                    wire:click="duplicate({{ $onu->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-800 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v8a2 2 0 012 2z" />
-                                                    </svg>
-                                                    Duplicate
-                                                    <span wire:loading class="ml-2 text-gray-400 dark:text-slate-500 dark:text-slate-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                            <div class="py-1">
-                                                <button
-                                                    type="button"
-                                                    wire:click="toggleStatus({{ $onu->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-800 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
-                                                    {{ $onu->status === 'active' ? 'Nonaktifkan' : 'Aktifkan' }}
-                                                    <span wire:loading class="ml-2 text-gray-400 dark:text-slate-500 dark:text-slate-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                            <div class="py-1">
-                                                <button
-                                                    type="button"
-                                                    wire:click="delete({{ $onu->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:confirm="Apakah Anda yakin ingin menghapus ONU ini?"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 dark:bg-red-900/30 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                    Hapus
-                                                    <span wire:loading class="ml-2 text-gray-400 dark:text-slate-500 dark:text-slate-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                        @else
-                                            <div class="py-1">
-                                                <button
-                                                    type="button"
-                                                    wire:click="restore({{ $onu->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:confirm="Apakah Anda yakin ingin memulihkan ONU ini?"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 dark:text-emerald-400 hover:bg-green-50 dark:bg-green-900/30 dark:hover:bg-emerald-900/30 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                    </svg>
-                                                    Pulihkan
-                                                    <span wire:loading class="ml-2 text-gray-400 dark:text-slate-500 dark:text-slate-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
+                            </tr>
                     @empty
                         <tr>
                             <td colspan="10" class="px-6 py-16 text-center">
