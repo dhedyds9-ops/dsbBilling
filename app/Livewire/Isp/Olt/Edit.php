@@ -46,7 +46,13 @@ class Edit extends AdminComponent
     public $enable_secret;
     public $zabbix_host_id;
 
+    public $showAdvanced = false;
     public $detectedInfo = null;
+
+    public function toggleAdvanced()
+    {
+        $this->showAdvanced = !$this->showAdvanced;
+    }
 
     public function mount($id = null)
     {
@@ -77,8 +83,8 @@ class Edit extends AdminComponent
 
         $this->snmp_version = $this->olt->snmp_version ?? '2c';
         $this->snmp_port = $this->olt->snmp_port ?? 161;
-        $this->snmp_community_read = $this->olt->snmp_community_read;
-        $this->snmp_community_write = $this->olt->snmp_community_write;
+        $this->snmp_community_read = $this->olt->snmp_community_read ?: 'public';
+        $this->snmp_community_write = $this->olt->snmp_community_write ?: 'private';
 
         $this->cli_mode = $this->olt->cli_mode ?? 'telnet';
         $this->cli_port = $this->olt->cli_port ?? 23;
@@ -88,6 +94,12 @@ class Edit extends AdminComponent
         $this->zabbix_host_id = $this->olt->zabbix_host_id;
 
         $this->status = $this->olt->status;
+
+        // Buka pengaturan lanjutan jika ada field lanjutan yang sudah terisi
+        if (!empty($this->username) || !empty($this->zabbix_host_id) || !empty($this->description) || !empty($this->model) || !empty($this->serial_number) || ($this->snmp_port && (int)$this->snmp_port !== 161) || ($this->snmp_version && $this->snmp_version !== '2c')) {
+            $this->showAdvanced = true;
+        }
+
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Network', 'url' => route('isp.olts.index')],

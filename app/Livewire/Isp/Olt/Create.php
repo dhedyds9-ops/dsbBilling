@@ -42,8 +42,30 @@ class Create extends AdminComponent
     public $username;
     public $password;
     public $enable_secret;
+    public $zabbix_host_id;
 
+    public $showAdvanced = false;
     public $detectedInfo = null;
+
+    public function updatedName($value)
+    {
+        if (empty($this->code) && !empty($value)) {
+            $slug = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '-', trim($value)));
+            $this->code = 'OLT-' . trim($slug, '-');
+        }
+    }
+
+    public function generateCode()
+    {
+        $base = !empty($this->name) ? $this->name : 'DEVICE';
+        $slug = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '-', trim($base)));
+        $this->code = 'OLT-' . trim($slug, '-') . '-' . rand(10, 99);
+    }
+
+    public function toggleAdvanced()
+    {
+        $this->showAdvanced = !$this->showAdvanced;
+    }
 
     public function mount()
     {
@@ -185,6 +207,7 @@ class Create extends AdminComponent
             'username'             => $this->username,
             'password'             => $this->password,
             'enable_secret'        => $this->enable_secret,
+            'zabbix_host_id'       => $this->zabbix_host_id,
             'status'               => $this->status,
         ], Auth::user());
 
