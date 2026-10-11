@@ -353,7 +353,23 @@ class Index extends BaseNetworkComponent
         $query = $query->orderBy($this->sortField, $this->sortDirection);
         $olts = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);
 
-        return view('livewire.isp.olt.index', compact('olts'));
+        $totalOlt = OltModel::count();
+        $activeOlt = OltModel::where('status', 'active')->count();
+        $totalOnu = \App\Models\ISP\Onu::count();
+        $onlineOnu = \App\Models\ISP\Onu::where('status', 'active')->count();
+        $offlineOnu = max(0, $totalOnu - $onlineOnu);
+        $onlinePercentage = $totalOnu > 0 ? round(($onlineOnu / $totalOnu) * 100, 1) : 0;
+
+        $stats = [
+            'total_olt'         => $totalOlt,
+            'active_olt'        => $activeOlt,
+            'total_onu'         => $totalOnu,
+            'online_onu'        => $onlineOnu,
+            'offline_onu'       => $offlineOnu,
+            'online_percentage' => $onlinePercentage,
+        ];
+
+        return view('livewire.isp.olt.index', compact('olts', 'stats'));
     }
 }
 

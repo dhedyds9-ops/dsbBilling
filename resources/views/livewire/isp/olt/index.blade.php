@@ -19,7 +19,67 @@
         </div>
     @endif
 
-    
+    {{-- STATISTIK KARTU OLT & ONU --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {{-- Card Total OLT --}}
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total OLT</p>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <span class="text-2xl font-black text-slate-800 dark:text-slate-100">{{ $stats['total_olt'] ?? 0 }}</span>
+                    <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{{ $stats['active_olt'] ?? 0 }} Aktif</span>
+                </div>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <span class="material-symbols-outlined notranslate" style="font-size:24px">dns</span>
+            </div>
+        </div>
+
+        {{-- Card Total ONU --}}
+        <a href="{{ route('isp.onus.index') }}" class="group bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Total ONU</p>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <span class="text-2xl font-black text-slate-800 dark:text-slate-100">{{ $stats['total_onu'] ?? 0 }}</span>
+                    <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Terdaftar</span>
+                </div>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform flex items-center justify-center">
+                <span class="material-symbols-outlined notranslate" style="font-size:24px">router</span>
+            </div>
+        </a>
+
+        {{-- Card ONU Online --}}
+        <a href="{{ route('isp.onus.index', ['statusFilter' => 'online']) }}" class="group bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">ONU Online</p>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ $stats['online_onu'] ?? 0 }}</span>
+                    @if(($stats['total_onu'] ?? 0) > 0)
+                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded">{{ $stats['online_percentage'] ?? 0 }}%</span>
+                    @endif
+                </div>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform flex items-center justify-center">
+                <span class="material-symbols-outlined notranslate" style="font-size:24px">wifi</span>
+            </div>
+        </a>
+
+        {{-- Card ONU Offline --}}
+        <a href="{{ route('isp.onus.index', ['statusFilter' => 'offline']) }}" class="group bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-red-300 dark:hover:border-red-600 hover:shadow-md transition-all flex items-center justify-between">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">ONU Offline</p>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <span class="text-2xl font-black text-red-600 dark:text-red-400">{{ $stats['offline_onu'] ?? 0 }}</span>
+                    <span class="text-xs font-medium text-red-500 dark:text-red-400">Terputus</span>
+                </div>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 group-hover:scale-105 transition-transform flex items-center justify-center">
+                <span class="material-symbols-outlined notranslate" style="font-size:24px">wifi_off</span>
+            </div>
+        </a>
+    </div>
+
     {{-- PANDUAN KONEKSI OLT --}}
     <div x-data="{ showGuide: false }" class="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden mb-6">
         <button @click="showGuide = !showGuide" class="w-full flex items-center justify-between p-4 text-left focus:outline-none">
