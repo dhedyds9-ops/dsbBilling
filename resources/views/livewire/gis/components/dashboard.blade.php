@@ -71,12 +71,10 @@
             wire:model.live="selectedArea"
             class="w-full md:w-auto text-sm noc-input rounded-md shadow-sm bg-[#0d1326] text-gray-100"
         >
-            <option value="all">All Areas</option>
-            <option value="jakarta-pusat">Jakarta Pusat</option>
-            <option value="jakarta-selatan">Jakarta Selatan</option>
-            <option value="jakarta-barat">Jakarta Barat</option>
-            <option value="jakarta-timur">Jakarta Timur</option>
-            <option value="jakarta-utara">Jakarta Utara</option>
+            <option value="all">Semua Area (Global)</option>
+            @foreach($branches ?? [] as $branch)
+                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+            @endforeach
         </select>
     </div>
 
