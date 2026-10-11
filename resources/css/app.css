@@ -443,10 +443,10 @@ select:focus {
 }
 
 /* --- BACKGROUND GLOW --- */
-body.dark, .dark body {
+html.dark body, body.dark {
     background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.08), transparent 35%), #05070D !important;
 }
-body:not(.dark) {
+html:not(.dark) body:not(.dark) {
     background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.05), transparent 35%), #F8FAFC !important;
 }
 

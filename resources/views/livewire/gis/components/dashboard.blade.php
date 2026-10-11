@@ -61,15 +61,15 @@
     </div>
 
     <!-- Controls -->
-    <div class="px-4 py-3 border-t noc-border flex flex-col md:flex-row justify-between items-center gap-4">
+    <div class="mx-2 px-4 py-3 rounded border noc-border noc-panel-bg flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="flex space-x-2">
-            <button wire:click="$set('timeRange', '24h')" class="px-3 py-1 text-sm rounded {{ $timeRange === '24h' ? 'bg-blue-900 text-blue-300' : 'text-gray-400 hover:bg-gray-800' }}">24h</button>
-            <button wire:click="$set('timeRange', '7d')" class="px-3 py-1 text-sm rounded {{ $timeRange === '7d' ? 'bg-blue-900 text-blue-300' : 'text-gray-400 hover:bg-gray-800' }}">7d</button>
-            <button wire:click="$set('timeRange', '30d')" class="px-3 py-1 text-sm rounded {{ $timeRange === '30d' ? 'bg-blue-900 text-blue-300' : 'text-gray-400 hover:bg-gray-800' }}">30d</button>
+            <button wire:click="$set('timeRange', '24h')" class="px-3 py-1 text-sm font-medium rounded transition-colors {{ $timeRange === '24h' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' }}">24h</button>
+            <button wire:click="$set('timeRange', '7d')" class="px-3 py-1 text-sm font-medium rounded transition-colors {{ $timeRange === '7d' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' }}">7d</button>
+            <button wire:click="$set('timeRange', '30d')" class="px-3 py-1 text-sm font-medium rounded transition-colors {{ $timeRange === '30d' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' }}">30d</button>
         </div>
         <select 
             wire:model.live="selectedArea"
-            class="w-full md:w-auto text-sm noc-input rounded-md shadow-sm dark:bg-slate-900 dark:text-slate-100"
+            class="w-full md:w-auto text-sm noc-input rounded-md shadow-sm bg-[#0d1326] text-gray-100"
         >
             <option value="all">All Areas</option>
             <option value="jakarta-pusat">Jakarta Pusat</option>
@@ -81,25 +81,29 @@
     </div>
 
     <!-- Recent Alarms -->
-    <div class="border-t noc-border">
-        <div class="px-4 py-3" style="background:#0d1326;">
-            <h3 class="text-sm font-semibold text-gray-200 uppercase tracking-widest noc-mono">Recent Alarms</h3>
+    <div class="mx-2 rounded border noc-border noc-panel-bg overflow-hidden shadow-md">
+        <div class="px-4 py-3 bg-[#0d1326] border-b border-gray-800 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-widest noc-mono flex items-center gap-2">
+                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">notifications_active</span>
+                Recent Alarms
+            </h3>
+            <span class="text-xs text-gray-500 noc-mono">{{ count($recentAlarms) }} Alarms</span>
         </div>
-        <div class="divide-y divide-gray-800 max-h-64 overflow-y-auto noc-scroll">
+        <div class="divide-y divide-gray-800 max-h-64 overflow-y-auto noc-scroll bg-[#0a0e1a]/90">
             @forelse($recentAlarms as $alarm)
-            <div class="px-4 py-3 hover:bg-gray-800 cursor-pointer transition-colors" wire:click="$emit('showNodeDetails', '{{ $alarm['node_id'] ?? '' }}', '{{ $alarm['node_type'] ?? '' }}')">
+            <div class="px-4 py-3 hover:bg-gray-800/60 cursor-pointer transition-colors bg-[#0a0e1a]/90" wire:click="$emit('showNodeDetails', '{{ $alarm['node_id'] ?? '' }}', '{{ $alarm['node_type'] ?? '' }}')">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
                         <span class="status-indicator status-{{ $alarm['severity'] ?? 'warning' }}"></span>
                         <span class="font-medium text-gray-200">{{ $alarm['title'] ?? 'Unknown Alarm' }}</span>
                     </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 noc-mono">{{ $alarm['time_ago'] ?? '' }}</span>
+                    <span class="text-xs text-gray-400 noc-mono">{{ $alarm['time_ago'] ?? '' }}</span>
                 </div>
                 <p class="text-sm text-gray-400 mt-1 pl-5">{{ $alarm['location'] ?? '' }}</p>
             </div>
             @empty
-            <div class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                <svg class="mx-auto h-12 w-12 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="px-4 py-6 text-center text-gray-400 bg-[#0a0e1a]/90">
+                <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <p class="mt-2 text-sm noc-mono">No active alarms</p>
@@ -109,13 +113,17 @@
     </div>
 
     <!-- Critical Nodes -->
-    <div class="border-t noc-border">
-        <div class="px-4 py-3" style="background:#0d1326;">
-            <h3 class="text-sm font-semibold text-gray-200 uppercase tracking-widest noc-mono">Critical Nodes</h3>
+    <div class="mx-2 rounded border noc-border noc-panel-bg overflow-hidden shadow-md">
+        <div class="px-4 py-3 bg-[#0d1326] border-b border-gray-800 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-rose-400 uppercase tracking-widest noc-mono flex items-center gap-2">
+                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">emergency</span>
+                Critical Nodes
+            </h3>
+            <span class="text-xs text-gray-500 noc-mono">{{ count($criticalNodes) }} Nodes</span>
         </div>
-        <div class="divide-y divide-gray-800 max-h-64 overflow-y-auto noc-scroll">
+        <div class="divide-y divide-gray-800 max-h-64 overflow-y-auto noc-scroll bg-[#0a0e1a]/90">
             @forelse($criticalNodes as $node)
-            <div class="px-4 py-3 hover:bg-gray-800 cursor-pointer transition-colors" wire:click="$emit('showNodeDetails', '{{ $node['id'] ?? '' }}', '{{ $node['type'] ?? '' }}')">
+            <div class="px-4 py-3 hover:bg-gray-800/60 cursor-pointer transition-colors bg-[#0a0e1a]/90" wire:click="$emit('showNodeDetails', '{{ $node['id'] ?? '' }}', '{{ $node['type'] ?? '' }}')">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
                         <span class="px-2 py-0.5 text-xs font-medium rounded border border-blue-500/30 text-blue-400 bg-blue-900/20 noc-mono">
@@ -130,7 +138,7 @@
                 <p class="text-sm text-gray-400 mt-1 pl-5">{{ $node['location'] ?? '' }} - {{ $node['utilization'] ?? 0 }}% utilization</p>
             </div>
             @empty
-            <div class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+            <div class="px-4 py-6 text-center text-gray-400 bg-[#0a0e1a]/90">
                 <p class="text-sm noc-mono">No critical nodes</p>
             </div>
             @endforelse
