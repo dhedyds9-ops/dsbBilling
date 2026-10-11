@@ -65,14 +65,19 @@ class NocHealthService
             }
 
             $routerTotal = Router::count();
-            $routerOnline = Router::whereHas('monitoringLogs', function ($q) {
-                $q->where('is_online', true)
-                  ->where('created_at', '>=', now()->subMinutes(5));
+            $routerOnline = Router::where(function ($q) {
+                $q->whereHas('monitoringLogs', function ($sub) {
+                    $sub->where('is_online', true)
+                        ->where('created_at', '>=', now()->subMinutes(15));
+                })->orWhere(function ($sub) {
+                    $sub->whereIn('status', ['online', 'active'])
+                        ->where('last_seen_at', '>=', now()->subMinutes(15));
+                });
             })->count();
             $routerOffline = $routerTotal - $routerOnline;
 
-            $pppoe = OnlineSession::pppoe()->count();
-            $hotspot = OnlineSession::hotspot()->count();
+            $pppoe = max(OnlineSession::pppoe()->count(), \App\Models\ISP\PppActiveSession::count());
+            $hotspot = max(OnlineSession::hotspot()->count(), \App\Models\ISP\HotspotActiveSession::count());
             $voucher = 0;
 
             $criticalAlarms = Alarm::where('status', 'open')->where('level', 'critical')->count();
@@ -102,17 +107,23 @@ class NocHealthService
             $onuOnline = Onu::where('last_seen_at', '>=', now()->subMinutes(5))->count();
 
             $routerTotal = Router::count();
-            $routerOnline = Router::whereHas('monitoringLogs', function ($q) {
-                $q->where('is_online', true)
-                  ->where('created_at', '>=', now()->subMinutes(5));
+            $routerOnline = Router::where(function ($q) {
+                $q->whereHas('monitoringLogs', function ($sub) {
+                    $sub->where('is_online', true)
+                        ->where('created_at', '>=', now()->subMinutes(15));
+                })->orWhere(function ($sub) {
+                    $sub->whereIn('status', ['online', 'active'])
+                        ->where('last_seen_at', '>=', now()->subMinutes(15));
+                });
             })->count();
 
-            $pppoe = OnlineSession::pppoe()->count();
+            $pppoe = max(OnlineSession::pppoe()->count(), \App\Models\ISP\PppActiveSession::count());
 
             return [
                 'olt' => ['online' => $oltOnline, 'total' => $oltTotal],
                 'onu' => ['online' => $onuOnline, 'total' => $onuTotal],
                 'router' => ['online' => $routerOnline, 'total' => $routerTotal],
+                'pppoe' => $pppoe,
                 'pppoe_active' => $pppoe
             ];
         });
@@ -122,7 +133,7 @@ class NocHealthService
     {
         $oltThreshold = now()->subMinutes(15)->toDateTimeString();
         $onuThreshold = now()->subMinutes(5)->toDateTimeString();
-        $routerThreshold = now()->subMinutes(5)->toDateTimeString();
+        $routerThreshold = now()->subMinutes(15)->toDateTimeString();
         $queries = [];
 
         if (in_array($filter, ['all', 'olt'])) {
@@ -171,7 +182,7 @@ class NocHealthService
                     DB::raw("COALESCE(name, code) as name"),
                     DB::raw("'Router' as type"),
                     DB::raw("ip_address as ip"),
-                    DB::raw("CASE WHEN status != 'disabled' AND last_seen_at >= '{$routerThreshold}' THEN 'Online' ELSE 'Offline' END as status"),
+                    DB::raw("CASE WHEN status != 'disabled' AND (last_seen_at >= '{$routerThreshold}' OR status IN ('online', 'active')) THEN 'Online' ELSE 'Offline' END as status"),
                     DB::raw("last_seen_at as last_seen")
                 )
                 ->whereNull('deleted_at')
@@ -184,22 +195,41 @@ class NocHealthService
         }
 
         if (in_array($filter, ['all', 'pppoe'])) {
-            $queries[] = DB::table('online_sessions')
-                ->select(
-                    DB::raw(\App\Services\Support\DbCompat::concatId('session_') . ' as id'),
-                    DB::raw("username as name"),
-                    DB::raw("'PPPoE' as type"),
-                    DB::raw("address as ip"),
-                    DB::raw("'Online' as status"),
-                    DB::raw("last_seen_at as last_seen")
-                )
-                ->where('protocol', 'pppoe')
-                ->when($search, function($q) use ($search) {
-                    $q->where(function($sub) use ($search) {
-                        $sub->where('username', 'like', "%{$search}%")
-                            ->orWhere('address', 'like', "%{$search}%");
+            $hasOnlineSessions = DB::table('online_sessions')->where('protocol', 'pppoe')->exists();
+            if ($hasOnlineSessions) {
+                $queries[] = DB::table('online_sessions')
+                    ->select(
+                        DB::raw(\App\Services\Support\DbCompat::concatId('session_') . ' as id'),
+                        DB::raw("username as name"),
+                        DB::raw("'PPPoE' as type"),
+                        DB::raw("address as ip"),
+                        DB::raw("'Online' as status"),
+                        DB::raw("last_seen_at as last_seen")
+                    )
+                    ->where('protocol', 'pppoe')
+                    ->when($search, function($q) use ($search) {
+                        $q->where(function($sub) use ($search) {
+                            $sub->where('username', 'like', "%{$search}%")
+                                ->orWhere('address', 'like', "%{$search}%");
+                        });
                     });
-                });
+            } else {
+                $queries[] = DB::table('ppp_active_sessions')
+                    ->select(
+                        DB::raw(\App\Services\Support\DbCompat::concatId('pppsess_') . ' as id'),
+                        DB::raw("name as name"),
+                        DB::raw("'PPPoE' as type"),
+                        DB::raw("address as ip"),
+                        DB::raw("'Online' as status"),
+                        DB::raw("updated_at as last_seen")
+                    )
+                    ->when($search, function($q) use ($search) {
+                        $q->where(function($sub) use ($search) {
+                            $sub->where('name', 'like', "%{$search}%")
+                                ->orWhere('address', 'like', "%{$search}%");
+                        });
+                    });
+            }
         }
 
         if (empty($queries)) {

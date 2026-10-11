@@ -1,4 +1,4 @@
-﻿{{--
+{{--
  NOC Overview â€” Main Control Room
  Layout: Left Health Panel | Center Traffic + Alarms | Bottom Device Table
  Polling: 30 seconds
@@ -226,6 +226,7 @@
         <div class="flex-none border-b" style="border-color:#1f2937;">
             <x-noc.traffic-graph 
                 :traffic="$traffic" 
+                :currentTraffic="$currentTraffic"
                 :period="$trafficPeriod" 
                 heightClass="h-48" 
             />

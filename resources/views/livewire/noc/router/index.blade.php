@@ -23,6 +23,7 @@
         <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
             <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700">
                 <tr class="text-slate-500 dark:text-slate-400">
+                    <th class="p-3 font-semibold text-center w-20">Aksi</th>
                     <th class="p-3 font-semibold" wire:click="sort('name')">Name {!! $sortField === 'name' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('ip_address')">IP Address {!! $sortField === 'ip_address' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">Vendor / Model</th>
@@ -32,7 +33,6 @@
                     <th class="p-3 font-semibold">Uptime</th>
                     <th class="p-3 font-semibold" wire:click="sort('status')">Status {!! $sortField === 'status' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">Last Seen</th>
-                    <th class="p-3 font-semibold">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -53,6 +53,11 @@
                     };
                 @endphp
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover">
+                    <td class="p-3 text-center">
+                        <a href="{{ route('noc.routers.show', $r->id) }}" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors">
+                            <i class="bi bi-eye"></i> Detail
+                        </a>
+                    </td>
                     <td class="p-3  font-medium noc-text">{{ $r->name }}</td>
                     <td class="p-3  noc-mono noc-muted">{{ $r->ip_address }}</td>
                     <td class="p-3  noc-muted">{{ $r->vendor?->name ?? '-' }} / {{ $r->model ?? '-' }}</td>
@@ -70,9 +75,6 @@
                         <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ $status }}</span>
                     </td>
                     <td class="p-3  noc-muted">{{ ($log && $log->created_at) ? $log->created_at->diffForHumans() : ($r->last_seen_at ? $r->last_seen_at->diffForHumans() : '-') }}</td>
-                    <td class="p-3">
-                        <a href="{{ route('noc.routers.show', $r->id) }}" class="text-blue-500 hover:text-blue-400">View</a>
-                    </td>
                 </tr>
                 @empty
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors"><td colspan="10" class="p-3  text-center noc-muted opacity-70">No routers found</td></tr>

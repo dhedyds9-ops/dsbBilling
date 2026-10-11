@@ -33,7 +33,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                 'pass' => $device->password,
                 'port' => $device->api_port ?? 8728,
                 'ssl' => $device->use_ssl ?? false,
-                'timeout' => $device->timeout ?? 30,
+                'timeout' => !empty($device->timeout) ? (int)$device->timeout : 5,
             ];
             
             $this->clients[$key] = new Client($config);
@@ -48,7 +48,7 @@ class MikroTikDriver implements DeviceMonitorInterface
                         'pass' => $device->password,
                         'port' => $device->api_port ?? 8728,
                         'ssl' => $device->use_ssl ?? false,
-                        'timeout' => $device->timeout ?? 30,
+                        'timeout' => !empty($device->timeout) ? (int)$device->timeout : 5,
                     ];
                     $this->clients[$key] = new Client($fallbackConfig);
                     return $this->clients[$key];
@@ -142,16 +142,34 @@ class MikroTikDriver implements DeviceMonitorInterface
                 
                 $trafficMap = [];
                 if (!empty($names)) {
-                    $q = new Query('/interface/monitor-traffic');
-                    $q->equal('interface', implode(',', $names));
-                    $q->equal('once', '');
-                    $traffic = $client->query($q)->read();
-                    
-                    if (is_array($traffic)) {
-                        foreach ($traffic as $t) {
-                            if (isset($t['name'])) {
-                                $trafficMap[$t['name']] = $t;
+                    try {
+                        $q = new Query('/interface/monitor-traffic');
+                        $q->equal('interface', implode(',', $names));
+                        $q->equal('once', '');
+                        $traffic = $client->query($q)->read();
+                        
+                        if (is_array($traffic)) {
+                            foreach ($traffic as $t) {
+                                if (isset($t['name'])) {
+                                    $trafficMap[$t['name']] = $t;
+                                }
                             }
+                        }
+                    } catch (\Throwable $te) {
+                        // Multi-interface parameter failed; try running interfaces individually
+                        $running = array_filter($interfaces, fn($i) => ($i['running'] ?? '') === 'true' && !in_array($i['type'] ?? '', ['pppoe-in', 'hotspot']));
+                        foreach (array_slice($running, 0, 5) as $iface) {
+                            $ifName = $iface['name'] ?? null;
+                            if (!$ifName) continue;
+                            try {
+                                $q = new Query('/interface/monitor-traffic');
+                                $q->equal('interface', $ifName);
+                                $q->equal('once', '');
+                                $res = $client->query($q)->read();
+                                if (!empty($res[0])) {
+                                    $trafficMap[$ifName] = $res[0];
+                                }
+                            } catch (\Throwable $te2) {}
                         }
                     }
                 }

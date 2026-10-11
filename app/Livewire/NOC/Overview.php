@@ -34,6 +34,7 @@ class Overview extends AdminComponent
     {
         $this->activeModule = 'noc';
         $this->activePage = 'overview';
+        $this->ensureRouterPolled();
     }
 
     // -------------------------------------------------------------------------
@@ -113,8 +114,10 @@ class Overview extends AdminComponent
     // Actions
     // -------------------------------------------------------------------------
 
+    #[On('refresh-noc')]
     public function refreshData(): void
     {
+        $this->ensureRouterPolled(true);
         // Bust computed caches by unsetting
         unset($this->healthSummary);
         unset($this->headerStats);
@@ -124,6 +127,24 @@ class Overview extends AdminComponent
         unset($this->deviceTable);
         unset($this->activeAlarms);
         unset($this->provisioningStats);
+    }
+
+    private function ensureRouterPolled(bool $force = false): void
+    {
+        $lockKey = 'noc_router_poll_lock';
+        if (!$force && \Illuminate\Support\Facades\Cache::has($lockKey)) {
+            return;
+        }
+
+        $latest = \App\Models\ISP\RouterMonitoringLog::latest()->first();
+        if ($force || !$latest || $latest->created_at->lt(now()->subSeconds(90))) {
+            \Illuminate\Support\Facades\Cache::put($lockKey, true, 45);
+            try {
+                app(\App\Services\Monitoring\Collectors\RouterCollector::class)->collect();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('NOC overview auto-poll error: ' . $e->getMessage());
+            }
+        }
     }
 
     public function setTrafficPeriod(string $period): void

@@ -60,6 +60,13 @@ class Show extends AdminComponent
         $this->routerId     = (int) $router;
         $this->activeModule = 'noc';
         $this->activePage   = 'routers';
+
+        $latest = RouterMonitoringLog::where('router_id', $this->routerId)->latest()->first();
+        if (!$latest || $latest->created_at->lt(now()->subSeconds(90))) {
+            try {
+                app(\App\Services\Monitoring\Collectors\RouterCollector::class)->collect();
+            } catch (\Throwable $e) {}
+        }
     }
 
 
@@ -301,7 +308,7 @@ class Show extends AdminComponent
         $log = $this->latestLog;
         if (!$log) return 'UNKNOWN';
         if (!$log->is_online) return 'OFFLINE';
-        if ($log->created_at->diffInMinutes(now()) > 5) return 'STALE';
+        if ($log->created_at->diffInMinutes(now()) > 15) return 'STALE';
         if ($log->cpu_load > 80) return 'WARNING';
         return 'ONLINE';
     }

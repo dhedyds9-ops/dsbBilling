@@ -75,8 +75,8 @@ class TrafficMonitoringService
             $rxBps = (int)($latest->total_rx ?? 0);
             $txBps = (int)($latest->total_tx ?? 0);
 
-            // Fallback to active sessions sum if router logs are not populated yet
-            if (!$latest || ($latest->router_count ?? 0) === 0) {
+            // Fallback to active sessions sum if router logs are not populated yet or are 0
+            if ($rxBps === 0 && $txBps === 0) {
                 $sessionStats = DB::table('online_sessions')
                     ->selectRaw('
                         SUM(COALESCE(rate_up, 0)) as total_rx_bps,
@@ -86,6 +86,17 @@ class TrafficMonitoringService
 
                 $rxBps = (int)($sessionStats->total_rx_bps ?? 0);
                 $txBps = (int)($sessionStats->total_tx_bps ?? 0);
+
+                if ($rxBps === 0 && $txBps === 0) {
+                    $pppStats = DB::table('ppp_active_sessions')
+                        ->selectRaw('
+                            SUM(COALESCE(rate_up, 0)) as total_rx_bps,
+                            SUM(COALESCE(rate_down, 0)) as total_tx_bps
+                        ')
+                        ->first();
+                    $rxBps = (int)($pppStats->total_rx_bps ?? 0);
+                    $txBps = (int)($pppStats->total_tx_bps ?? 0);
+                }
             }
 
             return [
@@ -126,7 +137,46 @@ class TrafficMonitoringService
 
         $rows = $query->get();
 
+        // If empty for strict period, check recent samples from last 24h
         if ($rows->isEmpty()) {
+            $rows = DB::table('router_monitoring_logs')
+                ->where('is_online', true)
+                ->where('created_at', '>=', now()->subDay())
+                ->selectRaw("
+                    {$bucketExpr} as time_bucket,
+                    AVG(cpu_load) as avg_cpu,
+                    SUM(rx_bps) as sum_rx,
+                    SUM(tx_bps) as sum_tx,
+                    COUNT(*) as sample_count
+                ")
+                ->when($routerId, fn($q) => $q->where('router_id', $routerId))
+                ->groupBy('time_bucket')
+                ->orderBy('time_bucket')
+                ->limit(30)
+                ->get();
+        }
+
+        if ($rows->isEmpty()) {
+            // Check if current traffic exists to provide immediate live point
+            $curr = $this->getTotalCurrentTraffic();
+            if (($curr['rx_bps'] ?? 0) > 0 || ($curr['tx_bps'] ?? 0) > 0) {
+                return [
+                    [
+                        'time'    => now()->subMinute()->format('Y-m-d H:i'),
+                        'rx'      => (int)$curr['rx_bps'],
+                        'tx'      => (int)$curr['tx_bps'],
+                        'cpu'     => 0,
+                        'samples' => 1,
+                    ],
+                    [
+                        'time'    => now()->format('Y-m-d H:i'),
+                        'rx'      => (int)$curr['rx_bps'],
+                        'tx'      => (int)$curr['tx_bps'],
+                        'cpu'     => 0,
+                        'samples' => 1,
+                    ]
+                ];
+            }
             return [];
         }
 

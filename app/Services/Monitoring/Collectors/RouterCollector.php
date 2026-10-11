@@ -77,6 +77,25 @@ class RouterCollector extends BaseCollector
                 $totalTxBps += (int)($iface['tx-bps'] ?? 0);
             }
             
+            // If interface traffic returned 0, fallback to active queues or sessions rates
+            if ($totalRxBps === 0 && $totalTxBps === 0) {
+                foreach ($queueStats as $q) {
+                    $totalRxBps += (int)($q['rate_down'] ?? 0);
+                    $totalTxBps += (int)($q['rate_up'] ?? 0);
+                }
+                if ($totalRxBps === 0 && $totalTxBps === 0) {
+                    foreach ($pppSessions as $s) {
+                        $totalRxBps += (int)($s['rate_down'] ?? 0);
+                        $totalTxBps += (int)($s['rate_up'] ?? 0);
+                    }
+                }
+                $finalRx = $totalRxBps;
+                $finalTx = $totalTxBps;
+            } else {
+                $finalRx = (int)($totalRxBps / 2);
+                $finalTx = (int)($totalTxBps / 2);
+            }
+            
             $healthScore = $this->calculateHealthScore($systemInfo);
             
             // Save monitoring log
@@ -90,11 +109,12 @@ class RouterCollector extends BaseCollector
                 'total_memory' => $systemInfo['total_memory'] ?? 0,
                 'uptime' => $systemInfo['uptime'] ?? null,
                 'error_message' => $systemInfo['error'] ?? null,
-                'rx_bps' => $totalRxBps > 0 ? (int)($totalRxBps / 2) : 0,
-                'tx_bps' => $totalTxBps > 0 ? (int)($totalTxBps / 2) : 0,
+                'rx_bps' => $finalRx,
+                'tx_bps' => $finalTx,
             ]);
             
             $router->update([
+                'status' => 'online',
                 'last_seen_at' => now(),
                 'routeros_version' => $systemInfo['version'] ?? null,
             ]);

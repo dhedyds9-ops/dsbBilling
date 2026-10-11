@@ -28,6 +28,7 @@
         <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
             <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700">
                 <tr class="text-slate-500 dark:text-slate-400">
+                    <th class="p-3 font-semibold text-center w-20">Aksi</th>
                     <th class="p-3 font-semibold" wire:click="sort('name')">Name {!! $sortField === 'name' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('ip_address')">IP Address {!! $sortField === 'ip_address' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">Vendor / Model</th>
@@ -35,12 +36,16 @@
                     <th class="p-3 font-semibold" wire:click="sort('onu_active_count')">ONUs {!! $sortField === 'onu_active_count' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('status')">Status {!! $sortField === 'status' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('last_polled_at')">Last Polled {!! $sortField === 'last_polled_at' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
-                    <th class="p-3 font-semibold">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                 @forelse($olts as $olt)
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover transition-colors">
+                    <td class="p-3 text-center">
+                        <a href="{{ route('noc.olts.show', $olt->id) }}" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors">
+                            <i class="bi bi-eye"></i> Detail
+                        </a>
+                    </td>
                     <td class="p-3  noc-text font-medium">{{ $olt->name }}</td>
                     <td class="p-3  noc-mono noc-muted">{{ $olt->ip_address }}</td>
                     <td class="p-3  noc-muted">{{ $olt->vendor?->name ?? '-' }} / {{ $olt->model ?? '-' }}</td>
@@ -59,9 +64,6 @@
                         <span class="px-2 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ $status }}</span>
                     </td>
                     <td class="p-3  noc-muted text-xs">{{ $olt->last_polled_at ? $olt->last_polled_at->diffForHumans() : '-' }}</td>
-                    <td class="p-3">
-                        <a href="{{ route('noc.olts.show', $olt->id) }}" class="text-blue-500 hover:text-blue-400 text-xs font-medium">Manage →</a>
-                    </td>
                 </tr>
                 @empty
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">

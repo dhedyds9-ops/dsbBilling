@@ -13,6 +13,11 @@ class EnsureWorkforceCheckedIn
     public function handle(Request $request, Closure $next)
     {
         if (Auth::check()) {
+            // Administrators and managers have direct supervisory access without mandatory check-in
+            if (Auth::user()->hasAnyRole(['administrator', 'manager', 'super-admin', 'superadmin'])) {
+                return $next($request);
+            }
+
             $hasCheckedIn = Attendance::where('technician_id', Auth::id())
                 ->whereDate('date', Carbon::today())
                 ->whereNotNull('checked_in_at')

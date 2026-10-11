@@ -50,6 +50,7 @@
         <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
             <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <tr class="text-slate-500 dark:text-slate-400">
+                    <th class="p-3 font-semibold text-center w-28">Aksi</th>
                     <th class="p-3 font-semibold" wire:click="sort('serial_number')">Serial {!! $sortField === 'serial_number' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('mac_address')">MAC {!! $sortField === 'mac_address' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold">IP Host</th>
@@ -60,7 +61,6 @@
                     <th class="p-3 font-semibold">Temp</th>
                     <th class="p-3 font-semibold" wire:click="sort('status')">Status {!! $sortField === 'status' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
                     <th class="p-3 font-semibold" wire:click="sort('last_seen_at')">Last Seen {!! $sortField === 'last_seen_at' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
-                    <th class="p-3 font-semibold">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -76,6 +76,16 @@
                     $rxClass = $onu->rx_power_dbm < -30 ? 'text-red-500' : ($onu->rx_power_dbm < -27 ? 'text-yellow-500' : 'text-emerald-500');
                 @endphp
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover">
+                    <td class="p-3 text-center">
+                        <div class="inline-flex items-center gap-1">
+                            <a href="{{ route('noc.onus.show', $onu->id) }}" class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors">
+                                <i class="bi bi-eye"></i> Detail
+                            </a>
+                            <a href="{{ route('isp.onus.edit', $onu->id) }}" class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-colors">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                        </div>
+                    </td>
                     <td class="p-3 noc-mono noc-text font-medium">{{ $onu->serial_number }}</td>
                     <td class="p-3 noc-mono noc-text-secondary">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
                     <td class="p-3 noc-mono noc-text-secondary">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
@@ -92,11 +102,6 @@
                         <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ $st }}</span>
                     </td>
                     <td class="p-3 noc-muted">{{ $onu->last_seen_at ? $onu->last_seen_at->diffForHumans() : '-' }}</td>
-                    <td class="p-3">
-                        <a href="{{ route('noc.onus.show', $onu->id) }}" class="text-blue-500 hover:text-blue-400">View</a>
-                        <span class="mx-1 noc-muted opacity-50">|</span>
-                        <a href="{{ route('isp.onus.edit', $onu->id) }}" class="text-emerald-500 hover:text-emerald-400">Edit</a>
-                    </td>
                 </tr>
                 @empty
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors"><td colspan="10" class="p-3 text-center noc-muted opacity-70">No ONUs found</td></tr>

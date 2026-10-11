@@ -1,31 +1,32 @@
 @props([
     'traffic' => [],
+    'currentTraffic' => null,
     'period' => '1h',
     'setPeriodMethod' => 'setTrafficPeriod',
     'heightClass' => 'h-[250px]',
 ])
 
 @php
-    $currentRx = 0;
-    $currentTx = 0;
+    $currentRx = $currentTraffic['rx_bps'] ?? 0;
+    $currentTx = $currentTraffic['tx_bps'] ?? 0;
     $peakTotal = 0;
     
     if (!empty($traffic)) {
-        // Last point is current
+        // Last point is current if not explicitly provided
         $lastPoint = end($traffic);
-        $currentRx = $lastPoint['rx'] ?? 0;
-        $currentTx = $lastPoint['tx'] ?? 0;
+        if ($currentRx === 0 && $currentTx === 0) {
+            $currentRx = $lastPoint['rx'] ?? 0;
+            $currentTx = $lastPoint['tx'] ?? 0;
+        }
         
         foreach($traffic as $pt) {
             $rx = $pt['rx'] ?? 0;
             $tx = $pt['tx'] ?? 0;
-            // Peak throughput is max of rx or tx, or if they want max combined?
-            // Usually network throughput is max of (rx, tx), or rx+tx depending on full duplex. Let's use max(rx, tx) for interface capacity, or rx+tx if total?
-            // "PEAK = peak throughput pada periode yang sedang dipilih" -> let's use max of RX or TX. Actually, max(RX) + max(TX) is not accurate for a single point. 
-            // We'll take the max of (rx + tx) for total throughput or just max(rx, tx) depending on standard. Let's use max of max(rx, tx) as the peak throughput point.
-            // Wait, "Total = RX + TX", let's use max(rx + tx) or max(max(rx), max(tx)). Let's use max(rx, tx) as it's standard for full duplex links.
             $peakTotal = max($peakTotal, max($rx, $tx));
         }
+    }
+    if ($peakTotal === 0) {
+        $peakTotal = max($currentRx, $currentTx);
     }
     
     // Formatting helper
@@ -134,8 +135,9 @@ window.nocTrafficGraphData = function(chartId) { return {
             this.chart = echarts.init(dom, 'dark');
             
             const times = data.map(i => {
-                const date = new Date(i.time);
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const timeStr = (i.time || '').replace(' ', 'T');
+                const date = new Date(timeStr);
+                return isNaN(date.getTime()) ? (i.time || '') : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             });
             
             const rawRx = data.map(i => i.rx || 0);

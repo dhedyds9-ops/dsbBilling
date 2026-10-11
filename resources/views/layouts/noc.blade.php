@@ -95,16 +95,15 @@
                 $nocNav = array_merge($nocNav, [
                     ['route' => 'noc.overview',         'label' => 'Overview',      'icon' => 'grid'],
                     ['route' => 'noc.routers.index',    'label' => 'Router',        'icon' => 'server'],
-                    ['route' => 'noc.olts.index',       'label' => 'OLT',           'icon' => 'server-stack'],
-
+                    ['route' => 'noc.olts.index',       'label' => 'OLT',           'icon' => 'hdd-stack'],
+                    ['route' => 'noc.onus.index',       'label' => 'ONU',           'icon' => 'hdd-network'],
                     ['route' => 'noc.acs.devices.index',    'label' => 'GenieACS Devices', 'icon' => 'wifi'],
-                    ['route' => 'noc.pppoe.index',      'label' => 'Active Sessions',         'icon' => 'users'],
+                    ['route' => 'noc.pppoe.index',      'label' => 'Active Sessions',         'icon' => 'people'],
                     ['route' => 'noc.alarms.index',     'label' => 'Alarms',        'icon' => 'bell'],
-                    ['route' => 'noc.provisioning.index','label' => 'Provisioning', 'icon' => 'list-checks'],
-                    ['route' => 'noc.topology.index',   'label' => 'Impact Analysis',           'icon' => 'impact'],
+                    ['route' => 'noc.provisioning.index','label' => 'Provisioning', 'icon' => 'check2-square'],
+                    ['route' => 'noc.topology.index',   'label' => 'Impact Analysis',           'icon' => 'diagram-3'],
                     ['route' => 'gis.map',              'label' => 'Live Mapping',  'icon' => 'map'],
                     ['route' => 'gis.index',            'label' => 'GIS Dashboard', 'icon' => 'globe'],
-                    
                 ]);
             @endphp
             @foreach($nocNav as $item)

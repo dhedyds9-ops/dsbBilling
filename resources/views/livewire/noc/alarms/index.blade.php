@@ -79,6 +79,7 @@
         <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
                     <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700">
                         <tr class="text-slate-500 dark:text-slate-400">
+                            <th class="p-3 font-semibold text-center w-36">Aksi</th>
                             <th class="p-3 font-semibold" wire:click="sort('level')">
                                 Level @if($sortField==='level') <span class="noc-muted">{{ $sortDirection==='asc'?'↑':'↓' }}</span> @endif
                             </th>
@@ -95,7 +96,6 @@
                                 Started @if($sortField==='started_at') <span class="noc-muted">{{ $sortDirection==='asc'?'↑':'↓' }}</span> @endif
                             </th>
                             <th class="p-3 font-semibold">Ack By</th>
-                            <th class="p-3 font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -115,6 +115,17 @@
                                 };
                             @endphp
                             <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors border-b noc-border noc-row-hover transition">
+                                <td class="p-3 text-center">
+                                    <div class="inline-flex gap-1">
+                                        @if($alarm->status !== 'resolved')
+                                            <button wire:click="acknowledgeAlarm({{ $alarm->id }})" class="px-2 py-0.5 text-[10px] border border-blue-700 rounded text-blue-400 hover:bg-blue-950 transition" onclick="return confirm('Acknowledge alarm #{{ $alarm->id }}?')">ACK</button>
+                                            <button wire:click="resolveAlarm({{ $alarm->id }})" class="px-2 py-0.5 text-[10px] border border-green-700 rounded text-emerald-400 hover:bg-green-950 transition" onclick="return confirm('Resolve alarm #{{ $alarm->id }}?')">RESOLVE</button>
+                                        @endif
+                                        @if(Route::has('noc.alarms.show'))
+                                            <a href="{{ route('noc.alarms.show', $alarm->id) }}" class="px-2 py-0.5 text-[10px] border rounded noc-btn-outline transition">VIEW</a>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider {{ $levelClass }}">{{ $alarm->level }}</span></td>
                                 <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider {{ $statusClass }}">{{ $alarm->status }}</span></td>
                                 <td class="p-3">
@@ -146,17 +157,6 @@
                                     @else
                                         <span class="noc-muted opacity-60">—</span>
                                     @endif
-                                </td>
-                                <td class="p-3  text-right">
-                                    <div class="inline-flex gap-1">
-                                        @if($alarm->status !== 'resolved')
-                                            <button wire:click="acknowledgeAlarm({{ $alarm->id }})" class="px-2 py-1 text-[10px] border border-blue-700 rounded text-blue-500 hover:bg-blue-950 transition" onclick="return confirm('Acknowledge alarm #{{ $alarm->id }}-')">ACK</button>
-                                            <button wire:click="resolveAlarm({{ $alarm->id }})" class="px-2 py-1 text-[10px] border border-green-700 rounded text-emerald-500 hover:bg-green-950 transition" onclick="return confirm('Resolve alarm #{{ $alarm->id }}-')">RESOLVE</button>
-                                        @endif
-                                        @if(Route::has('noc.alarms.show'))
-                                            <a href="{{ route('noc.alarms.show', $alarm->id) }}" class="px-2 py-1 text-[10px] border rounded noc-btn-outline transition">VIEW</a>
-                                        @endif
-                                    </div>
                                 </td>
                             </tr>
                         @empty

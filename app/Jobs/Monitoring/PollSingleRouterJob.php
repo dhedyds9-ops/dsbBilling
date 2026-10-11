@@ -40,29 +40,17 @@ class PollSingleRouterJob implements ShouldQueue
             // Get system info
             $systemInfo = $driver->getSystemInfo($this->router);
             
-            // Save monitoring log
-            $this->saveMonitoringLog([
-                'is_online' => true,
-                'identity' => $systemInfo['identity'],
-                'version' => $systemInfo['version'],
-                'cpu' => $systemInfo['cpu'],
-                'cpu_load' => $systemInfo['cpu_load'],
-                'free_memory' => $systemInfo['free_memory'],
-                'total_memory' => $systemInfo['total_memory'],
-                'uptime' => $systemInfo['uptime'],
-                'error_message' => $systemInfo['error'] ?? null,
-            ]);
-            
-            // Update router last seen at and version
-            $this->router->update([
-                'last_seen_at' => now(),
-                'routeros_version' => $systemInfo['version'],
-            ]);
-            
-            // Auto Recovery: Check and Repair RADIUS Configuration
-            $radiusHost = parse_url(config('app.url'), PHP_URL_HOST) ?? '127.0.0.1';
-            $driver->checkAndRepairRadius($this->router, $radiusHost, $this->router->radius_secret ?? 'radius_secret_here');
-            
+            // Fetch traffic from interfaces
+            $interfaceStats = $driver->getInterfaceStats($this->router);
+            $totalRxBps = 0;
+            $totalTxBps = 0;
+            foreach ($interfaceStats as $iface) {
+                $totalRxBps += (int)($iface['rx-bps'] ?? 0);
+                $totalTxBps += (int)($iface['tx-bps'] ?? 0);
+            }
+            $finalRx = (int)($totalRxBps / 2);
+            $finalTx = (int)($totalTxBps / 2);
+
             // Get PPP Active Sessions
             $pppSessions = $driver->getPPPActive($this->router);
             $this->updatePppSessions($pppSessions);
@@ -74,6 +62,45 @@ class PollSingleRouterJob implements ShouldQueue
             // Get Queue Stats
             $queueStats = $driver->getQueueStats($this->router);
             $this->updateQueueStats($queueStats);
+
+            if ($finalRx === 0 && $finalTx === 0) {
+                foreach ($queueStats as $q) {
+                    $finalRx += (int)($q['rate_down'] ?? 0);
+                    $finalTx += (int)($q['rate_up'] ?? 0);
+                }
+                if ($finalRx === 0 && $finalTx === 0) {
+                    foreach ($pppSessions as $s) {
+                        $finalRx += (int)($s['rate_down'] ?? 0);
+                        $finalTx += (int)($s['rate_up'] ?? 0);
+                    }
+                }
+            }
+            
+            // Save monitoring log
+            $this->saveMonitoringLog([
+                'is_online' => true,
+                'identity' => $systemInfo['identity'] ?? null,
+                'version' => $systemInfo['version'] ?? null,
+                'cpu' => $systemInfo['cpu'] ?? null,
+                'cpu_load' => $systemInfo['cpu_load'] ?? 0,
+                'free_memory' => $systemInfo['free_memory'] ?? 0,
+                'total_memory' => $systemInfo['total_memory'] ?? 0,
+                'uptime' => $systemInfo['uptime'] ?? null,
+                'error_message' => $systemInfo['error'] ?? null,
+                'rx_bps' => $finalRx,
+                'tx_bps' => $finalTx,
+            ]);
+            
+            // Update router status, last seen at and version
+            $this->router->update([
+                'status' => 'online',
+                'last_seen_at' => now(),
+                'routeros_version' => $systemInfo['version'] ?? null,
+            ]);
+            
+            // Auto Recovery: Check and Repair RADIUS Configuration
+            $radiusHost = parse_url(config('app.url'), PHP_URL_HOST) ?? '127.0.0.1';
+            $driver->checkAndRepairRadius($this->router, $radiusHost, $this->router->radius_secret ?? 'radius_secret_here');
             
             // Cache all data
             $cacheKey = MonitoringService::getCacheKey($this->router);
@@ -134,6 +161,10 @@ class PollSingleRouterJob implements ShouldQueue
                 'session_started_at' => null,
             ]);
         }
+
+        try {
+            app(\App\Services\ISP\Session\OnlineSessionStore::class)->upsertPppoeFromRouter($this->router, $sessions);
+        } catch (\Throwable $e) {}
     }
     
     private function updateHotspotSessions(array $sessions)

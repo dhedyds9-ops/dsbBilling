@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.60s>
+<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.60s>
     <div class="max-w-[1800px] mx-auto px-4 py-4">
         <div class="flex items-center justify-between mb-4">
             <div>
@@ -64,13 +64,13 @@
         <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
                             <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700">
                                 <tr class="text-slate-500 dark:text-slate-400">
+                                    <th class="p-3 font-semibold text-center w-28">Aksi</th>
                                     <th class="p-3 font-semibold">UUID</th>
                                     <th class="p-3 font-semibold">Customer</th>
                                     <th class="p-3 font-semibold">Status</th>
                                     <th class="p-3 font-semibold">Steps</th>
                                     <th class="p-3 font-semibold">Created</th>
                                     <th class="p-3 font-semibold">By</th>
-                                    <th class="p-3 font-semibold text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -89,11 +89,24 @@
                                         $stepFail  = $p->steps->where('status', 'failed')->count();
                                     @endphp
                                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors noc-row-hover transition">
+                                        <td class="p-3 text-center">
+                                            <div class="inline-flex gap-1">
+                                                @if(Route::has('noc.provisioning.show'))
+                                                    <a href="{{ route('noc.provisioning.show', $p->id) }}" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors">
+                                                        <i class="bi bi-eye"></i> Detail
+                                                    </a>
+                                                @endif
+                                                @if($p->status === 'failed')
+                                                    <button wire:click="retryPipeline({{ $p->id }})" onclick="return confirm('Retry pipeline #{{ $p->id }}?')"
+                                                            class="px-2 py-0.5 text-[10px] border border-yellow-700 rounded text-yellow-400 hover:bg-yellow-950 transition">RETRY</button>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td class="p-3">
                                             @if(Route::has('noc.provisioning.show'))
-                                                <a href="{{ route('noc.provisioning.show', $p->id) }}" class="text-blue-500 hover:text-blue-400 font-mono text-[11px]">{{ substr($p->uuid, 0, 12) }}â€¦</a>
+                                                <a href="{{ route('noc.provisioning.show', $p->id) }}" class="text-blue-500 hover:text-blue-400 font-mono text-[11px]">{{ substr($p->uuid, 0, 12) }}…</a>
                                             @else
-                                                <span class="font-mono text-[11px] noc-muted">{{ substr($p->uuid, 0, 12) }}â€¦</span>
+                                                <span class="font-mono text-[11px] noc-muted">{{ substr($p->uuid, 0, 12) }}…</span>
                                             @endif
                                         </td>
                                         <td class="p-3">
@@ -101,7 +114,7 @@
                                                 <div class="noc-text">{{ $customer->name }}</div>
                                                 <div class="text-[10px] noc-muted mt-0.5">{{ $customer->code }}</div>
                                             @else
-                                                <span class="noc-muted opacity-70">â€”</span>
+                                                <span class="noc-muted opacity-70">—</span>
                                             @endif
                                         </td>
                                         <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider {{ $statusClass }}">{{ $p->status }}</span></td>
@@ -112,25 +125,14 @@
                                                         <div class="h-full {{ $stepFail ? 'bg-red-500' : 'bg-emerald-500' }}" style="width: {{ ($stepDone / $stepTotal) * 100 }}%"></div>
                                                     @endif
                                                 </div>
-                                                <span class="text-[10px] noc-muted">{{ $stepDone }}/{{ $stepTotal }}{{ $stepFail ? " Â· {$stepFail}âœ—" : '' }}</span>
+                                                <span class="text-[10px] noc-muted">{{ $stepDone }}/{{ $stepTotal }}{{ $stepFail ? " · {$stepFail}✗" : '' }}</span>
                                             </div>
                                         </td>
                                         <td class="p-3">
                                             <div class="noc-text-secondary">{{ $p->created_at->format('M d H:i') }}</div>
                                             <div class="text-[10px] noc-muted mt-0.5">{{ $p->created_at->diffForHumans() }}</div>
                                         </td>
-                                        <td class="p-3  noc-muted">{{ $p->createdBy->name ?: 'â€”' }}</td>
-                                        <td class="p-3  text-right">
-                                            <div class="inline-flex gap-1">
-                                                @if($p->status === 'failed')
-                                                    <button wire:click="retryPipeline({{ $p->id }})" onclick="return confirm('Retry pipeline #{{ $p->id }} via PipelineOrchestrator ?? ')"
-                                                            class="px-2 py-1 text-[10px] border border-yellow-700 rounded text-yellow-500 hover:bg-yellow-950 transition">RETRY</button>
-                                                @endif
-                                                @if(Route::has('noc.provisioning.show'))
-                                                    <a href="{{ route('noc.provisioning.show', $p->id) }}" class="px-2 py-1 text-[10px] border rounded noc-btn-outline">VIEW</a>
-                                                @endif
-                                            </div>
-                                        </td>
+                                        <td class="p-3  noc-muted">{{ $p->createdBy->name ?: '—' }}</td>
                                     </tr>
                                 @empty
                                     <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">

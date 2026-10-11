@@ -27,6 +27,12 @@ class Index extends AdminComponent
     {
         $this->activeModule = 'noc';
         $this->activePage   = 'routers';
+        $latest = \App\Models\ISP\RouterMonitoringLog::latest()->first();
+        if (!$latest || $latest->created_at->lt(now()->subSeconds(90))) {
+            try {
+                app(\App\Services\Monitoring\Collectors\RouterCollector::class)->collect();
+            } catch (\Throwable $e) {}
+        }
     }
 
     public function updatedSearch(): void    { $this->resetPage(); }
@@ -45,7 +51,7 @@ class Index extends AdminComponent
     #[Computed]
     public function routers(): \Illuminate\Pagination\LengthAwarePaginator
     {
-        $staleAt = now()->subMinutes(5);
+        $staleAt = now()->subMinutes(15);
 
         $query = Router::withoutTrashed()
             ->with([
@@ -60,13 +66,24 @@ class Index extends AdminComponent
             ]);
 
         if ($this->statusFilter === 'online') {
-            $query->whereHas('monitoringLogs', fn ($q) =>
-                $q->where('is_online', true)->where('created_at', '>=', $staleAt)
-            );
+            $query->where(function ($q) use ($staleAt) {
+                $q->whereHas('monitoringLogs', fn ($sub) =>
+                    $sub->where('is_online', true)->where('created_at', '>=', $staleAt)
+                )->orWhere(function ($sub) use ($staleAt) {
+                    $sub->whereIn('status', ['online', 'active'])
+                        ->where('last_seen_at', '>=', $staleAt);
+                });
+            });
         } elseif ($this->statusFilter === 'offline') {
-            $query->whereDoesntHave('monitoringLogs', fn ($q) =>
-                $q->where('is_online', true)->where('created_at', '>=', $staleAt)
-            );
+            $query->where(function ($q) use ($staleAt) {
+                $q->whereDoesntHave('monitoringLogs', fn ($sub) =>
+                    $sub->where('is_online', true)->where('created_at', '>=', $staleAt)
+                )->where(function ($sub) use ($staleAt) {
+                    $sub->whereNotIn('status', ['online', 'active'])
+                        ->orWhereNull('last_seen_at')
+                        ->orWhere('last_seen_at', '<', $staleAt);
+                });
+            });
         }
 
         if (!empty($this->search)) {
@@ -88,11 +105,16 @@ class Index extends AdminComponent
     #[Computed]
     public function summary(): array
     {
-        $staleAt = now()->subMinutes(5);
+        $staleAt = now()->subMinutes(15);
         $total   = Router::withoutTrashed()->count();
-        $online  = Router::withoutTrashed()->whereHas('monitoringLogs', fn ($q) =>
-            $q->where('is_online', true)->where('created_at', '>=', $staleAt)
-        )->count();
+        $online  = Router::withoutTrashed()->where(function ($q) use ($staleAt) {
+            $q->whereHas('monitoringLogs', fn ($sub) =>
+                $sub->where('is_online', true)->where('created_at', '>=', $staleAt)
+            )->orWhere(function ($sub) use ($staleAt) {
+                $sub->whereIn('status', ['online', 'active'])
+                    ->where('last_seen_at', '>=', $staleAt);
+            });
+        })->count();
 
         return [
             'total'   => $total,
