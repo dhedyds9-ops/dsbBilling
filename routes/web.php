@@ -85,29 +85,31 @@ Route::get('/login-as-admin', function () {
 $cs = fn() => view('coming-soon');
 
 // ==================== AUTHENTICATED ROUTES ====================
-Route::middleware(['auth', 'role:administrator,manager', 'job_function:TECHNICIAN'])->group(function () use ($cs) {
-    Route::get('/technician-portal/dashboard', \App\Livewire\Isp\Technician\Dashboard::class)->name('technician.dashboard');
-    Route::middleware(['workforce.checked_in'])->group(function () {
-        Route::get('/technician-portal/my-jobs', \App\Livewire\Isp\Technician\MyJobs\Index::class)->name('technician.my-jobs.index');
-        Route::get('/technician-portal/my-jobs/{job}', \App\Livewire\Isp\Technician\MyJobs\Show::class)->name('technician.my-jobs.show');
-        Route::get('/technician-portal/installation/wizard', \App\Livewire\Isp\Technician\Installation\Wizard::class)->name('technician.installation.wizard');
-        Route::get('/technician-portal/provisioning/{id}', \App\Livewire\Isp\Technician\Provisioning\Show::class)->name('technician.provisioning.show');
-        Route::get('/technician-portal/audit', \App\Livewire\Isp\Technician\Audit\Form::class)->name('technician.audit.form');
-    });
-    Route::get('/technician-portal/attendance', \App\Livewire\Isp\Technician\Attendance\Index::class)->name('technician.attendance');
-    Route::get('/technician-portal/payroll', \App\Livewire\Isp\Technician\Payroll\Index::class)->name('technician.payroll.index');
-    Route::get('/technician-portal/payroll/{id}', \App\Livewire\Isp\Technician\Payroll\Show::class)->name('technician.payroll.show');
-    
-    // Fallback/Dummy routes to prevent MenuRegistry crashes
-        Route::get('/technician-portal/my-jobs/psb', \App\Livewire\Isp\Technician\MyJobs\Psb::class)->name('technician.my-jobs.psb');
-    Route::get('/technician-portal/my-jobs/maintenance', \App\Livewire\Isp\Technician\MyJobs\Maintenance::class)->name('technician.my-jobs.maintenance');
-    Route::get('/technician-portal/tickets', \App\Livewire\Isp\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
-        Route::get('/technician-portal/installation/scan', \App\Livewire\Isp\Technician\Installation\Scan::class)->name('technician.installation.scan');
-    Route::get('/technician-portal/installation/register', \App\Livewire\Isp\Technician\Installation\Register::class)->name('technician.installation.register');
-                Route::get('/technician-portal/odp/search', \App\Livewire\Isp\Technician\Odp\Search::class)->name('technician.odp.search');
-    Route::get('/technician-portal/odp/nearest', \App\Livewire\Isp\Technician\Odp\Nearest::class)->name('technician.odp.nearest');
-                
+Route::middleware(['auth'])->group(function () use ($cs) {
 
+    // ==================== TECHNICIAN PORTAL ====================
+    Route::middleware(['role:administrator,manager', 'job_function:TECHNICIAN'])->group(function () {
+        Route::get('/technician-portal/dashboard', \App\Livewire\Isp\Technician\Dashboard::class)->name('technician.dashboard');
+        Route::middleware(['workforce.checked_in'])->group(function () {
+            Route::get('/technician-portal/my-jobs', \App\Livewire\Isp\Technician\MyJobs\Index::class)->name('technician.my-jobs.index');
+            Route::get('/technician-portal/my-jobs/{job}', \App\Livewire\Isp\Technician\MyJobs\Show::class)->name('technician.my-jobs.show');
+            Route::get('/technician-portal/installation/wizard', \App\Livewire\Isp\Technician\Installation\Wizard::class)->name('technician.installation.wizard');
+            Route::get('/technician-portal/provisioning/{id}', \App\Livewire\Isp\Technician\Provisioning\Show::class)->name('technician.provisioning.show');
+            Route::get('/technician-portal/audit', \App\Livewire\Isp\Technician\Audit\Form::class)->name('technician.audit.form');
+        });
+        Route::get('/technician-portal/attendance', \App\Livewire\Isp\Technician\Attendance\Index::class)->name('technician.attendance');
+        Route::get('/technician-portal/payroll', \App\Livewire\Isp\Technician\Payroll\Index::class)->name('technician.payroll.index');
+        Route::get('/technician-portal/payroll/{id}', \App\Livewire\Isp\Technician\Payroll\Show::class)->name('technician.payroll.show');
+        
+        // Fallback/Dummy routes to prevent MenuRegistry crashes
+        Route::get('/technician-portal/my-jobs/psb', \App\Livewire\Isp\Technician\MyJobs\Psb::class)->name('technician.my-jobs.psb');
+        Route::get('/technician-portal/my-jobs/maintenance', \App\Livewire\Isp\Technician\MyJobs\Maintenance::class)->name('technician.my-jobs.maintenance');
+        Route::get('/technician-portal/tickets', \App\Livewire\Isp\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
+        Route::get('/technician-portal/installation/scan', \App\Livewire\Isp\Technician\Installation\Scan::class)->name('technician.installation.scan');
+        Route::get('/technician-portal/installation/register', \App\Livewire\Isp\Technician\Installation\Register::class)->name('technician.installation.register');
+        Route::get('/technician-portal/odp/search', \App\Livewire\Isp\Technician\Odp\Search::class)->name('technician.odp.search');
+        Route::get('/technician-portal/odp/nearest', \App\Livewire\Isp\Technician\Odp\Nearest::class)->name('technician.odp.nearest');
+    });
 
     // ==================== STAFF / ADMIN AREA ====================
     Route::middleware(['role:administrator,manager'])->group(function () use ($cs) {

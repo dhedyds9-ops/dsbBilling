@@ -1,10 +1,9 @@
 <x-layouts.base
     html-class="h-full dark" html-attributes="style='background-color: #0a0e1a !important;'"
     body-class="noc-root dark h-screen overflow-hidden flex flex-col bg-[#0a0e1a] text-[#e5e7eb]"
-    body-attributes="style='background-color: #0a0e1a !important; color:#e5e7eb; font-family:\'Inter\',sans-serif;' x-data='nocLayout()' x-init='init()'"
 >
     <x-slot:bodyAttributes>
-        style="background-color: #0a0e1a !important; color:#e5e7eb; font-family:'Inter',sans-serif;" x-data="nocLayout()" x-init="init()"
+        style="background-color: #0a0e1a !important; color:#e5e7eb;" x-data="nocLayout()" x-init="init()"
     </x-slot:bodyAttributes>
     <x-slot:head>
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
