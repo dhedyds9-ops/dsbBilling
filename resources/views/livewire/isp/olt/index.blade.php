@@ -106,6 +106,10 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
                 Tambah OLT
             </a>
+            <a href="{{ route('isp.onus.index') }}" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-emerald-200 dark:shadow-none transition-all" title="Daftar & Manajemen Semua ONU">
+                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">router</span>
+                Kelola ONU
+            </a>
             <button wire:click="syncAll" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-200 dark:shadow-none transition-all cursor-pointer" title="Sinkronkan status semua OLT">
                 <span class="material-symbols-outlined notranslate mr-1.5" wire:loading.class="animate-spin" wire:target="syncAll" translate="no" style="font-size:18px">sync</span>
                 <span wire:loading.remove wire:target="syncAll">Sinkronkan Semua</span>
@@ -158,7 +162,6 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
     </div>
     @endif
     
-
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -194,6 +197,9 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                                     <button wire:click="rowSync({{ $olt->id }})" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 transition-colors cursor-pointer" title="Sinkronkan OLT Sekarang">
                                         <span class="material-symbols-outlined notranslate" wire:loading.class="animate-spin" wire:target="rowSync({{ $olt->id }})" translate="no" style="font-size:18px">sync</span>
                                     </button>
+                                    <a href="{{ route('isp.onus.index', ['oltFilter' => $olt->id]) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-400 transition-colors" title="Lihat ONU Terpasang (OLT ini)">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">router</span>
+                                    </a>
                                     <a href="{{ route('isp.olts.show', $olt->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail / PON Ports">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>
@@ -237,7 +243,7 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if($onuOnline > 0)
                                     <a href="{{ route('isp.onus.index', ['oltFilter' => $olt->id, 'statusFilter' => 'online']) }}"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors">
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors" title="Lihat ONU Online">
                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                                         {{ $onuOnline }}
                                     </a>
@@ -248,9 +254,11 @@ add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
                             {{-- ONU Offline --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if($onuOffline > 0)
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">
+                                    <a href="{{ route('isp.onus.index', ['oltFilter' => $olt->id, 'statusFilter' => 'offline']) }}"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors" title="Lihat ONU Offline">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
                                         {{ $onuOffline }}
-                                    </span>
+                                    </a>
                                 @else
                                     <span class="text-slate-400 dark:text-slate-500 dark:text-slate-400 text-xs">-</span>
                                 @endif

@@ -38,6 +38,11 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
+            <a href="{{ route('isp.onus.index', ['oltFilter' => $olt->id]) }}"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white border border-transparent rounded-xl text-sm font-semibold shadow-sm hover:bg-purple-700 dark:hover:bg-purple-600 transition-all cursor-pointer">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">router</span>
+                Daftar ONU
+            </a>
             <button type="button" wire:click="syncOlt"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white border border-transparent rounded-xl text-sm font-semibold shadow-sm hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all cursor-pointer"
                 wire:loading.attr="disabled">
