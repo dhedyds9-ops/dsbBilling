@@ -111,6 +111,15 @@ class Index extends AdminComponent
         $this->resetPage();
     }
 
+    public function resetFilters(): void
+    {
+        $this->search = '';
+        $this->statusFilter = 'all';
+        $this->oltFilter = '';
+        $this->ponFilter = '';
+        $this->resetPage();
+    }
+
     public function sort(string $field): void
     {
         if ($this->sortField === $field) {

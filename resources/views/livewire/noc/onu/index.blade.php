@@ -2,46 +2,114 @@
  NOC: ONU Monitoring Index
 --}}
 <div class="h-full flex flex-col noc-bg w-full" style="background-color: #0a0e1a !important; min-height: 100vh;">
-    {{-- Summary Header --}}
-    <div class="flex-none px-3 py-2 border-b noc-border flex items-center justify-between gap-3 flex-wrap noc-panel-bg">
-        <div class="flex items-center gap-3">
-            <h1 class="text-base font-bold noc-text">ONU Monitoring</h1>
-            <span class="noc-count-badge">{{ $summary['total'] }} Total</span>
-            <span class="noc-count-online">{{ $summary['online'] }} Online</span>
-            <span class="noc-count-offline">{{ $summary['offline'] }} Offline</span>
-            <span class="noc-count-los">{{ $summary['los'] }} LOS</span>
-            <span class="noc-count-warning">{{ $summary['low_rx'] }} Low RX</span>
+    {{-- Top Bar: Title & Summary Badges --}}
+    <div class="flex-none px-4 py-3 border-b noc-border noc-panel-bg">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-2 mr-1">
+                    <span class="material-symbols-outlined notranslate noc-text text-xl" translate="no">router</span>
+                    <h1 class="text-base font-bold noc-text">ONU Monitoring</h1>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" wire:click="$set('statusFilter', 'all')"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'all' ? 'bg-indigo-600 text-white border-transparent' : 'noc-count-badge border-transparent' }}">
+                        <span>{{ number_format($summary['total']) }}</span>
+                        <span class="text-[11px] opacity-80">Total</span>
+                    </button>
+
+                    <button type="button" wire:click="$set('statusFilter', 'online')"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'online' ? 'bg-emerald-600 text-white border-transparent' : 'noc-count-online border-transparent' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'online' ? 'bg-white' : 'bg-emerald-500' }}"></span>
+                        <span>{{ number_format($summary['online']) }}</span>
+                        <span class="text-[11px] opacity-80">Online</span>
+                    </button>
+
+                    <button type="button" wire:click="$set('statusFilter', 'offline')"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'offline' ? 'bg-slate-600 text-white border-transparent' : 'noc-count-offline border-transparent' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'offline' ? 'bg-white' : 'bg-slate-400' }}"></span>
+                        <span>{{ number_format($summary['offline']) }}</span>
+                        <span class="text-[11px] opacity-80">Offline</span>
+                    </button>
+
+                    <button type="button" wire:click="$set('statusFilter', 'los')"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'los' ? 'bg-rose-600 text-white border-transparent' : 'noc-count-los border-transparent' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'los' ? 'bg-white' : 'bg-rose-500' }}"></span>
+                        <span>{{ number_format($summary['los']) }}</span>
+                        <span class="text-[11px] opacity-80">LOS</span>
+                    </button>
+
+                    <button type="button" wire:click="$set('statusFilter', 'low_rx')"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'low_rx' ? 'bg-amber-600 text-white border-transparent' : 'noc-count-warning border-transparent' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'low_rx' ? 'bg-white' : 'bg-amber-500' }}"></span>
+                        <span>{{ number_format($summary['low_rx']) }}</span>
+                        <span class="text-[11px] opacity-80">Low RX</span>
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="flex items-center gap-2">
-            <select wire:model.live="oltFilter" class="noc-input px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
-                <option value="">All OLT</option>
-                @foreach($olts as $olt)
-                <option value="{{ $olt->id }}">{{ $olt->name }}</option>
-                @endforeach
-            </select>
-            
-            @if(!empty($oltFilter) && $oltFilter !== 'all')
-            <select wire:model.live="ponFilter" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
-                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="">All PON</option>
-                @foreach($ponPorts as $pon)
-                <option class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200" value="{{ $pon->id }}">{{ $pon->name }}</option>
-                @endforeach
-            </select>
-            @endif
-<select wire:model.live="statusFilter" class="noc-input px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
-                <option value="all">All Status</option>
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
-                <option value="los">LOS / Critical RX</option>
-                <option value="low_rx">Low RX (-30 to -27)</option>
-            </select>
-            <select wire:model.live="perPage" class="noc-input px-2 py-1 pr-6 text-xs rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
-                <option value="25">25 Baris</option>
-                <option value="50">50 Baris</option>
-                <option value="100">100 Baris</option>
-                <option value="0">All</option>
-            </select>
-            <input type="text" wire:model.live.debounce.400ms="search" placeholder="SN / MAC / Pelanggan" class="noc-input px-2 py-1 text-xs rounded border focus:outline-none w-56 dark:bg-slate-900 dark:text-slate-100">
+    </div>
+
+    {{-- Filter Toolbar --}}
+    <div class="flex-none px-4 py-2.5 border-b noc-border bg-black/20">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+            {{-- Search Bar --}}
+            <div class="relative w-full lg:w-72">
+                <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+                    <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">search</span>
+                </div>
+                <input type="text"
+                    wire:model.live.debounce.400ms="search"
+                    placeholder="Cari SN, MAC, atau Pelanggan..."
+                    class="noc-input w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border focus:outline-none"
+                />
+                @if(!empty($search))
+                <button wire:click="$set('search', '')" class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-200">
+                    <span class="material-symbols-outlined notranslate text-sm" translate="no">close</span>
+                </button>
+                @endif
+            </div>
+
+            {{-- Dropdown Filters --}}
+            <div class="flex flex-wrap items-center gap-2">
+                <select wire:model.live="oltFilter" class="noc-input h-8 px-2.5 pr-7 text-xs rounded-lg border focus:outline-none cursor-pointer">
+                    <option value="">Semua OLT</option>
+                    @foreach($olts as $olt)
+                    <option value="{{ $olt->id }}">{{ $olt->name }}</option>
+                    @endforeach
+                </select>
+
+                @if(!empty($oltFilter) && $oltFilter !== 'all')
+                <select wire:model.live="ponFilter" class="noc-input h-8 px-2.5 pr-7 text-xs rounded-lg border focus:outline-none cursor-pointer">
+                    <option value="">Semua PON</option>
+                    @foreach($ponPorts as $pon)
+                    <option value="{{ $pon->id }}">{{ $pon->name }}</option>
+                    @endforeach
+                </select>
+                @endif
+
+                <select wire:model.live="statusFilter" class="noc-input h-8 px-2.5 pr-7 text-xs rounded-lg border focus:outline-none cursor-pointer">
+                    <option value="all">Semua Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="los">LOS / Critical RX</option>
+                    <option value="low_rx">Low RX (-30 s/d -27)</option>
+                </select>
+
+                <select wire:model.live="perPage" class="noc-input h-8 px-2.5 pr-7 text-xs rounded-lg border focus:outline-none cursor-pointer">
+                    <option value="25">25 Baris</option>
+                    <option value="50">50 Baris</option>
+                    <option value="100">100 Baris</option>
+                    <option value="0">Semua</option>
+                </select>
+
+                @if($search !== '' || $statusFilter !== 'all' || $oltFilter !== '' || $ponFilter !== '')
+                <button type="button" wire:click="resetFilters" class="noc-input h-8 px-2.5 text-xs font-medium rounded-lg border hover:brightness-125 transition-all flex items-center gap-1" title="Reset Semua Filter">
+                    <span class="material-symbols-outlined notranslate text-sm" translate="no">restart_alt</span>
+                    Reset
+                </button>
+                @endif
+            </div>
         </div>
     </div>
 
