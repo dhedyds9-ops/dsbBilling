@@ -46,13 +46,26 @@
               <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="general.auto_confirm_payment" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Auto-confirm on Valid Callback</label>
               <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="general.send_receipt_on_success" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Kirim WA/Email Tanda Terima</label>
             </div>
+            <div class="md:col-span-2 flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
+              <button type="button" wire:click="saveGeneral" wire:loading.attr="disabled" wire:target="saveGeneral" class="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60">
+                <span wire:loading.remove wire:target="saveGeneral" class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
+                <span wire:loading wire:target="saveGeneral" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:16px">sync</span>
+                <span wire:loading.remove wire:target="saveGeneral">Simpan Pengaturan Umum</span>
+                <span wire:loading wire:target="saveGeneral">Menyimpan...</span>
+              </button>
+            </div>
           </div>
         </div>
 
       @elseif($activeTab === 'midtrans')
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
-            <span class="font-semibold text-slate-900 dark:text-slate-100">Midtrans (Pembayaran Indonesia)</span>
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-900 dark:text-slate-100">Midtrans (Pembayaran Indonesia)</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $general['mode'] === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }}">
+                Mode Aktif: {{ strtoupper($general['mode']) }}
+              </span>
+            </div>
             <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="midtrans.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan Midtrans</label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">

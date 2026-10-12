@@ -206,13 +206,23 @@ class PaymentGatewaySettingsService
         $config['environment'] = $env;
 
         if ($key === 'midtrans') {
-            $config['server_key'] = $config['server_key_' . $env] ?? $config['server_key'] ?? '';
-            $config['client_key'] = $config['client_key_' . $env] ?? $config['client_key'] ?? '';
+            $config['server_key'] = !empty($config['server_key_' . $env]) 
+                ? $config['server_key_' . $env] 
+                : (!empty($config['server_key_production']) ? $config['server_key_production'] : ($config['server_key_sandbox'] ?? $config['server_key'] ?? ''));
+            $config['client_key'] = !empty($config['client_key_' . $env]) 
+                ? $config['client_key_' . $env] 
+                : (!empty($config['client_key_production']) ? $config['client_key_production'] : ($config['client_key_sandbox'] ?? $config['client_key'] ?? ''));
         } elseif ($key === 'xendit') {
-            $config['server_key'] = $config['secret_key_' . $env] ?? $config['server_key'] ?? '';
-            $config['client_key'] = $config['public_key_' . $env] ?? $config['client_key'] ?? '';
+            $config['server_key'] = !empty($config['secret_key_' . $env]) 
+                ? $config['secret_key_' . $env] 
+                : (!empty($config['secret_key_production']) ? $config['secret_key_production'] : ($config['secret_key_sandbox'] ?? $config['server_key'] ?? ''));
+            $config['client_key'] = !empty($config['public_key_' . $env]) 
+                ? $config['public_key_' . $env] 
+                : (!empty($config['public_key_production']) ? $config['public_key_production'] : ($config['public_key_sandbox'] ?? $config['client_key'] ?? ''));
         } elseif ($key === 'duitku' || $key === 'tripay') {
-            $config['server_key'] = $config['api_key_' . $env] ?? $config['server_key'] ?? '';
+            $config['server_key'] = !empty($config['api_key_' . $env]) 
+                ? $config['api_key_' . $env] 
+                : (!empty($config['api_key_production']) ? $config['api_key_production'] : ($config['api_key_sandbox'] ?? $config['server_key'] ?? ''));
         }
 
         return $config;
