@@ -19,6 +19,7 @@ class Index extends AdminComponent
         'device_id' => '',
         'sender_number' => '',
         'admin_number' => '',
+        'ticket_group_id' => '',
         'webhook_url' => '',
         'webhook_secret' => '',
         'use_webhook' => false,
@@ -111,6 +112,11 @@ class Index extends AdminComponent
         $dbConn = \App\Models\Setting::getValue('whatsapp.connection', []);
         $this->connection = array_merge($this->connection, $dbConn);
 
+        // Otomatis isi Webhook Inbound menggunakan domain asli aplikasi jika kosong atau masih domain dummy
+        if (empty($this->connection['webhook_url']) || str_contains($this->connection['webhook_url'], 'billing.domain.com') || str_contains($this->connection['webhook_url'], 'localhost')) {
+            $this->connection['webhook_url'] = $this->generateWebhookUrl($this->connection['provider'] ?? 'fonnte');
+        }
+
         $dbTemplates = \App\Models\Setting::getValue('whatsapp.templates', []);
         if (!empty($dbTemplates)) {
             // Merge to preserve missing keys if we added new templates
@@ -123,6 +129,19 @@ class Index extends AdminComponent
                 }
             }
         }
+    }
+
+    public function generateWebhookUrl(?string $provider = null): string
+    {
+        $prov = $provider ?: ($this->connection['provider'] ?? 'fonnte');
+        $sigToken = substr(md5(config('app.key', '') . ':' . $prov), 0, 24);
+        return url("/api/whatsapp/webhook/{$prov}/{$sigToken}");
+    }
+
+    public function resetWebhookUrl(): void
+    {
+        $this->connection['webhook_url'] = $this->generateWebhookUrl($this->connection['provider'] ?? 'fonnte');
+        $this->dispatch('toast', type: 'info', message: 'Webhook URL diperbarui ke domain aktif aplikasi.');
     }
 
     public function authorizeAccess(): void
@@ -144,6 +163,7 @@ class Index extends AdminComponent
             'connection.device_id' => ['nullable', 'string', 'max:100'],
             'connection.sender_number' => ['nullable', 'string', 'max:20'],
             'connection.admin_number' => ['nullable', 'string', 'max:20'],
+            'connection.ticket_group_id' => ['nullable', 'string', 'max:100'],
             'connection.webhook_url' => ['nullable', 'url', 'max:500'],
             'connection.webhook_secret' => ['nullable', 'string', 'max:255'],
             'connection.delay_per_message' => ['required', 'integer', 'min:1', 'max:60'],
@@ -159,6 +179,10 @@ class Index extends AdminComponent
                 $this->connection['base_url'] = $p['default_base_url'];
                 break;
             }
+        }
+        // Otomatis sinkronkan webhook URL jika masih menggunakan pattern default
+        if (empty($this->connection['webhook_url']) || str_contains($this->connection['webhook_url'], '/api/whatsapp/webhook')) {
+            $this->connection['webhook_url'] = $this->generateWebhookUrl($code);
         }
     }
 

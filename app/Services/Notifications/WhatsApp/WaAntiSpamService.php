@@ -109,7 +109,8 @@ final class WaAntiSpamService
      */
     public function preflight(string $phoneNorm, string $category, bool $priorityHigh = false): array
     {
-        if (!preg_match('/^628[0-9]{8,14}$/', $phoneNorm)) return [false, 'invalid_phone'];
+        $isGroup = str_ends_with($phoneNorm, '@g.us') || str_ends_with($phoneNorm, '@broadcast') || str_contains($phoneNorm, '-') || preg_match('/^[0-9]{15,35}$/', $phoneNorm);
+        if (!$isGroup && !preg_match('/^628[0-9]{8,14}$/', $phoneNorm)) return [false, 'invalid_phone'];
         if ($priorityHigh) return [true, '']; // OTP/support/payment bypass semua
         if ($this->dailyReached($phoneNorm)) return [false, 'daily_cap_reached'];
         if ($this->isCoolingDown($phoneNorm, $category)) return [false, 'cooldown'];

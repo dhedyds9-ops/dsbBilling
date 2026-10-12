@@ -85,6 +85,32 @@ class TicketCreatedListener
                 SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
             }
 
+            // ── 3. Kirim notifikasi ke Grup WhatsApp Tiket / NOC ───────
+            $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+            $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+            if ($ticketGroupId !== '') {
+                $groupText = $this->template->ticketCreated([
+                    'ticket_id'     => $ticket->id,
+                    'title'         => $ticket->title,
+                    'category'      => $ticket->category ?? '-',
+                    'priority'      => $ticket->priority ?? 'medium',
+                    'customer_name' => $customer?->name ?? 'Pelanggan',
+                    'created_by'    => 'Portal Pelanggan / Sistem',
+                ]);
+                $msg = new WaOutgoingMessage(
+                    to: $ticketGroupId,
+                    text: $groupText,
+                    category: 'support',
+                    priorityHigh: true,
+                );
+                SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+
+                Log::info('[TicketCreatedListener] Notifikasi tiket baru terkirim ke Grup WA', [
+                    'ticket_id' => $ticket->id,
+                    'group_id'  => $ticketGroupId,
+                ]);
+            }
+
             Log::info('[TicketCreatedListener] Notifikasi tiket baru terkirim', ['ticket_id' => $ticket->id]);
 
         } catch (\Throwable $e) {

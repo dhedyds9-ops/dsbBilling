@@ -34,8 +34,14 @@ final class WhatsAppWebhookController extends Controller
         private readonly WhatsAppNotificationService  $service,
     ) {}
 
-    public function __invoke(Request $request, string $driver, string $sigToken): Response
+    public function __invoke(Request $request, ?string $driver = null, ?string $sigToken = null): Response
     {
+        // Fallback default driver jika tidak ada di URL
+        if (empty($driver)) {
+            $connSetting = \App\Models\Setting::getValue('whatsapp.connection', []);
+            $driver = (string)($connSetting['provider'] ?? 'fonnte');
+        }
+
         // 1. Global throttle
         if (!RateLimiter::attempt('wa:wh:global', 300, fn() => true, 60)) {
             return response('', 429)->header('Retry-After', '60');
@@ -46,10 +52,18 @@ final class WhatsAppWebhookController extends Controller
             return response('', 429)->header('Retry-After', '60');
         }
 
-        // 2. Verifikasi URL signature token (md5(app.key+driver))
+        // 2. Verifikasi URL signature token jika ada di URL atau jika mode strict aktif
+        $connSetting = \App\Models\Setting::getValue('whatsapp.connection', []);
+        $strictVerification = (bool)($connSetting['enable_url_verification'] ?? false);
         $expected = substr(md5(config('app.key', '') . ':' . $driver), 0, 24);
-        if (hash_equals($expected, $sigToken) === false) {
-            Log::warning('[WA-WEBHOOK] Invalid signatureToken', ['driver' => $driver]);
+
+        if (!empty($sigToken)) {
+            if (hash_equals($expected, $sigToken) === false) {
+                Log::warning('[WA-WEBHOOK] Invalid signatureToken', ['driver' => $driver]);
+                return response('', 403);
+            }
+        } elseif ($strictVerification) {
+            Log::warning('[WA-WEBHOOK] Strict signatureToken required but missing', ['driver' => $driver]);
             return response('', 403);
         }
 
@@ -102,10 +116,11 @@ final class WhatsAppWebhookController extends Controller
         return response('', 200);
     }
 
-    public function health(Request $request, string $driver, string $sigToken): Response
+    public function health(Request $request, ?string $driver = null, ?string $sigToken = null): Response
     {
+        $driver = $driver ?: (string)(\App\Models\Setting::getValue('whatsapp.connection', [])['provider'] ?? 'fonnte');
         $expected = substr(md5(config('app.key', '') . ':' . $driver), 0, 24);
-        if (hash_equals($expected, $sigToken) === false) return response('', 403);
+        if ($sigToken && hash_equals($expected, $sigToken) === false) return response('', 403);
         $d = $this->registry->get($driver);
         if (!$d) return response('', 404);
         try {

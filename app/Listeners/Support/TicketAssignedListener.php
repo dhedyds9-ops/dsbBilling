@@ -76,6 +76,27 @@ class TicketAssignedListener
                 'tech_phone'   => $techPhone ?? 'tidak ada',
             ]);
 
+            // ── 3. WhatsApp Notification ke Grup WA Tiket / NOC ───────
+            $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+            $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+            if ($ticketGroupId !== '') {
+                $groupText = "🔧 *TIKET DITUGASKAN*\n\n"
+                    . "No. Tiket : *#{$ticket->id}*\n"
+                    . "Judul     : {$ticket->title}\n"
+                    . "Pelanggan : " . ($customer?->name ?? 'Pelanggan') . "\n"
+                    . "👨‍🔧 Teknisi  : *{$technician->name}*\n"
+                    . "Prioritas : " . strtoupper($ticket->priority ?? 'medium') . "\n\n"
+                    . "Teknisi telah ditugaskan untuk menangani tiket ini.";
+
+                $msg = new WaOutgoingMessage(
+                    to: $ticketGroupId,
+                    text: $groupText,
+                    category: 'support',
+                    priorityHigh: true,
+                );
+                SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+            }
+
         } catch (\Throwable $e) {
             Log::error('[TicketAssignedListener] Gagal: ' . $e->getMessage(), [
                 'ticket_id' => $event->ticketId,

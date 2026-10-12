@@ -51,22 +51,35 @@
           <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Device ID</label><input type="text" wire:model="connection.device_id" autocomplete="off" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="(opsional, Whacenter / multi-device)"></div>
           <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Sender Number</label><input type="text" wire:model="connection.sender_number" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="628xx-xxxx-xxxx"></div>
           <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Admin / CS Number</label><input type="text" wire:model="connection.admin_number" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="628xx (untuk notifikasi internal)"></div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Grup WhatsApp Tiket (NOC / Support)</label>
+            <input type="text" wire:model="connection.ticket_group_id" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs dark:bg-slate-900 dark:text-slate-100" placeholder="120363xxxxxx@g.us (ID Grup WhatsApp)">
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Notifikasi setiap tiket baru & penugasan teknisi otomatis dikirim ke grup ini.</p>
+          </div>
           <div class="md:col-span-2" x-data="{ copied: false }">
-    <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Webhook Inbound (Callback URL)</label>
-    <div class="relative">
-        <input type="url" id="webhook_url_input" wire:model="connection.webhook_url" class="w-full pl-3 pr-12 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs dark:bg-slate-900 dark:text-slate-100" placeholder="https://billing.domain.com/api/v1/whatsapp/webhook">
-        <button type="button" @click="navigator.clipboard.writeText(document.getElementById('webhook_url_input').value); copied = true; setTimeout(() => copied = false, 2000)" class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none" title="Copy URL">
-            <span class="material-symbols-outlined notranslate" style="font-size:18px" x-text="copied ? 'check' : 'content_copy'">content_copy</span>
+    <div class="flex items-center justify-between mb-1">
+        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Webhook Inbound (Callback URL)</label>
+        <button type="button" wire:click="resetWebhookUrl" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1" title="Perbarui Callback URL dengan domain web saat ini">
+            <span class="material-symbols-outlined notranslate" style="font-size:14px">sync</span> Sesuaikan Domain Aplikasi
         </button>
+    </div>
+    <div class="relative">
+        <input type="url" id="webhook_url_input" wire:model="connection.webhook_url" class="w-full pl-3 pr-20 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs dark:bg-slate-900 dark:text-slate-100" placeholder="{{ url('/api/whatsapp/webhook/' . ($connection['provider'] ?? 'fonnte') . '/' . substr(md5(config('app.key', '') . ':' . ($connection['provider'] ?? 'fonnte')), 0, 24)) }}">
+        <div class="absolute inset-y-0 right-0 flex items-center pr-1.5 gap-1">
+            <button type="button" @click="navigator.clipboard.writeText(document.getElementById('webhook_url_input').value); copied = true; setTimeout(() => copied = false, 2000)" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs transition-colors focus:outline-none" title="Copy URL">
+                <span class="material-symbols-outlined notranslate" style="font-size:15px" x-text="copied ? 'check' : 'content_copy'">content_copy</span>
+                <span x-text="copied ? 'Tersalin' : 'Copy'">Copy</span>
+            </button>
+        </div>
     </div>
     <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
         <h4 class="text-[12px] font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 mb-1.5">
             <span class="material-symbols-outlined notranslate" style="font-size:16px">help</span> Panduan Konfigurasi Webhook
         </h4>
         <ul class="list-disc pl-4 text-[11px] text-blue-700 dark:text-blue-400 space-y-1">
-            <li><strong>Copy URL</strong> di atas dan paste ke menu <strong>Webhook</strong> atau <strong>Callback</strong> di dashboard provider WA Gateway Anda.</li>
+            <li><strong>Copy URL</strong> di atas dan paste ke menu <strong>Webhook</strong> atau <strong>Callback</strong> di dashboard provider WA Gateway Anda (misal Fonnte/Wablas).</li>
             <li>Jika provider meminta metode HTTP, pilih <strong>POST</strong>.</li>
-            <li>Fitur ini berguna untuk Auto-Reply, Auto-Respond cek tagihan pelanggan, dan update status pesan.</li>
+            <li>Fitur ini berguna untuk Auto-Reply bot pelanggan, cek tagihan instan via WA, dan konfirmasi delivery pesan.</li>
             <li>Pastikan <em>"Aktifkan Webhook"</em> di bawah tercentang agar sistem dsBilling memproses pesan masuk.</li>
         </ul>
     </div>

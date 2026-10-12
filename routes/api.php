@@ -23,10 +23,10 @@ Route::post('/telegram/webhook', [\App\Http\Controllers\Api\TelegramWebhookContr
 
 // ========================= WHATSAPP WEBHOOKS (NO AUTH — signature-based security) ========================
 Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
-    Route::post('/webhook/{driver}/{sigToken}', \App\Http\Controllers\Api\WhatsApp\WhatsAppWebhookController::class)
+    Route::post('/webhook/{driver?}/{sigToken?}', \App\Http\Controllers\Api\WhatsApp\WhatsAppWebhookController::class)
         ->name('webhook')
         ->middleware('throttle:180,1');
-    Route::get('/health/{driver}/{sigToken}', [\App\Http\Controllers\Api\WhatsApp\WhatsAppWebhookController::class, 'health'])
+    Route::get('/health/{driver?}/{sigToken?}', [\App\Http\Controllers\Api\WhatsApp\WhatsAppWebhookController::class, 'health'])
         ->name('health')
         ->middleware('throttle:60,1');
 });
