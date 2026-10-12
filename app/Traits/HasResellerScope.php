@@ -44,8 +44,16 @@ trait HasResellerScope
             // SECURITY: Gunakan fully qualified column untuk menghindari ambiguity join
             if ($user->hasRole(UserRole::Reseller->value)) {
                 $table = $builder->getQuery()->from;
-                $column = $table . '.reseller_id';
-                $builder->where($column, $user->getEffectiveResellerId());
+                if (\Illuminate\Support\Facades\Schema::hasColumn($table, 'reseller_id')) {
+                    $column = $table . '.reseller_id';
+                    $builder->where($column, $user->getEffectiveResellerId());
+                } elseif (\Illuminate\Support\Facades\Schema::hasColumn($table, 'owner_id')) {
+                    // Mendukung model seperti ServiceProfile yang memakai owner_id / visibility
+                    $builder->where(function($q) use ($table, $user) {
+                        $q->where($table . '.owner_id', $user->getEffectiveResellerId())
+                          ->orWhereIn($table . '.visibility', ['global', 'shared']);
+                    });
+                }
                 return;
             }
 

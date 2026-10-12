@@ -111,7 +111,16 @@ class Onu extends Model
     {
         $user = $user ?? auth()->user();
         if ($user && $user->hasRole('reseller')) {
-            return $query->where('branch_id', $user->branch_id);
+            $resellerId = $user->getEffectiveResellerId();
+            return $query->where(function($q) use ($user, $resellerId) {
+                if (!empty($user->branch_id)) {
+                    $q->where('branch_id', $user->branch_id);
+                }
+                // Also match ONUs assigned to customer services belonging to this reseller
+                $q->orWhereHas('customerService', function($csQ) use ($resellerId) {
+                    $csQ->where('reseller_id', $resellerId);
+                });
+            });
         }
         return $query;
     }

@@ -75,6 +75,33 @@ class ACSDevice extends Model
         return $query->where('status', 'offline');
     }
 
+    public function scopeForReseller($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        if ($user && $user->hasRole('reseller')) {
+            $resellerId = $user->getEffectiveResellerId();
+            return $query->where(function($q) use ($user, $resellerId) {
+                // Sesuai cabang jika user punya branch_id
+                if (!empty($user->branch_id)) {
+                    $q->whereHas('pop', function($popQ) use ($user) {
+                        $popQ->where('branch_id', $user->branch_id);
+                    })->orWhereHas('olt', function($oltQ) use ($user) {
+                        $oltQ->where('branch_id', $user->branch_id);
+                    });
+                }
+                // Sesuai customer service milik reseller ini
+                $q->orWhereHas('customerService', function($csQ) use ($resellerId) {
+                    $csQ->where('reseller_id', $resellerId);
+                });
+                // Sesuai ONU yang berelasi dengan customer reseller
+                $q->orWhereHas('onu.customerService', function($onuCsQ) use ($resellerId) {
+                    $onuCsQ->where('reseller_id', $resellerId);
+                });
+            });
+        }
+        return $query;
+    }
+
     public function customerService()
     {
         return $this->belongsTo(CustomerService::class);

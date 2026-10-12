@@ -43,8 +43,10 @@ class RouteCrawlerTest extends TestCase
 
             $response = $this->actingAs($user)->get($uri);
             
-            if ($response->status() >= 500) {
-                $failures[] = "URI: {$uri} - Status: {$response->status()} - Exception: " . ($response->exception ? $response->exception->getMessage() : 'Unknown');
+            $statusCode = method_exists($response, 'status') ? $response->status() : $response->getStatusCode();
+            
+            if ($statusCode >= 500) {
+                $failures[] = "URI: {$uri} - Status: {$statusCode} - Exception: " . ($response->exception ? $response->exception->getMessage() : 'Unknown');
             } else {
                 $successes++;
             }

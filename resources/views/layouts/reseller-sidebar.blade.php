@@ -25,6 +25,18 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('reseller-portal.network.onus.index') }}" class="nav-link {{ request()->routeIs('reseller-portal.network.onus.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-network-wired"></i>
+                        <p>Data ONU / Modem</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('reseller-portal.network.acs-devices.index') }}" class="nav-link {{ request()->routeIs('reseller-portal.network.acs-devices.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-microchip"></i>
+                        <p>GenieACS (TR-069)</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('reseller-portal.network.odcs.index') }}" class="nav-link {{ request()->routeIs('reseller-portal.network.odcs.*') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-hub"></i>
                         <p>Data ODC (Read-Only)</p>

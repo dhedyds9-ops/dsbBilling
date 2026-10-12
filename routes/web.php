@@ -474,6 +474,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/map', \App\Livewire\ResellerPortal\Network\Map\Index::class)->name('map');
             Route::get('/olts', \App\Livewire\ResellerPortal\Network\Olt\Index::class)->name('olts.index');
             Route::get('/olts/{id}', \App\Livewire\ResellerPortal\Network\Olt\Show::class)->name('olts.show');
+            Route::get('/onus', \App\Livewire\ResellerPortal\Network\Onu\Index::class)->name('onus.index');
+            Route::get('/acs-devices', \App\Livewire\ResellerPortal\Network\AcsDevice\Index::class)->name('acs-devices.index');
             Route::get('/odcs', \App\Livewire\ResellerPortal\Network\Odc\Index::class)->name('odcs.index');
             Route::get('/odps', \App\Livewire\ResellerPortal\Network\Odp\Index::class)->name('odps.index');
         });
@@ -553,8 +555,6 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
     }
     return back()->with('success', 'Gambar berhasil diperbarui!');
 })->middleware(['auth', 'role:administrator,manager'])->name('pengaturan.perusahaan.upload-logo');
-Route::get('/test-noc-render', function() { return view('layouts.noc', ['slot' => 'TEST CONTENT', 'nocNav' => []]); });
-Route::get('/noc-acs-test', function() { return view('livewire.acs.device.index', ['devices' => \Illuminate\Pagination\LengthAwarePaginator::make([], 0, 10), 'isNocLayout' => true]); });
 
 
 
