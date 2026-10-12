@@ -202,7 +202,7 @@ class PaymentGatewaySettingsService
         $config = $all[$key] ?? null;
         if (!$config) return null;
 
-        $env = \App\Models\Setting::getValue('payment_gateway.general.mode', 'sandbox');
+        $env = $config['environment'] ?? $config['mode'] ?? \App\Models\Setting::getValue('payment_gateway.general.mode', 'sandbox');
         $config['environment'] = $env;
 
         if ($key === 'midtrans') {

@@ -35,6 +35,7 @@ class Index extends AdminComponent
 
     public array $midtrans = [
         'enabled'             => true,
+        'environment'         => 'sandbox',
         'server_key_sandbox'  => '',
         'server_key_production'=> '',
         'client_key_sandbox'  => '',
@@ -436,17 +437,18 @@ class Index extends AdminComponent
     {
         $this->balanceInfo = null;
         try {
-            $key = $this->general['mode'] === 'sandbox'
-                ? $this->midtrans['server_key_sandbox']
-                : $this->midtrans['server_key_production'];
-            $url = $this->general['mode'] === 'sandbox'
+            $mode = $this->midtrans['environment'] ?? $this->general['mode'] ?? 'sandbox';
+            $key = $mode === 'sandbox'
+                ? ($this->midtrans['server_key_sandbox'] ?: $this->midtrans['server_key_production'])
+                : ($this->midtrans['server_key_production'] ?: $this->midtrans['server_key_sandbox']);
+            $url = $mode === 'sandbox'
                 ? 'https://api.sandbox.midtrans.com/v2/DSB-TEST-PING/status'
                 : 'https://api.midtrans.com/v2/DSB-TEST-PING/status';
             if (empty($key)) { $this->balanceInfo = '⚠ Server key belum diisi.'; return; }
             $resp = Http::timeout(10)->withBasicAuth($key, '')->acceptJson()->get($url);
             $this->balanceInfo = match(true) {
-                $resp->status() === 401 => '❌ HTTP 401 Unauthorized — Server Key salah atau mode tidak sesuai (' . $this->general['mode'] . ').',
-                $resp->status() === 404 => '✅ Koneksi Berhasil! Server Key valid (Mode: ' . strtoupper($this->general['mode']) . ').',
+                $resp->status() === 401 => '❌ HTTP 401 Unauthorized — Server Key salah atau mode tidak sesuai (' . $mode . ').',
+                $resp->status() === 404 => '✅ Koneksi Berhasil! Server Key valid (Mode: ' . strtoupper($mode) . ').',
                 default                 => 'HTTP ' . $resp->status() . ': ' . $resp->body(),
             };
         } catch (Throwable $e) {
