@@ -122,21 +122,20 @@
         <!-- Checkout Button -->
         <div class="pt-2">
             <button type="submit" 
-                class="w-full relative group overflow-hidden py-3 px-4 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 shadow-lg shadow-cyan-500/25 active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                class="w-full relative group overflow-hidden py-3.5 px-6 rounded-xl text-base font-bold text-white bg-gradient-to-r from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-600 hover:via-teal-700 hover:to-cyan-700 shadow-lg shadow-emerald-500/25 active:scale-[0.99] transition-all disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
                 wire:loading.attr="disabled">
-                <div class="flex items-center justify-center gap-2">
-                    <span wire:loading.remove wire:target="checkout" class="flex items-center gap-2">
-                        <span>Lanjut ke Pembayaran</span>
-                        <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                    </span>
-                    <span wire:loading wire:target="checkout" class="flex items-center gap-2">
-                        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Menyiapkan Invoice...</span>
-                    </span>
-                </div>
+                <span wire:loading.remove wire:target="checkout" class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[20px]">payments</span>
+                    <span>Bayar Sekarang &bull; Rp {{ number_format($serviceProfile->base_price, 0, ',', '.') }}</span>
+                    <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </span>
+                <span wire:loading wire:target="checkout" class="flex items-center gap-2">
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Memproses Pembayaran...</span>
+                </span>
             </button>
         </div>
     </form>
