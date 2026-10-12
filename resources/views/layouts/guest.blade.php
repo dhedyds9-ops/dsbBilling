@@ -1,5 +1,6 @@
+@props(['title' => null])
 <x-layouts.base
-    :title="config('app.name', 'dsBilling') . ' - Login'"
+    :title="$title ?? (config('app.name', 'dsBilling') . ' - Login')"
     body-class="font-sans text-slate-900 dark:text-slate-100 antialiased bg-slate-50 dark:bg-slate-900/50 relative flex flex-col items-center justify-center min-h-screen py-10 overflow-y-auto"
 >
     <x-slot:head>

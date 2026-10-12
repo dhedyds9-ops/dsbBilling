@@ -125,6 +125,8 @@ class BuyVoucher extends Component
 
     public function render()
     {
-        return view('livewire.guest.buy-voucher')->layout('layouts.guest');
+        $title = 'Beli Voucher Internet - ' . ($this->serviceProfile->name ?? config('app.name', 'dsBilling'));
+        return view('livewire.guest.buy-voucher')
+            ->layout('layouts.guest', ['title' => $title]);
     }
 }
