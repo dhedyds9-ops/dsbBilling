@@ -50,6 +50,7 @@ Route::post('/buy-voucher-guest', function (\Illuminate\Http\Request $request) {
 })->name('buy-voucher-guest');
 
 Route::get('/buy-voucher', \App\Livewire\Guest\BuyVoucher::class)->name('buy-voucher.page');
+Route::get('/buy-voucher/success/{uuid}', \App\Livewire\Guest\BuyVoucherSuccess::class)->name('guest.buy-voucher.success');
 
 Route::post('/register-lead', function (\Illuminate\Http\Request $request) {
     $data = $request->validate([
