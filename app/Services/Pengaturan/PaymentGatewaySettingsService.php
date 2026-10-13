@@ -223,6 +223,10 @@ class PaymentGatewaySettingsService
             $config['server_key'] = !empty($config['api_key_' . $env]) 
                 ? $config['api_key_' . $env] 
                 : (!empty($config['api_key_production']) ? $config['api_key_production'] : ($config['api_key_sandbox'] ?? $config['server_key'] ?? ''));
+        } elseif ($key === 'ipaymu') {
+            $config['api_key'] = !empty($config['api_key_' . $env]) 
+                ? $config['api_key_' . $env] 
+                : (!empty($config['api_key_production']) ? $config['api_key_production'] : ($config['api_key_sandbox'] ?? $config['api_key'] ?? ''));
         }
 
         return $config;

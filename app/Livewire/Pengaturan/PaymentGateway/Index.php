@@ -59,6 +59,7 @@ class Index extends AdminComponent
     // ✅ Xendit: corrected webhook field name (webhook_verification_token, bukan webhook_token)
     public array $xendit = [
         'enabled'                   => false,
+        'environment'               => 'sandbox',
         'secret_key_sandbox'        => '',
         'secret_key_production'     => '',
         'public_key_sandbox'        => '',
@@ -104,6 +105,7 @@ class Index extends AdminComponent
     // ✅ Duitku: kode channel diperbaiki & dilengkapi sesuai dokumentasi resmi Duitku
     public array $duitku = [
         'enabled'          => false,
+        'environment'      => 'sandbox',
         'merchant_code'    => '',
         'api_key_sandbox'  => '',
         'api_key_production'=> '',
@@ -132,6 +134,7 @@ class Index extends AdminComponent
     // ✅ Tripay: kode channel dilengkapi (PERMATAVA, CIMBVA, MUAMALATVA, ALFAMIDI)
     public array $tripay = [
         'enabled'           => false,
+        'environment'       => 'sandbox',
         'merchant_code'     => '',
         'api_key_sandbox'   => '',
         'api_key_production'=> '',
@@ -157,6 +160,7 @@ class Index extends AdminComponent
 
     public array $ipaymu = [
         'enabled'           => false,
+        'environment'       => 'sandbox',
         'va_number'         => '',
         'api_key_sandbox'   => '',
         'api_key_production'=> '',
@@ -460,14 +464,15 @@ class Index extends AdminComponent
     {
         $this->balanceInfo = null;
         try {
-            $key = $this->general['mode'] === 'sandbox'
-                ? $this->xendit['secret_key_sandbox']
-                : $this->xendit['secret_key_production'];
+            $mode = $this->xendit['environment'] ?? $this->general['mode'] ?? 'sandbox';
+            $key = $mode === 'sandbox'
+                ? ($this->xendit['secret_key_sandbox'] ?: $this->xendit['secret_key_production'])
+                : ($this->xendit['secret_key_production'] ?: $this->xendit['secret_key_sandbox']);
             if (empty($key)) { $this->balanceInfo = '⚠ Secret key belum diisi.'; return; }
             $resp = Http::timeout(10)->withBasicAuth($key, '')->get('https://api.xendit.co/balance');
             $this->balanceInfo = $resp->successful()
-                ? '✅ OK — ' . json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-                : '❌ HTTP ' . $resp->status() . ': ' . $resp->body();
+                ? '✅ OK (Mode: ' . strtoupper($mode) . ') — ' . json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+                : '❌ HTTP ' . $resp->status() . ' (' . $mode . '): ' . $resp->body();
         } catch (Throwable $e) {
             $this->balanceInfo = 'Error: ' . $e->getMessage();
         }
@@ -477,17 +482,18 @@ class Index extends AdminComponent
     {
         $this->balanceInfo = null;
         try {
-            $key = $this->general['mode'] === 'sandbox'
-                ? $this->tripay['api_key_sandbox']
-                : $this->tripay['api_key_production'];
-            $url = $this->general['mode'] === 'sandbox'
+            $mode = $this->tripay['environment'] ?? $this->general['mode'] ?? 'sandbox';
+            $key = $mode === 'sandbox'
+                ? ($this->tripay['api_key_sandbox'] ?: $this->tripay['api_key_production'])
+                : ($this->tripay['api_key_production'] ?: $this->tripay['api_key_sandbox']);
+            $url = $mode === 'sandbox'
                 ? 'https://tripay.co.id/api-sandbox/merchant/balance'
                 : 'https://tripay.co.id/api/merchant/balance';
             if (empty($key)) { $this->balanceInfo = '⚠ API key belum diisi.'; return; }
             $resp = Http::timeout(10)->withHeaders(['Authorization' => 'Bearer ' . $key])->get($url);
             $this->balanceInfo = $resp->successful()
-                ? '✅ OK — ' . json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-                : '❌ HTTP ' . $resp->status() . ': ' . $resp->body();
+                ? '✅ OK (Mode: ' . strtoupper($mode) . ') — ' . json_encode($resp->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+                : '❌ HTTP ' . $resp->status() . ' (' . $mode . '): ' . $resp->body();
         } catch (Throwable $e) {
             $this->balanceInfo = 'Error: ' . $e->getMessage();
         }
@@ -497,9 +503,10 @@ class Index extends AdminComponent
     {
         $this->balanceInfo = null;
         try {
-            $key = $this->general['mode'] === 'sandbox'
-                ? $this->ipaymu['api_key_sandbox']
-                : $this->ipaymu['api_key_production'];
+            $mode = $this->ipaymu['environment'] ?? $this->general['mode'] ?? 'sandbox';
+            $key = $mode === 'sandbox'
+                ? ($this->ipaymu['api_key_sandbox'] ?: $this->ipaymu['api_key_production'])
+                : ($this->ipaymu['api_key_production'] ?: $this->ipaymu['api_key_sandbox']);
             
             if (empty($key) || empty($this->ipaymu['va_number'])) { 
                 $this->balanceInfo = '⚠️ API key / VA Number belum diisi.'; 

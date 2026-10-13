@@ -108,11 +108,23 @@
 
       @elseif($activeTab === 'xendit')
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
-            <span class="font-semibold text-slate-900 dark:text-slate-100">Xendit Payment Gateway</span>
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-900 dark:text-slate-100">Xendit Payment Gateway</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ ($xendit['environment'] ?? $general['mode']) === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }}">
+                Mode Aktif: {{ strtoupper($xendit['environment'] ?? $general['mode']) }}
+              </span>
+            </div>
             <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="xendit.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan Xendit</label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode Xendit</label>
+              <select wire:model.live="xendit.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
+                <option value="sandbox">Sandbox (Testing / Uji Coba)</option>
+                <option value="production">Production (Live / Transaksi Nyata)</option>
+              </select>
+            </div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Secret Key Sandbox</label><input type="password" wire:model="xendit.secret_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Secret Key Production</label><input type="password" wire:model="xendit.secret_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Public Key Sandbox</label><input type="text" wire:model="xendit.public_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
@@ -155,11 +167,23 @@
 
       @elseif($activeTab === 'duitku')
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
-            <span class="font-semibold text-slate-900 dark:text-slate-100">Duitku (PT. Dukita Indonesia)</span>
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-900 dark:text-slate-100">Duitku (PT. Dukita Indonesia)</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ ($duitku['environment'] ?? $general['mode']) === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }}">
+                Mode Aktif: {{ strtoupper($duitku['environment'] ?? $general['mode']) }}
+              </span>
+            </div>
             <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="duitku.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan Duitku</label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode Duitku</label>
+              <select wire:model.live="duitku.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
+                <option value="sandbox">Sandbox (Testing / Uji Coba)</option>
+                <option value="production">Production (Live / Transaksi Nyata)</option>
+              </select>
+            </div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Merchant Code</label><input type="text" wire:model="duitku.merchant_code" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Expiry Period (menit)</label><input type="number" wire:model="duitku.expiry_period" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
             <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:model="duitku.api_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
@@ -191,11 +215,23 @@
 
       @elseif($activeTab === 'tripay')
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
-            <span class="font-semibold text-slate-900 dark:text-slate-100">Tripay (PT. Lini Masa Triyas)</span>
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-900 dark:text-slate-100">Tripay (PT. Lini Masa Triyas)</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ ($tripay['environment'] ?? $general['mode']) === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }}">
+                Mode Aktif: {{ strtoupper($tripay['environment'] ?? $general['mode']) }}
+              </span>
+            </div>
             <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="tripay.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan Tripay</label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode Tripay</label>
+              <select wire:model.live="tripay.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
+                <option value="sandbox">Sandbox (Testing / Uji Coba)</option>
+                <option value="production">Production (Live / Transaksi Nyata)</option>
+              </select>
+            </div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Merchant Code</label><input type="text" wire:model="tripay.merchant_code" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Private Key</label><input type="password" wire:model="tripay.private_key" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
             <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:model="tripay.api_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
@@ -222,11 +258,23 @@
 
       @elseif($activeTab === 'ipaymu')
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
-            <span class="font-semibold text-slate-900 dark:text-slate-100">iPaymu Payment Gateway</span>
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-900 dark:text-slate-100">iPaymu Payment Gateway</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ ($ipaymu['environment'] ?? $general['mode']) === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }}">
+                Mode Aktif: {{ strtoupper($ipaymu['environment'] ?? $general['mode']) }}
+              </span>
+            </div>
             <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="ipaymu.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan iPaymu</label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode iPaymu</label>
+              <select wire:model.live="ipaymu.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
+                <option value="sandbox">Sandbox (Testing / Uji Coba)</option>
+                <option value="production">Production (Live / Transaksi Nyata)</option>
+              </select>
+            </div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">VA Number</label><input type="text" wire:model="ipaymu.va_number" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
             <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:model="ipaymu.api_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
             <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Production</label><input type="password" wire:model="ipaymu.api_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
