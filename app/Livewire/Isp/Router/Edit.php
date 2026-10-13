@@ -99,11 +99,12 @@ class Edit extends AdminComponent
 
     public $testConnectionStatus = null;
     public $testConnectionMessage = null;
+    public $connectedDevice = null;
 
     public function testConnection()
     {
         $this->validate([
-            'ip_address' => 'required|ip',
+            'ip_address' => 'required',
             'username' => 'required',
             'password' => 'required',
             'api_port' => 'required|numeric',
@@ -111,28 +112,73 @@ class Edit extends AdminComponent
 
         $this->testConnectionStatus = null;
         $this->testConnectionMessage = null;
+        $this->connectedDevice = null;
 
         try {
             $tempRouter = new \App\Models\ISP\Router();
             $tempRouter->ip_address = $this->ip_address;
             $tempRouter->username = $this->username;
             $tempRouter->password = $this->password;
-            $tempRouter->api_port = $this->api_port;
-            $tempRouter->use_ssl = $this->use_ssl;
-            $tempRouter->timeout = 5; // Use short timeout for testing
+            $tempRouter->api_port = (int) $this->api_port;
+            $tempRouter->use_ssl = (bool) $this->use_ssl;
+            $tempRouter->timeout = 5;
+
+            // 1. Socket Ping Check
+            $fp = @fsockopen($this->ip_address, (int) $this->api_port, $errno, $errstr, 3);
+            if (!$fp) {
+                $this->testConnectionStatus = 'error';
+                $this->testConnectionMessage = "Gagal menjangkau host pada port {$this->api_port}. Pastikan IP benar, router aktif, dan port API tidak terblokir firewall.";
+                return;
+            }
+            fclose($fp);
 
             $service = app(\App\Integration\MikroTik\Services\RouterOSService::class);
             $driver = $service->getDriver($tempRouter);
             
             if ($driver->connect()) {
-                $this->testConnectionStatus = 'success';
-                $this->testConnectionMessage = 'Berhasil terhubung ke Router!';
+                $identity = '';
+                $version = '';
+                $boardName = '';
+
+                try {
+                    $ident = $driver->query('/system/identity/print');
+                    if (isset($ident[0]['name'])) {
+                        $identity = $ident[0]['name'];
+                    }
+                } catch (\Throwable $e) {}
+
+                try {
+                    $sysRes = $driver->query('/system/resource/print');
+                    if (isset($sysRes[0])) {
+                        $version = $sysRes[0]['version'] ?? '';
+                        $boardName = $sysRes[0]['board-name'] ?? '';
+                    }
+                } catch (\Throwable $e) {}
+
                 $driver->disconnect();
+
+                // Auto-detect ROS version
+                if (!empty($version)) {
+                    if (str_starts_with($version, '7.')) {
+                        $this->routeros_version = 'v7';
+                    } elseif (str_starts_with($version, '6.')) {
+                        $this->routeros_version = 'v6';
+                    }
+                }
+
+                $this->testConnectionStatus = 'success';
+                $details = array_filter([$identity, $boardName, $version ? "v{$version}" : null]);
+                $this->testConnectionMessage = 'Berhasil terhubung ke Router! ' . ($details ? '(' . implode(' - ', $details) . ')' : '');
+                $this->connectedDevice = [
+                    'identity' => $identity,
+                    'board' => $boardName,
+                    'version' => $version,
+                ];
             } else {
                 $this->testConnectionStatus = 'error';
-                $this->testConnectionMessage = 'Gagal terhubung. Pastikan IP, Port, Username, dan Password benar.';
+                $this->testConnectionMessage = "Port {$this->api_port} terbuka, tetapi autentikasi API ditolak. Pastikan Username dan Password benar, serta service API diaktifkan.";
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->testConnectionStatus = 'error';
             $this->testConnectionMessage = 'Koneksi gagal: ' . $e->getMessage();
         }

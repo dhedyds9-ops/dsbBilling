@@ -7,6 +7,7 @@ use App\Models\ISP\Pop;
 use App\Models\ISP\Vendor;
 use App\Services\ISP\RouterService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class Create extends AdminComponent
 {
@@ -23,8 +24,20 @@ class Create extends AdminComponent
     public $timeout = 30;
     public $username;
     public $password;
+    public $radius_secret;
     public $routeros_version;
     public $status = 'active';
+
+    // Live Test Connection
+    public $testConnectionStatus = null;
+    public $testConnectionMessage = null;
+    public $connectedDevice = null;
+
+    // Quick Script Generator Modal
+    public $showScriptModal = false;
+    public $scriptVersion = 'v7';
+    public $customRadiusIp = '';
+    public $generatedScript = '';
 
     public function mount()
     {
@@ -35,154 +48,200 @@ class Create extends AdminComponent
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'MikroTik', 'url' => route('isp.routers.index')],
             ['label' => 'Router', 'url' => route('isp.routers.index')],
-            ['label' => 'Buat Baru'],
+            ['label' => 'Tambah Baru'],
         ];
+
+        $this->customRadiusIp = request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost();
     }
 
-    // duplicate save removed
-    public $currentStep = 1;
-    public $radius_secret;
-    public $diagnosticResults = [];
-    public $testPassed = false;
-    public $scriptVersion = 'ros7'; // Default to ROS7
-
-    public function generateCredentials()
+    public function testConnection()
     {
         $this->validate([
-            'name' => 'required|string',
             'ip_address' => 'required',
             'api_port' => 'required|numeric',
         ]);
 
-        // Generate recognizable username
-        $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name));
-        $this->username = 'api.dsb.' . $cleanName;
-        
-        // Generate random passwords
-        $this->password = \Illuminate\Support\Str::random(32);
-        $this->radius_secret = \Illuminate\Support\Str::random(32);
-        
-        if (empty($this->code)) {
-            $this->code = strtoupper($cleanName) . '-' . rand(100, 999);
+        if (empty($this->username) || empty($this->password)) {
+            $this->testConnectionStatus = 'error';
+            $this->testConnectionMessage = 'Username dan Password API harus diisi terlebih dahulu untuk menguji koneksi.';
+            return;
         }
 
-        $this->currentStep = 2;
-    }
-
-    public function goToStep($step)
-    {
-        $this->currentStep = $step;
-    }
-
-    public function getDiagnosticChecklist()
-    {
-        return [
-            'api_reachable' => 'API Port Reachable',
-            'login_success' => 'API Login Success',
-            'identity' => 'Identity: ',
-            'os_version' => 'RouterOS Version: ',
-            'board_name' => 'Board Name: ',
-            'cpu' => 'CPU: ',
-            'radius_available' => 'RADIUS Configured',
-            'user_found' => 'API User Found',
-        ];
-    }
-
-    public function runDiagnosticTest()
-    {
-        $this->diagnosticResults = [
-            'api_reachable' => ['status' => 'pending', 'message' => ''],
-            'login_success' => ['status' => 'pending', 'message' => ''],
-            'identity' => ['status' => 'pending', 'message' => ''],
-            'os_version' => ['status' => 'pending', 'message' => ''],
-            'board_name' => ['status' => 'pending', 'message' => ''],
-            'cpu' => ['status' => 'pending', 'message' => ''],
-            'radius_available' => ['status' => 'pending', 'message' => ''],
-            'user_found' => ['status' => 'pending', 'message' => ''],
-        ];
-        $this->testPassed = false;
+        $this->testConnectionStatus = null;
+        $this->testConnectionMessage = null;
+        $this->connectedDevice = null;
 
         try {
             $tempRouter = new \App\Models\ISP\Router();
             $tempRouter->ip_address = $this->ip_address;
             $tempRouter->username = $this->username;
             $tempRouter->password = $this->password;
-            $tempRouter->api_port = $this->api_port;
-            $tempRouter->use_ssl = $this->use_ssl;
-            $tempRouter->timeout = 5; 
+            $tempRouter->api_port = (int) $this->api_port;
+            $tempRouter->use_ssl = (bool) $this->use_ssl;
+            $tempRouter->timeout = 5;
 
-            // 1. Check API Port (Socket Check)
-            $fp = @fsockopen($this->ip_address, $this->api_port, $errno, $errstr, 2);
+            // 1. Socket Ping Check
+            $fp = @fsockopen($this->ip_address, (int) $this->api_port, $errno, $errstr, 3);
             if (!$fp) {
-                $this->diagnosticResults['api_reachable'] = ['status' => 'failed', 'message' => '❌ API Port tertutup atau terblokir Firewall. Pastikan port ' . $this->api_port . ' terbuka.'];
-                throw new \Exception("Port unreachable");
+                $this->testConnectionStatus = 'error';
+                $this->testConnectionMessage = "Gagal menjangkau host pada port {$this->api_port}. Pastikan IP benar, router aktif, dan port API tidak terblokir firewall.";
+                return;
             }
             fclose($fp);
-            $this->diagnosticResults['api_reachable'] = ['status' => 'success', 'message' => '✅ Port ' . $this->api_port . ' Terbuka'];
 
-            // 2. Login
+            // 2. Connect via API Driver
             $service = app(\App\Integration\MikroTik\Services\RouterOSService::class);
             $driver = $service->getDriver($tempRouter);
-            
+
             if (!$driver->connect()) {
-                $this->diagnosticResults['login_success'] = ['status' => 'failed', 'message' => '❌ Login Gagal. Username/Password salah atau API dinonaktifkan (/ip service enable api)'];
-                throw new \Exception("Login failed");
-            }
-            $this->diagnosticResults['login_success'] = ['status' => 'success', 'message' => '✅ Login Berhasil'];
-
-            // 3. Get System Resources
-            $sysRes = $driver->query('/system/resource/print');
-            if (isset($sysRes[0])) {
-                $this->routeros_version = $sysRes[0]['version'] ?? 'Unknown';
-                $this->diagnosticResults['os_version'] = ['status' => 'success', 'message' => '✅ ' . ($sysRes[0]['version'] ?? '')];
-                $this->diagnosticResults['board_name'] = ['status' => 'success', 'message' => '✅ ' . ($sysRes[0]['board-name'] ?? '')];
-                $this->diagnosticResults['cpu'] = ['status' => 'success', 'message' => '✅ ' . ($sysRes[0]['cpu'] ?? '')];
+                $this->testConnectionStatus = 'error';
+                $this->testConnectionMessage = "Port {$this->api_port} terbuka, tetapi autentikasi API ditolak. Pastikan Username dan Password benar, serta service API diaktifkan (/ip service enable api).";
+                return;
             }
 
-            // 4. Get Identity
-            $sysIdent = $driver->query('/system/identity/print');
-            if (isset($sysIdent[0])) {
-                $this->diagnosticResults['identity'] = ['status' => 'success', 'message' => '✅ ' . ($sysIdent[0]['name'] ?? '')];
-            }
+            // 3. Ambil data sistem & deteksi versi ROS
+            $identity = '';
+            $version = '';
+            $boardName = '';
 
-            // 5. Check API User
-            $users = $driver->query('/user/print', [['name', '=', $this->username]]);
-            if (count($users) > 0) {
-                $this->diagnosticResults['user_found'] = ['status' => 'success', 'message' => '✅ User ' . $this->username . ' terdaftar.'];
-            } else {
-                $this->diagnosticResults['user_found'] = ['status' => 'failed', 'message' => '❌ User API tidak ditemukan di MikroTik!'];
-                throw new \Exception("User not found");
-            }
-
-            // 6. Check Radius
-            $radius = $driver->query('/radius/print');
-            $billingIp = request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost();
-            $radiusFound = false;
-            foreach($radius as $r) {
-                if (isset($r['address']) && $r['address'] === $billingIp) {
-                    $radiusFound = true;
-                    break;
+            try {
+                $ident = $driver->query('/system/identity/print');
+                if (isset($ident[0]['name'])) {
+                    $identity = $ident[0]['name'];
                 }
-            }
-            if ($radiusFound) {
-                $this->diagnosticResults['radius_available'] = ['status' => 'success', 'message' => '✅ RADIUS Server dsBilling ditemukan.'];
-            } else {
-                $this->diagnosticResults['radius_available'] = ['status' => 'warning', 'message' => '⚠️ RADIUS Server belum ditambahkan di MikroTik.'];
-            }
+            } catch (\Throwable $e) {}
+
+            try {
+                $sysRes = $driver->query('/system/resource/print');
+                if (isset($sysRes[0])) {
+                    $version = $sysRes[0]['version'] ?? '';
+                    $boardName = $sysRes[0]['board-name'] ?? '';
+                }
+            } catch (\Throwable $e) {}
 
             $driver->disconnect();
-            
-            // If we reach here without exceptions and user is found, test passed
-            $this->testPassed = true;
-            $this->status = 'active';
 
-        } catch (\Exception $e) {
-            $this->testPassed = false;
-            // Catch all if it broke early
+            // Auto-detect ROS version (v6 / v7)
+            if (!empty($version)) {
+                if (str_starts_with($version, '7.')) {
+                    $this->routeros_version = 'v7';
+                } elseif (str_starts_with($version, '6.')) {
+                    $this->routeros_version = 'v6';
+                }
+            }
+
+            // Jika nama belum diisi, otomatis gunakan identity MikroTik
+            if (empty($this->name) && !empty($identity)) {
+                $this->name = $identity;
+            }
+
+            $this->testConnectionStatus = 'success';
+            $details = array_filter([$identity, $boardName, $version ? "v{$version}" : null]);
+            $this->testConnectionMessage = "Koneksi berhasil! Terhubung ke: " . implode(' - ', $details);
+            $this->connectedDevice = [
+                'identity' => $identity,
+                'board' => $boardName,
+                'version' => $version,
+            ];
+
+        } catch (\Throwable $e) {
+            $this->testConnectionStatus = 'error';
+            $this->testConnectionMessage = 'Koneksi gagal: ' . $e->getMessage();
         }
     }
 
-        public function save()
+    public function openScriptModal()
+    {
+        if (empty($this->username)) {
+            $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name ?: 'router'));
+            $this->username = 'api.dsb.' . $cleanName;
+        }
+
+        if (empty($this->password)) {
+            $this->password = Str::random(16);
+        }
+
+        if (empty($this->radius_secret)) {
+            $this->radius_secret = Str::random(24);
+        }
+
+        if (empty($this->customRadiusIp)) {
+            $this->customRadiusIp = request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost();
+        }
+
+        $this->buildScript();
+        $this->showScriptModal = true;
+    }
+
+    public function closeScriptModal()
+    {
+        $this->showScriptModal = false;
+    }
+
+    public function updatedScriptVersion()
+    {
+        $this->buildScript();
+    }
+
+    public function updatedCustomRadiusIp()
+    {
+        $this->buildScript();
+    }
+
+    public function regenerateCredentials()
+    {
+        $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name ?: 'router'));
+        $this->username = 'api.dsb.' . $cleanName;
+        $this->password = Str::random(16);
+        $this->radius_secret = Str::random(24);
+        $this->buildScript();
+    }
+
+    public function buildScript()
+    {
+        $username = $this->username ?: 'api.dsb.router';
+        $password = $this->password ?: Str::random(16);
+        $radiusSecret = $this->radius_secret ?: Str::random(24);
+        $radiusIp = trim($this->customRadiusIp) ?: (request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost());
+        $port = (int) ($this->api_port ?: 8728);
+
+        $lines = [];
+        $lines[] = "# =================================================================";
+        $lines[] = "# dsBilling MikroTik Quick Setup Script (" . strtoupper($this->scriptVersion) . ")";
+        $lines[] = "# Salin dan tempel perintah ini di menu: WinBox -> New Terminal";
+        $lines[] = "# =================================================================";
+        $lines[] = "";
+        $lines[] = "# 1. Aktifkan Service API MikroTik";
+        $lines[] = "/ip service set api disabled=no port={$port}";
+        $lines[] = "";
+        $lines[] = "# 2. Buat Group dan User API Khusus dsBilling";
+        $lines[] = ":do { /user group add name=dsb-api policy=api,read,write,policy,test,!local,!telnet,!ssh,!ftp,!reboot,!winbox,!password,!web,!sniff,!sensitive comment=\"managed-by=dsbilling\" } on-error={ :put \"Group dsb-api exists\" }";
+        $lines[] = ":do { /user add name=\"{$username}\" password=\"{$password}\" group=dsb-api comment=\"managed-by=dsbilling\" } on-error={ :put \"User {$username} exists\" }";
+        $lines[] = "";
+        $lines[] = "# 3. Konfigurasi RADIUS Server (Hotspot & PPPoE)";
+        $lines[] = ":do { /radius add address=\"{$radiusIp}\" secret=\"{$radiusSecret}\" service=pppoe,hotspot timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Radius server exists\" }";
+        $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :put \"Radius incoming configured\" }";
+        $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :put \"PPP AAA configured\" }";
+        $lines[] = "";
+        $lines[] = "# 4. Buka Port Firewall Input (API & CoA Disconnect)";
+        $lines[] = ":do { /ip firewall filter add chain=input protocol=tcp dst-port={$port} action=accept comment=\"Accept dsBilling API\" place-before=0 } on-error={ :put \"Firewall rule API exists\" }";
+        $lines[] = ":do { /ip firewall filter add chain=input protocol=udp dst-port=3799 action=accept comment=\"Accept dsBilling CoA/Disconnect\" place-before=0 } on-error={ :put \"Firewall rule CoA exists\" }";
+        $lines[] = "";
+        $lines[] = ":put \"==============================================\"";
+        $lines[] = ":put \"Konfigurasi dsBilling Berhasil Diterapkan!\"";
+        $lines[] = ":put \"==============================================\"";
+
+        $this->generatedScript = implode("\r\n", $lines);
+    }
+
+    public function applyScriptCredentials()
+    {
+        $this->routeros_version = $this->scriptVersion;
+        $this->showScriptModal = false;
+        session()->flash('info', 'Kredensial dari skrip telah diterapkan ke form. Silakan jalankan skrip di WinBox lalu klik "Uji Koneksi".');
+    }
+
+    public function save()
     {
         if (empty($this->code)) {
             $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name ?? 'rt'));
@@ -194,10 +253,10 @@ class Create extends AdminComponent
             $this->username = 'api.dsb.' . $cleanName;
         }
         if (empty($this->password)) {
-            $this->password = \Illuminate\Support\Str::random(16);
+            $this->password = Str::random(16);
         }
         if (empty($this->radius_secret)) {
-            $this->radius_secret = \Illuminate\Support\Str::random(32);
+            $this->radius_secret = Str::random(32);
         }
 
         $this->validate([
@@ -227,7 +286,7 @@ class Create extends AdminComponent
             'status' => $this->status,
         ], Auth::user());
 
-        session()->flash('success', 'Router berhasil di-onboarding!');
+        session()->flash('success', 'Router berhasil ditambahkan!');
         return redirect()->route('isp.routers.index');
     }
 
