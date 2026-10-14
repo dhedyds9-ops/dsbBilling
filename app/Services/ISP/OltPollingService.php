@@ -163,6 +163,7 @@ class OltPollingService
 
                 try {
                     $onus = $driver->getOnuRxPower($idx);
+                    \Illuminate\Support\Facades\Log::info("OLT Polling {$olt->name} Port {$port['port_name']} (idx {$idx}): found " . count($onus) . " ONUs");
                 } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("ONU RxPower Failed for Port $idx", ["error" => $e->getMessage()]); $portErrors[] = $e->getMessage(); continue; }
 
                 DB::transaction(function () use ($olt, $idx, $dbPort, $onus, &$onuOnline, &$onuOffline, &$updatedOnu, $thresholds, &$alerts) {

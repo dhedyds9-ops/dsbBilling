@@ -133,6 +133,7 @@ class CDataOltDriver extends BaseOltDriver
                 if (empty(trim($infoOut)) || str_contains(strtolower($infoOut), 'unknown') || str_contains(strtolower($infoOut), 'error')) {
                     $infoOut = $this->cli->execute($isEpon ? "show onu info all" : "show ont info all");
                 }
+                \Illuminate\Support\Facades\Log::info("CData CLI infoOut Port $portNum: " . trim(preg_replace('/\s+/', ' ', substr($infoOut, 0, 500))));
                 $optOut  = $this->cli->execute($isEpon ? "show onu optical-info $portNum all" : "show ont optical-info $portNum all");
                 if (empty(trim($optOut)) || str_contains(strtolower($optOut), 'unknown') || str_contains(strtolower($optOut), 'error')) {
                     $optOut = $this->cli->execute($isEpon ? "show onu optical-info all" : "show ont optical-info all");
