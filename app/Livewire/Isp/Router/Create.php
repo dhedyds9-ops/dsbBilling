@@ -39,6 +39,28 @@ class Create extends AdminComponent
     public $customRadiusIp = '';
     public $generatedScript = '';
 
+    // Accordion Toggle
+    public $showAdvanced = false;
+
+    public function toggleAdvanced()
+    {
+        $this->showAdvanced = !$this->showAdvanced;
+    }
+
+    public function updatedName($value)
+    {
+        if (empty($this->code) && !empty($value)) {
+            $this->generateCode();
+        }
+    }
+
+    public function generateCode()
+    {
+        $clean = preg_replace('/[^a-zA-Z0-9]/', '', strtoupper($this->name ?: 'RTR'));
+        $prefix = substr($clean, 0, 4) ?: 'RTR';
+        $this->code = 'RTR-' . $prefix . '-' . rand(100, 999);
+    }
+
     public function mount()
     {
         parent::mount();

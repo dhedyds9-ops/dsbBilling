@@ -1,109 +1,249 @@
-<div class="max-w-4xl mx-auto pb-10">
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Edit Router</h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Ubah konfigurasi dan akses API router MikroTik Anda.</p>
-        </div>
-        <a href="{{ route('isp.routers.show', $router->id) }}" wire:navigate class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 shadow-sm">
-            <span class="material-symbols-outlined notranslate text-[18px]" translate="no">arrow_back</span>
-            Batal & Kembali
-        </a>
-    </div>
+@section('page_title')
+    <a href="{{ route('isp.routers.show', $router->id) }}" class="p-1.5 mr-2 text-indigo-100 hover:text-white rounded-lg hover:bg-indigo-700/50 transition-colors" title="Kembali">
+        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">arrow_back</span>
+    </a>
+    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">edit</span>
+    <span class="text-lg">Edit Router: {{ $router->name }}</span>
+@endsection
 
+<div class="space-y-5 pb-10 max-w-4xl">
+    {{-- SESSION FLASH & VALIDATION ALERTS --}}
     @include('components.alerts')
 
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
-        <div wire:loading wire:target="save, testConnection" class="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-            <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">Memproses...</p>
-        </div>
-
-        <form wire:submit.prevent="save" class="p-6 md:p-8">
-            <div class="mb-8">
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4">Informasi Dasar</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    {{-- CARD FORM UTAMA --}}
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <form wire:submit.prevent="save" class="p-6 space-y-6">
+            {{-- BAGIAN 1: INFORMASI UTAMA ROUTER --}}
+            <div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-slate-700 gap-3">
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nama Router <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="name" placeholder="Misal: Router Utama Jakarta" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-indigo-600 dark:text-indigo-400" style="font-size:20px">router</span>
+                            Informasi Perangkat &amp; Koneksi MikroTik
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Ubah data pokok konfigurasi untuk menghubungkan router MikroTik ke billing via API.</p>
+                    </div>
+                    <a href="{{ route('isp.routers.show', $router->id) }}" wire:navigate class="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto cursor-pointer">
+                        <span class="material-symbols-outlined notranslate text-[16px]" translate="no">visibility</span>
+                        Lihat Detail
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {{-- Nama Router --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Router <span class="text-red-500">*</span></label>
+                        <input type="text" wire:model.live.debounce.400ms="name" placeholder="Contoh: Router Utama Core" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
                         @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
+
+                    {{-- Kode Router --}}
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Status <span class="text-red-500">*</span></label>
-                        <select wire:model="status" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
-                            <option value="active">Aktif beroperasi</option>
-                            <option value="inactive">Nonaktif</option>
-                        </select>
-                        @error('status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Kode Router <span class="text-red-500">*</span></label>
+                            <button type="button" wire:click="generateCode" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined notranslate" style="font-size:14px">refresh</span> Auto-generate
+                            </button>
+                        </div>
+                        <input type="text" wire:model="code" placeholder="Contoh: RTR-CORE-01" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                        @error('code') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
+
+                    {{-- IP Address --}}
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Versi RouterOS <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
-                        <select wire:model="routeros_version" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
-                            <option value="">Pilih Versi (Otomatis jika kosong)</option>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IP Address / Hostname <span class="text-red-500">*</span></label>
+                        <input type="text" wire:model="ip_address" placeholder="Contoh: 192.168.10.1 atau vpn.domain.com" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                        @error('ip_address') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- API Port --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">API Port <span class="text-red-500">*</span></label>
+                        <input type="number" wire:model="api_port" placeholder="8728" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                        <span class="text-xs text-slate-400 mt-1 block">Default standar: <code>8728</code> (atau <code>8729</code> untuk API-SSL)</span>
+                        @error('api_port') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- API Username --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">API Username</label>
+                        <input type="text" wire:model="username" placeholder="Tetap sama jika kosong" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                        @error('username') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- API Password --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">API Password</label>
+                        <input type="password" wire:model="password" placeholder="Biarkan kosong jika tidak diubah" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                        @error('password') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- Versi RouterOS --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Versi RouterOS <span class="text-slate-400 font-normal text-xs ml-1">(Terdeteksi saat uji)</span></label>
+                        <select wire:model="routeros_version" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                            <option value="">-- Pilih Versi (Otomatis jika kosong) --</option>
                             <option value="v7">RouterOS v7 (Rekomendasi)</option>
                             <option value="v6">RouterOS v6</option>
                         </select>
                     </div>
+
+                    {{-- POP / Wilayah --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POP / Wilayah <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
+                        <select wire:model="pop_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                            <option value="">-- Tanpa POP / Belum Ditentukan --</option>
+                            @foreach($pops as $pop)
+                                <option value="{{ $pop->id }}">{{ $pop->name }} ({{ $pop->code }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Vendor Perangkat --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Vendor Perangkat <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
+                        <select wire:model="vendor_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                            <option value="">-- Default (MikroTik) --</option>
+                            @foreach($vendors as $vendor)
+                                <option value="{{ $vendor->id }}">{{ $vendor->name }} ({{ $vendor->code }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Status Router --}}
+                    <div class="flex items-center gap-4 pt-1">
+                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Status Router:</label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+                            <input type="radio" wire:model="status" value="active" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-emerald-700 dark:text-emerald-400 font-medium">Aktif</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+                            <input type="radio" wire:model="status" value="inactive" class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-slate-500 font-medium">Nonaktif</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
-            <hr class="border-slate-200 dark:border-slate-700 mb-8">
-            
-            <div>
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4">Pengaturan Koneksi API</h3>
-                
-                @if($testConnectionStatus)
-                    <div class="mb-6 p-4 rounded-xl border {{ $testConnectionStatus === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400' }} flex items-start gap-3">
-                        <span class="material-symbols-outlined notranslate mt-0.5" translate="no">{{ $testConnectionStatus === 'success' ? 'check_circle' : 'error' }}</span>
-                        <div>
-                            <h4 class="font-bold text-sm">{{ $testConnectionStatus === 'success' ? 'Koneksi Berhasil' : 'Koneksi Gagal' }}</h4>
-                            <p class="text-xs mt-1 opacity-90">{{ $testConnectionMessage }}</p>
+            {{-- LIVE FEEDBACK HASIL TEST KONEKSI --}}
+            @if($testConnectionStatus === 'success' && $connectedDevice)
+                <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-start gap-3">
+                    <span class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400 mt-0.5" style="font-size:22px">check_circle</span>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-emerald-800 dark:text-emerald-300 text-sm">MikroTik API Terhubung Berhasil!</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2 text-xs text-emerald-700 dark:text-emerald-300">
+                            <div><span class="text-emerald-600 dark:text-emerald-400 font-medium">Identity:</span> {{ $connectedDevice['identity'] ?: '-' }}</div>
+                            <div><span class="text-emerald-600 dark:text-emerald-400 font-medium">Board:</span> {{ $connectedDevice['board'] ?: '-' }}</div>
+                            <div><span class="text-emerald-600 dark:text-emerald-400 font-medium">Versi:</span> RouterOS v{{ $connectedDevice['version'] ?: '-' }}</div>
                         </div>
                     </div>
-                @endif
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">IP Address <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="ip_address" placeholder="192.168.x.x atau IP Publik" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 font-mono">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">API Port <span class="text-red-500">*</span></label>
-                        <input type="number" wire:model="api_port" placeholder="8728" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100 font-mono">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">API Username <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="username" placeholder="Tetap sama jika kosong" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">API Password <span class="text-red-500">*</span></label>
-                        <input type="password" wire:model="password" placeholder="Biarkan kosong jika tidak diubah" class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
-                    </div>
-
-                    <div class="md:col-span-2 pt-2 flex items-center justify-between">
-                        <label class="flex items-center gap-3 cursor-pointer group">
-                            <input type="checkbox" wire:model="use_ssl" class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900">
-                            <div>
-                                <div class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">Gunakan SSL/TLS</div>
-                                <div class="text-xs text-slate-500 dark:text-slate-400">Aktifkan jika router mendukung API-SSL (Port 8729)</div>
-                            </div>
-                        </label>
-                        
-                        <button type="button" wire:click="testConnection" class="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5">
-                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">wifi_tethering</span>
-                            Tes Koneksi
-                        </button>
+                </div>
+            @elseif($testConnectionStatus === 'error')
+                <div class="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
+                    <span class="material-symbols-outlined notranslate text-red-600 dark:text-red-400 mt-0.5" style="font-size:22px">error</span>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-red-800 dark:text-red-300 text-sm">Uji Koneksi Gagal</h4>
+                        <p class="text-xs text-red-700 dark:text-red-300 mt-1 leading-relaxed">{{ $testConnectionMessage }}</p>
                     </div>
                 </div>
+            @endif
+
+            {{-- ACCORDION TOGGLE: PENGATURAN LANJUTAN (OPSIONAL) --}}
+            <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition-all">
+                <button type="button" wire:click="toggleAdvanced" class="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700/50 text-left transition-colors cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined notranslate text-slate-500" style="font-size:20px">tune</span>
+                        <div>
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Pengaturan Lanjutan &amp; Kredensial (Opsional)</span>
+                            <p class="text-xs text-slate-400 dark:text-slate-500">RADIUS Secret, Enkripsi SSL/TLS, Timeout, Model Perangkat, dan Catatan.</p>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined notranslate text-slate-400 transition-transform duration-200 {{ $showAdvanced ? 'rotate-180' : '' }}" style="font-size:20px">
+                        expand_more
+                    </span>
+                </button>
+
+                @if($showAdvanced)
+                <div class="p-5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 space-y-5">
+                    {{-- Section A: Enkripsi & Timeout --}}
+                    <div>
+                        <h4 class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined notranslate" style="font-size:16px">security</span>
+                            Keamanan &amp; Timeout API
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex items-center">
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <input type="checkbox" wire:model="use_ssl" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900">
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">Gunakan SSL / TLS</div>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400">Aktifkan enkripsi jika router mendukung API-SSL (Port 8729)</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Timeout Koneksi (detik)</label>
+                                <input type="number" wire:model="timeout" placeholder="30" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section B: RADIUS Secret --}}
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-700/60">
+                        <h4 class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined notranslate" style="font-size:16px">vpn_key</span>
+                            Kredensial RADIUS Server
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">RADIUS Secret</label>
+                                <input type="text" wire:model="radius_secret" placeholder="Secret RADIUS" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                                <span class="text-[11px] text-slate-400 mt-1 block">Tersinkronisasi otomatis dengan NAS FreeRADIUS internal.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section C: Detail Hardware & Lokasi Fisik --}}
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-700/60">
+                        <h4 class="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined notranslate" style="font-size:16px">info</span>
+                            Detail Hardware &amp; Lokasi Fisik
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Model Perangkat</label>
+                                <input type="text" wire:model="model" placeholder="Misal: RB4011iGS+, CCR2004" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Serial Number</label>
+                                <input type="text" wire:model="serial_number" placeholder="Contoh: B9A10E12345" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi / Lokasi Rak</label>
+                                <textarea wire:model="description" rows="2" placeholder="Catatan lokasi penempatan, server room, atau informasi tambahan..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-8 mt-8 border-t border-slate-200 dark:border-slate-700">
-                <a href="{{ route('isp.routers.show', $router->id) }}" wire:navigate class="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            {{-- TOMBOL AKSI BAWAH --}}
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <a href="{{ route('isp.routers.show', $router->id) }}" wire:navigate class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                     Batal
                 </a>
-                <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm flex items-center gap-2 transition-colors">
-                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">save</span>
-                    Simpan Perubahan
+                <button type="button" wire:click="testConnection" wire:loading.attr="disabled" wire:target="testConnection" class="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/60 rounded-xl text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span wire:loading.remove wire:target="testConnection" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">network_check</span>
+                    <span wire:loading wire:target="testConnection" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+                    <span wire:loading.remove wire:target="testConnection">Test Koneksi</span>
+                    <span wire:loading wire:target="testConnection">Memeriksa...</span>
+                </button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="save" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 min-w-[130px]">
+                    <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+                    <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+                    <span wire:loading.remove wire:target="save">Simpan Perubahan</span>
+                    <span wire:loading wire:target="save">Menyimpan...</span>
                 </button>
             </div>
         </form>

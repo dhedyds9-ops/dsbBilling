@@ -30,6 +30,21 @@ class Edit extends AdminComponent
     public $routeros_version;
     public $status;
 
+    // Accordion Toggle
+    public $showAdvanced = false;
+
+    public function toggleAdvanced()
+    {
+        $this->showAdvanced = !$this->showAdvanced;
+    }
+
+    public function generateCode()
+    {
+        $clean = preg_replace('/[^a-zA-Z0-9]/', '', strtoupper($this->name ?: 'RTR'));
+        $prefix = substr($clean, 0, 4) ?: 'RTR';
+        $this->code = 'RTR-' . $prefix . '-' . rand(100, 999);
+    }
+
     public function mount($id = null)
     {
         parent::mount();
