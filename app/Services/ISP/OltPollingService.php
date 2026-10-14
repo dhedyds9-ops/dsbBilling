@@ -80,8 +80,11 @@ class OltPollingService
                     'pon_port_count' => count($ponPorts),
                     'status' => ($systemInfo['status'] ?? 'offline') === 'online' ? 'active' : 'inactive',
                     'last_polled_at' => now(),
-                    'last_error' => null,
                 ];
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('olts', 'last_error')) {
+                    $updateData['last_error'] = null;
+                }
                 
                 if (!empty($systemInfo['model']) && $systemInfo['model'] !== '-') {
                     $updateData['model'] = $systemInfo['model'];
@@ -336,11 +339,14 @@ class OltPollingService
             $errorMsg = $e->getMessage();
             Log::warning('OLT Poll failed', ['olt_id' => $olt->id, 'msg' => $errorMsg]);
             try {
-                $olt->update([
+                $payload = [
                     'status' => 'inactive',
                     'last_polled_at' => now(),
-                    'last_error' => $errorMsg,
-                ]);
+                ];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('olts', 'last_error')) {
+                    $payload['last_error'] = $errorMsg;
+                }
+                $olt->update($payload);
             } catch (Throwable $dbErr) {
                 Log::error("Failed updating OLT status on poll failure: " . $dbErr->getMessage());
             }
