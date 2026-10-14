@@ -36,6 +36,8 @@ class Create extends AdminComponent
     // Quick Script Generator Modal
     public $showScriptModal = false;
     public $scriptTab = 'radius'; // 'radius' or 'isolir'
+    public $connectionMode = 'public'; // 'public' or 'vpn'
+    public $vpnAssignedIp = '10.200.0.10';
     public $scriptVersion = 'v7';
     public $customRadiusIp = '';
     public $generatedScript = '';
@@ -202,6 +204,11 @@ class Create extends AdminComponent
         $this->showScriptModal = false;
     }
 
+    public function updatedConnectionMode()
+    {
+        $this->buildScript();
+    }
+
     public function updatedScriptVersion()
     {
         $this->buildScript();
@@ -231,12 +238,27 @@ class Create extends AdminComponent
         $radiusIp = filter_var($rawRadiusHost, FILTER_VALIDATE_IP) ? $rawRadiusHost : gethostbyname($rawRadiusHost);
         $port = (int) ($this->api_port ?: 8728);
 
+        $isVpn = ($this->connectionMode === 'vpn');
+        $effectiveRadiusIp = $isVpn ? '10.200.0.1' : $radiusIp;
+
         $lines = [];
         $lines[] = "# =================================================================";
-        $lines[] = "# dsBilling MikroTik Quick Setup Script (" . strtoupper($this->scriptVersion) . ")";
+        $lines[] = "# dsBilling MikroTik Quick Setup Script (" . strtoupper($this->scriptVersion) . ")" . ($isVpn ? " [MODE VPN]" : "");
         $lines[] = "# Salin dan tempel perintah ini di menu: WinBox -> New Terminal";
         $lines[] = "# =================================================================";
         $lines[] = "";
+
+        if ($isVpn) {
+            $lines[] = "# 0. Terowongan VPN ke Server dsBilling (Untuk Router Tanpa IP Publik)";
+            $lines[] = ":do { /interface pptp-client remove [find name~\"DSB-VPN\"] } on-error={ :nothing }";
+            $lines[] = ":do { /interface sstp-client remove [find name~\"DSB-VPN\"] } on-error={ :nothing }";
+            $lines[] = ":do { /interface ovpn-client remove [find name~\"DSB-VPN\"] } on-error={ :nothing }";
+            $lines[] = ":do { /ppp profile add name=DSBVPN use-encryption=yes change-tcp-mss=yes comment=\"DSB VPN Profile\" } on-error={ :nothing }";
+            $lines[] = ":do { /interface sstp-client add connect-to=\"{$rawRadiusHost}\" port=1443 name=\"DSB-VPN-SSTP\" profile=DSBVPN user=\"{$username}\" password=\"{$password}\" verify-server-certificate=no disabled=no comment=\"IP VPN: {$this->vpnAssignedIp}\" } on-error={ :nothing }";
+            $lines[] = ":do { /interface pptp-client add connect-to=\"{$rawRadiusHost}\" name=\"DSB-VPN-PPTP\" profile=DSBVPN user=\"{$username}\" password=\"{$password}\" disabled=yes comment=\"Cadangan PPTP IP: {$this->vpnAssignedIp}\" } on-error={ :nothing }";
+            $lines[] = "";
+        }
+
         $lines[] = "# 1. Bersihkan Konfigurasi Lama dsBilling (Anti-Duplikasi)";
         $lines[] = ":do { /radius remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
         $lines[] = ":do { /user remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
@@ -250,13 +272,17 @@ class Create extends AdminComponent
         $lines[] = ":do { /user add name=\"{$username}\" password=\"{$password}\" group=dsb-api comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 4. Konfigurasi RADIUS Client (PPPoE, Hotspot & Login)";
-        $lines[] = ":local radHost \"{$rawRadiusHost}\"";
-        $lines[] = ":local radIP \"{$radiusIp}\"";
-        $lines[] = ":do {";
-        $lines[] = "    :local resolved [:resolve \$radHost]";
-        $lines[] = "    :if ([:len \$resolved] > 0) do={ :set radIP \$resolved }";
-        $lines[] = "} on-error={ :nothing }";
-        $lines[] = ":do { /radius add address=\$radIP secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Gagal menambahkan RADIUS\" }";
+        if ($isVpn) {
+            $lines[] = ":do { /radius add address=\"10.200.0.1\" secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Gagal menambahkan RADIUS\" }";
+        } else {
+            $lines[] = ":local radHost \"{$rawRadiusHost}\"";
+            $lines[] = ":local radIP \"{$radiusIp}\"";
+            $lines[] = ":do {";
+            $lines[] = "    :local resolved [:resolve \$radHost]";
+            $lines[] = "    :if ([:len \$resolved] > 0) do={ :set radIP \$resolved }";
+            $lines[] = "} on-error={ :nothing }";
+            $lines[] = ":do { /radius add address=\$radIP secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Gagal menambahkan RADIUS\" }";
+        }
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 5. Otomatis Aktifkan RADIUS & Seamless MAC-Cookie di Semua Profil Hotspot & PPPoE";
@@ -268,7 +294,7 @@ class Create extends AdminComponent
         $lines[] = ":do { /ip firewall filter add chain=input protocol=udp dst-port=3799 action=accept comment=\"Accept dsBilling CoA/Disconnect\" place-before=0 } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 7. Tes Ping ke Server dsBilling RADIUS";
-        $lines[] = "/ping {$radiusIp} count=3";
+        $lines[] = "/ping {$effectiveRadiusIp} count=3";
         $lines[] = "";
         $lines[] = ":put \"==============================================\"";
         $lines[] = ":put \" Konfigurasi dsBilling Berhasil Diterapkan!   \"";
@@ -318,8 +344,11 @@ class Create extends AdminComponent
     public function applyScriptCredentials()
     {
         $this->routeros_version = $this->scriptVersion;
+        if ($this->connectionMode === 'vpn') {
+            $this->ip_address = $this->vpnAssignedIp;
+        }
         $this->showScriptModal = false;
-        session()->flash('info', 'Kredensial dari skrip telah diterapkan ke form. Silakan jalankan skrip di WinBox lalu klik "Uji Koneksi".');
+        session()->flash('info', 'Kredensial dari skrip telah diterapkan ke form. Silakan jalankan skrip di WinBox lalu klik "Test Koneksi".');
     }
 
     public function save()

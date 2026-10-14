@@ -282,19 +282,41 @@
                             </button>
                         </div>
 
-                        <!-- Pilihan Versi RouterOS & IP RADIUS (Hanya di Tab 1) -->
+                        <!-- Pilihan Mode Koneksi, Versi RouterOS & IP Server -->
                         @if($scriptTab === 'radius')
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Versi RouterOS MikroTik</label>
-                                <select wire:model.live="scriptVersion" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100">
-                                    <option value="v7">RouterOS v7 (Default)</option>
-                                    <option value="v6">RouterOS v6</option>
-                                </select>
+                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Metode Koneksi Router ke Server dsBilling</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <label class="flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors {{ $connectionMode === 'public' ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800' }}">
+                                        <input type="radio" wire:model.live="connectionMode" value="public" class="text-indigo-600">
+                                        <div class="text-xs">
+                                            <div>IP Publik / Jaringan Lokal</div>
+                                            <div class="text-[10px] font-normal text-slate-500">Router punya IP Publik atau 1 LAN</div>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors {{ $connectionMode === 'vpn' ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800' }}">
+                                        <input type="radio" wire:model.live="connectionMode" value="vpn" class="text-indigo-600">
+                                        <div class="text-xs">
+                                            <div>VPN dsBilling (Tanpa IP Publik)</div>
+                                            <div class="text-[10px] font-normal text-slate-500">Auto dial tunnel ke VPS (ala MSRadius)</div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">IP Server dsBilling / RADIUS</label>
-                                <input type="text" wire:model.live="customRadiusIp" placeholder="192.168.x.x atau IP Server" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100">
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-200 dark:border-slate-700">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Versi RouterOS MikroTik</label>
+                                    <select wire:model.live="scriptVersion" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100">
+                                        <option value="v7">RouterOS v7 (Default)</option>
+                                        <option value="v6">RouterOS v6</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{{ $connectionMode === 'vpn' ? 'Host/IP VPS dsBilling' : 'IP Server dsBilling / RADIUS' }}</label>
+                                    <input type="text" wire:model.live="customRadiusIp" placeholder="157.20.128.232 atau domain VPS" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100">
+                                </div>
                             </div>
                         </div>
                         @else
