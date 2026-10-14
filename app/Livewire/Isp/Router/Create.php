@@ -248,12 +248,12 @@ class Create extends AdminComponent
         $lines[] = ":do { /user add name=\"{$username}\" password=\"{$password}\" group=dsb-api comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 4. Konfigurasi RADIUS Client (PPPoE, Hotspot & Login)";
-        $lines[] = ":do { /radius add address=\"{$radiusIp}\" secret=\"{$radiusSecret}\" service=pppoe,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $lines[] = ":do { /radius add address=\"{$radiusIp}\" secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 5. Otomatis Aktifkan RADIUS & Seamless MAC-Cookie di Semua Profil Hotspot & PPPoE";
         $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :nothing }";
-        $lines[] = ":do { /ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d mac-cookie-timeout=1w use-radius=yes radius-accounting=yes radius-interim-update=5m nas-port-type=wireless-802.11 [find] } on-error={ :nothing }";
+        $lines[] = ":do { /ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d mac-cookie-timeout=1w use-radius=yes radius-accounting=yes radius-interim-update=5m nas-port-type=\"wireless-802.11\" [find] } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 6. Buka Port Firewall Input (API & CoA Disconnect)";
         $lines[] = ":do { /ip firewall filter add chain=input protocol=tcp dst-port={$port} action=accept comment=\"Accept dsBilling API\" place-before=0 } on-error={ :nothing }";

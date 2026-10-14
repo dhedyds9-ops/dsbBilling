@@ -314,10 +314,10 @@
                                 </button>
                                 @endif
                             </div>
-                            <pre class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-56 leading-relaxed">{{ $scriptTab === 'radius' ? $generatedScript : $isolirScript }}</pre>
+                            <pre id="scriptCodeCreate" class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-56 leading-relaxed">{{ $scriptTab === 'radius' ? $generatedScript : $isolirScript }}</pre>
                             
                             <div class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
-                                <button type="button" onclick="navigator.clipboard.writeText(`{{ $scriptTab === 'radius' ? $generatedScript : $isolirScript }}`); alert('Skrip berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
+                                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('scriptCodeCreate').innerText); alert('Skrip berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
                                     <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
                                     Salin Skrip
                                 </button>

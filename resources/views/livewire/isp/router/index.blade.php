@@ -214,10 +214,10 @@
                                 <span>Perintah Terminal WinBox:</span>
                                 <span class="text-indigo-400 font-semibold">{{ $scriptRouter?->name }}</span>
                             </div>
-                            <pre class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-60 leading-relaxed">{{ $provisioningRawScript }}</pre>
+                            <pre id="scriptCodeIndex" class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-60 leading-relaxed">{{ $provisioningRawScript }}</pre>
                             
                             <div class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
-                                <button type="button" onclick="navigator.clipboard.writeText(`{{ $provisioningRawScript }}`); alert('Skrip manual berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
+                                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('scriptCodeIndex').innerText); alert('Skrip manual berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
                                     <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
                                     Salin Skrip
                                 </button>
