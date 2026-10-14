@@ -343,7 +343,7 @@
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
                 <div class="p-6">
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Import Data Hotspot</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Unggah file Excel (.xlsx, .csv) dari sistem radius lama Anda (mendukung format MixRadius/MSRadius/dsBilling).</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Unggah file Excel (.xlsx, .csv) untuk impor data pengguna / voucher Hotspot secara massal.</p>
                     
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pilih File Excel</label>

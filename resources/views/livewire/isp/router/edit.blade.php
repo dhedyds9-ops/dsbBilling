@@ -305,7 +305,7 @@
                                         <input type="radio" wire:model.live="connectionMode" value="vpn" class="text-indigo-600">
                                         <div class="text-xs">
                                             <div>VPN dsBilling (Tanpa IP Publik)</div>
-                                            <div class="text-[10px] font-normal text-slate-500">Auto dial tunnel ke VPS (ala MSRadius)</div>
+                                            <div class="text-[10px] font-normal text-slate-500">Auto dial tunnel ke Server VPS (Untuk Router tanpa IP Publik)</div>
                                         </div>
                                     </label>
                                 </div>

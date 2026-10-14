@@ -269,7 +269,7 @@
 
                     <div class="p-6 space-y-4">
                         <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Mirip dengan fitur di MixRadius/MSRadius, skrip ini otomatis mengaktifkan service API, membuat user API aman, mengonfigurasi RADIUS Client (PPPoE &amp; Hotspot), serta membuka port firewall MikroTik.
+                            Skrip ini otomatis mengaktifkan service API, membuat akun API aman, mengonfigurasi RADIUS Client (PPPoE &amp; Hotspot), serta membuka port firewall MikroTik.
                         </p>
 
                         <!-- Tab Selector -->
@@ -299,7 +299,7 @@
                                         <input type="radio" wire:model.live="connectionMode" value="vpn" class="text-indigo-600">
                                         <div class="text-xs">
                                             <div>VPN dsBilling (Tanpa IP Publik)</div>
-                                            <div class="text-[10px] font-normal text-slate-500">Auto dial tunnel ke VPS (ala MSRadius)</div>
+                                            <div class="text-[10px] font-normal text-slate-500">Auto dial tunnel ke Server VPS (Untuk Router tanpa IP Publik)</div>
                                         </div>
                                     </label>
                                 </div>
