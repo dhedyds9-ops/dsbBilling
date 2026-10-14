@@ -35,9 +35,11 @@ class Edit extends AdminComponent
 
     // Quick Script Generator Modal
     public $showScriptModal = false;
+    public $scriptTab = 'radius'; // 'radius' or 'isolir'
     public $scriptVersion = 'v7';
     public $customRadiusIp = '';
     public $generatedScript = '';
+    public $isolirScript = '';
 
     public function toggleAdvanced()
     {
@@ -111,9 +113,9 @@ class Edit extends AdminComponent
         $lines[] = ":do { /radius add address=\"{$radiusIp}\" secret=\"{$radiusSecret}\" service=pppoe,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :nothing }";
         $lines[] = "";
-        $lines[] = "# 5. Otomatis Aktifkan RADIUS di Semua Profil Hotspot & PPPoE";
+        $lines[] = "# 5. Otomatis Aktifkan RADIUS & Seamless MAC-Cookie di Semua Profil Hotspot & PPPoE";
         $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :nothing }";
-        $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=5m nas-port-type=wireless-802.11 [find] } on-error={ :nothing }";
+        $lines[] = ":do { /ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d mac-cookie-timeout=1w use-radius=yes radius-accounting=yes radius-interim-update=5m nas-port-type=wireless-802.11 [find] } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 6. Buka Port Firewall Input (API & CoA Disconnect)";
         $lines[] = ":do { /ip firewall filter add chain=input protocol=tcp dst-port={$port} action=accept comment=\"Accept dsBilling API\" place-before=0 } on-error={ :nothing }";
@@ -127,6 +129,45 @@ class Edit extends AdminComponent
         $lines[] = ":put \"==============================================\"";
 
         $this->generatedScript = implode("\r\n", $lines);
+
+        // Skrip Walled Garden Payment Gateway & Isolir Pelanggan
+        $appHost = request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost();
+        $iso = [];
+        $iso[] = "# =================================================================";
+        $iso[] = "# dsBilling Walled Garden (Payment Gateway) & Isolir Setup";
+        $iso[] = "# Router: " . ($this->name ?: 'MikroTik');
+        $iso[] = "# Salin dan tempel di WinBox -> New Terminal";
+        $iso[] = "# =================================================================";
+        $iso[] = "";
+        $iso[] = "# 1. Walled Garden Hotspot (Akses Payment Gateway & Billing Sebelum Login)";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*midtrans.com\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*duitku.com\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*tripay.co.id\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*ipaymu.com\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*xendit.co\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*whatsapp.com\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*whatsapp.net\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"{$appHost}\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden ip add dst-address=\"{$radiusIp}\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $iso[] = "";
+        $iso[] = "# 2. Whitelist Firewall Isolir (Pelanggan PPPoE Menunggak)";
+        $iso[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$appHost}\" comment=\"managed-by=dsbilling: Server\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"app.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"api.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"api.duitku.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"tripay.co.id\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :nothing }";
+        $iso[] = "";
+        $iso[] = "# 3. Aturan Filter & Drop Traffic Pelanggan Menunggak (ISOLIR_LIST)";
+        $iso[] = ":do { /ip firewall filter add chain=forward action=accept protocol=udp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" place-before=0 } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall filter add chain=forward action=accept protocol=tcp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" place-before=0 } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall filter add chain=forward action=accept src-address-list=ISOLIR_LIST dst-address-list=ISOLIR_WHITELIST comment=\"managed-by=dsbilling: Allow Whitelist\" place-before=1 } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall filter add chain=forward action=drop src-address-list=ISOLIR_LIST comment=\"managed-by=dsbilling: Drop other Isolir Traffic\" place-before=2 } on-error={ :nothing }";
+        $iso[] = "";
+        $iso[] = ":put \"==================================================\"";
+        $iso[] = ":put \" Walled Garden & Firewall Isolir Selesai Dipasang! \"";
+        $iso[] = ":put \"==================================================\"";
+
+        $this->isolirScript = implode("\r\n", $iso);
     }
 
     public function mount($id = null)

@@ -275,10 +275,21 @@
 
                     <div class="p-6 space-y-4">
                         <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Gunakan skrip ini jika router di-reset atau jika Anda ingin memastikan konfigurasi API, RADIUS client, dan profil Hotspot/PPPoE di MikroTik sudah sinkron dengan dsBilling.
+                            Gunakan skrip ini jika router di-reset atau jika Anda ingin memastikan konfigurasi API, RADIUS client, profil Hotspot/PPPoE, dan Walled Garden/Isolir di MikroTik sinkron dengan dsBilling.
                         </p>
 
-                        <!-- Pilihan Versi RouterOS & IP RADIUS -->
+                        <!-- Tab Selector -->
+                        <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                            <button type="button" wire:click="$set('scriptTab', 'radius')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer {{ $scriptTab === 'radius' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200' }}">
+                                1. Setup Utama (API, RADIUS &amp; Hotspot)
+                            </button>
+                            <button type="button" wire:click="$set('scriptTab', 'isolir')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer {{ $scriptTab === 'isolir' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200' }}">
+                                2. Walled Garden &amp; Isolir Tagihan
+                            </button>
+                        </div>
+
+                        <!-- Pilihan Versi RouterOS & IP RADIUS (Hanya di Tab 1) -->
+                        @if($scriptTab === 'radius')
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Versi RouterOS MikroTik</label>
@@ -292,16 +303,21 @@
                                 <input type="text" wire:model.live="customRadiusIp" placeholder="192.168.x.x atau IP Server" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100">
                             </div>
                         </div>
+                        @else
+                        <div class="p-3 bg-indigo-50/70 dark:bg-indigo-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800 text-xs text-indigo-800 dark:text-indigo-300">
+                            <strong>Fungsi Walled Garden &amp; Isolir:</strong> Mengizinkan pembayaran online (Midtrans, Duitku, Tripay, WhatsApp) terbuka sebelum pelanggan login voucher, serta mendrop traffic internet dan redirect pelanggan menunggak.
+                        </div>
+                        @endif
 
                         <!-- Code Block -->
                         <div class="relative bg-slate-950 rounded-xl p-4 border border-slate-800 shadow-inner group">
                             <div class="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-800 pb-2 mb-2">
-                                <span>Perintah Terminal WinBox:</span>
+                                <span>Perintah Terminal WinBox ({{ $scriptTab === 'radius' ? 'Setup Utama' : 'Walled Garden & Isolir' }}):</span>
                             </div>
-                            <pre class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-56 leading-relaxed">{{ $generatedScript }}</pre>
+                            <pre class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-56 leading-relaxed">{{ $scriptTab === 'radius' ? $generatedScript : $isolirScript }}</pre>
                             
                             <div class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
-                                <button type="button" onclick="navigator.clipboard.writeText(`{{ $generatedScript }}`); alert('Skrip berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
+                                <button type="button" onclick="navigator.clipboard.writeText(`{{ $scriptTab === 'radius' ? $generatedScript : $isolirScript }}`); alert('Skrip berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
                                     <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
                                     Salin Skrip
                                 </button>
