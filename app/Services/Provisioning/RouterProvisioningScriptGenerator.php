@@ -14,6 +14,36 @@ class RouterProvisioningScriptGenerator
         // If appUrl is localhost, we need an accessible IP. For testing, we use $_SERVER['HTTP_HOST'] or a fallback.
         $rawHost = parse_url($appUrl, PHP_URL_HOST) ?? '127.0.0.1';
         $host = filter_var($rawHost, FILTER_VALIDATE_IP) ? $rawHost : gethostbyname($rawHost);
+
+        // Jika gethostbyname mengembalikan IP local (127.x.x.x akibat /etc/hosts pada VPS),
+        // ambil IP Public server yang sesungguhnya agar MikroTik bisa menghubungi RADIUS!
+        if (str_starts_with($host, '127.') || $host === '::1' || $host === 'localhost') {
+            try {
+                $dnsRecords = @dns_get_record($rawHost, DNS_A);
+                if (!empty($dnsRecords[0]['ip']) && !str_starts_with($dnsRecords[0]['ip'], '127.')) {
+                    $host = $dnsRecords[0]['ip'];
+                }
+            } catch (\Throwable $e) {}
+
+            if ((str_starts_with($host, '127.') || $host === 'localhost') && !empty($_SERVER['SERVER_ADDR']) && !str_starts_with($_SERVER['SERVER_ADDR'], '127.')) {
+                $host = $_SERVER['SERVER_ADDR'];
+            }
+
+            if (str_starts_with($host, '127.') || $host === 'localhost') {
+                $cachedIp = \Illuminate\Support\Facades\Cache::remember('server_public_ip', 86400, function() {
+                    try {
+                        $ctx = stream_context_create(['http' => ['timeout' => 2]]);
+                        $res = @file_get_contents('https://api.ipify.org', false, $ctx);
+                        return filter_var(trim($res), FILTER_VALIDATE_IP) ?: null;
+                    } catch (\Throwable $e) {
+                        return null;
+                    }
+                });
+                if ($cachedIp) {
+                    $host = $cachedIp;
+                }
+            }
+        }
         
         $lines = [];
         $lines[] = "# dsBilling MikroTik Auto-Provisioning Script";
