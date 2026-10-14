@@ -310,19 +310,40 @@ class Edit extends AdminComponent
                 $boardName = '';
 
                 try {
-                    $ident = $driver->query('/system/identity/print');
-                    if (isset($ident[0]['name'])) {
-                        $identity = $ident[0]['name'];
+                    $sysInfo = $driver->getSystemInfo();
+                    if (!empty($sysInfo['identity']) && $sysInfo['identity'] !== 'unknown') {
+                        $identity = $sysInfo['identity'];
+                    }
+                    if (!empty($sysInfo['version']) && $sysInfo['version'] !== 'unknown') {
+                        $version = $sysInfo['version'];
+                    }
+                    if (!empty($sysInfo['board_name']) && $sysInfo['board_name'] !== '-') {
+                        $boardName = $sysInfo['board_name'];
                     }
                 } catch (\Throwable $e) {}
 
-                try {
-                    $sysRes = $driver->query('/system/resource/print');
-                    if (isset($sysRes[0])) {
-                        $version = $sysRes[0]['version'] ?? '';
-                        $boardName = $sysRes[0]['board-name'] ?? '';
-                    }
-                } catch (\Throwable $e) {}
+                // Fallback manual query jika belum lengkap
+                if (empty($identity)) {
+                    try {
+                        $ident = $driver->query('/system/identity/print');
+                        if (isset($ident[0]['name'])) {
+                            $identity = $ident[0]['name'];
+                        } elseif (isset($ident['name'])) {
+                            $identity = $ident['name'];
+                        }
+                    } catch (\Throwable $e) {}
+                }
+
+                if (empty($version) || empty($boardName)) {
+                    try {
+                        $sysRes = $driver->query('/system/resource/print');
+                        $row = $sysRes[0] ?? (is_array($sysRes) ? $sysRes : []);
+                        if (!empty($row)) {
+                            $version = $version ?: ($row['version'] ?? '');
+                            $boardName = $boardName ?: ($row['board-name'] ?? ($row['platform'] ?? ''));
+                        }
+                    } catch (\Throwable $e) {}
+                }
 
                 $driver->disconnect();
 

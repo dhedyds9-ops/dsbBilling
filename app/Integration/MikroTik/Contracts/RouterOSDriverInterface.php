@@ -7,6 +7,7 @@ interface RouterOSDriverInterface
     public function connect(): bool;
     public function disconnect(): void;
     public function ping(): bool;
+    public function query($query): array;
     public function getSystemInfo(): array;
     public function getInterfaceStats(): array;
     public function getTrafficStats(string $interface = ''): array;

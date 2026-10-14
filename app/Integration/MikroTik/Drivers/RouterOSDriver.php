@@ -80,6 +80,19 @@ class RouterOSDriver implements RouterOSDriverInterface
         }
     }
 
+    public function query($query): array
+    {
+        try {
+            $this->ensureConnected();
+            if (is_string($query)) {
+                $query = new Query($query);
+            }
+            return $this->connection->query($query)->read() ?: [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     public function getSystemInfo(): array
     {
         try {
@@ -87,30 +100,35 @@ class RouterOSDriver implements RouterOSDriverInterface
             $resources = $this->connection->query(new Query('/system/resource/print'))->read();
             $identity = $this->connection->query(new Query('/system/identity/print'))->read();
 
-            if (!empty($resources[0])) {
+            $res = !empty($resources[0]) ? $resources[0] : (is_array($resources) && isset($resources['version']) ? $resources : []);
+            $ident = !empty($identity[0]['name']) ? $identity[0]['name'] : (is_array($identity) && isset($identity['name']) ? $identity['name'] : (!empty($identity[0]) && is_string($identity[0]) ? $identity[0] : 'unknown'));
+
+            if (!empty($res)) {
                 return [
-                    'identity' => $identity[0]['name'] ?? 'unknown',
-                    'version' => $resources[0]['version'] ?? 'unknown',
-                    'cpu' => $resources[0]['cpu'] ?? 'unknown',
-                    'cpu_load' => $resources[0]['cpu-load'] ?? 0,
-                    'free_memory' => $resources[0]['free-memory'] ?? 0,
-                    'total_memory' => $resources[0]['total-memory'] ?? 0,
-                    'free_hdd_space' => $resources[0]['free-hdd-space'] ?? 0,
-                    'total_hdd_space' => $resources[0]['total-hdd-space'] ?? 0,
-                    'uptime' => $resources[0]['uptime'] ?? 'unknown',
-                    'board_name' => $resources[0]['board-name'] ?? '-',
-                    'architecture_name' => $resources[0]['architecture-name'] ?? '-',
+                    'identity' => $ident,
+                    'version' => $res['version'] ?? 'unknown',
+                    'cpu' => $res['cpu'] ?? 'unknown',
+                    'cpu_load' => $res['cpu-load'] ?? 0,
+                    'free_memory' => $res['free-memory'] ?? 0,
+                    'total_memory' => $res['total-memory'] ?? 0,
+                    'free_hdd_space' => $res['free-hdd-space'] ?? 0,
+                    'total_hdd_space' => $res['total-hdd-space'] ?? 0,
+                    'uptime' => $res['uptime'] ?? 'unknown',
+                    'board_name' => $res['board-name'] ?? ($res['platform'] ?? '-'),
+                    'architecture_name' => $res['architecture-name'] ?? '-',
                 ];
             }
 
             return [
-                'identity' => 'unknown',
+                'identity' => $ident,
                 'version' => 'unknown',
                 'cpu' => 'unknown',
                 'cpu_load' => 0,
                 'free_memory' => 0,
                 'total_memory' => 0,
                 'uptime' => 'unknown',
+                'board_name' => '-',
+                'architecture_name' => '-',
             ];
         } catch (Exception $e) {
             return [
@@ -121,6 +139,8 @@ class RouterOSDriver implements RouterOSDriverInterface
                 'free_memory' => 0,
                 'total_memory' => 0,
                 'uptime' => 'unknown',
+                'board_name' => '-',
+                'architecture_name' => '-',
                 'error' => $e->getMessage(),
             ];
         }

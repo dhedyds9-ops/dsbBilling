@@ -140,7 +140,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2 text-xs text-emerald-700 dark:text-emerald-300">
                             <div><span class="text-emerald-600 dark:text-emerald-400 font-medium">Identity:</span> {{ $connectedDevice['identity'] ?: '-' }}</div>
                             <div><span class="text-emerald-600 dark:text-emerald-400 font-medium">Board:</span> {{ $connectedDevice['board'] ?: '-' }}</div>
-                            <div><span class="text-emerald-600 dark:text-emerald-400 font-medium">Versi:</span> RouterOS v{{ $connectedDevice['version'] ?: '-' }}</div>
+                            <div><span class="text-emerald-600 dark:text-emerald-400 font-medium">Versi:</span> {{ !empty($connectedDevice['version']) ? (str_starts_with($connectedDevice['version'], 'v') ? 'RouterOS ' . $connectedDevice['version'] : 'RouterOS v' . $connectedDevice['version']) : '-' }}</div>
                         </div>
                     </div>
                 </div>
