@@ -284,6 +284,8 @@ class Create extends AdminComponent
         $lines[] = ":do { /radius remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
         $lines[] = ":do { /user remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
         $lines[] = ":do { /user group remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
+        $lines[] = ":do { /ip firewall filter remove [find comment~\"dsBilling\"] } on-error={ :nothing }";
+        $lines[] = ":do { /ip firewall filter remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 2. Aktifkan Service API MikroTik";
         $lines[] = "/ip service set api disabled=no port={$port}";
@@ -305,9 +307,11 @@ class Create extends AdminComponent
         $lines[] = ":do { /ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes radius-interim-update=5m [find] } on-error={ :nothing }";
         $lines[] = ":do { /ip hotspot user profile set mac-cookie-timeout=1w [find] } on-error={ :nothing }";
         $lines[] = "";
-        $lines[] = "# 6. Buka Port Firewall Input (API & CoA Disconnect)";
-        $lines[] = ":do { /ip firewall filter add chain=input protocol=tcp dst-port={$port} action=accept comment=\"Accept dsBilling API\" place-before=0 } on-error={ :nothing }";
-        $lines[] = ":do { /ip firewall filter add chain=input protocol=udp dst-port=3799 action=accept comment=\"Accept dsBilling CoA/Disconnect\" place-before=0 } on-error={ :nothing }";
+        $lines[] = "# 6. Buka Port Firewall Input (API & CoA Disconnect - Anti-Duplikasi)";
+        $lines[] = ":do { /ip firewall filter remove [find comment~\"dsBilling\"] } on-error={ :nothing }";
+        $lines[] = ":do { /ip firewall filter remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
+        $lines[] = ":do { /ip firewall filter add chain=input protocol=tcp dst-port={$port} action=accept comment=\"managed-by=dsbilling: Accept API\" place-before=0 } on-error={ :nothing }";
+        $lines[] = ":do { /ip firewall filter add chain=input protocol=udp dst-port=3799 action=accept comment=\"managed-by=dsbilling: Accept CoA\" place-before=1 } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 7. Tes Ping ke Server dsBilling RADIUS";
         $lines[] = "/ping {$effectiveRadiusIp} count=3";
@@ -325,6 +329,11 @@ class Create extends AdminComponent
         $iso[] = "# dsBilling Walled Garden (Payment Gateway) & Isolir Setup";
         $iso[] = "# Salin dan tempel di WinBox -> New Terminal";
         $iso[] = "# =================================================================";
+        $iso[] = "# 0. Bersihkan Konfigurasi Lama Walled Garden & Isolir (Anti-Duplikasi)";
+        $iso[] = ":do { /ip hotspot walled-garden remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
+        $iso[] = ":do { /ip hotspot walled-garden ip remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall address-list remove [find list=\"ISOLIR_WHITELIST\"] } on-error={ :nothing }";
+        $iso[] = ":do { /ip firewall filter remove [find comment~\"managed-by=dsbilling\"] } on-error={ :nothing }";
         $iso[] = "";
         $iso[] = "# 1. Walled Garden Hotspot (Akses Payment Gateway & Billing Sebelum Login)";
         $iso[] = ":do { /ip hotspot walled-garden add dst-host=\"*midtrans.com\" comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
