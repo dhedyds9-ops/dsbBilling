@@ -31,10 +31,22 @@ class Index extends BaseNetworkComponent
     public $provisioningToken = null;
     public $provisioningExpires = null;
     public bool $showProvisioningModal = false;
+    public string $provisioningRawScript = '';
+    public string $modalTab = 'oneline'; // 'oneline' or 'manual'
 
     public function openScriptModal($id)
     {
         $this->generateProvisioningToken($id);
+    }
+
+    public function generateProvisioningScript($id)
+    {
+        $this->generateProvisioningToken($id);
+    }
+
+    public function deleteRouter($id)
+    {
+        $this->delete($id);
     }
 
     public function closeScriptModal()
@@ -146,10 +158,17 @@ class Index extends BaseNetworkComponent
         try {
             $router = RouterModel::findOrFail($id);
             $service = app(\App\Services\Provisioning\RouterProvisioningService::class);
-            $session = $service->generateSession($router, auth()->id());
+            $userId = auth()->id() ?? 1;
+            $session = $service->generateSession($router, $userId);
 
+            $this->scriptRouter = $router;
             $this->provisioningToken = $session->raw_token;
             $this->provisioningExpires = $session->expires_at->diffForHumans();
+
+            $generator = app(\App\Services\Provisioning\RouterProvisioningScriptGenerator::class);
+            $this->provisioningRawScript = $generator->generateScript($router);
+            $this->modalTab = 'oneline';
+
             $this->showProvisioningModal = true;
         } catch (Throwable $e) {
             Log::error('Generate Provisioning Token failed', ['id' => $id, 'error' => $e->getMessage()]);
@@ -161,6 +180,8 @@ class Index extends BaseNetworkComponent
     {
         $this->showProvisioningModal = false;
         $this->provisioningToken = null;
+        $this->provisioningRawScript = '';
+        $this->scriptRouter = null;
     }
 
     public function duplicate($id)
