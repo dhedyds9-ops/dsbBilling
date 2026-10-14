@@ -5,6 +5,7 @@ namespace App\Models\Customer;
 use App\Traits\HasResellerScope;
 
 use App\Models\CRM\Customer;
+use App\Models\CRM\Contract;
 use App\Models\ISP\Onu;
 use App\Models\ISP\ServiceProfile;
 use App\Models\ServiceCatalog\Service;
