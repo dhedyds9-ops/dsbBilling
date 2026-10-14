@@ -79,14 +79,26 @@ class CDataOltDriver extends BaseOltDriver
                         ];
                     } elseif ($realPortIdx > 1000000) {
                         $slot = ($realPortIdx >> 24) & 0xFF;
-                        $port = ($realPortIdx >> 8) & 0xFF;
+                        if ($slot === 0) {
+                            $slot = ($realPortIdx >> 16) & 0xFF;
+                        }
+                        if ($slot === 0) {
+                            $slot = 1;
+                        }
+                        $port = $realPortIdx & 0xFF;
+                        if ($port === 0) {
+                            $port = ($realPortIdx >> 8) & 0xFF;
+                        }
+                        if ($port === 0) {
+                            $port = 1;
+                        }
                         $ports[] = [
                             'port_index' => $realPortIdx,
                             'port_name'  => "GPON 0/$slot/$port",
                             'status'     => match ((int)$status) {
                                 1, 101, 100 => 'up',
                                 2, 102      => 'down',
-                                default => 'unknown'
+                                default     => 'unknown'
                             },
                         ];
                     }
@@ -115,32 +127,85 @@ class CDataOltDriver extends BaseOltDriver
     {
         if ($this->checkIsNewBranch()) {
             try {
+                $slot = ($ponPort >> 24) & 0xFF;
+                if ($slot === 0) {
+                    $slot = ($ponPort >> 16) & 0xFF;
+                }
+                if ($slot === 0) {
+                    $slot = 1;
+                }
                 $portNum = $ponPort & 0xFF;
-                if ($ponPort > 1000000 && $portNum === 0) {
+                if ($portNum === 0) {
                     $portNum = ($ponPort >> 8) & 0xFF;
                 }
+                if ($portNum === 0) {
+                    $portNum = 1;
+                }
+
                 $this->initializeCli();
                 $this->cli->execute('config');
-                $out = $this->cli->execute("interface gpon 0/0");
+                
+                // Coba masuk interface gpon 0/$slot (misal interface gpon 0/1 atau 0/2)
+                $out = $this->cli->execute("interface gpon 0/{$slot}");
+                $inInterface = !str_contains(strtolower($out), 'unknown') && !str_contains(strtolower($out), 'error') && !str_contains(strtolower($out), 'invalid') && !str_contains(strtolower($out), 'incomplete');
                 $isEpon = false;
-                if (str_contains(strtolower($out), 'unknown') || str_contains(strtolower($out), 'error') || str_contains(strtolower($out), 'invalid')) { 
-                    $outEpon = $this->cli->execute("interface epon 0/0"); 
-                    if (!str_contains(strtolower($outEpon), 'unknown') && !str_contains(strtolower($outEpon), 'error')) {
+
+                if (!$inInterface) {
+                    $outEpon = $this->cli->execute("interface epon 0/{$slot}"); 
+                    if (!str_contains(strtolower($outEpon), 'unknown') && !str_contains(strtolower($outEpon), 'error') && !str_contains(strtolower($outEpon), 'invalid')) {
                         $isEpon = true;
+                        $inInterface = true;
                     }
                 }
-                $infoOut = $this->cli->execute($isEpon ? "show onu info $portNum all" : "show ont info $portNum all");
-                if (empty(trim($infoOut)) || str_contains(strtolower($infoOut), 'unknown') || str_contains(strtolower($infoOut), 'error')) {
+
+                $isBad = function($s) {
+                    $l = strtolower((string)$s);
+                    return empty(trim($s)) || str_contains($l, 'incomplete') || str_contains($l, 'invalid') || str_contains($l, 'unknown') || str_contains($l, 'error') || str_contains($l, 'unrecognized');
+                };
+
+                // Jalankan perintah show ont/onu info & optical info
+                $infoOut = '';
+                $optOut = '';
+
+                if ($inInterface) {
+                    $infoOut = $this->cli->execute($isEpon ? "show onu info {$portNum} all" : "show ont info {$portNum} all");
+                    if ($isBad($infoOut)) {
+                        $infoOut = $this->cli->execute($isEpon ? "show onu info all" : "show ont info all");
+                    }
+
+                    $optOut = $this->cli->execute($isEpon ? "show onu optical-info {$portNum} all" : "show ont optical-info {$portNum} all");
+                    if ($isBad($optOut)) {
+                        $optOut = $this->cli->execute($isEpon ? "show onu optical-info all" : "show ont optical-info all");
+                    }
+
+                    // Kembali ke config mode
+                    $this->cli->execute('exit');
+                }
+
+                // Jika gagal atau tidak dalam interface, coba dari config mode dengan parameter slot/port
+                if ($isBad($infoOut)) {
+                    $infoOut = $this->cli->execute($isEpon ? "show onu info 0/{$slot} {$portNum} all" : "show ont info 0/{$slot} {$portNum} all");
+                }
+                if ($isBad($infoOut)) {
+                    $infoOut = $this->cli->execute($isEpon ? "show onu info 0/{$slot} all" : "show ont info 0/{$slot} all");
+                }
+                if ($isBad($infoOut)) {
                     $infoOut = $this->cli->execute($isEpon ? "show onu info all" : "show ont info all");
                 }
-                \Illuminate\Support\Facades\Log::info("CData CLI infoOut Port $portNum: " . trim(preg_replace('/\s+/', ' ', substr($infoOut, 0, 500))));
-                $optOut  = $this->cli->execute($isEpon ? "show onu optical-info $portNum all" : "show ont optical-info $portNum all");
-                if (empty(trim($optOut)) || str_contains(strtolower($optOut), 'unknown') || str_contains(strtolower($optOut), 'error')) {
+
+                if ($isBad($optOut)) {
+                    $optOut = $this->cli->execute($isEpon ? "show onu optical-info 0/{$slot} {$portNum} all" : "show ont optical-info 0/{$slot} {$portNum} all");
+                }
+                if ($isBad($optOut)) {
+                    $optOut = $this->cli->execute($isEpon ? "show onu optical-info 0/{$slot} all" : "show ont optical-info 0/{$slot} all");
+                }
+                if ($isBad($optOut)) {
                     $optOut = $this->cli->execute($isEpon ? "show onu optical-info all" : "show ont optical-info all");
                 }
-                // Hanya exit dari interface mode ke config mode, jangan sampai log out
-                $this->cli->execute('exit');
-                
+
+                \Illuminate\Support\Facades\Log::info("CData CLI infoOut Slot {$slot} Port {$portNum}: " . trim(preg_replace('/\s+/', ' ', substr($infoOut, 0, 500))));
+                \Illuminate\Support\Facades\Log::info("CData CLI optOut Slot {$slot} Port {$portNum}: " . trim(preg_replace('/\s+/', ' ', substr($optOut, 0, 500))));
+
                 // Fetch MACs via CTC OID (cached per instance)
                 if ($this->macsCache === null) {
                     $this->macsCache = [];
@@ -171,7 +236,7 @@ class CDataOltDriver extends BaseOltDriver
 
                 $onuList = [];
                 // Parse show ont info
-                // Format GPON: "  0/0 1  1      FHTT91C67218     Active   Online  success  ..."
+                // Format GPON: "  0/1 1  1      FHTT91C67218     Active   Online  success  ..."
                 // Format EPON: "  EPON0/1:1    00:0a:c2:xx:xx:xx   Online ..."
                 $infoOut = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $infoOut);
                 foreach (explode("\n", $infoOut) as $line) {
@@ -180,20 +245,26 @@ class CDataOltDriver extends BaseOltDriver
                     $sn = null;
                     $runState = null;
 
-                    // Match 1: Format GPON "0/0 1 1 FHTT91C67218 Active Online"
-                    if (preg_match('/^(\d+\/\d+)\s+(\d+)\s+(\d+)\s+([A-Z0-9:-]{12,17})\s+\w+\s+(Online|Offline)/i', $line, $m)) {
-                        $onuId = (int)$m[3];
-                        $sn = strtoupper($m[4]);
-                        $runState = strtolower($m[5]);
+                    // Match 1: Format GPON "0/1 1 1 FHTT91C67218 Active Online"
+                    if (preg_match('/^\s*(\d+\/\d+)\s+(\d+)\s+(\d+)\s+([A-Z0-9:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
+                        $linePort = (int)$m[2];
+                        if ($linePort === $portNum || count(explode("\n", $infoOut)) < 5) {
+                            $onuId = (int)$m[3];
+                            $sn = strtoupper($m[4]);
+                            $runState = strtolower($m[5]);
+                        }
                     } 
                     // Match 2: Format EPON / GPON port:id "0/1:1 00:0a:c2:... Online"
                     elseif (preg_match('/^(?:EPON|GPON)?(?:\d+\/)?(\d+)[:\s]+(\d+)\s+([A-Z0-9.:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
-                        $onuId = (int)$m[2];
-                        $sn = strtoupper($m[3]);
-                        $runState = strtolower($m[4]);
+                        $linePort = (int)$m[1];
+                        if ($linePort === $portNum || count(explode("\n", $infoOut)) < 5) {
+                            $onuId = (int)$m[2];
+                            $sn = strtoupper($m[3]);
+                            $runState = strtolower($m[4]);
+                        }
                     }
                     // Match 3: Format ID SN Status "1 FHTT91C67218 ... Online"
-                    elseif (preg_match('/^(\d+)\s+([A-Z0-9:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
+                    elseif (preg_match('/^\s*(\d+)\s+([A-Z0-9:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
                         $onuId = (int)$m[1];
                         $sn = strtoupper($m[2]);
                         $runState = strtolower($m[3]);
@@ -247,25 +318,46 @@ class CDataOltDriver extends BaseOltDriver
                 
                 // Parse show ont optical-info
                 $optOut = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $optOut);
-                  foreach (explode("\n", $optOut) as $line) {
+                foreach (explode("\n", $optOut) as $line) {
                     $line = trim($line);
-                    $parts = preg_split('/\s+/', $line);
-                    if (count($parts) >= 6 && is_numeric($parts[0])) {
-                        $onuId = (int)$parts[0];
-                        if (isset($onuList[$onuId])) {
-                            $rx = $parts[1];
-                            $tx = $parts[2];
-                            $temp = $parts[4];
-                            
-                            if (is_numeric($rx)) {
-                                $onuList[$onuId]['rx_power_dbm'] = (float)$rx;
-                            }
-                            if (is_numeric($tx)) {
-                                $onuList[$onuId]['tx_power_dbm'] = (float)$tx;
-                            }
-                            if (is_numeric($temp)) {
-                                $onuList[$onuId]['temperature'] = (float)$temp;
-                            }
+                    if (empty($line)) continue;
+                    
+                    $optOnuId = null;
+                    $rx = null;
+                    $tx = null;
+                    $temp = null;
+
+                    // Format 1: "0/1 1 1 -21.50 2.30 15.2 42.0 3.3"
+                    if (preg_match('/^\s*\d+\/\d+\s+\d+\s+(\d+)\s+([\-\d\.]+)\s+([\-\d\.]+)(?:\s+[\-\d\.]+)?(?:\s+([\-\d\.]+))?/i', $line, $om)) {
+                        $optOnuId = (int)$om[1];
+                        $rx = $om[2];
+                        $tx = $om[3];
+                        $temp = $om[4] ?? null;
+                    }
+                    // Format 2: "0/1:1 -21.50 2.30 ..." or "EPON0/1:1 -21.50 2.30 ..."
+                    elseif (preg_match('/^(?:EPON|GPON)?(?:\d+\/)?\d+[:\s]+(\d+)\s+([\-\d\.]+)\s+([\-\d\.]+)(?:\s+[\-\d\.]+)?(?:\s+([\-\d\.]+))?/i', $line, $om)) {
+                        $optOnuId = (int)$om[1];
+                        $rx = $om[2];
+                        $tx = $om[3];
+                        $temp = $om[4] ?? null;
+                    }
+                    // Format 3: "1 -21.50 2.30 15.2 42.0 3.3"
+                    elseif (preg_match('/^\s*(\d+)\s+([\-\d\.]+)\s+([\-\d\.]+)(?:\s+[\-\d\.]+)?(?:\s+([\-\d\.]+))?/i', $line, $om)) {
+                        $optOnuId = (int)$om[1];
+                        $rx = $om[2];
+                        $tx = $om[3];
+                        $temp = $om[4] ?? null;
+                    }
+
+                    if ($optOnuId !== null && isset($onuList[$optOnuId])) {
+                        if (is_numeric($rx)) {
+                            $onuList[$optOnuId]['rx_power_dbm'] = (float)$rx;
+                        }
+                        if (is_numeric($tx)) {
+                            $onuList[$optOnuId]['tx_power_dbm'] = (float)$tx;
+                        }
+                        if (is_numeric($temp)) {
+                            $onuList[$optOnuId]['temperature'] = (float)$temp;
                         }
                     }
                 }
