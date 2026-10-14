@@ -28,34 +28,29 @@
         <!-- Content -->
         <div class="px-6 py-5 overflow-y-auto space-y-6">
             
-            <div class="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 rounded-lg">
-                <h4 class="font-semibold text-blue-800 mb-2">Kenapa butuh Telnet/SSH dan SNMP-</h4>
-                <p class="text-sm text-primary-700 leading-relaxed">
-                    Sistem dsBilling menggunakan protokol standar jaringan (Telnet/SSH dan SNMP) untuk berbicara langsung ke perangkat keras OLT. dsBilling <strong>TIDAK BISA</strong> menggunakan Web GUI OLT (HTTP Port 80 / 8080) karena web OLT didesain untuk manusia- bukan untuk dibaca oleh mesin.
+            <div class="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <h4 class="font-semibold text-blue-800 dark:text-blue-200 mb-2">Kenapa butuh Telnet/SSH dan SNMP?</h4>
+                <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                    Sistem dsBilling menggunakan protokol standar jaringan (Telnet/SSH dan SNMP) untuk berbicara langsung ke perangkat keras OLT. dsBilling <strong>TIDAK MENGGUNAKAN</strong> Web GUI OLT (HTTP Port 80 / 8080) karena web OLT didesain untuk tampilan visual manusia, bukan untuk automasi mesin.
                 </p>
             </div>
 
             <div>
-                <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-3 border-b pb-2">1. Konfigurasi di Mikrotik (Port Forwarding / DST-NAT)</h4>
+                <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-3 border-b pb-2">1. Konfigurasi di Mikrotik (Port Forwarding & Masquerade)</h4>
                 <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                    Jika OLT Anda berada di jaringan lokal (misal IP <code>192.168.10.2</code>) di belakang router Mikrotik yang memiliki IP Publik- Anda perlu melakukan Port Forwarding.
+                    Jika OLT Anda berada di jaringan lokal (misal IP <code>192.168.100.2</code>) di belakang router Mikrotik yang memiliki IP Publik, jalankan perintah berikut di New Terminal WinBox:
                 </p>
                 
                 <div class="space-y-4">
-                    <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                        <h5 class="font-semibold text-sm mb-2">A. Forwarding Telnet (Untuk Perintah CLI)</h5>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Forward port publik <strong>2301</strong> ke port <strong>23</strong> OLT.</p>
-                        <pre class="bg-slate-900 p-3 rounded text-xs font-mono overflow-x-auto" style="color: #f1f5f9;">/ip firewall nat
-add action=dst-nat chain=dstnat dst-address=[IP_PUBLIK] dst-port=2301 protocol=tcp \
-    to-addresses=[IP_LOKAL_OLT] to-ports=23 comment="Forward Telnet OLT 1"</pre>
-                    </div>
+                    <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-900 text-slate-200 font-mono text-xs">
+                        <pre class="overflow-x-auto whitespace-pre-wrap">/
+# Port Forwarding Telnet (23) & SNMP (161)
+/ip firewall nat add action=dst-nat chain=dstnat protocol=tcp dst-port=2301 dst-address-type=local to-addresses=192.168.100.2 to-ports=23 comment="managed-by=dsbilling: OLT Telnet"
+/ip firewall nat add action=dst-nat chain=dstnat protocol=udp dst-port=1611 dst-address-type=local to-addresses=192.168.100.2 to-ports=161 comment="managed-by=dsbilling: OLT SNMP"
 
-                    <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                        <h5 class="font-semibold text-sm mb-2">B. Forwarding SNMP (Untuk Monitoring & Traffic)</h5>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Forward port publik <strong>1611</strong> ke port <strong>161</strong> OLT. (Catatan: SNMP menggunakan <strong>UDP</strong>)</p>
-                        <pre class="bg-slate-900 p-3 rounded text-xs font-mono overflow-x-auto" style="color: #f1f5f9;">/ip firewall nat
-add action=dst-nat chain=dstnat dst-address=[IP_PUBLIK] dst-port=1611 protocol=udp \
-    to-addresses=[IP_LOKAL_OLT] to-ports=161 comment="Forward SNMP OLT 1"</pre>
+# Masquerade (Mencegah balasan OLT tersesat jika gateway berbeda)
+/ip firewall nat add action=masquerade chain=srcnat dst-address=192.168.100.2 comment="managed-by=dsbilling: OLT Masquerade"
+/</pre>
                     </div>
                 </div>
             </div>
@@ -63,7 +58,7 @@ add action=dst-nat chain=dstnat dst-address=[IP_PUBLIK] dst-port=1611 protocol=u
             <div>
                 <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-3 border-b pb-2">2. Konfigurasi di dsBilling (Tambah/Edit OLT)</h4>
                 <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                    Setelah Mikrotik disetting- isikan form dsBilling sebagai berikut:
+                    Setelah Mikrotik disetting, isikan form dsBilling sebagai berikut:
                 </p>
                 <ul class="list-disc pl-5 text-sm text-slate-600 dark:text-slate-400 space-y-2">
                     <li><strong>IP Address:</strong> Isi dengan IP Publik Mikrotik Anda.</li>
@@ -88,7 +83,7 @@ ZXAN(config)# snmp-server version v2c</pre>
                     <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3 bg-slate-50 dark:bg-slate-900/50">
                         <h5 class="font-semibold text-sm mb-2">HSGQ/V-SOL</h5>
                         <p class="text-xs text-slate-500 dark:text-slate-400">
-                            Biasanya fitur SNMP dan Telnet sudah aktif secara default- namun pastikan community <strong>public</strong> (read-only) dan <strong>private</strong> (read-write) tersedia.
+                            Biasanya fitur SNMP dan Telnet sudah aktif secara default, namun pastikan community <strong>public</strong> (read-only) dan <strong>private</strong> (read-write) tersedia.
                         </p>
                     </div>
                 </div>

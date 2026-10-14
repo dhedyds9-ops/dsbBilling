@@ -103,22 +103,39 @@
                             <li>Di aplikasi ini, masukkan <strong>IP Publik Mikrotik</strong> ke kolom IP Address.</li>
                             <li class="text-red-500 font-semibold mt-1">Penting: Wajib filter IP agar tidak di-hack!</li>
                         </ul>
+                        @php
+                            $serverIp = request()->server('SERVER_ADDR') ?? (filter_var(request()->getHost(), FILTER_VALIDATE_IP) ? request()->getHost() : 'IP_SERVER_BILLING');
+                            if (!filter_var($serverIp, FILTER_VALIDATE_IP)) {
+                                $serverIp = 'IP_SERVER_BILLING';
+                            }
+                        @endphp
                         <div x-data="{ copied: false }" class="mt-3 bg-slate-900 rounded-md p-3 text-xs text-green-400 font-mono overflow-x-auto relative group">
-                            <button @click="navigator.clipboard.writeText($refs.script1.innerText.trim()); copied = true; setTimeout(() => copied = false, 2000)" 
-                                class="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white px-2 py-1 rounded-md transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1 border border-slate-600 shadow-md">
+                            <button type="button" @click="window.copyToClipboard($refs.script1.innerText.trim(), 'Skrip OLT Port Forwarding berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
+                                :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border-slate-600'"
+                                class="absolute top-2 right-2 px-2.5 py-1 rounded-md transition-all flex items-center gap-1 border shadow-md">
                                 <span class="material-symbols-outlined notranslate" style="font-size:14px" x-text="copied ? 'check' : 'content_copy'"></span>
-                                <span x-text="copied ? 'Copied!' : 'Copy'"></span>
+                                <span x-text="copied ? 'Tersalin!' : 'Salin Skrip'"></span>
                             </button>
-<pre x-ref="script1" class="pt-2">
-# 1. Forwarding Port (Ganti 192.168.100.2 dgn IP Lokal OLT)
-/ip firewall nat
-add chain=dstnat protocol=udp dst-port=161 action=dst-nat to-addresses=192.168.100.2 to-ports=161
-add chain=dstnat protocol=tcp dst-port=23 action=dst-nat to-addresses=192.168.100.2 to-ports=23
+<pre x-ref="script1" class="pt-2"># =================================================================
+# Port Forwarding OLT ke dsBilling (Mode IP Publik)
+# Ganti 192.168.100.2 dengan IP Lokal OLT Anda
+# =================================================================
+/
+:do { /ip firewall nat remove [find comment~"managed-by=dsbilling: OLT"] } on-error={ :nothing }
+:do { /ip firewall filter remove [find comment~"managed-by=dsbilling: OLT"] } on-error={ :nothing }
 
-# 2. Keamanan Filter (Ganti X.X.X.X dgn IP Server Billing)
-/ip firewall filter
-add chain=forward src-address=X.X.X.X dst-address=192.168.100.2 action=accept
-add chain=forward dst-address=192.168.100.2 action=drop
+# 1. Forward Port SNMP (UDP 161) dan Telnet (TCP 23)
+/ip firewall nat add chain=dstnat protocol=udp dst-port=161 dst-address-type=local action=dst-nat to-addresses=192.168.100.2 to-ports=161 comment="managed-by=dsbilling: OLT SNMP"
+/ip firewall nat add chain=dstnat protocol=tcp dst-port=23 dst-address-type=local action=dst-nat to-addresses=192.168.100.2 to-ports=23 comment="managed-by=dsbilling: OLT Telnet"
+
+# 2. Masquerade Balik (PENTING: Mencegah paket balasan OLT tersesat)
+/ip firewall nat add chain=srcnat dst-address=192.168.100.2 action=masquerade comment="managed-by=dsbilling: OLT Masquerade"
+
+# 3. Filter Keamanan (Hanya Server Billing {{ $serverIp }} yang Diizinkan Akses OLT)
+/ip firewall filter add chain=forward src-address={{ $serverIp }} dst-address=192.168.100.2 action=accept comment="managed-by=dsbilling: OLT Allow Billing" place-before=0
+/ip firewall filter add chain=forward dst-address=192.168.100.2 protocol=tcp dst-port=23 action=drop comment="managed-by=dsbilling: OLT Drop Public Telnet" place-before=1
+/ip firewall filter add chain=forward dst-address=192.168.100.2 protocol=udp dst-port=161 action=drop comment="managed-by=dsbilling: OLT Drop Public SNMP" place-before=2
+/
 </pre>
                         </div>
                     </div>
@@ -126,23 +143,30 @@ add chain=forward dst-address=192.168.100.2 action=drop
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
                         <h4 class="font-bold text-slate-800 dark:text-slate-200 mb-2">Opsi 2: Menggunakan VPN / Tunnel (Rekomendasi)</h4>
                         <ul class="list-disc pl-4 space-y-1 text-slate-600 dark:text-slate-400">
-                            <li>Buat jalur VPN (contoh: L2TP/Wireguard) antara server billing dan Mikrotik site OLT.</li>
-                            <li>Buat <strong>Static Route</strong> di server billing menuju subnet lokal OLT melalui jalur VPN.</li>
-                            <li>Buat NAT Masquerade out-interface (port yg mengarah ke OLT) di Mikrotik.</li>
+                            <li>Hubungkan Mikrotik ke <strong>VPN dsBilling</strong> (tanpa perlu IP Publik statis).</li>
+                            <li>Buat <strong>NAT Masquerade</strong> ke arah IP lokal OLT agar OLT dapat membalas traffic dari VPN.</li>
                             <li>Di aplikasi ini, masukkan <strong>IP Asli Lokal OLT</strong> (misal 192.168.100.2).</li>
                         </ul>
                         <div x-data="{ copied: false }" class="mt-3 bg-slate-900 rounded-md p-3 text-xs text-green-400 font-mono overflow-x-auto relative group">
-                            <button @click="navigator.clipboard.writeText($refs.script2.innerText.trim()); copied = true; setTimeout(() => copied = false, 2000)" 
-                                class="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white px-2 py-1 rounded-md transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1 border border-slate-600 shadow-md">
+                            <button type="button" @click="window.copyToClipboard($refs.script2.innerText.trim(), 'Skrip OLT VPN Masquerade berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
+                                :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border-slate-600'"
+                                class="absolute top-2 right-2 px-2.5 py-1 rounded-md transition-all flex items-center gap-1 border shadow-md">
                                 <span class="material-symbols-outlined notranslate" style="font-size:14px" x-text="copied ? 'check' : 'content_copy'"></span>
-                                <span x-text="copied ? 'Copied!' : 'Copy'"></span>
+                                <span x-text="copied ? 'Tersalin!' : 'Salin Skrip'"></span>
                             </button>
-<pre x-ref="script2" class="pt-2">
-# Contoh jika kabel OLT dicolok ke ether5 mikrotik
-/ip firewall nat
-add chain=srcnat out-interface=ether5 action=masquerade comment="NAT to OLT"
+<pre x-ref="script2" class="pt-2"># =================================================================
+# Masquerade OLT ke dsBilling (Mode VPN Tunnel)
+# Ganti 192.168.100.2 dengan IP Lokal OLT Anda
+# =================================================================
+/
+:do { /ip firewall nat remove [find comment~"managed-by=dsbilling: OLT Masquerade"] } on-error={ :nothing }
 
-# Pastikan mikrotik ping ke IP server billing & sebaliknya me-reply
+# 1. Masquerade Traffic ke OLT (Memungkinkan Server Billing Akses Subnet OLT via VPN)
+/ip firewall nat add chain=srcnat dst-address=192.168.100.2 action=masquerade comment="managed-by=dsbilling: OLT Masquerade"
+
+# 2. Tes Ping ke IP OLT
+/ping 192.168.100.2 count=3
+/
 </pre>
                         </div>
                     </div>
