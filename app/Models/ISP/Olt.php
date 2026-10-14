@@ -93,6 +93,7 @@ class Olt extends Model
         'cli_mode',
         'status',
         'last_polled_at',
+        'last_error',
         'uptime_text',
         'temperature',
         'firmware_version',

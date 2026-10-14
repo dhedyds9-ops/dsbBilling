@@ -64,6 +64,29 @@
         </div>
     </div>
 
+    {{-- Error Banner jika ada kendala sinkronisasi terakhir --}}
+    @if(!empty($olt->last_error) && $olt->status !== 'active')
+    <div class="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-900 dark:text-red-200 shadow-sm">
+        <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-red-600 dark:text-red-400 mt-0.5" style="font-size:24px">warning</span>
+            <div class="space-y-1.5 flex-1">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <h4 class="font-bold text-sm text-red-800 dark:text-red-300">Kendala Terdeteksi Saat Sinkronisasi OLT</h4>
+                    @if($olt->last_polled_at)
+                        <span class="text-xs text-red-600 dark:text-red-400">{{ $olt->last_polled_at->diffForHumans() }} ({{ $olt->last_polled_at->format('d M Y H:i:s') }})</span>
+                    @endif
+                </div>
+                <div class="text-xs font-mono bg-white/80 dark:bg-slate-900/80 p-3 rounded-lg border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 leading-relaxed">
+                    {{ $olt->last_error }}
+                </div>
+                <p class="text-xs text-red-700 dark:text-red-400">
+                    <strong>Saran Perbaikan:</strong> Periksa hak akses SNMP (View OID Enterprise) di OLT Anda (misal jalankan: <code>snmp-server community {{ $olt->snmp_community_read ?: 'public' }} ro</code>), atau pastikan pemilihan Vendor OLT (CDATA, HSGQ, ZTE, VSOL) di menu Edit sudah sesuai dengan merek perangkat sebenarnya.
+                </p>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- Info + PON Ports Grid --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 

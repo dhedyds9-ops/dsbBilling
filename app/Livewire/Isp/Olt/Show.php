@@ -48,10 +48,19 @@ class Show extends AdminComponent
     public function syncOlt()
     {
         try {
-            $res = app(\App\Services\ISP\OltPollingService::class)->pollOlt($this->olt); if (isset($res['success']) && !$res['success']) throw new \Exception($res['message'] ?? 'Unknown error');
+            $res = app(\App\Services\ISP\OltPollingService::class)->pollOlt($this->olt);
+            if (isset($res['success']) && !$res['success']) {
+                $err = $res['error'] ?? $res['message'] ?? 'Gagal menghubungi perangkat OLT.';
+                throw new \Exception($err);
+            }
+            $this->olt->refresh();
             session()->flash('success', 'Sinkronisasi dengan OLT berhasil diselesaikan.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal memulai sinkronisasi: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'success', message: 'Sinkronisasi OLT berhasil.');
+        } catch (\Throwable $e) {
+            $errMsg = $e->getMessage();
+            $this->olt->refresh();
+            session()->flash('error', 'Gagal sinkronisasi OLT: ' . $errMsg);
+            $this->dispatch('toast', type: 'error', message: 'Gagal sinkronisasi OLT: ' . $errMsg);
         }
     }
 

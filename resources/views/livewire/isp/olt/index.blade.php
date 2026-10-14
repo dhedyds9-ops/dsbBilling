@@ -435,14 +435,26 @@
                                     <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $olt->status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400' }}">
                                         {{ $olt->status === 'active' ? 'Aktif' : 'Nonaktif' }}
                                     </span>
+                                    @if(!empty($olt->last_error) && $olt->status !== 'active')
+                                        <div class="mt-1 flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium" title="{{ $olt->last_error }}">
+                                            <span class="material-symbols-outlined notranslate" style="font-size:14px">error</span>
+                                            <span>Kendala Sync</span>
+                                        </div>
+                                    @endif
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-6 py-4">
                                 <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">
                                     <a href="{{ route('isp.olts.show', $olt->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                         {{ $olt->name }}
                                     </a>
                                 </div>
+                                @if(!empty($olt->last_error) && $olt->status !== 'active')
+                                    <div class="text-[11px] text-red-500 dark:text-red-400 font-normal mt-0.5 line-clamp-2 max-w-sm flex items-start gap-1" title="{{ $olt->last_error }}">
+                                        <span class="material-symbols-outlined notranslate text-[13px] mt-0.5 flex-shrink-0">warning</span>
+                                        <span class="line-clamp-2">{{ $olt->last_error }}</span>
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="font-mono text-sm text-slate-700 dark:text-slate-300 font-medium">

@@ -303,14 +303,20 @@ class Index extends BaseNetworkComponent
         Log::info(__METHOD__);
         try {
             $olt = OltModel::findOrFail($id);
-            $res = app(\App\Services\ISP\OltPollingService::class)->pollOlt($olt); if (isset($res['success']) && !$res['success']) throw new \Exception($res['message'] ?? 'Unknown error');
+            $res = app(\App\Services\ISP\OltPollingService::class)->pollOlt($olt);
+            if (isset($res['success']) && !$res['success']) {
+                $errMsg = $res['error'] ?? $res['message'] ?? 'Gagal menghubungi perangkat OLT.';
+                throw new \Exception($errMsg);
+            }
             
             $msg = 'Sinkronisasi OLT ' . $olt->name . ' berhasil diselesaikan.';
             session()->flash('success', $msg);
             $this->dispatch('toast', type: 'success', message: $msg);
         } catch (\Throwable $e) {
-            Log::error('rowSync failed', ['id' => $id, 'err' => $e->getMessage()]);
-            $this->dispatch('toast', type: 'error', message: 'Sync error: ' . $e->getMessage());
+            $errMsg = $e->getMessage();
+            Log::error('rowSync failed', ['id' => $id, 'err' => $errMsg]);
+            session()->flash('error', 'Gagal sinkronisasi OLT: ' . $errMsg);
+            $this->dispatch('toast', type: 'error', message: 'Gagal sync OLT: ' . $errMsg);
         }
     }
 
@@ -319,16 +325,48 @@ class Index extends BaseNetworkComponent
         Log::info(__METHOD__);
         try {
             $olts = OltModel::whereNotNull('ip_address')->get();
-            $count = 0;
-            foreach ($olts as $olt) {
-                \App\Jobs\ISP\PollOltJob::dispatch($olt->id);
-                $count++;
+            if ($olts->isEmpty()) {
+                $this->dispatch('toast', type: 'info', message: 'Tidak ada OLT yang memiliki IP Address.');
+                return;
             }
-            $msg = "Memulai sinkronisasi untuk {$count} OLT di latar belakang.";
-            session()->flash('success', $msg);
-            $this->dispatch('toast', type: 'success', message: $msg);
+
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            
+            // Jika OLT <= 5, proses langsung agar hasil & error tampil langsung di UI
+            if ($olts->count() <= 5) {
+                $successCount = 0;
+                $failMessages = [];
+
+                foreach ($olts as $olt) {
+                    $res = $service->pollOlt($olt);
+                    if (!empty($res['success'])) {
+                        $successCount++;
+                    } else {
+                        $err = $res['error'] ?? $res['message'] ?? 'Unknown error';
+                        $failMessages[] = "{$olt->name}: {$err}";
+                    }
+                }
+
+                if (empty($failMessages)) {
+                    $msg = "Sinkronisasi berhasil untuk {$successCount} OLT.";
+                    session()->flash('success', $msg);
+                    $this->dispatch('toast', type: 'success', message: $msg);
+                } else {
+                    $summaryMsg = "Kendala Sinkronisasi: " . implode(' | ', $failMessages);
+                    session()->flash('error', $summaryMsg);
+                    $this->dispatch('toast', type: 'error', message: $summaryMsg);
+                }
+            } else {
+                foreach ($olts as $olt) {
+                    \App\Jobs\ISP\PollOltJob::dispatch($olt->id);
+                }
+                $msg = "Memulai sinkronisasi untuk {$olts->count()} OLT di latar belakang.";
+                session()->flash('info', $msg);
+                $this->dispatch('toast', type: 'info', message: $msg);
+            }
         } catch (\Throwable $e) {
             Log::error('syncAll failed', ['err' => $e->getMessage()]);
+            session()->flash('error', 'Sync error: ' . $e->getMessage());
             $this->dispatch('toast', type: 'error', message: 'Sync error: ' . $e->getMessage());
         }
     }

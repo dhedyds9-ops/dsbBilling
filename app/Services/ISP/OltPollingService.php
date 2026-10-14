@@ -80,6 +80,7 @@ class OltPollingService
                     'pon_port_count' => count($ponPorts),
                     'status' => ($systemInfo['status'] ?? 'offline') === 'online' ? 'active' : 'inactive',
                     'last_polled_at' => now(),
+                    'last_error' => null,
                 ];
                 
                 if (!empty($systemInfo['model']) && $systemInfo['model'] !== '-') {
@@ -332,16 +333,22 @@ class OltPollingService
                 'alerts' => $alerts,
             ];
         } catch (Throwable $e) {
-            Log::warning('OLT Poll failed', ['olt_id' => $olt->id, 'msg' => $e->getMessage()]);
+            $errorMsg = $e->getMessage();
+            Log::warning('OLT Poll failed', ['olt_id' => $olt->id, 'msg' => $errorMsg]);
             try {
-                $olt->update(['status' => 'inactive', 'last_polled_at' => now()]);
-            } catch (Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
+                $olt->update([
+                    'status' => 'inactive',
+                    'last_polled_at' => now(),
+                    'last_error' => $errorMsg,
+                ]);
+            } catch (Throwable $dbErr) {
+                Log::error("Failed updating OLT status on poll failure: " . $dbErr->getMessage());
+            }
             return [
                 'success' => false,
                 'olt_id' => $olt->id,
-                'error' => $e->getMessage(),
+                'error' => $errorMsg,
+                'message' => $errorMsg,
             ];
         }
     }
