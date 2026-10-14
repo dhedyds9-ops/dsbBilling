@@ -158,7 +158,63 @@
                                 <input type="checkbox" wire:model.live="selected" value="{{ $invoice->id }}" 
                                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-900 dark:border-slate-600">
                             </td>
-                            </tr>
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('billing.invoices.show', $invoice->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                    </a>
+                                    @if(in_array($invoice->status, ['unpaid', 'partial', 'overdue', 'pending']))
+                                        <button wire:click="openPaymentModal({{ $invoice->id }})" type="button" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors" title="Proses Bayar">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">payments</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                <a href="{{ route('billing.invoices.show', $invoice->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                    {{ $invoice->invoice_number }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
+                                <div class="font-medium">{{ $invoice->customer?->name ?? '-' }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $invoice->customer?->code ?? '-' }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                {{ $invoice->issue_date?->format('d M Y') ?? '-' }}
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                {{ $invoice->due_date?->format('d M Y') ?? '-' }}
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($invoice->status === 'paid')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">check_circle</span> Lunas</span>
+                                @elseif($invoice->status === 'unpaid' || $invoice->status === 'pending')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">schedule</span> Belum Lunas</span>
+                                @elseif($invoice->status === 'overdue')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">warning</span> Jatuh Tempo</span>
+                                @elseif($invoice->status === 'partial')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">pie_chart</span> Parsial</span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">{{ ucfirst($invoice->status) }}</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono font-medium text-slate-900 dark:text-slate-100">
+                                Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                                Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                                <div class="flex flex-col items-center justify-center">
+                                    <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">receipt_long</span>
+                                    <p class="text-lg font-medium text-slate-900 dark:text-slate-100 mt-2">Tidak Ada Data</p>
+                                    <p class="text-sm mt-1">Belum ada tagihan yang ditemukan.</p>
+                                </div>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
