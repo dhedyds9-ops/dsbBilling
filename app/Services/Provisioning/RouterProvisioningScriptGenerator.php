@@ -12,7 +12,8 @@ class RouterProvisioningScriptGenerator
     {
         $appUrl = rtrim(config('app.url', 'http://127.0.0.1:8000'), '/');
         // If appUrl is localhost, we need an accessible IP. For testing, we use $_SERVER['HTTP_HOST'] or a fallback.
-        $host = parse_url($appUrl, PHP_URL_HOST) ?? '127.0.0.1';
+        $rawHost = parse_url($appUrl, PHP_URL_HOST) ?? '127.0.0.1';
+        $host = filter_var($rawHost, FILTER_VALIDATE_IP) ? $rawHost : gethostbyname($rawHost);
         
         $lines = [];
         $lines[] = "# dsBilling MikroTik Auto-Provisioning Script";
@@ -65,7 +66,13 @@ class RouterProvisioningScriptGenerator
             $radiusNas->update(['nas_secret' => $radiusSecret]);
         }
 
-        $lines[] = ":do { /radius add address=\"{$host}\" secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Radius exists\" }";
+        $lines[] = ":local radHost \"{$rawHost}\"";
+        $lines[] = ":local radIP \"{$host}\"";
+        $lines[] = ":do {";
+        $lines[] = "    :local resolved [:resolve \$radHost]";
+        $lines[] = "    :if ([:len \$resolved] > 0) do={ :set radIP \$resolved }";
+        $lines[] = "} on-error={ :nothing }";
+        $lines[] = ":do { /radius add address=\$radIP secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Radius exists\" }";
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :put \"Radius incoming configured\" }";
         $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :put \"PPP AAA configured\" }";
         $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=5m nas-port-type=\"wireless-802.11\" [find] } on-error={ :nothing }";

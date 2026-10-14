@@ -87,7 +87,9 @@ class Edit extends AdminComponent
         $username = $this->username ?: 'api.dsb.' . preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name ?: 'router'));
         $password = $this->password ?: 'GANTI_PASSWORD_DI_FORM';
         $radiusSecret = $this->radius_secret ?: 'GANTI_SECRET_DI_FORM';
-        $radiusIp = trim($this->customRadiusIp) ?: (request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost());
+        $rawRadiusHost = trim($this->customRadiusIp) ?: (request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost());
+        // MikroTik /radius add address= strictly requires an IPv4/IPv6 address, not a domain name.
+        $radiusIp = filter_var($rawRadiusHost, FILTER_VALIDATE_IP) ? $rawRadiusHost : gethostbyname($rawRadiusHost);
         $port = (int) ($this->api_port ?: 8728);
 
         $lines = [];
@@ -110,7 +112,13 @@ class Edit extends AdminComponent
         $lines[] = ":do { /user add name=\"{$username}\" password=\"{$password}\" group=dsb-api comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 4. Konfigurasi RADIUS Client (PPPoE, Hotspot & Login)";
-        $lines[] = ":do { /radius add address=\"{$radiusIp}\" secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $lines[] = ":local radHost \"{$rawRadiusHost}\"";
+        $lines[] = ":local radIP \"{$radiusIp}\"";
+        $lines[] = ":do {";
+        $lines[] = "    :local resolved [:resolve \$radHost]";
+        $lines[] = "    :if ([:len \$resolved] > 0) do={ :set radIP \$resolved }";
+        $lines[] = "} on-error={ :nothing }";
+        $lines[] = ":do { /radius add address=\$radIP secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Gagal menambahkan RADIUS\" }";
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 5. Otomatis Aktifkan RADIUS & Seamless MAC-Cookie di Semua Profil Hotspot & PPPoE";
