@@ -132,17 +132,28 @@ class Wizard extends Component
         $username = strtolower($customer->code) . ($this->service_type === 'pppoe' ? '@' . $companySuffix : '');
         $password = $this->service_type === 'hotspot' ? substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6) : 'pppoe';
 
-        // Selalu catat ONU ke inventory terlepas dari PPPoE atau Hotspot
-        $onu = \App\Models\ISP\Onu::create([
-            'olt_id' => $this->olt_id,
-            'pon_port' => $this->pon_port,
-            'serial_number' => $this->onu_sn,
-            'vendor_id' => $this->onu_vendor_id,
-            'model' => $this->onu_model,
-            'name' => 'ONU ' . $customer->name,
-            'status' => 'offline',
-            'code' => 'ONU-' . substr(strtoupper(md5(time())), 0, 6),
-        ]);
+        // Selalu catat / update ONU ke inventory terlepas dari PPPoE atau Hotspot
+        $onu = \App\Models\ISP\Onu::where('serial_number', $this->onu_sn)->first();
+        if (!$onu) {
+            $onu = \App\Models\ISP\Onu::create([
+                'olt_id' => $this->olt_id,
+                'pon_port' => $this->pon_port,
+                'serial_number' => $this->onu_sn,
+                'vendor_id' => $this->onu_vendor_id,
+                'model' => $this->onu_model,
+                'name' => 'ONU ' . $customer->name,
+                'status' => 'offline',
+                'code' => 'ONU-' . substr(strtoupper(md5(time())), 0, 6),
+            ]);
+        } else {
+            $onu->update([
+                'olt_id' => $this->olt_id ?: $onu->olt_id,
+                'pon_port' => $this->pon_port ?: $onu->pon_port,
+                'vendor_id' => $this->onu_vendor_id ?: $onu->vendor_id,
+                'model' => $this->onu_model ?: $onu->model,
+                'name' => 'ONU ' . $customer->name,
+            ]);
+        }
 
         $data = [
             'name' => $customer->name,
