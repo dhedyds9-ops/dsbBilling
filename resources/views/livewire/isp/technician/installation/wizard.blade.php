@@ -98,6 +98,23 @@
                 @endforeach
             </select>
             @error('service_profile_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+            <div class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center justify-between">
+                    <span>Kredensial Layanan PPPoE / Hotspot</span>
+                    <span class="text-[10px] text-slate-400 font-normal normal-case">Opsional (Kosongkan jika auto-generate)</span>
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Username</label>
+                        <input type="text" wire:model="custom_username" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono" placeholder="Default: Otomatis sistem">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Password</label>
+                        <input type="text" wire:model="custom_password" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono" placeholder="Default: pppoe">
+                    </div>
+                </div>
+            </div>
         @endif
 
         @if($currentStep === 3)
@@ -248,6 +265,14 @@
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ONU SN</span>
                     <span class="font-mono text-sm font-black text-indigo-600 dark:text-indigo-400">{{ $onu_sn }}</span>
+                </div>
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Username</span>
+                    <span class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{{ !empty(trim($custom_username)) ? $custom_username : '(Otomatis Sistem)' }}</span>
+                </div>
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Password</span>
+                    <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">{{ !empty(trim($custom_password)) ? $custom_password : ($service_type === 'pppoe' ? 'pppoe' : '(Random)') }}</span>
                 </div>
             </div>
             <div class="p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 flex gap-2">

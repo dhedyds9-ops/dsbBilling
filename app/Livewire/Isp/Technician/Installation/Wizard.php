@@ -39,6 +39,9 @@ class Wizard extends Component
     public $onu_vendor_id;
     public $onu_model;
 
+    public $custom_username = '';
+    public $custom_password = '';
+
     public $network_profile_id;
 
     public function mount()
@@ -129,8 +132,13 @@ class Wizard extends Component
         $companyName = \App\Models\Setting::getValue('company.name', 'dsbilling');
         $companySuffix = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $companyName));
         
-        $username = strtolower($customer->code) . ($this->service_type === 'pppoe' ? '@' . $companySuffix : '');
-        $password = $this->service_type === 'hotspot' ? substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6) : 'pppoe';
+        $username = !empty(trim($this->custom_username ?? ''))
+            ? trim($this->custom_username)
+            : strtolower($customer->code) . ($this->service_type === 'pppoe' ? '@' . $companySuffix : '');
+
+        $password = !empty(trim($this->custom_password ?? ''))
+            ? trim($this->custom_password)
+            : ($this->service_type === 'hotspot' ? substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6) : 'pppoe');
 
         // Selalu catat / update ONU ke inventory terlepas dari PPPoE atau Hotspot
         $onu = \App\Models\ISP\Onu::where('serial_number', $this->onu_sn)->first();

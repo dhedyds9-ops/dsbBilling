@@ -224,9 +224,9 @@
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
                                     </a>
                                     {{-- Customer Portal --}}
-                                    <a href="#" class="p-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded hover:bg-sky-100 dark:bg-sky-900/50 transition-colors" title="Portal Customer">
+                                    <button type="button" wire:click="impersonate({{ $customer->id }})" class="p-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded hover:bg-sky-100 dark:bg-sky-900/50 transition-colors cursor-pointer" title="Buka Portal Pelanggan">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">language</span>
-                                    </a>
+                                    </button>
                                     {{-- Hapus --}}
                                     <button wire:click="delete({{ $customer->id }})" wire:confirm="Yakin ingin menghapus pelanggan ini?" class="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-900/50 transition-colors" title="Hapus">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>

@@ -86,6 +86,26 @@ class Index extends BaseCrmComponent
         $customer->save();
     }
 
+    public function impersonate($id)
+    {
+        $customer = Customer::findOrFail($id);
+        if (!$customer->user_id) {
+            session()->flash('error', 'Pelanggan ini belum memiliki akun user login portal.');
+            return;
+        }
+
+        $user = \App\Models\User::find($customer->user_id);
+        if (!$user) {
+            session()->flash('error', 'Akun user login portal tidak ditemukan.');
+            return;
+        }
+
+        session(['impersonator_admin_id' => auth()->id()]);
+        \Illuminate\Support\Facades\Auth::login($user);
+
+        return redirect()->route('customer-portal.dashboard');
+    }
+
     public function getCustomersQuery()
     {
         $query = Customer::with([
