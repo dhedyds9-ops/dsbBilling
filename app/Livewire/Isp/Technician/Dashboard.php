@@ -19,6 +19,10 @@ class Dashboard extends Component
 
     public function render()
     {
+        $countProses = ProvisionPipeline::whereIn('status', ['pending', 'running', 'in_progress', 'provisioning'])->count();
+        $countSelesai = ProvisionPipeline::whereIn('status', ['completed', 'provisioned', 'active'])->count();
+        $countGagal = ProvisionPipeline::whereIn('status', ['failed', 'cancelled', 'rolled_back'])->count();
+
         $recentInstallations = ProvisionPipeline::with([
                 'serviceInstance' => function ($query) {
                     $query->withTrashed()->with(['customerService' => function ($q) {
@@ -30,6 +34,6 @@ class Dashboard extends Component
             ->limit(10)
             ->get();
 
-        return view('livewire.isp.technician.dashboard', compact('recentInstallations'));
+        return view('livewire.isp.technician.dashboard', compact('recentInstallations', 'countProses', 'countSelesai', 'countGagal'));
     }
 }

@@ -35,21 +35,21 @@
             <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center mx-auto mb-2">
                 <span class="material-symbols-outlined" style="font-size:18px">sync</span>
             </div>
-            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $recentInstallations->where('status', 'running')->count() }}</p>
+            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $countProses ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['pending', 'running', 'in_progress', 'provisioning']))->count() }}</p>
             <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Proses</p>
         </div>
         <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
             <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
                 <span class="material-symbols-outlined" style="font-size:18px">task_alt</span>
             </div>
-            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $recentInstallations->where('status', 'completed')->count() }}</p>
+            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $countSelesai ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['completed', 'provisioned', 'active']))->count() }}</p>
             <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Selesai</p>
         </div>
         <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
             <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 flex items-center justify-center mx-auto mb-2">
                 <span class="material-symbols-outlined" style="font-size:18px">warning</span>
             </div>
-            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $recentInstallations->where('status', 'failed')->count() }}</p>
+            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $countGagal ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['failed', 'cancelled', 'rolled_back']))->count() }}</p>
             <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Gagal</p>
         </div>
     </div>
