@@ -80,7 +80,15 @@ class Index extends BaseNetworkComponent
                           ->orWhere('model', 'like', '%' . $this->search . '%');
                     });
                 })
-                ->when($this->filters['status'] ?? null, fn($q) => $q->where('status', $this->filters['status']));
+                ->when($this->filters['status'] ?? null, function($q) {
+                if ($this->filters['status'] === 'active') {
+                    $q->whereIn('status', ['active', 'online']);
+                } elseif ($this->filters['status'] === 'inactive') {
+                    $q->whereNotIn('status', ['active', 'online']);
+                } else {
+                    $q->where('status', $this->filters['status']);
+                }
+            });
 
             $this->selectedRouters = $query->pluck('id')->toArray();
         } else {
@@ -397,8 +405,8 @@ class Index extends BaseNetworkComponent
 
         $summary = [
             'total' => RouterModel::count(),
-            'active' => RouterModel::where('status', 'active')->count(),
-            'inactive' => RouterModel::where('status', 'inactive')->count(),
+            'active' => RouterModel::whereIn('status', ['active', 'online'])->count(),
+            'inactive' => RouterModel::whereNotIn('status', ['active', 'online'])->count(),
         ];
 
         return view('livewire.isp.router.index', compact('routers', 'onlineStatus', 'activeUsers', 'summary'));

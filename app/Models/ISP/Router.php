@@ -60,7 +60,22 @@ class Router extends Model
 
     public function scopeActive($query)
     {
-        return $query->whereNotIn('status', [self::STATUS_DISABLED]);
+        return $query->whereNotIn('status', [self::STATUS_DISABLED, 'inactive']);
+    }
+
+    public function getIsOnlineAttribute(): ?bool
+    {
+        $cache = \App\Services\ISP\MonitoringService::getCachedData($this);
+        if (isset($cache['is_online'])) {
+            return (bool)$cache['is_online'];
+        }
+        $latestLog = $this->relationLoaded('latestMonitoringLog') 
+            ? $this->latestMonitoringLog 
+            : $this->latestMonitoringLog()->first();
+        if ($latestLog) {
+            return (bool)$latestLog->is_online;
+        }
+        return null;
     }
 
     public function pop()

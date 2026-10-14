@@ -92,11 +92,14 @@ class PollSingleRouterJob implements ShouldQueue
             ]);
             
             // Update router status, last seen at and version
-            $this->router->update([
-                'status' => 'online',
+            $updateData = [
                 'last_seen_at' => now(),
                 'routeros_version' => $systemInfo['version'] ?? null,
-            ]);
+            ];
+            if ($this->router->status !== 'inactive' && $this->router->status !== Router::STATUS_DISABLED) {
+                $updateData['status'] = 'active';
+            }
+            $this->router->update($updateData);
             
             // Auto Recovery: Check and Repair RADIUS Configuration
             $radiusHost = parse_url(config('app.url'), PHP_URL_HOST) ?? '127.0.0.1';

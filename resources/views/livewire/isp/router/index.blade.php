@@ -35,7 +35,7 @@
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari router..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
             </div>
-            <select wire:model.live="statusFilter" class="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="filters.status" class="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                 <option value="">Semua Status</option>
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
@@ -102,7 +102,11 @@
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
-                                    @if($router->status === 'active')
+                                    @php
+                                        $isActive = in_array($router->status, ['active', 'online']);
+                                        $isLive = $onlineStatus[$router->id] ?? $router->is_online;
+                                    @endphp
+                                    @if($isActive)
                                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
                                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Aktif
                                         </span>
@@ -112,12 +116,12 @@
                                         </span>
                                     @endif
 
-                                    @if($router->status === 'active')
-                                        @if($router->is_online === true)
+                                    @if($isActive)
+                                        @if($isLive === true)
                                             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" title="API Terhubung">
                                                 <span class="material-symbols-outlined notranslate text-[12px]" translate="no">wifi</span> Terhubung
                                             </span>
-                                        @elseif($router->is_online === false)
+                                        @elseif($isLive === false)
                                             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400" title="API Terputus">
                                                 <span class="material-symbols-outlined notranslate text-[12px]" translate="no">wifi_off</span> Terputus
                                             </span>

@@ -113,11 +113,14 @@ class RouterCollector extends BaseCollector
                 'tx_bps' => $finalTx,
             ]);
             
-            $router->update([
-                'status' => 'online',
+            $updateData = [
                 'last_seen_at' => now(),
                 'routeros_version' => $systemInfo['version'] ?? null,
-            ]);
+            ];
+            if ($router->status !== 'inactive' && $router->status !== Router::STATUS_DISABLED) {
+                $updateData['status'] = 'active';
+            }
+            $router->update($updateData);
             
             $this->updatePppSessions($router, $pppSessions);
             $this->updateHotspotSessions($router, $hotspotSessions);
