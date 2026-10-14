@@ -236,7 +236,7 @@ class CDataOltDriver extends BaseOltDriver
 
                 $onuList = [];
                 // Parse show ont info
-                // Format GPON: "  0/1 1  1      FHTT91C67218     Active   Online  success  ..."
+                // Format GPON: "  0/1 1  1      ZTEGC85E2D31     Active   Online  success  ..."
                 // Format EPON: "  EPON0/1:1    00:0a:c2:xx:xx:xx   Online ..."
                 $infoOut = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $infoOut);
                 foreach (explode("\n", $infoOut) as $line) {
@@ -245,25 +245,26 @@ class CDataOltDriver extends BaseOltDriver
                     $sn = null;
                     $runState = null;
 
-                    // Match 1: Format GPON "0/1 1 1 FHTT91C67218 Active Online"
-                    if (preg_match('/^\s*(\d+\/\d+)\s+(\d+)\s+(\d+)\s+([A-Z0-9:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
-                        $linePort = (int)$m[2];
-                        if ($linePort === $portNum || count(explode("\n", $infoOut)) < 5) {
-                            $onuId = (int)$m[3];
-                            $sn = strtoupper($m[4]);
-                            $runState = strtolower($m[5]);
+                    // Match 1: Format GPON "0/1 1 1 ZTEGC85E2D31 Active Online ..."
+                    if (preg_match('/^\s*(\d+\/(\d+))\s+(\d+)\s+(\d+)\s+([A-Z0-9:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
+                        $lineSlot = (int)$m[2];
+                        $linePort = (int)$m[3];
+                        if ($lineSlot === $slot && $linePort === $portNum) {
+                            $onuId = (int)$m[4];
+                            $sn = strtoupper($m[5]);
+                            $runState = strtolower($m[6]);
                         }
                     } 
                     // Match 2: Format EPON / GPON port:id "0/1:1 00:0a:c2:... Online"
                     elseif (preg_match('/^(?:EPON|GPON)?(?:\d+\/)?(\d+)[:\s]+(\d+)\s+([A-Z0-9.:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
                         $linePort = (int)$m[1];
-                        if ($linePort === $portNum || count(explode("\n", $infoOut)) < 5) {
+                        if ($linePort === $portNum) {
                             $onuId = (int)$m[2];
                             $sn = strtoupper($m[3]);
                             $runState = strtolower($m[4]);
                         }
                     }
-                    // Match 3: Format ID SN Status "1 FHTT91C67218 ... Online"
+                    // Match 3: Format ID SN Status "1 FHTT91C67218 ... Online" (ketika di dalam interface gpon 0/x)
                     elseif (preg_match('/^\s*(\d+)\s+([A-Z0-9:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
                         $onuId = (int)$m[1];
                         $sn = strtoupper($m[2]);
@@ -320,33 +321,31 @@ class CDataOltDriver extends BaseOltDriver
                 $optOut = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $optOut);
                 foreach (explode("\n", $optOut) as $line) {
                     $line = trim($line);
-                    if (empty($line)) continue;
+                    if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID')) continue;
                     
                     $optOnuId = null;
                     $rx = null;
                     $tx = null;
                     $temp = null;
 
-                    // Format 1: "0/1 1 1 -21.50 2.30 15.2 42.0 3.3"
-                    if (preg_match('/^\s*\d+\/\d+\s+\d+\s+(\d+)\s+([\-\d\.]+)\s+([\-\d\.]+)(?:\s+[\-\d\.]+)?(?:\s+([\-\d\.]+))?/i', $line, $om)) {
-                        $optOnuId = (int)$om[1];
-                        $rx = $om[2];
-                        $tx = $om[3];
-                        $temp = $om[4] ?? null;
+                    $cols = preg_split('/\s+/', $line);
+                    // Format dengan slot/port di depan: "0/1 1 1 -19.50 2.30 -20.10 45 3.3 12.5"
+                    if (count($cols) >= 5 && str_contains($cols[0], '/')) {
+                        $lineSlot = (int)(explode('/', $cols[0])[1] ?? 1);
+                        $linePort = (int)$cols[1];
+                        if ($lineSlot === $slot && $linePort === $portNum) {
+                            $optOnuId = (int)$cols[2];
+                            $rx = $cols[3];
+                            $tx = $cols[4];
+                            $temp = $cols[6] ?? null;
+                        }
                     }
-                    // Format 2: "0/1:1 -21.50 2.30 ..." or "EPON0/1:1 -21.50 2.30 ..."
-                    elseif (preg_match('/^(?:EPON|GPON)?(?:\d+\/)?\d+[:\s]+(\d+)\s+([\-\d\.]+)\s+([\-\d\.]+)(?:\s+[\-\d\.]+)?(?:\s+([\-\d\.]+))?/i', $line, $om)) {
-                        $optOnuId = (int)$om[1];
-                        $rx = $om[2];
-                        $tx = $om[3];
-                        $temp = $om[4] ?? null;
-                    }
-                    // Format 3: "1 -21.50 2.30 15.2 42.0 3.3"
-                    elseif (preg_match('/^\s*(\d+)\s+([\-\d\.]+)\s+([\-\d\.]+)(?:\s+[\-\d\.]+)?(?:\s+([\-\d\.]+))?/i', $line, $om)) {
-                        $optOnuId = (int)$om[1];
-                        $rx = $om[2];
-                        $tx = $om[3];
-                        $temp = $om[4] ?? null;
+                    // Format standar: "1 -19.50 2.30 -20.10 45 3.3 12.5"
+                    elseif (count($cols) >= 3 && is_numeric($cols[0])) {
+                        $optOnuId = (int)$cols[0];
+                        $rx = $cols[1];
+                        $tx = $cols[2];
+                        $temp = $cols[4] ?? ($cols[3] ?? null);
                     }
 
                     if ($optOnuId !== null && isset($onuList[$optOnuId])) {
@@ -361,6 +360,8 @@ class CDataOltDriver extends BaseOltDriver
                         }
                     }
                 }
+
+                \Illuminate\Support\Facades\Log::info("CData Slot {$slot} Port {$portNum} parsed " . count($onuList) . " ONUs: " . json_encode(array_values($onuList)));
                 
                 if (!empty($onuList)) {
                     return array_values($onuList);
