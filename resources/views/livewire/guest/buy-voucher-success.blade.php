@@ -54,12 +54,16 @@
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Username / Kode Voucher</p>
                             <p class="text-lg font-black text-slate-900 dark:text-white tracking-widest font-mono select-all">{{ $voucherOrder->voucher_username }}</p>
                         </div>
-                        <button type="button" 
-                            onclick="navigator.clipboard.writeText('{{ $voucherOrder->voucher_username }}'); alert('Kode Voucher disalin!');"
-                            class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-700 text-slate-500 transition-colors"
-                            title="Salin Kode Voucher">
-                            <span class="material-symbols-outlined text-[20px]">content_copy</span>
-                        </button>
+                        <div x-data="{ copied: false }">
+                            <button type="button" 
+                                @click="navigator.clipboard.writeText('{{ $voucherOrder->voucher_username }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                                :class="copied ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-700 text-slate-500'"
+                                class="p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                                title="Salin Kode Voucher">
+                                <span class="material-symbols-outlined text-[20px]" x-text="copied ? 'check' : 'content_copy'">content_copy</span>
+                                <span x-show="copied" x-cloak>Tersalin!</span>
+                            </button>
+                        </div>
                     </div>
 
                     @if(!empty($voucherOrder->voucher_password))
@@ -67,14 +71,18 @@
                     <div class="bg-white dark:bg-slate-900/90 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between">
                         <div>
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Password / Sandi</p>
-                            <p class="text-lg font-black text-slate-900 dark:text-white tracking-widest font-mono select-all">{{ $voucherOrder->voucher_password }}</p>
+                            <p class="text-lg font-black text-slate-900 dark:white tracking-widest font-mono select-all">{{ $voucherOrder->voucher_password }}</p>
                         </div>
-                        <button type="button" 
-                            onclick="navigator.clipboard.writeText('{{ $voucherOrder->voucher_password }}'); alert('Password disalin!');"
-                            class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-700 text-slate-500 transition-colors"
-                            title="Salin Password">
-                            <span class="material-symbols-outlined text-[20px]">content_copy</span>
-                        </button>
+                        <div x-data="{ copied: false }">
+                            <button type="button" 
+                                @click="navigator.clipboard.writeText('{{ $voucherOrder->voucher_password }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                                :class="copied ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-700 text-slate-500'"
+                                class="p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                                title="Salin Password">
+                                <span class="material-symbols-outlined text-[20px]" x-text="copied ? 'check' : 'content_copy'">content_copy</span>
+                                <span x-show="copied" x-cloak>Tersalin!</span>
+                            </button>
+                        </div>
                     </div>
                     @endif
                 </div>

@@ -229,7 +229,7 @@
                                 <span class="block text-xs text-slate-500 dark:text-slate-400 mb-0.5">Username</span>
                                 <div class="flex items-center gap-2">
                                     <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $service->username ?? '-' }}</span>
-                                    <button onclick="navigator.clipboard.writeText('{{ $service->username }}'); alert('Username tersalin!')" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Copy Username">
+                                    <button onclick="window.copyToClipboard('{{ $service->username }}', 'Username tersalin!')" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Copy Username">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">content_copy</span>
                                     </button>
                                 </div>
@@ -238,7 +238,7 @@
                                 <span class="block text-xs text-slate-500 dark:text-slate-400 mb-0.5">Password</span>
                                 <div class="flex items-center gap-2">
                                     <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $service->password ?? '-' }}</span>
-                                    <button onclick="navigator.clipboard.writeText('{{ $service->password }}'); alert('Password tersalin!')" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Copy Password">
+                                    <button onclick="window.copyToClipboard('{{ $service->password }}', 'Password tersalin!')" class="text-slate-400 hover:text-indigo-600 transition-colors" title="Copy Password">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">content_copy</span>
                                     </button>
                                 </div>
@@ -1147,7 +1147,7 @@
                         <option value="same">Username = Password</option>
                     </select>
                 </div>
-                <div class="grid {{ $edit_service_password_mode === 'same' ? 'grid-cols-1' : 'grid-cols-2' }} gap-4" x-data="{ copyToClipboard(text) { navigator.clipboard.writeText(text); alert('Tersalin ke clipboard!'); } }">
+                <div class="grid {{ $edit_service_password_mode === 'same' ? 'grid-cols-1' : 'grid-cols-2' }} gap-4" x-data="{ copyToClipboard(text) { window.copyToClipboard(text, 'Tersalin ke clipboard!'); } }">
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Username</label>
                         <div class="relative">

@@ -891,9 +891,17 @@
                         </div>
                         <code class="text-emerald-400 text-sm font-mono break-all whitespace-pre-wrap select-all">/tool fetch url="{{ url('/api/v1/provision/router') }}" http-header-field="Authorization: Bearer {{ $provisioningToken }}" dst-path="provision.rsc"; /import provision.rsc; /file remove provision.rsc;</code>
                         
-                        <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="navigator.clipboard.writeText('/tool fetch url=\'{{ url('/api/v1/provision/router') }}\' http-header-field=\'Authorization: Bearer {{ $provisioningToken }}\' dst-path=\'provision.rsc\'; /import provision.rsc; /file remove provision.rsc;'); alert('Skrip disalin!');" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg shadow-sm border border-slate-600 transition-colors" title="Copy to clipboard">
-                                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">content_copy</span>
+                        <div x-data="{ copied: false }" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button type="button" 
+                                    @click="window.copyToClipboard('/tool fetch url=\'{{ url('/api/v1/provision/router') }}\' http-header-field=\'Authorization: Bearer {{ $provisioningToken }}\' dst-path=\'provision.rsc\'; /import provision.rsc; /file remove provision.rsc;', 'Perintah provisioning berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
+                                    :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-600'"
+                                    class="p-2 rounded-lg shadow-sm border transition-all duration-200" title="Salin ke clipboard">
+                                <template x-if="!copied">
+                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">content_copy</span>
+                                </template>
+                                <template x-if="copied">
+                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">check</span>
+                                </template>
                             </button>
                         </div>
                     </div>

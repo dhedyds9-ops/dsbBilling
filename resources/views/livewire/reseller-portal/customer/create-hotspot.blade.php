@@ -92,7 +92,7 @@
                             <div class="relative">
                                 <input type="text" wire:model.live="username" id="create-username" placeholder="Contoh: budi_net" 
                                        class="w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
-                                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('create-username').value); alert('Username dicopy!')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-500">
+                                <button type="button" onclick="window.copyToClipboard(document.getElementById('create-username').value, 'Username disalin!')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-500">
                                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">content_copy</span>
                                 </button>
                             </div>
@@ -105,7 +105,7 @@
                             <div class="relative">
                                 <input type="text" wire:model="password" id="create-password" placeholder="Minimal 6 karakter" 
                                        class="w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
-                                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('create-password').value); alert('Password dicopy!')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-500">
+                                <button type="button" onclick="window.copyToClipboard(document.getElementById('create-password').value, 'Password disalin!')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-500">
                                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">content_copy</span>
                                 </button>
                             </div>

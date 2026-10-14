@@ -86,6 +86,45 @@
     window.addEventListener('toast', handleToast);
     window.addEventListener('notify', handleToast);
 
+    // Global in-app toast notification helper
+    window.toast = function(message, type = 'success') {
+        Toast.fire({
+            icon: type,
+            title: message
+        });
+    };
+
+    // Global clipboard helper with in-app toast feedback
+    window.copyToClipboard = function(text, successMessage = 'Berhasil disalin ke clipboard!') {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                window.toast(successMessage, 'success');
+            }).catch(() => {
+                fallbackCopy(text, successMessage);
+            });
+        } else {
+            fallbackCopy(text, successMessage);
+        }
+    };
+
+    function fallbackCopy(text, successMessage) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            window.toast(successMessage, 'success');
+        } catch (err) {
+            console.error('Copy fallback failed:', err);
+        }
+        textArea.remove();
+    }
+
     // Show toast for Laravel Session flash messages
     document.addEventListener('DOMContentLoaded', function() {
         @if(session()->has('success'))

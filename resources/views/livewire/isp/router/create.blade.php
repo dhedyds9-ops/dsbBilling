@@ -338,10 +338,23 @@
                             </div>
                             <pre id="scriptCodeCreate" class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-56 leading-relaxed">{{ $scriptTab === 'radius' ? $generatedScript : $isolirScript }}</pre>
                             
-                            <div class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
-                                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('scriptCodeCreate').innerText); alert('Skrip berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
-                                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
-                                    Salin Skrip
+                            <div x-data="{ copied: false }" class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <button type="button" 
+                                        @click="window.copyToClipboard(document.getElementById('scriptCodeCreate').innerText, 'Skrip MikroTik berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
+                                        :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'"
+                                        class="px-3 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all duration-200">
+                                    <template x-if="!copied">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
+                                            Salin Skrip
+                                        </span>
+                                    </template>
+                                    <template x-if="copied">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">check</span>
+                                            Tersalin!
+                                        </span>
+                                    </template>
                                 </button>
                             </div>
                         </div>

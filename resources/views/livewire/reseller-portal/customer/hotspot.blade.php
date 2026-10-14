@@ -222,7 +222,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm font-semibold {{ $isSuspend ? 'text-red-700 dark:text-red-400' : 'text-indigo-600 dark:text-indigo-400' }} font-mono">{{ $user->username }}</span>
-                                    <button type="button" onclick="navigator.clipboard.writeText('{{ $user->username }}'); alert('Username disalin!')" class="text-slate-400 hover:text-indigo-500 transition-colors" title="Salin Username">
+                                    <button type="button" onclick="window.copyToClipboard('{{ $user->username }}', 'Username disalin!')" class="text-slate-400 hover:text-indigo-500 transition-colors" title="Salin Username">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">content_copy</span>
                                     </button>
                                 </div>
@@ -234,7 +234,7 @@
                                     <button type="button" @click="showPw = !showPw" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors" title="Lihat/Sembunyikan Password">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px" x-text="showPw ? 'visibility_off' : 'visibility'"></span>
                                     </button>
-                                    <button type="button" onclick="navigator.clipboard.writeText('{{ $user->password }}'); alert('Password disalin!')" class="text-slate-400 hover:text-indigo-500 transition-colors" title="Salin Password">
+                                    <button type="button" onclick="window.copyToClipboard('{{ $user->password }}', 'Password disalin!')" class="text-slate-400 hover:text-indigo-500 transition-colors" title="Salin Password">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">content_copy</span>
                                     </button>
                                 </div>
