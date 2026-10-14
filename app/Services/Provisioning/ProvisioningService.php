@@ -461,11 +461,14 @@ class ProvisioningService
     public function startProvisioning(CustomerService $customerService, int $userId): ServiceInstance
     {
         return DB::transaction(function () use ($customerService, $userId) {
+            $isAlreadyActive = $customerService->status === 'active';
+
             $serviceInstance = $this->serviceInstanceRepository->create([
                 'uuid' => (string) Str::uuid(),
                 'customer_service_id' => $customerService->id,
                 'service_id' => $customerService->service_id,
-                'status' => 'provisioning',
+                'status' => $isAlreadyActive ? 'provisioned' : 'provisioning',
+                'provisioned_at' => $isAlreadyActive ? now() : null,
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
@@ -473,34 +476,35 @@ class ProvisioningService
             $pipeline = $this->pipelineRepository->create([
                 'uuid' => (string) Str::uuid(),
                 'service_instance_id' => $serviceInstance->id,
-                'status' => 'pending',
+                'status' => $isAlreadyActive ? 'completed' : 'pending',
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
 
-            $this->createPipelineSteps($pipeline);
+            $this->createPipelineSteps($pipeline, $customerService);
 
             Event::dispatch(new ServiceInstanceCreatedEvent($serviceInstance->uuid, $customerService->id));
 
-            ReserveResourcesJob::dispatch($serviceInstance->id);
+            if (!$isAlreadyActive) {
+                app(\App\Services\Provisioning\Pipeline\PipelineOrchestrator::class)->processNext($pipeline);
+            }
 
             return $serviceInstance;
         });
     }
 
-    protected function createPipelineSteps(ProvisionPipeline $pipeline): void
+    protected function createPipelineSteps(ProvisionPipeline $pipeline, ?CustomerService $customerService = null): void
     {
+        $isAlreadyActive = $customerService && $customerService->status === 'active';
+
         $steps = [
-            ['name' => 'Reserve Resources', 'type' => 'reservation', 'order' => 1],
-            ['name' => 'Assign Device', 'type' => 'device_assignment', 'order' => 2],
-            ['name' => 'Allocate VLAN', 'type' => 'vlan_allocation', 'order' => 3],
-            ['name' => 'Allocate IP', 'type' => 'ip_allocation', 'order' => 4],
-            ['name' => 'Allocate Queue', 'type' => 'queue_allocation', 'order' => 5],
-            ['name' => 'Provision Router', 'type' => 'router_provision', 'order' => 6],
-            ['name' => 'Provision RADIUS', 'type' => 'radius_provision', 'order' => 7],
-            ['name' => 'Provision ONU', 'type' => 'onu_provision', 'order' => 8],
-            ['name' => 'Verify Provisioning', 'type' => 'verification', 'order' => 9],
-            ['name' => 'Release Reservations', 'type' => 'release', 'order' => 10],
+            ['name' => 'Validasi Layanan', 'type' => 'customer_validation', 'order' => 1],
+            ['name' => 'Reservasi Port & Resource', 'type' => 'resource_reservation', 'order' => 2],
+            ['name' => 'Registrasi Perangkat ONU', 'type' => 'olt_onu_registration', 'order' => 3],
+            ['name' => 'Konfigurasi Profil OLT & VLAN', 'type' => 'olt_service_provisioning', 'order' => 4],
+            ['name' => 'Aktivasi PPPoE / RADIUS', 'type' => 'radius_provisioning', 'order' => 5],
+            ['name' => 'Konfigurasi TR-069 (GenieACS)', 'type' => 'onu_tr069_provisioning', 'order' => 6],
+            ['name' => 'Verifikasi Layanan', 'type' => 'service_verification', 'order' => 7],
         ];
 
         foreach ($steps as $stepData) {
@@ -509,11 +513,18 @@ class ProvisioningService
                 'step_name' => $stepData['name'],
                 'step_type' => $stepData['type'],
                 'order' => $stepData['order'],
-                'status' => 'pending',
+                'status' => $isAlreadyActive ? 'completed' : 'pending',
+                'started_at' => $isAlreadyActive ? now() : null,
+                'completed_at' => $isAlreadyActive ? now() : null,
             ]);
         }
 
-        $pipeline->update(['total_steps' => count($steps)]);
+        $pipeline->update([
+            'total_steps' => count($steps),
+            'status' => $isAlreadyActive ? 'completed' : 'pending',
+            'current_step' => $isAlreadyActive ? count($steps) : 0,
+            'completed_at' => $isAlreadyActive ? now() : null,
+        ]);
     }
 
     public function executeStep(int $pipelineId, string $stepName, int $serviceInstanceId, callable $callback): bool
