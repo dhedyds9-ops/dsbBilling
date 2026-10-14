@@ -123,9 +123,20 @@ class CDataOltDriver extends BaseOltDriver
                 $this->cli->execute('config');
                 $out = $this->cli->execute("interface gpon 0/0");
                 $isEpon = false;
-                if (str_contains(strtolower($out), 'unknown') || str_contains(strtolower($out), 'error')) { $this->cli->execute("interface epon 0/0"); $isEpon = true; }
+                if (str_contains(strtolower($out), 'unknown') || str_contains(strtolower($out), 'error') || str_contains(strtolower($out), 'invalid')) { 
+                    $outEpon = $this->cli->execute("interface epon 0/0"); 
+                    if (!str_contains(strtolower($outEpon), 'unknown') && !str_contains(strtolower($outEpon), 'error')) {
+                        $isEpon = true;
+                    }
+                }
                 $infoOut = $this->cli->execute($isEpon ? "show onu info $portNum all" : "show ont info $portNum all");
+                if (empty(trim($infoOut)) || str_contains(strtolower($infoOut), 'unknown') || str_contains(strtolower($infoOut), 'error')) {
+                    $infoOut = $this->cli->execute($isEpon ? "show onu info all" : "show ont info all");
+                }
                 $optOut  = $this->cli->execute($isEpon ? "show onu optical-info $portNum all" : "show ont optical-info $portNum all");
+                if (empty(trim($optOut)) || str_contains(strtolower($optOut), 'unknown') || str_contains(strtolower($optOut), 'error')) {
+                    $optOut = $this->cli->execute($isEpon ? "show onu optical-info all" : "show ont optical-info all");
+                }
                 // Hanya exit dari interface mode ke config mode, jangan sampai log out
                 $this->cli->execute('exit');
                 
@@ -151,24 +162,43 @@ class CDataOltDriver extends BaseOltDriver
                             }
                         }
                     } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
+                        // ignore cache error
+                    }
                 }
                 $macsCTC = $this->macsCache[$portNum] ?? ($this->macsCache[$ponPort] ?? []);
                 $macsRaw = [];
 
                 $onuList = [];
                 // Parse show ont info
-                // Format: "  0/0 1  1      FHTT91C67218     Active   Online  success  ..."
-                //          F/S P  ONT-ID  SN               CtrlFlag RunState ConfigState ...
+                // Format GPON: "  0/0 1  1      FHTT91C67218     Active   Online  success  ..."
+                // Format EPON: "  EPON0/1:1    00:0a:c2:xx:xx:xx   Online ..."
                 $infoOut = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $infoOut);
-                  foreach (explode("\n", $infoOut) as $line) {
+                foreach (explode("\n", $infoOut) as $line) {
                     $line = trim($line);
-                    // Match: digit/digit space digit(port)  digit(id)  SN  ControlFlag  RunState
+                    $onuId = null;
+                    $sn = null;
+                    $runState = null;
+
+                    // Match 1: Format GPON "0/0 1 1 FHTT91C67218 Active Online"
                     if (preg_match('/^(\d+\/\d+)\s+(\d+)\s+(\d+)\s+([A-Z0-9:-]{12,17})\s+\w+\s+(Online|Offline)/i', $line, $m)) {
                         $onuId = (int)$m[3];
                         $sn = strtoupper($m[4]);
                         $runState = strtolower($m[5]);
+                    } 
+                    // Match 2: Format EPON / GPON port:id "0/1:1 00:0a:c2:... Online"
+                    elseif (preg_match('/^(?:EPON|GPON)?(?:\d+\/)?(\d+)[:\s]+(\d+)\s+([A-Z0-9.:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
+                        $onuId = (int)$m[2];
+                        $sn = strtoupper($m[3]);
+                        $runState = strtolower($m[4]);
+                    }
+                    // Match 3: Format ID SN Status "1 FHTT91C67218 ... Online"
+                    elseif (preg_match('/^(\d+)\s+([A-Z0-9:-]{12,17})\s+.*?(\bOnline\b|\bOffline\b)/i', $line, $m)) {
+                        $onuId = (int)$m[1];
+                        $sn = strtoupper($m[2]);
+                        $runState = strtolower($m[3]);
+                    }
+
+                    if ($onuId !== null && $sn !== null) {
 
                         $mac = null;
                         if (str_contains($sn, ':') || str_contains($sn, '-')) { $mac = str_replace('-', ':', $sn); $sn = str_replace(':', '', $mac); }

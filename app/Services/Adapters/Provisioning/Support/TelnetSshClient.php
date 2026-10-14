@@ -139,10 +139,18 @@ class SimpleTelnet
 
     public function login(string $username, string $password): void
     {
-        $this->read('/(User\s*name|Username|Login|login|user):/i');
-        usleep(300000); $this->write(trim($username) . "\r\n");
-        $this->read('/password:/i');
-        usleep(300000); $this->write(trim($password) . "\r\n");
+        // Kirim initial newline untuk memicu prompt login jika OLT menunggu interaksi setelah banner
+        usleep(200000);
+        $this->write("\r\n");
+
+        $this->read('/(User\s*name|Username|Login|login|user|account):/i');
+        usleep(200000); 
+        $this->write(trim($username) . "\r\n");
+
+        $this->read('/(Password|password|pass|word):/i');
+        usleep(200000); 
+        $this->write(trim($password) . "\r\n");
+
         $this->read('/[>#]/');
     }
 
@@ -160,10 +168,20 @@ class SimpleTelnet
         }
         $result = '';
         $start = time();
+        $lastWakeup = time();
+
         while (!feof($this->socket)) {
-            if (time() - $start > $this->timeout) {
-                \Illuminate\Support\Facades\Log::warning("Telnet Timeout Debug", ["pattern" => $pattern, "buffer" => $result]); throw new Exception("Timeout waiting for pattern: $pattern");
+            // Jika 2 detik belum ada respon atau belum match pattern, kirim \r\n untuk wake-up OLT terminal
+            if (time() - $lastWakeup >= 2 && !preg_match($pattern, $result)) {
+                $this->write("\r\n");
+                $lastWakeup = time();
             }
+
+            if (time() - $start > $this->timeout) {
+                \Illuminate\Support\Facades\Log::warning("Telnet Timeout Debug", ["pattern" => $pattern, "buffer" => $result]); 
+                throw new Exception("Timeout waiting for pattern: $pattern");
+            }
+
             $c = fgetc($this->socket);
             if ($c === false) {
                 usleep(10000);
@@ -173,10 +191,32 @@ class SimpleTelnet
             // Telnet negotiation: IAC (255)
             if (ord($c) === 255) {
                 $verb = fgetc($this->socket);
+                if ($verb === false) continue;
+                $verbOrd = ord($verb);
+
+                // Subnegotiation SB (250): lewati sampai SE (240)
+                if ($verbOrd === 250) {
+                    while (!feof($this->socket)) {
+                        $sub = fgetc($this->socket);
+                        if ($sub === false) break;
+                        if (ord($sub) === 255) {
+                            $subEnd = fgetc($this->socket);
+                            if ($subEnd !== false && ord($subEnd) === 240) break;
+                        }
+                    }
+                    continue;
+                }
+
                 $opt = fgetc($this->socket);
-                if (ord($verb) === 253) {
+                if ($opt === false) continue;
+
+                if ($verbOrd === 253) { // DO -> WONT
                     $this->write(chr(255) . chr(252) . $opt);
-                } elseif (ord($verb) === 251) {
+                } elseif ($verbOrd === 251) { // WILL -> DONT
+                    $this->write(chr(255) . chr(254) . $opt);
+                } elseif ($verbOrd === 254) { // DONT -> WONT
+                    $this->write(chr(255) . chr(252) . $opt);
+                } elseif ($verbOrd === 252) { // WONT -> DONT
                     $this->write(chr(255) . chr(254) . $opt);
                 }
                 continue;
@@ -187,9 +227,7 @@ class SimpleTelnet
             // Handle pagination "More" prompt for various OLTs (C-Data, ZTE)
             if (preg_match('/(--More--|---- More(.*?)----|Press any key to continue)/i', substr($result, -50), $m)) {
                 $this->write(" "); // Send space to continue
-                // Reset the timer so we don't timeout during very long paginated outputs
                 $start = time();
-                // Strip the matched prompt from result so we don't match it infinitely
                 $result = substr($result, 0, -strlen($m[0]));
             }
 
