@@ -23,10 +23,16 @@
                         </h3>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Ubah data pokok konfigurasi untuk menghubungkan router MikroTik ke billing via API.</p>
                     </div>
-                    <a href="{{ route('isp.routers.show', $router->id) }}" wire:navigate class="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto cursor-pointer">
-                        <span class="material-symbols-outlined notranslate text-[16px]" translate="no">visibility</span>
-                        Lihat Detail
-                    </a>
+                    <div class="flex items-center gap-2 self-start sm:self-auto">
+                        <button type="button" wire:click="openScriptModal" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/60 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">terminal</span>
+                            Skrip Setup MikroTik
+                        </button>
+                        <a href="{{ route('isp.routers.show', $router->id) }}" wire:navigate class="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">visibility</span>
+                            Lihat Detail
+                        </a>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -248,4 +254,73 @@
             </div>
         </form>
     </div>
+
+    {{-- MODAL SKRIP SETUP MIKROTIK --}}
+    @if($showScriptModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-slate-900/80 transition-opacity backdrop-blur-sm" wire:click="closeScriptModal"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+                <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-slate-200 dark:border-slate-700">
+                    <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 flex justify-between items-center">
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:20px">terminal</span>
+                            Skrip Setup MikroTik (Re-Apply)
+                        </h3>
+                        <button type="button" wire:click="closeScriptModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                            <span class="material-symbols-outlined notranslate text-[20px]" translate="no">close</span>
+                        </button>
+                    </div>
+
+                    <div class="p-6 space-y-4">
+                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Gunakan skrip ini jika router di-reset atau jika Anda ingin memastikan konfigurasi API, RADIUS client, dan profil Hotspot/PPPoE di MikroTik sudah sinkron dengan dsBilling.
+                        </p>
+
+                        <!-- Pilihan Versi RouterOS & IP RADIUS -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Versi RouterOS MikroTik</label>
+                                <select wire:model.live="scriptVersion" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100">
+                                    <option value="v7">RouterOS v7 (Default)</option>
+                                    <option value="v6">RouterOS v6</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">IP Server dsBilling / RADIUS</label>
+                                <input type="text" wire:model.live="customRadiusIp" placeholder="192.168.x.x atau IP Server" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100">
+                            </div>
+                        </div>
+
+                        <!-- Code Block -->
+                        <div class="relative bg-slate-950 rounded-xl p-4 border border-slate-800 shadow-inner group">
+                            <div class="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-800 pb-2 mb-2">
+                                <span>Perintah Terminal WinBox:</span>
+                            </div>
+                            <pre class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-56 leading-relaxed">{{ $generatedScript }}</pre>
+                            
+                            <div class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <button type="button" onclick="navigator.clipboard.writeText(`{{ $generatedScript }}`); alert('Skrip berhasil disalin ke clipboard!');" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
+                                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
+                                    Salin Skrip
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+                            <span class="material-symbols-outlined notranslate mt-0.5 text-[18px]" translate="no">info</span>
+                            <span><strong>Langkah eksekusi:</strong> Buka WinBox &gt; <strong>New Terminal</strong> &gt; Paste skrip di atas. Setelah selesai, klik tombol <strong>"Test Koneksi"</strong> pada form untuk memastikan status koneksi.</span>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-end items-center">
+                        <button type="button" wire:click="closeScriptModal" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer">
+                            Selesai &amp; Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

@@ -33,6 +33,12 @@ class Edit extends AdminComponent
     // Accordion Toggle
     public $showAdvanced = false;
 
+    // Quick Script Generator Modal
+    public $showScriptModal = false;
+    public $scriptVersion = 'v7';
+    public $customRadiusIp = '';
+    public $generatedScript = '';
+
     public function toggleAdvanced()
     {
         $this->showAdvanced = !$this->showAdvanced;
@@ -43,6 +49,84 @@ class Edit extends AdminComponent
         $clean = preg_replace('/[^a-zA-Z0-9]/', '', strtoupper($this->name ?: 'RTR'));
         $prefix = substr($clean, 0, 4) ?: 'RTR';
         $this->code = 'RTR-' . $prefix . '-' . rand(100, 999);
+    }
+
+    public function openScriptModal()
+    {
+        if (empty($this->customRadiusIp)) {
+            $this->customRadiusIp = request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost();
+        }
+
+        if (!empty($this->routeros_version) && in_array($this->routeros_version, ['v6', 'v7'])) {
+            $this->scriptVersion = $this->routeros_version;
+        }
+
+        $this->buildScript();
+        $this->showScriptModal = true;
+    }
+
+    public function closeScriptModal()
+    {
+        $this->showScriptModal = false;
+    }
+
+    public function updatedScriptVersion()
+    {
+        $this->buildScript();
+    }
+
+    public function updatedCustomRadiusIp()
+    {
+        $this->buildScript();
+    }
+
+    public function buildScript()
+    {
+        $username = $this->username ?: 'api.dsb.' . preg_replace('/[^a-zA-Z0-9]/', '', strtolower($this->name ?: 'router'));
+        $password = $this->password ?: 'GANTI_PASSWORD_DI_FORM';
+        $radiusSecret = $this->radius_secret ?: 'GANTI_SECRET_DI_FORM';
+        $radiusIp = trim($this->customRadiusIp) ?: (request()->getHost() === 'localhost' ? '127.0.0.1' : request()->getHost());
+        $port = (int) ($this->api_port ?: 8728);
+
+        $lines = [];
+        $lines[] = "# =================================================================";
+        $lines[] = "# dsBilling MikroTik Setup Script (" . strtoupper($this->scriptVersion) . ")";
+        $lines[] = "# Router: " . ($this->name ?: 'MikroTik');
+        $lines[] = "# Salin dan tempel perintah ini di menu: WinBox -> New Terminal";
+        $lines[] = "# =================================================================";
+        $lines[] = "";
+        $lines[] = "# 1. Bersihkan Konfigurasi Lama dsBilling (Anti-Duplikasi)";
+        $lines[] = ":do { /radius remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
+        $lines[] = ":do { /user remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
+        $lines[] = ":do { /user group remove [find comment~\"dsbilling\"] } on-error={ :nothing }";
+        $lines[] = "";
+        $lines[] = "# 2. Aktifkan Service API MikroTik";
+        $lines[] = "/ip service set api disabled=no port={$port}";
+        $lines[] = "";
+        $lines[] = "# 3. Buat Group dan User API Khusus dsBilling";
+        $lines[] = ":do { /user group add name=dsb-api policy=api,read,write,policy,test,sensitive comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $lines[] = ":do { /user add name=\"{$username}\" password=\"{$password}\" group=dsb-api comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $lines[] = "";
+        $lines[] = "# 4. Konfigurasi RADIUS Client (PPPoE, Hotspot & Login)";
+        $lines[] = ":do { /radius add address=\"{$radiusIp}\" secret=\"{$radiusSecret}\" service=pppoe,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :nothing }";
+        $lines[] = "";
+        $lines[] = "# 5. Otomatis Aktifkan RADIUS di Semua Profil Hotspot & PPPoE";
+        $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :nothing }";
+        $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=5m nas-port-type=wireless-802.11 [find] } on-error={ :nothing }";
+        $lines[] = "";
+        $lines[] = "# 6. Buka Port Firewall Input (API & CoA Disconnect)";
+        $lines[] = ":do { /ip firewall filter add chain=input protocol=tcp dst-port={$port} action=accept comment=\"Accept dsBilling API\" place-before=0 } on-error={ :nothing }";
+        $lines[] = ":do { /ip firewall filter add chain=input protocol=udp dst-port=3799 action=accept comment=\"Accept dsBilling CoA/Disconnect\" place-before=0 } on-error={ :nothing }";
+        $lines[] = "";
+        $lines[] = "# 7. Tes Ping ke Server dsBilling RADIUS";
+        $lines[] = "/ping {$radiusIp} count=3";
+        $lines[] = "";
+        $lines[] = ":put \"==============================================\"";
+        $lines[] = ":put \" Konfigurasi dsBilling Berhasil Diterapkan!   \"";
+        $lines[] = ":put \"==============================================\"";
+
+        $this->generatedScript = implode("\r\n", $lines);
     }
 
     public function mount($id = null)
