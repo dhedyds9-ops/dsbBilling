@@ -99,18 +99,36 @@ class OltPollingService
 
                 foreach ($ponPorts as $port) {
                     $idx = (int)($port['port_index'] ?? 0);
-                    $portNumber = preg_match_all('/\d+/', $port['port_name'], $m) ? (int)end($m[0]) : $idx;
                     $portName = $port['port_name'];
+                    if (preg_match('/\/(\d+)\/(\d+)$/', $portName, $sp)) {
+                        $slotNum = (int)$sp[1];
+                        $rawPortNum = (int)$sp[2];
+                        $portNumber = ($slotNum > 0) ? (($slotNum - 1) * 16 + $rawPortNum) : $rawPortNum;
+                    } elseif (preg_match_all('/\d+/', $portName, $m)) {
+                        $portNumber = (int)end($m[0]);
+                    } else {
+                        $portNumber = $idx;
+                    }
                     $portStatus = $port['status'] === 'up' ? 'active' : 'inactive';
 
                     $dbPort = PonPort::where('olt_id', $olt->id)
-                        ->where('port_number', $portNumber)
+                        ->where('name', $portName)
                         ->first();
 
                     if (!$dbPort) {
+                        $dbPort = PonPort::where('olt_id', $olt->id)
+                            ->where('port_number', $portNumber)
+                            ->first();
+                    }
+
+                    $portCode = $olt->code . '-PON-' . $portNumber;
+                    if (!$dbPort) {
+                        if (PonPort::where('code', $portCode)->exists()) {
+                            $portCode = $olt->code . '-PON-' . $olt->id . '-' . $portNumber;
+                        }
                         $dbPort = PonPort::create([
                             'olt_id' => $olt->id,
-                            'code' => $olt->code . '-PON-' . $portNumber,
+                            'code' => $portCode,
                             'name' => $portName,
                             'port_number' => $portNumber,
                             'type' => str_contains(strtolower($portName), 'gpon') ? 'gpon' : (str_contains(strtolower($portName), 'epon') ? 'epon' : (str_contains(strtolower($olt->model ?? ''), 'gpon') ? 'gpon' : 'epon')),
@@ -120,6 +138,7 @@ class OltPollingService
                         $dbPort->update([
                             'status' => $portStatus,
                             'name' => $portName,
+                            'port_number' => $portNumber,
                             'type' => str_contains(strtolower($portName), 'gpon') ? 'gpon' : (str_contains(strtolower($portName), 'epon') ? 'epon' : (str_contains(strtolower($olt->model ?? ''), 'gpon') ? 'gpon' : 'epon')),
                         ]);
                     }
@@ -156,10 +175,26 @@ class OltPollingService
                     continue;
                 }
 
-                $portNumber = preg_match_all('/\d+/', $port['port_name'], $m) ? (int)end($m[0]) : $idx;
+                $portName = $port['port_name'];
+                if (preg_match('/\/(\d+)\/(\d+)$/', $portName, $sp)) {
+                    $slotNum = (int)$sp[1];
+                    $rawPortNum = (int)$sp[2];
+                    $portNumber = ($slotNum > 0) ? (($slotNum - 1) * 16 + $rawPortNum) : $rawPortNum;
+                } elseif (preg_match_all('/\d+/', $portName, $m)) {
+                    $portNumber = (int)end($m[0]);
+                } else {
+                    $portNumber = $idx;
+                }
+
                 $dbPort = PonPort::where('olt_id', $olt->id)
-                    ->where('port_number', $portNumber)
+                    ->where('name', $portName)
                     ->first();
+
+                if (!$dbPort) {
+                    $dbPort = PonPort::where('olt_id', $olt->id)
+                        ->where('port_number', $portNumber)
+                        ->first();
+                }
 
                 try {
                     $onus = $driver->getOnuRxPower($idx);
