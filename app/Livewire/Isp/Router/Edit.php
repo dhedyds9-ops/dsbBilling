@@ -137,19 +137,14 @@ class Edit extends AdminComponent
         if ($isVpn) {
             $lines[] = ":do { /radius add address=\"10.200.0.1\" secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Gagal menambahkan RADIUS\" }";
         } else {
-            $lines[] = ":local radHost \"{$rawRadiusHost}\"";
-            $lines[] = ":local radIP \"{$radiusIp}\"";
-            $lines[] = ":do {";
-            $lines[] = "    :local resolved [:resolve \$radHost]";
-            $lines[] = "    :if ([:len \$resolved] > 0) do={ :set radIP \$resolved }";
-            $lines[] = "} on-error={ :nothing }";
-            $lines[] = ":do { /radius add address=\$radIP secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Gagal menambahkan RADIUS\" }";
+            $lines[] = ":do { /radius add address={$radiusIp} secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ :put \"Gagal menambahkan RADIUS\" }";
         }
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 5. Otomatis Aktifkan RADIUS & Seamless MAC-Cookie di Semua Profil Hotspot & PPPoE";
         $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :nothing }";
-        $lines[] = ":do { /ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d mac-cookie-timeout=1w use-radius=yes radius-accounting=yes radius-interim-update=5m nas-port-type=\"wireless-802.11\" [find] } on-error={ :nothing }";
+        $lines[] = ":do { /ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes radius-interim-update=5m [find] } on-error={ :nothing }";
+        $lines[] = ":do { /ip hotspot user profile set mac-cookie-timeout=1w [find] } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 6. Buka Port Firewall Input (API & CoA Disconnect)";
         $lines[] = ":do { /ip firewall filter add chain=input protocol=tcp dst-port={$port} action=accept comment=\"Accept dsBilling API\" place-before=0 } on-error={ :nothing }";
