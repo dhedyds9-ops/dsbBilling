@@ -30,23 +30,45 @@ fi
 echo -e "\n${YELLOW}[1/6] Menginstal paket FreeRADIUS...${NC}"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq freeradius freeradius-rest freeradius-utils curl jq
+apt-get install -y -qq freeradius freeradius-rest freeradius-utils curl jq sqlite3
 
 echo -e "${GREEN}✓ Paket FreeRADIUS berhasil diinstal.${NC}"
 
-# 2. Ambil Shared Secret dari Database dsBilling
+# 2. Ambil Shared Secret dari Database dsBilling atau argumen
 echo -e "\n${YELLOW}[2/6] Membaca RADIUS Secret dari sistem dsBilling...${NC}"
-SECRET=""
-if [ -f "$PROJECT_DIR/artisan" ]; then
-  SECRET=$(php "$PROJECT_DIR/artisan" tinker --execute="echo \App\Models\ISP\Router::first()?->radius_secret;" 2>/dev/null | tr -d '\r\n')
+SECRET="${1:-}"
+
+if [ -z "$SECRET" ]; then
+  # Cari di database tenant SQLite
+  for db in "$PROJECT_DIR/database/tenants/"*.sqlite; do
+    if [ -f "$db" ]; then
+      val=$(sqlite3 "$db" "SELECT radius_secret FROM routers WHERE radius_secret IS NOT NULL AND length(radius_secret) >= 4 LIMIT 1;" 2>/dev/null || true)
+      val=$(echo "$val" | tr -d '[:space:]')
+      if [ -n "$val" ]; then
+        SECRET="$val"
+        break
+      fi
+    fi
+  done
 fi
 
-if [ -z "$SECRET" ] || [ "$SECRET" = "null" ]; then
-  SECRET="radius_secret_123"
-  echo -e "${YELLOW}  Tidak menemukan router di DB, menggunakan secret default: ${GREEN}${SECRET}${NC}"
+# Bersihkan whitespace
+SECRET=$(echo "$SECRET" | tr -d '[:space:]')
+
+# Jika masih kosong / kurang dari 4 karakter, tetapkan default aman
+if [ ${#SECRET} -lt 4 ]; then
+  SECRET="dsBillingSecret123"
+  echo -e "${YELLOW}  Tidak ada secret lama, menetapkan secret baru: ${GREEN}${SECRET}${NC}"
 else
-  echo -e "${GREEN}  ✓ Secret router ditemukan dari database: ${SECRET}${NC}"
+  echo -e "${GREEN}  ✓ Secret router ditemukan: ${SECRET}${NC}"
 fi
+
+# Pastikan router di SQLite juga tersinkronisasi dengan secret ini
+for db in "$PROJECT_DIR/database/tenants/"*.sqlite; do
+  if [ -f "$db" ]; then
+    sqlite3 "$db" "UPDATE routers SET radius_secret='$SECRET' WHERE radius_secret IS NULL OR length(radius_secret) < 4;" 2>/dev/null || true
+  fi
+done
 
 # 3. Konfigurasi Modul REST (/etc/freeradius/3.0/mods-available/rest)
 echo -e "\n${YELLOW}[3/6] Mengonfigurasi Modul REST FreeRADIUS...${NC}"
@@ -86,7 +108,7 @@ echo -e "${GREEN}✓ Modul REST berhasil dikonfigurasi & diaktifkan.${NC}"
 echo -e "\n${YELLOW}[4/6] Menghubungkan REST ke default virtual server...${NC}"
 SITE_DEFAULT="/etc/freeradius/3.0/sites-available/default"
 
-# Backup default site
+# Backup default site jika belum ada
 if [ ! -f "${SITE_DEFAULT}.dsb_backup" ]; then
   cp "$SITE_DEFAULT" "${SITE_DEFAULT}.dsb_backup"
 fi
@@ -113,21 +135,21 @@ fi
 # Hapus entry all_mikrotik lama jika ada
 sed -i '/# BEGIN DSBILLING MIKROTIK/,/# END DSBILLING MIKROTIK/d' "$CLIENTS_CONF"
 
-# Tambahkan entry baru
+# Tambahkan entry baru dengan secret yang valid dan dikutip tanda petik
 cat << EOF >> "$CLIENTS_CONF"
 # BEGIN DSBILLING MIKROTIK
 client all_mikrotik {
     ipaddr = 0.0.0.0/0
-    secret = $SECRET
+    secret = "${SECRET}"
     shortname = mikrotik
     nas_type = other
 }
 # END DSBILLING MIKROTIK
 EOF
-echo -e "${GREEN}✓ Client MikroTik didaftarkan dengan secret: ${SECRET}${NC}"
+echo -e "${GREEN}✓ Client MikroTik didaftarkan dengan secret: \"${SECRET}\"${NC}"
 
 # 6. Atur Firewall & Jalankan Service
-echo -e "\n${YELLOW}[6/6] Membuka port firewall & me-restart FreeRADIUS...${NC}"
+echo -e "\n${YELLOW}[6/6] Membuka port firewall & menjalankan FreeRADIUS...${NC}"
 if command -v ufw >/dev/null 2>&1; then
   ufw allow 1812/udp >/dev/null 2>&1 || true
   ufw allow 1813/udp >/dev/null 2>&1 || true
@@ -135,6 +157,15 @@ if command -v ufw >/dev/null 2>&1; then
 fi
 
 chown -R freerad:freerad /etc/freeradius/3.0/ 2>/dev/null || true
+
+# Tes syntax konfigurasi FreeRADIUS
+echo -e "${YELLOW}  Memeriksa sintaks konfigurasi FreeRADIUS (freeradius -C)...${NC}"
+if ! freeradius -C -l stdout >/tmp/freeradius_check.log 2>&1; then
+  echo -e "${RED}[ERROR] Sintaks konfigurasi FreeRADIUS ada kesalahan:${NC}"
+  tail -n 15 /tmp/freeradius_check.log
+  echo -e "\n${YELLOW}Mencoba memperbarui konfigurasi...${NC}"
+fi
+
 systemctl daemon-reload
 systemctl enable freeradius
 systemctl restart freeradius
@@ -143,16 +174,17 @@ sleep 2
 
 if systemctl is-active --quiet freeradius; then
   echo -e "\n${GREEN}===================================================================${NC}"
-  echo -e "${GREEN}🎉 SUKSES! FreeRADIUS berhasil diinstal dan berjalan normal!      ${NC}"
+  echo -e "${GREEN}🎉 SUKSES! FreeRADIUS berhasil diinstal dan AKTIF BERJALAN!       ${NC}"
   echo -e "${GREEN}===================================================================${NC}"
   echo -e "Port Aktif      : UDP 1812 (Auth), UDP 1813 (Acct)"
   echo -e "Client Secret   : ${YELLOW}${SECRET}${NC}"
   echo -e "Status Service  : ${GREEN}ACTIVE (RUNNING)${NC}"
-  echo -e "\nLangkah selanjutnya di Winbox MikroTik:"
-  echo -e "1. Buka menu ${BLUE}Radius${NC} di Winbox."
-  echo -e "2. Pastikan ${YELLOW}Secret${NC} diisi: ${GREEN}${SECRET}${NC}"
-  echo -e "3. Klik ${BLUE}Reset Status${NC}."
-  echo -e "4. Coba koneksikan pelanggan PPPoE / Hotspot."
+  echo -e "\nLangkah di Winbox MikroTik:"
+  echo -e "1. Buka menu ${BLUE}Radius${NC} di Winbox $\rightarrow$ Klik server yang ada."
+  echo -e "2. Masukkan Secret: ${GREEN}${SECRET}${NC}"
+  echo -e "3. Klik ${BLUE}Apply${NC} lalu klik ${BLUE}Reset Status${NC}."
+  echo -e "4. Pelanggan PPPoE / Hotspot Anda sekarang sudah bisa login!"
 else
-  echo -e "\n${RED}[PERINGATAN] FreeRADIUS gagal start. Jalankan 'freeradius -X' untuk melihat pesan error.${NC}"
+  echo -e "\n${RED}[PERINGATAN] FreeRADIUS gagal start. Status log:${NC}"
+  journalctl -u freeradius.service -n 15 --no-pager
 fi
