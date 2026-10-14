@@ -81,34 +81,164 @@
     </div>
 
     {{-- PANDUAN KONEKSI OLT --}}
-    <div x-data="{ showGuide: false }" class="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden mb-6">
-        <button @click="showGuide = !showGuide" class="w-full flex items-center justify-between p-4 text-left focus:outline-none">
+    {{-- PANDUAN KONEKSI OLT --}}
+    <div x-data="{ showGuide: false, guideTab: 'multi' }" class="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden mb-6">
+        <button @click="showGuide = !showGuide" class="w-full flex items-center justify-between p-4 text-left focus:outline-none hover:bg-indigo-100/50 dark:hover:bg-indigo-900/50 transition-colors">
             <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400" style="font-size:24px">help</span>
-                <span class="font-semibold text-indigo-900 dark:text-indigo-100">Panduan Mengatasi OLT Offline & Gagal Tes Koneksi</span>
+                <div>
+                    <span class="font-semibold text-indigo-900 dark:text-indigo-100">Panduan Konfigurasi OLT & Solusi Banyak OLT (1 IP Publik)</span>
+                    <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">Petunjuk Port Forwarding, Masquerade, serta trik menghubungkan banyak OLT dengan satu IP Publik.</p>
+                </div>
             </div>
             <span class="material-symbols-outlined text-indigo-500 transform transition-transform" :class="showGuide ? 'rotate-180' : ''">expand_more</span>
         </button>
         <div x-show="showGuide" x-collapse>
             <div class="p-4 pt-0 text-sm text-indigo-800 dark:text-indigo-300 space-y-4">
-                <p>Jika <strong>Test Koneksi</strong> selalu menghasilkan error atau OLT terus menerus berstatus <strong>Offline</strong>, kemungkinan besar server billing ini tidak bisa menemukan/menembus jalur ke IP OLT Anda. Gunakan salah satu arsitektur jaringan berikut:</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-200 mb-2">Opsi 1: Menggunakan IP Publik (Port Forwarding)</h4>
-                        <ul class="list-disc pl-4 space-y-1 text-slate-600 dark:text-slate-400">
-                            <li>Mikrotik di lokasi OLT harus punya <strong>IP Publik Statis</strong>.</li>
-                            <li>Buat <strong>DST-NAT</strong> di Mikrotik untuk port <strong>161 (UDP)</strong> dan <strong>23 (TCP)</strong>.</li>
-                            <li>Arahkan port tersebut ke <strong>IP Lokal OLT</strong> (misal 192.168.100.2).</li>
-                            <li>Di aplikasi ini, masukkan <strong>IP Publik Mikrotik</strong> ke kolom IP Address.</li>
-                            <li class="text-red-500 font-semibold mt-1">Penting: Wajib filter IP agar tidak di-hack!</li>
+                @php
+                    $serverIp = request()->server('SERVER_ADDR') ?? (filter_var(request()->getHost(), FILTER_VALIDATE_IP) ? request()->getHost() : 'IP_SERVER_BILLING');
+                    if (!filter_var($serverIp, FILTER_VALIDATE_IP)) {
+                        $serverIp = 'IP_SERVER_BILLING';
+                    }
+                @endphp
+
+                {{-- TAB BUTTONS --}}
+                <div class="flex flex-wrap gap-2 border-b border-indigo-200 dark:border-indigo-800 pb-3">
+                    <button type="button" @click="guideTab = 'multi'" 
+                            :class="guideTab === 'multi' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-slate-700'"
+                            class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 border border-indigo-200 dark:border-slate-700">
+                        <span class="material-symbols-outlined notranslate" style="font-size:16px">hub</span>
+                        <span>Banyak OLT (1 IP Publik)</span>
+                        <span class="px-1.5 py-0.2 bg-amber-400 text-slate-900 rounded text-[10px] font-bold">Populer</span>
+                    </button>
+                    <button type="button" @click="guideTab = 'single'" 
+                            :class="guideTab === 'single' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-slate-700'"
+                            class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 border border-indigo-200 dark:border-slate-700">
+                        <span class="material-symbols-outlined notranslate" style="font-size:16px">router</span>
+                        <span>1 OLT (1 IP Publik Standar)</span>
+                    </button>
+                    <button type="button" @click="guideTab = 'vpn'" 
+                            :class="guideTab === 'vpn' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-slate-700'"
+                            class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 border border-indigo-200 dark:border-slate-700">
+                        <span class="material-symbols-outlined notranslate" style="font-size:16px">vpn_lock</span>
+                        <span>Mode VPN Tunnel</span>
+                    </button>
+                </div>
+
+                {{-- TAB CONTENT 1: BANYAK OLT DENGAN 1 IP PUBLIK --}}
+                <div x-show="guideTab === 'multi'" class="space-y-3">
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50 space-y-3">
+                        <div class="flex items-start gap-2">
+                            <span class="material-symbols-outlined text-amber-500 mt-0.5" style="font-size:20px">lightbulb</span>
+                            <div>
+                                <h4 class="font-bold text-slate-800 dark:text-slate-200">Bagaimana Cara Menghubungkan Banyak OLT Jika IP Publik MikroTik Cuma 1?</h4>
+                                <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                                    Karena port standar SNMP (<code>161</code>) dan Telnet (<code>23</code>) tidak bisa dibagi dua ke IP yang berbeda, solusinya adalah menggunakan <strong>Port Mapping (Port Translation)</strong> di MikroTik. 
+                                    Setiap OLT lokal dipetakan ke <strong>nomor port eksternal yang unik</strong>, sementara port internal ke OLT tetap 161 dan 23.
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- TABEL PEMETAAN PORT --}}
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                                <thead class="bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold">
+                                    <tr>
+                                        <th class="p-2 border-b border-slate-200 dark:border-slate-700">Perangkat OLT</th>
+                                        <th class="p-2 border-b border-slate-200 dark:border-slate-700">IP Lokal OLT</th>
+                                        <th class="p-2 border-b border-slate-200 dark:border-slate-700">Input IP di dsBilling</th>
+                                        <th class="p-2 border-b border-slate-200 dark:border-slate-700">SNMP Port (UDP)</th>
+                                        <th class="p-2 border-b border-slate-200 dark:border-slate-700">CLI Port (TCP)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-700 font-mono text-slate-600 dark:text-slate-300">
+                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-750">
+                                        <td class="p-2 font-sans font-bold text-indigo-600 dark:text-indigo-400">OLT #1</td>
+                                        <td class="p-2">192.168.200.10</td>
+                                        <td class="p-2 text-slate-800 dark:text-slate-200">IP Publik MikroTik</td>
+                                        <td class="p-2 text-emerald-600 font-bold">1611</td>
+                                        <td class="p-2 text-emerald-600 font-bold">2301</td>
+                                    </tr>
+                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-750">
+                                        <td class="p-2 font-sans font-bold text-indigo-600 dark:text-indigo-400">OLT #2</td>
+                                        <td class="p-2">192.168.200.11</td>
+                                        <td class="p-2 text-slate-800 dark:text-slate-200">IP Publik MikroTik</td>
+                                        <td class="p-2 text-emerald-600 font-bold">1612</td>
+                                        <td class="p-2 text-emerald-600 font-bold">2302</td>
+                                    </tr>
+                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-750">
+                                        <td class="p-2 font-sans font-bold text-indigo-600 dark:text-indigo-400">OLT #3</td>
+                                        <td class="p-2">192.168.200.12</td>
+                                        <td class="p-2 text-slate-800 dark:text-slate-200">IP Publik MikroTik</td>
+                                        <td class="p-2 text-emerald-600 font-bold">1613</td>
+                                        <td class="p-2 text-emerald-600 font-bold">2303</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- SKRIP MIKROTIK BANYAK OLT --}}
+                        <div x-data="{ copied: false }" class="bg-slate-900 rounded-md p-3 text-xs text-green-400 font-mono overflow-x-auto relative group">
+                            <button type="button" @click="window.copyToClipboard($refs.scriptMulti.innerText.trim(), 'Skrip Multi-OLT Port Forwarding berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
+                                :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border-slate-600'"
+                                class="absolute top-2 right-2 px-2.5 py-1 rounded-md transition-all flex items-center gap-1 border shadow-md">
+                                <span class="material-symbols-outlined notranslate" style="font-size:14px" x-text="copied ? 'check' : 'content_copy'"></span>
+                                <span x-text="copied ? 'Tersalin!' : 'Salin Skrip Multi-OLT'"></span>
+                            </button>
+<pre x-ref="scriptMulti" class="pt-2"># =================================================================
+# dsBilling Multi-OLT Setup Script (1 IP Publik untuk Banyak OLT)
+# Sesuaikan IP OLT (192.168.200.10, .11, dst) dan Subnet OLT Anda
+# =================================================================
+/
+:do { /ip firewall nat remove [find comment~"managed-by=dsbilling: Multi-OLT"] } on-error={ :nothing }
+:do { /ip firewall filter remove [find comment~"managed-by=dsbilling: Multi-OLT"] } on-error={ :nothing }
+
+# -----------------------------------------------------------------
+# 1. Forwarding Port OLT #1 (IP Lokal: 192.168.200.10)
+# -----------------------------------------------------------------
+/ip firewall nat add chain=dstnat protocol=udp dst-port=1611 dst-address-type=local action=dst-nat to-addresses=192.168.200.10 to-ports=161 comment="managed-by=dsbilling: Multi-OLT 1 SNMP"
+/ip firewall nat add chain=dstnat protocol=tcp dst-port=2301 dst-address-type=local action=dst-nat to-addresses=192.168.200.10 to-ports=23 comment="managed-by=dsbilling: Multi-OLT 1 Telnet"
+
+# -----------------------------------------------------------------
+# 2. Forwarding Port OLT #2 (IP Lokal: 192.168.200.11)
+# -----------------------------------------------------------------
+/ip firewall nat add chain=dstnat protocol=udp dst-port=1612 dst-address-type=local action=dst-nat to-addresses=192.168.200.11 to-ports=161 comment="managed-by=dsbilling: Multi-OLT 2 SNMP"
+/ip firewall nat add chain=dstnat protocol=tcp dst-port=2302 dst-address-type=local action=dst-nat to-addresses=192.168.200.11 to-ports=23 comment="managed-by=dsbilling: Multi-OLT 2 Telnet"
+
+# -----------------------------------------------------------------
+# 3. Forwarding Port OLT #3 (IP Lokal: 192.168.200.12)
+# -----------------------------------------------------------------
+/ip firewall nat add chain=dstnat protocol=udp dst-port=1613 dst-address-type=local action=dst-nat to-addresses=192.168.200.12 to-ports=161 comment="managed-by=dsbilling: Multi-OLT 3 SNMP"
+/ip firewall nat add chain=dstnat protocol=tcp dst-port=2303 dst-address-type=local action=dst-nat to-addresses=192.168.200.12 to-ports=23 comment="managed-by=dsbilling: Multi-OLT 3 Telnet"
+
+# -----------------------------------------------------------------
+# 4. Masquerade Subnet OLT (PENTING: Agar balasan OLT kembali lewat MikroTik)
+# Ganti 192.168.200.0/24 dengan subnet OLT di jaringan lokal Anda
+# -----------------------------------------------------------------
+/ip firewall nat add chain=srcnat dst-address=192.168.200.0/24 action=masquerade comment="managed-by=dsbilling: Multi-OLT Masquerade"
+
+# -----------------------------------------------------------------
+# 5. Filter Keamanan (Hanya Server Billing {{ $serverIp }} yang Diizinkan Akses)
+# -----------------------------------------------------------------
+/ip firewall filter add chain=forward src-address={{ $serverIp }} dst-address=192.168.200.0/24 action=accept comment="managed-by=dsbilling: Multi-OLT Allow Billing" place-before=0
+/ip firewall filter add chain=forward dst-address=192.168.200.0/24 protocol=tcp dst-port=23 action=drop comment="managed-by=dsbilling: Multi-OLT Drop Public Telnet" place-before=1
+/ip firewall filter add chain=forward dst-address=192.168.200.0/24 protocol=udp dst-port=161 action=drop comment="managed-by=dsbilling: Multi-OLT Drop Public SNMP" place-before=2
+/
+</pre>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TAB CONTENT 2: 1 OLT (1 IP PUBLIK STANDAR) --}}
+                <div x-show="guideTab === 'single'" class="space-y-3">
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50 space-y-3">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-200">1 OLT Menggunakan Port Standar (161 UDP & 23 TCP)</h4>
+                        <ul class="list-disc pl-4 space-y-1 text-xs text-slate-600 dark:text-slate-400">
+                            <li>Mikrotik di lokasi OLT memiliki <strong>IP Publik Statis</strong>.</li>
+                            <li>Port standar <strong>161 (SNMP)</strong> dan <strong>23 (Telnet)</strong> diarahkan ke 1 IP lokal OLT (misal 192.168.200.10).</li>
+                            <li>Di form tambah OLT dsBilling, masukkan <strong>IP Publik Mikrotik</strong>, SNMP Port <strong>161</strong>, dan CLI Port <strong>23</strong>.</li>
+                            <li class="text-red-500 font-semibold mt-1">Wajib menerapkan Filter IP agar perangkat OLT terlindungi dari serangan scanner publik.</li>
                         </ul>
-                        @php
-                            $serverIp = request()->server('SERVER_ADDR') ?? (filter_var(request()->getHost(), FILTER_VALIDATE_IP) ? request()->getHost() : 'IP_SERVER_BILLING');
-                            if (!filter_var($serverIp, FILTER_VALIDATE_IP)) {
-                                $serverIp = 'IP_SERVER_BILLING';
-                            }
-                        @endphp
                         <div x-data="{ copied: false }" class="mt-3 bg-slate-900 rounded-md p-3 text-xs text-green-400 font-mono overflow-x-auto relative group">
                             <button type="button" @click="window.copyToClipboard($refs.script1.innerText.trim(), 'Skrip OLT Port Forwarding berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
                                 :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border-slate-600'"
@@ -117,35 +247,38 @@
                                 <span x-text="copied ? 'Tersalin!' : 'Salin Skrip'"></span>
                             </button>
 <pre x-ref="script1" class="pt-2"># =================================================================
-# Port Forwarding OLT ke dsBilling (Mode IP Publik)
-# Ganti 192.168.100.2 dengan IP Lokal OLT Anda
+# Port Forwarding OLT Tunggal ke dsBilling (Mode IP Publik Standar)
+# Ganti 192.168.200.10 dengan IP Lokal OLT Anda
 # =================================================================
 /
 :do { /ip firewall nat remove [find comment~"managed-by=dsbilling: OLT"] } on-error={ :nothing }
 :do { /ip firewall filter remove [find comment~"managed-by=dsbilling: OLT"] } on-error={ :nothing }
 
 # 1. Forward Port SNMP (UDP 161) dan Telnet (TCP 23)
-/ip firewall nat add chain=dstnat protocol=udp dst-port=161 dst-address-type=local action=dst-nat to-addresses=192.168.100.2 to-ports=161 comment="managed-by=dsbilling: OLT SNMP"
-/ip firewall nat add chain=dstnat protocol=tcp dst-port=23 dst-address-type=local action=dst-nat to-addresses=192.168.100.2 to-ports=23 comment="managed-by=dsbilling: OLT Telnet"
+/ip firewall nat add chain=dstnat protocol=udp dst-port=161 dst-address-type=local action=dst-nat to-addresses=192.168.200.10 to-ports=161 comment="managed-by=dsbilling: OLT SNMP"
+/ip firewall nat add chain=dstnat protocol=tcp dst-port=23 dst-address-type=local action=dst-nat to-addresses=192.168.200.10 to-ports=23 comment="managed-by=dsbilling: OLT Telnet"
 
 # 2. Masquerade Balik (PENTING: Mencegah paket balasan OLT tersesat)
-/ip firewall nat add chain=srcnat dst-address=192.168.100.2 action=masquerade comment="managed-by=dsbilling: OLT Masquerade"
+/ip firewall nat add chain=srcnat dst-address=192.168.200.10 action=masquerade comment="managed-by=dsbilling: OLT Masquerade"
 
 # 3. Filter Keamanan (Hanya Server Billing {{ $serverIp }} yang Diizinkan Akses OLT)
-/ip firewall filter add chain=forward src-address={{ $serverIp }} dst-address=192.168.100.2 action=accept comment="managed-by=dsbilling: OLT Allow Billing" place-before=0
-/ip firewall filter add chain=forward dst-address=192.168.100.2 protocol=tcp dst-port=23 action=drop comment="managed-by=dsbilling: OLT Drop Public Telnet" place-before=1
-/ip firewall filter add chain=forward dst-address=192.168.100.2 protocol=udp dst-port=161 action=drop comment="managed-by=dsbilling: OLT Drop Public SNMP" place-before=2
+/ip firewall filter add chain=forward src-address={{ $serverIp }} dst-address=192.168.200.10 action=accept comment="managed-by=dsbilling: OLT Allow Billing" place-before=0
+/ip firewall filter add chain=forward dst-address=192.168.200.10 protocol=tcp dst-port=23 action=drop comment="managed-by=dsbilling: OLT Drop Public Telnet" place-before=1
+/ip firewall filter add chain=forward dst-address=192.168.200.10 protocol=udp dst-port=161 action=drop comment="managed-by=dsbilling: OLT Drop Public SNMP" place-before=2
 /
 </pre>
                         </div>
                     </div>
-                    
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-200 mb-2">Opsi 2: Menggunakan VPN / Tunnel (Rekomendasi)</h4>
-                        <ul class="list-disc pl-4 space-y-1 text-slate-600 dark:text-slate-400">
+                </div>
+
+                {{-- TAB CONTENT 3: MODE VPN TUNNEL --}}
+                <div x-show="guideTab === 'vpn'" class="space-y-3">
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50 space-y-3">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-200">Mode VPN Tunnel (Tanpa Membuka IP Publik)</h4>
+                        <ul class="list-disc pl-4 space-y-1 text-xs text-slate-600 dark:text-slate-400">
                             <li>Hubungkan Mikrotik ke <strong>VPN dsBilling</strong> (tanpa perlu IP Publik statis).</li>
                             <li>Buat <strong>NAT Masquerade</strong> ke arah IP lokal OLT agar OLT dapat membalas traffic dari VPN.</li>
-                            <li>Di aplikasi ini, masukkan <strong>IP Asli Lokal OLT</strong> (misal 192.168.100.2).</li>
+                            <li>Di aplikasi dsBilling, masukkan langsung <strong>IP Asli Lokal OLT</strong> (misal 192.168.200.10).</li>
                         </ul>
                         <div x-data="{ copied: false }" class="mt-3 bg-slate-900 rounded-md p-3 text-xs text-green-400 font-mono overflow-x-auto relative group">
                             <button type="button" @click="window.copyToClipboard($refs.script2.innerText.trim(), 'Skrip OLT VPN Masquerade berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
@@ -156,16 +289,16 @@
                             </button>
 <pre x-ref="script2" class="pt-2"># =================================================================
 # Masquerade OLT ke dsBilling (Mode VPN Tunnel)
-# Ganti 192.168.100.2 dengan IP Lokal OLT Anda
+# Ganti 192.168.200.10 dengan IP Lokal OLT Anda
 # =================================================================
 /
 :do { /ip firewall nat remove [find comment~"managed-by=dsbilling: OLT Masquerade"] } on-error={ :nothing }
 
 # 1. Masquerade Traffic ke OLT (Memungkinkan Server Billing Akses Subnet OLT via VPN)
-/ip firewall nat add chain=srcnat dst-address=192.168.100.2 action=masquerade comment="managed-by=dsbilling: OLT Masquerade"
+/ip firewall nat add chain=srcnat dst-address=192.168.200.10 action=masquerade comment="managed-by=dsbilling: OLT Masquerade"
 
 # 2. Tes Ping ke IP OLT
-/ping 192.168.100.2 count=3
+/ping 192.168.200.10 count=3
 /
 </pre>
                         </div>
@@ -174,7 +307,7 @@
                 
                 <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <h4 class="font-bold text-amber-800 dark:text-amber-300 mb-1">Sudah terhubung tapi informasi MAC/Hardware kosong?</h4>
-                    <p class="text-amber-700 dark:text-amber-400">
+                    <p class="text-xs text-amber-700 dark:text-amber-400">
                         Pastikan Anda sudah login ke CLI OLT Anda dan mengetik perintah: <code>snmp-server community public ro</code> dan <code>snmp-server enable</code>.
                         Dan pastikan <strong>Vendor</strong> yang Anda pilih saat mendaftarkan OLT benar-benar <strong>CDATA</strong> atau <strong>HSGQ</strong>.
                     </p>
