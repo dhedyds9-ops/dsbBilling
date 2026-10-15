@@ -138,6 +138,8 @@ class TestRadiusAuthCommand extends Command
             $this->line("  ✓ Ditemukan sebagai: <fg=green>PPPoE User</>");
             $this->line("    - Username : {$pppoe->username}");
             $this->line("    - Status   : {$pppoe->status}");
+            $profileName = $pppoe->serviceProfile?->name ?? $pppoe->profile_name ?? '-';
+            $this->line("    - Profile  : {$profileName}");
         } else {
             $this->error("  ✗ Username/Kode '{$username}' TIDAK DITEMUKAN di database!");
             if (!empty($sqliteFiles)) {
