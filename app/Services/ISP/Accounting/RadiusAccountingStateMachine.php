@@ -242,8 +242,40 @@ class RadiusAccountingStateMachine
         // 3. Try Voucher
         try {
             $voucher = Voucher::query()->where('code', $accounting->username)->first();
-            if ($voucher && $voucher->hotspot_user_id) {
-                $accounting->hotspot_user_id = $voucher->hotspot_user_id;
+            if ($voucher) {
+                $dirty = false;
+                if (!$voucher->activated_at) {
+                    $voucher->activated_at = $accounting->acct_start_time ?? now();
+                    $dirty = true;
+                }
+                if ($voucher->status === 'available' || $voucher->status === 'unused') {
+                    $voucher->status = 'used';
+                    $dirty = true;
+                }
+                if (!$voucher->expires_at) {
+                    $sp = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
+                    $dur = (int)($voucher->validity_days ?: ($sp?->validity_days ?: ($sp?->duration_value ?: 0)));
+                    $unit = strtolower((string)($sp?->validity_unit ?: ($sp?->duration_unit ?: 'days')));
+                    if ($dur > 0) {
+                        $base = $voucher->activated_at ?? now();
+                        $voucher->expires_at = match ($unit) {
+                            'hours', 'hour' => $base->clone()->addHours($dur),
+                            'months', 'month' => $base->clone()->addMonths($dur),
+                            'minutes', 'minute' => $base->clone()->addMinutes($dur),
+                            default => $base->clone()->addDays($dur),
+                        };
+                        $dirty = true;
+                    }
+                }
+                if ($dirty) {
+                    $voucher->save();
+                    if ($voucher->voucher_pool_id) {
+                        \App\Models\ISP\VoucherPool::query()->where('id', $voucher->voucher_pool_id)->increment('used_vouchers');
+                    }
+                }
+                if ($voucher->hotspot_user_id) {
+                    $accounting->hotspot_user_id = $voucher->hotspot_user_id;
+                }
                 return;
             }
         } catch (Throwable $e) {

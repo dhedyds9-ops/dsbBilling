@@ -84,18 +84,28 @@ final class RadiusAuthorizationService
                 // Default Rate-Limit dari ServiceProfile jika tidak ada policy override
                 $sp = $ctx->serviceProfile;
                 if ($sp && empty($reply['MikroTik-Rate-Limit'])) {
-                    $dl = (int)($sp->rate_download_kbps ?? 0);
-                    $ul = (int)($sp->rate_upload_kbps ?? 0);
-                    if ($dl > 0 && $ul > 0) {
-                        $rl = "{$dl}k/{$ul}k";
-                        $bDl = (int)($sp->burst_download_kbps ?? 0);
-                        $bUl = (int)($sp->burst_upload_kbps ?? 0);
-                        if ($bDl > 0 && $bUl > 0) {
-                            $bTh = (int)($sp->burst_threshold_kbps ?? (int)(($dl + $bDl) / 2));
-                            $bTm = (int)($sp->burst_time_seconds ?? 8);
-                            $rl .= " {$bDl}k/{$bUl}k {$bTh}k {$bTm}s";
+                    if (!empty($sp->radius_rate_limit)) {
+                        $reply['MikroTik-Rate-Limit'] = $sp->radius_rate_limit;
+                    } else {
+                        $dl = (int)($sp->download_speed ?? 0);
+                        $ul = (int)($sp->upload_speed ?? 0);
+                        if ($dl > 0 && $ul > 0) {
+                            $rl = "{$ul}M/{$dl}M";
+                            $bDl = (int)($sp->burst_limit_download ?? 0);
+                            $bUl = (int)($sp->burst_limit_upload ?? 0);
+                            if ($bDl > 0 && $bUl > 0) {
+                                $bThDl = (int)($sp->burst_threshold_download ?? (int)(($dl + $bDl) / 2));
+                                $bThUl = (int)($sp->burst_threshold_upload ?? (int)(($ul + $bUl) / 2));
+                                $bTmDl = (int)($sp->burst_time_download ?? 8);
+                                $bTmUl = (int)($sp->burst_time_upload ?? 8);
+                                $rl .= " {$bUl}M/{$bDl}M {$bThUl}M/{$bThDl}M {$bTmUl}s/{$bTmDl}s";
+                            }
+                            $reply['MikroTik-Rate-Limit'] = $rl;
+                        } elseif (!empty($sp->rate_download_kbps) && !empty($sp->rate_upload_kbps)) {
+                            $dlK = (int)$sp->rate_download_kbps;
+                            $ulK = (int)$sp->rate_upload_kbps;
+                            $reply['MikroTik-Rate-Limit'] = "{$ulK}k/{$dlK}k";
                         }
-                        $reply['MikroTik-Rate-Limit'] = $rl;
                     }
                 }
 
@@ -126,6 +136,48 @@ final class RadiusAuthorizationService
                     }
                     if (!empty($userModel->address_list) && empty($reply['MikroTik-Address-List'])) {
                         $reply['MikroTik-Address-List'] = (string)$userModel->address_list;
+                    }
+                }
+
+                // Voucher lifecycle activation & session timeout calculation
+                if ($ctx->voucher) {
+                    $voucher = $ctx->voucher;
+                    $dirty = false;
+                    if (!$voucher->activated_at) {
+                        $voucher->activated_at = now();
+                        $dirty = true;
+                    }
+                    if ($voucher->status === 'available' || $voucher->status === 'unused') {
+                        $voucher->status = 'used';
+                        $dirty = true;
+                    }
+                    if (!$voucher->expires_at) {
+                        $dur = (int)($voucher->validity_days ?: ($sp?->validity_days ?: ($sp?->duration_value ?: 0)));
+                        $unit = strtolower((string)($sp?->validity_unit ?: ($sp?->duration_unit ?: 'days')));
+                        if ($dur > 0) {
+                            $voucher->expires_at = match ($unit) {
+                                'hours', 'hour' => now()->addHours($dur),
+                                'months', 'month' => now()->addMonths($dur),
+                                'minutes', 'minute' => now()->addMinutes($dur),
+                                default => now()->addDays($dur),
+                            };
+                            $dirty = true;
+                        }
+                    }
+                    if ($dirty) {
+                        try {
+                            $voucher->save();
+                            if ($voucher->voucher_pool_id) {
+                                \App\Models\ISP\VoucherPool::query()->where('id', $voucher->voucher_pool_id)->increment('used_vouchers');
+                            }
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::warning('Voucher activation save failed', ['code' => $voucher->code, 'err' => $e->getMessage()]);
+                        }
+                    }
+
+                    if ($voucher->expires_at && empty($reply['Session-Timeout'])) {
+                        $remaining = max(1, (int)$voucher->expires_at->diffInSeconds(now()));
+                        $reply['Session-Timeout'] = $remaining;
                     }
                 }
 
