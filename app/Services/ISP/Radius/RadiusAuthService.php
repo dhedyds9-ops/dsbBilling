@@ -111,30 +111,25 @@ final class RadiusAuthService
      */
     private function lookupIdentity(string $username, string $protocol): ?array
     {
-        if ($protocol === 'hotspot') {
-            // Hotspot: voucher code terlebih dahulu, fallback hotspot user
-            $v = Voucher::query()
-                ->where(function ($q) use ($username) {
-                    $q->where('code', $username)
-                        ->orWhereRaw('BINARY code = ?', [$username]);
-                })
-                ->whereIn('status', ['active', 'used', 'issued'])
-                ->first();
-            if ($v) {
-                return ['identity' => $v, 'method' => 'voucher_code', 'type' => 'voucher'];
-            }
-
-            $hu = HotspotUser::query()
-                ->where('username', $username)
-                ->where('status', '!=', 'deleted')
-                ->first();
-            if ($hu) {
-                return ['identity' => $hu, 'method' => 'hotspot_user', 'type' => 'hotspot'];
-            }
-            return null;
+        // 1. Cek Voucher (Hotspot Voucher / PPPoE Voucher)
+        $v = Voucher::query()
+            ->where('code', $username)
+            ->whereIn('status', ['active', 'used', 'issued'])
+            ->first();
+        if ($v) {
+            return ['identity' => $v, 'method' => 'voucher_code', 'type' => 'voucher'];
         }
 
-        // PPPoE (default)
+        // 2. Cek Hotspot User
+        $hu = HotspotUser::query()
+            ->where('username', $username)
+            ->where('status', '!=', 'deleted')
+            ->first();
+        if ($hu) {
+            return ['identity' => $hu, 'method' => 'hotspot_user', 'type' => 'hotspot'];
+        }
+
+        // 3. Cek PPPoE User
         $pu = PPPoEUser::query()
             ->where('username', $username)
             ->where('status', '!=', 'deleted')
@@ -143,29 +138,22 @@ final class RadiusAuthService
             return ['identity' => $pu, 'method' => 'pppoe_user', 'type' => 'pppoe'];
         }
 
-        // Fallback cek voucher juga di PPPoE (case user pakai voucher via PPPoE)
-        $v = Voucher::query()
-            ->where('code', $username)
-            ->whereIn('status', ['active', 'used', 'issued'])
-            ->first();
-        if ($v) {
-            return ['identity' => $v, 'method' => 'voucher_pppoe', 'type' => 'voucher'];
-        }
-
         return null;
     }
 
     private function verifyPassword(object $identity, string $plain): bool
     {
         if ($identity instanceof Voucher) {
-            // Voucher: password opsional. Jika password = null / '' = accept.
+            // Voucher: jika password kosong atau sama dengan code (login mode voucher di MikroTik), langsung accept
             $storedRaw = (string)($identity->password ?? '');
-        try {
-            $stored = str_starts_with($storedRaw, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($storedRaw) : $storedRaw;
-        } catch (\Exception $e) {
-            $stored = $storedRaw;
-        }
-            if ($stored === '') return true;
+            try {
+                $stored = str_starts_with($storedRaw, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($storedRaw) : $storedRaw;
+            } catch (\Exception $e) {
+                $stored = $storedRaw;
+            }
+            if ($stored === '' || $plain === '' || $plain === (string)$identity->code) {
+                return true;
+            }
             return Hash::check($plain, $stored) || $plain === $stored;
         }
 

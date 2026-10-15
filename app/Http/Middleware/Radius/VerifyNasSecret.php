@@ -1,19 +1,22 @@
 <?php
 
-namespace AppHttpMiddlewareRadius;
+namespace App\Http\Middleware\Radius;
 
-use AppModelsISPRadiusNas;
-use AppModelsISPRouter;
+use App\Models\ISP\RadiusNas;
+use App\Models\ISP\Router;
 use Closure;
-use IlluminateHttpRequest;
-use IlluminateSupportFacadesLog;
-use IlluminateSupportStr;
-use SymfonyComponentHttpFoundationResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class VerifyNasSecret
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $this->ensureTenantContext($request);
+
         $nasIp = $this->resolveNasIp($request);
         $nasName = $request->input('nas_name') ?? $request->input('NAS-Identifier');
 
@@ -68,6 +71,91 @@ class VerifyNasSecret
 
         $request->attributes->set('radius_nas', $nas);
         return $next($request);
+    }
+
+    private function ensureTenantContext(Request $request): void
+    {
+        if (isset($_SERVER['TENANT_NAME']) && $_SERVER['TENANT_NAME'] !== '') {
+            return;
+        }
+
+        $nasIp = $this->resolveNasIp($request);
+        $nasName = $request->input('nas_name') ?? $request->input('NAS-Identifier');
+        $username = (string)($request->input('username') ?? '');
+
+        $tenantsDir = database_path('tenants');
+        if (!is_dir($tenantsDir)) {
+            return;
+        }
+
+        $sqliteFiles = glob($tenantsDir . '/*.sqlite');
+        if (empty($sqliteFiles)) {
+            return;
+        }
+
+        $matchedTenant = null;
+
+        // If only 1 tenant exists, select it directly
+        if (count($sqliteFiles) === 1) {
+            $matchedTenant = basename($sqliteFiles[0], '.sqlite');
+        } else {
+            // Find tenant owning this router or user
+            foreach ($sqliteFiles as $file) {
+                $tName = basename($file, '.sqlite');
+                try {
+                    $pdo = new \PDO('sqlite:' . $file);
+                    $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
+
+                    if ($nasIp || $nasName) {
+                        $cleanIp = $nasIp ? explode(':', $nasIp)[0] : '';
+                        $stmt = $pdo->prepare('SELECT id FROM routers WHERE (ip_address LIKE :ip) OR (name = :name) LIMIT 1');
+                        $stmt->execute([':ip' => '%' . $cleanIp . '%', ':name' => (string)$nasName]);
+                        if ($stmt->fetch()) {
+                            $matchedTenant = $tName;
+                            break;
+                        }
+                    }
+
+                    if ($username !== '') {
+                        $stmt = $pdo->prepare('SELECT id FROM pppoe_users WHERE username = :u LIMIT 1');
+                        $stmt->execute([':u' => $username]);
+                        if ($stmt->fetch()) {
+                            $matchedTenant = $tName;
+                            break;
+                        }
+
+                        $stmt = $pdo->prepare('SELECT id FROM vouchers WHERE code = :u LIMIT 1');
+                        $stmt->execute([':u' => $username]);
+                        if ($stmt->fetch()) {
+                            $matchedTenant = $tName;
+                            break;
+                        }
+
+                        $stmt = $pdo->prepare('SELECT id FROM hotspot_users WHERE username = :u LIMIT 1');
+                        $stmt->execute([':u' => $username]);
+                        if ($stmt->fetch()) {
+                            $matchedTenant = $tName;
+                            break;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // continue
+                }
+            }
+
+            // Fallback to first tenant if still null
+            if (!$matchedTenant) {
+                $matchedTenant = basename($sqliteFiles[0], '.sqlite');
+            }
+        }
+
+        if ($matchedTenant) {
+            $_SERVER['TENANT_NAME'] = $matchedTenant;
+            $dbPath = database_path("tenants/{$matchedTenant}.sqlite");
+            config(['database.connections.sqlite.database' => $dbPath]);
+            DB::purge('sqlite');
+            DB::reconnect('sqlite');
+        }
     }
 
     private function resolveNasIp(Request $request): ?string

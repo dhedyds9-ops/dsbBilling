@@ -96,13 +96,16 @@ class AccountingController extends Controller
                 protocol: (string)($data['protocol'] ?? 'pppoe'),
             );
 
-            $response = [
-                'ok' => $result['accept'],
-                'accept' => $result['accept'],
-                'reply_attributes' => $result['reply_attributes'],
-                'reply_message' => $result['reply_message'] ?? '',
-                'fail_action' => $result['fail_action'] ?? ($result['accept'] ? 'accept' : 'reject'),
-            ];
+            $response = array_merge(
+                $result['reply_attributes'] ?? [],
+                [
+                    'ok' => $result['accept'],
+                    'accept' => $result['accept'],
+                    'reply_attributes' => $result['reply_attributes'],
+                    'reply_message' => $result['reply_message'] ?? '',
+                    'fail_action' => $result['fail_action'] ?? ($result['accept'] ? 'accept' : 'reject'),
+                ]
+            );
 
             if (!empty($result['auth'])) {
                 $response['auth'] = [
@@ -184,16 +187,19 @@ class AccountingController extends Controller
 
             $authzResult = $this->authorizationService->authorize($ctx);
 
-            return response()->json([
-                'ok' => $authzResult['accept'],
-                'accept' => $authzResult['accept'],
-                'reply_attributes' => $authzResult['reply_attributes'],
-                'reply_message' => $authzResult['reply_message'] ?? '',
-                'fail_action' => $authzResult['fail_action'],
-                'reject_reason' => $authzResult['reject_reason'],
-                'warnings' => $authzResult['warnings'],
-                '_debug_policy_trace' => $request->boolean('debug', false) ? $authzResult['policy_trace'] : null,
-            ], (int)($authzResult['http_status'] ?? 200));
+            return response()->json(array_merge(
+                $authzResult['reply_attributes'] ?? [],
+                [
+                    'ok' => $authzResult['accept'],
+                    'accept' => $authzResult['accept'],
+                    'reply_attributes' => $authzResult['reply_attributes'],
+                    'reply_message' => $authzResult['reply_message'] ?? '',
+                    'fail_action' => $authzResult['fail_action'],
+                    'reject_reason' => $authzResult['reject_reason'],
+                    'warnings' => $authzResult['warnings'],
+                    '_debug_policy_trace' => $request->boolean('debug', false) ? $authzResult['policy_trace'] : null,
+                ]
+            ), (int)($authzResult['http_status'] ?? 200));
         } catch (Throwable $e) {
             Log::error('Radius authorizeOnly exception', ['err' => $e->getMessage(), 'username' => $username]);
             return response()->json(['ok' => false, 'accept' => false, 'error' => 'Internal error'], 500);
