@@ -80,21 +80,21 @@ rest {
         uri = "${..connect_uri}/preauth"
         method = 'post'
         body = 'json'
-        data = '{"username": "%{User-Name}", "password": "%{User-Password}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}", "signature": "%{md5:%{User-Name}%{Client-Secret}}"}'
+        data = '{"username": "%{User-Name}", "password": "%{User-Password}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}", "signature": "%{md5:%{User-Name}%{client:secret}}"}'
     }
 
     authorize {
         uri = "${..connect_uri}/authorize"
         method = 'post'
         body = 'json'
-        data = '{"username": "%{User-Name}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}", "signature": "%{md5:%{User-Name}%{Client-Secret}}"}'
+        data = '{"username": "%{User-Name}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}", "signature": "%{md5:%{User-Name}%{client:secret}}"}'
     }
 
     accounting {
         uri = "${..connect_uri}/accounting"
         method = 'post'
         body = 'json'
-        data = '{"username": "%{User-Name}", "status_type": "%{Acct-Status-Type}", "session_id": "%{Acct-Session-Id}", "input_octets": "%{Acct-Input-Octets}", "output_octets": "%{Acct-Output-Octets}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}", "signature": "%{md5:%{User-Name}%{Client-Secret}}"}'
+        data = '{"username": "%{User-Name}", "status_type": "%{Acct-Status-Type}", "session_id": "%{Acct-Session-Id}", "input_octets": "%{Acct-Input-Octets}", "output_octets": "%{Acct-Output-Octets}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}", "signature": "%{md5:%{User-Name}%{client:secret}}"}'
     }
 }
 EOF

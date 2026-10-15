@@ -31,24 +31,32 @@ Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
         ->middleware('throttle:60,1');
 });
 
+$radiusRouteGroup = function () {
+    Route::post('/accounting', [
+        \App\Http\Controllers\Api\Radius\AccountingController::class, 'ingest',
+    ])->name('accounting.ingest')->middleware('throttle:radius.accounting');
+
+    Route::post('/preauth', [
+        \App\Http\Controllers\Api\Radius\AccountingController::class, 'preAuth',
+    ])->name('accounting.preauth')->middleware('throttle:radius.preauth');
+
+    Route::post('/authorize', [
+        \App\Http\Controllers\Api\Radius\AccountingController::class, 'authorizeOnly',
+    ])->name('accounting.authorize')->middleware('throttle:radius.preauth');
+
+    Route::match(['get', 'post'], '/health', [
+        \App\Http\Controllers\Api\Radius\AccountingController::class, 'health',
+    ])->name('health');
+
+    Route::match(['get', 'post'], '/accounting/health', [
+        \App\Http\Controllers\Api\Radius\AccountingController::class, 'health',
+    ])->name('accounting.health');
+};
+
+Route::prefix('v1/radius')->name('radius.v1.')->middleware(['radius.nas_secret'])->group($radiusRouteGroup);
+Route::prefix('radius')->name('radius.')->middleware(['radius.nas_secret'])->group($radiusRouteGroup);
+
 Route::prefix('v1')->group(function () {
-    Route::prefix('radius')->name('radius.')->middleware(['radius.nas_secret'])->group(function () {
-        Route::post('/accounting', [
-            \App\Http\Controllers\Api\Radius\AccountingController::class, 'ingest',
-        ])->name('accounting.ingest')->middleware('throttle:radius.accounting');
-
-        Route::post('/preauth', [
-            \App\Http\Controllers\Api\Radius\AccountingController::class, 'preAuth',
-        ])->name('accounting.preauth')->middleware('throttle:radius.preauth');
-
-        Route::post('/authorize', [
-            \App\Http\Controllers\Api\Radius\AccountingController::class, 'authorizeOnly',
-        ])->name('accounting.authorize')->middleware('throttle:radius.preauth');
-
-        Route::get('/accounting/health', [
-            \App\Http\Controllers\Api\Radius\AccountingController::class, 'health',
-        ])->name('accounting.health');
-    });
 
     // =============================== ISP FIBER API ======================================
     Route::prefix('isp')->middleware(['auth:sanctum', 'ability:isp:operate'])->name('isp.api.')->group(function () {

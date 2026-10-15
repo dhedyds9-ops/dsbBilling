@@ -186,22 +186,29 @@ class AccountingController extends Controller
 
     public function health(Request $request): JsonResponse
     {
-        $count = \App\Models\ISP\RadiusAccounting::query()
-            ->where('created_at', '>=', now()->subHour())
-            ->count();
+        $count = 0;
+        $unresolvedFk = 0;
+        $deadSessions = 0;
+        try {
+            $count = \App\Models\ISP\RadiusAccounting::query()
+                ->where('created_at', '>=', now()->subHour())
+                ->count();
 
-        $unresolvedFk = \App\Models\ISP\RadiusAccounting::query()
-            ->whereNotNull('username')
-            ->whereNull('customer_service_id')
-            ->count();
+            $unresolvedFk = \App\Models\ISP\RadiusAccounting::query()
+                ->whereNotNull('username')
+                ->whereNull('customer_service_id')
+                ->count();
 
-        $deadSessions = \App\Models\ISP\RadiusAccounting::query()
-            ->whereNull('acct_stop_time')
-            ->where(function ($q) {
-                $q->where('acct_start_time', '<=', now()->subHour())
-                    ->orWhere('created_at', '<=', now()->subHour());
-            })
-            ->count();
+            $deadSessions = \App\Models\ISP\RadiusAccounting::query()
+                ->whereNull('acct_stop_time')
+                ->where(function ($q) {
+                    $q->where('acct_start_time', '<=', now()->subHour())
+                        ->orWhere('created_at', '<=', now()->subHour());
+                })
+                ->count();
+        } catch (\Throwable $e) {
+            Log::warning("Radius health counter exception: " . $e->getMessage());
+        }
 
         $online = [
             'total' => 0,
@@ -216,8 +223,8 @@ class AccountingController extends Controller
             $online['hotspot'] = \App\Models\ISP\OnlineSession::query()->hotspot()->count();
             $online['from_radius'] = \App\Models\ISP\OnlineSession::query()->sourceRadius()->count();
             $online['from_router'] = \App\Models\ISP\OnlineSession::query()->sourcePoller()->count();
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning("Radius health online sessions exception: " . $e->getMessage());
         }
 
         $voucherStats = null;
@@ -235,15 +242,15 @@ class AccountingController extends Controller
                 'expired_not_marked_count' => $expiredStale,
                 'expiring_within_24h' => $expiringSoon,
             ];
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning("Radius health voucher stats exception: " . $e->getMessage());
         }
 
         $performance = null;
         try {
             $performance = $this->metrics->all();
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning("Radius health metrics exception: " . $e->getMessage());
         }
 
         return response()->json([
