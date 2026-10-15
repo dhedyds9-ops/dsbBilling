@@ -98,6 +98,8 @@ class RouterProvisioningScriptGenerator
 
         $lines[] = ":do { /radius add address={$host} secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ /radius set [find comment~\"dsbilling\"] address={$host} secret=\"{$radiusSecret}\" service=ppp,hotspot,login timeout=3000ms }";
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :put \"Radius incoming configured\" }";
+        $lines[] = ":do { /ip pool add name=pool-pppoe ranges=10.20.20.2-10.20.20.254 comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $lines[] = ":do { /ppp profile set [find name=default] local-address=10.20.20.1 remote-address=pool-pppoe dns-server=8.8.8.8,1.1.1.1 } on-error={ :nothing }";
         $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :put \"PPP AAA configured\" }";
         $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=5m login-by=http-pap,cookie,mac-cookie [find] } on-error={ :nothing }";
         $lines[] = ":do { /ip hotspot user profile set mac-cookie-timeout=1w [find] } on-error={ :nothing }";

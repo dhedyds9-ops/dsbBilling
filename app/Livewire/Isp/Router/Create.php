@@ -303,6 +303,8 @@ class Create extends AdminComponent
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :nothing }";
         $lines[] = "";
         $lines[] = "# 5. Otomatis Aktifkan RADIUS & Seamless MAC-Cookie di Semua Profil Hotspot & PPPoE";
+        $lines[] = ":do { /ip pool add name=pool-pppoe ranges=10.20.20.2-10.20.20.254 comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
+        $lines[] = ":do { /ppp profile set [find name=default] local-address=10.20.20.1 remote-address=pool-pppoe dns-server=8.8.8.8,1.1.1.1 } on-error={ :nothing }";
         $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :nothing }";
         $lines[] = ":do { /ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes radius-interim-update=5m [find] } on-error={ :nothing }";
         $lines[] = ":do { /ip hotspot user profile set mac-cookie-timeout=1w [find] } on-error={ :nothing }";
