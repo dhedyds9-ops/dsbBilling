@@ -233,6 +233,11 @@ class ServiceProfile extends Model
         $price = $this->promo_price ?? $this->base_price ?? 0;
         return $activeCount * $price;
     }
+
+    public function getPriceAttribute(): float
+    {
+        return (float) ($this->promo_price ?? $this->base_price ?? 0);
+    }
 }
 
 

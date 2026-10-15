@@ -192,7 +192,7 @@
                                     {{ $voucher->serviceProfile?->name ?? '-' }}
                                 </td>
                                 <td class="px-4 py-3 {{ $textSecondary }} font-mono text-xs">
-                                    Rp {{ number_format($voucher->serviceProfile?->price ?? 0, 0, ',', '.') }}
+                                    Rp {{ number_format(($voucher->price > 0 ? $voucher->price : ($voucher->serviceProfile?->base_price ?? $voucher->serviceProfile?->price ?? 0)), 0, ',', '.') }}
                                 </td>
                                 <td class="px-4 py-3 {{ $textSecondary }} text-xs">
                                     {{ $voucher->nasDevice?->name ?? 'Semua Server' }}

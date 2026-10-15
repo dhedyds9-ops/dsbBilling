@@ -108,4 +108,14 @@ class Customer extends Model
     {
         return $this->hasMany(\App\Models\Support\Ticket::class, 'customer_id');
     }
+
+    public function getCustomerCodeAttribute(): string
+    {
+        return (string) ($this->code ?? '');
+    }
+
+    public function setCustomerCodeAttribute($value): void
+    {
+        $this->attributes['code'] = $value;
+    }
 }

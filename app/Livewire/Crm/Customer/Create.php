@@ -47,7 +47,7 @@ class Create extends AdminComponent
     {
         $this->validate([
             'name'               => 'required|string|max:255',
-            'customer_code'      => 'nullable|string|unique:members,code',
+            'customer_code'      => 'nullable|string|unique:customers,code',
             'phone'              => 'required|numeric|digits_between:10,15',
             'email'              => 'nullable|email|max:255',
             'address'            => 'required|string',

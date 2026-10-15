@@ -153,7 +153,9 @@ class Create extends AdminComponent
 
     public function render()
     {
-        $serviceProfiles = ServiceProfile::active()->where('service_type', 'hotspot')->orWhere('service_type', 'combined')->get();
+        $serviceProfiles = ServiceProfile::active()
+            ->where(fn($q) => $q->where('service_type', 'hotspot')->orWhere('service_type', 'combined'))
+            ->get();
         $routers = Router::active()->get();
         $networkProfiles = \App\Models\Provisioning\NetworkProfile::all();
         $odps = \App\Models\ISP\Odp::all();
