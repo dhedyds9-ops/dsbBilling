@@ -103,6 +103,7 @@
                         <th class="px-3 py-3 text-center font-semibold whitespace-nowrap w-16">Aksi</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Nama Pelanggan</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Akun (Username)</th>
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Paket</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner / Reseller</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Router</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Alamat IP</th>
@@ -112,7 +113,7 @@
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Uptime</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Traffic (In/Out)</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Mulai Session</th>
-                        
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Aktif Sampai</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
@@ -138,11 +139,26 @@
                                     {{ $session->hotspotUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs">
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs font-semibold">
                                 @if($activeTab === 'pppoe')
                                     {{ $session->name }}
                                 @else
                                     {{ $session->user }}
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                @if($activeTab === 'pppoe')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                                        {{ $session->pppoeUser?->serviceProfile?->name ?? $session->pppoeUser?->customerService?->serviceProfile?->name ?? 'PPPoE' }}
+                                    </span>
+                                @elseif($activeTab === 'voucher')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+                                        {{ $session->voucher?->serviceProfile?->name ?? $session->voucher?->voucherPool?->serviceProfile?->name ?? 'Voucher' }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                                        {{ $session->hotspotUser?->serviceProfile?->name ?? $session->hotspotUser?->customerService?->serviceProfile?->name ?? 'Hotspot' }}
+                                    </span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
@@ -175,13 +191,36 @@
                                 <span class="text-blue-600 dark:text-blue-400">{{ number_format($session->bytes_in) }}</span> / 
                                 <span class="text-green-600 dark:text-green-400">{{ number_format($session->bytes_out) }}</span>
                             </td>
-                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
-                                {{ $session->session_started_at ? $session->session_started_at->format('d/m/Y H:i:s') : '-' }}
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
+                                @php
+                                    $startedAt = $session->session_started_at 
+                                        ?? ($activeTab === 'voucher' ? $session->voucher?->activated_at : null)
+                                        ?? ($activeTab === 'hotspot' ? $session->hotspotUser?->activated_at : null)
+                                        ?? ($activeTab === 'pppoe' ? $session->pppoeUser?->activated_at : null);
+                                @endphp
+                                {{ $startedAt ? $startedAt->format('d/m/Y H:i:s') : '-' }}
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
+                                @php
+                                    $expiresAt = match($activeTab) {
+                                        'pppoe' => $session->pppoeUser?->expires_at,
+                                        'voucher' => $session->voucher?->expires_at,
+                                        default => $session->hotspotUser?->expires_at,
+                                    };
+                                @endphp
+                                @if($expiresAt)
+                                    <span class="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-200">
+                                        <span class="material-symbols-outlined notranslate text-emerald-500" style="font-size:14px" translate="no">event_available</span>
+                                        {{ $expiresAt->format('d/m/Y H:i') }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-400">-</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $activeTab === 'pppoe' ? 10 : 11 }}" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="{{ $activeTab === 'pppoe' ? 11 : 12 }}" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">cell_tower</span>
                                     <p class="text-lg font-medium text-slate-900 dark:text-slate-100 mt-2">Belum ada Sesi Aktif</p>

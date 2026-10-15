@@ -254,18 +254,44 @@ class RadiusAccountingStateMachine
                 }
                 if (!$voucher->expires_at) {
                     $sp = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
-                    $dur = (int)($voucher->validity_days ?: ($sp?->validity_days ?: ($sp?->duration_value ?: 0)));
-                    $unit = strtolower((string)($sp?->validity_unit ?: ($sp?->duration_unit ?: 'days')));
-                    if ($dur > 0) {
-                        $base = $voucher->activated_at ?? now();
-                        $voucher->expires_at = match ($unit) {
-                            'hours', 'hour' => $base->clone()->addHours($dur),
-                            'months', 'month' => $base->clone()->addMonths($dur),
-                            'minutes', 'minute' => $base->clone()->addMinutes($dur),
-                            default => $base->clone()->addDays($dur),
-                        };
-                        $dirty = true;
+                    $unit = strtolower((string)($sp?->validity_unit ?: ($sp?->duration_unit ?: 'hours')));
+                    $dur = 0;
+                    if ($unit === 'hours' || $unit === 'hour') {
+                        $dur = (int)($sp?->validity_hours ?: ($sp?->duration_value ?: ($voucher->validity_days ? $voucher->validity_days * 24 : 0)));
+                    } elseif ($unit === 'days' || $unit === 'day') {
+                        $dur = (int)($voucher->validity_days ?: ($sp?->validity_days ?: ($sp?->duration_value ?: 0)));
+                    } elseif ($unit === 'months' || $unit === 'month') {
+                        $dur = (int)($sp?->validity_days ? (int)($sp->validity_days / 30) : ($sp?->duration_value ?: 1));
                     }
+
+                    // Fallback resolution
+                    if ($dur <= 0) {
+                        if (!empty($sp?->validity_hours)) {
+                            $dur = (int)$sp->validity_hours;
+                            $unit = 'hours';
+                        } elseif (!empty($sp?->duration_value) && ($sp->duration_unit === 'hours' || empty($sp->duration_unit))) {
+                            $dur = (int)$sp->duration_value;
+                            $unit = 'hours';
+                        } elseif (!empty($voucher->validity_days)) {
+                            $dur = (int)$voucher->validity_days;
+                            $unit = 'days';
+                        } elseif (!empty($sp?->validity_days)) {
+                            $dur = (int)$sp->validity_days;
+                            $unit = 'days';
+                        } else {
+                            $dur = 3;
+                            $unit = 'hours';
+                        }
+                    }
+
+                    $base = $voucher->activated_at ?? now();
+                    $voucher->expires_at = match ($unit) {
+                        'hours', 'hour' => $base->clone()->addHours($dur),
+                        'months', 'month' => $base->clone()->addMonths($dur),
+                        'minutes', 'minute' => $base->clone()->addMinutes($dur),
+                        default => $base->clone()->addDays($dur),
+                    };
+                    $dirty = true;
                 }
                 if ($dirty) {
                     $voucher->save();

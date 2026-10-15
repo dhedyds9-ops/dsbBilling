@@ -210,7 +210,12 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 {{ $textSecondary }} text-xs">
-                                    {{ $voucher->expires_at ? $voucher->expires_at->format('d-m-Y') : '-' }}
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-slate-800 dark:text-slate-200">{{ $voucher->expires_at ? $voucher->expires_at->format('d-m-Y H:i') : '-' }}</span>
+                                        @if($voucher->activated_at)
+                                            <span class="text-[10px] text-slate-400">Sejak: {{ $voucher->activated_at->format('d-m-Y H:i') }}</span>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 {{ $textSecondary }}">
                                     {{ $voucher->reseller?->name ?? 'Pusat (HQ)' }}

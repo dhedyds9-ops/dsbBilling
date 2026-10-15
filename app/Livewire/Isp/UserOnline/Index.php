@@ -121,14 +121,14 @@ class Index extends BaseNetworkComponent
     {
         $user = \Illuminate\Support\Facades\Auth::user();
 
-        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.customerService.customer.createdBy']);
+        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.customerService.customer.createdBy', 'pppoeUser.serviceProfile', 'pppoeUser.customerService.serviceProfile']);
         
-        $voucherQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'voucher.reseller'])
+        $voucherQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'voucher.reseller', 'voucher.serviceProfile', 'voucher.voucherPool.serviceProfile'])
             ->whereExists(function ($q) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
             });
 
-        $hotspotQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'hotspotUser.customerService.customer.createdBy'])
+        $hotspotQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'hotspotUser.customerService.customer.createdBy', 'hotspotUser.serviceProfile', 'hotspotUser.customerService.serviceProfile'])
             ->whereNotExists(function ($q) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
             });
