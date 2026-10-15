@@ -26,8 +26,13 @@ trait HasResellerScope
     {
         // GLOBAL SCOPE: Selalu diterapkan pada query SELECT
         static::addGlobalScope('reseller_isolation', function (Builder $builder) {
+            // Bypass jika dijalankan di Console (Artisan, Queue, Cron) atau API internal RADIUS / Webhook
+            if (app()->runningInConsole() || request()->is('api/radius*') || request()->is('api/v1/radius*') || request()->is('api/webhooks*') || request()->is('webhook*')) {
+                return;
+            }
+
             if (! auth()->check()) {
-                // Belum login: tidak ada akses
+                // Belum login pada context web: tidak ada akses
                 $builder->whereRaw('1=0');
                 return;
             }
@@ -100,8 +105,8 @@ trait HasResellerScope
 
         // UPDATING HOOK: Cegah Reseller mengubah record yang bukan miliknya
         static::updating(function ($model) {
-            if (! auth()->check()) {
-                return false;
+            if (app()->runningInConsole() || ! auth()->check()) {
+                return true;
             }
 
             $user = auth()->user();
@@ -128,8 +133,8 @@ trait HasResellerScope
 
         // DELETING HOOK: Cegah Reseller menghapus record yang bukan miliknya
         static::deleting(function ($model) {
-            if (! auth()->check()) {
-                return false;
+            if (app()->runningInConsole() || ! auth()->check()) {
+                return true;
             }
 
             $user = auth()->user();

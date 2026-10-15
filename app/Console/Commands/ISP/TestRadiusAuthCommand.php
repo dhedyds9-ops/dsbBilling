@@ -40,9 +40,9 @@ class TestRadiusAuthCommand extends Command
             // Cek apakah username ada di database default terlebih dahulu
             $foundInDefault = false;
             try {
-                $foundInDefault = Voucher::where('code', $username)->exists()
-                    || HotspotUser::where('username', $username)->exists()
-                    || PPPoEUser::where('username', $username)->exists();
+                $foundInDefault = Voucher::withoutGlobalScopes()->where('code', $username)->exists()
+                    || HotspotUser::withoutGlobalScopes()->where('username', $username)->exists()
+                    || PPPoEUser::withoutGlobalScopes()->where('username', $username)->exists();
             } catch (\Throwable $e) {
                 $foundInDefault = false;
             }
@@ -114,9 +114,9 @@ class TestRadiusAuthCommand extends Command
         $this->newLine();
         $this->info("[1/3] Memeriksa Database...");
 
-        $voucher = Voucher::where('code', $username)->first();
-        $hotspot = HotspotUser::where('username', $username)->first();
-        $pppoe = PPPoEUser::where('username', $username)->first();
+        $voucher = Voucher::withoutGlobalScopes()->where('code', $username)->first();
+        $hotspot = HotspotUser::withoutGlobalScopes()->where('username', $username)->first();
+        $pppoe = PPPoEUser::withoutGlobalScopes()->where('username', $username)->first();
 
         if ($voucher) {
             $this->line("  ✓ Ditemukan sebagai: <fg=green>Hotspot Voucher</>");
