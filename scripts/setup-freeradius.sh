@@ -148,6 +148,7 @@ client all_mikrotik {
     secret = "${SECRET}"
     shortname = mikrotik
     nas_type = other
+    require_message_authenticator = auto
 }
 # END DSBILLING MIKROTIK
 EOF

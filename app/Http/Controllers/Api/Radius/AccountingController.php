@@ -10,8 +10,8 @@ use App\Services\ISP\Accounting\RadiusAccountingStateMachine;
 use App\Services\ISP\Radius\PerformanceMetricsService;
 use App\Services\ISP\Radius\RadiusAuthService;
 use App\Services\ISP\Radius\RadiusAuthorizationService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -24,7 +24,7 @@ class AccountingController extends Controller
         private readonly PerformanceMetricsService $metrics,
     ) {}
 
-    public function ingest(AccountingIngestRequest $request): JsonResponse
+    public function ingest(AccountingIngestRequest $request): Response
     {
         /** @var RadiusNas|null $nas */
         $nas = $request->attributes->get('radius_nas');
@@ -77,7 +77,7 @@ class AccountingController extends Controller
      *
      * Response body mengikuti format FreeRADIUS rlm_rest.
      */
-    public function preAuth(PreAuthRequest $request): JsonResponse
+    public function preAuth(PreAuthRequest $request): Response
     {
         /** @var RadiusNas|null $nas */
         $nas = $request->attributes->get('radius_nas');
@@ -131,7 +131,7 @@ class AccountingController extends Controller
      *
      * Body requirement: username + (pppoe_user_id OR customer_service_id OR voucher_code)
      */
-    public function authorizeOnly(Request $request): JsonResponse
+    public function authorizeOnly(Request $request): Response
     {
         $username = (string)$request->input('username', '');
         $pppoeUserId = $request->input('pppoe_user_id');
@@ -139,7 +139,7 @@ class AccountingController extends Controller
         $voucherCode = $request->input('voucher_code');
 
         if ($username === '') {
-            return response()->json([
+            return $this->jsonPayload([
                 'ok' => false,
                 'accept' => false,
                 'reply_attributes' => ['Reply-Message' => 'username required'],
@@ -162,7 +162,7 @@ class AccountingController extends Controller
 
             $ctx = $authResult['context'] ?? null;
             if (!$ctx) {
-                return response()->json([
+                return $this->jsonPayload([
                     'Reply-Message' => (string)($authResult['reason'] ?? 'User not found'),
                 ], 401);
             }
@@ -199,7 +199,7 @@ class AccountingController extends Controller
         }
     }
 
-    private function jsonPayload(array $data, int $status = 200)
+    private function jsonPayload(array $data, int $status = 200): Response
     {
         $payload = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         return response($payload, $status, [
