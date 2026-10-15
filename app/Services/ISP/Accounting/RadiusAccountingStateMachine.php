@@ -216,7 +216,15 @@ class RadiusAccountingStateMachine
         // 1. Try PPPoE if protocol is ppp or username matches PPPoEUser
         try {
             if ($protocol === 'ppp' || $protocol === '1' || str_contains($accounting->username, '@')) {
-                $pppoe = PPPoEUser::query()->where('username', $accounting->username)->first();
+                $rawUname = $accounting->username;
+                $stripped = str_contains($rawUname, '@') ? explode('@', $rawUname)[0] : $rawUname;
+                $suffixed = !str_contains($rawUname, '@') ? $rawUname . '@%' : $rawUname;
+
+                $pppoe = PPPoEUser::query()
+                    ->where('username', $rawUname)
+                    ->orWhere('username', $stripped)
+                    ->orWhere('username', 'LIKE', $suffixed)
+                    ->first();
                 if ($pppoe) {
                     $accounting->pppoe_user_id = $pppoe->id;
                     $accounting->customer_service_id = $pppoe->customer_service_id;

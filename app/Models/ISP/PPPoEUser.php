@@ -61,8 +61,16 @@ class PPPoEUser extends Model
 
     public function getIsOnlineAttribute()
     {
-        return \App\Models\ISP\PppActiveSession::where('name', $this->username)->exists()
-            || $this->radiusAccountings()->whereNull('acct_stop_time')->exists();
+        $rawUname = (string)$this->username;
+        $stripped = str_contains($rawUname, '@') ? explode('@', $rawUname)[0] : $rawUname;
+
+        return \App\Models\ISP\PppActiveSession::where('name', $rawUname)
+            ->orWhere('name', $stripped)
+            ->exists()
+            || $this->radiusAccountings()->whereNull('acct_stop_time')->exists()
+            || \App\Models\ISP\RadiusAccounting::where(function($q) use ($rawUname, $stripped) {
+                $q->where('username', $rawUname)->orWhere('username', $stripped);
+            })->whereNull('acct_stop_time')->exists();
     }
 
     public function activeSession()

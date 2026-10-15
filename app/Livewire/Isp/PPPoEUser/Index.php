@@ -275,12 +275,24 @@ class Index extends BaseNetworkComponent
             })
             ->when(!empty($this->filters['status']), function($q) {
                 if ($this->filters['status'] === 'online') {
-                    $q->where('status', 'active')->whereHas('radiusAccountings', function($sq) {
-                        $sq->whereNull('acct_stop_time');
+                    $q->where('status', 'active')->where(function($sq) {
+                        $sq->whereHas('radiusAccountings', function($rq) {
+                            $rq->whereNull('acct_stop_time');
+                        })->orWhereExists(function($aq) {
+                            $aq->select(\Illuminate\Support\Facades\DB::raw(1))
+                               ->from('ppp_active_sessions')
+                               ->whereRaw('ppp_active_sessions.name = pppoe_users.username');
+                        });
                     });
                 } elseif ($this->filters['status'] === 'offline') {
-                    $q->where('status', 'active')->whereDoesntHave('radiusAccountings', function($sq) {
-                        $sq->whereNull('acct_stop_time');
+                    $q->where('status', 'active')->where(function($sq) {
+                        $sq->whereDoesntHave('radiusAccountings', function($rq) {
+                            $rq->whereNull('acct_stop_time');
+                        })->whereNotExists(function($aq) {
+                            $aq->select(\Illuminate\Support\Facades\DB::raw(1))
+                               ->from('ppp_active_sessions')
+                               ->whereRaw('ppp_active_sessions.name = pppoe_users.username');
+                        });
                     });
                 } else {
                     $q->where('status', $this->filters['status']);
@@ -295,7 +307,15 @@ class Index extends BaseNetworkComponent
             'active' => PPPoEUser::where('status', 'active')->count(),
             'inactive' => PPPoEUser::where('status', 'inactive')->count(),
             'suspended' => PPPoEUser::where('status', 'suspended')->count(),
-            'online' => \App\Models\ISP\PPPoEUser::where('status', 'active')->whereHas('radiusAccountings', function($q) { $q->whereNull('acct_stop_time'); })->count(),
+            'online' => \App\Models\ISP\PPPoEUser::where('status', 'active')->where(function($q) {
+                $q->whereHas('radiusAccountings', function($rq) {
+                    $rq->whereNull('acct_stop_time');
+                })->orWhereExists(function($aq) {
+                    $aq->select(\Illuminate\Support\Facades\DB::raw(1))
+                       ->from('ppp_active_sessions')
+                       ->whereRaw('ppp_active_sessions.name = pppoe_users.username');
+                });
+            })->count(),
         ];
 
         return view('livewire.isp.pppoe-user.index', compact('pppoeUsers', 'stats'));
