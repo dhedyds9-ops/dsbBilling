@@ -9,6 +9,7 @@ use App\Models\ISP\PppActiveSession;
 use App\Models\ISP\PPPoEUser;
 use App\Models\ISP\RadiusAccounting;
 use App\Models\ISP\Router;
+use App\Models\ISP\Voucher;
 use App\Support\UptimeParser;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -149,24 +150,41 @@ class OnlineSessionStore
     {
         $type = (string)$acct->acct_status_type;
         $proto = strtolower((string)($acct->framed_protocol ?? ''));
-        $isHotspot = false;
-        $isPppoe = false;
-        if ($proto === 'ppp' || $proto === '1' || $proto === 'pppoe') {
-            $isPppoe = true;
-        } elseif ($proto === 'hotspot' || $proto === 'hs') {
-            $isHotspot = true;
-        } else {
-            $isPppoe = (int)$acct->pppoe_user_id > 0;
-            $isHotspot = (int)$acct->hotspot_user_id > 0;
-            if (!$isPppoe && !$isHotspot) {
-                $isPppoe = true;
-            }
-        }
-        $protocol = $isHotspot ? 'hotspot' : 'pppoe';
         $nasIp = (string)($acct->nas_ip_address ?? '');
         $username = (string)($acct->username ?? '');
         $caller = (string)($acct->calling_station_id ?? '');
         $address = (string)($acct->framed_ip_address ?? '');
+
+        $isHotspot = false;
+        $isPppoe = false;
+
+        if ($proto === 'ppp' || $proto === '1' || $proto === 'pppoe') {
+            $isPppoe = true;
+        } elseif ($proto === 'hotspot' || $proto === 'hs') {
+            $isHotspot = true;
+        } elseif ((int)$acct->pppoe_user_id > 0) {
+            $isPppoe = true;
+        } elseif ((int)$acct->hotspot_user_id > 0) {
+            $isHotspot = true;
+        } else {
+            // Check identity directly in database
+            try {
+                if (Voucher::query()->where('code', $username)->exists()) {
+                    $isHotspot = true;
+                } elseif (HotspotUser::query()->where('username', $username)->exists()) {
+                    $isHotspot = true;
+                } elseif (PPPoEUser::query()->where('username', $username)->exists()) {
+                    $isPppoe = true;
+                } else {
+                    $isHotspot = !str_contains($username, '@');
+                    $isPppoe = !$isHotspot;
+                }
+            } catch (Throwable $e) {
+                $isHotspot = true;
+            }
+        }
+
+        $protocol = $isHotspot ? 'hotspot' : 'pppoe';
         $key = OnlineSession::buildSessionKey($protocol, $nasIp, $username, $caller, $address);
 
         if ($type === 'stop' || $type === 'accounting_off' || $type === 'failed') {
@@ -178,11 +196,9 @@ class OnlineSessionStore
                     })
                     ->delete();
 
-                if ($isHotspot) {
-                    HotspotActiveSession::query()->where('user', $username)->delete();
-                } elseif ($isPppoe) {
-                    PppActiveSession::query()->where('name', $username)->delete();
-                }
+                // Unconditionally remove from both active session tables so no ghost sessions remain
+                HotspotActiveSession::query()->where('user', $username)->delete();
+                PppActiveSession::query()->where('name', $username)->delete();
             } catch (Throwable $e) {
                 Log::debug('Accounting remove online session', ['err' => $e->getMessage()]);
             }

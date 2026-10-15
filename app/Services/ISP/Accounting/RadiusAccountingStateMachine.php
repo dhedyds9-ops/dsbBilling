@@ -8,6 +8,7 @@ use App\Models\ISP\PPPoEUser;
 use App\Models\ISP\RadiusAccounting;
 use App\Models\ISP\RadiusNas;
 use App\Models\ISP\NasDevice;
+use App\Models\ISP\Voucher;
 use App\Services\ISP\Session\OnlineSessionStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -212,8 +213,9 @@ class RadiusAccountingStateMachine
 
         $protocol = strtolower((string)($normalized['framed_protocol'] ?? $accounting->framed_protocol ?? ''));
 
+        // 1. Try PPPoE if protocol is ppp or username matches PPPoEUser
         try {
-            if ($protocol === 'ppp' || $protocol === '1') {
+            if ($protocol === 'ppp' || $protocol === '1' || str_contains($accounting->username, '@')) {
                 $pppoe = PPPoEUser::query()->where('username', $accounting->username)->first();
                 if ($pppoe) {
                     $accounting->pppoe_user_id = $pppoe->id;
@@ -225,14 +227,40 @@ class RadiusAccountingStateMachine
             Log::warning('resolveLifecycle PPPoE lookup failed', ['u' => $accounting->username, 'err' => $e->getMessage()]);
         }
 
+        // 2. Try HotspotUser
         try {
             $hotspot = HotspotUser::query()->where('username', $accounting->username)->first();
             if ($hotspot) {
                 $accounting->hotspot_user_id = $hotspot->id;
                 $accounting->customer_service_id = $hotspot->customer_service_id ?? $accounting->customer_service_id;
+                return;
             }
         } catch (Throwable $e) {
             Log::warning('resolveLifecycle Hotspot lookup failed', ['u' => $accounting->username, 'err' => $e->getMessage()]);
+        }
+
+        // 3. Try Voucher
+        try {
+            $voucher = Voucher::query()->where('code', $accounting->username)->first();
+            if ($voucher && $voucher->hotspot_user_id) {
+                $accounting->hotspot_user_id = $voucher->hotspot_user_id;
+                return;
+            }
+        } catch (Throwable $e) {
+            Log::warning('resolveLifecycle Voucher lookup failed', ['u' => $accounting->username, 'err' => $e->getMessage()]);
+        }
+
+        // 4. Fallback: Check PPPoEUser if not already checked
+        if ($protocol !== 'ppp' && $protocol !== '1' && !str_contains($accounting->username, '@')) {
+            try {
+                $pppoe = PPPoEUser::query()->where('username', $accounting->username)->first();
+                if ($pppoe) {
+                    $accounting->pppoe_user_id = $pppoe->id;
+                    $accounting->customer_service_id = $pppoe->customer_service_id;
+                }
+            } catch (Throwable $e) {
+                // ignore
+            }
         }
     }
 
