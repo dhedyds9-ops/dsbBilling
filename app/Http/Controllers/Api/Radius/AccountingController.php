@@ -96,30 +96,13 @@ class AccountingController extends Controller
                 protocol: (string)($data['protocol'] ?? 'pppoe'),
             );
 
-            $response = array_merge(
-                $result['reply_attributes'] ?? [],
-                [
-                    'ok' => $result['accept'],
-                    'accept' => $result['accept'],
-                    'reply_attributes' => $result['reply_attributes'],
-                    'reply_message' => $result['reply_message'] ?? '',
-                    'fail_action' => $result['fail_action'] ?? ($result['accept'] ? 'accept' : 'reject'),
-                ]
-            );
+            $response = $result['reply_attributes'] ?? [];
 
-            if (!empty($result['auth'])) {
-                $response['auth'] = [
-                    'method' => $result['auth']['auth_method'] ?? null,
-                ];
+            if (!empty($result['reply_message'])) {
+                $response['Reply-Message'] = (string)$result['reply_message'];
             }
-            if (!empty($result['reject_reason'])) {
-                $response['reject_reason'] = $result['reject_reason'];
-            }
-            if (!empty($result['warnings']) && is_array($result['warnings'])) {
-                $response['warnings'] = $result['warnings'];
-            }
-            if ($request->boolean('debug', false) && !empty($result['policy_trace'])) {
-                $response['_debug_policy_trace'] = $result['policy_trace'];
+            if (!$result['accept'] && !empty($result['reject_reason'])) {
+                $response['Reply-Message'] = (string)$result['reject_reason'];
             }
 
             return response()->json($response, (int)($result['http_status'] ?? ($result['accept'] ? 200 : 401)));
@@ -130,12 +113,7 @@ class AccountingController extends Controller
                 'username' => $data['username'] ?? null,
             ]);
             return response()->json([
-                'ok' => false,
-                'accept' => false,
-                'reply_attributes' => ['Reply-Message' => 'Internal authorization error'],
-                'reply_message' => 'Internal server error',
-                'fail_action' => 'reject',
-                'error' => config('app.debug') ? $e->getMessage() : null,
+                'Reply-Message' => 'Internal server error: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -179,37 +157,30 @@ class AccountingController extends Controller
             $ctx = $authResult['context'] ?? null;
             if (!$ctx) {
                 return response()->json([
-                    'ok' => false,
-                    'accept' => false,
-                    'reply_attributes' => ['Reply-Message' => $authResult['reason'] ?? 'User not found'],
+                    'Reply-Message' => (string)($authResult['reason'] ?? 'User not found'),
                 ], 401);
             }
 
             $authzResult = $this->authorizationService->authorize($ctx);
 
-            $controlAttrs = [];
+            $response = $authzResult['reply_attributes'] ?? [];
+
             $cleartext = (string)($authResult['cleartext_password'] ?? '');
             if ($cleartext !== '') {
-                $controlAttrs['control:Cleartext-Password'] = $cleartext;
+                $response['control:Cleartext-Password'] = $cleartext;
             }
 
-            return response()->json(array_merge(
-                $authzResult['reply_attributes'] ?? [],
-                $controlAttrs,
-                [
-                    'ok' => $authzResult['accept'],
-                    'accept' => $authzResult['accept'],
-                    'reply_attributes' => $authzResult['reply_attributes'],
-                    'reply_message' => $authzResult['reply_message'] ?? '',
-                    'fail_action' => $authzResult['fail_action'],
-                    'reject_reason' => $authzResult['reject_reason'],
-                    'warnings' => $authzResult['warnings'],
-                    '_debug_policy_trace' => $request->boolean('debug', false) ? $authzResult['policy_trace'] : null,
-                ]
-            ), (int)($authzResult['http_status'] ?? 200));
+            if (!empty($authzResult['reply_message'])) {
+                $response['Reply-Message'] = (string)$authzResult['reply_message'];
+            }
+            if (!$authzResult['accept'] && !empty($authzResult['reject_reason'])) {
+                $response['Reply-Message'] = (string)$authzResult['reject_reason'];
+            }
+
+            return response()->json($response, (int)($authzResult['http_status'] ?? ($authzResult['accept'] ? 200 : 401)));
         } catch (Throwable $e) {
             Log::error('Radius authorizeOnly exception', ['err' => $e->getMessage(), 'username' => $username]);
-            return response()->json(['ok' => false, 'accept' => false, 'error' => 'Internal error'], 500);
+            return response()->json(['Reply-Message' => 'Internal authorization error'], 500);
         }
     }
 
