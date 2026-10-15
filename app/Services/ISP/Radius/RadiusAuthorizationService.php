@@ -108,6 +108,26 @@ final class RadiusAuthorizationService
                 if ($sp && !empty($sp->default_address_list) && empty($reply['MikroTik-Address-List'])) {
                     $reply['MikroTik-Address-List'] = $sp->default_address_list;
                 }
+
+                // User / Voucher level attributes
+                $userModel = $ctx->pppoeUser ?? $ctx->hotspotUser ?? $ctx->voucher;
+                if ($userModel) {
+                    if (!empty($userModel->session_timeout) && empty($reply['Session-Timeout'])) {
+                        $reply['Session-Timeout'] = (int)$userModel->session_timeout;
+                    }
+                    if (!empty($userModel->idle_timeout) && empty($reply['Idle-Timeout'])) {
+                        $reply['Idle-Timeout'] = (int)$userModel->idle_timeout;
+                    }
+                    if (!empty($userModel->static_ip) && empty($reply['Framed-IP-Address'])) {
+                        $reply['Framed-IP-Address'] = (string)$userModel->static_ip;
+                    }
+                    if (!empty($userModel->framed_pool) && empty($reply['Framed-Pool'])) {
+                        $reply['Framed-Pool'] = (string)$userModel->framed_pool;
+                    }
+                    if (!empty($userModel->address_list) && empty($reply['MikroTik-Address-List'])) {
+                        $reply['MikroTik-Address-List'] = (string)$userModel->address_list;
+                    }
+                }
             }
 
             return [

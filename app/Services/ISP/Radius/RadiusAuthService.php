@@ -231,13 +231,13 @@ final class RadiusAuthService
         $serviceProfile = null;
 
         if ($identity instanceof PPPoEUser) {
-            $pppoeUser = $identity->loadMissing(['customerService', 'customerService.customer', 'customerService.serviceProfile']);
+            $pppoeUser = $identity->loadMissing(['serviceProfile', 'customerService', 'customerService.customer', 'customerService.serviceProfile']);
             $customerService = $pppoeUser->customerService;
-            $serviceProfile = $customerService?->serviceProfile;
+            $serviceProfile = $pppoeUser->serviceProfile ?? $customerService?->serviceProfile;
         } elseif ($identity instanceof HotspotUser) {
-            $hotspotUser = $identity->loadMissing(['customerService', 'customerService.customer', 'customerService.serviceProfile']);
+            $hotspotUser = $identity->loadMissing(['serviceProfile', 'customerService', 'customerService.customer', 'customerService.serviceProfile']);
             $customerService = $hotspotUser->customerService;
-            $serviceProfile = $customerService?->serviceProfile;
+            $serviceProfile = $hotspotUser->serviceProfile ?? $customerService?->serviceProfile;
         } elseif ($identity instanceof Voucher) {
             $voucher = $identity->loadMissing(['serviceProfile', 'voucherPool.serviceProfile']);
             $serviceProfile = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
