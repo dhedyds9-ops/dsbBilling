@@ -34,4 +34,15 @@ class PreAuthRequest extends FormRequest
         $data['nas_ip_address'] = !empty($data['nas_ip_address']) ? (string)$data['nas_ip_address'] : ($this->attributes->get('radius_nas')?->nas_ip_address ?? $this->ip());
         return $data;
     }
+
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            response()->json([
+                'ok' => false,
+                'error' => 'Validation error',
+                'messages' => $validator->errors(),
+            ], 422)
+        );
+    }
 }

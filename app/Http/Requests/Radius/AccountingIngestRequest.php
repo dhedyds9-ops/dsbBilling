@@ -14,8 +14,10 @@ class AccountingIngestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'acct_session_id' => ['required', 'string', 'max:255'],
+            'acct_session_id' => ['nullable', 'string', 'max:255'],
+            'session_id' => ['nullable', 'string', 'max:255'],
             'acct_status_type' => ['nullable'],
+            'status_type' => ['nullable'],
             'username' => ['nullable', 'string', 'max:255'],
             'nas_ip_address' => ['nullable', 'ip'],
             'nas_name' => ['nullable', 'string', 'max:255'],
@@ -49,5 +51,16 @@ class AccountingIngestRequest extends FormRequest
         $data['nas_ip_address'] ??= $this->attributes->get('radius_nas')?->nas_ip_address ?? $this->ip();
         $data['raw_payload'] = $data['raw_payload'] ?? $this->except(['raw_payload', 'signature', 'message_authenticator']);
         return $data;
+    }
+
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            response()->json([
+                'ok' => false,
+                'error' => 'Validation error',
+                'messages' => $validator->errors(),
+            ], 422)
+        );
     }
 }
