@@ -121,40 +121,49 @@ class Index extends BaseNetworkComponent
     {
         $user = \Illuminate\Support\Facades\Auth::user();
 
-        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.customerService.customer.createdBy', 'pppoeUser.serviceProfile', 'pppoeUser.customerService.serviceProfile']);
+        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.reseller', 'pppoeUser.customer.reseller', 'pppoeUser.customerService.customer.reseller', 'pppoeUser.serviceProfile', 'pppoeUser.customerService.serviceProfile']);
         
         $voucherQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'voucher.reseller', 'voucher.serviceProfile', 'voucher.voucherPool.serviceProfile'])
             ->whereExists(function ($q) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
             });
 
-        $hotspotQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'hotspotUser.customerService.customer.createdBy', 'hotspotUser.serviceProfile', 'hotspotUser.customerService.serviceProfile'])
+        $hotspotQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'hotspotUser.reseller', 'hotspotUser.customer.reseller', 'hotspotUser.customerService.customer.reseller', 'hotspotUser.serviceProfile', 'hotspotUser.customerService.serviceProfile'])
             ->whereNotExists(function ($q) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
             });
         
         if ($user->hasRole('reseller')) {
-            $pppoeQuery->whereExists(function ($sub) use ($user) {
+            $effectiveResellerId = $user->getEffectiveResellerId();
+            $pppoeQuery->whereExists(function ($sub) use ($effectiveResellerId) {
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('pppoe_users')
                     ->join('customer_services', 'pppoe_users.customer_service_id', '=', 'customer_services.id')
                     ->join('customers', 'customer_services.customer_id', '=', 'customers.id')
                     ->whereRaw('pppoe_users.username = ppp_active_sessions.name')
-                    ->where('customers.created_by', $user->id);
+                    ->where(function($q) use ($effectiveResellerId) {
+                        $q->where('customers.reseller_id', $effectiveResellerId)
+                          ->orWhere('pppoe_users.reseller_id', $effectiveResellerId)
+                          ->orWhere('customers.created_by', $effectiveResellerId);
+                    });
             });
-            $hotspotQuery->whereExists(function ($sub) use ($user) {
+            $hotspotQuery->whereExists(function ($sub) use ($effectiveResellerId) {
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('hotspot_users')
                     ->join('customer_services', 'hotspot_users.customer_service_id', '=', 'customer_services.id')
                     ->join('customers', 'customer_services.customer_id', '=', 'customers.id')
                     ->whereRaw('hotspot_users.username = hotspot_active_sessions.user')
-                    ->where('customers.created_by', $user->id);
+                    ->where(function($q) use ($effectiveResellerId) {
+                        $q->where('customers.reseller_id', $effectiveResellerId)
+                          ->orWhere('hotspot_users.reseller_id', $effectiveResellerId)
+                          ->orWhere('customers.created_by', $effectiveResellerId);
+                    });
             });
-            $voucherQuery->whereExists(function ($sub) use ($user) {
+            $voucherQuery->whereExists(function ($sub) use ($effectiveResellerId) {
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('vouchers')
                     ->whereRaw('vouchers.code = hotspot_active_sessions.user')
-                    ->where('vouchers.reseller_id', $user->id);
+                    ->where('vouchers.reseller_id', $effectiveResellerId);
             });
         }
 

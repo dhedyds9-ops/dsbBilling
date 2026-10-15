@@ -174,6 +174,7 @@ class Wizard extends Component
             'username' => $username,
             'password' => $password,
             'status' => 'active',
+            'reseller_id' => $customer->reseller_id,
             'odp_id' => $this->odp_id,
             'onu_id' => $onu->id,
             'mac_address' => $this->onu_sn,

@@ -163,11 +163,17 @@
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
                                 @if($activeTab === 'pppoe')
-                                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $session->pppoeUser?->customerService?->customer?->createdBy?->name ?? 'Admin' }}</span>
+                                    @php
+                                        $owner = $session->pppoeUser?->reseller?->name ?? $session->pppoeUser?->customer?->reseller?->name ?? $session->pppoeUser?->customerService?->customer?->reseller?->name ?? 'Pusat (HQ)';
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $owner }}</span>
                                 @elseif($activeTab === 'voucher')
-                                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $session->voucher?->reseller?->name ?? 'Admin' }}</span>
+                                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $session->voucher?->reseller?->name ?? 'Pusat (HQ)' }}</span>
                                 @else
-                                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $session->hotspotUser?->customerService?->customer?->createdBy?->name ?? 'Admin' }}</span>
+                                    @php
+                                        $owner = $session->hotspotUser?->reseller?->name ?? $session->hotspotUser?->customer?->reseller?->name ?? $session->hotspotUser?->customerService?->customer?->reseller?->name ?? 'Pusat (HQ)';
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $owner }}</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">

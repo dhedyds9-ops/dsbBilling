@@ -293,6 +293,11 @@ class ProvisioningService
             }
 
             // Step 7: Create Hotspot User
+            $networkData = collect($data)->only([
+                'router_id', 'mac_address', 'static_ip', 'odp_id', 'port_number', 'onu_id', 
+                'reseller_id', 'billing_cycle', 'setup_fee'
+            ])->filter(fn($val) => $val !== null && $val !== '')->toArray();
+
             $hotspotUser = $this->hotspotService->createHotspotUser(
                 $customerService,
                 $serviceProfile?->id ?? 1,
@@ -300,7 +305,8 @@ class ProvisioningService
                 $userId,
                 $data['username'],
                 $data['password'],
-                true // provisionOnCreate
+                true, // provisionOnCreate
+                $networkData
             );
 
             $this->hotspotService->activateHotspotUser($hotspotUser->id, $userId);

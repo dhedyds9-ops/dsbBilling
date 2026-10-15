@@ -251,9 +251,12 @@
                                 {{ $user->static_ip ?? $user->ip_address ?? 'Dynamic' }}
                             </td>
                             <td class="px-4 py-3">
-                                @if($user->reseller)
+                                @php
+                                    $ownerName = $user->reseller?->name ?? $user->customer?->reseller?->name;
+                                @endphp
+                                @if($ownerName)
                                     <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400">
-                                        {{ $user->reseller->name }}
+                                        {{ $ownerName }}
                                     </span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">

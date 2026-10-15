@@ -66,7 +66,8 @@ class HotspotService
         int $userId,
         ?string $username = null,
         ?string $password = null,
-        bool $provisionOnCreate = true
+        bool $provisionOnCreate = true,
+        array $networkData = []
     ): HotspotUser {
         return DB::transaction(function () use (
             $customerService,
@@ -75,9 +76,10 @@ class HotspotService
             $userId,
             $username,
             $password,
-            $provisionOnCreate
+            $provisionOnCreate,
+            $networkData
         ) {
-            $hotspotUser = $this->hotspotUserRepository->create([
+            $hotspotUser = $this->hotspotUserRepository->create(array_merge([
                 'uuid' => (string) Str::uuid(),
                 'username' => $username ?? 'hs_user_' . time(),
                 'password' => $password ?? Str::random(12),
@@ -85,9 +87,10 @@ class HotspotService
                 'service_profile_id' => $serviceProfileId,
                 'voucher_pool_id' => $voucherPoolId,
                 'status' => 'pending',
+                'reseller_id' => $customerService?->reseller_id ?? ($networkData['reseller_id'] ?? null),
                 'created_by' => $userId,
                 'updated_by' => $userId,
-            ]);
+            ], $networkData));
 
             return $hotspotUser;
         });
