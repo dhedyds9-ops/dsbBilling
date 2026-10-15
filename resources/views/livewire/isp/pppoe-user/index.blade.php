@@ -184,7 +184,8 @@
                             $isSuspend = $user->status === 'suspended';
                             $dynamicId = $user->customer ? (($user->customer->created_at ? $user->customer->created_at->format('Ymd') : date('Ymd')) . str_pad($user->customer->id % 100, 2, '0', STR_PAD_LEFT)) : '-';
                             $layanan = 'PPPoE';
-                            $tglLogin = $user->latestAccounting?->acct_start_time ? $user->latestAccounting->acct_start_time->format('d-m-Y H:i') : '-';
+                            $loginDate = $user->latestAccounting?->acct_start_time ?? $user->activeSession?->session_started_at;
+                            $tglLogin = $loginDate ? $loginDate->format('d-m-Y H:i') : '-';
                             $tglLogout = $user->latestAccounting?->acct_stop_time ? $user->latestAccounting->acct_stop_time->format('d-m-Y H:i') : '-';
                             
                             $rowBg = 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-700/20 transition-colors';

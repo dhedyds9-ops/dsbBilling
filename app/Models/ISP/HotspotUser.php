@@ -66,9 +66,14 @@ class HotspotUser extends Model
             ->latest('session_started_at')->exists();
     }
 
+    public function activeSession()
+    {
+        return $this->hasOne(\App\Models\ISP\HotspotActiveSession::class, 'user', 'username')->latestOfMany('session_started_at');
+    }
+
     public function latestAccounting()
     {
-        return $this->hasOne(\App\Models\ISP\RadiusAccounting::class, 'hotspot_user_id')->latestOfMany('acct_start_time');
+        return $this->hasOne(\App\Models\ISP\RadiusAccounting::class, 'username', 'username')->latestOfMany('acct_start_time');
     }
 }
 

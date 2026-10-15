@@ -61,12 +61,18 @@ class PPPoEUser extends Model
 
     public function getIsOnlineAttribute()
     {
-        return $this->radiusAccountings()->whereNull('acct_stop_time')->exists();
+        return \App\Models\ISP\PppActiveSession::where('name', $this->username)->exists()
+            || $this->radiusAccountings()->whereNull('acct_stop_time')->exists();
+    }
+
+    public function activeSession()
+    {
+        return $this->hasOne(\App\Models\ISP\PppActiveSession::class, 'name', 'username')->latestOfMany('session_started_at');
     }
 
     public function latestAccounting()
     {
-        return $this->hasOne(\App\Models\ISP\RadiusAccounting::class, 'pppoe_user_id')->latestOfMany('acct_start_time');
+        return $this->hasOne(\App\Models\ISP\RadiusAccounting::class, 'username', 'username')->latestOfMany('acct_start_time');
     }
 }
 
