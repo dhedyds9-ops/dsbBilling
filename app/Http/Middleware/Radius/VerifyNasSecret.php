@@ -99,30 +99,13 @@ class VerifyNasSecret
         if (count($sqliteFiles) === 1) {
             $matchedTenant = basename($sqliteFiles[0], '.sqlite');
         } else {
-            // Find tenant owning this router or user
-            foreach ($sqliteFiles as $file) {
-                $tName = basename($file, '.sqlite');
-                try {
-                    $pdo = new \PDO('sqlite:' . $file);
-                    $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
-
-                    if ($nasIp || $nasName) {
-                        $cleanIp = $nasIp ? explode(':', $nasIp)[0] : '';
-                        $stmt = $pdo->prepare('SELECT id FROM routers WHERE (ip_address LIKE :ip) OR (name = :name) LIMIT 1');
-                        $stmt->execute([':ip' => '%' . $cleanIp . '%', ':name' => (string)$nasName]);
-                        if ($stmt->fetch()) {
-                            $matchedTenant = $tName;
-                            break;
-                        }
-                    }
-
-                    if ($username !== '') {
-                        $stmt = $pdo->prepare('SELECT id FROM pppoe_users WHERE username = :u LIMIT 1');
-                        $stmt->execute([':u' => $username]);
-                        if ($stmt->fetch()) {
-                            $matchedTenant = $tName;
-                            break;
-                        }
+            // 1. Prioritaskan pencarian berdasarkan username / voucher code
+            if ($username !== '') {
+                foreach ($sqliteFiles as $file) {
+                    $tName = basename($file, '.sqlite');
+                    try {
+                        $pdo = new \PDO('sqlite:' . $file);
+                        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
 
                         $stmt = $pdo->prepare('SELECT id FROM vouchers WHERE code = :u LIMIT 1');
                         $stmt->execute([':u' => $username]);
@@ -137,9 +120,48 @@ class VerifyNasSecret
                             $matchedTenant = $tName;
                             break;
                         }
+
+                        $stmt = $pdo->prepare('SELECT id FROM pppoe_users WHERE username = :u LIMIT 1');
+                        $stmt->execute([':u' => $username]);
+                        if ($stmt->fetch()) {
+                            $matchedTenant = $tName;
+                            break;
+                        }
+                    } catch (\Throwable $e) {
+                        // continue
                     }
-                } catch (\Throwable $e) {
-                    // continue
+                }
+            }
+
+            // 2. Jika belum cocok, cari berdasarkan router NAS IP atau nama router
+            if (!$matchedTenant && ($nasIp || $nasName)) {
+                $cleanIp = $nasIp ? explode(':', $nasIp)[0] : '';
+                foreach ($sqliteFiles as $file) {
+                    $tName = basename($file, '.sqlite');
+                    try {
+                        $pdo = new \PDO('sqlite:' . $file);
+                        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
+
+                        if ($cleanIp !== '' && $cleanIp !== '127.0.0.1') {
+                            $stmt = $pdo->prepare('SELECT id FROM routers WHERE ip_address LIKE :ip LIMIT 1');
+                            $stmt->execute([':ip' => '%' . $cleanIp . '%']);
+                            if ($stmt->fetch()) {
+                                $matchedTenant = $tName;
+                                break;
+                            }
+                        }
+
+                        if (!empty($nasName)) {
+                            $stmt = $pdo->prepare('SELECT id FROM routers WHERE name = :name LIMIT 1');
+                            $stmt->execute([':name' => (string)$nasName]);
+                            if ($stmt->fetch()) {
+                                $matchedTenant = $tName;
+                                break;
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        // continue
+                    }
                 }
             }
 
@@ -150,10 +172,14 @@ class VerifyNasSecret
         }
 
         if ($matchedTenant) {
+            $_SERVER['TENANT_MODE'] = true;
             $_SERVER['TENANT_NAME'] = $matchedTenant;
             $dbPath = database_path("tenants/{$matchedTenant}.sqlite");
-            config(['database.connections.sqlite.database' => $dbPath]);
-            DB::purge('sqlite');
+            config([
+                'database.default' => 'sqlite',
+                'database.connections.sqlite.database' => $dbPath,
+            ]);
+            DB::purge();
             DB::reconnect('sqlite');
         }
     }
