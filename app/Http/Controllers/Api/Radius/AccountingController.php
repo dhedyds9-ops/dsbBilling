@@ -187,8 +187,15 @@ class AccountingController extends Controller
 
             $authzResult = $this->authorizationService->authorize($ctx);
 
+            $controlAttrs = [];
+            $cleartext = (string)($authResult['cleartext_password'] ?? '');
+            if ($cleartext !== '') {
+                $controlAttrs['control:Cleartext-Password'] = $cleartext;
+            }
+
             return response()->json(array_merge(
                 $authzResult['reply_attributes'] ?? [],
+                $controlAttrs,
                 [
                     'ok' => $authzResult['accept'],
                     'accept' => $authzResult['accept'],

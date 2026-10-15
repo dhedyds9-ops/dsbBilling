@@ -93,11 +93,14 @@ final class RadiusAuthService
             $latMs = (microtime(true) - $t0) * 1000.0;
             $this->metrics->recordLatency(PerformanceMetricsService::OP_AUTH, $latMs, true);
 
+            $cleartextPassword = $this->extractCleartextPassword($lookup['identity']);
+
             return [
                 'ok' => true,
                 'username' => $username,
                 'reason' => '',
                 'auth_method' => $lookup['method'],
+                'cleartext_password' => $cleartextPassword,
                 'context' => $ctx,
             ];
         } catch (\Throwable $e) {
@@ -178,6 +181,31 @@ final class RadiusAuthService
 
         // Plaintext fallback (legacy)
         return hash_equals($stored, $plain);
+    }
+
+    public function extractCleartextPassword(object $identity): string
+    {
+        if ($identity instanceof Voucher) {
+            $storedRaw = (string)($identity->password ?? '');
+            try {
+                $stored = str_starts_with($storedRaw, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($storedRaw) : $storedRaw;
+            } catch (\Exception $e) {
+                $stored = $storedRaw;
+            }
+            if ($stored !== '') {
+                return $stored;
+            }
+            return (string)($identity->code ?? '');
+        }
+
+        /** @var PPPoEUser|HotspotUser $identity */
+        $storedRaw = (string)($identity->password ?? '');
+        try {
+            $stored = str_starts_with($storedRaw, 'eyJ') ? \Illuminate\Support\Facades\Crypt::decryptString($storedRaw) : $storedRaw;
+        } catch (\Exception $e) {
+            $stored = $storedRaw;
+        }
+        return $stored;
     }
 
     /**

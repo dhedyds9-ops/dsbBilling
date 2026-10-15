@@ -121,6 +121,11 @@ if ! grep -q "^\s*rest\b" "$SITE_DEFAULT"; then
   sed -i '/accounting {/a \\trest' "$SITE_DEFAULT"
 fi
 
+# Sisipkan Auth-Type rest di blok authenticate jika belum ada
+if ! grep -q "Auth-Type rest" "$SITE_DEFAULT"; then
+  sed -i '/authenticate {/a \\tAuth-Type rest {\n\t\trest\n\t}' "$SITE_DEFAULT"
+fi
+
 ln -sf /etc/freeradius/3.0/sites-available/default /etc/freeradius/3.0/sites-enabled/default
 echo -e "${GREEN}✓ Virtual site default berhasil diperbarui.${NC}"
 
