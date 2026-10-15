@@ -127,6 +127,11 @@ if ! grep -q "Auth-Type rest" "$SITE_DEFAULT"; then
 fi
 
 ln -sf /etc/freeradius/3.0/sites-available/default /etc/freeradius/3.0/sites-enabled/default
+
+# Nonaktifkan filter_username agar realm tanpa titik (seperti @dsbilling) tidak di-reject
+sed -i 's/^\s*filter_username/# &/' "$SITE_DEFAULT"
+sed -i 's/if ((&User-Name =~ \/@\/) && (&User-Name !~ \/@(.+)\\.(.+)$\/))/if (0)/' /etc/freeradius/3.0/policy.d/filter_username 2>/dev/null || true
+
 echo -e "${GREEN}✓ Virtual site default berhasil diperbarui.${NC}"
 
 # 5. Daftarkan Client MikroTik di clients.conf
