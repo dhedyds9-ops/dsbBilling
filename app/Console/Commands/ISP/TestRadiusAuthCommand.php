@@ -123,12 +123,17 @@ class TestRadiusAuthCommand extends Command
             $this->line("    - Kode     : {$voucher->code}");
             $this->line("    - Password : " . ($voucher->password ?: '(kosong - login pakai kode voucher)'));
             $this->line("    - Status   : {$voucher->status}");
-            $this->line("    - Profile  : " . ($voucher->profile_name ?? '-'));
+            $profileName = $voucher->serviceProfile?->name 
+                ?? $voucher->voucherPool?->serviceProfile?->name 
+                ?? $voucher->profile_name 
+                ?? '-';
+            $this->line("    - Profile  : {$profileName}");
         } elseif ($hotspot) {
             $this->line("  ✓ Ditemukan sebagai: <fg=green>Hotspot User</>");
             $this->line("    - Username : {$hotspot->username}");
             $this->line("    - Status   : {$hotspot->status}");
-            $this->line("    - Profile  : " . ($hotspot->profile_name ?? '-'));
+            $profileName = $hotspot->serviceProfile?->name ?? $hotspot->profile_name ?? '-';
+            $this->line("    - Profile  : {$profileName}");
         } elseif ($pppoe) {
             $this->line("  ✓ Ditemukan sebagai: <fg=green>PPPoE User</>");
             $this->line("    - Username : {$pppoe->username}");

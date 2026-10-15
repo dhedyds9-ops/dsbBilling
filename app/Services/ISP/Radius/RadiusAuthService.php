@@ -117,7 +117,7 @@ final class RadiusAuthService
         // 1. Cek Voucher (Hotspot Voucher / PPPoE Voucher)
         $v = Voucher::withoutGlobalScopes()
             ->where('code', $username)
-            ->whereIn('status', ['active', 'used', 'issued'])
+            ->whereIn('status', ['available', 'active', 'used', 'issued', 'unused'])
             ->first();
         if ($v) {
             return ['identity' => $v, 'method' => 'voucher_code', 'type' => 'voucher'];
@@ -239,8 +239,9 @@ final class RadiusAuthService
             $customerService = $hotspotUser->customerService;
             $serviceProfile = $customerService?->serviceProfile;
         } elseif ($identity instanceof Voucher) {
-            $voucher = $identity;
-            if (!empty($voucher->internet_package_id)) {
+            $voucher = $identity->loadMissing(['serviceProfile', 'voucherPool.serviceProfile']);
+            $serviceProfile = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
+            if (!$serviceProfile && !empty($voucher->internet_package_id)) {
                 $serviceProfile = ServiceProfile::query()
                     ->where('internet_package_id', $voucher->internet_package_id)
                     ->first();
