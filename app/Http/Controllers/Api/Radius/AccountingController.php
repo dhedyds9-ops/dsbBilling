@@ -83,6 +83,12 @@ class AccountingController extends Controller
         $nas = $request->attributes->get('radius_nas');
         $data = $request->normalized();
 
+        // Jika password kosong (seperti pada negosiasi CHAP / MS-CHAP dari PPPoE),
+        // otomatis fallback ke authorizeOnly untuk mengembalikan Cleartext-Password & NT-Password ke FreeRADIUS
+        if (empty($data['password'])) {
+            return $this->authorizeOnly($request);
+        }
+
         try {
             $result = $this->authorizationService->preAuthorize(
                 authService: $this->authService,
@@ -167,7 +173,16 @@ class AccountingController extends Controller
 
             $cleartext = (string)($authResult['cleartext_password'] ?? '');
             if ($cleartext !== '') {
+                // Digunakan oleh modul rlm_pap dan rlm_chap FreeRADIUS
                 $response['control:Cleartext-Password'] = $cleartext;
+
+                // Digunakan langsung oleh modul rlm_mschap FreeRADIUS untuk MS-CHAPv1 / MS-CHAPv2
+                try {
+                    $ntPassword = strtoupper(hash('md4', iconv('UTF-8', 'UTF-16LE', $cleartext)));
+                    $response['control:NT-Password'] = $ntPassword;
+                } catch (\Throwable $e) {
+                    // ignore if iconv/hash fails
+                }
             }
 
             if (!empty($authzResult['reply_message'])) {

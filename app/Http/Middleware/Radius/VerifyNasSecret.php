@@ -107,28 +107,31 @@ class VerifyNasSecret
         } else {
             // 1. Prioritaskan pencarian berdasarkan username / voucher code
             if ($username !== '') {
+                $stripped = str_contains($username, '@') ? explode('@', $username)[0] : $username;
+                $suffixed = !str_contains($username, '@') ? $username . '@%' : $username;
+
                 foreach ($sqliteFiles as $file) {
                     $tName = basename($file, '.sqlite');
                     try {
                         $pdo = new \PDO('sqlite:' . $file);
                         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
 
-                        $stmt = $pdo->prepare('SELECT id FROM vouchers WHERE code = :u LIMIT 1');
-                        $stmt->execute([':u' => $username]);
+                        $stmt = $pdo->prepare('SELECT id FROM vouchers WHERE code = :u OR code = :s LIMIT 1');
+                        $stmt->execute([':u' => $username, ':s' => $stripped]);
                         if ($stmt->fetch()) {
                             $matchedTenant = $tName;
                             break;
                         }
 
-                        $stmt = $pdo->prepare('SELECT id FROM hotspot_users WHERE username = :u LIMIT 1');
-                        $stmt->execute([':u' => $username]);
+                        $stmt = $pdo->prepare('SELECT id FROM hotspot_users WHERE username = :u OR username = :s LIMIT 1');
+                        $stmt->execute([':u' => $username, ':s' => $stripped]);
                         if ($stmt->fetch()) {
                             $matchedTenant = $tName;
                             break;
                         }
 
-                        $stmt = $pdo->prepare('SELECT id FROM pppoe_users WHERE username = :u LIMIT 1');
-                        $stmt->execute([':u' => $username]);
+                        $stmt = $pdo->prepare('SELECT id FROM pppoe_users WHERE username = :u OR username = :s OR username LIKE :suff LIMIT 1');
+                        $stmt->execute([':u' => $username, ':s' => $stripped, ':suff' => $suffixed]);
                         if ($stmt->fetch()) {
                             $matchedTenant = $tName;
                             break;

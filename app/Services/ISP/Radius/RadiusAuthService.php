@@ -114,9 +114,15 @@ final class RadiusAuthService
      */
     private function lookupIdentity(string $username, string $protocol): ?array
     {
+        $usernames = array_unique(array_filter([
+            $username,
+            str_contains($username, '@') ? explode('@', $username)[0] : null,
+            !str_contains($username, '@') ? $username . '@dsbilling' : null,
+        ]));
+
         // 1. Cek Voucher (Hotspot Voucher / PPPoE Voucher)
         $v = Voucher::withoutGlobalScopes()
-            ->where('code', $username)
+            ->whereIn('code', $usernames)
             ->whereIn('status', ['available', 'active', 'used', 'issued', 'unused'])
             ->first();
         if ($v) {
@@ -125,7 +131,7 @@ final class RadiusAuthService
 
         // 2. Cek Hotspot User
         $hu = HotspotUser::withoutGlobalScopes()
-            ->where('username', $username)
+            ->whereIn('username', $usernames)
             ->where('status', '!=', 'deleted')
             ->first();
         if ($hu) {
@@ -134,7 +140,12 @@ final class RadiusAuthService
 
         // 3. Cek PPPoE User
         $pu = PPPoEUser::withoutGlobalScopes()
-            ->where('username', $username)
+            ->where(function ($q) use ($usernames, $username) {
+                $q->whereIn('username', $usernames);
+                if (!str_contains($username, '@')) {
+                    $q->orWhere('username', 'LIKE', $username . '@%');
+                }
+            })
             ->where('status', '!=', 'deleted')
             ->first();
         if ($pu) {
