@@ -44,7 +44,7 @@ class AccountingController extends Controller
 
             $accounting = $this->stateMachine->ingest($normalized, $source);
 
-            return response()->json([
+            return $this->jsonPayload([
                 'ok' => true,
                 'id' => $accounting->id,
                 'uuid' => $accounting->uuid,
@@ -58,7 +58,7 @@ class AccountingController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'body' => $request->only(['acct_session_id', 'username', 'nas_ip_address']),
             ]);
-            return response()->json([
+            return $this->jsonPayload([
                 'ok' => false,
                 'error' => 'Internal ingest error',
                 'detail' => config('app.debug') ? $e->getMessage() : null,
@@ -111,14 +111,14 @@ class AccountingController extends Controller
                 $response['Reply-Message'] = (string)$result['reject_reason'];
             }
 
-            return response()->json($response, (int)($result['http_status'] ?? ($result['accept'] ? 200 : 401)));
+            return $this->jsonPayload($response, (int)($result['http_status'] ?? ($result['accept'] ? 200 : 401)));
         } catch (Throwable $e) {
             Log::error('Radius preAuth exception', [
                 'err' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'username' => $data['username'] ?? null,
             ]);
-            return response()->json([
+            return $this->jsonPayload([
                 'Reply-Message' => 'Internal server error: ' . $e->getMessage(),
             ], 500);
         }
@@ -192,11 +192,21 @@ class AccountingController extends Controller
                 $response['Reply-Message'] = (string)$authzResult['reject_reason'];
             }
 
-            return response()->json($response, (int)($authzResult['http_status'] ?? ($authzResult['accept'] ? 200 : 401)));
+            return $this->jsonPayload($response, (int)($authzResult['http_status'] ?? ($authzResult['accept'] ? 200 : 401)));
         } catch (Throwable $e) {
             Log::error('Radius authorizeOnly exception', ['err' => $e->getMessage(), 'username' => $username]);
-            return response()->json(['Reply-Message' => 'Internal authorization error'], 500);
+            return $this->jsonPayload(['Reply-Message' => 'Internal authorization error'], 500);
         }
+    }
+
+    private function jsonPayload(array $data, int $status = 200)
+    {
+        $payload = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        return response($payload, $status, [
+            'Content-Type' => 'application/json',
+            'Content-Length' => (string)strlen($payload),
+            'Connection' => 'close',
+        ]);
     }
 
     public function health(Request $request): JsonResponse

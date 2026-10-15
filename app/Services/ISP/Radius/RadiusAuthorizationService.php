@@ -110,8 +110,14 @@ final class RadiusAuthorizationService
                 }
 
                 // Framed-IP Pool assignment
-                if ($sp && !empty($sp->ip_pool_name) && empty($reply['Framed-Pool'])) {
-                    $reply['Framed-Pool'] = $sp->ip_pool_name;
+                if (empty($reply['Framed-Pool'])) {
+                    if ($sp && !empty($sp->radius_framed_pool)) {
+                        $reply['Framed-Pool'] = $sp->radius_framed_pool;
+                    } elseif ($sp && !empty($sp->ip_pool_name)) {
+                        $reply['Framed-Pool'] = $sp->ip_pool_name;
+                    } elseif ($ctx->protocol === 'pppoe' || $ctx->pppoeUser !== null) {
+                        $reply['Framed-Pool'] = 'pool-pppoe';
+                    }
                 }
 
                 // Address-List default
