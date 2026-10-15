@@ -7,6 +7,8 @@ use App\Models\ISP\RouterMonitoringLog;
 use App\Models\ISP\PppActiveSession;
 use App\Models\ISP\HotspotActiveSession;
 use App\Models\ISP\QueueMonitoringLog;
+use App\Models\ISP\Voucher;
+use App\Models\ISP\VoucherPool;
 use App\Services\Adapters\Monitoring\MikroTikDriver;
 use App\Services\ISP\MonitoringService;
 use Illuminate\Bus\Queueable;
@@ -177,9 +179,10 @@ class PollSingleRouterJob implements ShouldQueue
         
         // Insert new sessions
         foreach ($sessions as $session) {
+            $user = $session['user'] ?? null;
             HotspotActiveSession::create([
                 'router_id' => $this->router->id,
-                'user' => $session['user'] ?? null,
+                'user' => $user,
                 'mac_address' => $session['mac_address'] ?? null,
                 'address' => $session['address'] ?? null,
                 'server' => $session['server'] ?? null,
@@ -189,6 +192,44 @@ class PollSingleRouterJob implements ShouldQueue
                 'bytes_out' => $session['bytes_out'] ?? 0,
                 'session_started_at' => null,
             ]);
+
+            // Sync voucher state if this is an active voucher
+            if (!empty($user)) {
+                try {
+                    $voucher = Voucher::where('code', $user)->first();
+                    if ($voucher) {
+                        $dirty = false;
+                        if (!$voucher->activated_at) {
+                            $voucher->activated_at = now();
+                            $dirty = true;
+                        }
+                        if ($voucher->status === 'available' || $voucher->status === 'unused') {
+                            $voucher->status = 'used';
+                            $dirty = true;
+                        }
+                        if (!$voucher->expires_at) {
+                            $sp = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
+                            $dur = (int)($voucher->validity_days ?: ($sp?->validity_days ?: ($sp?->duration_value ?: 0)));
+                            $unit = strtolower((string)($sp?->validity_unit ?: ($sp?->duration_unit ?: 'days')));
+                            if ($dur > 0) {
+                                $voucher->expires_at = match ($unit) {
+                                    'hours', 'hour' => now()->addHours($dur),
+                                    'months', 'month' => now()->addMonths($dur),
+                                    'minutes', 'minute' => now()->addMinutes($dur),
+                                    default => now()->addDays($dur),
+                                };
+                                $dirty = true;
+                            }
+                        }
+                        if ($dirty) {
+                            $voucher->save();
+                            if ($voucher->voucher_pool_id) {
+                                VoucherPool::where('id', $voucher->voucher_pool_id)->increment('used_vouchers');
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {}
+            }
         }
     }
     

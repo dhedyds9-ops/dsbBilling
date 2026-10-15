@@ -5,7 +5,9 @@ namespace App\Livewire\Isp\UserOnline;
 use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\PppActiveSession;
 use App\Models\ISP\HotspotActiveSession;
+use App\Models\ISP\Router;
 use App\Models\ISP\Voucher;
+use App\Jobs\Monitoring\PollSingleRouterJob;
 use App\Services\ISP\Session\SessionKickService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +31,33 @@ class Index extends BaseNetworkComponent
             ['label' => 'ISP', 'url' => route('isp.service-profiles.index')],
             ['label' => 'User Online'],
         ];
+
+        if (HotspotActiveSession::query()->count() === 0 && PppActiveSession::query()->count() === 0) {
+            $this->syncRouters();
+        }
+    }
+
+    public function syncRouters()
+    {
+        try {
+            $routers = Router::query()->where('status', '!=', 'disabled')->get();
+            $count = 0;
+            foreach ($routers as $router) {
+                try {
+                    PollSingleRouterJob::dispatchSync($router);
+                    $count++;
+                } catch (\Throwable $th) {
+                    Log::warning('syncRouters single router failed', ['id' => $router->id, 'err' => $th->getMessage()]);
+                }
+            }
+            if ($count > 0) {
+                session()->flash('success', "Sinkronisasi sesi dari {$count} router berhasil.");
+            }
+            $this->dispatch('refresh-online');
+        } catch (\Throwable $e) {
+            Log::error('syncRouters failed: ' . $e->getMessage());
+            session()->flash('error', 'Gagal sinkronisasi router: ' . $e->getMessage());
+        }
     }
 
     public function openFilterModal()
