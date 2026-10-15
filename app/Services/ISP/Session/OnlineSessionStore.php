@@ -2,8 +2,10 @@
 
 namespace App\Services\ISP\Session;
 
+use App\Models\ISP\HotspotActiveSession;
 use App\Models\ISP\HotspotUser;
 use App\Models\ISP\OnlineSession;
+use App\Models\ISP\PppActiveSession;
 use App\Models\ISP\PPPoEUser;
 use App\Models\ISP\RadiusAccounting;
 use App\Models\ISP\Router;
@@ -175,6 +177,12 @@ class OnlineSessionStore
                         $q->where('username', $username)->where('acct_session_id', $acct->acct_session_id);
                     })
                     ->delete();
+
+                if ($isHotspot) {
+                    HotspotActiveSession::query()->where('user', $username)->delete();
+                } elseif ($isPppoe) {
+                    PppActiveSession::query()->where('name', $username)->delete();
+                }
             } catch (Throwable $e) {
                 Log::debug('Accounting remove online session', ['err' => $e->getMessage()]);
             }
@@ -183,6 +191,44 @@ class OnlineSessionStore
 
         try {
             $startedAt = $acct->acct_start_time ?? now();
+
+            // Sync legacy active session tables used by web UI
+            try {
+                $router = Router::where('ip_address', $nasIp)->first() ?? Router::first();
+                $routerId = $router?->id ?? 1;
+
+                if ($isHotspot) {
+                    HotspotActiveSession::query()->updateOrCreate(
+                        ['user' => $username],
+                        [
+                            'router_id' => $routerId,
+                            'mac_address' => $caller,
+                            'address' => $address,
+                            'uptime' => (string)($acct->acct_session_time ? $acct->acct_session_time . 's' : '0s'),
+                            'bytes_in' => (int)($acct->acct_input_octets ?? 0),
+                            'bytes_out' => (int)($acct->acct_output_octets ?? 0),
+                            'session_started_at' => $startedAt,
+                        ]
+                    );
+                } elseif ($isPppoe) {
+                    PppActiveSession::query()->updateOrCreate(
+                        ['name' => $username],
+                        [
+                            'router_id' => $routerId,
+                            'service' => 'pppoe',
+                            'caller_id' => $caller,
+                            'address' => $address,
+                            'uptime' => (string)($acct->acct_session_time ? $acct->acct_session_time . 's' : '0s'),
+                            'bytes_in' => (int)($acct->acct_input_octets ?? 0),
+                            'bytes_out' => (int)($acct->acct_output_octets ?? 0),
+                            'session_started_at' => $startedAt,
+                        ]
+                    );
+                }
+            } catch (Throwable $e) {
+                Log::debug('Legacy ActiveSession sync error: ' . $e->getMessage());
+            }
+
             return OnlineSession::query()->updateOrCreate(
                 ['session_key' => $key],
                 [

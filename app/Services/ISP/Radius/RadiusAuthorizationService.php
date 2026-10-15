@@ -128,6 +128,15 @@ final class RadiusAuthorizationService
                         $reply['MikroTik-Address-List'] = (string)$userModel->address_list;
                     }
                 }
+
+                if ($ctx->protocol === 'pppoe' || $ctx->pppoeUser !== null) {
+                    if (empty($reply['Framed-Protocol'])) {
+                        $reply['Framed-Protocol'] = 'PPP';
+                    }
+                    if (empty($reply['Service-Type'])) {
+                        $reply['Service-Type'] = 'Framed-User';
+                    }
+                }
             }
 
             return [
