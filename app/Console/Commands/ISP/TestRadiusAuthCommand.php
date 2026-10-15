@@ -31,25 +31,83 @@ class TestRadiusAuthCommand extends Command
 
         // 1. Resolve Tenant
         $tenantName = $this->option('tenant');
+        $autoDetected = false;
+
+        $tenantsDir = database_path('tenants');
+        $sqliteFiles = is_dir($tenantsDir) ? glob($tenantsDir . '/*.sqlite') : [];
+
         if (!$tenantName) {
-            $tenantsDir = database_path('tenants');
-            if (is_dir($tenantsDir)) {
-                $files = glob($tenantsDir . '/*.sqlite');
-                if (!empty($files)) {
-                    $tenantName = basename($files[0], '.sqlite');
+            // Cek apakah username ada di database default terlebih dahulu
+            $foundInDefault = false;
+            try {
+                $foundInDefault = Voucher::where('code', $username)->exists()
+                    || HotspotUser::where('username', $username)->exists()
+                    || PPPoEUser::where('username', $username)->exists();
+            } catch (\Throwable $e) {
+                $foundInDefault = false;
+            }
+
+            if (!$foundInDefault && !empty($sqliteFiles)) {
+                // Auto-detect dari file tenant sqlite yang ada
+                foreach ($sqliteFiles as $file) {
+                    $tName = basename($file, '.sqlite');
+                    try {
+                        $pdo = new \PDO('sqlite:' . $file);
+                        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
+                        
+                        $stmt = $pdo->prepare('SELECT 1 FROM vouchers WHERE code = :u LIMIT 1');
+                        $stmt->execute([':u' => $username]);
+                        if ($stmt->fetch()) {
+                            $tenantName = $tName;
+                            $autoDetected = true;
+                            break;
+                        }
+
+                        $stmt = $pdo->prepare('SELECT 1 FROM hotspot_users WHERE username = :u LIMIT 1');
+                        $stmt->execute([':u' => $username]);
+                        if ($stmt->fetch()) {
+                            $tenantName = $tName;
+                            $autoDetected = true;
+                            break;
+                        }
+
+                        $stmt = $pdo->prepare('SELECT 1 FROM pppoe_users WHERE username = :u LIMIT 1');
+                        $stmt->execute([':u' => $username]);
+                        if ($stmt->fetch()) {
+                            $tenantName = $tName;
+                            $autoDetected = true;
+                            break;
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore and continue
+                    }
+                }
+
+                // Jika tetap tidak ditemukan dan hanya ada 1 tenant, pakai tenant tersebut
+                if (!$tenantName && count($sqliteFiles) === 1) {
+                    $tenantName = basename($sqliteFiles[0], '.sqlite');
                 }
             }
         }
 
         if ($tenantName) {
-            $this->line("Tenant Database      : <fg=cyan>{$tenantName}.sqlite</>");
+            $label = $autoDetected ? "{$tenantName}.sqlite (Otomatis terdeteksi)" : "{$tenantName}.sqlite";
+            $this->line("Tenant Database      : <fg=cyan>{$label}</>");
             $dbPath = database_path("tenants/{$tenantName}.sqlite");
             if (file_exists($dbPath)) {
-                config(['database.connections.sqlite.database' => $dbPath]);
-                DB::purge('sqlite');
+                config([
+                    'database.default' => 'sqlite',
+                    'database.connections.sqlite.database' => $dbPath,
+                ]);
+                DB::purge();
                 DB::reconnect('sqlite');
+                $_SERVER['TENANT_MODE'] = true;
                 $_SERVER['TENANT_NAME'] = $tenantName;
             }
+        } else {
+            $defaultDb = config('database.default');
+            $dbName = config("database.connections.{$defaultDb}.database", 'default');
+            $this->line("Database             : <fg=cyan>{$defaultDb} ({$dbName})</>");
         }
 
         // 2. Direct Model Lookup
@@ -77,7 +135,11 @@ class TestRadiusAuthCommand extends Command
             $this->line("    - Status   : {$pppoe->status}");
         } else {
             $this->error("  ✗ Username/Kode '{$username}' TIDAK DITEMUKAN di database!");
-            $this->line("    Cek apakah Anda membuat voucher ini di tenant yang benar.");
+            if (!empty($sqliteFiles)) {
+                $available = array_map(fn($f) => basename($f, '.sqlite'), $sqliteFiles);
+                $this->line("    Tenant SQLite yang tersedia: " . implode(', ', $available));
+                $this->line("    Gunakan opsi: <fg=yellow>--tenant=<nama_tenant></> jika voucher berada di tenant spesifik.");
+            }
             return 1;
         }
 
