@@ -85,6 +85,7 @@
                 <thead>
                     <tr class="border-b {{ $isNocLayout ? 'noc-border noc-text bg-black/20' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80' }} text-xs uppercase tracking-wider">
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Nama Pelanggan</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Serial Number</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">MAC Address</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Model / Vendor</th>
@@ -102,6 +103,30 @@
                                     <span class="w-1.5 h-1.5 rounded-full {{ $device->status === 'online' ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
                                     {{ $device->status }}
                                 </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $cust = $device->resolved_customer ?? $device->customerService?->customer ?? $device->onu?->customer;
+                                    $uname = $device->customerService?->username ?? $device->onu?->customerService?->username;
+                                @endphp
+                                @if($cust)
+                                    <div>
+                                        <a href="{{ route('crm.customers.show', $cust->id) }}" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            {{ $cust->name }}
+                                        </a>
+                                        @if($uname)
+                                            <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:12px" translate="no">person</span>
+                                                {{ $uname }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 italic">
+                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:13px" translate="no">link_off</span>
+                                        Belum terikat
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->serial_number }}</td>
                             <td class="px-4 py-3 font-mono text-xs">{{ $device->mac_address ?? '-' }}</td>
@@ -161,7 +186,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-12 text-center">
+                            <td colspan="9" class="px-4 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">
                                     <span class="material-symbols-outlined notranslate {{ $isNocLayout ? 'text-gray-500' : 'text-slate-300 dark:text-slate-600 dark:text-slate-400' }} mb-3" translate="no" style="font-size:48px">router</span>
                                     <div class="text-sm font-medium {{ $isNocLayout ? 'text-gray-200' : 'text-slate-900 dark:text-slate-100' }}">Belum ada data Device</div>

@@ -107,6 +107,45 @@ class ACSDevice extends Model
         return $this->belongsTo(CustomerService::class);
     }
 
+    public function customer()
+    {
+        return $this->hasOneThrough(
+            \App\Models\CRM\Customer::class,
+            CustomerService::class,
+            'id',
+            'id',
+            'customer_service_id',
+            'customer_id'
+        );
+    }
+
+    public function getResolvedCustomerAttribute()
+    {
+        if ($this->customerService && $this->customerService->customer) {
+            return $this->customerService->customer;
+        }
+
+        if ($this->onu && $this->onu->customer) {
+            return $this->onu->customer;
+        }
+
+        if ($this->onu && $this->onu->customerService && $this->onu->customerService->customer) {
+            return $this->onu->customerService->customer;
+        }
+
+        if (!empty($this->serial_number)) {
+            $onu = \App\Models\ISP\Onu::where('serial_number', $this->serial_number)->first();
+            if ($onu && $onu->customer) {
+                return $onu->customer;
+            }
+            if ($onu && $onu->customerService && $onu->customerService->customer) {
+                return $onu->customerService->customer;
+            }
+        }
+
+        return null;
+    }
+
     public function asset()
     {
         return $this->belongsTo(Asset::class);

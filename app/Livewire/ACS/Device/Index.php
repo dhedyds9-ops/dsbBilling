@@ -217,6 +217,25 @@ class Index extends BaseACSComponent
                     }
                 }
 
+                // Fallback Binding jika pppoeUsername tidak terbaca TR-069
+                if (empty($acsDeviceParams['customer_service_id'])) {
+                    $onu = \App\Models\ISP\Onu::where('serial_number', $serialNumber)->first();
+                    if ($onu) {
+                        $acsDeviceParams['onu_id'] = $onu->id;
+                        $cs = \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->first();
+                        if ($cs) {
+                            $acsDeviceParams['customer_service_id'] = $cs->id;
+                        }
+                    }
+
+                    if (empty($acsDeviceParams['customer_service_id']) && $mac) {
+                        $pppoe = \App\Models\ISP\PPPoEUser::where('mac_address', $mac)->first();
+                        if ($pppoe && $pppoe->customer_service_id) {
+                            $acsDeviceParams['customer_service_id'] = $pppoe->customer_service_id;
+                        }
+                    }
+                }
+
                 // Penanganan SoftDeletes + Unique Constraint
                 $deviceRecord = \App\Models\ACS\ACSDevice::forUserArea(auth()->user())->withTrashed()->where('uuid', $deviceId)->first();
                 if ($deviceRecord) {
@@ -247,7 +266,14 @@ class Index extends BaseACSComponent
 
     public function render()
     {
-        $query = ACSDevice::forUserArea(auth()->user())->with(['customerService', 'asset', 'onu', 'olt', 'vendor']);
+        $query = ACSDevice::forUserArea(auth()->user())->with([
+            'customerService.customer',
+            'asset',
+            'onu.customer',
+            'onu.customerService.customer',
+            'olt',
+            'vendor'
+        ]);
 
         if ($this->search) {
             $query->where(function($q) {
@@ -255,7 +281,16 @@ class Index extends BaseACSComponent
                   ->orWhere('mac_address', 'like', '%' . $this->search . '%')
                   ->orWhere('model', 'like', '%' . $this->search . '%')
                   ->orWhere('ip_address', 'like', '%' . $this->search . '%')
-                  ->orWhere('connection_request_url', 'like', '%' . $this->search . '%');
+                  ->orWhere('connection_request_url', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('customerService.customer', function($cq) {
+                      $cq->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhere('code', 'like', '%' . $this->search . '%')
+                        ->orWhere('phone', 'like', '%' . $this->search . '%');
+                  })
+                  ->orWhereHas('onu.customer', function($cq) {
+                      $cq->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhere('code', 'like', '%' . $this->search . '%');
+                  });
             });
         }
 
