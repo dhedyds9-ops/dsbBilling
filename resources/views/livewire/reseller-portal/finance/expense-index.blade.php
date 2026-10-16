@@ -1,18 +1,19 @@
 <div class="p-6 bg-slate-50 dark:bg-slate-900/30 min-h-screen">
 
     <!-- Page Header -->
-    @section('page_title')
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-            <h1 class="text-xl font-bold text-slate-900 dark:text-white">Pengeluaran Reseller</h1>
+            <h1 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="material-symbols-outlined notranslate text-primary-600" translate="no">receipt_long</span>
+                Pengeluaran Reseller
+            </h1>
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Kelola dan catat semua biaya operasional, perlengkapan jaringan, dan pengeluaran harian Anda.</p>
         </div>
-        <button wire:click="openCreateModal" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm transition-colors">
+        <button wire:click="openCreateModal" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all">
             <span class="material-symbols-outlined notranslate text-lg" translate="no">add_circle</span>
             Tambah Pengeluaran
         </button>
     </div>
-    @endsection
 
     <!-- Flash Alert -->
     @if (session()->has('success'))

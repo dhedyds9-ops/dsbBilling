@@ -42,84 +42,132 @@
         </button>
     </div>
 
-    <!-- Top Stat Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <!-- Income Hari Ini -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-5">
+    <!-- Top Stat Cards (Pelanggan vs Voucher Breakdown) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <!-- Pendapatan Pelanggan -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-4 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pendapatan Hari Ini</p>
-                    <p class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">
-                        Rp {{ number_format($mixData['income_hari_ini'] ?? 0, 0, ',', '.') }}
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                        <span class="material-symbols-outlined notranslate text-sm" translate="no">account_circle</span>
+                        Pendapatan Pelanggan
+                    </span>
+                    <p class="text-xl font-extrabold text-indigo-700 dark:text-indigo-300 mt-2">
+                        Rp {{ number_format($mixData['income_pelanggan_hari_ini'] ?? 0, 0, ',', '.') }}
                     </p>
-                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Tanggal: {{ today()->format('d M Y') }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        Bulan ini: <span class="font-bold text-slate-700 dark:text-slate-200">Rp {{ number_format($mixData['income_pelanggan_bulan_ini'] ?? 0, 0, ',', '.') }}</span>
+                    </p>
                 </div>
-                <div class="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">payments</span>
+                <div class="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">supervised_user_circle</span>
                 </div>
+            </div>
+            <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] text-slate-400 flex items-center justify-between">
+                <span>Tagihan PPPoE & Hotspot</span>
+                <span class="font-semibold text-indigo-500">Hari ini</span>
+            </div>
+        </div>
+
+        <!-- Pendapatan Voucher -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-4 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+            <div class="flex items-start justify-between">
+                <div>
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                        <span class="material-symbols-outlined notranslate text-sm" translate="no">confirmation_number</span>
+                        Pendapatan Voucher
+                    </span>
+                    <p class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">
+                        Rp {{ number_format($mixData['income_voucher_hari_ini'] ?? 0, 0, ',', '.') }}
+                    </p>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        Bulan ini: <span class="font-bold text-slate-700 dark:text-slate-200">Rp {{ number_format($mixData['income_voucher_bulan_ini'] ?? 0, 0, ',', '.') }}</span>
+                    </p>
+                </div>
+                <div class="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">confirmation_number</span>
+                </div>
+            </div>
+            <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] text-slate-400 flex items-center justify-between">
+                <span>Voucher Hotspot Fisik & Online</span>
+                <span class="font-semibold text-emerald-500">Hari ini</span>
             </div>
         </div>
 
         <!-- Tagihan Tertunggak -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-5">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-4 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tagihan Tertunggak</p>
-                    <p class="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-2">
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                        <span class="material-symbols-outlined notranslate text-sm" translate="no">receipt_long</span>
+                        Tagihan Tertunggak
+                    </span>
+                    <p class="text-xl font-extrabold text-amber-600 dark:text-amber-400 mt-2">
                         {{ number_format($mixData['invoice_data_tagihan'] ?? 0, 0, ',', '.') }}
-                        <span class="text-sm font-medium text-slate-400 ml-1">unit</span>
+                        <span class="text-xs font-medium text-slate-400 ml-1">unit</span>
                     </p>
-                    <p class="text-xs text-amber-500 mt-1 font-semibold">
+                    <p class="text-[11px] text-amber-500 mt-1 font-semibold">
                         Lewat tempo: {{ number_format($mixData['jatuh_tempo'] ?? 0, 0, ',', '.') }}
                     </p>
                 </div>
-                <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                <div class="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
                     <span class="material-symbols-outlined notranslate text-2xl" translate="no">receipt_long</span>
                 </div>
             </div>
+            <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] text-slate-400">
+                <span>Total tagihan belum lunas</span>
+            </div>
         </div>
 
-        <!-- Pelanggan Aktif -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-5">
+        <!-- Total Pelanggan -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-4 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-500 to-cyan-500"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Pelanggan</p>
-                    <p class="text-2xl font-extrabold text-sky-600 dark:text-sky-400 mt-2">
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                        <span class="material-symbols-outlined notranslate text-sm" translate="no">group</span>
+                        Total Pelanggan
+                    </span>
+                    <p class="text-xl font-extrabold text-sky-600 dark:text-sky-400 mt-2">
                         {{ number_format(($mixData['hotspot_user'] ?? 0) + ($mixData['pppoe_user'] ?? 0), 0, ',', '.') }}
                     </p>
-                    <div class="flex flex-col gap-1 mt-1 text-xs font-medium">
-                        <div class="flex items-center gap-2">
-                            <span class="text-slate-500">PPPoE: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['pppoe_user'] ?? 0, 0, ',', '.') }}</span></span>
-                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 text-[9px] font-bold">{{ number_format($mixData['ppp_online'] ?? 0, 0, ',', '.') }} Online</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-slate-500">Hotspot: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['hotspot_user'] ?? 0, 0, ',', '.') }}</span></span>
-                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 text-[9px] font-bold">{{ number_format($mixData['hotspot_online'] ?? 0, 0, ',', '.') }} Online</span>
-                        </div>
+                    <div class="flex flex-col gap-0.5 mt-1 text-[11px] font-medium">
+                        <span class="text-slate-500">PPPoE: <b class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['pppoe_user'] ?? 0) }}</b> ({{ number_format($mixData['ppp_online'] ?? 0) }} On)</span>
+                        <span class="text-slate-500">Hotspot: <b class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['hotspot_user'] ?? 0) }}</b> ({{ number_format($mixData['hotspot_online'] ?? 0) }} On)</span>
                     </div>
                 </div>
-                <div class="p-3 rounded-xl bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">
-                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">group</span>
+                <div class="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400">
+                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">lan</span>
                 </div>
             </div>
         </div>
 
         <!-- Expired / Suspended -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-5">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-4 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-pink-500"></div>
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expired / Suspend</p>
-                    <p class="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-2">
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                        <span class="material-symbols-outlined notranslate text-sm" translate="no">warning</span>
+                        Expired / Suspend
+                    </span>
+                    <p class="text-xl font-extrabold text-rose-600 dark:text-rose-400 mt-2">
                         {{ number_format(($mixData['exp_voucher'] ?? 0) + ($mixData['exp_customer'] ?? 0), 0, ',', '.') }}
                     </p>
-                    <div class="flex gap-3 mt-1 text-xs font-medium">
-                        <span class="text-slate-500">Voucher: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['exp_voucher'] ?? 0, 0, ',', '.') }}</span></span>
-                        <span class="text-slate-500">Cust: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['exp_customer'] ?? 0, 0, ',', '.') }}</span></span>
+                    <div class="flex gap-2 mt-1 text-[11px] font-medium">
+                        <span class="text-slate-500">Vc: <b class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['exp_voucher'] ?? 0) }}</b></span>
+                        <span class="text-slate-500">Cust: <b class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['exp_customer'] ?? 0) }}</b></span>
                     </div>
                 </div>
-                <div class="p-3 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                <div class="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
                     <span class="material-symbols-outlined notranslate text-2xl" translate="no">warning</span>
                 </div>
+            </div>
+            <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] text-slate-400">
+                <span>Perlu tindak lanjut / isi ulang</span>
             </div>
         </div>
     </div>
@@ -184,16 +232,26 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                             @foreach($recentIncomes as $p)
+                                @php
+                                    $isVoucher = in_array($p->id, $voucherPaymentIds ?? []);
+                                @endphp
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                                     <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                         {{ $p->paid_at?->format('d M, H:i') ?? $p->created_at?->format('d M, H:i') }}
                                     </td>
                                     <td class="px-4 py-3 min-w-0">
-                                        <p class="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                                            {{ $p->customer?->name ?? '-' }}
-                                        </p>
+                                        <div class="flex items-center gap-1.5">
+                                            <p class="text-sm font-semibold text-slate-800 dark:text-white truncate">
+                                                {{ $p->customer?->name ?? ($isVoucher ? 'Voucher Hotspot' : '-') }}
+                                            </p>
+                                            @if($isVoucher)
+                                                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">Voucher</span>
+                                            @else
+                                                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">Pelanggan</span>
+                                            @endif
+                                        </div>
                                         <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                            #{{ $p->customer?->customer_id ?? '-' }} · {{ strtoupper($p->customer?->service_type ?? 'hotspot') }}
+                                            #{{ $p->reference_number ?? ($p->customer?->customer_id ?? '-') }} · {{ strtoupper($p->customer?->service_type ?? ($isVoucher ? 'VOUCHER' : 'HOTSPOT')) }}
                                         </p>
                                     </td>
                                     <td class="px-4 py-3 text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap text-right">

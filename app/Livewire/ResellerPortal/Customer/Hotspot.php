@@ -49,13 +49,17 @@ class Hotspot extends AdminComponent
     {
         $ownerId = Auth::user()->getEffectiveResellerId();
         return HotspotUser::withoutGlobalScopes()->where(function($q) use ($ownerId) {
-            $q->where('reseller_id', $ownerId)
-              ->orWhere('created_by', $ownerId)
+            $q->where('hotspot_users.reseller_id', $ownerId)
+              ->orWhere('hotspot_users.created_by', $ownerId)
               ->orWhereHas('customer', function($cq) use ($ownerId) {
-                  $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                  $cq->withoutGlobalScopes()->where(function($sq) use ($ownerId) {
+                      $sq->where('customers.reseller_id', $ownerId)->orWhere('customers.created_by', $ownerId);
+                  });
               })
               ->orWhereHas('customerService', function($csq) use ($ownerId) {
-                  $csq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                  $csq->withoutGlobalScopes()->where(function($sq) use ($ownerId) {
+                      $sq->where('customer_services.reseller_id', $ownerId)->orWhere('customer_services.created_by', $ownerId);
+                  });
               });
         });
     }
