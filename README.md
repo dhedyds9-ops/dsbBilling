@@ -8,6 +8,9 @@ dsBilling adalah sistem penagihan, CRM, dan *provisioning* komprehensif untuk *I
 1. [Panduan Instalasi Utama (Web & Database)](#1-panduan-instalasi-utama-dsbilling)
 2. [Panduan Instalasi FreeRADIUS (REST API Mode)](#2-panduan-instalasi-freeradius-rest-api-mode)
 3. [Panduan Instalasi GenieACS (TR-069)](#3-panduan-instalasi-genieacs-tr-069)
+4. [Panduan Integrasi MikroTik (PPP AAA, Hotspot, & Accounting)](#4-panduan-integrasi-mikrotik-ppp-aaa-hotspot--accounting)
+5. [Panduan Akses & Portal Pelanggan](#5-panduan-akses--portal-pelanggan)
+6. [Perintah Perawatan & Sinkronisasi Sistem](#6-perintah-perawatan--sinkronisasi-sistem)
 
 ---
 
@@ -132,52 +135,97 @@ sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl sta
 Cronjob Tagihan:
 ```bash
 sudo crontab -u www-data -e
-# Tambahkan: * * * * * cd /var/www/dsbilling && php artisan schedule:run >> /dev/null 2>&1
+# Tambahkan baris berikut:
+* * * * * cd /var/www/dsbilling && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ---
 
 ## 2. Panduan Instalasi FreeRADIUS (REST API Mode)
 
-Aplikasi **dsBilling** dirancang dengan arsitektur modern. Alih-alih membaca database secara lambat, dsBilling menggunakan sistem **RADIUS REST API**. 
+Aplikasi **dsBilling** dirancang dengan arsitektur modern. Alih-alih membaca database secara lambat, dsBilling menggunakan sistem **RADIUS REST API** (`/api/v1/radius/...`). 
 
-### 2.1 Instalasi Modul
+### Metode 1: Instalasi Otomatis (1-Klik via Skrip - Direkomendasikan)
+
+Telah disediakan skrip otomatis yang langsung menginstal paket FreeRADIUS, mengonfigurasi modul REST, mendaftarkan router MikroTik di `clients.conf`, membuka port firewall, serta menonaktifkan filter username (sehingga realm seperti `@dsbilling` didukung tanpa error).
+
+Jalankan perintah berikut di VPS:
+```bash
+cd /var/www/dsbilling
+sudo bash scripts/setup-freeradius.sh
+```
+> **Catatan:** Skrip akan secara otomatis mendeteksi Shared Secret dari database router Anda. Jika ingin menentukan secret tertentu, Anda dapat menjalankannya dengan parameter:
+> `sudo bash scripts/setup-freeradius.sh "rahasia123"`
+
+### Metode 2: Konfigurasi Manual
+
+Jika ingin melakukan konfigurasi secara manual:
+
+#### 2.1 Instalasi Modul
 ```bash
 sudo apt update
 sudo apt install -y freeradius freeradius-rest freeradius-utils
-sudo ln -s /etc/freeradius/3.0/mods-available/rest /etc/freeradius/3.0/mods-enabled/
+sudo ln -sf /etc/freeradius/3.0/mods-available/rest /etc/freeradius/3.0/mods-enabled/rest
 ```
 
-### 2.2 Konfigurasi Modul REST
-`sudo nano /etc/freeradius/3.0/mods-enabled/rest`
-
+#### 2.2 Konfigurasi Modul REST
+Edit file `/etc/freeradius/3.0/mods-available/rest`:
 ```text
 rest {
-    connect_uri = "http://localhost/api/radius" 
+    connect_uri = "http://127.0.0.1/api/v1/radius"
 
     authenticate {
-        uri = "${..connect_uri}/accounting/preauth"
+        uri = "${..connect_uri}/preauth"
         method = 'post'
         body = 'json'
-        data = '{"username": "%{User-Name}", "password": "%{User-Password}", "nas_ip": "%{NAS-IP-Address}", "nas_secret": "%{Client-Secret}"}'
+        data = '{"username": "%{User-Name}", "password": "%{User-Password}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}"}'
     }
+
     authorize {
-        uri = "${..connect_uri}/accounting/authorize"
+        uri = "${..connect_uri}/authorize"
         method = 'post'
         body = 'json'
-        data = '{"username": "%{User-Name}", "nas_ip": "%{NAS-IP-Address}", "nas_secret": "%{Client-Secret}"}'
+        data = '{"username": "%{User-Name}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}"}'
     }
+
     accounting {
-        uri = "${..connect_uri}/accounting/ingest"
+        uri = "${..connect_uri}/accounting"
         method = 'post'
         body = 'json'
-        data = '{"username": "%{User-Name}", "status_type": "%{Acct-Status-Type}", "session_id": "%{Acct-Session-Id}", "input_octets": "%{Acct-Input-Octets}", "output_octets": "%{Acct-Output-Octets}", "nas_ip": "%{NAS-IP-Address}", "nas_secret": "%{Client-Secret}"}'
+        data = '{"username": "%{User-Name}", "status_type": "%{Acct-Status-Type}", "session_id": "%{Acct-Session-Id}", "input_octets": "%{Acct-Input-Octets}", "output_octets": "%{Acct-Output-Octets}", "nas_ip_address": "%{NAS-IP-Address}", "nas_name": "%{NAS-Identifier}"}'
     }
 }
 ```
 
-### 2.3 Aktifkan di Sites-Enabled
-Di `/etc/freeradius/3.0/sites-enabled/default`, tambahkan `rest` di bawah blok `authorize`, `authenticate`, dan `accounting`.
+#### 2.3 Konfigurasi Sites-Available Default
+Pada file `/etc/freeradius/3.0/sites-available/default`:
+1. Masukkan `rest` di dalam blok `authorize { ... }`.
+2. Masukkan blok `Auth-Type rest { rest }` di dalam `authenticate { ... }`.
+3. Masukkan `rest` di dalam blok `accounting { ... }`.
+4. Komentari atau nonaktifkan `filter_username` agar realm seperti `@dsbilling` tidak ditolak:
+   ```bash
+   sudo sed -i 's/^\s*filter_username/# &/' /etc/freeradius/3.0/sites-available/default
+   ```
+
+#### 2.4 Daftarkan NAS / MikroTik di `clients.conf`
+Tambahkan di akhir file `/etc/freeradius/3.0/clients.conf`:
+```text
+client all_mikrotik {
+    ipaddr = 0.0.0.0/0
+    secret = "rahasia123"
+    shortname = mikrotik
+    nas_type = other
+    require_message_authenticator = auto
+}
+```
+
+#### 2.5 Buka Port Firewall & Jalankan Service
+```bash
+sudo ufw allow 1812/udp
+sudo ufw allow 1813/udp
+sudo ufw allow 3799/udp
+sudo systemctl restart freeradius
+```
 
 ---
 
@@ -245,6 +293,91 @@ GENIEACS_BASE_URL=http://localhost:7557
 GENIEACS_USERNAME=admin
 GENIEACS_PASSWORD=admin
 ```
+
+---
+
+## 4. Panduan Integrasi MikroTik (PPP AAA, Hotspot, & Accounting)
+
+Agar pelanggan PPPoE dan Hotspot dapat diautentikasi dan sesi aktifnya tersinkronisasi secara *real-time* dengan sistem dsBilling, lakukan konfigurasi pada Router MikroTik melalui Terminal / Winbox:
+
+### 4.1 Tambahkan RADIUS Server di MikroTik
+Buka Terminal MikroTik dan jalankan:
+```routeros
+/radius add address=<IP_VPS_DSBILLING> secret="<RADIUS_SECRET>" service=ppp,hotspot authentication-port=1812 accounting-port=1813 timeout=3000ms comment="dsBilling RADIUS"
+```
+> Ganti `<IP_VPS_DSBILLING>` dengan IP Public VPS Anda dan `<RADIUS_SECRET>` dengan Secret yang diatur di FreeRADIUS (misal: `dsBillingSecret123`).
+
+### 4.2 Aktifkan CoA / Disconnect Requests (Incoming)
+Agar dsBilling dapat memutuskan koneksi pelanggan secara instan (misal saat isolir tagihan atau kick user):
+```routeros
+/radius incoming set accept=yes port=3799
+```
+
+### 4.3 Konfigurasi PPP AAA (PPPoE) & Accounting Otomatis
+**Sangat Penting:** Agar status pengguna di dsBilling otomatis berubah menjadi Online saat terhubung dan Offline saat terputus (tanpa harus klik tombol singkronisasi manual), aktifkan fitur `accounting`:
+```routeros
+/ppp aaa set use-radius=yes accounting=yes interim-update=00:05:00
+```
+- `accounting=yes`: MikroTik akan mengirimkan sinyal *Accounting-Start* saat konek dan *Accounting-Stop* saat diskonek ke port 1813 FreeRADIUS.
+- `interim-update=00:05:00`: MikroTik akan memperbarui catatan kuota/uptime setiap 5 menit ke dsBilling.
+
+### 4.4 Konfigurasi Hotspot Server Profile (Jika menggunakan Hotspot)
+Jika Anda menggunakan layanan Hotspot MikroTik:
+```routeros
+/ip hotspot profile set [find] use-radius=yes radius-accounting=yes radius-interim-update=00:05:00
+```
+
+---
+
+## 5. Panduan Akses & Portal Pelanggan
+
+dsBilling menyediakan antarmuka khusus bagi pelanggan untuk mengecek status langganan, melihat tagihan, riwayat pembayaran, hingga tiket komplain.
+
+### 5.1 Alamat / URL Login Pelanggan
+Pelanggan dapat mengakses halaman login melalui tautan:
+- `https://domain-anda.com/login` atau `https://domain-anda.com/login/customer`
+
+### 5.2 Format Kredensial Login yang Didukung
+Pelanggan dapat masuk menggunakan salah satu dari 4 identitas berikut:
+1. **Kode Pelanggan / ID Pelanggan**: Contoh `2026101408`
+2. **Nomor HP / WhatsApp**: Nomor terdaftar, baik format lokal (`08123...`) maupun internasional (`628123...`)
+3. **Username Layanan PPPoE / Hotspot**: Contoh `2026101408@dsbilling`
+4. **Alamat Email**: Email yang terdaftar saat registrasi
+
+### 5.3 Password Default Pelanggan
+- Password *default* untuk seluruh pelanggan baru yang dibuat melalui sistem atau *Wizard Instalasi Teknisi* adalah:
+  **`123456`**
+- Pelanggan dapat mengubah password ini kapan saja setelah login dengan mengakses menu **Profil Pelanggan** (`/customer-portal/profile`).
+
+---
+
+## 6. Perintah Perawatan & Sinkronisasi Sistem
+
+dsBilling dilengkapi serangkaian *Artisan Console Commands* untuk memelihara integritas data di semua tenant (Multi-tenant SQLite / MySQL).
+
+### 6.1 Sinkronisasi Kepemilikan Reseller / Mitra (Cascade Ownership)
+Jika terdapat data PPPoE, Hotspot, atau Voucher lama yang kepemilikan Resellernya berbeda dengan data Pelanggan induk (misal di tabel pelanggan tertulis Mitra A tapi di tabel PPPoE tertulis Pusat), jalankan perintah ini untuk menyelaraskannya:
+```bash
+# Sinkronkan untuk seluruh tenant
+php artisan isp:sync-reseller-ownership --all-tenants
+
+# Atau untuk 1 tenant tertentu
+php artisan isp:sync-reseller-ownership <tenant_domain>
+```
+
+### 6.2 Pembersihan Voucher Kadaluarsa (Reap Expired Vouchers)
+Untuk menandai voucher yang masa berlakunya sudah habis menjadi status *Expired*:
+```bash
+php artisan isp:reap-expired-vouchers --all-tenants
+```
+*(Perintah ini juga otomatis dieksekusi setiap malam oleh Laravel Scheduler / Cronjob)*.
+
+### 6.3 Sinkronisasi Sesi MikroTik Realtime
+Untuk menarik sesi aktif PPP / Hotspot dari RouterOS jika accounting RADIUS sempat terputus:
+```bash
+php artisan mikrotik:sync-sessions
+```
+
 
 
 
