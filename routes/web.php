@@ -451,7 +451,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/balance', \App\Livewire\ResellerPortal\Finance\Balance::class)->name('balance');
             Route::get('/topup', \App\Livewire\ResellerPortal\Finance\Topup::class)->name('topup');
             Route::get('/mutations', \App\Livewire\ResellerPortal\Finance\Mutations::class)->name('mutations');
-            
+            Route::get('/expenses', \App\Livewire\ResellerPortal\Finance\ExpenseIndex::class)->name('expenses');
         });
 
         Route::prefix('billing')->name('billing.')->group(function() {

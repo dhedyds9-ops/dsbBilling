@@ -1,31 +1,43 @@
 <div class="p-6 bg-slate-50 dark:bg-slate-900/30 min-h-screen">
 
     <!-- Page Header -->
-          @section('page_title')
+    @section('page_title')
+    <div class="flex items-center justify-between w-full">
         <div>
-            <h1 class="text-1xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-            <span class="text-xs text-slate-500 dark:text-slate-400">Last Update:</span>
-            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ now()->format('d/m/Y H:i') }}</span>
-
+            <h1 class="text-xl font-bold text-slate-900 dark:text-white">Dashboard Reseller</h1>
+            <div class="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                <span>Update Terakhir:</span>
+                <span class="font-semibold text-slate-700 dark:text-slate-300">{{ now()->format('d/m/Y H:i') }}</span>
+            </div>
         </div>
-        @endsection
-    
+        <div class="flex items-center gap-2">
+            <a href="{{ route('reseller-portal.finance.expenses') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                <span class="material-symbols-outlined notranslate text-base text-rose-500" translate="no">receipt_long</span>
+                Catat Pengeluaran
+            </a>
+            <a href="{{ route('reseller-portal.finance.topup') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-sm">
+                <span class="material-symbols-outlined notranslate text-base" translate="no">add_card</span>
+                Top Up Saldo
+            </a>
+        </div>
+    </div>
+    @endsection
 
     <!-- Tab Navigation -->
-    <div class="mb-6 flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 inline-flex overflow-x-auto">
+    <div class="mb-6 flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 inline-flex overflow-x-auto shadow-sm">
         <button wire:click="setTab('ringkasan')" type="button"
                 class="px-4 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap
-                       {{ $activeTab === 'ringkasan' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">
+                       {{ $activeTab === 'ringkasan' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             Ringkasan
         </button>
         <button wire:click="setTab('tagihan')" type="button"
                 class="px-4 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap
-                       {{ $activeTab === 'tagihan' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">
+                       {{ $activeTab === 'tagihan' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             Tagihan
         </button>
         <button wire:click="setTab('aktivitas')" type="button"
                 class="px-4 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap
-                       {{ $activeTab === 'aktivitas' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">
+                       {{ $activeTab === 'aktivitas' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             Aktivitas
         </button>
     </div>
@@ -40,29 +52,29 @@
                     <p class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">
                         Rp {{ number_format($mixData['income_hari_ini'] ?? 0, 0, ',', '.') }}
                     </p>
-                    <p class="text-xs text-slate-400 dark:text-slate-500 dark:text-slate-400 mt-1">Tanggal: {{ today()->format('d M Y') }}</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Tanggal: {{ today()->format('d M Y') }}</p>
                 </div>
                 <div class="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                    <span class="material-symbols-outlined text-2xl">payments</span>
+                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">payments</span>
                 </div>
             </div>
         </div>
 
-        <!-- Tagihan Belum Dibayar -->
+        <!-- Tagihan Tertunggak -->
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-5">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tagihan Tertunggak</p>
                     <p class="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-2">
-                        {{ $mixData['invoice_data_tagihan'] ?? 0 }}
+                        {{ number_format($mixData['invoice_data_tagihan'] ?? 0, 0, ',', '.') }}
                         <span class="text-sm font-medium text-slate-400 ml-1">unit</span>
                     </p>
                     <p class="text-xs text-amber-500 mt-1 font-semibold">
-                        Lewat tempo: {{ $mixData['jatuh_tempo'] ?? 0 }}
+                        Lewat tempo: {{ number_format($mixData['jatuh_tempo'] ?? 0, 0, ',', '.') }}
                     </p>
                 </div>
                 <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-                    <span class="material-symbols-outlined text-2xl">receipt_long</span>
+                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">receipt_long</span>
                 </div>
             </div>
         </div>
@@ -73,21 +85,21 @@
                 <div>
                     <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Pelanggan</p>
                     <p class="text-2xl font-extrabold text-sky-600 dark:text-sky-400 mt-2">
-                        {{ ($mixData['hotspot_user'] ?? 0) + ($mixData['pppoe_user'] ?? 0) }}
+                        {{ number_format(($mixData['hotspot_user'] ?? 0) + ($mixData['pppoe_user'] ?? 0), 0, ',', '.') }}
                     </p>
                     <div class="flex flex-col gap-1 mt-1 text-xs font-medium">
                         <div class="flex items-center gap-2">
-                            <span class="text-slate-500">PPPoE: <span class="text-slate-700 dark:text-slate-200">{{ $mixData['pppoe_user'] ?? 0 }}</span></span>
-                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 text-[9px] font-bold">{{ $mixData['ppp_online'] ?? 0 }} Online</span>
+                            <span class="text-slate-500">PPPoE: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['pppoe_user'] ?? 0, 0, ',', '.') }}</span></span>
+                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 text-[9px] font-bold">{{ number_format($mixData['ppp_online'] ?? 0, 0, ',', '.') }} Online</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-slate-500">Hotspot: <span class="text-slate-700 dark:text-slate-200">{{ $mixData['hotspot_user'] ?? 0 }}</span></span>
-                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 text-[9px] font-bold">{{ $mixData['hotspot_online'] ?? 0 }} Online</span>
+                            <span class="text-slate-500">Hotspot: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['hotspot_user'] ?? 0, 0, ',', '.') }}</span></span>
+                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 text-[9px] font-bold">{{ number_format($mixData['hotspot_online'] ?? 0, 0, ',', '.') }} Online</span>
                         </div>
                     </div>
                 </div>
                 <div class="p-3 rounded-xl bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">
-                    <span class="material-symbols-outlined text-2xl">group</span>
+                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">group</span>
                 </div>
             </div>
         </div>
@@ -98,52 +110,52 @@
                 <div>
                     <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Expired / Suspend</p>
                     <p class="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-2">
-                        {{ ($mixData['exp_voucher'] ?? 0) + ($mixData['exp_customer'] ?? 0) }}
+                        {{ number_format(($mixData['exp_voucher'] ?? 0) + ($mixData['exp_customer'] ?? 0), 0, ',', '.') }}
                     </p>
                     <div class="flex gap-3 mt-1 text-xs font-medium">
-                        <span class="text-slate-500">Voucher: <span class="text-slate-700 dark:text-slate-200">{{ $mixData['exp_voucher'] ?? 0 }}</span></span>
-                        <span class="text-slate-500">Cust: <span class="text-slate-700 dark:text-slate-200">{{ $mixData['exp_customer'] ?? 0 }}</span></span>
+                        <span class="text-slate-500">Voucher: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['exp_voucher'] ?? 0, 0, ',', '.') }}</span></span>
+                        <span class="text-slate-500">Cust: <span class="text-slate-700 dark:text-slate-200">{{ number_format($mixData['exp_customer'] ?? 0, 0, ',', '.') }}</span></span>
                     </div>
                 </div>
                 <div class="p-3 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
-                    <span class="material-symbols-outlined text-2xl">warning</span>
+                    <span class="material-symbols-outlined notranslate text-2xl" translate="no">warning</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Voucher Grid (sesuai blade lama yang dipertahankan) -->
+    <!-- Voucher Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center gap-3 border border-slate-100 dark:border-slate-700">
-            <div class="p-2.5 bg-slate-200 dark:bg-slate-700 rounded-lg">
-                <x-icon name="ticket" class="w-6 h-6 text-slate-600 dark:text-slate-300" />
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div class="p-2.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                <span class="material-symbols-outlined notranslate text-2xl" translate="no">confirmation_number</span>
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">TOTAL VOUCHER</p>
-                <p class="text-lg font-bold flex items-center gap-1 mt-1">
-                    <x-icon name="ticket" class="w-4 h-4 text-slate-400" /> {{ $mixData['total_voucher'] ?? 0 }}
+                <p class="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">
+                    {{ number_format($mixData['total_voucher'] ?? 0, 0, ',', '.') }}
                 </p>
             </div>
         </div>
-        <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center gap-3 border border-slate-100 dark:border-slate-700">
-            <div class="p-2.5 bg-slate-200 dark:bg-slate-700 rounded-lg">
-                <x-icon name="printer" class="w-6 h-6 text-slate-600 dark:text-slate-300" />
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div class="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-lg">
+                <span class="material-symbols-outlined notranslate text-2xl" translate="no">print</span>
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Voucher Dibuat Hari Ini</p>
-                <p class="text-lg font-bold flex items-center gap-1 mt-1">
-                    <x-icon name="document-plus" class="w-4 h-4 text-slate-400" /> {{ $mixData['vc_created_today'] ?? 0 }}
+                <p class="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">
+                    {{ number_format($mixData['vc_created_today'] ?? 0, 0, ',', '.') }}
                 </p>
             </div>
         </div>
-        <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center gap-3 border border-slate-100 dark:border-slate-700">
-            <div class="p-2.5 bg-slate-200 dark:bg-slate-700 rounded-lg">
-                <x-icon name="arrow-right-on-rectangle" class="w-6 h-6 text-slate-600 dark:text-slate-300" />
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div class="p-2.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                <span class="material-symbols-outlined notranslate text-2xl" translate="no">login</span>
             </div>
             <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Voucher Aktif (Online)</p>
-                <p class="text-lg font-bold flex items-center gap-1 mt-1">
-                    <x-icon name="arrow-right-on-rectangle" class="w-4 h-4 text-slate-400" /> {{ $mixData['vc_login_today'] ?? 0 }}
+                <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Voucher Online (Aktif)</p>
+                <p class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {{ number_format($mixData['vc_login_today'] ?? 0, 0, ',', '.') }}
                 </p>
             </div>
         </div>
@@ -156,8 +168,8 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
             <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <h2 class="text-sm font-bold text-slate-800 dark:text-white">Pendapatan Terbaru</h2>
-                <span class="text-[11px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                    Paid/Success
+                <span class="text-[11px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-semibold">
+                    Paid / Success
                 </span>
             </div>
             <div class="max-h-[420px] overflow-y-auto">
@@ -172,7 +184,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                             @foreach($recentIncomes as $p)
-                                <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/30">
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                                     <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                         {{ $p->paid_at?->format('d M, H:i') ?? $p->created_at?->format('d M, H:i') }}
                                     </td>
@@ -181,7 +193,7 @@
                                             {{ $p->customer?->name ?? '-' }}
                                         </p>
                                         <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                            #{{ $p->customer?->customer_id ?? '-' }} · {{ $p->customer?->service_type ?? 'hotspot' }}
+                                            #{{ $p->customer?->customer_id ?? '-' }} · {{ strtoupper($p->customer?->service_type ?? 'hotspot') }}
                                         </p>
                                     </td>
                                     <td class="px-4 py-3 text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap text-right">
@@ -193,8 +205,8 @@
                     </table>
                 @else
                     <div class="p-10 text-center">
-                        <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400">inbox</span>
-                        <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Belum ada pendapatan hari ini</p>
+                        <span class="material-symbols-outlined notranslate text-5xl text-slate-300 dark:text-slate-600" translate="no">inbox</span>
+                        <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Belum ada pendapatan yang tercatat</p>
                     </div>
                 @endif
             </div>
@@ -203,7 +215,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
             <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <h2 class="text-sm font-bold text-slate-800 dark:text-white">Aktivitas Terbaru</h2>
-                <span class="text-[11px] px-2 py-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
+                <span class="text-[11px] px-2 py-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-semibold">
                     Live Feed
                 </span>
             </div>
@@ -212,18 +224,18 @@
                     @foreach($activities as $act)
                         <div class="flex gap-3">
                             <div class="mt-0.5 w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-base">check_circle</span>
+                                <span class="material-symbols-outlined notranslate text-base" translate="no">check_circle</span>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{!! $act['message'] !!}</p>
-                                <p class="text-[11px] text-slate-400 dark:text-slate-500 dark:text-slate-400 mt-0.5">{{ $act['time'] }}</p>
+                                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{{ $act['time'] }}</p>
                             </div>
                         </div>
                     @endforeach
                 @else
                     <div class="py-10 text-center">
-                        <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400">hourglass_empty</span>
-                        <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Belum ada aktivitas</p>
+                        <span class="material-symbols-outlined notranslate text-5xl text-slate-300 dark:text-slate-600" translate="no">hourglass_empty</span>
+                        <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Belum ada aktivitas pelanggan</p>
                     </div>
                 @endif
             </div>
@@ -237,7 +249,7 @@
         <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
             <h2 class="text-sm font-bold text-slate-800 dark:text-white">Tagihan Belum Dibayar</h2>
             <span class="text-[11px] px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-semibold">
-                {{ $recentInvoices?->count() ?? 0 }} Unit
+                {{ number_format($recentInvoices?->count() ?? 0, 0, ',', '.') }} Unit
             </span>
         </div>
         <div class="overflow-x-auto">
@@ -258,7 +270,7 @@
                             @php
                                 $isOverdue = $inv->due_date && $inv->due_date->isPast();
                             @endphp
-                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/30">
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                                 <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                                     {{ $inv->invoice_number ?? '-' }}
                                 </td>
@@ -296,8 +308,8 @@
                 </table>
             @else
                 <div class="p-12 text-center">
-                    <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400">verified</span>
-                    <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Tidak ada tagihan tertunggak. Bagus!</p>
+                    <span class="material-symbols-outlined notranslate text-5xl text-slate-300 dark:text-slate-600" translate="no">verified</span>
+                    <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Tidak ada tagihan tertunggak. Semua lunas!</p>
                 </div>
             @endif
         </div>
@@ -308,24 +320,24 @@
     <!-- Aktivitas: Full activity feed -->
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
         <div class="p-4 border-b border-slate-100 dark:border-slate-700">
-            <h2 class="text-sm font-bold text-slate-800 dark:text-white">Feed Aktivitas</h2>
+            <h2 class="text-sm font-bold text-slate-800 dark:text-white">Feed Aktivitas Pelanggan</h2>
         </div>
         <div class="p-6 max-h-[600px] overflow-y-auto space-y-4">
             @if($activities && count($activities) > 0)
                 @foreach($activities as $act)
-                    <div class="flex gap-4 p-3 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/30 transition-colors">
+                    <div class="flex gap-4 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                         <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-xl">wifi</span>
+                            <span class="material-symbols-outlined notranslate text-xl" translate="no">wifi</span>
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">{!! $act['message'] !!}</p>
-                            <p class="text-xs text-slate-400 dark:text-slate-500 dark:text-slate-400 mt-1">{{ $act['time'] }}</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">{{ $act['time'] }}</p>
                         </div>
                     </div>
                 @endforeach
             @else
                 <div class="py-12 text-center">
-                    <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400">activity</span>
+                    <span class="material-symbols-outlined notranslate text-5xl text-slate-300 dark:text-slate-600" translate="no">history</span>
                     <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Belum ada aktivitas yang tercatat</p>
                 </div>
             @endif

@@ -32,8 +32,10 @@
                 <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                     @forelse($commissions as $row)
                         @php
-                            $price = $row->serviceProfile?->price ?? 0;
-                            $margin = $price * 0.15; // Placeholder 15% margin
+                            $price = (float)($row->serviceProfile?->base_price ?? $row->serviceProfile?->price ?? 0);
+                            $cost = (float)($row->serviceProfile?->reseller_settlement_price ?? $row->serviceProfile?->reseller_price ?? 0);
+                            $feeSeller = (float)($row->fee_seller ?? 0);
+                            $margin = $feeSeller > 0 ? $feeSeller : max(0, $price - $cost);
                         @endphp
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-300">

@@ -15,7 +15,7 @@ class MigrateTenantsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'tenant:migrate {tenant? : Nama tenant spesifik (opsional, jika kosong akan memigrasi seluruh tenant)}';
+    protected $signature = 'tenant:migrate {tenant? : Nama tenant spesifik (opsional, jika kosong akan memigrasi seluruh tenant)} {--path= : Path file migration spesifik}';
 
     /**
      * The console command description.
@@ -69,7 +69,11 @@ class MigrateTenantsCommand extends Command
                 DB::purge('sqlite');
                 DB::reconnect('sqlite');
 
-                Artisan::call('migrate', ['--force' => true]);
+                $migrateParams = ['--force' => true];
+                if ($this->option('path')) {
+                    $migrateParams['--path'] = $this->option('path');
+                }
+                Artisan::call('migrate', $migrateParams);
                 $this->line(Artisan::output());
             }
         } elseif ($dbConnection === 'mysql') {
@@ -98,7 +102,11 @@ class MigrateTenantsCommand extends Command
                 DB::purge('mysql');
                 DB::reconnect('mysql');
 
-                Artisan::call('migrate', ['--force' => true]);
+                $migrateParams = ['--force' => true];
+                if ($this->option('path')) {
+                    $migrateParams['--path'] = $this->option('path');
+                }
+                Artisan::call('migrate', $migrateParams);
                 $this->line(Artisan::output());
             }
         }

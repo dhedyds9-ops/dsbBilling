@@ -46,16 +46,29 @@ class Dashboard extends AdminComponent
     
     public function loadActivities()
     {
-        $ownerId = Auth::user()->getEffectiveResellerId();
+        $user = Auth::user();
+        $ownerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+
         $customerFilter = function ($q) use ($ownerId) {
-            $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+            if ($ownerId) {
+                $q->where(function ($sub) use ($ownerId) {
+                    $sub->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                });
+            }
         };
 
         // Load recent payments for reseller's customers
-        $payments = \App\Models\Payment\Payment::with(['customer', 'invoices'])
-            ->whereHas('customer', $customerFilter)
-            ->whereIn('status', ['paid', 'success'])
-            ->latest('paid_at')
+        $paymentQuery = Payment::with(['customer', 'invoices'])
+            ->whereIn('status', ['paid', 'success']);
+
+        if ($ownerId) {
+            $paymentQuery->where(function ($q) use ($ownerId, $customerFilter) {
+                $q->where('reseller_id', $ownerId)->orWhereHas('customer', $customerFilter);
+            });
+        }
+
+        $payments = $paymentQuery->latest('paid_at')
+            ->latest('created_at')
             ->take(20)
             ->get();
             
@@ -63,14 +76,15 @@ class Dashboard extends AdminComponent
         foreach ($payments as $payment) {
             $customer = $payment->customer;
             if ($customer) {
-                $type = $customer->service_type ?? 'hotspot';
+                $type = strtoupper($customer->service_type ?? 'INTERNET');
                 $timeAgo = $payment->paid_at ? $payment->paid_at->diffForHumans() : Carbon::parse($payment->created_at)->diffForHumans();
                 $id = $customer->customer_id;
                 $name = $customer->name;
+                $amountFormatted = number_format($payment->amount ?? 0, 0, ',', '.');
                 
                 $logs[] = [
                     'time' => $timeAgo,
-                    'message' => "customer {$type} : {$id} # ( {$name} ) langganan diperpanjang",
+                    'message' => "Pelanggan {$type}: <strong>{$id}</strong> ({$name}) pembayaran sebesar Rp {$amountFormatted} tercatat berhasil",
                 ];
             }
         }
@@ -80,43 +94,65 @@ class Dashboard extends AdminComponent
 
     public function loadDashboardData()
     {
-        $ownerId = Auth::user()->getEffectiveResellerId();
+        $user = Auth::user();
+        $ownerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
 
         // Subquery to filter customers owned by this reseller
         $customerFilter = function ($q) use ($ownerId) {
-            $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+            if ($ownerId) {
+                $q->where(function ($sub) use ($ownerId) {
+                    $sub->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                });
+            }
         };
 
-        // Top Row
-        $incomeHariIni = Payment::whereHas('customer', $customerFilter)
-            ->whereIn('status', ['paid', 'success'])
-            ->whereDate('paid_at', today())
-            ->sum('amount');
-            
-        if ($incomeHariIni == 0) {
-            $incomeHariIni = Payment::whereHas('customer', $customerFilter)
-                ->where('status', 'paid')
-                ->whereDate('created_at', today())
-                ->sum('amount');
+        // Top Row - Pendapatan Hari Ini
+        $paymentQuery = Payment::query()->whereIn('status', ['paid', 'success']);
+        if ($ownerId) {
+            $paymentQuery->where(function ($q) use ($ownerId, $customerFilter) {
+                $q->where('reseller_id', $ownerId)->orWhereHas('customer', $customerFilter);
+            });
         }
 
-        $invoiceDataTagihan = Invoice::whereHas('customer', $customerFilter)
-            ->where('status', 'unpaid')
-            ->count();
+        $incomeHariIni = (clone $paymentQuery)->whereDate('paid_at', today())->sum('amount');
+        if ($incomeHariIni == 0) {
+            $incomeHariIni = (clone $paymentQuery)->whereDate('created_at', today())->sum('amount');
+        }
+
+        // Tagihan Tertunggak
+        $invoiceQuery = Invoice::query()->where('status', 'unpaid');
+        if ($ownerId) {
+            $invoiceQuery->where(function ($q) use ($ownerId, $customerFilter) {
+                $q->where('reseller_id', $ownerId)->orWhereHas('customer', $customerFilter);
+            });
+        }
+        $invoiceDataTagihan = (clone $invoiceQuery)->count();
+        $jatuhTempo = (clone $invoiceQuery)->whereDate('due_date', '<', today())->count();
 
         // Count Hotspot and PPPoE users correctly tied to this reseller
         try {
-            $hotspotUserCount = HotspotUser::where('reseller_id', $ownerId)->orWhere('created_by', $ownerId)->count();
-            $pppoeUserCount = PPPoEUser::where('reseller_id', $ownerId)->orWhere('created_by', $ownerId)->count();
-            
-            // Fix Isolation Leak: Only count active voucher sessions created by this reseller
-            $hotspotOnline = HotspotActiveSession::whereHas('hotspotUser', function ($q) use ($ownerId) {
-                $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
-            })->count();
-            
-            $pppOnline = PppActiveSession::whereHas('pppoeUser', function ($q) use ($ownerId) {
-                $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
-            })->count();
+            if ($ownerId) {
+                $hotspotUserCount = HotspotUser::where(function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                })->count();
+
+                $pppoeUserCount = PPPoEUser::where(function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                })->count();
+                
+                $hotspotOnline = HotspotActiveSession::whereHas('hotspotUser', function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                })->count();
+                
+                $pppOnline = PppActiveSession::whereHas('pppoeUser', function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                })->count();
+            } else {
+                $hotspotUserCount = HotspotUser::count();
+                $pppoeUserCount = PPPoEUser::count();
+                $hotspotOnline = HotspotActiveSession::count();
+                $pppOnline = PppActiveSession::count();
+            }
         } catch (\Exception $e) {
             $hotspotUserCount = 0;
             $pppoeUserCount = 0;
@@ -124,54 +160,67 @@ class Dashboard extends AdminComponent
             $pppOnline = 0;
         }
 
-        $totalVoucher = Voucher::where('created_by', $ownerId)->count();
-        $vcCreatedToday = Voucher::where('created_by', $ownerId)->whereDate('created_at', today())->count();
+        // Vouchers
+        $voucherQuery = Voucher::query();
+        if ($ownerId) {
+            $voucherQuery->where(function ($q) use ($ownerId) {
+                $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+            });
+        }
+
+        $totalVoucher = (clone $voucherQuery)->count();
+        $vcCreatedToday = (clone $voucherQuery)->whereDate('created_at', today())->count();
+        $expVoucher = (clone $voucherQuery)->where('status', 'expired')->count();
+
+        // Active voucher sessions
+        $activeSessionQuery = HotspotActiveSession::whereHas('voucher', function ($q) use ($ownerId) {
+            if ($ownerId) {
+                $q->where(function ($sub) use ($ownerId) {
+                    $sub->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                });
+            }
+        });
+        $vcLoginToday = $activeSessionQuery->count();
         
-        // Fix Data Leakage: Restrict active session counts to this reseller's vouchers
-        $vcLoginToday = \App\Models\ISP\HotspotActiveSession::whereHas('voucher', function($q) use ($ownerId) {
-            $q->where('created_by', $ownerId);
-        })->count();
-        
-        $expVoucher = Voucher::where('created_by', $ownerId)->where('status', 'expired')->count();
-        $expCustomer = Customer::where($customerFilter)->where('status', 'suspended')->count();
-        
-        $jatuhTempo = Invoice::whereHas('customer', $customerFilter)
-            ->where('status', 'unpaid')
-            ->whereDate('due_date', '<', today())
-            ->count();
+        // Suspended Customers
+        $customerSuspendedQuery = Customer::where('status', 'suspended');
+        if ($ownerId) {
+            $customerSuspendedQuery->where($customerFilter);
+        }
+        $expCustomer = $customerSuspendedQuery->count();
 
         $this->mixData = [
             'income_hari_ini' => $incomeHariIni,
             'invoice_data_tagihan' => $invoiceDataTagihan,
             'ppp_online' => $pppOnline,
             'hotspot_online' => $hotspotOnline,
-            
             'hotspot_user' => $hotspotUserCount,
             'pppoe_user' => $pppoeUserCount,
-            'vpn_user' => 0,
             'total_voucher' => $totalVoucher,
             'vc_created_today' => $vcCreatedToday,
             'vc_login_today' => $vcLoginToday,
             'exp_voucher' => $expVoucher,
             'exp_customer' => $expCustomer,
-            
             'jatuh_tempo' => $jatuhTempo,
         ];
         
         // Tables
-        $this->recentIncomes = Payment::with(['customer', 'invoices'])
-            ->whereHas('customer', $customerFilter)
-            ->whereIn('status', ['paid', 'success'])
-            ->latest('paid_at')
-            ->take(10)
-            ->get();
+        $recentIncomesQuery = Payment::with(['customer', 'invoices'])
+            ->whereIn('status', ['paid', 'success']);
+        if ($ownerId) {
+            $recentIncomesQuery->where(function ($q) use ($ownerId, $customerFilter) {
+                $q->where('reseller_id', $ownerId)->orWhereHas('customer', $customerFilter);
+            });
+        }
+        $this->recentIncomes = $recentIncomesQuery->latest('paid_at')->latest('created_at')->take(10)->get();
             
-        $this->recentInvoices = Invoice::with('customer')
-            ->whereHas('customer', $customerFilter)
-            ->where('status', 'unpaid')
-            ->latest()
-            ->take(10)
-            ->get();
+        $recentInvoicesQuery = Invoice::with('customer')->where('status', 'unpaid');
+        if ($ownerId) {
+            $recentInvoicesQuery->where(function ($q) use ($ownerId, $customerFilter) {
+                $q->where('reseller_id', $ownerId)->orWhereHas('customer', $customerFilter);
+            });
+        }
+        $this->recentInvoices = $recentInvoicesQuery->latest()->take(10)->get();
     }
 
     public function render()

@@ -50,13 +50,6 @@ class Commission extends AdminComponent
         }
 
         $netMargin = $grossRevenue - $totalCost;
-        
-        // Safety fallback if settlement prices are 0, use estimated 15%
-        if ($totalCost == 0 && $grossRevenue > 0) {
-            $netMargin = $grossRevenue * 0.15; // 15% placeholder
-            $totalCost = $grossRevenue - $netMargin;
-        }
-
         $profitMarginPercent = $grossRevenue > 0 ? ($netMargin / $grossRevenue) * 100 : 0;
 
         // Get paginated list for the detail table

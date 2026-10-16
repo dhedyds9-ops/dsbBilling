@@ -348,6 +348,7 @@ class MenuRegistry
                             ['label' => 'Saldo Deposit', 'route' => 'reseller-portal.finance.balance', 'active' => 'reseller-portal.finance.balance'],
                             ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup'],
                             ['label' => 'Mutasi', 'route' => 'reseller-portal.finance.mutations', 'active' => 'reseller-portal.finance.mutations'],
+                            ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*'],
                         ]
                     ],
                     [
