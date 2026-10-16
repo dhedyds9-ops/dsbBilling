@@ -61,11 +61,26 @@ class GenieACSDriver
 
         public function getDeviceParameters(string $deviceId): array
     {
+        $cleanId = trim($deviceId);
+        if (empty($cleanId)) {
+            return [];
+        }
+
         try {
-            $query = urlencode(json_encode(['_id' => $deviceId]));
+            $queryObj = [
+                '$or' => [
+                    ['_id' => $cleanId],
+                    ['_deviceId._SerialNumber' => $cleanId],
+                    ['_deviceId._MACAddress' => $cleanId],
+                    ['_id' => ['$regex' => preg_quote($cleanId, '/')]],
+                ]
+            ];
+            $query = urlencode(json_encode($queryObj));
+            $projection = urlencode('_id,_deviceId,_lastInform,VirtualParameters,InternetGatewayDevice,Device');
+
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
-                ->get("{$this->baseUrl}/devices/?query={$query}");
+                ->get("{$this->baseUrl}/devices/?query={$query}&projection={$projection}");
                 
             if ($response->successful()) {
                 $data = $response->json();
@@ -78,6 +93,27 @@ class GenieACSDriver
             }
             throw new Exception("GenieACS tidak dapat dihubungi: " . $e->getMessage(), 0, $e);
         }
+    }
+
+    public function resolveDeviceId(string $deviceId): string
+    {
+        $cleanId = trim($deviceId);
+        if (empty($cleanId)) {
+            return $deviceId;
+        }
+
+        if (substr_count($cleanId, '-') >= 2) {
+            return $cleanId;
+        }
+
+        try {
+            $params = $this->getDeviceParameters($cleanId);
+            if (!empty($params['_id'])) {
+                return (string)$params['_id'];
+            }
+        } catch (\Throwable) {}
+
+        return $cleanId;
     }
 
 
@@ -152,29 +188,102 @@ class GenieACSDriver
     public function getWifiCredentials(string $deviceId, string $vendor = 'default'): array
     {
         $params = $this->getDeviceParameters($deviceId);
-        
-        $ssidPath = $this->getWifiParameterPath($vendor, 'ssid');
-        $passPath = $this->getWifiParameterPath($vendor, 'wpa_passphrase');
+        if (empty($params)) {
+            return [
+                'ssid' => null,
+                'password' => null,
+                'real_device_id' => null,
+            ];
+        }
         
         $extract = function (string $path) use ($params) {
+            // 1. Try Laravel data_get (supports both dot notation and arrays)
+            $val = data_get($params, $path . '._value') ?? data_get($params, $path);
+            if ($val !== null && is_scalar($val) && $val !== '') {
+                return (string)$val;
+            }
+
+            // 2. Try nested array traversal
             $parts = explode('.', $path);
             $node = $params;
             foreach ($parts as $p) {
-                if (!is_array($node) || !array_key_exists($p, $node)) return null;
+                if (!is_array($node) || !array_key_exists($p, $node)) {
+                    $node = null;
+                    break;
+                }
                 $node = $node[$p];
             }
-            if (is_array($node) && isset($node['_value'])) {
-                return $node['_value'];
+            if ($node !== null) {
+                if (is_array($node) && isset($node['_value']) && is_scalar($node['_value'])) {
+                    return (string)$node['_value'];
+                }
+                if (is_scalar($node)) {
+                    return (string)$node;
+                }
             }
-            if (is_scalar($node)) {
-                return $node;
+
+            // 3. Try direct key in flat params map
+            if (isset($params[$path])) {
+                $pNode = $params[$path];
+                if (is_array($pNode) && isset($pNode['_value']) && is_scalar($pNode['_value'])) {
+                    return (string)$pNode['_value'];
+                }
+                if (is_scalar($pNode)) {
+                    return (string)$pNode;
+                }
             }
+
             return null;
         };
 
+        // Vendor-configured paths
+        $vendorSsidPath = $this->getWifiParameterPath($vendor, 'ssid');
+        $vendorPassPath = $this->getWifiParameterPath($vendor, 'wpa_passphrase');
+
+        $ssidCandidates = array_unique(array_filter([
+            $vendorSsidPath,
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID',
+            'Device.WiFi.SSID.1.SSID',
+            'Device.WiFi.AccessPoint.1.SSID',
+            'VirtualParameters.wifiSsid',
+        ]));
+
+        $passCandidates = array_unique(array_filter([
+            $vendorPassPath,
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_ZTE-COM_WPAKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_HW_KeyPassphrase',
+            'Device.WiFi.AccessPoint.1.Security.KeyPassphrase',
+            'Device.WiFi.AccessPoint.1.Security.PreSharedKey',
+            'VirtualParameters.wifiPassword',
+            'VirtualParameters.wifiPassphrase',
+        ]));
+
+        $ssid = null;
+        foreach ($ssidCandidates as $path) {
+            $val = $extract($path);
+            if (!empty($val)) {
+                $ssid = $val;
+                break;
+            }
+        }
+
+        $password = null;
+        foreach ($passCandidates as $path) {
+            $val = $extract($path);
+            if (!empty($val) && $val !== '******') {
+                $password = $val;
+                break;
+            }
+        }
+
         return [
-            'ssid' => $extract($ssidPath),
-            'password' => $extract($passPath),
+            'ssid' => $ssid,
+            'password' => $password,
+            'real_device_id' => $params['_id'] ?? null,
         ];
     }
 
@@ -201,6 +310,7 @@ class GenieACSDriver
     public function setParameterValues(string $deviceId, array $keyValuePairs): bool
     {
         try {
+            $realDeviceId = $this->resolveDeviceId($deviceId);
             $parameterValues = [];
             foreach ($keyValuePairs as $path => $value) {
                 if ($path === '' || $path === null) {
@@ -219,7 +329,7 @@ class GenieACSDriver
             $response = Http::withBasicAuth($this->username, $this->password)
                 ->timeout($this->timeout)
                 ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+                ->post("{$this->baseUrl}/devices/" . urlencode($realDeviceId) . "/tasks?connection_request", $payload);
                 
             if ($response->successful()) {
                 return true;

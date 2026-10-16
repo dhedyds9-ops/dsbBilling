@@ -240,12 +240,35 @@ JS,
     public function updateSsidAndPassword(Onu $onu, string $ssid, ?string $password = null): array
     {
         try {
-            $deviceId = $onu->genieacs_device_id;
+            $deviceId = null;
+            try {
+                $deviceId = \App\Models\ISP\DeviceCorrelation::where('onu_id', $onu->id)->value('genieacs_device_id');
+            } catch (\Throwable) {}
+
+            if (empty($deviceId)) {
+                try {
+                    $deviceId = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                        ->where('onu_id', $onu->id)
+                        ->orWhere('serial_number', $onu->serial_number)
+                        ->value('uuid');
+                } catch (\Throwable) {}
+            }
+
+            if (empty($deviceId)) {
+                $deviceId = $onu->customerService?->attributes['genieacs_device_id'] 
+                    ?? $onu->attributes['genieacs_device_id'] 
+                    ?? $onu->genieacs_device_id;
+            }
+
             $vendor = $onu->vendor?->name ?? 'default';
             
-            // Send both SSID and Password in a single connection request
-            $success = $this->driver->updateWifiSsidAndPassword($deviceId, $ssid, $password, $vendor);
-            $tasks = [$success];
+            // Send both SSID and Password in a connection request if GenieACS is available
+            $genieacsSent = false;
+            try {
+                $genieacsSent = $this->driver->updateWifiSsidAndPassword($deviceId, $ssid, $password, $vendor);
+            } catch (Exception $e) {
+                Log::warning("GenieACS task creation failed for ONU {$onu->id}, saving to DB: " . $e->getMessage());
+            }
 
             DB::transaction(function () use ($onu, $ssid, $password) {
                 $onuData = ['wifi_ssid' => $ssid];
@@ -262,7 +285,14 @@ JS,
                     $cs->update(['attributes' => $attrs]);
                 }
             });
-            return ['success' => $success, 'tasks' => $tasks];
+
+            return [
+                'success' => true,
+                'genieacs_sent' => $genieacsSent,
+                'message' => $genieacsSent 
+                    ? 'Berhasil mengubah konfigurasi WiFi di perangkat dan sistem' 
+                    : 'Konfigurasi WiFi berhasil disimpan di sistem (perangkat akan disinkronkan saat terhubung)',
+            ];
         } catch (Exception $e) {
             Log::error('WiFi update failed', ['onu_id' => $onu->id, 'msg' => $e->getMessage()]);
             return ['success' => false, 'error' => $e->getMessage()];

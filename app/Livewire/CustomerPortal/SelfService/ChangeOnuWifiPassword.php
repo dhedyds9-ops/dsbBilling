@@ -31,12 +31,20 @@ class ChangeOnuWifiPassword extends Component
 
     public function mount()
     {
-        $customerId = auth()->user()->customer?->id ?? 0;
+        $customer = auth()->user()->customer;
+        if (!$customer) {
+            $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->where('user_id', auth()->id())->first();
+        }
+        $customerId = $customer?->id ?? 0;
+
         // Load customer's active PPPoE services with ONUs
-        $this->customerServices = CustomerService::where('customer_id', $customerId)
-            ->where('status', 'active')
+        $this->customerServices = CustomerService::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
             ->whereNotNull('onu_id')
-            ->with('onu')
+            ->whereNotIn('status', ['cancelled', 'terminated', 'deleted'])
+            ->with(['onu' => function ($q) {
+                $q->withoutGlobalScopes();
+            }])
             ->get();
         
         // Set default ONU if available
@@ -62,21 +70,37 @@ class ChangeOnuWifiPassword extends Component
         $this->message = null;
 
         try {
+            $customer = auth()->user()->customer;
+            if (!$customer) {
+                $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->where('user_id', auth()->id())->first();
+            }
+            $customerId = $customer?->id ?? 0;
+
             $selfService = app(CustomerSelfServiceService::class);
-            $credentials = $selfService->getOnuWifiCredentials(auth()->user()->customer?->id ?? 0, $this->onuId);
-            $devices = $selfService->getOnuConnectedDevices(auth()->user()->customer?->id ?? 0, $this->onuId);
+            $credentials = $selfService->getOnuWifiCredentials($customerId, $this->onuId);
             
-            $this->liveSsid = $credentials['ssid'] ?? 'Tidak diketahui';
-            $this->livePassword = $credentials['password'] ?? 'Tidak diketahui';
-            $this->connectedDevices = $devices;
+            try {
+                $devices = $selfService->getOnuConnectedDevices($customerId, $this->onuId);
+                $this->connectedDevices = $devices;
+            } catch (\Throwable) {
+                $this->connectedDevices = [];
+            }
+            
+            $this->liveSsid = !empty($credentials['ssid']) ? $credentials['ssid'] : 'Belum diatur';
+            $this->livePassword = !empty($credentials['password']) ? $credentials['password'] : 'Belum diatur';
             
             // Pre-fill the form with current values
-            $this->newSsid = $this->liveSsid !== 'Tidak diketahui' ? $this->liveSsid : '';
+            $this->newSsid = (!in_array($this->liveSsid, ['Belum diatur', 'Tidak diketahui', 'Gagal memuat'])) ? $this->liveSsid : '';
             // We don't pre-fill password for security and to allow empty string = no change
             $this->newPassword = '';
         } catch (\Exception $e) {
-            $this->liveSsid = 'Gagal memuat';
-            $this->livePassword = 'Gagal memuat';
+            \Illuminate\Support\Facades\Log::warning("fetchLiveCredentials fallback for ONU {$this->onuId}: " . $e->getMessage());
+            $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->find($this->onuId);
+            $this->liveSsid = $onu?->wifi_ssid ?: 'Belum diatur';
+            $this->livePassword = $onu?->wifi_password ?: 'Belum diatur';
+            if (!in_array($this->liveSsid, ['Belum diatur', 'Tidak diketahui', 'Gagal memuat'])) {
+                $this->newSsid = $this->liveSsid;
+            }
         }
         
         $this->isLoadingLive = false;
@@ -86,8 +110,14 @@ class ChangeOnuWifiPassword extends Component
     {
         $this->validate();
         
+        $customer = auth()->user()->customer;
+        if (!$customer) {
+            $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->where('user_id', auth()->id())->first();
+        }
+        $customerId = $customer?->id ?? 0;
+
         $result = $selfService->changeOnuWifiCredentials(
-            auth()->user()->customer?->id ?? 0, 
+            $customerId, 
             $this->onuId, 
             $this->newSsid, 
             empty($this->newPassword) ? null : $this->newPassword

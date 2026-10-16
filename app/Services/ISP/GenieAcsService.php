@@ -40,16 +40,97 @@ class GenieAcsService
     public function getWifiCredentials(int $customerId, int $onuId): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
-        $deviceId = $onu->genieacs_device_id;
+        
+        $deviceId = null;
+        try {
+            $deviceId = \App\Models\ISP\DeviceCorrelation::where('onu_id', $onu->id)->value('genieacs_device_id');
+        } catch (\Throwable) {}
+
+        if (empty($deviceId)) {
+            try {
+                $deviceId = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where('onu_id', $onu->id)
+                    ->orWhere('serial_number', $onu->serial_number)
+                    ->value('uuid');
+            } catch (\Throwable) {}
+        }
+
+        if (empty($deviceId)) {
+            $deviceId = $onu->customerService?->attributes['genieacs_device_id'] 
+                ?? $onu->attributes['genieacs_device_id'] 
+                ?? $onu->genieacs_device_id;
+        }
+
         $vendor = $onu->vendor?->name ?? 'default';
 
-        return $this->genieACSDriver->getWifiCredentials($deviceId, $vendor);
+        $ssid = null;
+        $password = null;
+        $live = [];
+
+        if (!empty($deviceId)) {
+            try {
+                $live = $this->genieACSDriver->getWifiCredentials($deviceId, $vendor);
+                if (!empty($live['ssid'])) {
+                    $ssid = $live['ssid'];
+                }
+                if (!empty($live['password']) && $live['password'] !== '******') {
+                    $password = $live['password'];
+                }
+
+                if (!empty($live['real_device_id'])) {
+                    try {
+                        \App\Models\ISP\DeviceCorrelation::updateOrCreate(
+                            ['onu_id' => $onu->id],
+                            ['genieacs_device_id' => $live['real_device_id'], 'matched_by' => 'auto', 'status' => 'auto_bind']
+                        );
+                    } catch (\Throwable) {}
+                }
+            } catch (\Throwable $e) {
+                Log::warning("GenieACS getWifiCredentials fallback to DB for ONU {$onuId}: " . $e->getMessage());
+            }
+        }
+
+        // Fallback to database values stored in onus or customer_services
+        if (empty($ssid)) {
+            $ssid = $onu->wifi_ssid ?: ($onu->customerService?->attributes['wifi_ssid'] ?? null);
+        }
+        if (empty($password)) {
+            $password = $onu->wifi_password ?: ($onu->customerService?->attributes['wifi_password'] ?? null);
+        }
+
+        // If live credentials successfully read from device, update DB to keep fresh
+        if (!empty($live['ssid']) || (!empty($live['password']) && $live['password'] !== '******')) {
+            try {
+                $updateData = [];
+                if (!empty($live['ssid']) && $live['ssid'] !== $onu->wifi_ssid) {
+                    $updateData['wifi_ssid'] = $live['ssid'];
+                }
+                if (!empty($live['password']) && $live['password'] !== '******' && $live['password'] !== $onu->wifi_password) {
+                    $updateData['wifi_password'] = $live['password'];
+                }
+                if (!empty($updateData)) {
+                    $onu->update($updateData);
+                }
+            } catch (\Throwable) {}
+        }
+
+        return [
+            'ssid' => $ssid,
+            'password' => $password,
+        ];
     }
 
     public function getConnectedDevices(int $customerId, int $onuId): array
     {
-        $onu = $this->resolveCustomerOnu($customerId, $onuId);
-        return $this->genieACSDriver->getConnectedDevices($onu->genieacs_device_id);
+        try {
+            $onu = $this->resolveCustomerOnu($customerId, $onuId);
+            $deviceId = \App\Models\ISP\DeviceCorrelation::where('onu_id', $onu->id)->value('genieacs_device_id')
+                ?? $onu->genieacs_device_id;
+            return $this->genieACSDriver->getConnectedDevices($deviceId);
+        } catch (\Throwable $e) {
+            Log::warning("GenieACS getConnectedDevices failed for ONU {$onuId}: " . $e->getMessage());
+            return [];
+        }
     }
 
     public function updateWifiPassword(int $customerId, int $onuId, string $newPassword): array
@@ -108,10 +189,15 @@ class GenieAcsService
 
     protected function resolveCustomerOnu(int $customerId, int $onuId): Onu
     {
-        $cs = CustomerService::where('customer_id', $customerId)->where('onu_id', $onuId)->first();
+        $cs = CustomerService::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->where('onu_id', $onuId)
+            ->first();
+
         if (!$cs) {
             throw new Exception('Perangkat ONU tidak ditemukan atau bukan milik customer');
         }
-        return Onu::with(['olt', 'vendor', 'customerService'])->findOrFail($onuId);
+
+        return Onu::withoutGlobalScopes()->with(['olt', 'vendor', 'customerService'])->findOrFail($onuId);
     }
 }

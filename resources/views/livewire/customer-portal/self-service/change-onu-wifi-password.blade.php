@@ -44,14 +44,29 @@
                 <h2 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-700/60">Konfigurasi Saat Ini</h2>
                 
                 {{-- Current SSID / Password Display --}}
-                <div class="grid grid-cols-2 gap-4 mb-5 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div>
                         <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Nama Wi-Fi (SSID)</p>
                         <p class="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200">{{ $liveSsid ?? '-' }}</p>
                     </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password Saat Ini</p>
-                        <p class="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200">{{ $livePassword ?? '-' }}</p>
+                    <div x-data="{ showLivePass: false }">
+                        <div class="flex items-center justify-between mb-1">
+                            <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password Saat Ini</p>
+                            @if ($livePassword && !in_array($livePassword, ['-', 'Belum diatur', 'Tidak diketahui', 'Gagal memuat']))
+                            <button type="button" @click="showLivePass = !showLivePass" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none flex items-center gap-1 text-[11px]">
+                                <span class="material-symbols-outlined text-[15px]" x-text="showLivePass ? 'visibility_off' : 'visibility'">visibility</span>
+                                <span x-text="showLivePass ? 'Sembunyikan' : 'Lihat'">Lihat</span>
+                            </button>
+                            @endif
+                        </div>
+                        <p class="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            @if ($livePassword && !in_array($livePassword, ['-', 'Belum diatur', 'Tidak diketahui', 'Gagal memuat']))
+                                <span x-show="showLivePass">{{ $livePassword }}</span>
+                                <span x-show="!showLivePass">••••••••</span>
+                            @else
+                                {{ $livePassword ?? '-' }}
+                            @endif
+                        </p>
                     </div>
                 </div>
 
