@@ -17,6 +17,29 @@ class CustomerDashboardService
         $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
             ->where('customer_id', $customerId)->get();
 
+        // 1. Auto-heal jika customer_services belum terhubung tapi ada di pppoe_users / radius
+        if ($customerServices->isEmpty()) {
+            $customer = \App\Models\CRM\Customer::find($customerId);
+            if ($customer) {
+                // Coba cari di pppoe_users
+                $orphanPppoe = PPPoEUser::where('username', $customer->code)
+                    ->orWhere('username', 'like', $customer->code . '@%')
+                    ->first();
+                if ($orphanPppoe) {
+                    $cs = CustomerService::create([
+                        'uuid' => (string)\Illuminate\Support\Str::uuid(),
+                        'customer_id' => $customerId,
+                        'service_profile_id' => $orphanPppoe->service_profile_id,
+                        'username' => $orphanPppoe->username,
+                        'password' => $orphanPppoe->password,
+                        'status' => $orphanPppoe->status ?: 'active',
+                    ]);
+                    $orphanPppoe->update(['customer_service_id' => $cs->id]);
+                    $customerServices = collect([$cs]);
+                }
+            }
+        }
+
         $primaryService = $customerServices->where('status', 'active')->first()
             ?? $customerServices->first();
 
@@ -24,13 +47,39 @@ class CustomerDashboardService
             ?? PPPoEUser::with(['customerService', 'serviceProfile'])
                 ->where('customer_service_id', $primaryService?->id)->first();
 
+        // Jika pppoeUser belum ketemu via customer_service_id, cari via username
+        if (!$pppoeUser && $primaryService?->username) {
+            $pppoeUser = PPPoEUser::with(['customerService', 'serviceProfile'])
+                ->where('username', $primaryService->username)->first();
+            if ($pppoeUser && empty($pppoeUser->customer_service_id)) {
+                $pppoeUser->update(['customer_service_id' => $primaryService->id]);
+            }
+        }
+
         $hotspotUser = $primaryService?->hotspotUser
             ?? \App\Models\ISP\HotspotUser::with(['customerService'])
                 ->where('customer_service_id', $primaryService?->id)->first();
 
+        if (!$hotspotUser && $primaryService?->username) {
+            $hotspotUser = \App\Models\ISP\HotspotUser::with(['customerService'])
+                ->where('username', $primaryService->username)->first();
+            if ($hotspotUser && empty($hotspotUser->customer_service_id)) {
+                $hotspotUser->update(['customer_service_id' => $primaryService->id]);
+            }
+        }
+
         // Load serviceProfile for pppoeUser if not already loaded
         if ($pppoeUser && !$pppoeUser->relationLoaded('serviceProfile')) {
             $pppoeUser->load('serviceProfile');
+        }
+
+        // Resolusi service profile: dari pppoeUser, hotspotUser, atau customerService
+        $serviceProfile = $pppoeUser?->serviceProfile
+            ?? $primaryService?->serviceProfile
+            ?? null;
+
+        if (!$serviceProfile && $primaryService?->service_profile_id) {
+            $serviceProfile = \App\Models\ISP\ServiceProfile::find($primaryService->service_profile_id);
         }
 
         $activeInvoices = Invoice::where('customer_id', $customerId)
@@ -47,11 +96,6 @@ class CustomerDashboardService
 
         $subscription = \App\Models\Billing\Subscription::where('customer_id', $customerId)->where('status', 'active')->first();
 
-        // Resolusi service profile: dari pppoeUser, hotspotUser, atau customerService
-        $serviceProfile = $pppoeUser?->serviceProfile
-            ?? $primaryService?->serviceProfile
-            ?? null;
-
         return [
             'next_billing_date' => $subscription ? $subscription->next_billing_date : null,
             'customer_services' => $customerServices,
@@ -61,7 +105,7 @@ class CustomerDashboardService
             'hotspot_user' => $hotspotUser,
             'active_invoices' => $activeInvoices,
             'recent_invoices' => $recentInvoices,
-            'internet_status' => $this->determineInternetStatus($pppoeUser, $hotspotUser),
+            'internet_status' => $this->determineInternetStatus($pppoeUser, $hotspotUser, $primaryService),
             'total_outstanding' => $activeInvoices->sum('total_amount') - $activeInvoices->sum('paid_amount'),
             'usage_stats' => $usageStats,
         ];
@@ -120,50 +164,61 @@ class CustomerDashboardService
         ];
     }
 
-    private function determineInternetStatus(?PPPoEUser $pppoeUser, $hotspotUser = null): array
+    private function determineInternetStatus(?PPPoEUser $pppoeUser, $hotspotUser = null, ?CustomerService $primaryService = null): array
     {
-        if ($pppoeUser) {
-            return match ($pppoeUser->status) {
-                'active' => [
-                    'status' => 'online',
-                    'message' => 'Internet aktif (PPPoE)',
-                    'severity' => AlarmSeverity::OK->value,
-                ],
-                'suspended' => [
-                    'status' => 'offline',
-                    'message' => 'Internet ditangguhkan',
-                    'severity' => AlarmSeverity::WARNING->value,
-                ],
-                default => [
-                    'status' => 'unknown',
-                    'message' => 'Status tidak diketahui',
-                    'severity' => AlarmSeverity::INFO->value,
-                ],
-            };
+        $serviceStatus = $primaryService?->status ?? $pppoeUser?->status ?? $hotspotUser?->status ?? null;
+        $username = $pppoeUser?->username ?? $hotspotUser?->username ?? $primaryService?->username ?? null;
+
+        // Cek koneksi online ke MikroTik / Radius (PPP Active Sessions & Accounting)
+        $isOnline = false;
+        if ($username) {
+            $rawUname = (string)$username;
+            $stripped = str_contains($rawUname, '@') ? explode('@', $rawUname)[0] : $rawUname;
+
+            $isOnline = \App\Models\ISP\PppActiveSession::where('name', $rawUname)
+                ->orWhere('name', $stripped)
+                ->exists()
+                || \App\Models\ISP\RadiusAccounting::where(function($q) use ($rawUname, $stripped) {
+                    $q->where('username', $rawUname)->orWhere('username', $stripped);
+                })->whereNull('acct_stop_time')->exists();
         }
 
-        if ($hotspotUser) {
-            return match ($hotspotUser->status ?? 'unknown') {
-                'active' => [
-                    'status' => 'online',
-                    'message' => 'Internet aktif (Hotspot)',
-                    'severity' => AlarmSeverity::OK->value,
-                ],
-                'suspended', 'inactive' => [
-                    'status' => 'offline',
-                    'message' => 'Akun Hotspot ditangguhkan',
-                    'severity' => AlarmSeverity::WARNING->value,
-                ],
-                default => [
-                    'status' => 'unknown',
-                    'message' => 'Status Hotspot tidak diketahui',
-                    'severity' => AlarmSeverity::INFO->value,
-                ],
-            };
+        if (!$isOnline && $pppoeUser) {
+            $isOnline = (bool)($pppoeUser->is_online ?? false);
+        }
+
+        // 1. Jika status layanan ditangguhkan / suspended
+        if ($serviceStatus === 'suspended') {
+            return [
+                'status' => 'offline',
+                'is_online' => false,
+                'message' => 'Layanan ditangguhkan (Isolir)',
+                'severity' => AlarmSeverity::WARNING->value,
+            ];
+        }
+
+        // 2. Jika status layanan aktif (baik di customer_services maupun pppoeUser)
+        if ($serviceStatus === 'active' || $isOnline) {
+            return [
+                'status' => 'online', // badge 'Aktif'
+                'is_online' => $isOnline,
+                'message' => $isOnline ? 'Internet Online & Aktif' : 'Layanan Aktif (Router Belum Terhubung)',
+                'severity' => AlarmSeverity::OK->value,
+            ];
+        }
+
+        if ($serviceStatus) {
+            return [
+                'status' => $serviceStatus,
+                'is_online' => $isOnline,
+                'message' => 'Status Layanan: ' . ucfirst($serviceStatus),
+                'severity' => AlarmSeverity::INFO->value,
+            ];
         }
 
         return [
             'status' => 'unknown',
+            'is_online' => false,
             'message' => 'Layanan tidak ditemukan',
             'severity' => AlarmSeverity::INFO->value,
         ];

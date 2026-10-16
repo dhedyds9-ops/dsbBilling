@@ -52,14 +52,14 @@
                     </p>
 
                     <!-- Username & Type badge -->
-                    @if($pppoe_user || $hotspot_user)
+                    @if($pppoe_user || $hotspot_user || $primary_service)
                     <div class="mt-2 flex items-center gap-2">
                         <div class="inline-flex items-center gap-1 text-[10px] font-mono text-teal-100 dark:text-slate-400">
                             <span class="material-symbols-outlined text-[12px]">person</span>
-                            {{ $pppoe_user?->username ?? $hotspot_user?->username }}
+                            {{ $pppoe_user?->username ?? $hotspot_user?->username ?? $primary_service?->username }}
                         </div>
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider {{ $pppoe_user ? 'bg-white/20 text-white border border-white/30' : 'bg-white/20 text-white border border-white/30' }}">
-                            {{ $pppoe_user ? 'PPPoE' : 'Hotspot' }}
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/20 text-white border border-white/30">
+                            {{ $pppoe_user ? 'PPPoE' : ($hotspot_user ? 'Hotspot' : strtoupper($primary_service?->service_type ?? 'PPPoE')) }}
                         </span>
                     </div>
                     @endif
@@ -74,7 +74,7 @@
                         backdrop-blur-md border border-white/30 dark:border-white/10 
                         shadow-[0_8px_32px_rgba(0,0,0,0.15)] rotate-6 transform hover:rotate-12 transition-transform duration-300">
                         <span class="material-symbols-outlined text-white dark:text-emerald-300 drop-shadow-md" translate="no" style="font-size: 32px;">
-                            {{ $pppoe_user ? 'router' : ($hotspot_user ? 'wifi' : 'signal_wifi_off') }}
+                            {{ $pppoe_user ? 'router' : ($hotspot_user ? 'wifi' : ($primary_service ? 'router' : 'signal_wifi_off')) }}
                         </span>
                     </div>
                     
@@ -103,9 +103,9 @@
                 </div>
                 <div class="text-right">
                     <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: {{ $customer->code ?? 'N/A' }}</p>
-                    <div class="inline-flex items-center gap-1.5 mt-1 {{ $internet_status['status'] === 'online' ? 'text-emerald-600' : 'text-red-600' }}">
-                        <span class="w-1.5 h-1.5 rounded-full {{ $internet_status['status'] === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500' }}"></span>
-                        <span class="text-xs font-semibold">{{ $internet_status['status'] === 'online' ? 'Internet Online' : 'Internet Offline' }}</span>
+                    <div class="inline-flex items-center gap-1.5 mt-1 {{ ($internet_status['is_online'] ?? false) || in_array($internet_status['status'], ['online', 'active']) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ ($internet_status['is_online'] ?? false) ? 'bg-emerald-500 animate-pulse' : (in_array($internet_status['status'], ['online', 'active']) ? 'bg-emerald-400' : 'bg-red-500') }}"></span>
+                        <span class="text-xs font-semibold">{{ ($internet_status['is_online'] ?? false) ? 'Internet Online' : (in_array($internet_status['status'], ['online', 'active']) ? 'Layanan Aktif' : 'Internet Offline') }}</span>
                     </div>
                 </div>
             </div>
@@ -170,7 +170,7 @@
                 <span class="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Paket Internet</span>
             </a>
 
-            @if(isset($pppoe_user) && $pppoe_user)
+            @if((isset($pppoe_user) && $pppoe_user) || (isset($primary_service) && in_array(strtolower($primary_service->service_type ?? ''), ['pppoe', 'ftth', 'kombinasi', ''])))
             <!-- 4. Pengaturan WiFi -->
             <a href="{{ route('customer-portal.self-service.change-onu-wifi-password') }}" class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/60 flex flex-col items-center justify-center text-center gap-2 hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                 <div class="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
