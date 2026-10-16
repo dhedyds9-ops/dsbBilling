@@ -105,6 +105,9 @@
                                     @php
                                         $isActive = in_array($router->status, ['active', 'online']);
                                         $isLive = $onlineStatus[$router->id] ?? $router->is_online;
+                                        if (!$isLive && $router->last_seen_at && $router->last_seen_at->diffInMinutes(now()) <= 15) {
+                                            $isLive = true;
+                                        }
                                     @endphp
                                     @if($isActive)
                                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">

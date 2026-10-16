@@ -391,12 +391,26 @@ class Index extends BaseNetworkComponent
         $activeUsers = [];
         foreach ($routers as $router) {
             try {
-                $onlineStatus[$router->id] = $monitoringService->ping($router);
+                $isLive = $monitoringService->ping($router);
+                $onlineStatus[$router->id] = $isLive;
                 
                 // Ambil jumlah user aktif dari cache (PPP + Hotspot)
                 $ppp = $monitoringService->getPPPActive($router);
                 $hotspot = $monitoringService->getHotspotActive($router);
                 $activeUsers[$router->id] = count($ppp) + count($hotspot);
+
+                // Jika terhubung tapi data sesi kosong/dingin, lakukan sinkronisasi otomatis
+                if ($isLive && empty($ppp) && empty($hotspot)) {
+                    $cache = \App\Services\ISP\MonitoringService::getCachedData($router);
+                    if (empty($cache['last_updated']) || (now()->timestamp - $cache['last_updated'] > 300)) {
+                        try {
+                            \App\Jobs\Monitoring\PollSingleRouterJob::dispatchSync($router);
+                            $ppp = $monitoringService->getPPPActive($router);
+                            $hotspot = $monitoringService->getHotspotActive($router);
+                            $activeUsers[$router->id] = count($ppp) + count($hotspot);
+                        } catch (\Throwable $th) {}
+                    }
+                }
             } catch (Throwable $e) {
                 $onlineStatus[$router->id] = false;
                 $activeUsers[$router->id] = 0;

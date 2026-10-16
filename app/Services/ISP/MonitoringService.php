@@ -52,7 +52,32 @@ class MonitoringService
     public function ping($device): bool
     {
         $cachedData = self::getCachedData($device);
-        return $cachedData['is_online'] ?? false;
+        if (!empty($cachedData['is_online'])) {
+            return true;
+        }
+
+        // If device is a Router and cache expired or not found, check live reachability
+        if ($device instanceof \App\Models\ISP\Router) {
+            // Check if seen very recently (within 15 minutes)
+            if ($device->last_seen_at && $device->last_seen_at->diffInMinutes(now()) <= 15) {
+                return true;
+            }
+
+            // Perform fast socket probe if IP address exists (timeout 1.0s)
+            if (!empty($device->ip_address)) {
+                $port = $device->api_port ?: ($device->port ?: 8728);
+                $fp = @fsockopen($device->ip_address, (int)$port, $errno, $errstr, 1.0);
+                if ($fp) {
+                    fclose($fp);
+                    $cachedData['is_online'] = true;
+                    $cachedData['last_updated'] = now()->timestamp;
+                    Cache::put(self::getCacheKey($device), $cachedData, now()->addMinutes(15));
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function getSystemInfo($device): array
@@ -159,8 +184,13 @@ class MonitoringService
     {
         $deviceId = $device->id ?? 0;
         $deviceType = self::getDeviceType($device);
+        $tenant = 'central';
+        if (request()) {
+            $host = request()->getHost();
+            $tenant = explode('.', $host)[0] ?? 'central';
+        }
         
-        return "monitoring:{$deviceType}:{$deviceId}";
+        return "monitoring:{$tenant}:{$deviceType}:{$deviceId}";
     }
     
     public static function getDeviceType($device): string

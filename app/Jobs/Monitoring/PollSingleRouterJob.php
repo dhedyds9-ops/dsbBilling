@@ -117,7 +117,7 @@ class PollSingleRouterJob implements ShouldQueue
                 'is_online' => true,
                 'last_updated' => now()->timestamp,
             ];
-            Cache::put($cacheKey, $cacheData, now()->addSeconds(300));
+            Cache::put($cacheKey, $cacheData, now()->addMinutes(30));
             
         } catch (\Exception $e) {
             $this->saveMonitoringLog([
@@ -131,7 +131,7 @@ class PollSingleRouterJob implements ShouldQueue
                 'is_online' => false,
                 'error_message' => $e->getMessage(),
                 'last_updated' => now()->timestamp,
-            ], now()->addSeconds(300));
+            ], now()->addMinutes(5));
         }
     }
     
