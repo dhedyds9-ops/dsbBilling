@@ -19,7 +19,7 @@
             <div>
                 <label for="onuId" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Pilih Perangkat</label>
                 <div class="relative">
-                    <select id="onuId" wire:model.live="onuId" class="w-full pl-4 pr-10 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none dark:bg-slate-900 dark:text-slate-100" required>
+                    <select id="onuId" wire:model.live="onuId" class="w-full pl-4 pr-10 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none" required>
                         @foreach ($customerServices as $service)
                             <option value="{{ $service->onu_id }}">
                                 {{ $service->onu->name ?? 'ONU ' . $service->onu_id }} 
@@ -27,14 +27,16 @@
                             </option>
                         @endforeach
                     </select>
-                    <span class="material-symbols-outlined absolute right-3 top-3 text-slate-400 pointer-events-none">expand_more</span>
+                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                        <span class="material-symbols-outlined text-[20px] notranslate" translate="no">expand_more</span>
+                    </div>
                 </div>
             </div>
 
             {{-- Loading State from GenieACS --}}
             <div wire:loading wire:target="fetchLiveCredentials, onuId" class="w-full">
                 <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined animate-spin text-blue-500">sync</span>
+                    <span class="material-symbols-outlined animate-spin text-blue-500 notranslate" translate="no">sync</span>
                     <span class="text-sm text-blue-700 dark:text-blue-400 font-medium">Mengambil data dari perangkat...</span>
                 </div>
             </div>
@@ -54,7 +56,7 @@
                             <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password Saat Ini</p>
                             @if ($livePassword && !in_array($livePassword, ['-', 'Belum diatur', 'Tidak diketahui', 'Gagal memuat']))
                             <button type="button" @click="showLivePass = !showLivePass" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none flex items-center gap-1 text-[11px]">
-                                <span class="material-symbols-outlined text-[15px]" x-text="showLivePass ? 'visibility_off' : 'visibility'">visibility</span>
+                                <span class="material-symbols-outlined text-[15px] notranslate" translate="no" x-text="showLivePass ? 'visibility_off' : 'visibility'">visibility</span>
                                 <span x-text="showLivePass ? 'Sembunyikan' : 'Lihat'">Lihat</span>
                             </button>
                             @endif
@@ -74,9 +76,14 @@
                     {{-- Nama Wi-Fi Baru --}}
                     <div>
                         <label for="newSsid" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Ubah Nama Wi-Fi (SSID)</label>
-                        <input type="text" id="newSsid" wire:model="newSsid" 
-                            class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-900 dark:text-slate-100" 
-                            required minlength="3" maxlength="32" placeholder="Masukkan nama Wi-Fi baru">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <span class="material-symbols-outlined text-[20px] notranslate" translate="no">wifi</span>
+                            </div>
+                            <input type="text" id="newSsid" wire:model="newSsid" 
+                                class="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" 
+                                required minlength="3" maxlength="32" placeholder="Masukkan nama Wi-Fi baru">
+                        </div>
                         @error('newSsid') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
@@ -84,20 +91,26 @@
                     <div x-data="{ show: false }">
                         <label for="newPassword" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Ubah Password Wi-Fi <span class="font-normal text-slate-400">(Opsional)</span></label>
                         <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <span class="material-symbols-outlined text-[20px] notranslate" translate="no">lock</span>
+                            </div>
                             <input :type="show ? 'text' : 'password'" id="newPassword" wire:model="newPassword" 
-                                class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono dark:bg-slate-900 dark:text-slate-100" 
+                                class="w-full pl-11 pr-12 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono" 
                                 minlength="8" placeholder="Kosongkan jika tidak ingin diubah">
-                            <button type="button" @click="show = !show" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 focus:outline-none">
-                                <span class="material-symbols-outlined text-[20px]" x-text="show ? 'visibility_off' : 'visibility'">visibility</span>
-                            </button>
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-[20px] notranslate" translate="no" x-show="!show">visibility</span>
+                                    <span class="material-symbols-outlined text-[20px] notranslate" translate="no" x-show="show" x-cloak>visibility_off</span>
+                                </button>
+                            </div>
                         </div>
                         @error('newPassword') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="pt-2">
                         <button type="submit" class="w-full flex justify-center items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-teal-500/20 transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed" wire:loading.attr="disabled">
-                            <span class="material-symbols-outlined" style="font-size: 20px;" wire:loading.remove wire:target="savePassword">save</span>
-                            <span class="material-symbols-outlined animate-spin" style="font-size: 20px;" wire:loading wire:target="savePassword">sync</span>
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px;" wire:loading.remove wire:target="savePassword">save</span>
+                            <span class="material-symbols-outlined animate-spin notranslate" translate="no" style="font-size: 20px;" wire:loading wire:target="savePassword">sync</span>
                             <span wire:loading.remove wire:target="savePassword">Simpan Perubahan</span>
                             <span wire:loading wire:target="savePassword">Menyimpan ke Perangkat...</span>
                         </button>

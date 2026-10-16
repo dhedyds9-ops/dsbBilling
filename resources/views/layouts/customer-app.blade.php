@@ -15,6 +15,29 @@
         <meta name="theme-color" content="#ffffff">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />
         <style>
+            .material-symbols-outlined {
+                font-family: 'Material Symbols Outlined' !important;
+                font-weight: normal;
+                font-style: normal;
+                font-size: 24px;
+                line-height: 1;
+                letter-spacing: normal;
+                text-transform: none;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;
+                word-wrap: normal;
+                direction: ltr;
+                -webkit-font-feature-settings: 'liga';
+                font-feature-settings: 'liga';
+                -webkit-font-smoothing: antialiased;
+                user-select: none;
+                vertical-align: middle;
+            }
+            .material-symbols-outlined.fill {
+                font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+            }
             @media print {
                 /* Force exact A4 size at 100% scale without headers/footers */
                 @page { margin: 10mm; size: A4 portrait; }
@@ -46,7 +69,7 @@
                 *, *::before, *::after {
                     background-color: transparent !important;
                     background-image: none !important;
-                    box-shadow: none !important;
+                    box-shadow: none !important; 
                     text-shadow: none !important;
                 }
                 /* Restore white for the invoice doc wrapper itself */
@@ -88,8 +111,8 @@
         <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-4 h-14 flex items-center justify-between print-hide">
             <div class="flex items-center gap-3 min-w-0 flex-1">
                 @if(!$__isDashboard)
-                    <button onclick="history.back()" class="p-1.5 -ml-1.5 shrink-0 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 rounded-full transition-colors">
-                        <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+                    <button onclick="history.back()" class="w-9 h-9 -ml-1 shrink-0 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center justify-center" aria-label="Kembali">
+                        <span class="material-symbols-outlined text-[22px] notranslate" translate="no">arrow_back</span>
                     </button>
                 @endif
 
@@ -132,8 +155,9 @@
             </div>
             
             <div class="flex items-center gap-1 shrink-0 -mr-1">
-                <button @click="darkMode = !darkMode; localStorage.setItem('dsb_dark_mode', darkMode ? '1' : '0')" class="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 rounded-full transition-colors">
-                    <span class="material-symbols-outlined text-[22px]" x-text="darkMode ? 'light_mode' : 'dark_mode'"></span>
+                <button @click="darkMode = !darkMode; localStorage.setItem('dsb_dark_mode', darkMode ? '1' : '0')" class="w-9 h-9 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 rounded-full transition-colors" title="Toggle Tema">
+                    <span class="material-symbols-outlined text-[20px] notranslate" translate="no" x-show="!darkMode">dark_mode</span>
+                    <span class="material-symbols-outlined text-[20px] notranslate" translate="no" x-show="darkMode" x-cloak>light_mode</span>
                 </button>
                 <livewire:notification-center />
             </div>
@@ -150,17 +174,17 @@
                 @if($needsPasswordChange ?? false)
                 <div x-data="{ show: true }" x-show="show" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-2"
                     class="mx-4 mt-3 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 flex items-start gap-3 shadow-sm print-hide">
-                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" style="font-size:20px">warning</span>
+                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 notranslate" translate="no" style="font-size:20px">warning</span>
                     <div class="flex-1 min-w-0">
                         <p class="text-xs font-bold text-amber-800 dark:text-amber-300">Ganti Password Default Anda</p>
                         <p class="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">Demi keamanan, segera ganti password portal Anda dari password default yang diberikan admin.</p>
                         <a href="{{ route('customer-portal.profile') }}" class="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-amber-800 dark:text-amber-300 underline">
-                            <span class="material-symbols-outlined" style="font-size:14px">lock_reset</span>
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">lock_reset</span>
                             Ganti Sekarang
                         </a>
                     </div>
                     <button @click="show = false" class="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 shrink-0">
-                        <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">close</span>
                     </button>
                 </div>
                 @endif
@@ -170,33 +194,33 @@
             @yield('content')
         </main>
 
-        <!-- Bottom Navigation Bar (Fixed) -->
-        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] print-hide">
-            <a href="{{ route('customer-portal.dashboard') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.dashboard') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.dashboard') ? 'fill' : '' }}" style="font-size:24px">home</span>
-                <span class="text-[10px] font-semibold">Home</span>
+        <!-- Bottom Navigation Bar (Fixed Grid 6 Columns) -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 px-1 py-1.5 grid grid-cols-6 z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] print-hide">
+            <a href="{{ route('customer-portal.dashboard') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.dashboard') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.dashboard') ? 'fill' : '' }}" translate="no" style="font-size:22px">home</span>
+                <span class="text-[10px] truncate w-full text-center">Home</span>
             </a>
-            <a href="{{ route('customer-portal.billing.invoice-list') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.billing.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.billing.*') ? 'fill' : '' }}" style="font-size:24px">receipt_long</span>
-                <span class="text-[10px] font-semibold">Tagihan</span>
+            <a href="{{ route('customer-portal.billing.invoice-list') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.billing.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.billing.*') ? 'fill' : '' }}" translate="no" style="font-size:22px">receipt_long</span>
+                <span class="text-[10px] truncate w-full text-center">Tagihan</span>
             </a>
-            <a href="{{ route('customer-portal.info') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.info') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.info') ? 'fill' : '' }}" style="font-size:24px">notifications</span>
-                <span class="text-[10px] font-semibold">Notifikasi</span>
+            <a href="{{ route('customer-portal.info') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.info') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.info') ? 'fill' : '' }}" translate="no" style="font-size:22px">notifications</span>
+                <span class="text-[10px] truncate w-full text-center">Notifikasi</span>
             </a>
-            <a href="{{ route('customer-portal.support.ticket-list') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.support.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.support.*') ? 'fill' : '' }}" style="font-size:24px">support_agent</span>
-                <span class="text-[10px] font-semibold">Tiket</span>
+            <a href="{{ route('customer-portal.support.ticket-list') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.support.*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.support.*') ? 'fill' : '' }}" translate="no" style="font-size:22px">support_agent</span>
+                <span class="text-[10px] truncate w-full text-center">Tiket</span>
             </a>
-            <a href="{{ route('customer-portal.profile') }}" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors {{ request()->routeIs('customer-portal.profile') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('customer-portal.profile') ? 'fill' : '' }}" style="font-size:24px">person</span>
-                <span class="text-[10px] font-semibold">Profile</span>
+            <a href="{{ route('customer-portal.profile') }}" class="flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-colors {{ request()->routeIs('customer-portal.profile') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 font-bold' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                <span class="material-symbols-outlined notranslate {{ request()->routeIs('customer-portal.profile') ? 'fill' : '' }}" translate="no" style="font-size:22px">person</span>
+                <span class="text-[10px] truncate w-full text-center">Profile</span>
             </a>
-            <form method="POST" action="{{ route('logout') }}" class="m-0">
+            <form method="POST" action="{{ route('logout') }}" class="m-0 flex flex-col items-center justify-center">
                 @csrf
-                <button type="submit" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-slate-400 dark:text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors">
-                    <span class="material-symbols-outlined" style="font-size:24px">logout</span>
-                    <span class="text-[10px] font-semibold">Logout</span>
+                <button type="submit" class="w-full flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl text-slate-400 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 transition-colors">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">logout</span>
+                    <span class="text-[10px] truncate w-full text-center">Logout</span>
                 </button>
             </form>
         </nav>

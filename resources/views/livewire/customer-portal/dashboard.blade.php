@@ -304,7 +304,7 @@
                 </div>
                 @empty
                 <div class="text-center py-4">
-                    <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 dark:text-slate-400 block mb-1" style="font-size:28px">signal_disconnected</span>
+                    <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 dark:text-slate-400 block mb-1 notranslate" translate="no" style="font-size:28px">wifi_off</span>
                     <span class="text-xs text-slate-500 dark:text-slate-400">Belum ada layanan yang aktif.</span>
                 </div>
                 @endforelse
