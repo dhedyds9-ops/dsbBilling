@@ -11,8 +11,8 @@ class RouterBootstrapController extends Controller
 {
     public function bootstrap(Request $request, RouterProvisioningService $service)
     {
-        $token = $request->input('token');
-        $uplink = $request->input('uplink', 'ether1');
+        $token = $request->bearerToken() ?: $request->input('token') ?: $request->query('token');
+        $uplink = $request->input('uplink') ?: $request->query('uplink', 'ether1');
 
         if (!$token) {
             return response('Missing token', 400);
