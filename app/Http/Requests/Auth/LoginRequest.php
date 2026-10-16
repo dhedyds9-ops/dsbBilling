@@ -70,7 +70,31 @@ class LoginRequest extends FormRequest
         // Profil CRM Customer akan dicek & di-link otomatis (auto-heal) di Dashboard.php
 
         // ALL users must be checked for password!
-        if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+        $passwordValid = \Illuminate\Support\Facades\Hash::check($password, $user->password);
+
+        // Fallback pintar untuk akun customer (Portal Pelanggan)
+        if (!$passwordValid && $user->hasRole('customer')) {
+            $customer = $user->customer ?: \App\Models\CRM\Customer::where('user_id', $user->id)->first();
+            
+            // 1. Cek apakah cocok dengan password layanan (PPPoE / Hotspot)
+            if ($customer) {
+                $service = \App\Models\Customer\CustomerService::where('customer_id', $customer->id)->first();
+                if ($service && !empty($service->password) && $service->password === $password) {
+                    $user->update(['password' => \Illuminate\Support\Facades\Hash::make($password)]);
+                    $passwordValid = true;
+                }
+            }
+
+            // 2. Cek apakah mencoba login dengan password default '123456'
+            if (!$passwordValid && $password === '123456') {
+                if (empty($user->password_changed_at)) {
+                    $user->update(['password' => \Illuminate\Support\Facades\Hash::make('123456')]);
+                    $passwordValid = true;
+                }
+            }
+        }
+
+        if (!$passwordValid) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -91,18 +115,33 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
     }
 
-        private function resolveIdentity(string $identity): ?\App\Models\User
+    private function resolveIdentity(string $identity): ?\App\Models\User
     {
         $lower = mb_strtolower(trim($identity));
         
-        // 1. Coba cari di tabel customers (members) dulu berdasarkan code (ID Pelanggan)
+        // 1. Coba cari di tabel customers dulu berdasarkan code (ID Pelanggan)
         $customerByCode = \App\Models\CRM\Customer::whereRaw('LOWER(code) = ?', [$lower])->first();
+        
+        // 1b. Jika belum ketemu dan formatnya angka (misal 2026101607 atau 7), coba cari via ID atau sequence
+        if (!$customerByCode && is_numeric($identity)) {
+            if (strlen($identity) >= 9) {
+                $idSuffix = (int) substr($identity, 8);
+                if ($idSuffix > 0) {
+                    $customerByCode = \App\Models\CRM\Customer::find($idSuffix);
+                }
+            } else {
+                $customerByCode = \App\Models\CRM\Customer::find((int)$identity);
+            }
+        }
+
         if ($customerByCode) {
+            $u = null;
             if ($customerByCode->user_id) {
                 $u = \App\Models\User::find($customerByCode->user_id);
-                if ($u) return $u;
-            } else {
-                // Auto-heal agressive (Phone 08 vs 62, Name, etc)
+            }
+            
+            if (!$u) {
+                // Auto-heal: Cari user berdasarkan nomor HP/WA, email, atau username
                 $cleanPhone = preg_replace('/[^0-9]/', '', (string)$customerByCode->phone);
                 $phone0 = $cleanPhone;
                 $phone62 = $cleanPhone;
@@ -117,14 +156,39 @@ class LoginRequest extends FormRequest
                         $q->orWhereRaw('LOWER(email) = ?', [mb_strtolower($customerByCode->email)]);
                     }
                     if ($customerByCode->code) { $q->orWhereRaw('LOWER(username) = ?', [mb_strtolower($customerByCode->code)]); }
-                })->whereHas('roles', function($q) {
-                    $q->where('name', 'customer');
                 })->first();
-                if ($u) {
-                    $customerByCode->update(['user_id' => $u->id]);
-                    return $u;
+            }
+
+            // Jika user masih belum ada sama sekali, buatkan akun User untuk customer ini sekarang juga!
+            if (!$u) {
+                $service = \App\Models\Customer\CustomerService::where('customer_id', $customerByCode->id)->first();
+                $defaultPass = !empty($service->password) ? $service->password : '123456';
+                
+                $u = \App\Models\User::create([
+                    'name' => $customerByCode->name,
+                    'email' => $customerByCode->email,
+                    'whatsapp' => $customerByCode->phone,
+                    'customer_code' => $customerByCode->code ?: $identity,
+                    'username' => $customerByCode->code ?: $identity,
+                    'pppoe_username' => $service?->username,
+                    'password' => \Illuminate\Support\Facades\Hash::make($defaultPass),
+                    'is_active' => true,
+                ]);
+            }
+
+            // Pastikan role customer terpasang
+            if (!$u->hasRole('customer')) {
+                $role = \App\Models\Role::where('name', 'customer')->first();
+                if ($role) {
+                    $u->roles()->syncWithoutDetaching([$role->id]);
                 }
             }
+
+            if ($customerByCode->user_id !== $u->id) {
+                $customerByCode->update(['user_id' => $u->id]);
+            }
+
+            return $u;
         }
 
         // 2. Coba cari di tabel customer_services (PPPoE/Hotspot Username)
@@ -134,32 +198,27 @@ class LoginRequest extends FormRequest
             
         if ($customerService && $customerService->customer) {
             $customer = $customerService->customer;
-            if ($customer->user_id) {
-                $u = \App\Models\User::find($customer->user_id);
-                if ($u) return $u;
-            } else {
-                $cleanPhone = preg_replace('/[^0-9]/', '', (string)$customer->phone);
-                $phone0 = $cleanPhone;
-                $phone62 = $cleanPhone;
-                if (str_starts_with($cleanPhone, '62')) $phone0 = '0' . substr($cleanPhone, 2);
-                elseif (str_starts_with($cleanPhone, '0')) $phone62 = '62' . substr($cleanPhone, 1);
-                
-                $u = \App\Models\User::where(function($q) use ($phone0, $phone62, $customer) {
-                    if ($phone0 && $phone62) {
-                        $q->whereRaw('LOWER(whatsapp) IN (?, ?)', [$phone0, $phone62]);
-                    }
-                    if ($customer->email) {
-                        $q->orWhereRaw('LOWER(email) = ?', [mb_strtolower($customer->email)]);
-                    }
-                    $q->orWhereRaw('LOWER(name) = ?', [mb_strtolower($customer->name)]);
-                })->whereHas('roles', function($q) {
-                    $q->where('name', 'customer');
-                })->first();
-                if ($u) {
-                    $customer->update(['user_id' => $u->id]);
-                    return $u;
-                }
+            $u = $customer->user_id ? \App\Models\User::find($customer->user_id) : null;
+            if (!$u) {
+                $u = \App\Models\User::create([
+                    'name' => $customer->name,
+                    'email' => $customer->email,
+                    'whatsapp' => $customer->phone,
+                    'customer_code' => $customer->code,
+                    'username' => $customer->code ?: $customerService->username,
+                    'pppoe_username' => $customerService->username,
+                    'password' => \Illuminate\Support\Facades\Hash::make(!empty($customerService->password) ? $customerService->password : '123456'),
+                    'is_active' => true,
+                ]);
             }
+            if (!$u->hasRole('customer')) {
+                $role = \App\Models\Role::where('name', 'customer')->first();
+                if ($role) $u->roles()->syncWithoutDetaching([$role->id]);
+            }
+            if ($customer->user_id !== $u->id) {
+                $customer->update(['user_id' => $u->id]);
+            }
+            return $u;
         }
 
         // 3. Fallback ke tabel users utama (untuk email, whatsapp, username bawaan)

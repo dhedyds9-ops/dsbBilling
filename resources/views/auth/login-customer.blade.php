@@ -105,7 +105,7 @@
                         </div>
                         <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username"
                             class="block w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-slate-700/50 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
-                            placeholder="Contoh: CUST-001, 0812xxx, atau budi">
+                            placeholder="Contoh: 2026101607, 0812xxx, atau budi">
                     </div>
                     @error('login')
                         <p class="mt-2 text-sm text-red-400 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">error</span> {{ $message }}</p>
