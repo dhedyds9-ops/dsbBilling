@@ -62,14 +62,27 @@ trait HasResellerScope
                 return;
             }
 
-            // Customer: jika model punya user_id, scope ke user_id
-                        if ($user->hasRole(UserRole::Customer->value)) {
+            // Customer: akses data terkait layanannya sendiri
+            if ($user->hasRole(UserRole::Customer->value)) {
                 $table = $builder->getQuery()->from;
+                if ($table === 'service_profiles') {
+                    // Service profiles adalah paket internet publik
+                    return;
+                }
                 if (\Illuminate\Support\Facades\Schema::hasColumn($table, "user_id")) {
                     $builder->where($table . ".user_id", $user->id);
                 } elseif (\Illuminate\Support\Facades\Schema::hasColumn($table, "customer_id")) {
-                    $customerId = \App\Models\CRM\Customer::where("user_id", $user->id)->value("id");
+                    $customerId = \App\Models\CRM\Customer::withoutGlobalScopes()->where("user_id", $user->id)->value("id");
                     if ($customerId) { $builder->where($table . ".customer_id", $customerId); } else { $builder->whereRaw("1=0"); }
+                } elseif (\Illuminate\Support\Facades\Schema::hasColumn($table, "customer_service_id")) {
+                    $customerId = \App\Models\CRM\Customer::withoutGlobalScopes()->where("user_id", $user->id)->value("id");
+                    if ($customerId) {
+                        $builder->whereIn($table . ".customer_service_id", function($sub) use ($customerId) {
+                            $sub->select('id')->from('customer_services')->where('customer_id', $customerId);
+                        });
+                    } else {
+                        $builder->whereRaw("1=0");
+                    }
                 } else {
                     $builder->whereRaw("1=0");
                 }

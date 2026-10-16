@@ -14,14 +14,23 @@ class CustomerDashboardService
 {
     public function getDashboardData(int $customerId): array
     {
-        $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
+        $customerServices = CustomerService::withoutGlobalScopes()
+            ->with([
+                'service', 
+                'serviceProfile' => fn($q) => $q->withoutGlobalScopes(), 
+                'contract', 
+                'pppoeUser' => fn($q) => $q->withoutGlobalScopes(), 
+                'hotspotUser' => fn($q) => $q->withoutGlobalScopes(),
+                'onu.olt',
+                'onu.odp'
+            ])
             ->where('customer_id', $customerId)->get();
 
-        $customer = \App\Models\CRM\Customer::find($customerId);
+        $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->find($customerId);
 
         // 1. Auto-heal jika customer_services belum terhubung tapi ada di pppoe_users / hotspot_users
         if ($customerServices->isEmpty() && $customer) {
-            $orphanPppoe = PPPoEUser::where('username', $customer->code)
+            $orphanPppoe = PPPoEUser::withoutGlobalScopes()->where('username', $customer->code)
                 ->orWhere('username', 'like', $customer->code . '@%')
                 ->first();
             if ($orphanPppoe) {
@@ -34,10 +43,17 @@ class CustomerDashboardService
                     'status' => $orphanPppoe->status ?: 'active',
                 ]);
                 $orphanPppoe->update(['customer_service_id' => $cs->id]);
-                $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
+                $customerServices = CustomerService::withoutGlobalScopes()
+                    ->with([
+                        'service', 
+                        'serviceProfile' => fn($q) => $q->withoutGlobalScopes(), 
+                        'contract', 
+                        'pppoeUser' => fn($q) => $q->withoutGlobalScopes(), 
+                        'hotspotUser' => fn($q) => $q->withoutGlobalScopes()
+                    ])
                     ->where('customer_id', $customerId)->get();
             } else {
-                $orphanHotspot = \App\Models\ISP\HotspotUser::where('username', $customer->code)->first();
+                $orphanHotspot = \App\Models\ISP\HotspotUser::withoutGlobalScopes()->where('username', $customer->code)->first();
                 if ($orphanHotspot) {
                     $cs = CustomerService::create([
                         'uuid' => (string)\Illuminate\Support\Str::uuid(),
@@ -48,7 +64,14 @@ class CustomerDashboardService
                         'status' => $orphanHotspot->status ?: 'active',
                     ]);
                     $orphanHotspot->update(['customer_service_id' => $cs->id]);
-                    $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
+                    $customerServices = CustomerService::withoutGlobalScopes()
+                        ->with([
+                            'service', 
+                            'serviceProfile' => fn($q) => $q->withoutGlobalScopes(), 
+                            'contract', 
+                            'pppoeUser' => fn($q) => $q->withoutGlobalScopes(), 
+                            'hotspotUser' => fn($q) => $q->withoutGlobalScopes()
+                        ])
                         ->where('customer_id', $customerId)->get();
                 }
             }
@@ -60,7 +83,7 @@ class CustomerDashboardService
         // Resolusi Service Profile dari primaryService
         $serviceProfile = $primaryService?->serviceProfile;
         if (!$serviceProfile && $primaryService?->service_profile_id) {
-            $serviceProfile = \App\Models\ISP\ServiceProfile::find($primaryService->service_profile_id);
+            $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($primaryService->service_profile_id);
         }
 
         // Tentukan apakah paket layanan ini Hotspot atau PPPoE
@@ -73,15 +96,21 @@ class CustomerDashboardService
         if ($isHotspotService && $primaryService) {
             // === LAYANAN HOTSPOT ===
             $hotspotUser = $primaryService->hotspotUser
-                ?? \App\Models\ISP\HotspotUser::with(['customerService'])
+                ?? \App\Models\ISP\HotspotUser::withoutGlobalScopes()
+                    ->with(['customerService'])
                     ->where('customer_service_id', $primaryService->id)->first();
 
             if (!$hotspotUser && $primaryService->username) {
                 $baseUname = explode('@', $primaryService->username)[0];
-                $hotspotUser = \App\Models\ISP\HotspotUser::with(['customerService'])
-                    ->where('username', $primaryService->username)
-                    ->orWhere('username', $baseUname)
-                    ->orWhere('username', $customer?->code)
+                $hotspotUser = \App\Models\ISP\HotspotUser::withoutGlobalScopes()
+                    ->with(['customerService'])
+                    ->where(function($q) use ($primaryService, $baseUname, $customer) {
+                        $q->where('username', $primaryService->username)
+                          ->orWhere('username', $baseUname);
+                        if ($customer?->code) {
+                            $q->orWhere('username', $customer->code);
+                        }
+                    })
                     ->first();
                 if ($hotspotUser && empty($hotspotUser->customer_service_id)) {
                     $hotspotUser->update(['customer_service_id' => $primaryService->id]);
@@ -90,37 +119,64 @@ class CustomerDashboardService
         } elseif ($primaryService) {
             // === LAYANAN PPPOE / BROADBAND ===
             $pppoeUser = $primaryService->pppoeUser
-                ?? PPPoEUser::with(['customerService', 'serviceProfile'])
+                ?? PPPoEUser::withoutGlobalScopes()
+                    ->with(['customerService', 'serviceProfile' => fn($q) => $q->withoutGlobalScopes()])
                     ->where('customer_service_id', $primaryService->id)->first();
 
             if (!$pppoeUser && $primaryService->username) {
                 $baseUname = explode('@', $primaryService->username)[0];
-                $pppoeUser = PPPoEUser::with(['customerService', 'serviceProfile'])
-                    ->where('username', $primaryService->username)
-                    ->orWhere('username', 'like', $baseUname . '@%')
-                    ->orWhere('username', $baseUname)
-                    ->orWhere('username', $customer?->code)
+                $pppoeUser = PPPoEUser::withoutGlobalScopes()
+                    ->with(['customerService', 'serviceProfile' => fn($q) => $q->withoutGlobalScopes()])
+                    ->where(function($q) use ($primaryService, $baseUname, $customer) {
+                        $q->where('username', $primaryService->username)
+                          ->orWhere('username', 'like', $baseUname . '@%')
+                          ->orWhere('username', $baseUname);
+                        if ($customer?->code) {
+                            $q->orWhere('username', $customer->code);
+                        }
+                    })
                     ->first();
                 if ($pppoeUser && empty($pppoeUser->customer_service_id)) {
                     $pppoeUser->update(['customer_service_id' => $primaryService->id]);
                 }
             }
 
-            // Auto-create PPPoEUser jika belum ada agar kredensial PPPoE valid di FreeRADIUS & MikroTik
+            // Auto-link atau create PPPoEUser jika belum ada
             if (!$pppoeUser && $primaryService->username) {
-                $pppoeUser = PPPoEUser::create([
-                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
-                    'username' => $primaryService->username,
-                    'password' => $primaryService->password ?: '123456',
-                    'customer_service_id' => $primaryService->id,
-                    'service_profile_id' => $primaryService->service_profile_id,
-                    'status' => $primaryService->status ?: 'active',
-                    'activated_at' => $primaryService->activated_at ?: now(),
-                ]);
+                $existingPppoe = PPPoEUser::withoutGlobalScopes()
+                    ->where('username', $primaryService->username)
+                    ->first();
+
+                if ($existingPppoe) {
+                    $pppoeUser = $existingPppoe;
+                    $pppoeUser->update([
+                        'customer_service_id' => $primaryService->id,
+                        'service_profile_id' => $primaryService->service_profile_id,
+                    ]);
+                } else {
+                    try {
+                        $pppoeUser = PPPoEUser::withoutGlobalScopes()->create([
+                            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                            'username' => $primaryService->username,
+                            'password' => $primaryService->password ?: '123456',
+                            'customer_service_id' => $primaryService->id,
+                            'service_profile_id' => $primaryService->service_profile_id,
+                            'status' => $primaryService->status ?: 'active',
+                            'activated_at' => $primaryService->activated_at ?: now(),
+                        ]);
+                    } catch (\Throwable $e) {
+                        $pppoeUser = PPPoEUser::withoutGlobalScopes()
+                            ->where('username', $primaryService->username)
+                            ->first();
+                        if ($pppoeUser) {
+                            $pppoeUser->update(['customer_service_id' => $primaryService->id]);
+                        }
+                    }
+                }
             }
 
             if ($pppoeUser && !$pppoeUser->relationLoaded('serviceProfile')) {
-                $pppoeUser->load('serviceProfile');
+                $pppoeUser->load(['serviceProfile' => fn($q) => $q->withoutGlobalScopes()]);
             }
         }
 
