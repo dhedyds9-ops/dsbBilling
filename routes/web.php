@@ -559,10 +559,27 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
         if ($type === 'stamp') { $key = 'stamp_url'; $prefix = 'company/stamp'; }
         
         $path = $request->file('logo')->storePublicly($prefix, 'public');
-        app(\App\Services\Pengaturan\CompanySettingsService::class)->save([$key => \Illuminate\Support\Facades\Storage::url($path)]);
+        $url = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+        if (preg_match('#^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?(/.*)$#i', $url, $m)) {
+            $url = $m[1];
+        }
+        app(\App\Services\Pengaturan\CompanySettingsService::class)->save([$key => $url]);
     }
     return back()->with('success', 'Gambar berhasil diperbarui!');
 })->middleware(['auth', 'role:administrator,manager'])->name('pengaturan.perusahaan.upload-logo');
+
+// Fallback direct storage file serving (in case symlink /public/storage is missing on server)
+Route::get('/storage/{path}', function ($path) {
+    $filePath = storage_path('app/public/' . $path);
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+    $mime = mime_content_type($filePath) ?: 'application/octet-stream';
+    return response()->file($filePath, [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('path', '.*')->name('storage.fallback');
 
 
 

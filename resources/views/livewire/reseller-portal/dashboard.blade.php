@@ -51,7 +51,7 @@
                 <div>
                     <span class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                         <span class="material-symbols-outlined notranslate text-sm" translate="no">account_circle</span>
-                        Pendapatan Pelanggan
+                        Pelanggan
                     </span>
                     <p class="text-xl font-extrabold text-indigo-700 dark:text-indigo-300 mt-2">
                         Rp {{ number_format($mixData['income_pelanggan_hari_ini'] ?? 0, 0, ',', '.') }}
@@ -77,7 +77,7 @@
                 <div>
                     <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
                         <span class="material-symbols-outlined notranslate text-sm" translate="no">confirmation_number</span>
-                        Pendapatan Voucher
+                        Voucher
                     </span>
                     <p class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">
                         Rp {{ number_format($mixData['income_voucher_hari_ini'] ?? 0, 0, ',', '.') }}
@@ -91,7 +91,7 @@
                 </div>
             </div>
             <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Voucher Hotspot Fisik & Online</span>
+                <span>Voucher & E-Voucher</span>
                 <span class="font-semibold text-emerald-500">Hari ini</span>
             </div>
         </div>
@@ -103,7 +103,7 @@
                 <div>
                     <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                         <span class="material-symbols-outlined notranslate text-sm" translate="no">receipt_long</span>
-                        Tagihan Tertunggak
+                        Tagihan
                     </span>
                     <p class="text-xl font-extrabold text-amber-600 dark:text-amber-400 mt-2">
                         {{ number_format($mixData['invoice_data_tagihan'] ?? 0, 0, ',', '.') }}

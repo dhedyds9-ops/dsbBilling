@@ -81,13 +81,27 @@ class CompanySettingsService
         'terms_and_conditions' => 'text',
     ];
 
+    public static function sanitizeUrl(?string $url): string
+    {
+        if (!$url) return '';
+        // If stored with http://localhost or http://127.0.0.1:8000, strip host to relative
+        if (preg_match('#^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?(/.*)$#i', $url, $matches)) {
+            return $matches[1];
+        }
+        return $url;
+    }
+
     public function getAll(): array
     {
         $stored = Setting::getGroup(self::PREFIX);
         $defaults = $this->getDefaults();
         $result = [];
         foreach (array_keys(self::KEYS) as $key) {
-            $result[$key] = $stored[$key] ?? $defaults[$key] ?? '';
+            $val = $stored[$key] ?? $defaults[$key] ?? '';
+            if (in_array($key, ['logo_url', 'partner_logo_url', 'stamp_url', 'signature_url']) && is_string($val)) {
+                $val = self::sanitizeUrl($val);
+            }
+            $result[$key] = $val;
         }
         return $result;
     }
@@ -173,6 +187,9 @@ class CompanySettingsService
             $value = $data[$key] ?? '';
             if (is_string($value)) {
                 $value = trim($value);
+                if (in_array($key, ['logo_url', 'partner_logo_url', 'stamp_url', 'signature_url'])) {
+                    $value = self::sanitizeUrl($value);
+                }
                 if ($key === 'invoice_opening_text') $value = mb_substr($value, 0, 500);
             }
             $settingKey = self::PREFIX . '.' . $key;
@@ -191,7 +208,7 @@ class CompanySettingsService
             ));
         }
 
-        Cache::forget(Setting::CACHE_KEY);
+        Cache::forget(Setting::getCacheKey());
 
         return [
             'success' => true,

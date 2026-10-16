@@ -54,7 +54,7 @@ class TenancyServiceProvider extends ServiceProvider
             // Agar logo ISP A tidak tertimpa Logo ISP B
             config([
                 'filesystems.disks.public.root' => storage_path("app/public/tenants/{$tenantName}"),
-                'filesystems.disks.public.url' => env('APP_URL') . "/storage/tenants/{$tenantName}",
+                'filesystems.disks.public.url' => "/storage/tenants/{$tenantName}",
             ]);
         }
     }

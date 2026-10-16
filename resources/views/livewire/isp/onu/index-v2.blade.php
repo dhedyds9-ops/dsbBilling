@@ -52,7 +52,11 @@
 
             {{-- Top Actions --}}
             <div class="flex items-center gap-2 self-start md:self-auto">
-                <button wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline ({{ $summary['offline'] }} ONU) dari database lokal? (Ini tidak menghapus dari OLT fisik)" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 rounded-lg text-xs font-semibold shadow-2xs transition-colors">
+                <button wire:click="cleanupDuplicates" wire:confirm="Sistem akan otomatis membersihkan baris ONU duplikat dan mempertahankan data ONU yang valid. Lanjutkan?" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-2xs transition-colors">
+                    <span class="material-symbols-outlined notranslate" style="font-size:16px" translate="no">cleaning_services</span>
+                    Bersihkan Duplikat
+                </button>
+                <button wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline / Orphan ({{ $summary['offline'] }} ONU) dari database lokal? (Ini tidak menghapus dari OLT fisik)" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 rounded-lg text-xs font-semibold shadow-2xs transition-colors">
                     <span class="material-symbols-outlined notranslate" style="font-size:16px" translate="no">delete_sweep</span>
                     Hapus Offline
                 </button>
@@ -199,11 +203,9 @@
                     <td class="p-3 text-slate-500 dark:text-slate-400">{{ $onu->last_seen_at ? $onu->last_seen_at->diffForHumans() : '-' }}</td>
                     <td class="p-3 flex items-center gap-3">
                         <a href="{{ route('isp.onus.show', $onu->id) }}" class="text-blue-500 hover:text-blue-400 text-sm font-medium">View</a>
-                        @if($st === 'OFFLINE')
-                        <button type="button" wire:click="deleteOnu({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU ini dari database? (Ini tidak akan menghapus ONU dari OLT)" class="text-red-500 hover:text-red-400 text-sm font-medium">
+                        <button type="button" wire:click="deleteOnu({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU {{ $onu->serial_number ?: ('#' . $onu->id) }} dari database lokal?" class="text-red-500 hover:text-red-400 text-sm font-medium">
                             Hapus
                         </button>
-                        @endif
                     </td>
                 </tr>
                 @empty

@@ -55,8 +55,12 @@
 >
     <!-- Logo & Brand -->
     <div class="flex items-center h-16 px-4 border-b border-slate-200 dark:border-slate-700/50 shrink-0">
-        <a href="{{ route('dashboard') }}" class="flex items-center justify-center w-full">
-            <x-application-logo class="h-10 w-auto" />
+        <a href="{{ route('dashboard') }}" class="flex items-center justify-center w-full overflow-hidden">
+            @if(!empty($companyLogo))
+                <img src="{{ \App\Services\Pengaturan\CompanySettingsService::sanitizeUrl($companyLogo) }}" alt="{{ $companyName }}" class="h-10 max-w-[190px] object-contain">
+            @else
+                <x-application-logo class="h-10 w-auto" />
+            @endif
         </a>
     </div>
 

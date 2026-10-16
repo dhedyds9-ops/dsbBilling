@@ -157,7 +157,7 @@
             <div class="flex items-start gap-3">
               <div class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden">
               @if ($company['logo_url'] ?? false)
-                <img src="{{ $company['logo_url'] }}" class="w-full h-full object-contain" alt="logo">
+                <img src="{{ \App\Services\Pengaturan\CompanySettingsService::sanitizeUrl($company['logo_url']) }}" class="w-full h-full object-contain" alt="logo">
               @else
                 <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:32px">image</span>
               @endif
@@ -181,7 +181,7 @@
             <div class="flex items-start gap-3">
               <div class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden">
               @if ($company['partner_logo_url'] ?? false)
-                <img src="{{ $company['partner_logo_url'] }}" class="w-full h-full object-contain" alt="partner logo">
+                <img src="{{ \App\Services\Pengaturan\CompanySettingsService::sanitizeUrl($company['partner_logo_url']) }}" class="w-full h-full object-contain" alt="partner logo">
               @else
                 <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:32px">handshake</span>
               @endif
@@ -206,7 +206,7 @@
             <div class="flex items-start gap-3">
               <div class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden">
               @if ($company['stamp_url'] ?? false)
-                <img src="{{ $company['stamp_url'] }}" class="w-full h-full object-contain" alt="stamp">
+                <img src="{{ \App\Services\Pengaturan\CompanySettingsService::sanitizeUrl($company['stamp_url']) }}" class="w-full h-full object-contain" alt="stamp">
               @else
                 <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:32px">verified</span>
               @endif

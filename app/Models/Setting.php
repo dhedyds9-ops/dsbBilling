@@ -25,9 +25,20 @@ class Setting extends Model
     public const CACHE_KEY = 'settings.all';
     public const CACHE_TTL = 3600;
 
+    public static function getCacheKey(): string
+    {
+        $tenant = 'central';
+        if (request()) {
+            $host = request()->getHost();
+            $parts = explode('.', $host);
+            $tenant = !empty($parts[0]) ? strtolower($parts[0]) : 'central';
+        }
+        return 'settings.all.' . $tenant;
+    }
+
     public static function getValue(string $key, mixed $default = null): mixed
     {
-        $all = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+        $all = Cache::remember(self::getCacheKey(), self::CACHE_TTL, function () {
             return self::all()->pluck('value', 'key')->all();
         });
 
@@ -45,7 +56,7 @@ class Setting extends Model
                 'description' => $description,
             ]
         );
-        Cache::forget(self::CACHE_KEY);
+        Cache::forget(self::getCacheKey());
     }
 
     public static function setMany(array $settings, ?string $group = null): void
@@ -60,7 +71,7 @@ class Setting extends Model
 
     public static function getGroup(string $prefix): array
     {
-        $all = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+        $all = Cache::remember(self::getCacheKey(), self::CACHE_TTL, function () {
             return self::all()->pluck('value', 'key')->all();
         });
 
@@ -81,7 +92,7 @@ class Setting extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn() => Cache::forget(self::CACHE_KEY));
-        static::deleted(fn() => Cache::forget(self::CACHE_KEY));
+        static::saved(fn() => Cache::forget(self::getCacheKey()));
+        static::deleted(fn() => Cache::forget(self::getCacheKey()));
     }
 }

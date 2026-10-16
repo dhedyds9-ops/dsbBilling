@@ -199,15 +199,30 @@ class Index extends AdminComponent
     #[Computed]
     public function summary(): array
     {
-        $staleAt = now()->subMinutes(5);
+        $staleAt = now()->subMinutes(15);
+        $total = Onu::withoutTrashed()->count();
+        $online = Onu::withoutTrashed()
+            ->where('status', 'active')
+            ->where(function ($q) use ($staleAt) {
+                $q->whereNotNull('rx_power_dbm')
+                  ->orWhere(function ($sq) use ($staleAt) {
+                      $sq->whereNotNull('pon_port')->where('last_seen_at', '>=', $staleAt);
+                  });
+            })->count();
+
+        $los = Onu::withoutTrashed()->where(function ($q) {
+            $q->where('status', 'los')->orWhere('rx_power_dbm', '<', -30.0);
+        })->count();
+
+        $lowRx = Onu::withoutTrashed()->whereBetween('rx_power_dbm', [-30.0, -27.0])->count();
+        $offline = max(0, $total - $online - $los);
+
         return [
-            'total'   => Onu::withoutTrashed()->count(),
-            'online'  => Onu::withoutTrashed()->where('status', 'active')->count(),
-            'offline' => Onu::withoutTrashed()->where('status', 'inactive')->count(),
-            'los'     => Onu::withoutTrashed()->where(function ($q) {
-                $q->where('status', 'los')->orWhere('rx_power_dbm', '<', -30.0);
-            })->count(),
-            'low_rx'  => Onu::withoutTrashed()->whereBetween('rx_power_dbm', [-30.0, -27.0])->count(),
+            'total'   => $total,
+            'online'  => $online,
+            'offline' => $offline,
+            'los'     => $los,
+            'low_rx'  => $lowRx,
         ];
     }
 
@@ -215,6 +230,10 @@ class Index extends AdminComponent
     {
         if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -30)) return 'LOS';
         if ($onu->status === 'inactive') return 'OFFLINE';
+        // If an ONU has no optical signal and has never registered on a PON port, it is OFFLINE
+        if ($onu->rx_power_dbm === null && ($onu->pon_port === null || empty($onu->last_seen_at))) {
+            return 'OFFLINE';
+        }
         if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) return 'LOW_RX';
         return 'ONLINE';
     }

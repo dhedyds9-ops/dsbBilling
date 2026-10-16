@@ -39,16 +39,19 @@ class Register extends Component
         ]);
 
         // Simulating the actual ONU registration
-        Onu::create([
-            'serial_number' => strtoupper($this->serialNumber),
-            'mac_address' => strtoupper($this->macAddress),
-            'olt_id' => $this->selectedOlt,
-            'odp_id' => $this->selectedOdp,
-            'status' => 'active',
-            'profile_name' => $this->profileName,
-            'code' => 'ONU-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $this->serialNumber ?? Str::random(6)), -6)),
-            'created_by' => auth()->id(),
-        ]);
+        $sn = strtoupper(trim($this->serialNumber));
+        Onu::updateOrCreate(
+            ['serial_number' => $sn],
+            [
+                'mac_address' => strtoupper(trim($this->macAddress)),
+                'olt_id' => $this->selectedOlt,
+                'odp_id' => $this->selectedOdp,
+                'status' => 'inactive',
+                'profile_name' => $this->profileName,
+                'code' => 'ONU-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $sn), -6)),
+                'created_by' => auth()->id(),
+            ]
+        );
 
         session()->flash('success', 'ONU berhasil diregistrasi ke sistem dan OLT.');
         return redirect()->route('technician.installation.scan');

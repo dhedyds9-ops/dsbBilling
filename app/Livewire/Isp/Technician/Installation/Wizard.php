@@ -141,16 +141,17 @@ class Wizard extends Component
             : ($this->service_type === 'hotspot' ? substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 6) : 'pppoe');
 
         // Selalu catat / update ONU ke inventory terlepas dari PPPoE atau Hotspot
-        $onu = \App\Models\ISP\Onu::where('serial_number', $this->onu_sn)->first();
+        $sn = strtoupper(trim($this->onu_sn));
+        $onu = \App\Models\ISP\Onu::where('serial_number', $sn)->first();
         if (!$onu) {
             $onu = \App\Models\ISP\Onu::create([
                 'olt_id' => $this->olt_id,
                 'pon_port' => $this->pon_port,
-                'serial_number' => $this->onu_sn,
+                'serial_number' => $sn,
                 'vendor_id' => $this->onu_vendor_id,
                 'model' => $this->onu_model,
                 'name' => 'ONU ' . $customer->name,
-                'status' => 'offline',
+                'status' => 'inactive',
                 'code' => 'ONU-' . substr(strtoupper(md5(time())), 0, 6),
             ]);
         } else {
