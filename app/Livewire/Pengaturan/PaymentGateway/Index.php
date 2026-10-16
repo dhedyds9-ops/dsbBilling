@@ -177,28 +177,17 @@ class Index extends AdminComponent
     ];
 
     public array $manualBank = [
-        'enabled'            => true,
+        'enabled'            => false,
         'auto_approve_manual'=> false,
         'require_attachment' => true,
         'max_wait_hours'     => 48,
-        'accounts'           => [
-            ['id' => 1, 'bank_name' => 'Bank BCA',                    'account_number' => '1234567890',      'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
-            ['id' => 2, 'bank_name' => 'Bank BRI',                    'account_number' => '0001234567890',   'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
-            ['id' => 3, 'bank_name' => 'Bank Mandiri',                'account_number' => '123-00-1234567-8','account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
-            ['id' => 4, 'bank_name' => 'Bank BNI',                    'account_number' => '0123456789',      'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => true],
-            ['id' => 5, 'bank_name' => 'BSI (Bank Syariah Indonesia)','account_number' => '7123456789',      'account_holder' => 'PT dsBilling Indonesia', 'branch' => '', 'enabled' => false],
-        ],
+        'accounts'           => [],
     ];
 
     public array $ewalletManual = [
-        'enabled'            => true,
+        'enabled'            => false,
         'require_attachment' => true,
-        'providers'          => [
-            ['id' => 1, 'name' => 'GoPay',     'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['id' => 2, 'name' => 'OVO',       'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['id' => 3, 'name' => 'DANA',      'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-            ['id' => 4, 'name' => 'ShopeePay', 'number' => '081234567890', 'holder' => 'PT dsBilling Indonesia', 'enabled' => true],
-        ],
+        'providers'          => [],
     ];
 
     public ?string $balanceInfo = null;

@@ -156,21 +156,12 @@ class PaymentGatewaySettingsService
 
     protected function defaultBankAccounts(): array
     {
-        return [
-            ['id' => 1, 'bank_name' => 'BCA', 'account_number' => '1234567890', 'account_holder' => 'PT DSBilling Indonesia', 'branch' => 'Jakarta Pusat', 'active' => true],
-            ['id' => 2, 'bank_name' => 'Mandiri', 'account_number' => '9876543210', 'account_holder' => 'PT DSBilling Indonesia', 'branch' => 'Jakarta Selatan', 'active' => true],
-            ['id' => 3, 'bank_name' => 'BRI', 'account_number' => '001203948576', 'account_holder' => 'PT DSBilling Indonesia', 'branch' => 'Bandung', 'active' => true],
-        ];
+        return [];
     }
 
     protected function defaultEwalletProviders(): array
     {
-        return [
-            ['id' => 1, 'name' => 'GoPay', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
-            ['id' => 2, 'name' => 'OVO', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
-            ['id' => 3, 'name' => 'DANA', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
-            ['id' => 4, 'name' => 'ShopeePay', 'number' => '081234567890', 'holder' => 'PT DSBilling Indonesia', 'active' => true],
-        ];
+        return [];
     }
 
     protected function generateCallbackUrl(string $key): string

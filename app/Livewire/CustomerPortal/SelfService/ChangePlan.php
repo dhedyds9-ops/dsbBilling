@@ -42,8 +42,12 @@ class ChangePlan extends Component
         // Get service types this customer has
         $serviceTypes = [];
         foreach ($this->currentServices as $cs) {
-            if ($cs->pppoeUser) $serviceTypes[] = 'pppoe';
-            if ($cs->hotspotUser) $serviceTypes[] = 'hotspot';
+            $rawType = strtolower($cs->serviceProfile?->service_type ?? '');
+            if (in_array($rawType, ['hotspot', 'member_hotspot', 'voucher']) || ($cs->hotspotUser && !$cs->pppoeUser)) {
+                $serviceTypes[] = 'hotspot';
+            } else {
+                $serviceTypes[] = 'pppoe';
+            }
         }
         if (empty($serviceTypes)) {
             $serviceTypes = ['pppoe', 'hotspot'];

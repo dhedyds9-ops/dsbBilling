@@ -94,20 +94,19 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-success badge-status">Active</span>
+                                        <span class="badge bg-{{ $customer->status === 'active' ? 'success' : 'secondary' }} badge-status">{{ ucfirst($customer->status ?? 'active') }}</span>
                                     </td>
-                                    <td><span class="text-primary fw-bold">HOME 100 Mbps</span></td>
-                                    <td><span class="text-muted small">192.168.1.10</span></td>
+                                    <td><span class="text-primary fw-bold">{{ $customer->customerServices?->first()?->serviceProfile?->name ?? '-' }}</span></td>
+                                    <td><span class="text-muted small">{{ $customer->customerServices?->first()?->pppoeUser?->static_ip ?? 'Dynamic' }}</span></td>
                                     <td>
                                         <div class="text-muted small">
-                                            <i class="bi bi-download"></i> 4.5 GB
-                                            <i class="bi bi-upload ms-2"></i> 205 MB
+                                            -
                                         </div>
                                     </td>
-                                    <td><div class="text-muted small">Jalan Contoh No. 123</div></td>
-                                    <td><div class="text-muted small">081234567890</div></td>
+                                    <td><div class="text-muted small">{{ $customer->address ?? '-' }}</div></td>
+                                    <td><div class="text-muted small">{{ $customer->phone ?? '-' }}</div></td>
                                     <td>
-                                        <span class="badge bg-primary badge-status">Prepaid</span>
+                                        <span class="badge bg-primary badge-status">{{ ucfirst($customer->customerServices?->first()?->contract?->type ?? 'Postpaid') }}</span>
                                     </td>
                                     <td>
                                         <div class="d-flex gap-1">

@@ -16,16 +16,21 @@ class ContactAdmin extends Component
 
     public function mount()
     {
-        $this->whatsappNumber = preg_replace('/[^0-9]/', '', Setting::getValue('company.phone', '08123456789'));
+        $companyPhone = Setting::getValue('company.phone', '');
+        $this->whatsappNumber = $companyPhone ? preg_replace('/[^0-9]/', '', $companyPhone) : '';
         
-        $customer = \App\Models\CRM\Customer::with(['customerServices.pppoeUser', 'customerServices.hotspotUser'])
+        $customer = \App\Models\CRM\Customer::with(['customerServices.serviceProfile', 'customerServices.pppoeUser', 'customerServices.hotspotUser'])
             ->where('user_id', Auth::id())
             ->first();
             
         if ($customer) {
             foreach ($customer->customerServices as $cs) {
-                if ($cs->pppoeUser) $this->isPppoe = true;
-                if ($cs->hotspotUser) $this->isHotspot = true;
+                $rawType = strtolower($cs->serviceProfile?->service_type ?? '');
+                if (in_array($rawType, ['hotspot', 'member_hotspot', 'voucher']) || ($cs->hotspotUser && !$cs->pppoeUser)) {
+                    $this->isHotspot = true;
+                } else {
+                    $this->isPppoe = true;
+                }
             }
         }
     }

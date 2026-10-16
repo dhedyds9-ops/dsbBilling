@@ -181,7 +181,9 @@
                             } elseif ($svc) {
                                 $username = $svc->username ?? '-';
                                 $password = $svc->password ?? '-';
-                                $layanan = strtoupper($svc->service_type ?? '-');
+                                $rawSvcType = strtolower($svc->serviceProfile?->service_type ?? '');
+                                $isHs = in_array($rawSvcType, ['hotspot', 'member_hotspot', 'voucher']);
+                                $layanan = $isHs ? 'Hotspot' : 'PPPoE';
                             }
                             
                             $paket = $svc?->serviceProfile?->name ?? '-';

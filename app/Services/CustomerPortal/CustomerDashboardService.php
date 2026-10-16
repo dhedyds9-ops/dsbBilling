@@ -17,25 +17,39 @@ class CustomerDashboardService
         $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
             ->where('customer_id', $customerId)->get();
 
-        // 1. Auto-heal jika customer_services belum terhubung tapi ada di pppoe_users / radius
-        if ($customerServices->isEmpty()) {
-            $customer = \App\Models\CRM\Customer::find($customerId);
-            if ($customer) {
-                // Coba cari di pppoe_users
-                $orphanPppoe = PPPoEUser::where('username', $customer->code)
-                    ->orWhere('username', 'like', $customer->code . '@%')
-                    ->first();
-                if ($orphanPppoe) {
+        $customer = \App\Models\CRM\Customer::find($customerId);
+
+        // 1. Auto-heal jika customer_services belum terhubung tapi ada di pppoe_users / hotspot_users
+        if ($customerServices->isEmpty() && $customer) {
+            $orphanPppoe = PPPoEUser::where('username', $customer->code)
+                ->orWhere('username', 'like', $customer->code . '@%')
+                ->first();
+            if ($orphanPppoe) {
+                $cs = CustomerService::create([
+                    'uuid' => (string)\Illuminate\Support\Str::uuid(),
+                    'customer_id' => $customerId,
+                    'service_profile_id' => $orphanPppoe->service_profile_id,
+                    'username' => $orphanPppoe->username,
+                    'password' => $orphanPppoe->password,
+                    'status' => $orphanPppoe->status ?: 'active',
+                ]);
+                $orphanPppoe->update(['customer_service_id' => $cs->id]);
+                $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
+                    ->where('customer_id', $customerId)->get();
+            } else {
+                $orphanHotspot = \App\Models\ISP\HotspotUser::where('username', $customer->code)->first();
+                if ($orphanHotspot) {
                     $cs = CustomerService::create([
                         'uuid' => (string)\Illuminate\Support\Str::uuid(),
                         'customer_id' => $customerId,
-                        'service_profile_id' => $orphanPppoe->service_profile_id,
-                        'username' => $orphanPppoe->username,
-                        'password' => $orphanPppoe->password,
-                        'status' => $orphanPppoe->status ?: 'active',
+                        'service_profile_id' => $orphanHotspot->service_profile_id,
+                        'username' => $orphanHotspot->username,
+                        'password' => $orphanHotspot->password,
+                        'status' => $orphanHotspot->status ?: 'active',
                     ]);
-                    $orphanPppoe->update(['customer_service_id' => $cs->id]);
-                    $customerServices = collect([$cs]);
+                    $orphanHotspot->update(['customer_service_id' => $cs->id]);
+                    $customerServices = CustomerService::with(['service', 'serviceProfile', 'contract', 'pppoeUser', 'hotspotUser'])
+                        ->where('customer_id', $customerId)->get();
                 }
             }
         }
@@ -43,43 +57,76 @@ class CustomerDashboardService
         $primaryService = $customerServices->where('status', 'active')->first()
             ?? $customerServices->first();
 
-        $pppoeUser = $primaryService?->pppoeUser
-            ?? PPPoEUser::with(['customerService', 'serviceProfile'])
-                ->where('customer_service_id', $primaryService?->id)->first();
-
-        // Jika pppoeUser belum ketemu via customer_service_id, cari via username
-        if (!$pppoeUser && $primaryService?->username) {
-            $pppoeUser = PPPoEUser::with(['customerService', 'serviceProfile'])
-                ->where('username', $primaryService->username)->first();
-            if ($pppoeUser && empty($pppoeUser->customer_service_id)) {
-                $pppoeUser->update(['customer_service_id' => $primaryService->id]);
-            }
-        }
-
-        $hotspotUser = $primaryService?->hotspotUser
-            ?? \App\Models\ISP\HotspotUser::with(['customerService'])
-                ->where('customer_service_id', $primaryService?->id)->first();
-
-        if (!$hotspotUser && $primaryService?->username) {
-            $hotspotUser = \App\Models\ISP\HotspotUser::with(['customerService'])
-                ->where('username', $primaryService->username)->first();
-            if ($hotspotUser && empty($hotspotUser->customer_service_id)) {
-                $hotspotUser->update(['customer_service_id' => $primaryService->id]);
-            }
-        }
-
-        // Load serviceProfile for pppoeUser if not already loaded
-        if ($pppoeUser && !$pppoeUser->relationLoaded('serviceProfile')) {
-            $pppoeUser->load('serviceProfile');
-        }
-
-        // Resolusi service profile: dari pppoeUser, hotspotUser, atau customerService
-        $serviceProfile = $pppoeUser?->serviceProfile
-            ?? $primaryService?->serviceProfile
-            ?? null;
-
+        // Resolusi Service Profile dari primaryService
+        $serviceProfile = $primaryService?->serviceProfile;
         if (!$serviceProfile && $primaryService?->service_profile_id) {
             $serviceProfile = \App\Models\ISP\ServiceProfile::find($primaryService->service_profile_id);
+        }
+
+        // Tentukan apakah paket layanan ini Hotspot atau PPPoE
+        $svcTypeRaw = strtolower($serviceProfile?->service_type ?? '');
+        $isHotspotService = in_array($svcTypeRaw, ['hotspot', 'member_hotspot', 'voucher']);
+
+        $pppoeUser = null;
+        $hotspotUser = null;
+
+        if ($isHotspotService && $primaryService) {
+            // === LAYANAN HOTSPOT ===
+            $hotspotUser = $primaryService->hotspotUser
+                ?? \App\Models\ISP\HotspotUser::with(['customerService'])
+                    ->where('customer_service_id', $primaryService->id)->first();
+
+            if (!$hotspotUser && $primaryService->username) {
+                $baseUname = explode('@', $primaryService->username)[0];
+                $hotspotUser = \App\Models\ISP\HotspotUser::with(['customerService'])
+                    ->where('username', $primaryService->username)
+                    ->orWhere('username', $baseUname)
+                    ->orWhere('username', $customer?->code)
+                    ->first();
+                if ($hotspotUser && empty($hotspotUser->customer_service_id)) {
+                    $hotspotUser->update(['customer_service_id' => $primaryService->id]);
+                }
+            }
+        } elseif ($primaryService) {
+            // === LAYANAN PPPOE / BROADBAND ===
+            $pppoeUser = $primaryService->pppoeUser
+                ?? PPPoEUser::with(['customerService', 'serviceProfile'])
+                    ->where('customer_service_id', $primaryService->id)->first();
+
+            if (!$pppoeUser && $primaryService->username) {
+                $baseUname = explode('@', $primaryService->username)[0];
+                $pppoeUser = PPPoEUser::with(['customerService', 'serviceProfile'])
+                    ->where('username', $primaryService->username)
+                    ->orWhere('username', 'like', $baseUname . '@%')
+                    ->orWhere('username', $baseUname)
+                    ->orWhere('username', $customer?->code)
+                    ->first();
+                if ($pppoeUser && empty($pppoeUser->customer_service_id)) {
+                    $pppoeUser->update(['customer_service_id' => $primaryService->id]);
+                }
+            }
+
+            // Auto-create PPPoEUser jika belum ada agar kredensial PPPoE valid di FreeRADIUS & MikroTik
+            if (!$pppoeUser && $primaryService->username) {
+                $pppoeUser = PPPoEUser::create([
+                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                    'username' => $primaryService->username,
+                    'password' => $primaryService->password ?: '123456',
+                    'customer_service_id' => $primaryService->id,
+                    'service_profile_id' => $primaryService->service_profile_id,
+                    'status' => $primaryService->status ?: 'active',
+                    'activated_at' => $primaryService->activated_at ?: now(),
+                ]);
+            }
+
+            if ($pppoeUser && !$pppoeUser->relationLoaded('serviceProfile')) {
+                $pppoeUser->load('serviceProfile');
+            }
+        }
+
+        // Pastikan serviceProfile terisi
+        if (!$serviceProfile) {
+            $serviceProfile = $pppoeUser?->serviceProfile ?? $hotspotUser?->serviceProfile ?? null;
         }
 
         $activeInvoices = Invoice::where('customer_id', $customerId)
@@ -169,7 +216,7 @@ class CustomerDashboardService
         $serviceStatus = $primaryService?->status ?? $pppoeUser?->status ?? $hotspotUser?->status ?? null;
         $username = $pppoeUser?->username ?? $hotspotUser?->username ?? $primaryService?->username ?? null;
 
-        // Cek koneksi online ke MikroTik / Radius (PPP Active Sessions & Accounting)
+        // Cek koneksi online ke MikroTik / Radius (PPP & Hotspot Active Sessions, Unified OnlineSession, & RadiusAccounting)
         $isOnline = false;
         if ($username) {
             $rawUname = (string)$username;
@@ -177,14 +224,29 @@ class CustomerDashboardService
 
             $isOnline = \App\Models\ISP\PppActiveSession::where('name', $rawUname)
                 ->orWhere('name', $stripped)
+                ->orWhere('name', 'like', $stripped . '@%')
+                ->exists()
+                || \App\Models\ISP\HotspotActiveSession::where('user', $rawUname)
+                ->orWhere('user', $stripped)
+                ->orWhere('user', 'like', $stripped . '@%')
+                ->exists()
+                || \App\Models\ISP\OnlineSession::where('username', $rawUname)
+                ->orWhere('username', $stripped)
+                ->orWhere('username', 'like', $stripped . '@%')
                 ->exists()
                 || \App\Models\ISP\RadiusAccounting::where(function($q) use ($rawUname, $stripped) {
-                    $q->where('username', $rawUname)->orWhere('username', $stripped);
+                    $q->where('username', $rawUname)
+                      ->orWhere('username', $stripped)
+                      ->orWhere('username', 'like', $stripped . '@%');
                 })->whereNull('acct_stop_time')->exists();
         }
 
-        if (!$isOnline && $pppoeUser) {
-            $isOnline = (bool)($pppoeUser->is_online ?? false);
+        if (!$isOnline) {
+            if ($pppoeUser) {
+                $isOnline = (bool)($pppoeUser->is_online ?? false);
+            } elseif ($hotspotUser) {
+                $isOnline = (bool)($hotspotUser->is_online ?? false);
+            }
         }
 
         // 1. Jika status layanan ditangguhkan / suspended

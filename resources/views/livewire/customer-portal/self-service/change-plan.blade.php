@@ -12,8 +12,12 @@
         <div class="flex items-center justify-between">
             <div>
                 <span class="font-bold text-slate-800 dark:text-slate-200">{{ $cs->serviceProfile?->name ?? '-' }}</span>
+                @php
+                    $rawCsType = strtolower($cs->serviceProfile?->service_type ?? '');
+                    $isCsHotspot = in_array($rawCsType, ['hotspot', 'member_hotspot', 'voucher']) || ($cs->hotspotUser && !$cs->pppoeUser);
+                @endphp
                 <x-ui.badge variant="info">
-                    {{ $cs->pppoeUser ?'PPPoE' : 'Hotspot' }}
+                    {{ $isCsHotspot ? 'Hotspot' : 'PPPoE' }}
                 </x-ui.badge>
             </div>
             <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">Rp {{ number_format($cs->serviceProfile?->base_price ?? 0, 0, ',', '.') }}/bln</span>
