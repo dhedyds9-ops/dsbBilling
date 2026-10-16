@@ -38,6 +38,13 @@ Route::get('/', function () {
 })->name('home');
 Route::get('/coming-soon', fn() => view('coming-soon'))->name('coming-soon');
 
+// ==================== LEGAL & COMPLIANCE PAGES (PAYMENT GATEWAY COMPLIANCE) ====================
+Route::get('/terms', fn() => view('legal.terms'))->name('legal.terms');
+Route::get('/privacy', fn() => view('legal.privacy'))->name('legal.privacy');
+Route::get('/refund-policy', fn() => view('legal.refund'))->name('legal.refund');
+Route::get('/about', fn() => view('legal.about'))->name('legal.about');
+Route::get('/contact', fn() => view('legal.contact'))->name('legal.contact');
+
 Route::get('/payment', [\App\Http\Controllers\GuestPaymentController::class, 'index'])->name('guest.payment');
 Route::post('/payment/checkout', [\App\Http\Controllers\GuestPaymentController::class, 'checkout'])->name('guest.payment.checkout');
 Route::post('/payment/reset', [\App\Http\Controllers\GuestPaymentController::class, 'resetSession'])->name('guest.payment.reset');

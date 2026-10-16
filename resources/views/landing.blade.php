@@ -151,14 +151,21 @@
     vouchOpen: false, 
     vouchId: '', 
     vouchName: '', 
-    vouchPrice: '' 
+    vouchPrice: '',
+    faqOpen: null
 }">
 
     @php
-        $companyName = \App\Models\Setting::getValue('company.name', 'dsBilling');
+        $companyName = \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
+        $companyLegal = \App\Models\Setting::getValue('company.legal_name', $companyName);
         $companyLogo = \App\Models\Setting::getValue('company.logo_url', null);
-        $companyPhone = \App\Models\Setting::getValue('company.phone', '0800-123-4567');
+        $companyPhone = \App\Models\Setting::getValue('company.phone', '0812-3456-7890');
         $companyEmail = \App\Models\Setting::getValue('company.email', 'support@dsbilling.id');
+        $companyAddress = \App\Models\Setting::getValue('company.address', 'Jl. Merdeka No. 45');
+        $companyCity = \App\Models\Setting::getValue('company.city', 'Jakarta');
+        $companyProvince = \App\Models\Setting::getValue('company.province', 'DKI Jakarta');
+        $companyPostal = \App\Models\Setting::getValue('company.postal_code', '10110');
+        $companyHours = \App\Models\Setting::getValue('company.operational_hours', 'Senin - Minggu: 24 Jam (Teknis) / 08:00 - 21:00 WIB (Administrasi)');
 
         $showPppoe = \Illuminate\Support\Collection::wrap($packagesPppoe ?? []);
         $showMemberHotspot = \Illuminate\Support\Collection::wrap($packagesHotspot ?? []);
@@ -178,20 +185,23 @@
         </a>
         
         <!-- Navigation Links (Desktop) -->
-        <nav class="hidden md:flex items-center gap-gutter">
-            <a class="text-on-surface-variant hover:text-primary transition-colors font-label-bold text-label-bold duration-200 hover:scale-95 hover:bg-primary/10 hover:shadow-[0_0_15px_rgba(76,215,246,0.3)] rounded px-2 pb-1" href="#keunggulan">Keunggulan</a>
-            <a class="text-on-surface-variant hover:text-primary transition-colors font-label-bold text-label-bold duration-200 hover:scale-95 hover:bg-primary/10 hover:shadow-[0_0_15px_rgba(76,215,246,0.3)] rounded px-2 pb-1" href="#paket">Paket Internet</a>
-            <a class="text-on-surface-variant hover:text-primary transition-colors font-label-bold text-label-bold duration-200 hover:scale-95 hover:bg-primary/10 hover:shadow-[0_0_15px_rgba(76,215,246,0.3)] rounded px-2 pb-1" href="#hotspot">Hotspot</a>
+        <nav class="hidden md:flex items-center gap-5 text-sm font-semibold">
+            <a class="text-on-surface-variant hover:text-primary transition-colors py-1 px-2 rounded" href="#keunggulan">Keunggulan</a>
+            <a class="text-on-surface-variant hover:text-primary transition-colors py-1 px-2 rounded" href="#paket">Paket Internet</a>
+            <a class="text-on-surface-variant hover:text-primary transition-colors py-1 px-2 rounded" href="#hotspot">Hotspot</a>
+            <a class="text-on-surface-variant hover:text-primary transition-colors py-1 px-2 rounded" href="#pembayaran">Pembayaran</a>
+            <a class="text-on-surface-variant hover:text-primary transition-colors py-1 px-2 rounded" href="#faq">FAQ</a>
+            <a class="text-on-surface-variant hover:text-primary transition-colors py-1 px-2 rounded" href="{{ route('legal.contact') }}">Kontak</a>
         </nav>
         
         <!-- Actions -->
         <div class="hidden md:flex items-center gap-3">
-            <a href="{{ route('admin.login') }}" class="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all shadow-sm">
-                <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+            <a href="{{ route('admin.login') }}" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all shadow-sm">
+                <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
                 Admin
             </a>
-            <a href="{{ route('customer.login') }}" class="flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
-                <span class="material-symbols-outlined text-[18px]">account_circle</span>
+            <a href="{{ route('customer.login') }}" class="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
+                <span class="material-symbols-outlined text-[16px]">account_circle</span>
                 Portal Pelanggan
             </a>
         </div>
@@ -201,20 +211,24 @@
             <span class="material-symbols-outlined" x-show="!mobileMenuOpen">menu</span>
             <span class="material-symbols-outlined" x-show="mobileMenuOpen" x-cloak>close</span>
         </button>
-                </div>
+    </div>
     
     <!-- Mobile Menu -->
     <div x-show="mobileMenuOpen" x-collapse x-cloak class="md:hidden bg-surface-container-high border-t border-white/10 px-margin-mobile py-4 shadow-xl">
-        <div class="flex flex-col gap-4">
-            <a href="#keunggulan" @click="mobileMenuOpen = false" class="text-on-surface font-label-bold">Keunggulan</a>
-            <a href="#paket" @click="mobileMenuOpen = false" class="text-on-surface font-label-bold">Paket Internet</a>
-            <a href="#hotspot" @click="mobileMenuOpen = false" class="text-on-surface font-label-bold">Hotspot</a>
+        <div class="flex flex-col gap-3 text-sm font-semibold">
+            <a href="#keunggulan" @click="mobileMenuOpen = false" class="text-on-surface py-1">Keunggulan</a>
+            <a href="#paket" @click="mobileMenuOpen = false" class="text-on-surface py-1">Paket Internet</a>
+            <a href="#hotspot" @click="mobileMenuOpen = false" class="text-on-surface py-1">Hotspot</a>
+            <a href="#pembayaran" @click="mobileMenuOpen = false" class="text-on-surface py-1">Metode Pembayaran</a>
+            <a href="#faq" @click="mobileMenuOpen = false" class="text-on-surface py-1">FAQ & Bantuan</a>
+            <a href="{{ route('legal.contact') }}" class="text-on-surface py-1">Hubungi Kami</a>
+            <a href="{{ route('legal.about') }}" class="text-on-surface py-1">Tentang Kami</a>
             <hr class="border-white/10 my-2">
-            <a href="{{ route('admin.login') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all">
+            <a href="{{ route('admin.login') }}" class="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all">
                 <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
                 Login Admin
             </a>
-            <a href="{{ route('customer.login') }}" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
+            <a href="{{ route('customer.login') }}" class="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-lg shadow-cyan-500/25">
                 <span class="material-symbols-outlined text-[18px]">account_circle</span>
                 Portal Pelanggan
             </a>
@@ -223,6 +237,33 @@
 </header>
 
 <main class="pt-24 md:pt-32 pb-24">
+    @if(session('success'))
+    <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop mb-8" x-data="{ show: true }" x-show="show">
+        <div class="p-4 md:p-5 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 flex items-center justify-between gap-4 shadow-xl backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-emerald-400 text-2xl">check_circle</span>
+                <span class="text-sm font-semibold">{{ session('success') }}</span>
+            </div>
+            <button @click="show = false" class="text-emerald-400 hover:text-white transition-colors p-1 rounded-lg">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop mb-8" x-data="{ show: true }" x-show="show">
+        <div class="p-4 md:p-5 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-200 flex items-center justify-between gap-4 shadow-xl backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-rose-400 text-2xl">error</span>
+                <span class="text-sm font-semibold">{{ session('error') }}</span>
+            </div>
+            <button @click="show = false" class="text-rose-400 hover:text-white transition-colors p-1 rounded-lg">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+    </div>
+    @endif
+
     <!-- Hero Section -->
     <section class="relative min-h-[80vh] flex items-center justify-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32">
         <div class="absolute inset-0 z-[-1] overflow-hidden rounded-3xl">
@@ -467,13 +508,13 @@
     @endif
 
     <!-- Billing CTA -->
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-28">
         <div class="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-surface-container-high to-surface p-8 md:p-12 border border-primary/20 shadow-[0_0_40px_rgba(6,182,212,0.1)] flex flex-col md:flex-row items-center justify-between gap-8">
             <div class="absolute -right-20 -top-20 w-64 h-64 bg-primary/10 rounded-full blur-[60px]"></div>
             <div class="z-10 text-center md:text-left">
                 <h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Sudah Waktunya Bayar Tagihan?</h2>
-                <p class="text-on-surface-variant font-body-md text-body-md max-w-xl">Cek status tagihan Anda dengan mudah dan lakukan pembayaran secara online melalui portal pelanggan kami yang aman.</p>
-                </div>
+                <p class="text-on-surface-variant font-body-md text-body-md max-w-xl">Cek status tagihan Anda dengan mudah dan lakukan pembayaran secara online melalui portal pelanggan kami yang aman dan otomatis.</p>
+            </div>
             <div class="z-10 flex-shrink-0">
                 <a href="{{ route('guest.payment') }}" class="bg-[#1bbd85] hover:bg-[#4edea3] text-on-tertiary font-label-bold text-label-bold px-8 py-4 rounded-xl flex items-center gap-3 transition-colors shadow-[0_0_20px_rgba(27,189,133,0.3)] animate-pulse hover:animate-none">
                     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
@@ -482,26 +523,255 @@
             </div>
         </div>
     </section>
+
+    <!-- Supported Payment Methods Section (Payment Gateway Merchant Compliance) -->
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-28" id="pembayaran">
+        <div class="glass-card rounded-[2rem] p-8 md:p-14 border border-white/10 shadow-2xl relative overflow-hidden">
+            <div class="text-center max-w-3xl mx-auto mb-12">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 mb-4">
+                    <span class="material-symbols-outlined text-[16px]">verified</span>
+                    Metode Pembayaran Resmi & Terpercaya
+                </div>
+                <h2 class="text-2xl md:text-4xl font-extrabold text-white mb-4">Bayar Tagihan & Beli Voucher Makin Mudah</h2>
+                <p class="text-slate-400 text-sm md:text-base leading-relaxed">
+                    Kami mendukung berbagai kanal pembayaran digital otomatis 24 jam dengan verifikasi instan. Transaksi Anda dijamin aman, cepat, dan tanpa ribet konfirmasi manual.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <!-- QRIS -->
+                <div class="p-6 rounded-2xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center mb-3">
+                        <span class="material-symbols-outlined text-2xl">qr_code_scanner</span>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">QRIS Standar</h3>
+                    <p class="text-xs text-slate-400 mb-3">Scan cepat dari semua aplikasi e-wallet & mobile banking di Indonesia</p>
+                    <span class="text-[11px] font-semibold text-slate-300 bg-white/5 px-2.5 py-1 rounded-md">BCA, Mandiri, GoPay, OVO, DANA, ShopeePay, LinkAja</span>
+                </div>
+
+                <!-- Virtual Account -->
+                <div class="p-6 rounded-2xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-3">
+                        <span class="material-symbols-outlined text-2xl">account_balance</span>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">Virtual Account Bank</h3>
+                    <p class="text-xs text-slate-400 mb-3">Nomor VA unik untuk setiap invoice, verifikasi otomatis dalam hitungan detik</p>
+                    <span class="text-[11px] font-semibold text-slate-300 bg-white/5 px-2.5 py-1 rounded-md">BCA, Mandiri, BNI, BRI, Permata, CIMB Niaga</span>
+                </div>
+
+                <!-- E-Wallet -->
+                <div class="p-6 rounded-2xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+                        <span class="material-symbols-outlined text-2xl">account_balance_wallet</span>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">Dompet Digital (E-Wallet)</h3>
+                    <p class="text-xs text-slate-400 mb-3">Pembayaran praktis langsung dialihkan ke aplikasi favorit di ponsel Anda</p>
+                    <span class="text-[11px] font-semibold text-slate-300 bg-white/5 px-2.5 py-1 rounded-md">GoPay, OVO, DANA, ShopeePay</span>
+                </div>
+
+                <!-- Gerai Retail -->
+                <div class="p-6 rounded-2xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
+                        <span class="material-symbols-outlined text-2xl">storefront</span>
+                    </div>
+                    <h3 class="font-bold text-white text-base mb-1">Gerai Retail</h3>
+                    <p class="text-xs text-slate-400 mb-3">Bagi Anda yang lebih nyaman bayar tunai di gerai minimarket terdekat</p>
+                    <span class="text-[11px] font-semibold text-slate-300 bg-white/5 px-2.5 py-1 rounded-md">Indomaret & Alfamart</span>
+                </div>
+            </div>
+
+            <!-- Security & Compliance Badge -->
+            <div class="p-4 md:p-6 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-blue-950/40 border border-cyan-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-xl">lock</span>
+                    </div>
+                    <div>
+                        <div class="text-white text-xs font-bold">Keamanan Transaksi Terjamin (PCI-DSS & SSL 256-Bit)</div>
+                        <div class="text-slate-400 text-[11px]">Seluruh transaksi diproses melalui Payment Gateway resmi berizin dan diawasi oleh Bank Indonesia.</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-bold text-slate-300 shrink-0">
+                    <span class="flex items-center gap-1 text-emerald-400"><span class="material-symbols-outlined text-[16px]">check_circle</span> Instant Verifikasi</span>
+                    <span class="flex items-center gap-1 text-cyan-400"><span class="material-symbols-outlined text-[16px]">bolt</span> Buka Isolir Otomatis</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto mb-28" id="faq">
+        <div class="text-center mb-12">
+            <h2 class="font-headline-lg text-headline-lg text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Pertanyaan Umum (FAQ)</h2>
+            <p class="text-on-surface-variant font-body-md text-body-md">Jawaban seputar pemasangan, cara bayar, dan layanan {{ $companyName }}.</p>
+        </div>
+
+        <div class="space-y-4">
+            <!-- FAQ 1 -->
+            <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+                <button @click="faqOpen = (faqOpen === 1 ? null : 1)" class="w-full p-6 text-left flex justify-between items-center gap-4 text-white font-bold text-base hover:text-cyan-400 transition-colors">
+                    <span>1. Bagaimana cara mendaftar pasang baru internet rumah?</span>
+                    <span class="material-symbols-outlined text-cyan-400 transition-transform" :class="faqOpen === 1 ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="faqOpen === 1" x-collapse x-cloak class="px-6 pb-6 text-sm text-slate-300 border-t border-white/5 pt-4 leading-relaxed">
+                    Cukup pilih paket yang Anda inginkan di halaman utama, klik <strong>"Pilih Paket"</strong> atau <strong>"Berlangganan Sekarang"</strong>, lalu isi form pendaftaran (Nama, Nomor WhatsApp, dan Alamat Pemasangan). Tim teknisi kami akan segera memverifikasi ketersediaan jaringan di lokasi Anda dan menjadwalkan instalasi.
+                </div>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+                <button @click="faqOpen = (faqOpen === 2 ? null : 2)" class="w-full p-6 text-left flex justify-between items-center gap-4 text-white font-bold text-base hover:text-cyan-400 transition-colors">
+                    <span>2. Bagaimana cara membayar tagihan bulanan?</span>
+                    <span class="material-symbols-outlined text-cyan-400 transition-transform" :class="faqOpen === 2 ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="faqOpen === 2" x-collapse x-cloak class="px-6 pb-6 text-sm text-slate-300 border-t border-white/5 pt-4 leading-relaxed">
+                    Anda dapat membayar tagihan dengan mudah tanpa login melalui menu <strong>Cek & Bayar Tagihan</strong> di web ini dengan memasukkan ID Pelanggan, Nomor HP, atau Email Anda. Kami menyediakan kanal QRIS otomatis, Virtual Account semua bank utama, e-wallet, hingga minimarket. Verifikasi terjadi secara realtime tanpa perlu kirim bukti transfer.
+                </div>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+                <button @click="faqOpen = (faqOpen === 3 ? null : 3)" class="w-full p-6 text-left flex justify-between items-center gap-4 text-white font-bold text-base hover:text-cyan-400 transition-colors">
+                    <span>3. Apakah layanan internet memiliki batasan kuota (FUP)?</span>
+                    <span class="material-symbols-outlined text-cyan-400 transition-transform" :class="faqOpen === 3 ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="faqOpen === 3" x-collapse x-cloak class="px-6 pb-6 text-sm text-slate-300 border-t border-white/5 pt-4 leading-relaxed">
+                    Tidak ada batasan FUP (Fair Usage Policy) untuk paket internet rumah fiber optic kami. Kecepatan internet Anda stabil 24 jam penuh sepanjang bulan tanpa ada penurunan kecepatan di akhir bulan.
+                </div>
+            </div>
+
+            <!-- FAQ 4 -->
+            <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+                <button @click="faqOpen = (faqOpen === 4 ? null : 4)" class="w-full p-6 text-left flex justify-between items-center gap-4 text-white font-bold text-base hover:text-cyan-400 transition-colors">
+                    <span>4. Apa yang harus dilakukan jika koneksi internet terputus atau lampu LOS merah?</span>
+                    <span class="material-symbols-outlined text-cyan-400 transition-transform" :class="faqOpen === 4 ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="faqOpen === 4" x-collapse x-cloak class="px-6 pb-6 text-sm text-slate-300 border-t border-white/5 pt-4 leading-relaxed">
+                    Pertama, coba matikan modem selama 30 detik lalu nyalakan kembali (restart). Jika lampu indikator LOS pada modem masih berkedip merah (menandakan kabel optik terganggu), segera buat tiket gangguan melalui Portal Pelanggan atau hubungi layanan teknis kami via WhatsApp CS di nomor <strong>{{ $companyPhone }}</strong>.
+                </div>
+            </div>
+
+            <!-- FAQ 5 -->
+            <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+                <button @click="faqOpen = (faqOpen === 5 ? null : 5)" class="w-full p-6 text-left flex justify-between items-center gap-4 text-white font-bold text-base hover:text-cyan-400 transition-colors">
+                    <span>5. Bagaimana kebijakan pengembalian dana (refund) jika terjadi kendala?</span>
+                    <span class="material-symbols-outlined text-cyan-400 transition-transform" :class="faqOpen === 5 ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="faqOpen === 5" x-collapse x-cloak class="px-6 pb-6 text-sm text-slate-300 border-t border-white/5 pt-4 leading-relaxed">
+                    Kami memberlakukan jaminan pengembalian dana 100% jika terjadi kelebihan transfer / double payment atau jika pendaftaran baru gagal diaktifkan karena lokasi Anda belum terjangkau jaringan fiber optik kami. Informasi detail dapat dibaca di halaman <a href="{{ route('legal.refund') }}" class="text-cyan-400 hover:underline">Kebijakan Pengembalian Dana & Pembatalan</a>.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact & Location Section -->
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-20" id="kontak">
+        <div class="glass-card rounded-[2rem] p-8 md:p-12 border border-white/10 shadow-xl">
+            <div class="text-center max-w-2xl mx-auto mb-10">
+                <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-2">Informasi Kontak & Kantor Operasional</h2>
+                <p class="text-slate-400 text-xs md:text-sm">Silakan hubungi kami untuk informasi kemitraan, kendala teknis, atau kunjungi kantor layanan kami.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-xs text-slate-300">
+                <div class="p-5 rounded-xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <span class="material-symbols-outlined text-cyan-400 text-3xl mb-2">location_on</span>
+                    <h4 class="font-bold text-white text-sm mb-1">Alamat Kantor</h4>
+                    <p class="text-slate-400 leading-relaxed">{{ $companyAddress }}<br>{{ $companyCity }}, {{ $companyProvince }} {{ $companyPostal }}</p>
+                </div>
+
+                <div class="p-5 rounded-xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <span class="material-symbols-outlined text-emerald-400 text-3xl mb-2">chat</span>
+                    <h4 class="font-bold text-white text-sm mb-1">WhatsApp / Telepon</h4>
+                    <p class="text-slate-400 mb-2">Customer Care & Pemasangan</p>
+                    <a href="https://wa.me/{{ preg_replace('/\D/', '', $companyPhone) }}" target="_blank" class="font-bold text-emerald-400 hover:underline text-sm">
+                        {{ $companyPhone }}
+                    </a>
+                </div>
+
+                <div class="p-5 rounded-xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <span class="material-symbols-outlined text-blue-400 text-3xl mb-2">mail</span>
+                    <h4 class="font-bold text-white text-sm mb-1">Email Resmi</h4>
+                    <p class="text-slate-400 mb-2">Billing & Support</p>
+                    <a href="mailto:{{ $companyEmail }}" class="font-bold text-blue-400 hover:underline text-sm">
+                        {{ $companyEmail }}
+                    </a>
+                </div>
+
+                <div class="p-5 rounded-xl bg-slate-900/60 border border-white/5 flex flex-col items-center text-center">
+                    <span class="material-symbols-outlined text-amber-400 text-3xl mb-2">schedule</span>
+                    <h4 class="font-bold text-white text-sm mb-1">Jam Operasional</h4>
+                    <p class="text-slate-400 leading-relaxed">{{ $companyHours }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
 </main>
 
-    <!-- Footer -->
-<footer class="bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-outline-variant w-full py-stack-lg px-margin-mobile md:px-margin-desktop grid grid-cols-1 md:grid-cols-4 gap-gutter items-center">
-    <div class="flex flex-col gap-2 md:col-span-2">
-        <div class="font-headline-md text-headline-md font-bold text-primary mb-2">
-            {{ $companyName }}
-                </div>
-        <p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-4">
-            <span>&copy; {{ date('Y') }} {{ $companyName }}. Reliable Fiber Optic Connection.</span>
-            <a href="{{ route('admin.login') }}" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 opacity-50 hover:opacity-100" title="Admin Login">
+<!-- Footer (Full Compliant with Payment Gateway Standards) -->
+<footer class="bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-outline-variant w-full py-12 px-margin-mobile md:px-margin-desktop text-sm">
+    <div class="max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        <!-- Col 1: Identity & Description -->
+        <div class="flex flex-col gap-3 md:col-span-1">
+            <div class="font-headline-md text-headline-md font-extrabold text-primary">
+                {{ $companyName }}
+            </div>
+            @if($companyLegal && $companyLegal !== $companyName)
+                <div class="text-xs text-slate-400 font-semibold">{{ $companyLegal }}</div>
+            @endif
+            <p class="text-xs text-on-surface-variant leading-relaxed">
+                Penyedia solusi akses internet berkecepatan tinggi dengan infrastruktur Full Fiber Optic untuk rumah, bisnis, dan ruang publik.
+            </p>
+            <div class="flex items-center gap-2 mt-2 text-xs text-emerald-400">
+                <span class="material-symbols-outlined text-sm">security</span>
+                <span>PCI-DSS Compliant &amp; SSL 256-Bit</span>
+            </div>
+        </div>
+
+        <!-- Col 2: Services -->
+        <div>
+            <h4 class="text-white font-bold mb-3 text-xs uppercase tracking-wider">Layanan Kami</h4>
+            <ul class="space-y-2 text-xs text-on-surface-variant">
+                <li><a href="#paket" class="hover:text-primary transition-colors">Internet Rumah (PPPoE)</a></li>
+                <li><a href="#hotspot" class="hover:text-primary transition-colors">Voucher Prabayar Hotspot</a></li>
+                <li><a href="#member-hotspot" class="hover:text-primary transition-colors">Member Hotspot</a></li>
+                <li><a href="{{ route('guest.payment') }}" class="hover:text-primary transition-colors">Cek &amp; Bayar Tagihan Online</a></li>
+            </ul>
+        </div>
+
+        <!-- Col 3: Legal & Payment Gateway Compliance Links -->
+        <div>
+            <h4 class="text-white font-bold mb-3 text-xs uppercase tracking-wider">Legalitas &amp; Kebijakan</h4>
+            <ul class="space-y-2 text-xs text-on-surface-variant">
+                <li><a href="{{ route('legal.terms') }}" class="hover:text-secondary transition-colors">Syarat &amp; Ketentuan (TOS)</a></li>
+                <li><a href="{{ route('legal.privacy') }}" class="hover:text-secondary transition-colors">Kebijakan Privasi</a></li>
+                <li><a href="{{ route('legal.refund') }}" class="hover:text-secondary transition-colors">Kebijakan Pengembalian Dana (Refund)</a></li>
+                <li><a href="{{ route('legal.about') }}" class="hover:text-secondary transition-colors">Tentang Kami</a></li>
+                <li><a href="{{ route('legal.contact') }}" class="hover:text-secondary transition-colors">Kontak &amp; Dukungan Pelanggan</a></li>
+                <li><a href="#faq" class="hover:text-secondary transition-colors">Pertanyaan Umum (FAQ)</a></li>
+            </ul>
+        </div>
+
+        <!-- Col 4: Contact & Operations -->
+        <div>
+            <h4 class="text-white font-bold mb-3 text-xs uppercase tracking-wider">Kontak Kantor</h4>
+            <div class="space-y-2 text-xs text-on-surface-variant leading-relaxed">
+                <p><strong class="text-slate-300">Alamat:</strong><br>{{ $companyAddress }}, {{ $companyCity }}, {{ $companyProvince }} {{ $companyPostal }}</p>
+                <p><strong class="text-slate-300">WhatsApp/Telp:</strong><br>{{ $companyPhone }}</p>
+                <p><strong class="text-slate-300">Email:</strong><br>{{ $companyEmail }}</p>
+                <p><strong class="text-slate-300">Jam Operasional:</strong><br>{{ $companyHours }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Copyright & Admin link -->
+    <div class="max-w-container-max mx-auto pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+        <p>&copy; {{ date('Y') }} {{ $companyName }}. Hak Cipta Dilindungi Undang-Undang.</p>
+        <div class="flex items-center gap-4">
+            <span>Didukung oleh Payment Gateway Berizin Bank Indonesia</span>
+            <a href="{{ route('admin.login') }}" class="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 opacity-40 hover:opacity-100" title="Admin Login">
                 <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
             </a>
-        </p>
-    </div>
-    <div class="flex flex-col sm:flex-row gap-6 md:col-span-2 md:justify-end">
-        <a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-all hover:translate-x-1 duration-300" href="#">Tentang Kami</a>
-        <a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-all hover:translate-x-1 duration-300" href="#">Syarat &amp; Ketentuan</a>
-        <a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-all hover:translate-x-1 duration-300" href="#">Kebijakan Privasi</a>
-        <a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-all hover:translate-x-1 duration-300" href="#">Bantuan</a>
+        </div>
     </div>
 </footer>
 

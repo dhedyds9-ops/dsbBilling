@@ -223,11 +223,23 @@
             @endif
         @endif
 
-        <div class="text-center mt-16 mb-12 mt-4">
+        <div class="text-center mt-12 mb-6">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-surface-container-highest hover:bg-surface-bright backdrop-blur-md text-sm font-bold text-white transition-all hover:scale-105 border border-outline-variant shadow-[0_0_15px_rgba(76,215,246,0.1)]">
                 <span class="material-symbols-outlined text-sm">arrow_back</span>
                 Kembali ke Beranda
             </a>
+        </div>
+
+        <!-- Compliance & Legal Links for Payment Gateways -->
+        <div class="pt-8 border-t border-white/10 text-center text-xs text-slate-400 space-y-3">
+            <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 font-medium">
+                <a href="{{ route('home') }}" class="hover:text-primary transition-colors">Beranda</a>
+                <a href="{{ route('legal.terms') }}" class="hover:text-primary transition-colors">Syarat &amp; Ketentuan</a>
+                <a href="{{ route('legal.privacy') }}" class="hover:text-primary transition-colors">Kebijakan Privasi</a>
+                <a href="{{ route('legal.refund') }}" class="hover:text-primary transition-colors">Kebijakan Refund</a>
+                <a href="{{ route('legal.contact') }}" class="hover:text-primary transition-colors">Bantuan &amp; Kontak</a>
+            </div>
+            <p>&copy; {{ date('Y') }} {{ $companyName }}. Pembayaran aman dengan enkripsi SSL 256-Bit didukung Payment Gateway berizin Bank Indonesia.</p>
         </div>
     </div>
 
