@@ -256,6 +256,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/ticket', \App\Livewire\Support\Ticket\Index::class)->name('ticket');
             // Instalasi: Work Order | Schedule | Technician | Map | Checklist
             Route::get('/installation', \App\Livewire\Support\Installation\Index::class)->name('installation');
+            // Riwayat Pekerjaan / Work Order History
+            Route::get('/work-orders/history', \App\Livewire\Support\Installation\WorkOrderHistory::class)->name('work-orders.history');
             // Maintenance: Calendar | History | Technician | Material
             Route::get('/maintenance', \App\Livewire\Support\Maintenance\Index::class)->name('maintenance');
         });
@@ -445,6 +447,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/user-online', \App\Livewire\ResellerPortal\Customer\UserOnline::class)->name('user-online');
             Route::get('/active', \App\Livewire\ResellerPortal\Customer\Active::class)->name('active');
             Route::get('/isolated', \App\Livewire\ResellerPortal\Customer\Isolated::class)->name('isolated');
+            Route::get('/installation-history', \App\Livewire\ResellerPortal\Customer\InstallationHistory::class)->name('installation-history');
         });
 
         Route::prefix('finance')->name('finance.')->group(function() {

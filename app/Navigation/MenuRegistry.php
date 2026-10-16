@@ -130,6 +130,7 @@ class MenuRegistry
                             ['label' => 'Kontrak Pelanggan', 'route' => 'crm.contracts.index', 'active' => 'crm.contracts.*'],
                             ['label' => 'Jadwal Instalasi', 'route' => 'crm.installations.index', 'active' => 'crm.installations.*'],
                             ['label' => 'Aktivasi Layanan', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*'],
+                            ['label' => 'Riwayat Kerja & Instalasi', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*'],
                             ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance'],
                             ['label' => 'Workflow & Tugas', 'route' => 'workflow.list.index', 'active' => 'workflow.list.*'],
                         ]
@@ -198,6 +199,7 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Tiket Bantuan', 'route' => 'support.ticket', 'active' => 'support.ticket'],
                             ['label' => 'Instalasi Baru', 'route' => 'support.installation', 'active' => 'support.installation'],
+                            ['label' => 'Riwayat Instalasi', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*'],
                             ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance'],
                         ]
                     ],
@@ -320,6 +322,7 @@ class MenuRegistry
                             ['label' => 'Hotspot', 'route' => 'reseller-portal.customers.hotspot', 'active' => 'reseller-portal.customers.hotspot'],
                             ['label' => 'Voucher', 'route' => 'reseller-portal.sales.voucher', 'active' => 'reseller-portal.sales.voucher'],
                             ['label' => 'User Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online'],
+                            ['label' => 'Riwayat Instalasi', 'route' => 'reseller-portal.customers.installation-history', 'active' => 'reseller-portal.customers.installation-history'],
                             ['label' => 'Terisolir', 'route' => 'reseller-portal.customers.isolated', 'active' => 'reseller-portal.customers.isolated'],
                         ]
                     ],
