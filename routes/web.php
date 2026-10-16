@@ -7,32 +7,29 @@ use Illuminate\Support\Facades\Auth;
 
 // ==================== PUBLIC ROUTES ====================
 Route::get('/', function () {
-    $packagesPppoe = \App\Models\ISP\ServiceProfile::where('status', 'active')->where('show_on_landing', true)->whereIn('service_type', ['pppoe', 'PPPoE', 'PPPOE'])->orderBy('base_price')->take(3)->get();
-    $packagesHotspot = \App\Models\ISP\ServiceProfile::where('status', 'active')->where('show_on_landing', true)->whereIn('service_type', ['hotspot', 'Hotspot', 'HOTSPOT'])->orderBy('base_price')->take(3)->get();
-    $packagesVoucher = \App\Models\ISP\ServiceProfile::where('status', 'active')->where('show_on_landing', true)->whereIn('service_type', ['voucher', 'Voucher', 'VOUCHER'])->orderBy('base_price')->take(4)->get();
+    // 1. Ambil paket PPPoE / FTTH aktif dari database (tanpa data dummy)
+    $pppoeQuery = \App\Models\ISP\ServiceProfile::where('status', 'active')
+        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['pppoe', 'ftth', 'kombinasi']);
+    if ((clone $pppoeQuery)->where('show_on_landing', true)->exists()) {
+        $pppoeQuery->where('show_on_landing', true);
+    }
+    $packagesPppoe = $pppoeQuery->orderBy('base_price')->get();
 
-    // Jika database kosong, berikan data dummy agar UI landing page tetap cantik
-    if ($packagesPppoe->isEmpty()) {
-        $packagesPppoe = collect([
-            (object)['name' => 'Home Basic', 'description' => '10 Mbps', 'price' => 150000, 'feature1' => 'Koneksi Stabil', 'feature2' => 'Cocok untuk 2-3 Gadget', 'feature3' => 'Tanpa FUP'],
-            (object)['name' => 'Home Pro', 'description' => '30 Mbps', 'price' => 250000, 'feature1' => 'Super Cepat & Stabil', 'feature2' => 'Cocok untuk Keluarga', 'feature3' => 'Unlimited Quota'],
-            (object)['name' => 'Home Ultimate', 'description' => '50 Mbps', 'price' => 350000, 'feature1' => 'Streaming 4K Lancar', 'feature2' => 'Cocok untuk Gaming', 'feature3' => 'Prioritas Jaringan']
-        ]);
+    // 2. Ambil paket Member Hotspot aktif dari database (tanpa data dummy)
+    $hotspotQuery = \App\Models\ISP\ServiceProfile::where('status', 'active')
+        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot']);
+    if ((clone $hotspotQuery)->where('show_on_landing', true)->exists()) {
+        $hotspotQuery->where('show_on_landing', true);
     }
-    if ($packagesHotspot->isEmpty()) {
-        $packagesHotspot = collect([
-            (object)['name' => 'Member Starter', 'description' => 'Akses 1 Perangkat', 'price' => 50000, 'feature1' => 'Single Device Login', 'feature2' => 'Standard Bandwidth'],
-            (object)['name' => 'Member Pro', 'description' => 'Akses 2 Perangkat', 'price' => 80000, 'feature1' => '2 Devices Concurrent', 'feature2' => 'Priority Bandwidth']
-        ]);
+    $packagesHotspot = $hotspotQuery->orderBy('base_price')->get();
+
+    // 3. Ambil paket Voucher Hotspot aktif dari database (tanpa data dummy)
+    $voucherQuery = \App\Models\ISP\ServiceProfile::where('status', 'active')
+        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['voucher']);
+    if ((clone $voucherQuery)->where('show_on_landing', true)->exists()) {
+        $voucherQuery->where('show_on_landing', true);
     }
-    if ($packagesVoucher->isEmpty()) {
-        $packagesVoucher = collect([
-            (object)['id' => 1, 'name' => 'Voucher 6 Jam', 'description' => 'Akses Singkat', 'price' => 3000, 'icon' => 'timer'],
-            (object)['id' => 2, 'name' => 'Voucher 1 Hari', 'description' => 'Akses Harian', 'price' => 5000, 'icon' => 'today'],
-            (object)['id' => 3, 'name' => 'Voucher 1 Minggu', 'description' => 'Akses Mingguan', 'price' => 25000, 'icon' => 'date_range'],
-            (object)['id' => 4, 'name' => 'Voucher 1 Bulan', 'description' => 'Akses Bulanan', 'price' => 75000, 'icon' => 'calendar_month']
-        ]);
-    }
+    $packagesVoucher = $voucherQuery->orderBy('base_price')->get();
 
     return view('landing', compact('packagesPppoe', 'packagesHotspot', 'packagesVoucher'));
 })->name('home');

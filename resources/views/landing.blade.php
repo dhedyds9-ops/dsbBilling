@@ -156,16 +156,20 @@
 }">
 
     @php
-        $companyName = \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
-        $companyLegal = \App\Models\Setting::getValue('company.legal_name', $companyName);
+        $host = request()->getHost();
+        $subdomain = explode('.', $host)[0];
+        $defaultTenantName = ($subdomain && !in_array($subdomain, ['localhost', '127', 'dsbilling', 'www'])) ? ucfirst($subdomain) : config('app.name', 'dsBilling');
+
+        $companyName = \App\Models\Setting::getValue('company.name') ?: $defaultTenantName;
+        $companyLegal = \App\Models\Setting::getValue('company.legal_name') ?: $companyName;
         $companyLogo = \App\Models\Setting::getValue('company.logo_url', null);
-        $companyPhone = \App\Models\Setting::getValue('company.phone', '0812-3456-7890');
-        $companyEmail = \App\Models\Setting::getValue('company.email', 'support@dsbilling.id');
-        $companyAddress = \App\Models\Setting::getValue('company.address', 'Jl. Merdeka No. 45');
-        $companyCity = \App\Models\Setting::getValue('company.city', 'Jakarta');
-        $companyProvince = \App\Models\Setting::getValue('company.province', 'DKI Jakarta');
-        $companyPostal = \App\Models\Setting::getValue('company.postal_code', '10110');
-        $companyHours = \App\Models\Setting::getValue('company.operational_hours', 'Senin - Minggu: 24 Jam (Teknis) / 08:00 - 21:00 WIB (Administrasi)');
+        $companyPhone = \App\Models\Setting::getValue('company.phone') ?: \App\Models\Setting::getValue('company.whatsapp') ?: \App\Models\Setting::getValue('company.mobile');
+        $companyEmail = \App\Models\Setting::getValue('company.email') ?: \App\Models\Setting::getValue('company.support_email') ?: ('admin@' . (str_contains($host, '.') ? $host : 'dsbilling.id'));
+        $companyAddress = \App\Models\Setting::getValue('company.address');
+        $companyCity = \App\Models\Setting::getValue('company.city');
+        $companyProvince = \App\Models\Setting::getValue('company.province');
+        $companyPostal = \App\Models\Setting::getValue('company.postal_code');
+        $companyHours = \App\Models\Setting::getValue('company.operational_hours') ?: 'Senin - Minggu: 24 Jam (Teknis) / 08:00 - 21:00 WIB (Administrasi)';
 
         $showPppoe = \Illuminate\Support\Collection::wrap($packagesPppoe ?? []);
         $showMemberHotspot = \Illuminate\Support\Collection::wrap($packagesHotspot ?? []);

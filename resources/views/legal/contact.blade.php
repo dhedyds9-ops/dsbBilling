@@ -9,6 +9,7 @@
         <!-- Contact Cards Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 not-prose">
             <!-- Office Address Card -->
+            @if(!empty($companyAddress))
             <div class="glass-card p-6 rounded-2xl border border-white/10 flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
                     <span class="material-symbols-outlined text-2xl">location_on</span>
@@ -17,13 +18,17 @@
                     <h3 class="text-white font-bold text-base mb-1">Alamat Kantor Operasional</h3>
                     <p class="text-slate-400 text-sm leading-relaxed">
                         {{ $companyAddress }}<br>
-                        {{ $companyCity }}, {{ $companyProvince }} {{ $companyPostal }}<br>
+                        @if(!empty($companyCity) || !empty($companyProvince))
+                            {{ $companyCity }}@if(!empty($companyCity) && !empty($companyProvince)), @endif{{ $companyProvince }} {{ $companyPostal }}<br>
+                        @endif
                         Indonesia
                     </p>
                 </div>
             </div>
+            @endif
 
             <!-- WhatsApp Card -->
+            @if(!empty($companyPhone))
             <div class="glass-card p-6 rounded-2xl border border-white/10 flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
                     <span class="material-symbols-outlined text-2xl">chat</span>
@@ -36,6 +41,7 @@
                     </a>
                 </div>
             </div>
+            @endif
 
             <!-- Email Card -->
             <div class="glass-card p-6 rounded-2xl border border-white/10 flex items-start gap-4">

@@ -64,7 +64,7 @@
                 <span class="text-cyan-400">7.</span> Kontak Layanan Pelanggan
             </h2>
             <p>
-                Jika Anda memiliki pertanyaan mengenai Syarat & Ketentuan ini, silakan hubungi pusat layanan kami melalui email <strong>{{ $companyEmail }}</strong> atau WhatsApp <strong>{{ $companyPhone }}</strong>.
+                Jika Anda memiliki pertanyaan mengenai Syarat & Ketentuan ini, silakan hubungi pusat layanan kami melalui email <strong>{{ $companyEmail }}</strong>@if(!empty($companyPhone)) atau WhatsApp <strong>{{ $companyPhone }}</strong>@endif.
             </p>
         </section>
     </div>

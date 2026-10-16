@@ -86,6 +86,34 @@ class AppServiceProvider extends ServiceProvider
 
         \Illuminate\Support\Facades\View::composer('layouts.admin', \App\View\Composers\AdminLayoutComposer::class);
 
+        \Illuminate\Support\Facades\View::composer(['landing', 'legal.*', 'components.layouts.public-legal'], function ($view) {
+            $host = request()->getHost();
+            $subdomain = explode('.', $host)[0];
+            $defaultTenantName = ($subdomain && !in_array($subdomain, ['localhost', '127', 'dsbilling', 'www'])) ? ucfirst($subdomain) : config('app.name', 'dsBilling');
+
+            $companyName = \App\Models\Setting::getValue('company.name') ?: $defaultTenantName;
+            $companyLogo = \App\Models\Setting::getValue('company.logo_url', null);
+            $companyPhone = \App\Models\Setting::getValue('company.phone') ?: \App\Models\Setting::getValue('company.whatsapp') ?: \App\Models\Setting::getValue('company.mobile');
+            $companyEmail = \App\Models\Setting::getValue('company.email') ?: \App\Models\Setting::getValue('company.support_email') ?: ('admin@' . (str_contains($host, '.') ? $host : 'dsbilling.id'));
+            $companyAddress = \App\Models\Setting::getValue('company.address');
+            $companyCity = \App\Models\Setting::getValue('company.city');
+            $companyProvince = \App\Models\Setting::getValue('company.province');
+            $companyPostal = \App\Models\Setting::getValue('company.postal_code');
+            $companyHours = \App\Models\Setting::getValue('company.operational_hours') ?: 'Senin - Minggu: 24 Jam (Teknis) / 08:00 - 21:00 WIB (Administrasi)';
+
+            $view->with([
+                'companyName' => $companyName,
+                'companyLogo' => $companyLogo,
+                'companyPhone' => $companyPhone,
+                'companyEmail' => $companyEmail,
+                'companyAddress' => $companyAddress,
+                'companyCity' => $companyCity,
+                'companyProvince' => $companyProvince,
+                'companyPostal' => $companyPostal,
+                'companyHours' => $companyHours,
+            ]);
+        });
+
         \Illuminate\Support\Facades\RateLimiter::for('radius.accounting', function (\Illuminate\Http\Request $request) {
             $nasIp = $request->input('nas_ip_address')
                 ?? ($request->header('X-Forwarded-For') ? explode(',', (string)$request->header('X-Forwarded-For'))[0]
