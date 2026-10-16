@@ -41,9 +41,15 @@ class Index extends AdminComponent
 
         $query = Customer::with([
             'customerServices' => function ($query) {
-                $query->withoutGlobalScope('branch_isolation')
-                      ->with(['serviceProfile', 'service', 'pppoeUser', 'hotspotUser']);
-            }
+                $query->withoutGlobalScopes()
+                      ->with([
+                          'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                          'service' => fn($q) => $q->withoutGlobalScopes(),
+                          'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                          'hotspotUser' => fn($q) => $q->withoutGlobalScopes(),
+                      ]);
+            },
+            'reseller' => fn($q) => $q->withoutGlobalScopes(),
         ])->where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)
               ->orWhere('created_by', $ownerId);

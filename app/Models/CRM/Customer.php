@@ -62,6 +62,37 @@ class Customer extends Model
                 $cs->restore();
             }
         });
+
+        static::saved(function ($customer) {
+            if ($customer->reseller_id) {
+                \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $customer->id)
+                    ->where(function($q) use ($customer) {
+                        $q->whereNull('reseller_id')->orWhere('reseller_id', '!=', $customer->reseller_id);
+                    })
+                    ->update(['reseller_id' => $customer->reseller_id]);
+
+                $csIds = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $customer->id)
+                    ->pluck('id');
+
+                if ($csIds->isNotEmpty()) {
+                    \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                        ->whereIn('customer_service_id', $csIds)
+                        ->where(function($q) use ($customer) {
+                            $q->whereNull('reseller_id')->orWhere('reseller_id', '!=', $customer->reseller_id);
+                        })
+                        ->update(['reseller_id' => $customer->reseller_id]);
+
+                    \App\Models\ISP\HotspotUser::withoutGlobalScopes()
+                        ->whereIn('customer_service_id', $csIds)
+                        ->where(function($q) use ($customer) {
+                            $q->whereNull('reseller_id')->orWhere('reseller_id', '!=', $customer->reseller_id);
+                        })
+                        ->update(['reseller_id' => $customer->reseller_id]);
+                }
+            }
+        });
     }
 
     public function createdBy(): BelongsTo

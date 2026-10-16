@@ -117,9 +117,13 @@ class Onu extends Model
                     $q->where('branch_id', $user->branch_id);
                 }
                 // Also match ONUs assigned to customer services belonging to this reseller
-                $q->orWhereHas('customerService', function($csQ) use ($resellerId) {
-                    $csQ->where('reseller_id', $resellerId);
-                });
+                $q->orWhere('reseller_id', $resellerId)
+                  ->orWhereHas('customerService', function($csQ) use ($resellerId) {
+                      $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                          $sub->where('reseller_id', $resellerId)
+                              ->orWhereHas('customer', fn($cQ) => $cQ->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
+                      });
+                  });
             });
         }
         return $query;

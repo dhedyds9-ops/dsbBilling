@@ -35,16 +35,20 @@ class Customer360 extends AdminComponent
     protected function getCustomer()
     {
         if (!$this->customer) {
-            $this->customer = \App\Models\CRM\Customer::with([
+            $this->customer = \App\Models\CRM\Customer::withoutGlobalScopes()->with([
                 'customerServices' => function ($query) {
-                    $query->withoutGlobalScope('branch_isolation')
+                    $query->withoutGlobalScopes()
                           ->with([
-                              'service', 'serviceProfile', 'onu.odp.odc', 'onu.ponPort', 'onu.olt', 'pppoeUser', 'hotspotUser'
+                              'service' => fn($q) => $q->withoutGlobalScopes(),
+                              'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                              'onu.odp.odc', 'onu.ponPort', 'onu.olt',
+                              'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                              'hotspotUser' => fn($q) => $q->withoutGlobalScopes(),
                           ]);
                 },
-                'invoices',
-                'payments',
-                'contracts',
+                'invoices' => fn($q) => $q->withoutGlobalScopes(),
+                'payments' => fn($q) => $q->withoutGlobalScopes(),
+                'contracts' => fn($q) => $q->withoutGlobalScopes(),
                 'installations', 'tickets',
             ])->findOrFail($this->customerId);
         }
@@ -350,18 +354,7 @@ class Customer360 extends AdminComponent
     {
         // Hydrate customer if not set
         if (!$this->customer) {
-            $this->customer = \App\Models\CRM\Customer::with([
-                'customerServices' => function ($query) {
-                    $query->withoutGlobalScope('branch_isolation')
-                          ->with([
-                              'service', 'serviceProfile', 'onu.odp.odc', 'onu.ponPort', 'onu.olt', 'pppoeUser', 'hotspotUser'
-                          ]);
-                },
-                'invoices',
-                'payments',
-                'contracts',
-                'installations', 'tickets',
-            ])->findOrFail($this->customerId);
+            $this->customer = $this->getCustomer();
         }
         
         $customer = $this->customer;
@@ -489,17 +482,21 @@ class Customer360 extends AdminComponent
             $this->getCustomer()->customerServices->each(function ($service) use (&$monitoring) {
                 $ip = 'Dynamic';
                 $mac = 'N/A';
+                $isOnline = false;
                 if ($service->pppoeUser) {
                     $ip = $service->pppoeUser->static_ip ?? 'Dynamic';
                     $mac = $service->pppoeUser->mac_address ?? 'N/A';
+                    $isOnline = $service->pppoeUser->is_online ?? false;
                 } elseif ($service->hotspotUser) {
                     $ip = $service->hotspotUser->static_ip ?? 'Dynamic';
                     $mac = $service->hotspotUser->mac_address ?? 'N/A';
+                    $isOnline = $service->hotspotUser->is_online ?? false;
                 }
                 
                 $mon = [
-                    'service' => $service->service->name ?? 'Unknown',
+                    'service' => $service->service->name ?? $service->serviceProfile?->name ?? 'Internet Service',
                     'status' => $service->status,
+                    'is_online' => $isOnline,
                     'onu_rx' => $service->onu->rx_power_dbm ?? 'N/A',
                     'onu_tx' => $service->onu->tx_power_dbm ?? 'N/A',
                     'onu_status' => $service->onu->status ?? 'Unknown',

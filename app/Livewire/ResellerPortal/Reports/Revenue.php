@@ -28,9 +28,12 @@ class Revenue extends AdminComponent
         $currentYear = now()->year;
 
         // Base query for successful payments this month
-        $baseQuery = Payment::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })->where('status', 'success')
+        $baseQuery = Payment::withoutGlobalScopes()->where(function ($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)
+              ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+              });
+        })->whereIn('status', ['success', 'approved', 'paid'])
           ->where('gateway', '!=', 'reseller_topup') // exclude topups
           ->whereMonth('created_at', $currentMonth)
           ->whereYear('created_at', $currentYear);
@@ -40,7 +43,7 @@ class Revenue extends AdminComponent
         $averagePayment = $transactionCount > 0 ? $totalRevenue / $transactionCount : 0;
 
         // Recent payments
-        $recentPayments = (clone $baseQuery)->with('customer')
+        $recentPayments = (clone $baseQuery)->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();

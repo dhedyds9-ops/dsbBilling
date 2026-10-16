@@ -10,6 +10,7 @@ use App\Models\ISP\HotspotActiveSession;
 use App\Models\ISP\PPPoEUser;
 use App\Models\ISP\HotspotUser;
 use App\Models\ISP\Voucher;
+use App\Models\ISP\RadiusAccounting;
 use App\Models\CRM\Customer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -132,26 +133,78 @@ class Dashboard extends AdminComponent
         // Count Hotspot and PPPoE users correctly tied to this reseller
         try {
             if ($ownerId) {
-                $hotspotUserCount = HotspotUser::where(function ($q) use ($ownerId) {
-                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                $hotspotUserCount = HotspotUser::withoutGlobalScopes()->where(function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)
+                      ->orWhere('created_by', $ownerId)
+                      ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId));
                 })->count();
 
-                $pppoeUserCount = PPPoEUser::where(function ($q) use ($ownerId) {
-                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                $pppoeUserCount = PPPoEUser::withoutGlobalScopes()->where(function ($q) use ($ownerId) {
+                    $q->where('reseller_id', $ownerId)
+                      ->orWhere('created_by', $ownerId)
+                      ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId));
                 })->count();
                 
-                $hotspotOnline = HotspotActiveSession::whereHas('hotspotUser', function ($q) use ($ownerId) {
-                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+                $pppOnline = PppActiveSession::whereExists(function ($sub) use ($ownerId) {
+                    $sub->selectRaw(1)->from('pppoe_users')
+                        ->leftJoin('customer_services', 'pppoe_users.customer_service_id', '=', 'customer_services.id')
+                        ->leftJoin('customers', 'customer_services.customer_id', '=', 'customers.id')
+                        ->where(function($uq) {
+                            $uq->whereRaw('LOWER(pppoe_users.username) = LOWER(ppp_active_sessions.name)')
+                               ->orWhereRaw('LOWER(ppp_active_sessions.name) LIKE LOWER(pppoe_users.username) || \'@%\'')
+                               ->orWhereRaw('LOWER(pppoe_users.username) LIKE LOWER(ppp_active_sessions.name) || \'@%\'');
+                        })
+                        ->whereNull('pppoe_users.deleted_at')
+                        ->where(function($fq) use ($ownerId) {
+                            $fq->where('pppoe_users.reseller_id', $ownerId)
+                               ->orWhere('customers.reseller_id', $ownerId)
+                               ->orWhere('customers.created_by', $ownerId)
+                               ->orWhere('customer_services.reseller_id', $ownerId);
+                        });
                 })->count();
-                
-                $pppOnline = PppActiveSession::whereHas('pppoeUser', function ($q) use ($ownerId) {
-                    $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+
+                if ($pppOnline === 0) {
+                    $pppOnline = RadiusAccounting::whereNull('acct_stop_time')
+                        ->whereExists(function($sub) use ($ownerId) {
+                            $sub->selectRaw(1)->from('pppoe_users')
+                                ->leftJoin('customer_services', 'pppoe_users.customer_service_id', '=', 'customer_services.id')
+                                ->leftJoin('customers', 'customer_services.customer_id', '=', 'customers.id')
+                                ->where(function($uq) {
+                                    $uq->whereRaw('LOWER(pppoe_users.username) = LOWER(radius_accounting.username)')
+                                       ->orWhereRaw('LOWER(radius_accounting.username) LIKE LOWER(pppoe_users.username) || \'@%\'')
+                                       ->orWhereRaw('LOWER(pppoe_users.username) LIKE LOWER(radius_accounting.username) || \'@%\'');
+                                })
+                                ->whereNull('pppoe_users.deleted_at')
+                                ->where(function($fq) use ($ownerId) {
+                                    $fq->where('pppoe_users.reseller_id', $ownerId)
+                                       ->orWhere('customers.reseller_id', $ownerId)
+                                       ->orWhere('customers.created_by', $ownerId)
+                                       ->orWhere('customer_services.reseller_id', $ownerId);
+                                });
+                        })->count();
+                }
+
+                $hotspotOnline = HotspotActiveSession::whereExists(function ($sub) use ($ownerId) {
+                    $sub->selectRaw(1)->from('hotspot_users')
+                        ->leftJoin('customer_services', 'hotspot_users.customer_service_id', '=', 'customer_services.id')
+                        ->leftJoin('customers', 'customer_services.customer_id', '=', 'customers.id')
+                        ->where(function($uq) {
+                            $uq->whereRaw('LOWER(hotspot_users.username) = LOWER(hotspot_active_sessions.user)')
+                               ->orWhereRaw('LOWER(hotspot_users.username) LIKE LOWER(hotspot_active_sessions.user) || \'@%\'');
+                        })
+                        ->whereNull('hotspot_users.deleted_at')
+                        ->where(function($fq) use ($ownerId) {
+                            $fq->where('hotspot_users.reseller_id', $ownerId)
+                               ->orWhere('customers.reseller_id', $ownerId)
+                               ->orWhere('customers.created_by', $ownerId)
+                               ->orWhere('customer_services.reseller_id', $ownerId);
+                        });
                 })->count();
             } else {
                 $hotspotUserCount = HotspotUser::count();
                 $pppoeUserCount = PPPoEUser::count();
                 $hotspotOnline = HotspotActiveSession::count();
-                $pppOnline = PppActiveSession::count();
+                $pppOnline = PppActiveSession::count() ?: RadiusAccounting::whereNull('acct_stop_time')->count();
             }
         } catch (\Exception $e) {
             $hotspotUserCount = 0;

@@ -30,16 +30,22 @@ class Payments extends AdminComponent
         $resellerId = Auth::user()->getEffectiveResellerId();
 
         // Query payments where the customer belongs to this reseller
-        $query = Payment::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })->where('gateway', '!=', 'reseller_topup')->with(['customer']);
+        $query = Payment::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)
+              ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+              });
+        })->where('gateway', '!=', 'reseller_topup')->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
 
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('reference_number', 'like', '%' . $this->search . '%')
                   ->orWhereHas('customer', function($subQ) {
-                      $subQ->where('name', 'like', '%' . $this->search . '%')
-                           ->orWhere('username', 'like', '%' . $this->search . '%');
+                      $subQ->withoutGlobalScopes()->where(function($sq) {
+                          $sq->where('name', 'like', '%' . $this->search . '%')
+                             ->orWhere('code', 'like', '%' . $this->search . '%')
+                             ->orWhere('phone', 'like', '%' . $this->search . '%');
+                      });
                   });
             });
         }

@@ -60,10 +60,26 @@ class HotspotUser extends Model
         );
     }
 
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (empty($model->reseller_id) && !empty($model->customer_service_id)) {
+                $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()->find($model->customer_service_id);
+                $model->reseller_id = $cs?->reseller_id ?? $cs?->customer?->reseller_id;
+            }
+        });
+    }
+
     public function getIsOnlineAttribute()
     {
-        return \App\Models\ISP\HotspotActiveSession::where('user', $this->username)
-            ->latest('session_started_at')->exists();
+        $rawUname = trim((string)$this->username);
+        if ($rawUname === '') {
+            return false;
+        }
+
+        return \App\Models\ISP\HotspotActiveSession::where('user', 'like', $rawUname)->exists()
+            || $this->radiusAccountings()->whereNull('acct_stop_time')->exists()
+            || \App\Models\ISP\RadiusAccounting::where('username', 'like', $rawUname)->whereNull('acct_stop_time')->exists();
     }
 
     public function activeSession()

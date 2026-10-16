@@ -52,6 +52,12 @@ class CustomerService extends Model
 
     protected static function booted()
     {
+        static::creating(function ($model) {
+            if (empty($model->reseller_id) && !empty($model->customer_id)) {
+                $model->reseller_id = \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $model->customer_id)->value('reseller_id');
+            }
+        });
+
         static::saved(function ($model) {
             Cache::forget('gis_map_data');
         });

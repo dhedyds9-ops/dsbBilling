@@ -48,9 +48,49 @@ class Pppoe extends AdminComponent
     private function baseQuery()
     {
         $ownerId = Auth::user()->getEffectiveResellerId();
-        return PPPoEUser::where(function($q) use ($ownerId) {
-            $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+        return PPPoEUser::withoutGlobalScopes()->where(function($q) use ($ownerId) {
+            $q->where('reseller_id', $ownerId)
+              ->orWhere('created_by', $ownerId)
+              ->orWhereHas('customer', function($cq) use ($ownerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+              })
+              ->orWhereHas('customerService', function($csq) use ($ownerId) {
+                  $csq->withoutGlobalScopes()->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+              });
         });
+    }
+
+    private function applyOnlineFilter($query, bool $isOnline)
+    {
+        if ($isOnline) {
+            $query->where('status', 'active')->where(function($oq) {
+                $oq->whereHas('activeSession')
+                   ->orWhereHas('radiusAccountings', fn($sq) => $sq->whereNull('acct_stop_time'))
+                   ->orWhereExists(function($sub) {
+                       $sub->selectRaw(1)->from('ppp_active_sessions')
+                           ->whereRaw('LOWER(ppp_active_sessions.name) = LOWER(pppoe_users.username) OR LOWER(ppp_active_sessions.name) LIKE LOWER(pppoe_users.username) || \'@%\'');
+                   })
+                   ->orWhereExists(function($sub) {
+                       $sub->selectRaw(1)->from('radius_accounting')
+                           ->whereNull('acct_stop_time')
+                           ->whereRaw('LOWER(radius_accounting.username) = LOWER(pppoe_users.username) OR LOWER(radius_accounting.username) LIKE LOWER(pppoe_users.username) || \'@%\'');
+                   });
+            });
+        } else {
+            $query->where('status', 'active')->where(function($oq) {
+                $oq->whereDoesntHave('activeSession')
+                   ->whereDoesntHave('radiusAccountings', fn($sq) => $sq->whereNull('acct_stop_time'))
+                   ->whereNotExists(function($sub) {
+                       $sub->selectRaw(1)->from('ppp_active_sessions')
+                           ->whereRaw('LOWER(ppp_active_sessions.name) = LOWER(pppoe_users.username) OR LOWER(ppp_active_sessions.name) LIKE LOWER(pppoe_users.username) || \'@%\'');
+                   })
+                   ->whereNotExists(function($sub) {
+                       $sub->selectRaw(1)->from('radius_accounting')
+                           ->whereNull('acct_stop_time')
+                           ->whereRaw('LOWER(radius_accounting.username) = LOWER(pppoe_users.username) OR LOWER(radius_accounting.username) LIKE LOWER(pppoe_users.username) || \'@%\'');
+                   });
+            });
+        }
     }
 
     public function updatedSelectAll($value)
@@ -68,13 +108,9 @@ class Pppoe extends AdminComponent
                 })
                 ->when(!empty($this->filters['status']), function($q) {
                     if ($this->filters['status'] === 'online') {
-                        $q->where('status', 'active')->whereHas('radiusAccountings', function($sq) {
-                            $sq->whereNull('acct_stop_time');
-                        });
+                        $this->applyOnlineFilter($q, true);
                     } elseif ($this->filters['status'] === 'offline') {
-                        $q->where('status', 'active')->whereDoesntHave('radiusAccountings', function($sq) {
-                            $sq->whereNull('acct_stop_time');
-                        });
+                        $this->applyOnlineFilter($q, false);
                     } else {
                         $q->where('status', $this->filters['status']);
                     }
@@ -124,25 +160,26 @@ class Pppoe extends AdminComponent
     
     public function render()
     {
-        $query = $this->baseQuery()->with(['customer', 'serviceProfile'])
+        $query = $this->baseQuery()->with([
+            'customer' => fn($q) => $q->withoutGlobalScopes(),
+            'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+            'activeSession',
+            'latestAccounting',
+        ])
             ->when($this->showTrashed, fn($q) => $q->withTrashed())
             ->when($this->search, function($q) {
                 $q->where(function($sq) {
                     $sq->where('username', 'like', '%' . $this->search . '%')
                         ->orWhereHas('customer', function($cq) {
-                            $cq->where('name', 'like', '%' . $this->search . '%');
+                            $cq->withoutGlobalScopes()->where('name', 'like', '%' . $this->search . '%');
                         });
                 });
             })
             ->when(!empty($this->filters['status']), function($q) {
                 if ($this->filters['status'] === 'online') {
-                    $q->where('status', 'active')->whereHas('radiusAccountings', function($sq) {
-                        $sq->whereNull('acct_stop_time');
-                    });
+                    $this->applyOnlineFilter($q, true);
                 } elseif ($this->filters['status'] === 'offline') {
-                    $q->where('status', 'active')->whereDoesntHave('radiusAccountings', function($sq) {
-                        $sq->whereNull('acct_stop_time');
-                    });
+                    $this->applyOnlineFilter($q, false);
                 } else {
                     $q->where('status', $this->filters['status']);
                 }
@@ -150,12 +187,15 @@ class Pppoe extends AdminComponent
 
         $pppoeUsers = $query->orderBy($this->sortField, $this->sortDirection)->paginate($this->perPage);
 
+        $onlineCountQuery = $this->baseQuery();
+        $this->applyOnlineFilter($onlineCountQuery, true);
+
         $stats = [
             'total' => $this->baseQuery()->count(),
             'active' => $this->baseQuery()->where('status', 'active')->count(),
             'inactive' => $this->baseQuery()->where('status', 'inactive')->count(),
             'suspended' => $this->baseQuery()->where('status', 'suspended')->count(),
-            'online' => $this->baseQuery()->where('status', 'active')->whereHas('radiusAccountings', function($q) { $q->whereNull('acct_stop_time'); })->count(),
+            'online' => $onlineCountQuery->count(),
         ];
 
         return view('livewire.reseller-portal.customer.pppoe', compact('pppoeUsers', 'stats'));

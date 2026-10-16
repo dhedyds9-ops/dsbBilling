@@ -37,9 +37,12 @@ class Invoices extends AdminComponent
     public function viewDetail($id)
     {
         $resellerId = Auth::user()->getEffectiveResellerId();
-        $this->selectedInvoice = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })->with(['customer', 'items'])->find($id);
+        $this->selectedInvoice = Invoice::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)
+              ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+              });
+        })->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'items'])->find($id);
 
         if ($this->selectedInvoice) {
             $this->showDetailModal = true;
@@ -49,8 +52,11 @@ class Invoices extends AdminComponent
     public function openPaymentModal($id)
     {
         $resellerId = Auth::user()->getEffectiveResellerId();
-        $invoice = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
+        $invoice = Invoice::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)
+              ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+              });
         })->findOrFail($id);
 
         $this->paymentInvoiceId = $invoice->id;
@@ -101,17 +107,23 @@ class Invoices extends AdminComponent
         $resellerId = Auth::user()->getEffectiveResellerId();
 
         // Start querying invoices for customers belonging to this reseller
-        $query = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })->with(['customer', 'items']);
+        $query = Invoice::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)
+              ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+              });
+        })->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'items']);
 
-        // Search by Invoice Number or Customer Name
+        // Search by Invoice Number or Customer Name / Code / Phone
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('invoice_number', 'like', '%' . $this->search . '%')
                   ->orWhereHas('customer', function($subQ) {
-                      $subQ->where('name', 'like', '%' . $this->search . '%')
-                           ->orWhere('username', 'like', '%' . $this->search . '%');
+                      $subQ->withoutGlobalScopes()->where(function($sq) {
+                          $sq->where('name', 'like', '%' . $this->search . '%')
+                             ->orWhere('code', 'like', '%' . $this->search . '%')
+                             ->orWhere('phone', 'like', '%' . $this->search . '%');
+                      });
                   });
             });
         }

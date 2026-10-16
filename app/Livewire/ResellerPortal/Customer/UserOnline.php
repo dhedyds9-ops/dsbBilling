@@ -92,14 +92,36 @@ class UserOnline extends \App\Livewire\ISP\BaseNetworkComponent
     {
         $user = \Illuminate\Support\Facades\Auth::user();
 
-        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.reseller', 'pppoeUser.customer.reseller', 'pppoeUser.customerService.customer.reseller']);
+        $pppoeQuery = \App\Models\ISP\PppActiveSession::with([
+            'router',
+            'pppoeUser' => fn($q) => $q->withoutGlobalScopes()->with([
+                'reseller',
+                'customer' => fn($cq) => $cq->withoutGlobalScopes()->with('reseller'),
+                'customerService' => fn($csq) => $csq->withoutGlobalScopes()->with([
+                    'customer' => fn($cq) => $cq->withoutGlobalScopes()->with('reseller'),
+                    'serviceProfile' => fn($sq) => $sq->withoutGlobalScopes(),
+                ]),
+                'serviceProfile' => fn($sq) => $sq->withoutGlobalScopes(),
+            ]),
+        ]);
         
         $voucherQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'voucher.reseller'])
             ->whereExists(function ($q) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
             });
 
-        $hotspotQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'hotspotUser.reseller', 'hotspotUser.customer.reseller', 'hotspotUser.customerService.customer.reseller'])
+        $hotspotQuery = \App\Models\ISP\HotspotActiveSession::with([
+            'router',
+            'hotspotUser' => fn($q) => $q->withoutGlobalScopes()->with([
+                'reseller',
+                'customer' => fn($cq) => $cq->withoutGlobalScopes()->with('reseller'),
+                'customerService' => fn($csq) => $csq->withoutGlobalScopes()->with([
+                    'customer' => fn($cq) => $cq->withoutGlobalScopes()->with('reseller'),
+                    'serviceProfile' => fn($sq) => $sq->withoutGlobalScopes(),
+                ]),
+                'serviceProfile' => fn($sq) => $sq->withoutGlobalScopes(),
+            ]),
+        ])
             ->whereNotExists(function ($q) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('vouchers')->whereRaw('vouchers.code = hotspot_active_sessions.user');
             });
@@ -109,25 +131,37 @@ class UserOnline extends \App\Livewire\ISP\BaseNetworkComponent
             $pppoeQuery->whereExists(function ($sub) use ($effectiveResellerId) {
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('pppoe_users')
-                    ->join('customer_services', 'pppoe_users.customer_service_id', '=', 'customer_services.id')
-                    ->join('customers', 'customer_services.customer_id', '=', 'customers.id')
-                    ->whereRaw('pppoe_users.username = ppp_active_sessions.name')
+                    ->leftJoin('customer_services', 'pppoe_users.customer_service_id', '=', 'customer_services.id')
+                    ->leftJoin('customers', 'customer_services.customer_id', '=', 'customers.id')
+                    ->where(function($uq) {
+                        $uq->whereRaw('LOWER(pppoe_users.username) = LOWER(ppp_active_sessions.name)')
+                           ->orWhereRaw('LOWER(ppp_active_sessions.name) LIKE LOWER(pppoe_users.username) || \'@%\'')
+                           ->orWhereRaw('LOWER(pppoe_users.username) LIKE LOWER(ppp_active_sessions.name) || \'@%\'');
+                    })
+                    ->whereNull('pppoe_users.deleted_at')
                     ->where(function($q) use ($effectiveResellerId) {
-                        $q->where('customers.reseller_id', $effectiveResellerId)
-                          ->orWhere('pppoe_users.reseller_id', $effectiveResellerId)
-                          ->orWhere('customers.created_by', $effectiveResellerId);
+                        $q->where('pppoe_users.reseller_id', $effectiveResellerId)
+                          ->orWhere('customers.reseller_id', $effectiveResellerId)
+                          ->orWhere('customers.created_by', $effectiveResellerId)
+                          ->orWhere('customer_services.reseller_id', $effectiveResellerId);
                     });
             });
             $hotspotQuery->whereExists(function ($sub) use ($effectiveResellerId) {
                 $sub->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('hotspot_users')
-                    ->join('customer_services', 'hotspot_users.customer_service_id', '=', 'customer_services.id')
-                    ->join('customers', 'customer_services.customer_id', '=', 'customers.id')
-                    ->whereRaw('hotspot_users.username = hotspot_active_sessions.user')
+                    ->leftJoin('customer_services', 'hotspot_users.customer_service_id', '=', 'customer_services.id')
+                    ->leftJoin('customers', 'customer_services.customer_id', '=', 'customers.id')
+                    ->where(function($uq) {
+                        $uq->whereRaw('LOWER(hotspot_users.username) = LOWER(hotspot_active_sessions.user)')
+                           ->orWhereRaw('LOWER(hotspot_active_sessions.user) LIKE LOWER(hotspot_users.username) || \'@%\'')
+                           ->orWhereRaw('LOWER(hotspot_users.username) LIKE LOWER(hotspot_active_sessions.user) || \'@%\'');
+                    })
+                    ->whereNull('hotspot_users.deleted_at')
                     ->where(function($q) use ($effectiveResellerId) {
-                        $q->where('customers.reseller_id', $effectiveResellerId)
-                          ->orWhere('hotspot_users.reseller_id', $effectiveResellerId)
-                          ->orWhere('customers.created_by', $effectiveResellerId);
+                        $q->where('hotspot_users.reseller_id', $effectiveResellerId)
+                          ->orWhere('customers.reseller_id', $effectiveResellerId)
+                          ->orWhere('customers.created_by', $effectiveResellerId)
+                          ->orWhere('customer_services.reseller_id', $effectiveResellerId);
                     });
             });
             $voucherQuery->whereExists(function ($sub) use ($effectiveResellerId) {

@@ -59,17 +59,30 @@ class PPPoEUser extends Model
         );
     }
 
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (empty($model->reseller_id) && !empty($model->customer_service_id)) {
+                $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()->find($model->customer_service_id);
+                $model->reseller_id = $cs?->reseller_id ?? $cs?->customer?->reseller_id;
+            }
+        });
+    }
+
     public function getIsOnlineAttribute()
     {
-        $rawUname = (string)$this->username;
+        $rawUname = trim((string)$this->username);
+        if ($rawUname === '') {
+            return false;
+        }
         $stripped = str_contains($rawUname, '@') ? explode('@', $rawUname)[0] : $rawUname;
 
-        return \App\Models\ISP\PppActiveSession::where('name', $rawUname)
-            ->orWhere('name', $stripped)
+        return \App\Models\ISP\PppActiveSession::where('name', 'like', $rawUname)
+            ->orWhere('name', 'like', $stripped)
             ->exists()
             || $this->radiusAccountings()->whereNull('acct_stop_time')->exists()
             || \App\Models\ISP\RadiusAccounting::where(function($q) use ($rawUname, $stripped) {
-                $q->where('username', $rawUname)->orWhere('username', $stripped);
+                $q->where('username', 'like', $rawUname)->orWhere('username', 'like', $stripped);
             })->whereNull('acct_stop_time')->exists();
     }
 

@@ -28,22 +28,31 @@ class Sales extends AdminComponent
         $resellerId = Auth::user()->getEffectiveResellerId();
 
         // Total active customers
-        $totalCustomers = User::where('reseller_id', $resellerId)->count();
+        $totalCustomers = \App\Models\CRM\Customer::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+        })->count();
 
         // Total vouchers (used)
-        $totalVouchers = Voucher::where('reseller_id', $resellerId)->where('status', 'used')->count();
+        $totalVouchers = Voucher::withoutGlobalScopes()->where('reseller_id', $resellerId)->where('status', 'used')->count();
 
         // Total invoices this month
-        $thisMonthInvoices = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
+        $thisMonthInvoices = Invoice::withoutGlobalScopes()->where(function ($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)
+              ->orWhereHas('customer', function($cq) use ($resellerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+              });
         })->whereMonth('created_at', now()->month)
           ->whereYear('created_at', now()->year)
           ->count();
 
         // Recent successful sales (paid invoices)
-        $recentSales = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
+        $recentSales = Invoice::withoutGlobalScopes()->where(function ($q) use ($resellerId) {
+            $q->where('reseller_id', $resellerId)
+              ->orWhereHas('customer', function($cq) use ($resellerId) {
+                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+              });
         })->where('status', 'paid')
+          ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
           ->orderBy('updated_at', 'desc')
           ->take(5)
           ->get();

@@ -91,11 +91,13 @@ class ACSDevice extends Model
                 }
                 // Sesuai customer service milik reseller ini
                 $q->orWhereHas('customerService', function($csQ) use ($resellerId) {
-                    $csQ->where('reseller_id', $resellerId);
+                    $csQ->withoutGlobalScopes()->where('reseller_id', $resellerId)
+                        ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
                 });
                 // Sesuai ONU yang berelasi dengan customer reseller
                 $q->orWhereHas('onu.customerService', function($onuCsQ) use ($resellerId) {
-                    $onuCsQ->where('reseller_id', $resellerId);
+                    $onuCsQ->withoutGlobalScopes()->where('reseller_id', $resellerId)
+                        ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
                 });
             });
         }

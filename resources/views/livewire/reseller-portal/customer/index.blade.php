@@ -148,7 +148,9 @@
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     @forelse($customers as $customer)
                         @php
-                            $svc = $customer->customerServices->first();
+                            $svc = $customer->customerServices->firstWhere('status', 'active') 
+                                ?? $customer->customerServices->first(fn($s) => $s->pppoeUser || $s->hotspotUser) 
+                                ?? $customer->customerServices->first();
                             $isOnline = false;
                             $ipAddress = '-';
                             $username = '-';
@@ -169,16 +171,31 @@
                             } elseif ($svc) {
                                 $username = $svc->username ?? '-';
                                 $password = $svc->password ?? '-';
-                                $layanan = strtoupper($svc->service_type ?? '-');
+                                $rawSvcType = strtolower($svc->serviceProfile?->service_type ?? '');
+                                $isHs = in_array($rawSvcType, ['hotspot', 'member_hotspot', 'voucher']);
+                                $layanan = $isHs ? 'Hotspot' : 'PPPoE';
+                            }
+
+                            // Fallback online detection if $isOnline is false but username is known
+                            if (!$isOnline && !empty($username) && $username !== '-') {
+                                $rawUname = trim($username);
+                                $stripped = str_contains($rawUname, '@') ? explode('@', $rawUname)[0] : $rawUname;
+                                $isOnline = \App\Models\ISP\PppActiveSession::where('name', 'like', $rawUname)
+                                    ->orWhere('name', 'like', $stripped)
+                                    ->exists()
+                                    || \App\Models\ISP\RadiusAccounting::where(function($q) use ($rawUname, $stripped) {
+                                        $q->where('username', 'like', $rawUname)->orWhere('username', 'like', $stripped);
+                                    })->whereNull('acct_stop_time')->exists()
+                                    || \App\Models\ISP\HotspotActiveSession::where('user', 'like', $rawUname)->exists();
                             }
                             
                             $paket = $svc?->serviceProfile?->name ?? '-';
                             $tglRegister = $customer->created_at?->format('d-m-Y');
-                            $tglIsolir = $svc?->suspended_at?->format('d-m-Y') ?? '-';
+                            $tglIsolir = ($svc?->status === 'suspended' && $svc?->suspended_at) ? $svc->suspended_at->format('d-m-Y') : '-';
                             $reseller = $customer->reseller->name ?? 'Default';
-                            $dynamicId = ($customer->created_at ? $customer->created_at->format('Ymd') : date('Ymd')) . str_pad($customer->id % 100, 2, '0', STR_PAD_LEFT);
+                            $dynamicId = $customer->code ?: (($customer->created_at ? $customer->created_at->format('Ymd') : date('Ymd')) . str_pad($customer->id % 100, 2, '0', STR_PAD_LEFT));
 
-                            $isInactive = $customer->status !== 'active';
+                            $isInactive = $customer->status !== 'active' || ($svc && $svc->status === 'suspended');
                             
                             if ($isInactive) {
                                 $rowBg = 'bg-slate-50/80 dark:bg-slate-800/40 opacity-75 grayscale-[30%] hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800/60';

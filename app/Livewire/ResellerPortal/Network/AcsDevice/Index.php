@@ -65,8 +65,10 @@ class Index extends AdminComponent
                         ->orWhere('model', 'like', '%' . $this->search . '%')
                         ->orWhere('manufacturer', 'like', '%' . $this->search . '%')
                         ->orWhereHas('customerService.customer', function ($c) {
-                            $c->where('name', 'like', '%' . $this->search . '%')
-                              ->orWhere('customer_code', 'like', '%' . $this->search . '%');
+                            $c->withoutGlobalScopes()->where(function($sq) {
+                                $sq->where('name', 'like', '%' . $this->search . '%')
+                                   ->orWhere('code', 'like', '%' . $this->search . '%');
+                            });
                         });
                 });
             })

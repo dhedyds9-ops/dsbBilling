@@ -26,7 +26,15 @@ class Index extends AdminComponent
         $user = auth()->user();
         $ownerId = $user->hasRole('reseller') ? $user->getEffectiveResellerId() : null;
 
-        $customers = Customer::with(['customerServices.onu'])
+        $customers = Customer::withoutGlobalScopes()->with([
+            'customerServices' => function($q) {
+                $q->withoutGlobalScopes()->with([
+                    'onu' => fn($oq) => $oq->withoutGlobalScopes(),
+                    'pppoeUser' => fn($pq) => $pq->withoutGlobalScopes(),
+                    'hotspotUser' => fn($hq) => $hq->withoutGlobalScopes(),
+                ]);
+            }
+        ])
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->where(function($q) use ($ownerId) {
@@ -36,11 +44,11 @@ class Index extends AdminComponent
             })
             ->get()
             ->map(function ($c) {
-                $service = $c->customerServices->first();
+                $service = $c->customerServices->firstWhere('status', 'active') ?? $c->customerServices->first();
                 $onu = $service?->onu;
                 
                 // Inject properties expected by map JS
-                $c->is_online = $service?->status === 'active';
+                $c->is_online = $service?->pppoeUser?->is_online ?? $service?->hotspotUser?->is_online ?? ($service?->status === 'active');
                 $c->odp_id = $onu?->odp_id;
                 
                 return $c;
