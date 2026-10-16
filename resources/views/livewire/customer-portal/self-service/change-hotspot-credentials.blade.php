@@ -18,18 +18,13 @@
             {{-- Layanan Hotspot --}}
             <div>
                 <label for="hotspotUserId" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Pilih Layanan</label>
-                <div class="relative">
-                    <select id="hotspotUserId" wire:model.live="hotspotUserId" class="w-full pl-4 pr-10 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none" required>
-                        @foreach ($hotspotUsers as $user)
-                            <option value="{{ $user->id }}">
-                                {{ $user->username }} ({{ $user->customerService?->serviceProfile?->name ?? 'Hotspot' }})
-                            </option>
-                        @endforeach
-                    </select>
-                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-                        <span class="material-symbols-outlined text-[20px] notranslate" translate="no">expand_more</span>
-                    </div>
-                </div>
+                <select id="hotspotUserId" wire:model.live="hotspotUserId" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer" required>
+                    @foreach ($hotspotUsers as $user)
+                        <option value="{{ $user->id }}">
+                            {{ $user->username }} ({{ $user->customerService?->serviceProfile?->name ?? 'Hotspot' }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             {{-- Tipe Autentikasi --}}

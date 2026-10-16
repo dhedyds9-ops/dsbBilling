@@ -30,33 +30,23 @@
             <!-- Kategori -->
             <div>
                 <label for="category" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kategori</label>
-                <div class="relative">
-                    <select id="category" wire:model="category" class="w-full appearance-none rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow py-3 pl-4 pr-10 dark:bg-slate-900 dark:text-slate-100" required>
-                        <option value="">Pilih Kategori</option>
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat }}">{{ $cat }}</option>
-                        @endforeach
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 dark:text-slate-400">
-                        <span class="material-symbols-outlined text-[18px]">expand_more</span>
-                    </div>
-                </div>
+                <select id="category" wire:model="category" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow py-3 px-4 cursor-pointer" required>
+                    <option value="">Pilih Kategori</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat }}">{{ $cat }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <!-- Prioritas -->
             <div>
                 <label for="priority" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tingkat Urgensi</label>
-                <div class="relative">
-                    <select id="priority" wire:model="priority" class="w-full appearance-none rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow py-3 pl-4 pr-10 dark:bg-slate-900 dark:text-slate-100" required>
-                        <option value="">Pilih Prioritas</option>
-                        @foreach($priorities as $prio)
-                            <option value="{{ $prio }}">{{ ucfirst($prio) }}</option>
-                        @endforeach
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 dark:text-slate-400">
-                        <span class="material-symbols-outlined text-[18px]">expand_more</span>
-                    </div>
-                </div>
+                <select id="priority" wire:model="priority" class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow py-3 px-4 cursor-pointer" required>
+                    <option value="">Pilih Prioritas</option>
+                    @foreach($priorities as $prio)
+                        <option value="{{ $prio }}">{{ ucfirst($prio) }}</option>
+                    @endforeach
+                </select>
             </div>
         </div>
 

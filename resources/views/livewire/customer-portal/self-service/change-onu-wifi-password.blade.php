@@ -18,19 +18,14 @@
             {{-- Layanan ONU Selection --}}
             <div>
                 <label for="onuId" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Pilih Perangkat</label>
-                <div class="relative">
-                    <select id="onuId" wire:model.live="onuId" class="w-full pl-4 pr-10 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none" required>
-                        @foreach ($customerServices as $service)
-                            <option value="{{ $service->onu_id }}">
-                                {{ $service->onu->name ?? 'ONU ' . $service->onu_id }} 
-                                ({{ $service->onu->serial_number ?? $service->onu->mac_address ?? 'N/A' }})
-                            </option>
-                        @endforeach
-                    </select>
-                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-                        <span class="material-symbols-outlined text-[20px] notranslate" translate="no">expand_more</span>
-                    </div>
-                </div>
+                <select id="onuId" wire:model.live="onuId" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer" required>
+                    @foreach ($customerServices as $service)
+                        <option value="{{ $service->onu_id }}">
+                            {{ $service->onu->name ?? 'ONU ' . $service->onu_id }} 
+                            ({{ $service->onu->serial_number ?? $service->onu->mac_address ?? 'N/A' }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             {{-- Loading State from GenieACS --}}
