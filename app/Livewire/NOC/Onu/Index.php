@@ -86,9 +86,103 @@ class Index extends AdminComponent
         }
     }
 
+    public function syncFromOlt(): void
+    {
+        if (!empty($this->oltFilter) && $this->oltFilter !== 'all') {
+            $this->syncOlt((int) $this->oltFilter);
+        } else {
+            $this->syncAll();
+        }
+    }
+
+    public function syncAll(): void
+    {
+        try {
+            $olts = \App\Models\ISP\Olt::whereNotNull('ip_address')->get();
+            if ($olts->isEmpty()) {
+                session()->flash('info', 'Tidak ada OLT yang memiliki IP Address terdaftar.');
+                return;
+            }
+
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            $successCount = 0;
+            $failMessages = [];
+
+            foreach ($olts as $olt) {
+                try {
+                    $res = $service->pollOlt($olt);
+                    if (!empty($res['success'])) {
+                        $successCount++;
+                    } else {
+                        $err = $res['error'] ?? $res['message'] ?? 'Gagal komunikasi OLT';
+                        $failMessages[] = "{$olt->name}: {$err}";
+                    }
+                } catch (\Throwable $e) {
+                    $failMessages[] = "{$olt->name}: " . $e->getMessage();
+                }
+            }
+
+            if ($successCount > 0) {
+                $msg = "Sinkronisasi ONU berhasil untuk {$successCount} OLT.";
+                if (!empty($failMessages)) {
+                    $msg .= " (Kendala: " . implode(' | ', $failMessages) . ")";
+                    session()->flash('warning', $msg);
+                } else {
+                    session()->flash('success', $msg);
+                }
+            } else {
+                session()->flash('error', "Gagal sinkronisasi OLT: " . implode(' | ', $failMessages));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('ONU syncAll failed: ' . $e->getMessage());
+            session()->flash('error', 'Gagal sinkronisasi ONU: ' . $e->getMessage());
+        }
+    }
+
+    public function syncOlt(int $oltId): void
+    {
+        try {
+            $olt = \App\Models\ISP\Olt::findOrFail($oltId);
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            $res = $service->pollOlt($olt);
+
+            if (!empty($res['success'])) {
+                session()->flash('success', "Sinkronisasi ONU dari OLT {$olt->name} berhasil diselesaikan!");
+            } else {
+                $err = $res['error'] ?? $res['message'] ?? 'Gagal komunikasi OLT';
+                session()->flash('error', "Gagal sinkronisasi OLT {$olt->name}: {$err}");
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', "Gagal sinkronisasi OLT: " . $e->getMessage());
+        }
+    }
+
+    public function syncSingleOnu(int $onuId): void
+    {
+        try {
+            $onu = Onu::with('olt')->findOrFail($onuId);
+            if (!$onu->olt) {
+                session()->flash('error', 'ONU ini tidak terhubung ke OLT manapun.');
+                return;
+            }
+
+            $service = app(\App\Services\ISP\OltPollingService::class);
+            $res = $service->pollOlt($onu->olt);
+
+            if (!empty($res['success'])) {
+                session()->flash('success', "Data ONU {$onu->serial_number} berhasil diperbarui dari OLT {$onu->olt->name}!");
+            } else {
+                $err = $res['error'] ?? $res['message'] ?? 'Gagal membaca status OLT';
+                session()->flash('error', "Gagal sinkronisasi ONU: {$err}");
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal sinkronisasi ONU: ' . $e->getMessage());
+        }
+    }
+
     public function configure(): void
     {
-        }
+    }
 
     public function mount(): void
     {

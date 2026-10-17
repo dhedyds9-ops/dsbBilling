@@ -52,6 +52,11 @@
 
             {{-- Top Actions --}}
             <div class="flex items-center gap-2 self-start md:self-auto">
+                <button wire:click="syncFromOlt" wire:loading.attr="disabled" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer" title="Sinkronkan data ONU & Redaman (RX Power) dari OLT">
+                    <span wire:loading.remove wire:target="syncFromOlt,syncAll,syncOlt" class="material-symbols-outlined notranslate" style="font-size:16px" translate="no">sync</span>
+                    <span wire:loading wire:target="syncFromOlt,syncAll,syncOlt" class="animate-spin material-symbols-outlined notranslate" style="font-size:16px" translate="no">sync</span>
+                    <span>Sinkronisasi OLT</span>
+                </button>
                 <button wire:click="cleanupDuplicates" wire:confirm="Sistem akan otomatis membersihkan baris ONU duplikat dan mempertahankan data ONU yang valid. Lanjutkan?" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-2xs transition-colors">
                     <span class="material-symbols-outlined notranslate" style="font-size:16px" translate="no">cleaning_services</span>
                     Bersihkan Duplikat
@@ -63,6 +68,48 @@
             </div>
         </div>
     </div>
+
+    {{-- Flash Notifications --}}
+    @if (session()->has('success') || session()->has('error') || session()->has('warning') || session()->has('info'))
+        <div class="flex-none px-4 pt-2.5">
+            @if (session()->has('success'))
+                <div class="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">check_circle</span>
+                        <span>{{ session('success') }}</span>
+                    </div>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 cursor-pointer font-bold">&times;</button>
+                </div>
+            @endif
+            @if (session()->has('error'))
+                <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-lg text-xs flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">error</span>
+                        <span>{{ session('error') }}</span>
+                    </div>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 cursor-pointer font-bold">&times;</button>
+                </div>
+            @endif
+            @if (session()->has('warning'))
+                <div class="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 rounded-lg text-xs flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">warning</span>
+                        <span>{{ session('warning') }}</span>
+                    </div>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-amber-500 hover:text-amber-700 cursor-pointer font-bold">&times;</button>
+                </div>
+            @endif
+            @if (session()->has('info'))
+                <div class="p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg text-xs flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">info</span>
+                        <span>{{ session('info') }}</span>
+                    </div>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-blue-500 hover:text-blue-700 cursor-pointer font-bold">&times;</button>
+                </div>
+            @endif
+        </div>
+    @endif
 
     {{-- Filter Toolbar: Search & Select Filters --}}
     <div class="flex-none px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/80">
@@ -202,6 +249,11 @@
                     </td>
                     <td class="p-3 text-slate-500 dark:text-slate-400">{{ $onu->last_seen_at ? $onu->last_seen_at->diffForHumans() : '-' }}</td>
                     <td class="p-3 flex items-center gap-3">
+                        <button type="button" wire:click="syncSingleOnu({{ $onu->id }})" wire:loading.attr="disabled" class="text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 text-xs font-semibold inline-flex items-center gap-0.5 cursor-pointer" title="Sinkronkan ONU ini dari OLT">
+                            <span wire:loading.remove wire:target="syncSingleOnu({{ $onu->id }})" class="material-symbols-outlined notranslate text-sm" translate="no">sync</span>
+                            <span wire:loading wire:target="syncSingleOnu({{ $onu->id }})" class="animate-spin material-symbols-outlined notranslate text-sm" translate="no">sync</span>
+                            <span>Sync</span>
+                        </button>
                         <a href="{{ route('isp.onus.show', $onu->id) }}" class="text-blue-500 hover:text-blue-400 text-sm font-medium">View</a>
                         <button type="button" wire:click="deleteOnu({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU {{ $onu->serial_number ?: ('#' . $onu->id) }} dari database lokal?" class="text-red-500 hover:text-red-400 text-sm font-medium">
                             Hapus
