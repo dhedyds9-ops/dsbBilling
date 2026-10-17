@@ -20,9 +20,23 @@ class InvoiceShow extends AdminComponent
         $this->invoiceId = $id;
         
         $resellerId = Auth::user()->getEffectiveResellerId();
-        $this->invoice = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })->with(['customer', 'items', 'payments'])->findOrFail($id);
+        $this->invoice = Invoice::withoutGlobalScopes()
+            ->where(function($q) use ($resellerId) {
+                $q->where('invoices.reseller_id', $resellerId)
+                  ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                      $cq->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                          $sub->where('reseller_id', $resellerId)
+                              ->orWhere('created_by', $resellerId);
+                      });
+                  });
+            })
+            ->with(['customer', 'items', 'payments'])
+            ->find($id);
+
+        if (!$this->invoice) {
+            session()->flash('error', "Invoice #{$id} tidak ditemukan atau Anda tidak memiliki akses.");
+            return redirect()->route('reseller-portal.billing.invoices');
+        }
 
         try {
             $this->company = app(\App\Services\Pengaturan\CompanySettingsService::class)->getAll();

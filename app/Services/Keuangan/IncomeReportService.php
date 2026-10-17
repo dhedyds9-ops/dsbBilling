@@ -202,7 +202,7 @@ class IncomeReportService
                 $totalPlusPpn += $basePrice;
 
                 $rows->push([
-                    'id' => $voucher->id,
+                    'id' => 'VCR-' . $voucher->id,
                     'invoice_number' => $voucher->code,
                     'customer_id' => $voucher->code,
                     'customer_name' => 'Voucher: ' . $voucher->code,

@@ -41,21 +41,38 @@ trait HasResellerScope
 
             // Administrator dan Manager: NO scope (semua data)
             if ($user->hasRole(UserRole::Administrator->value)
-                || $user->hasRole(UserRole::Manager->value)) {
+                || $user->hasRole(UserRole::Manager->value)
+                || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+                || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['administrator', 'admin', 'super_admin', 'superadmin', 'manager', 'owner', 'root']))) {
                 return;
             }
 
             // Reseller: strictly scope ke reseller_id = user->id
             // SECURITY: Gunakan fully qualified column untuk menghindari ambiguity join
-            if ($user->hasRole(UserRole::Reseller->value)) {
+            if ($user->hasRole(UserRole::Reseller->value) || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))) {
                 $table = $builder->getQuery()->from;
+                $effectiveId = method_exists($user, 'getEffectiveResellerId') ? $user->getEffectiveResellerId() : $user->id;
+
+                if ($table === 'invoices') {
+                    $builder->where(function($q) use ($effectiveId) {
+                        $q->where('invoices.reseller_id', $effectiveId)
+                          ->orWhereHas('customer', function($cq) use ($effectiveId) {
+                              $cq->withoutGlobalScopes()->where(function($sub) use ($effectiveId) {
+                                  $sub->where('reseller_id', $effectiveId)
+                                      ->orWhere('created_by', $effectiveId);
+                              });
+                          });
+                    });
+                    return;
+                }
+
                 if (\Illuminate\Support\Facades\Schema::hasColumn($table, 'reseller_id')) {
                     $column = $table . '.reseller_id';
-                    $builder->where($column, $user->getEffectiveResellerId());
+                    $builder->where($column, $effectiveId);
                 } elseif (\Illuminate\Support\Facades\Schema::hasColumn($table, 'owner_id')) {
                     // Mendukung model seperti ServiceProfile yang memakai owner_id / visibility
-                    $builder->where(function($q) use ($table, $user) {
-                        $q->where($table . '.owner_id', $user->getEffectiveResellerId())
+                    $builder->where(function($q) use ($table, $effectiveId) {
+                        $q->where($table . '.owner_id', $effectiveId)
                           ->orWhereIn($table . '.visibility', ['global', 'shared']);
                     });
                 }

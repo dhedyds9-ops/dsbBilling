@@ -17,7 +17,12 @@ class Show extends AdminComponent
         $this->activeModule = 'billing';
         $this->activePage = 'invoices';
         $this->invoiceId = $id;
-        $this->invoice = Invoice::with(['customer', 'items', 'payments'])->findOrFail($id);
+        $this->invoice = Invoice::withTrashed()->with(['customer', 'items', 'payments'])->find($id);
+
+        if (!$this->invoice) {
+            session()->flash('error', "Invoice #{$id} tidak ditemukan atau telah dihapus.");
+            return redirect()->route('billing.invoices.index');
+        }
 
         try {
             $this->company = app(\App\Services\Pengaturan\CompanySettingsService::class)->getAll();
@@ -133,7 +138,7 @@ class Show extends AdminComponent
             session()->flash('success', 'Pembayaran berhasil ditambahkan!');
             $this->showPaymentModal = false;
 
-            $this->invoice = Invoice::with(['customer', 'items', 'payments'])->findOrFail($this->invoiceId);
+            $this->invoice = Invoice::withTrashed()->with(['customer', 'items', 'payments'])->find($this->invoiceId);
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal memproses pembayaran: ' . $e->getMessage());
         }

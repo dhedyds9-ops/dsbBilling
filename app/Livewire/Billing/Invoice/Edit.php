@@ -50,7 +50,12 @@ class Edit extends AdminComponent
         parent::mount();
 
         $this->invoiceId = $id;
-        $this->invoice = Invoice::with('items')->findOrFail($id);
+        $this->invoice = Invoice::with('items')->find($id);
+
+        if (!$this->invoice) {
+            session()->flash('error', "Invoice #{$id} tidak ditemukan.");
+            return redirect()->route('billing.invoices.index');
+        }
 
         $this->authorize('update', $this->invoice);
 
