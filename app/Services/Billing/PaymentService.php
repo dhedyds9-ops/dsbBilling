@@ -125,7 +125,8 @@ class PaymentService
     {
         $remainingAmount = $payment->amount;
 
-        $invoices = Invoice::whereIn('id', $invoiceIds)
+        $invoices = Invoice::withoutGlobalScopes()
+            ->whereIn('id', $invoiceIds)
             ->orderBy('due_date', 'asc')
             ->get();
 

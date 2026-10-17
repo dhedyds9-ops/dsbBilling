@@ -82,12 +82,22 @@ class Invoices extends AdminComponent
                 throw new \Exception('Jumlah bayar harus lebih dari 0.');
             }
 
-            $invoice = Invoice::findOrFail($this->paymentInvoiceId);
+            $resellerId = Auth::user()->getEffectiveResellerId();
+            $invoice = Invoice::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+                $q->where('reseller_id', $resellerId)
+                  ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                      $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
+                  });
+            })->find($this->paymentInvoiceId);
+
+            if (!$invoice) {
+                throw new \Exception("Tagihan invoice #{$this->paymentInvoiceId} tidak ditemukan atau Anda tidak memiliki akses.");
+            }
             
             app(\App\Services\Billing\PaymentService::class)->createPayment(
                 customerId: $invoice->customer_id,
                 amount: $this->paymentAmount,
-                userId: Auth::user()->getEffectiveResellerId(),
+                userId: $resellerId,
                 invoiceIds: [$invoice->id],
                 currency: 'IDR',
                 method: $this->paymentMethod,
@@ -95,6 +105,7 @@ class Invoices extends AdminComponent
                 gateway: 'manual'
             );
 
+            $this->closePaymentModal();
             $this->dispatch('swal:success', ['title' => 'Berhasil', 'text' => 'Pembayaran berhasil disimpan.']);
             return redirect()->route('reseller-portal.billing.invoices.show', $invoice->id);
         } catch (\Exception $e) {

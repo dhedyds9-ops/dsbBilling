@@ -137,7 +137,11 @@ class Index extends BaseBillingComponent
     
     public function openPaymentModal($id)
     {
-        $invoice = Invoice::findOrFail($id);
+        $invoice = Invoice::withoutGlobalScopes()->find($id);
+        if (!$invoice) {
+            session()->flash('error', "Invoice #{$id} tidak ditemukan.");
+            return;
+        }
         $this->authorize('view', $invoice);
         
         $this->paymentInvoiceId = $invoice->id;
@@ -189,7 +193,12 @@ class Index extends BaseBillingComponent
             
             if ($this->paymentInvoiceId) {
                 // Single Payment
-                $invoice = Invoice::findOrFail($this->paymentInvoiceId);
+                $invoice = Invoice::withoutGlobalScopes()->find($this->paymentInvoiceId);
+                if (!$invoice) {
+                    session()->flash('error', "Invoice #{$this->paymentInvoiceId} tidak ditemukan.");
+                    $this->closePaymentModal();
+                    return;
+                }
                 
                 $paymentService->createPayment(
                     customerId: $invoice->customer_id,
