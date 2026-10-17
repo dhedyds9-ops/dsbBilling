@@ -228,7 +228,7 @@ class ServiceProfileService
         $data['mir_upload'] = $uploadSpeed * 1000000;
 
         $data['radius_group_name'] = 'GRP-' . strtoupper($sanitizedCode);
-        $data['radius_rate_limit'] = $downloadSpeed . 'M/' . $uploadSpeed . 'M';
+        $data['radius_rate_limit'] = $uploadSpeed . 'M/' . $downloadSpeed . 'M';
 
         // Set session timeout based on validity
         if ($validityUnit === 'days') {

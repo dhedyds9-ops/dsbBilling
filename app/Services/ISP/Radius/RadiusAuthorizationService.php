@@ -171,41 +171,18 @@ final class RadiusAuthorizationService
                     }
                     if (!$voucher->expires_at) {
                         $unit = strtolower((string)($sp?->validity_unit ?: ($sp?->duration_unit ?: 'hours')));
-                        $dur = 0;
-                        if ($unit === 'hours' || $unit === 'hour') {
-                            $dur = (int)($sp?->validity_hours ?: ($sp?->duration_value ?: ($voucher->validity_days ? $voucher->validity_days * 24 : 0)));
-                        } elseif ($unit === 'days' || $unit === 'day') {
-                            $dur = (int)($voucher->validity_days ?: ($sp?->validity_days ?: ($sp?->duration_value ?: 0)));
+                        
+                        if ($unit === 'hours' || $unit === 'hour' || (!empty($sp?->validity_hours) && empty($sp?->validity_days))) {
+                            $dur = (int)($sp?->validity_hours ?: ($sp?->duration_value ?: 1));
+                            $voucher->expires_at = now()->addHours(max(1, $dur));
                         } elseif ($unit === 'months' || $unit === 'month') {
-                            $dur = (int)($sp?->validity_days ? (int)($sp->validity_days / 30) : ($sp?->duration_value ?: 1));
+                            $days = (int)($sp?->validity_days ?: (($sp?->duration_value ?: 1) * 30));
+                            $voucher->expires_at = now()->addDays(max(1, $days));
+                        } else {
+                            // Default: days (Hari)
+                            $dur = (int)($voucher->validity_days ?: ($sp?->validity_days ?: ($sp?->duration_value ?: 1)));
+                            $voucher->expires_at = now()->addDays(max(1, $dur));
                         }
-
-                        // Fallback resolution
-                        if ($dur <= 0) {
-                            if (!empty($sp?->validity_hours)) {
-                                $dur = (int)$sp->validity_hours;
-                                $unit = 'hours';
-                            } elseif (!empty($sp?->duration_value) && ($sp->duration_unit === 'hours' || empty($sp->duration_unit))) {
-                                $dur = (int)$sp->duration_value;
-                                $unit = 'hours';
-                            } elseif (!empty($voucher->validity_days)) {
-                                $dur = (int)$voucher->validity_days;
-                                $unit = 'days';
-                            } elseif (!empty($sp?->validity_days)) {
-                                $dur = (int)$sp->validity_days;
-                                $unit = 'days';
-                            } else {
-                                $dur = 3;
-                                $unit = 'hours';
-                            }
-                        }
-
-                        $voucher->expires_at = match ($unit) {
-                            'hours', 'hour' => now()->addHours($dur),
-                            'months', 'month' => now()->addMonths($dur),
-                            'minutes', 'minute' => now()->addMinutes($dur),
-                            default => now()->addDays($dur),
-                        };
                         $dirty = true;
                     }
                     if ($dirty) {
@@ -220,8 +197,17 @@ final class RadiusAuthorizationService
                     }
 
                     if ($voucher->expires_at && empty($reply['Session-Timeout'])) {
-                        $remaining = max(1, (int)$voucher->expires_at->diffInSeconds(now()));
-                        $reply['Session-Timeout'] = $remaining;
+                        // Carbon 3: now()->diffInSeconds($target, false) bernilai POSITIF jika target di masa depan
+                        $diffSeconds = (int)now()->diffInSeconds($voucher->expires_at, false);
+                        if ($diffSeconds <= 0) {
+                            $accept = false;
+                            $httpStatus = 401;
+                            $failAction = 'reject';
+                            $replyMessage = 'Masa aktif voucher telah berakhir';
+                            $reply['Reply-Message'] = $replyMessage;
+                        } else {
+                            $reply['Session-Timeout'] = $diffSeconds;
+                        }
                     }
                 }
 
