@@ -52,12 +52,17 @@ class GenerateVoucherOnInvoicePaid
                 'paid_at' => now()
             ]);
 
-            Log::info('[GenerateVoucherOnInvoicePaid] Mendelegasikan tugas generate voucher ke Queue Job', [
+            Log::info('[GenerateVoucherOnInvoicePaid] Menjalankan pembuatan voucher secara instan', [
                 'order_id' => $voucherOrder->id
             ]);
 
-            // Dispatch background job untuk nge-hit Mikrotik dan kirim WA
-            ProvisionVoucherOrderJob::dispatch($voucherOrder->id)->onQueue('default');
+            // Eksekusi pembuatan voucher secara langsung (sync) agar voucher instan aktif tanpa menunggu queue
+            try {
+                ProvisionVoucherOrderJob::dispatchSync($voucherOrder->id);
+            } catch (\Throwable $e) {
+                Log::warning('[GenerateVoucherOnInvoicePaid] dispatchSync error, fallback to queue: ' . $e->getMessage());
+                ProvisionVoucherOrderJob::dispatch($voucherOrder->id)->onQueue('default');
+            }
         }
     }
 }
