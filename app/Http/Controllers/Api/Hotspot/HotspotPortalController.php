@@ -36,19 +36,50 @@ class HotspotPortalController extends Controller
 
     /**
      * 1. GET /api/v1/hotspot/packages
-     * Returns list of hotspot packages / vouchers from ServiceProfile
+     * Returns list of hotspot, voucher, pppoe packages from ServiceProfile
      */
-    public function packages(): JsonResponse
+    public function packages(Request $request): JsonResponse
     {
         try {
-            $profiles = ServiceProfile::withoutGlobalScopes()
-                ->where(function ($q) {
-                    $q->whereIn('service_type', ['Hotspot', 'Voucher'])
-                      ->orWhere('service_type', 'like', '%Hotspot%')
-                      ->orWhere('service_type', 'like', '%Voucher%');
-                })
-                ->orderBy('base_price', 'asc')
-                ->get();
+            $type = strtolower(trim((string) $request->input('type', 'all')));
+
+            $query = ServiceProfile::withoutGlobalScopes();
+
+            // Status filter: only active or profiles without status column set
+            $query->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhere('status', 'active');
+            });
+
+            if ($type === 'hotspot') {
+                $query->where(function ($q) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot'])
+                      ->orWhere('service_type', 'like', '%hotspot%');
+                });
+            } elseif ($type === 'voucher') {
+                $query->where(function ($q) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['voucher'])
+                      ->orWhere('service_type', 'like', '%voucher%');
+                });
+            } elseif ($type === 'pppoe') {
+                $query->where(function ($q) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['pppoe', 'ftth', 'kombinasi'])
+                      ->orWhere('service_type', 'like', '%pppoe%')
+                      ->orWhere('service_type', 'like', '%ftth%');
+                });
+            } else {
+                // all
+                $query->where(function ($q) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'voucher', 'pppoe', 'ftth', 'kombinasi', 'member_hotspot'])
+                      ->orWhere('service_type', 'like', '%hotspot%')
+                      ->orWhere('service_type', 'like', '%voucher%')
+                      ->orWhere('service_type', 'like', '%pppoe%')
+                      ->orWhere('service_type', 'like', '%ftth%')
+                      ->orWhereNull('service_type');
+                });
+            }
+
+            $profiles = $query->orderBy('base_price', 'asc')->get();
 
             $packages = $profiles->map(function ($profile) {
                 // Formatting time & active period
@@ -87,7 +118,7 @@ class HotspotPortalController extends Controller
                 return [
                     'id' => $profile->id,
                     'profile_name' => $profile->name,
-                    'service_type' => $profile->service_type,
+                    'service_type' => strtolower($profile->service_type ?? 'voucher'),
                     'price_sell' => $price,
                     'shared' => (int) ($profile->max_devices ?? $profile->radius_simultaneous_use ?? 1),
                     'time_limit' => $timeLimit,
@@ -95,7 +126,7 @@ class HotspotPortalController extends Controller
                     'quota_limit' => $quotaLimit,
                     'speed' => $speed,
                     'description' => $profile->description ?? '',
-                    'buy_url' => url('/bayar-tagihan?package_id=' . $profile->id),
+                    'buy_url' => url('/payment?package_id=' . $profile->id),
                 ];
             });
 
