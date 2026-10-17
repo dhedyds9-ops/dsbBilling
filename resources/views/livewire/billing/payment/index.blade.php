@@ -103,6 +103,10 @@
                     <option value="50">50 Baris</option>
                     <option value="100">100 Baris</option>
                 </select>
+                <button wire:click="syncAllPending" wire:loading.attr="disabled" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm" title="Periksa status semua transaksi pending ke payment gateway">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
+                    <span class="hidden sm:inline">Sinkronkan Gateway</span>
+                </button>
                 <button wire:click="export" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export
                 </button>
@@ -155,6 +159,11 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1">
+                                    @if($payment->status !== 'success')
+                                        <button wire:click="syncPayment({{ $payment->id }})" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:text-amber-400 transition-colors" title="Cek Status Midtrans / Gateway">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
+                                        </button>
+                                    @endif
                                     <a href="{{ route('billing.payments.show', $payment->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Detail">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>
@@ -236,3 +245,23 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('swal:alert', (data) => {
+            const isDark = document.documentElement.classList.contains('dark');
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                icon: payload.icon || 'info',
+                title: payload.title || 'Notifikasi',
+                text: payload.text || '',
+                background: isDark ? '#1e293b' : '#fff',
+                color: isDark ? '#f8fafc' : '#0f172a',
+                confirmButtonColor: '#3b82f6'
+            });
+        });
+    });
+</script>
+@endpush

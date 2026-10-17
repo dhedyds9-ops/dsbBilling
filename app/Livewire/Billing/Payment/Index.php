@@ -26,6 +26,98 @@ class Index extends BaseBillingComponent
         $this->selectAll = count($this->selected) > 0 && count(array_diff($allIds, $this->selected)) === 0;
     }
 
+    public function syncPayment($id)
+    {
+        try {
+            $payment = Payment::with('invoices')->findOrFail($id);
+
+            if ($payment->status === 'success') {
+                $this->dispatch('swal:alert', [
+                    'icon' => 'info',
+                    'title' => 'Sudah Lunas',
+                    'text' => 'Pembayaran ini sudah berstatus Sukses.'
+                ]);
+                return;
+            }
+
+            $gatewayKey = $payment->gateway ?: 'midtrans';
+            $registry = app(\App\Services\Adapters\Payment\PaymentGatewayRegistry::class);
+            $driver = $registry->get($gatewayKey);
+
+            if (!$driver || !method_exists($driver, 'checkStatus')) {
+                $this->dispatch('swal:alert', [
+                    'icon' => 'warning',
+                    'title' => 'Driver Tidak Didukung',
+                    'text' => "Driver [{$gatewayKey}] tidak mendukung pengecekan status otomatis."
+                ]);
+                return;
+            }
+
+            $checkResp = $driver->checkStatus($payment->reference_number);
+
+            if (in_array($checkResp->status, ['paid', 'success', 'settlement', 'capture'])) {
+                $syntheticEvent = new \App\Services\Adapters\Payment\ValueObjects\WebhookEvent(
+                    eventType: 'payment.paid',
+                    gatewayOrderId: $checkResp->gatewayReferenceId ?: $payment->reference_number,
+                    merchantOrderId: $payment->reference_number,
+                    amountIdr: $checkResp->paidAmountIdr ?: (int)$payment->amount,
+                    paidAmountIdr: $checkResp->paidAmountIdr ?: (int)$payment->amount,
+                    paymentMethod: $checkResp->paymentMethod ?: $payment->method,
+                    paidAtIso: $checkResp->paidAtIso ?: now()->toISOString(),
+                    signatureVerifiedBy: 'admin_manual_sync',
+                    rawBodyHash: hash('sha256', 'manual_sync_' . $payment->reference_number . '_' . time()),
+                    rawPayload: ['synthetic' => true, 'source' => 'admin_payment_index', 'status' => $checkResp->status],
+                );
+
+                app(\App\Services\Adapters\Payment\PaymentOrchestrationService::class)->handleWebhookPaid($syntheticEvent, $gatewayKey);
+
+                $this->dispatch('swal:alert', [
+                    'icon' => 'success',
+                    'title' => 'Pembayaran Sukses!',
+                    'text' => "Pembayaran {$payment->reference_number} telah terverifikasi lunas dari {$gatewayKey}."
+                ]);
+            } elseif ($checkResp->status === 'expired') {
+                $payment->update(['status' => 'expired']);
+                $this->dispatch('swal:alert', [
+                    'icon' => 'warning',
+                    'title' => 'Kedaluwarsa',
+                    'text' => "Transaksi di {$gatewayKey} telah kedaluwarsa (expired)."
+                ]);
+            } else {
+                $this->dispatch('swal:alert', [
+                    'icon' => 'info',
+                    'title' => 'Belum Dibayar',
+                    'text' => "Status di {$gatewayKey}: " . ($checkResp->status ?? 'pending') . ". Transaksi belum diselesaikan pelanggan."
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error syncing payment: ' . $e->getMessage());
+            $this->dispatch('swal:alert', [
+                'icon' => 'error',
+                'title' => 'Gagal Sinkronisasi',
+                'text' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function syncAllPending()
+    {
+        try {
+            $count = app(\App\Services\Adapters\Payment\PaymentOrchestrationService::class)->reconcilePendingPayments();
+            $this->dispatch('swal:alert', [
+                'icon' => 'success',
+                'title' => 'Sinkronisasi Selesai',
+                'text' => "Berhasil memverifikasi {$count} pembayaran pending dari payment gateway."
+            ]);
+        } catch (\Throwable $e) {
+            $this->dispatch('swal:alert', [
+                'icon' => 'error',
+                'title' => 'Gagal Sinkronisasi',
+                'text' => $e->getMessage()
+            ]);
+        }
+    }
+
     public function delete($id)
     {
         $payment = Payment::with('invoices')->findOrFail($id);

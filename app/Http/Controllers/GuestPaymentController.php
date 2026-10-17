@@ -27,11 +27,43 @@ class GuestPaymentController extends Controller
             ]));
         }
 
-        $validated = $request->validate([
-            'q' => ['nullable', 'string', 'max:255'],
-        ]);
+        $query = trim($request->input('q') ?: ($request->input('query') ?: ''));
+        $queryOrderId = trim((string) $request->query('order_id', ''));
+        $queryStatus = strtolower(trim((string) $request->query('transaction_status', '')));
 
-        $query = trim($validated['q'] ?? '');
+        // Sinkronisasi otomatis jika redirect kembali dari Midtrans / Gateway setelah bayar
+        if ($queryOrderId && in_array($queryStatus, ['settlement', 'capture', 'success'])) {
+            try {
+                $payment = Payment::withoutGlobalScopes()->where('reference_number', $queryOrderId)->first();
+                if ($payment && $payment->status !== 'success') {
+                    $driver = app(\App\Services\Adapters\Payment\PaymentGatewayRegistry::class)->get($payment->gateway ?: 'midtrans');
+                    if ($driver && method_exists($driver, 'checkStatus')) {
+                        $checkResp = $driver->checkStatus($payment->reference_number);
+                        if (in_array($checkResp->status, ['paid', 'success', 'settlement', 'capture'])) {
+                            $syntheticEvent = new \App\Services\Adapters\Payment\ValueObjects\WebhookEvent(
+                                eventType: 'payment.paid',
+                                gatewayOrderId: $checkResp->gatewayReferenceId ?: $payment->reference_number,
+                                merchantOrderId: $payment->reference_number,
+                                amountIdr: $checkResp->paidAmountIdr ?: (int)$payment->amount,
+                                paidAmountIdr: $checkResp->paidAmountIdr ?: (int)$payment->amount,
+                                paymentMethod: $checkResp->paymentMethod ?: $payment->method,
+                                paidAtIso: $checkResp->paidAtIso ?: now()->toISOString(),
+                                signatureVerifiedBy: 'browser_sync_payment_page',
+                                rawBodyHash: hash('sha256', 'pay_sync_' . $payment->reference_number . '_' . time()),
+                                rawPayload: ['synthetic' => true, 'source' => 'payment_page', 'status' => $checkResp->status],
+                            );
+                            app(\App\Services\Adapters\Payment\PaymentOrchestrationService::class)->handleWebhookPaid($syntheticEvent, $payment->gateway ?: 'midtrans');
+                        }
+                    }
+                }
+                if ($payment && empty($query)) {
+                    $query = $payment->customer?->customer_code ?: ($payment->customer?->phone ?: '');
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[GuestPaymentController] Payment sync error: ' . $e->getMessage());
+            }
+        }
+
         $user = null;
         $customer = null;
         $invoices = collect();
@@ -263,6 +295,9 @@ class GuestPaymentController extends Controller
         }
 
         try {
+            $queryKey = $invoice->customer?->customer_code ?: ($invoice->customer?->phone ?: $invoice->invoice_number);
+            $redirectUrl = route('guest.payment', ['q' => $queryKey]);
+
             $result = $orchestrator->initiatePayment(
                 gatewayKey: $validated['gateway'],
                 customerId: $invoice->customer_id,
@@ -273,6 +308,8 @@ class GuestPaymentController extends Controller
                 customerName: $invoice->customer->name ?? 'Guest',
                 customerEmail: $invoice->customer->email ?? 'guest@example.com',
                 customerPhone: $invoice->customer->phone ?? '00000',
+                successRedirectUrl: $redirectUrl,
+                failureRedirectUrl: $redirectUrl,
             );
 
             if ($result['gateway_response']->success) {
