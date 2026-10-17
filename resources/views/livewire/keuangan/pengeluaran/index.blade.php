@@ -132,7 +132,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
-                    @forelse ($rows as $row)
+                    @forelse ($rows ?? [] as $row)
                         @php
                             $statusLabel = match(strtolower($row->status ?? '')) {
                                 'draft' => 'Draft',

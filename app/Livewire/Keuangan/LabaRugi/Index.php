@@ -94,7 +94,8 @@ class Index extends BaseEnterpriseList
                 ->paginate($this->perPage);
         } catch (Throwable $e) {
             Log::error('LabaRugi expense rows failed', ['e' => $e->getMessage()]);
-            return collect([])->paginate($this->perPage);
+            $perPage = is_numeric($this->perPage) ? (int)$this->perPage : 20;
+            return new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage, 1);
         }
     }
 

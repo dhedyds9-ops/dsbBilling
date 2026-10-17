@@ -143,7 +143,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
-                    @forelse ($rows as $row)
+                    @forelse ($rows ?? [] as $row)
                         @php
                             $statusClass = match(strtolower($row->status ?? '')) {
                                 'pending' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',

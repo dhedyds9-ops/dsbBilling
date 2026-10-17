@@ -315,6 +315,11 @@ class Index extends BaseEnterpriseList
     public function render()
     {
         $rows = $this->getRows();
+        if (!$rows) {
+            $perPage = is_numeric($this->perPage) ? (int)$this->perPage : 20;
+            $rows = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage, 1);
+        }
+
         return view('livewire.keuangan.pengeluaran.index', [
             'rows' => $rows,
             'summary' => $this->summary,
