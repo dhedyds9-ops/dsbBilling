@@ -1,20 +1,26 @@
 <div>
-    <div class="mb-6">
-        <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
-            {{ __('Import Legacy Template') }}
-        </h2>
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
+                {{ __('Import Legacy Template') }}
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Konversi otomatis template Mikhmon / MSRadius / Smarty ke format dsBilling</p>
+        </div>
+        <a href="{{ route('isp.voucher-templates.index') }}" class="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md font-semibold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-widest hover:bg-slate-50">
+            Kembali
+        </a>
     </div>
 
-    <div class="py-12">
+    <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-slate-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-slate-900 dark:text-slate-100">
                     
                     <div class="mb-6 bg-blue-50 dark:bg-blue-900/30 p-4 rounded border border-blue-200">
-                        <h3 class="text-blue-800 font-bold mb-2">Sistem Migrasi Otomatis</h3>
-                        <p class="text-primary-700 text-sm">
-                            Paste source code dari template Mikhail atau template radius legacy Anda di sini. 
-                            Sistem akan secara otomatis mengubah tag variabel lama (seperti <code>$vs['username']</code>) menjadi sintaks modern dsBilling (<code>$username</code>).
+                        <h3 class="text-blue-800 dark:text-blue-200 font-bold mb-1">Sistem Migrasi Otomatis</h3>
+                        <p class="text-slate-700 dark:text-slate-300 text-sm">
+                            Paste source code dari template Mikhmon atau template radius legacy Anda di sini. 
+                            Sistem akan secara otomatis mengubah tag variabel lama (seperti <code>$vs['code']</code>, <code>$vs['total']</code>) menjadi sintaks modern dsBilling.
                         </p>
                     </div>
 
@@ -30,8 +36,13 @@
                             <div>
                                 <x-input-label for="category" :value="__('Kategori')" />
                                 <select id="category" wire:model="category" class="mt-1 block w-full border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm dark:bg-slate-900 dark:text-slate-100">
-                                    <option value="hotspot">Hotspot</option>
-                                    <option value="pppoe">PPPoE</option>
+                                    <option value="wifi">WiFi / Hotspot</option>
+                                    <option value="classic">Klasik</option>
+                                    <option value="modern">Modern</option>
+                                    <option value="thermal">Thermal (Struk Kasir)</option>
+                                    <option value="qr">QR Code Focus</option>
+                                    <option value="ink_saver">Hemat Tinta</option>
+                                    <option value="custom">Custom</option>
                                 </select>
                                 <x-input-error :messages="$errors->get('category')" class="mt-2" />
                             </div>

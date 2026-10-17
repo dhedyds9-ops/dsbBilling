@@ -17,31 +17,51 @@
                 <div class="p-6">
                     <div class="flex justify-between items-start">
                         <div>
-                            <h3 class="font-bold text-lg text-slate-900 dark:text-slate-100">{{ $template->name }}</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ $template->category }}</p>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-lg text-slate-900 dark:text-slate-100">{{ $template->name }}</h3>
+                                @if($template->is_default)
+                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-xs font-semibold rounded-full flex items-center gap-0.5">
+                                        <span class="material-symbols-outlined text-xs">star</span> Default
+                                    </span>
+                                @endif
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">
+                                {{ $template->category instanceof \BackedEnum ? $template->category->value : $template->category }}
+                            </p>
                         </div>
                         @if($template->is_system)
                             <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs rounded-full">System</span>
                         @endif
                     </div>
-                    <div class="mt-4 flex justify-between items-center">
-                        <div class="flex space-x-2">
-                            <a href="{{ route('isp.voucher-templates.edit', $template->id) }}" class="text-slate-500 dark:text-slate-400 hover:text-primary-600">Edit</a>
-                            <button wire:click="duplicate({{ $template->id }})" class="text-slate-500 dark:text-slate-400 hover:text-primary-600">Duplikat</button>
-                            <a href="{{ route('isp.voucher-templates.versions', $template->id) }}" class="text-slate-500 dark:text-slate-400 hover:text-primary-600">Versi</a>
+                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex justify-between items-center">
+                        <div class="flex items-center space-x-3 text-xs font-medium">
+                            <a href="{{ route('isp.voucher-templates.preview', $template->id) }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 font-semibold flex items-center gap-0.5">
+                                <span class="material-symbols-outlined text-xs">visibility</span> Preview
+                            </a>
+                            <a href="{{ route('isp.voucher-templates.edit', $template->id) }}" class="text-slate-600 dark:text-slate-300 hover:text-primary-600">
+                                Edit
+                            </a>
+                            <button wire:click="duplicate({{ $template->id }})" class="text-slate-600 dark:text-slate-300 hover:text-primary-600">
+                                Duplikat
+                            </button>
+                            <a href="{{ route('isp.voucher-templates.versions', $template->id) }}" class="text-slate-600 dark:text-slate-300 hover:text-primary-600">
+                                Versi
+                            </a>
                             @if(!$template->is_system)
-                                <button wire:click="delete({{ $template->id }})" class="text-red-500 hover:text-red-700">Hapus</button>
+                                <button wire:click="delete({{ $template->id }})" wire:confirm="Yakin ingin menghapus template ini?" class="text-red-500 hover:text-red-700">
+                                    Hapus
+                                </button>
                             @endif
                         </div>
-                        <div class="flex space-x-2">
+                        <div class="flex items-center space-x-2">
                             @if(!$template->is_system)
                                 <button wire:click="toggleActive({{ $template->id }})" class="{{ $template->is_active ? 'text-green-600' : 'text-slate-400' }}" title="Toggle Aktif">
-                                    <span class="material-symbols-outlined text-sm">{{ $template->is_active ? 'toggle_on' : 'toggle_off' }}</span>
+                                    <span class="material-symbols-outlined text-base">{{ $template->is_active ? 'toggle_on' : 'toggle_off' }}</span>
                                 </button>
                             @endif
                             @if(!$template->is_default && $template->is_active)
-                                <button wire:click="setAsDefault({{ $template->id }})" class="text-primary-600 hover:text-blue-900" title="Jadikan Default">
-                                    <span class="material-symbols-outlined text-sm">star</span>
+                                <button wire:click="setAsDefault({{ $template->id }})" class="text-amber-500 hover:text-amber-600" title="Jadikan Default">
+                                    <span class="material-symbols-outlined text-base">star</span>
                                 </button>
                             @endif
                         </div>

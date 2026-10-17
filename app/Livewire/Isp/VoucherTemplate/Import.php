@@ -33,7 +33,7 @@ class Import extends Component
                 $this->warnings[] = 'Legacy Smarty {include} detected. It may not work if the included file does not exist.';
             }
         } catch (\Throwable $e) {
-            throw $e;
+            $this->addError('legacyContent', 'Gagal memproses template: ' . $e->getMessage());
         }
     }
 
@@ -48,14 +48,19 @@ class Import extends Component
         try {
             $template = $action->execute($this->name, $this->legacyContent, $this->category, Auth::id() ?? 1);
             $this->dispatch('notify', ['type' => 'success', 'message' => 'Legacy template imported successfully.']);
+            session()->flash('success', 'Template legacy berhasil diimpor!');
             return redirect()->route('isp.voucher-templates.edit', $template->id);
         } catch (\Throwable $e) {
-            throw $e;
+            $this->addError('legacyContent', 'Gagal mengimpor template: ' . $e->getMessage());
+            $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
         }
     }
 
     public function render()
     {
-        return view('livewire.isp.voucher-template.import')->layout('layouts.enterprise');
+        return view('livewire.isp.voucher-template.import', [
+            'convertedContent' => $this->convertedContent,
+            'warnings' => $this->warnings,
+        ])->layout('layouts.enterprise');
     }
 }

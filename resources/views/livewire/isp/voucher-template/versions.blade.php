@@ -32,7 +32,7 @@
                                         @if($loop->first)
                                             <x-ui.badge variant="success">Current Version</x-ui.badge>
                                         @else
-                                            <button wire:click="rollback({{ $version->id }})" wire:confirm="Yakin ingin melakukan rollback ke versi ini- Versi saat ini akan disimpan sebagai riwayat." class="text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 px-3 py-1 rounded">
+                                            <button wire:click="rollback({{ $version->id }})" wire:confirm="Yakin ingin melakukan rollback ke versi ini? Versi saat ini akan disimpan sebagai riwayat." class="text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 px-3 py-1 rounded">
                                                 Rollback ke versi ini
                                             </button>
                                         @endif

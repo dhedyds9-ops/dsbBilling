@@ -46,6 +46,11 @@
 
             <!-- Preview Area -->
             <div class="bg-white dark:bg-slate-800 p-8 rounded-lg shadow min-h-[500px] overflow-auto print:shadow-none print:p-0 print-area">
+                @if(!empty($previewCss))
+                    <style>
+                        {!! $previewCss !!}
+                    </style>
+                @endif
                 {!! $previewHtml !!}
             </div>
 

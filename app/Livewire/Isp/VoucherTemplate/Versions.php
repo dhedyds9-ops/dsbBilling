@@ -42,7 +42,9 @@ class Versions extends Component
 
     public function render()
     {
-        return view('livewire.isp.voucher-template.versions')->layout('layouts.enterprise');
+        return view('livewire.isp.voucher-template.versions', [
+            'template' => $this->template,
+        ])->layout('layouts.enterprise');
     }
 }
 

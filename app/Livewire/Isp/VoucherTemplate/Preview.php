@@ -40,8 +40,11 @@ class Preview extends Component
             '5000' => '3 Jam',
             '7000' => '5 Jam',
             '10000' => '10 Jam',
+            '25000' => '24 Jam (1 Hari)',
+            '65000' => '7 Hari',
+            '70000' => '30 Hari (1 Bulan)',
         ];
-        $duration = $durationMap[$this->selectedPrice] ?? '1 Hari';
+        $duration = $durationMap[$this->selectedPrice] ?? '3 Jam';
         
         $builder = new \App\Services\VoucherTemplate\TemplateContextBuilder();
         $companySettings = class_exists(\App\Models\Setting::class) && method_exists(\App\Models\Setting::class, 'getGroup')
@@ -50,21 +53,61 @@ class Preview extends Component
             
         $globalContext = $builder->buildFromVoucherModels(null, null, null, null, $companySettings, 'IDR');
 
+        $priceNum = (int) $this->selectedPrice;
+        $priceFormatted = 'Rp ' . number_format($priceNum, 0, ',', '.');
+        $packageName = 'Paket ' . number_format($priceNum, 0, ',', '.');
+
         $vouchers = [];
         for ($i = 0; $i < $this->batchCount; $i++) {
+            $code = 'VC' . rand(10000, 99999);
+            $user = 'user' . rand(100, 999);
+            $pass = (string) rand(1000, 9999);
+
             $vouchers[] = [
-                'code' => 'DEMO' . rand(1000, 9999),
-                'username' => 'user' . rand(100, 999),
-                'password' => rand(1000, 9999),
-                'price' => $this->selectedPrice,
+                'code' => $code,
+                'username' => $user,
+                'password' => $pass,
+                'secret' => $pass,
+                'price' => $priceNum,
+                'total' => $priceNum,
                 'duration' => $duration,
+                'timelimit' => $duration,
                 'validity' => '1 Hari',
-                'package_name' => 'Voucher ' . $this->selectedPrice,
-                'created_at' => now()->format('Y-m-d H:i'),
+                'validperiod' => '1 Hari',
+                'package_name' => $packageName,
+                'plan_name' => $packageName,
+                'type' => 'HOTSPOT',
+                'owner_name' => 'Admin MStore',
+                'created_date' => now()->format('d/m/Y'),
+                'created_at' => now()->format('d M Y H:i'),
+                'voucher' => [
+                    'code' => $code,
+                    'username' => $user,
+                    'password' => $pass,
+                    'price' => $priceNum,
+                    'duration' => $duration,
+                    'validity' => '1 Hari',
+                    'created_at' => now()->format('d M Y H:i'),
+                ],
+                'package' => [
+                    'name' => $packageName,
+                    'price' => $priceNum,
+                    'duration' => $duration,
+                    'speed' => 'Up to 10 Mbps',
+                ],
             ];
         }
 
         $globalContext['vouchers'] = $vouchers;
+        $globalContext['hotspotdns'] = 'wifi.hotspot.net';
+        $globalContext['_theme'] = 'default/';
+        $globalContext['_c'] = [
+            'CompanyName' => $companySettings['name'] ?? 'MStore WiFi Hotspot',
+            'currency_code' => 'Rp',
+            'dec_point' => ',',
+            'thousands_sep' => '.',
+            'show-logo' => 'logo.png',
+        ];
         
         $settings = $this->template->latestVersion?->settings ?? [];
         if (is_string($settings)) {
@@ -91,7 +134,13 @@ class Preview extends Component
 
     public function render()
     {
-        return view('livewire.isp.voucher-template.preview')->layout('layouts.enterprise');
+        return view('livewire.isp.voucher-template.preview', [
+            'template' => $this->template,
+            'previewHtml' => $this->previewHtml,
+            'previewCss' => $this->previewCss,
+            'batchCount' => $this->batchCount,
+            'selectedPrice' => $this->selectedPrice,
+        ])->layout('layouts.enterprise');
     }
 }
 

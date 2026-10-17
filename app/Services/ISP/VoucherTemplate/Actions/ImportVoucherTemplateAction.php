@@ -22,12 +22,17 @@ class ImportVoucherTemplateAction
             
             $validation = $this->validator->validate($modernContent);
             if (!$validation['is_valid']) {
-                throw new \Exception('Imported template syntax is invalid after conversion: ' . implode(', ', $validation['errors']));
+                $errorMsgs = array_map(function ($err) {
+                    return is_array($err) ? ($err['message'] ?? json_encode($err)) : (string) $err;
+                }, $validation['errors']);
+                throw new \Exception('Imported template syntax is invalid after conversion: ' . implode(', ', $errorMsgs));
             }
             
+            $validCategory = \App\Enums\ISP\VoucherTemplateCategory::tryFrom($category) ?? \App\Enums\ISP\VoucherTemplateCategory::Wifi;
+
             $template = VoucherTemplate::create([
                 'name' => $name,
-                'category' => $category,
+                'category' => $validCategory,
                 'description' => 'Imported legacy template',
                 'is_system' => false,
                 'is_active' => false,
