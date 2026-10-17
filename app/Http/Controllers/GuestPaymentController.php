@@ -290,20 +290,22 @@ class GuestPaymentController extends Controller
         $validated = $request->validate([
             'hotspot_user_id' => 'nullable|exists:hotspot_users,id',
             'pppoe_user_id' => 'nullable|exists:pppoe_users,id',
+            'voucher_code' => 'nullable|string',
             'q' => 'required|string'
         ]);
 
         $hotspot = !empty($validated['hotspot_user_id']) ? HotspotUser::withoutGlobalScopes()->with('serviceProfile')->find($validated['hotspot_user_id']) : null;
         $pppoe = !empty($validated['pppoe_user_id']) ? PPPoEUser::withoutGlobalScopes()->with('serviceProfile')->find($validated['pppoe_user_id']) : null;
+        $voucher = !empty($validated['voucher_code']) ? Voucher::withoutGlobalScopes()->with('serviceProfile')->where('code', $validated['voucher_code'])->first() : null;
         
-        $routerId = $hotspot?->serviceProfile?->router_id ?? $pppoe?->serviceProfile?->router_id ?? null;
-        $username = $hotspot?->username ?? $pppoe?->username ?? null;
+        $routerId = $hotspot?->serviceProfile?->router_id ?? $pppoe?->serviceProfile?->router_id ?? $voucher?->serviceProfile?->router_id ?? null;
+        $username = $hotspot?->username ?? $pppoe?->username ?? $voucher?->code ?? null;
 
         if ($routerId && $username) {
             try {
                 $driver = \App\Integration\MikroTik\MikroTikServiceFactory::makeRouterOSDriverByRouterId($routerId);
                 if ($driver && $driver->connect()) {
-                    if ($hotspot) {
+                    if ($hotspot || $voucher) {
                         $driver->disconnectHotspotUser($username);
                     } else {
                         $driver->disconnectPppoeUser($username);
@@ -312,6 +314,15 @@ class GuestPaymentController extends Controller
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('Guest reset session failed', ['err' => $e->getMessage()]);
+            }
+        }
+
+        if ($username) {
+            try {
+                \App\Models\ISP\HotspotActiveSession::where('user', $username)->delete();
+                \App\Models\ISP\OnlineSession::where('username', $username)->delete();
+            } catch (\Throwable $e) {
+                // Ignore
             }
         }
 
@@ -324,6 +335,13 @@ class GuestPaymentController extends Controller
                 ]);
         } elseif ($pppoe) {
             RadiusAccounting::where(fn($q) => $q->where('pppoe_user_id', $pppoe->id)->orWhere('username', $pppoe->username))
+                ->whereNull('acct_stop_time')
+                ->update([
+                    'acct_stop_time' => now(),
+                    'acct_terminate_cause' => 'Admin-Reset'
+                ]);
+        } elseif ($voucher) {
+            RadiusAccounting::where('username', $voucher->code)
                 ->whereNull('acct_stop_time')
                 ->update([
                     'acct_stop_time' => now(),

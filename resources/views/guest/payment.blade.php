@@ -130,11 +130,11 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div class="bg-surface-container-highest rounded-xl p-5 border border-outline-variant/50">
                                 <p class="text-sm text-gray-400 mb-1">Username / Kode</p>
-                                <p class="text-lg font-bold text-white">{{ $hotspot->username ?? $voucher->code ?? $pppoe->username }}</p>
+                                <p class="text-lg font-bold text-white">{{ $hotspot?->username ?? $voucher?->code ?? $pppoe?->username ?? '-' }}</p>
                             </div>
                             <div class="bg-surface-container-highest rounded-xl p-5 border border-outline-variant/50">
                                 <p class="text-sm text-gray-400 mb-1">Paket</p>
-                                <p class="text-lg font-bold text-white">{{ $hotspot->serviceProfile->name ?? $voucher->serviceProfile->name ?? $pppoe->serviceProfile->name ?? '-' }}</p>
+                                <p class="text-lg font-bold text-white">{{ $hotspot?->serviceProfile?->name ?? $voucher?->serviceProfile?->name ?? $pppoe?->serviceProfile?->name ?? '-' }}</p>
                             </div>
                             <div class="bg-surface-container-highest rounded-xl p-5 border border-outline-variant/50">
                                 <p class="text-sm text-gray-400 mb-1">Status Sesi</p>
@@ -152,11 +152,11 @@
                                 <p class="text-sm text-gray-400 mb-1">{{ $pppoe ? 'Pelanggan' : 'Batas Waktu / Kuota' }}</p>
                                 <p class="text-base font-bold text-white">
                                     @if($pppoe)
-                                        {{ $customer->name ?? '-' }}
+                                        {{ $customer?->name ?? '-' }}
                                     @else
-                                        {{ $hotspot->uptime_limit ?? $voucher->uptime_limit ?? 'Unlimited' }}
-                                        @if($hotspot->bytes_out_limit || $voucher->bytes_out_limit)
-                                            / {{ $hotspot->bytes_out_limit ?? $voucher->bytes_out_limit }}
+                                        {{ $hotspot?->uptime_limit ?? $voucher?->serviceProfile?->uptime_limit ?? ($voucher?->validity_days ? $voucher->validity_days . ' Hari' : 'Unlimited') }}
+                                        @if(($hotspot?->bytes_out_limit ?? null) || ($voucher?->serviceProfile?->quota_limit ?? null))
+                                            / {{ $hotspot?->bytes_out_limit ?? $voucher?->serviceProfile?->quota_limit }}
                                         @endif
                                     @endif
                                 </p>
@@ -177,6 +177,8 @@
                                             <input type="hidden" name="hotspot_user_id" value="{{ $hotspot->id }}">
                                         @elseif($pppoe)
                                             <input type="hidden" name="pppoe_user_id" value="{{ $pppoe->id }}">
+                                        @elseif($voucher)
+                                            <input type="hidden" name="voucher_code" value="{{ $voucher->code }}">
                                         @endif
                                         <input type="hidden" name="q" value="{{ $query }}">
                                         <button type="submit" class="px-5 py-2.5 bg-error/20 hover:bg-error/30 text-error font-bold rounded-lg transition-colors border border-error/30 text-sm flex items-center gap-2">
