@@ -273,12 +273,16 @@ class PaymentGatewaySettingsService
         Setting::setValue(self::PREFIX . '.' . $key, $merged, 'json', self::GROUP);
         Cache::forget(Setting::CACHE_KEY);
 
-        Event::dispatch(new PaymentGatewayUpdatedEvent(
-            userId: $userId,
-            gatewayKey: $key,
-            action: 'save',
-            updatedAt: now()->toIso8601String(),
-        ));
+        try {
+            Event::dispatch(new PaymentGatewayUpdatedEvent(
+                userId: $userId,
+                gatewayKey: $key,
+                action: 'save',
+                updatedAt: now()->toIso8601String(),
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('PaymentGatewayUpdatedEvent dispatch failed: ' . $e->getMessage());
+        }
 
         return ['success' => true, 'gateway' => $key, 'config' => $merged];
     }
@@ -303,12 +307,16 @@ class PaymentGatewaySettingsService
         Setting::setValue(self::PREFIX . '.' . $key, $config, 'json', self::GROUP);
         Cache::forget(Setting::CACHE_KEY);
 
-        Event::dispatch(new PaymentGatewayUpdatedEvent(
-            userId: Auth::id() ?? 0,
-            gatewayKey: $key,
-            action: $enabled ? 'enable' : 'disable',
-            updatedAt: now()->toIso8601String(),
-        ));
+        try {
+            Event::dispatch(new PaymentGatewayUpdatedEvent(
+                userId: Auth::id() ?? 0,
+                gatewayKey: $key,
+                action: $enabled ? 'enable' : 'disable',
+                updatedAt: now()->toIso8601String(),
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('PaymentGatewayUpdatedEvent dispatch failed: ' . $e->getMessage());
+        }
 
         return ['success' => true, 'gateway' => $key, 'enabled' => $enabled];
     }
@@ -319,13 +327,17 @@ class PaymentGatewaySettingsService
         $config = $this->get($key);
         if (!$config) {
             $res = ['success' => false, 'message' => 'Gateway tidak ditemukan.'];
-            Event::dispatch(new PaymentGatewayTestedEvent(
-                userId: $userId,
-                gatewayKey: $key,
-                success: false,
-                message: $res['message'],
-                testedAt: now()->toIso8601String(),
-            ));
+            try {
+                Event::dispatch(new PaymentGatewayTestedEvent(
+                    userId: $userId,
+                    gatewayKey: $key,
+                    success: false,
+                    message: $res['message'],
+                    testedAt: now()->toIso8601String(),
+                ));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('PaymentGatewayTestedEvent dispatch failed: ' . $e->getMessage());
+            }
             return $res;
         }
 
@@ -376,13 +388,17 @@ class PaymentGatewaySettingsService
             $res = ['success' => $success, 'message' => $message];
         }
 
-        Event::dispatch(new PaymentGatewayTestedEvent(
-            userId: $userId,
-            gatewayKey: $key,
-            success: $res['success'],
-            message: $res['message'],
-            testedAt: now()->toIso8601String(),
-        ));
+        try {
+            Event::dispatch(new PaymentGatewayTestedEvent(
+                userId: $userId,
+                gatewayKey: $key,
+                success: $res['success'],
+                message: $res['message'],
+                testedAt: now()->toIso8601String(),
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('PaymentGatewayTestedEvent dispatch failed: ' . $e->getMessage());
+        }
 
         return $res;
     }

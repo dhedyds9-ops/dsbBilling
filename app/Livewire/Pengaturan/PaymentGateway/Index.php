@@ -12,11 +12,16 @@ class Index extends AdminComponent
     public string $activeModule = 'pengaturan';
     public string $activePage = 'payment-gateway';
     public string $activeTab = 'midtrans';
+    public string $savedStatus = '';
+    public string $errorMessage = '';
+    public string $successMessage = '';
 
     public function setActiveTab(string $tab): void
     {
         $this->activeTab = $tab;
         $this->savedStatus = '';
+        $this->errorMessage = '';
+        $this->successMessage = '';
         $this->balanceInfo = null;
     }
 
@@ -258,15 +263,18 @@ class Index extends AdminComponent
     }
 
     // ─── Per-tab Save Methods ────────────────────────────────────────────────
-
+ 
     public function saveMidtrans(\App\Services\Pengaturan\PaymentGatewaySettingsService $svc): void
     {
         try {
             $svc->save('midtrans', $this->midtrans);
             $this->savedStatus = 'saved';
-            session()->flash('success', 'Konfigurasi Midtrans berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'Konfigurasi Midtrans berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }
@@ -276,9 +284,12 @@ class Index extends AdminComponent
         try {
             $svc->save('xendit', $this->xendit);
             $this->savedStatus = 'saved';
-            session()->flash('success', 'Konfigurasi Xendit berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'Konfigurasi Xendit berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }
@@ -288,9 +299,12 @@ class Index extends AdminComponent
         try {
             $svc->save('duitku', $this->duitku);
             $this->savedStatus = 'saved';
-            session()->flash('success', 'Konfigurasi Duitku berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'Konfigurasi Duitku berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }
@@ -300,9 +314,12 @@ class Index extends AdminComponent
         try {
             $svc->save('tripay', $this->tripay);
             $this->savedStatus = 'saved';
-            session()->flash('success', 'Konfigurasi Tripay berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'Konfigurasi Tripay berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }
@@ -312,9 +329,12 @@ class Index extends AdminComponent
         try {
             $svc->save('ipaymu', $this->ipaymu);
             $this->savedStatus = 'saved';
-            session()->flash('success', 'Konfigurasi iPaymu berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'Konfigurasi iPaymu berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }
@@ -330,9 +350,12 @@ class Index extends AdminComponent
                 'bank_accounts'       => $this->manualBank['accounts'] ?? [],
             ]);
             $this->savedStatus = 'saved';
-            session()->flash('success', 'Rekening bank manual berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'Rekening bank manual berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }
@@ -346,25 +369,28 @@ class Index extends AdminComponent
                 'providers'          => $this->ewalletManual['providers'] ?? [],
             ]);
             $this->savedStatus = 'saved';
-            session()->flash('success', 'e-Wallet manual berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'e-Wallet manual berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }
 
     public function saveGeneral(\App\Services\Pengaturan\PaymentGatewaySettingsService $svc): void
     {
-        $this->validate([
-            'general.mode'                => ['required', 'in:sandbox,production'],
-            'general.success_url'         => ['required', 'string', 'max:255'],
-            'general.pending_url'         => ['required', 'string', 'max:255'],
-            'general.error_url'           => ['required', 'string', 'max:255'],
-            'general.webhook_base_url'    => ['nullable', 'url', 'max:500'],
-            'general.default_expiry_hours'=> ['required', 'integer', 'min:1', 'max:720'],
-            'general.invoice_prefix'      => ['required', 'string', 'max:20'],
-        ]);
         try {
+            $this->validate([
+                'general.mode'                => ['required', 'in:sandbox,production'],
+                'general.success_url'         => ['required', 'string', 'max:255'],
+                'general.pending_url'         => ['required', 'string', 'max:255'],
+                'general.error_url'           => ['required', 'string', 'max:255'],
+                'general.webhook_base_url'    => ['nullable', 'string', 'max:500'],
+                'general.default_expiry_hours'=> ['required', 'integer', 'min:1', 'max:720'],
+                'general.invoice_prefix'      => ['required', 'string', 'max:20'],
+            ]);
             \App\Models\Setting::setValue('payment_gateway.general.mode', $this->general['mode'], 'string', 'payment_gateway');
             \App\Models\Setting::setValue('payment_gateway.general.invoice_prefix', $this->general['invoice_prefix'], 'string', 'payment_gateway');
             \App\Models\Setting::setValue('payment_gateway.general.default_expiry_hours', $this->general['default_expiry_hours'], 'integer', 'payment_gateway');
@@ -376,9 +402,12 @@ class Index extends AdminComponent
             \App\Models\Setting::setValue('payment_gateway.general.send_receipt_on_success', $this->general['send_receipt_on_success'] ?? true, 'boolean', 'payment_gateway');
             \App\Models\Setting::setValue('payment_gateway.general.minimum_topup_min_amount', $this->general['minimum_topup_min_amount'] ?? 10000, 'integer', 'payment_gateway');
             $this->savedStatus = 'saved';
-            session()->flash('success', 'Pengaturan umum berhasil disimpan.');
+            $this->errorMessage = '';
+            $this->successMessage = 'Pengaturan umum berhasil disimpan.';
+            session()->flash('success', $this->successMessage);
         } catch (Throwable $e) {
             $this->savedStatus = 'error';
+            $this->errorMessage = $e->getMessage();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
     }

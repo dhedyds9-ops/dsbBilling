@@ -28,6 +28,20 @@
     </nav>
   </div>
 
+  @if (!empty($errorMessage))
+    <div class="mx-4 mt-3 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+      <span class="material-symbols-outlined notranslate text-red-500 mt-0.5" style="font-size:18px">error</span>
+      <div class="flex-1 font-medium">{{ $errorMessage }}</div>
+    </div>
+  @endif
+
+  @if (!empty($successMessage))
+    <div class="mx-4 mt-3 p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+      <span class="material-symbols-outlined notranslate text-emerald-500 mt-0.5" style="font-size:18px">check_circle</span>
+      <div class="flex-1 font-medium">{{ $successMessage }}</div>
+    </div>
+  @endif
+
   <div class="p-4 grid grid-cols-1 xl:grid-cols-3 gap-4">
     <form class="xl:col-span-2 space-y-4 text-sm">
       @if($activeTab === 'general')
