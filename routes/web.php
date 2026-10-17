@@ -7,29 +7,32 @@ use Illuminate\Support\Facades\Auth;
 
 // ==================== PUBLIC ROUTES ====================
 Route::get('/', function () {
-    // 1. Ambil paket PPPoE / FTTH aktif dari database (tanpa data dummy)
-    $pppoeQuery = \App\Models\ISP\ServiceProfile::where('status', 'active')
-        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['pppoe', 'ftth', 'kombinasi']);
-    if ((clone $pppoeQuery)->where('show_on_landing', true)->exists()) {
-        $pppoeQuery->where('show_on_landing', true);
-    }
-    $packagesPppoe = $pppoeQuery->orderBy('base_price')->get();
+    // 1. Ambil paket PPPoE / FTTH aktif yang diizinkan tampil di Landing Page
+    $packagesPppoe = \App\Models\ISP\ServiceProfile::where('status', 'active')
+        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['pppoe', 'ftth', 'kombinasi'])
+        ->where(function ($q) {
+            $q->where('show_on_landing', true)->orWhere('show_on_landing', 1);
+        })
+        ->orderBy('base_price')
+        ->get();
 
-    // 2. Ambil paket Member Hotspot aktif dari database (tanpa data dummy)
-    $hotspotQuery = \App\Models\ISP\ServiceProfile::where('status', 'active')
-        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot']);
-    if ((clone $hotspotQuery)->where('show_on_landing', true)->exists()) {
-        $hotspotQuery->where('show_on_landing', true);
-    }
-    $packagesHotspot = $hotspotQuery->orderBy('base_price')->get();
+    // 2. Ambil paket Member Hotspot aktif yang diizinkan tampil di Landing Page
+    $packagesHotspot = \App\Models\ISP\ServiceProfile::where('status', 'active')
+        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot'])
+        ->where(function ($q) {
+            $q->where('show_on_landing', true)->orWhere('show_on_landing', 1);
+        })
+        ->orderBy('base_price')
+        ->get();
 
-    // 3. Ambil paket Voucher Hotspot aktif dari database (tanpa data dummy)
-    $voucherQuery = \App\Models\ISP\ServiceProfile::where('status', 'active')
-        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['voucher']);
-    if ((clone $voucherQuery)->where('show_on_landing', true)->exists()) {
-        $voucherQuery->where('show_on_landing', true);
-    }
-    $packagesVoucher = $voucherQuery->orderBy('base_price')->get();
+    // 3. Ambil paket Voucher Hotspot aktif yang diizinkan tampil di Landing Page
+    $packagesVoucher = \App\Models\ISP\ServiceProfile::where('status', 'active')
+        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['voucher'])
+        ->where(function ($q) {
+            $q->where('show_on_landing', true)->orWhere('show_on_landing', 1);
+        })
+        ->orderBy('base_price')
+        ->get();
 
     return view('landing', compact('packagesPppoe', 'packagesHotspot', 'packagesVoucher'));
 })->name('home');

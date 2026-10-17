@@ -174,6 +174,39 @@
         $showPppoe = \Illuminate\Support\Collection::wrap($packagesPppoe ?? []);
         $showMemberHotspot = \Illuminate\Support\Collection::wrap($packagesHotspot ?? []);
         $showHotspotVoucher = \Illuminate\Support\Collection::wrap($packagesVoucher ?? []);
+
+        $formatSpeed = function($pkg) {
+            $dl = $pkg->download_speed;
+            $up = $pkg->upload_speed;
+            if ($dl && $dl > 0) {
+                $dlText = ($dl >= 1000) ? (round($dl / 1000, 1) . ' Mbps') : ($dl . ' Kbps');
+                if ($up && $up > 0 && $up != $dl) {
+                    $upText = ($up >= 1000) ? (round($up / 1000, 1) . ' Mbps') : ($up . ' Kbps');
+                    return $dlText . ' (Up ' . $upText . ')';
+                }
+                return $dlText;
+            }
+            preg_match('/(\d+)\s*(mbps|kbps|m|k)/i', ($pkg->name . ' ' . ($pkg->description ?? '')), $matches);
+            if (!empty($matches[0])) {
+                return strtoupper($matches[0]);
+            }
+            return 'Up to 20 Mbps';
+        };
+
+        $formatType = function($pkg) {
+            $type = strtolower($pkg->package_type ?? 'unlimited');
+            if ($type === 'time_based') return 'Berbasis Waktu';
+            if ($type === 'quota_based') return 'Berbasis Kuota';
+            return 'Unlimited (Tanpa FUP)';
+        };
+
+        $formatServiceType = function($pkg) {
+            $st = strtolower($pkg->service_type ?? '');
+            if (str_contains($st, 'voucher')) return 'Voucher Hotspot';
+            if (str_contains($st, 'hotspot')) return 'Hotspot Member';
+            if (str_contains($st, 'pppoe') || str_contains($st, 'ftth')) return 'PPPoE Fiber Home';
+            return strtoupper($pkg->service_type ?? 'Internet');
+        };
     @endphp
 
 <!-- TopNavBar -->
@@ -341,68 +374,90 @@
     <!-- Internet Packages -->
     @if($showPppoe->isNotEmpty())
     <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32" id="paket">
-            <div class="text-center mb-16">
+        <div class="text-center mb-16">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-primary/10 border border-primary/20 text-primary mb-3">
+                <span class="material-symbols-outlined text-[14px]">router</span> KONEKSI FIBER OPTIC RUMAH
+            </span>
             <h2 class="font-headline-lg text-headline-lg text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Paket Internet Rumah</h2>
-            <p class="text-on-surface-variant font-body-md text-body-md">Pilih paket yang sesuai dengan kebutuhan digital keluarga Anda.</p>
+            <p class="text-on-surface-variant font-body-md text-body-md max-w-2xl mx-auto">Koneksi internet dedicated unlimited tanpa batas kuota FUP, stabil 24 jam untuk seluruh anggota keluarga.</p>
         </div>
-        <div class="flex  lg:grid lg:grid-cols-3 gap-gutter items-center pb-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
             @foreach($showPppoe as $index => $pkg)
-                @if($index == 1 || (count($showPppoe) == 1))
-                    <!-- Package 2 (Popular) -->
-                    <div class="w-[85vw] sm:w-[350px] lg:w-auto shrink-0 snap-center glass-card p-10 rounded-[2rem] flex flex-col border-[1.5px] border-primary/50 shadow-[0_0_30px_rgba(6,182,212,0.15)] relative transform lg:-translate-y-4 z-10 bg-surface-container-high/80 h-full">
-                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary px-4 py-1 rounded-full font-label-bold text-label-bold text-sm whitespace-nowrap shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+                @php
+                    $isPopular = ($index == 1 || count($showPppoe) == 1);
+                    $speed = $formatSpeed($pkg);
+                    $type = $formatType($pkg);
+                    $service = $formatServiceType($pkg);
+                @endphp
+                <div class="glass-card p-8 rounded-[2rem] flex flex-col transition-all duration-300 relative {{ $isPopular ? 'border-[1.5px] border-primary/60 shadow-[0_0_35px_rgba(6,182,212,0.2)] bg-surface-container-high/90 lg:-translate-y-2' : 'border border-white/10 hover:border-primary/40 glow-hover' }} h-full">
+                    @if($isPopular)
+                        <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-secondary text-on-primary px-4 py-0.5 rounded-full font-label-bold text-[11px] uppercase tracking-wider whitespace-nowrap shadow-[0_0_15px_rgba(6,182,212,0.5)]">
                             Paling Populer
                         </div>
-                        <div class="mb-8 mt-2">
-                            <span class="inline-block px-3 py-1 bg-primary/20 text-primary font-label-sm text-label-sm rounded-full mb-4">{{ $pkg->name }}</span>
-                            <h3 class="font-display-lg text-[48px] text-on-surface leading-none mb-2 text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">{{ preg_replace('/[^0-9]/', '', $pkg->description ?? $pkg->name ?? '30') }} <span class="text-xl font-normal text-on-surface-variant">Mbps</span></h3>
-                            <p class="font-headline-md text-headline-md text-primary">Rp {{ number_format($pkg->price ?? $pkg->base_price ?? 0, 0, ',', '.') }}<span class="text-sm font-normal text-on-surface-variant">/bln</span></p>
-                        </div>
-                        <ul class="space-y-4 mb-8 flex-grow">
-                            <li class="flex items-center gap-3 text-on-surface font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $pkg->feature1 ?? 'Sangat Cepat & Stabil' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $pkg->feature2 ?? 'Cocok Untuk Keluarga' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $pkg->feature3 ?? 'Unlimited Quota' }}
-                            </li>
-                        </ul>
-                        <button @click.prevent="pkgName = '{{ addslashes($pkg->name) }}'; regOpen = true" class="w-full btn-primary text-center text-white font-label-bold text-label-bold py-4 rounded-xl mt-auto transition-all">
-                            Berlangganan Sekarang
-                        </button>
+                    @endif
+
+                    <div class="flex items-center justify-between gap-2 mb-4">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
+                            <span class="material-symbols-outlined text-[13px]">home</span> {{ $service }}
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-container text-cyan-300 border border-cyan-500/20">
+                            <span class="material-symbols-outlined text-[13px]">bolt</span> {{ $speed }}
+                        </span>
                     </div>
-                @else
-                    <!-- Package Standard -->
-                    <div class="w-[85vw] sm:w-[350px] lg:w-auto shrink-0 snap-center glass-card p-8 rounded-[2rem] flex flex-col glow-hover transition-all duration-300 lg:translate-y-4 h-full">
-                        <div class="mb-8">
-                            <span class="inline-block px-3 py-1 bg-surface-variant text-on-surface-variant font-label-sm text-label-sm rounded-full mb-4">{{ $pkg->name }}</span>
-                            <h3 class="font-display-lg text-[40px] text-on-surface leading-none mb-2">{{ preg_replace('/[^0-9]/', '', $pkg->description ?? $pkg->name ?? '10') }} <span class="text-xl font-normal text-on-surface-variant">Mbps</span></h3>
-                            <p class="font-headline-md text-headline-md text-primary">Rp {{ number_format($pkg->price ?? $pkg->base_price ?? 0, 0, ',', '.') }}<span class="text-sm font-normal text-on-surface-variant">/bln</span></p>
-                        </div>
-                        <ul class="space-y-4 mb-8 flex-grow">
-                            <li class="flex items-center gap-3 text-on-surface-variant font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-tertiary-fixed-dim text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $pkg->feature1 ?? 'Koneksi Stabil' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface-variant font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-tertiary-fixed-dim text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $pkg->feature2 ?? 'Browsing Lancar' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface-variant font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-tertiary-fixed-dim text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $pkg->feature3 ?? 'Tanpa FUP' }}
-                            </li>
-                        </ul>
-                        <button @click.prevent="pkgName = '{{ addslashes($pkg->name) }}'; regOpen = true" class="w-full btn-secondary text-center text-primary font-label-bold text-label-bold py-3 rounded-xl mt-auto transition-all">
-                            Pilih Paket
-                        </button>
+
+                    <h3 class="font-display-lg text-2xl font-black text-on-surface mb-1 tracking-tight">{{ $pkg->name }}</h3>
+                    <p class="text-xs text-on-surface-variant line-clamp-2 min-h-[36px] mb-4">{{ $pkg->description ?: 'Solusi internet rumah berkecepatan tinggi dengan serat optik murni bebas gangguan cuaca.' }}</p>
+
+                    <div class="mb-5 pb-4 border-b border-white/10 flex items-baseline gap-1.5">
+                        <span class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary tracking-tight">Rp {{ number_format($pkg->price ?? $pkg->base_price ?? 0, 0, ',', '.') }}</span>
+                        <span class="text-xs font-semibold text-on-surface-variant">/bulan</span>
                     </div>
-                @endif
+
+                    <!-- Spesifikasi Paket Lengkap -->
+                    <div class="grid grid-cols-2 gap-2 mb-6 text-xs">
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Bandwidth</span>
+                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-primary text-[14px]">speed</span> {{ $speed }}</strong>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Tipe Kuota</span>
+                            <strong class="text-emerald-400 text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-emerald-400 text-[14px]">all_inclusive</span> {{ $type }}</strong>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Shared Perangkat</span>
+                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-purple-400 text-[14px]">devices</span> {{ $pkg->max_devices ? $pkg->max_devices . ' Device' : 'Multi-Device' }}</strong>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Jenis Layanan</span>
+                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-amber-400 text-[14px]">lan</span> PPPoE FTTH</strong>
+                        </div>
+                    </div>
+
+                    <!-- Fitur Unggulan -->
+                    <ul class="space-y-2.5 mb-6 text-xs text-on-surface-variant flex-grow">
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Unlimited tanpa batasan FUP / kuota</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Koneksi simetris & latensi sangat rendah</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Optimal streaming 4K & game online tanpa lag</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Dukungan teknisi standby & SLA prioritas</span>
+                        </li>
+                    </ul>
+
+                    <button @click.prevent="pkgName = '{{ addslashes($pkg->name) }}'; regOpen = true" class="w-full {{ $isPopular ? 'btn-primary text-white' : 'btn-secondary text-primary' }} text-center font-label-bold py-3.5 rounded-xl mt-auto transition-all flex items-center justify-center gap-2">
+                        <span>Berlangganan Sekarang</span>
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                </div>
             @endforeach
         </div>
     </section>
@@ -410,41 +465,77 @@
 
     <!-- Hotspot Section -->
     @if($showHotspotVoucher->isNotEmpty())
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32 bg-surface-container/30 rounded-3xl p-8 md:p-16 border border-white/5" id="hotspot">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-12">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32 bg-surface-container/30 rounded-3xl p-6 sm:p-10 md:p-14 border border-white/5" id="hotspot">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
             <div>
-                <h2 class="font-headline-lg text-headline-lg text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Voucher Hotspot</h2>
-                <p class="text-on-surface-variant font-body-md text-body-md">Akses internet cepat di area publik dengan sistem voucher prabayar.</p>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 mb-2">
+                    <span class="material-symbols-outlined text-[14px]">confirmation_number</span> PRABAYAR CEPAT & MUDAH
+                </span>
+                <h2 class="font-headline-lg text-headline-lg text-primary mb-1" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Voucher Hotspot</h2>
+                <p class="text-on-surface-variant font-body-md text-body-md">Akses internet cepat di area publik dengan sistem voucher instan tanpa ribet registrasi.</p>
             </div>
-            <div class="mt-6 md:mt-0">
-                <span class="material-symbols-outlined text-5xl text-primary/50" style="font-variation-settings: 'FILL' 0;">wifi_tethering</span>
+            <div>
+                <span class="material-symbols-outlined text-5xl text-amber-400/40" style="font-variation-settings: 'FILL' 0;">wifi_tethering</span>
             </div>
         </div>
-        <div class="flex  lg:grid lg:grid-cols-4 gap-4 sm:gap-6 pb-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             @foreach($showHotspotVoucher as $hot)
-            <div class="w-[75vw] sm:w-[280px] lg:w-auto shrink-0 snap-center relative bg-surface-container-high/80 rounded-xl overflow-hidden flex flex-col border border-white/10 shadow-lg h-full" style="mask-composite: source-in;">
-                <div class="p-6 flex-grow bg-gradient-to-br from-primary/10 to-secondary/5">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex flex-col">
-                            <span class="text-on-surface font-headline-md text-headline-md">{{ $hot->name }}</span>
-                            <span class="text-primary/70 text-label-sm">{{ $hot->description ?? 'Akses Unlimited' }}</span>
+                @php
+                    $speed = $formatSpeed($hot);
+                    $type = $formatType($hot);
+                    $validity = $hot->duration_value ? ($hot->duration_value . ' ' . ($hot->duration_unit ?: 'Jam')) : ($hot->validity_hours ? $hot->validity_hours . ' Jam' : ($hot->validity_days ? $hot->validity_days . ' Hari' : '1 Sesi'));
+                @endphp
+                <div class="bg-surface-container-high/80 rounded-2xl overflow-hidden flex flex-col border border-white/10 hover:border-amber-400/40 transition-all duration-300 shadow-lg h-full">
+                    <div class="p-5 flex-grow bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30">
+                                <span class="material-symbols-outlined text-[12px]">local_activity</span> Voucher
+                            </span>
+                            <span class="inline-flex items-center gap-1 text-[11px] font-extrabold text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                                <span class="material-symbols-outlined text-[12px]">bolt</span> {{ $speed }}
+                            </span>
                         </div>
-                        <span class="material-symbols-outlined text-primary/70 text-3xl">{{ $hot->icon ?? 'timer' }}</span>
+
+                        <h3 class="text-lg font-black text-on-surface mb-1 tracking-tight">{{ $hot->name }}</h3>
+                        <p class="text-xs text-on-surface-variant line-clamp-2 min-h-[32px] mb-3">{{ $hot->description ?: 'Akses internet instan kecepatan tinggi langsung dari smartphone atau laptop Anda.' }}</p>
+
+                        <!-- Specs Grid -->
+                        <div class="grid grid-cols-2 gap-1.5 text-[11px] my-3">
+                            <div class="p-2 rounded-lg bg-surface-container-lowest/80 border border-white/5">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block">Masa Aktif</span>
+                                <strong class="text-on-surface text-[11px]">{{ $validity }}</strong>
+                            </div>
+                            <div class="p-2 rounded-lg bg-surface-container-lowest/80 border border-white/5">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block">Kuota</span>
+                                <strong class="text-emerald-400 text-[11px]">{{ $hot->quota_value ? $hot->quota_value . ' ' . ($hot->quota_unit ?: 'MB') : 'Unlimited' }}</strong>
+                            </div>
+                            <div class="p-2 rounded-lg bg-surface-container-lowest/80 border border-white/5">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block">Shared</span>
+                                <strong class="text-on-surface text-[11px]">{{ $hot->max_devices ? $hot->max_devices . ' Perangkat' : '1 Device' }}</strong>
+                            </div>
+                            <div class="p-2 rounded-lg bg-surface-container-lowest/80 border border-white/5">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block">Tipe</span>
+                                <strong class="text-on-surface text-[11px]">{{ $type }}</strong>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 mt-4 opacity-40">
-                        <span class="material-symbols-outlined text-4xl">qr_code_2</span>
-                        <div class="h-px flex-grow border-t border-dashed border-white/20"></div>
+
+                    <div class="border-t border-dashed border-white/20 mx-3"></div>
+
+                    <div class="p-5 bg-surface-container-highest/60 flex flex-col gap-3 mt-auto">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="text-[10px] text-on-surface-variant uppercase font-bold block leading-none">Harga Jual</span>
+                                <span class="text-2xl font-black text-primary tracking-tight">Rp {{ number_format($hot->price ?? $hot->base_price ?? 0, 0, ',', '.') }}</span>
+                            </div>
+                            <span class="material-symbols-outlined text-2xl text-on-surface-variant/60">confirmation_number</span>
+                        </div>
+                        <button @click.prevent="vouchId = '{{ $hot->id }}'; vouchName = '{{ addslashes($hot->name) }}'; vouchPrice = 'Rp {{ number_format($hot->price ?? $hot->base_price ?? 0, 0, ',', '.') }}'; vouchOpen = true" class="w-full btn-primary text-white py-2.5 rounded-xl text-xs font-label-bold transition-all flex items-center justify-center gap-1.5 shadow-md">
+                            <span class="material-symbols-outlined text-sm">shopping_cart</span>
+                            <span>Beli Voucher</span>
+                        </button>
                     </div>
                 </div>
-                <div class="border-t border-dashed border-white/20 mx-4"></div>
-                <div class="p-6 bg-surface-container-highest/50">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-primary font-display-lg text-headline-md">Rp {{ number_format($hot->price ?? $hot->base_price ?? 0, 0, ',', '.') }}</span>
-                        <span class="material-symbols-outlined text-on-surface-variant">confirmation_number</span>
-                    </div>
-                    <button @click.prevent="vouchId = '{{ $hot->id }}'; vouchName = '{{ addslashes($hot->name) }}'; vouchPrice = 'Rp {{ number_format($hot->price ?? $hot->base_price ?? 0, 0, ',', '.') }}'; vouchOpen = true" class="w-full btn-primary text-white py-3 rounded-lg text-sm font-label-bold transition-all mt-auto">Beli Voucher</button>
-                </div>
-            </div>
             @endforeach
         </div>
     </section>
@@ -453,59 +544,90 @@
     <!-- Member Hotspot Section -->
     @if($showMemberHotspot->isNotEmpty())
     <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32" id="member-hotspot">
-            <div class="text-center mb-16">
+        <div class="text-center mb-16">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-secondary-container/30 border border-secondary/30 text-secondary mb-3">
+                <span class="material-symbols-outlined text-[14px]">wifi</span> LANGGANAN HOTSPOT BULANAN
+            </span>
             <h2 class="font-headline-lg text-headline-lg text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Member Hotspot</h2>
-            <p class="text-on-surface-variant font-body-md text-body-md">Langganan bulanan untuk akses tanpa batas di seluruh jaringan hotspot kami.</p>
-            </div>
-        <div class="flex  lg:grid lg:grid-cols-3 gap-gutter pb-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-margin-mobile px-margin-mobile lg:mx-0 lg:px-0">
+            <p class="text-on-surface-variant font-body-md text-body-md max-w-2xl mx-auto">Langganan bulanan untuk akses tanpa batas di seluruh jaringan hotspot kami tanpa perlu gonta-ganti kode voucher.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
             @foreach($showMemberHotspot as $index => $mem)
-                @if($index == 1 || (count($showMemberHotspot) == 1))
-                    <div class="w-[85vw] sm:w-[350px] lg:w-auto shrink-0 snap-center glass-card p-8 rounded-[2rem] flex flex-col glow-hover transition-all duration-300 border-[1.5px] border-primary/30 bg-surface-container-high/80 shadow-[0_0_30px_rgba(6,182,212,0.1)] h-full">
-                        <div class="mb-8">
-                            <span class="inline-block px-3 py-1 bg-primary/20 text-primary font-label-sm text-label-sm rounded-full mb-4">{{ $mem->description ?? 'Pro Member' }}</span>
-                            <h3 class="font-headline-md text-headline-md text-on-surface mb-2">{{ $mem->name }}</h3>
-                            <p class="font-headline-md text-headline-md text-primary">Rp {{ number_format($mem->price ?? $mem->base_price ?? 0, 0, ',', '.') }}<span class="text-sm font-normal text-on-surface-variant">/bln</span></p>
+                @php
+                    $isPopular = ($index == 1 || count($showMemberHotspot) == 1);
+                    $speed = $formatSpeed($mem);
+                    $type = $formatType($mem);
+                    $service = $formatServiceType($mem);
+                @endphp
+                <div class="glass-card p-8 rounded-[2rem] flex flex-col transition-all duration-300 relative {{ $isPopular ? 'border-[1.5px] border-secondary/60 shadow-[0_0_35px_rgba(173,198,255,0.15)] bg-surface-container-high/90 lg:-translate-y-2' : 'border border-white/10 hover:border-secondary/40 glow-hover' }} h-full">
+                    @if($isPopular)
+                        <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-secondary-container to-secondary text-on-secondary px-4 py-0.5 rounded-full font-label-bold text-[11px] uppercase tracking-wider whitespace-nowrap shadow-lg">
+                            Pilihan Terbaik
+                        </div>
+                    @endif
+
+                    <div class="flex items-center justify-between gap-2 mb-4">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-secondary/15 text-secondary border border-secondary/25">
+                            <span class="material-symbols-outlined text-[13px]">wifi_protected_setup</span> {{ $service }}
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-container text-secondary border border-secondary/20">
+                            <span class="material-symbols-outlined text-[13px]">bolt</span> {{ $speed }}
+                        </span>
                     </div>
-                        <ul class="space-y-4 mb-8 flex-grow">
-                            <li class="flex items-center gap-3 text-on-surface font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $mem->feature1 ?? '2 Devices Concurrent' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $mem->feature2 ?? 'Priority Bandwidth' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                Automatic Reconnect
-                            </li>
+
+                    <h3 class="font-display-lg text-2xl font-black text-on-surface mb-1 tracking-tight">{{ $mem->name }}</h3>
+                    <p class="text-xs text-on-surface-variant line-clamp-2 min-h-[36px] mb-4">{{ $mem->description ?: 'Solusi internet hotspot berlangganan bulanan tanpa batasan kuota untuk mobilitas Anda.' }}</p>
+
+                    <div class="mb-5 pb-4 border-b border-white/10 flex items-baseline gap-1.5">
+                        <span class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary tracking-tight">Rp {{ number_format($mem->price ?? $mem->base_price ?? 0, 0, ',', '.') }}</span>
+                        <span class="text-xs font-semibold text-on-surface-variant">/bulan</span>
+                    </div>
+
+                    <!-- Spesifikasi Paket -->
+                    <div class="grid grid-cols-2 gap-2 mb-6 text-xs">
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Bandwidth</span>
+                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-secondary text-[14px]">speed</span> {{ $speed }}</strong>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Tipe Kuota</span>
+                            <strong class="text-emerald-400 text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-emerald-400 text-[14px]">all_inclusive</span> {{ $type }}</strong>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Shared Perangkat</span>
+                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-purple-400 text-[14px]">devices</span> {{ $mem->max_devices ? $mem->max_devices . ' Device' : '1 Device' }}</strong>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
+                            <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Masa Aktif</span>
+                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-amber-400 text-[14px]">calendar_today</span> 30 Hari</strong>
+                        </div>
+                    </div>
+
+                    <!-- Fitur Unggulan -->
+                    <ul class="space-y-2.5 mb-6 text-xs text-on-surface-variant flex-grow">
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-secondary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Login otomatis sekali klik tanpa ribet</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-secondary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Akses 30 hari penuh unlimited tanpa FUP</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-secondary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Prioritas bandwidth stabil di seluruh area</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-on-surface">
+                            <span class="material-symbols-outlined text-secondary text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            <span>Bisa digunakan hingga {{ $mem->max_devices ?? 1 }} perangkat bersamaan</span>
+                        </li>
                     </ul>
-                        <button @click.prevent="pkgName = '{{ addslashes($mem->name) }}'; regOpen = true" class="w-full btn-primary text-white font-label-bold text-label-bold py-3 rounded-xl mt-auto">Daftar Member</button>
-                    </div>
-                @else
-                    <div class="w-[85vw] sm:w-[350px] lg:w-auto shrink-0 snap-center glass-card p-8 rounded-[2rem] flex flex-col glow-hover transition-all duration-300 border border-white/10 h-full">
-                        <div class="mb-8">
-                            <span class="inline-block px-3 py-1 bg-surface-variant text-on-surface-variant font-label-sm text-label-sm rounded-full mb-4">{{ $mem->description ?? 'Starter Member' }}</span>
-                            <h3 class="font-headline-md text-headline-md text-on-surface mb-2">{{ $mem->name }}</h3>
-                            <p class="font-headline-md text-headline-md text-primary">Rp {{ number_format($mem->price ?? $mem->base_price ?? 0, 0, ',', '.') }}<span class="text-sm font-normal text-on-surface-variant">/bln</span></p>
+
+                    <button @click.prevent="pkgName = '{{ addslashes($mem->name) }}'; regOpen = true" class="w-full {{ $isPopular ? 'btn-primary text-white' : 'btn-secondary text-primary' }} text-center font-label-bold py-3.5 rounded-xl mt-auto transition-all flex items-center justify-center gap-2 shadow-lg">
+                        <span>Daftar Member</span>
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
                 </div>
-                        <ul class="space-y-4 mb-8 flex-grow">
-                            <li class="flex items-center gap-3 text-on-surface-variant font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $mem->feature1 ?? 'Single Device Login' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface-variant font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                {{ $mem->feature2 ?? 'Standard Bandwidth' }}
-                            </li>
-                            <li class="flex items-center gap-3 text-on-surface-variant font-body-md text-body-md">
-                                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                Automatic Reconnect
-                            </li>
-                        </ul>
-                        <button @click.prevent="pkgName = '{{ addslashes($mem->name) }}'; regOpen = true" class="w-full btn-secondary text-primary font-label-bold text-label-bold py-3 rounded-xl mt-auto">Daftar Member</button>
-                    </div>
-                @endif
             @endforeach
         </div>
     </section>

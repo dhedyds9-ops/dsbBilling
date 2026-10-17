@@ -103,7 +103,6 @@
                     <th class="px-4 py-3 font-semibold">
                         <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-slate-300 dark:border-slate-600 rounded dark:bg-slate-900 dark:text-slate-100">
                     </th>
-                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Nama Paket</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Jenis</th>
@@ -118,7 +117,9 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Komisi Reseller</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Owner</th>
                     @endif
-                    </tr>
+                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Landing & Login</th>
+                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
+                </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                 @forelse($profiles as $profile)
@@ -174,9 +175,28 @@
                             <td class="px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400 text-right whitespace-nowrap">Rp {{ number_format(max(0, ($profile->base_price ?? 0) - ($profile->reseller_price ?? 0)), 0, ',', '.') }}</td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm">{{ $profile->owner->name ?? 'System' }}</td>
                         @endif
+                        <td class="px-4 py-3 text-center whitespace-nowrap">
+                            <button type="button"
+                                wire:click="toggleLanding({{ $profile->id }})"
+                                wire:loading.attr="disabled"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all shadow-sm {{ $profile->show_on_landing ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200' }}"
+                                title="Klik untuk {{ $profile->show_on_landing ? 'Sembunyikan dari' : 'Tampilkan di' }} Landing & Login Page">
+                                <span class="material-symbols-outlined notranslate text-[14px]">
+                                    {{ $profile->show_on_landing ? 'visibility' : 'visibility_off' }}
+                                </span>
+                                <span>{{ $profile->show_on_landing ? 'Tampil' : 'Sembunyi' }}</span>
+                            </button>
+                        </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-1.5">
                                 @if(!$profile->trashed())
+                                    <button type="button"
+                                        wire:click="toggleLanding({{ $profile->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-md transition-colors {{ $profile->show_on_landing ? 'text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/40' : 'text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700' }}"
+                                        title="{{ $profile->show_on_landing ? 'Sembunyikan dari Landing Page & Login Page' : 'Tampilkan di Landing Page & Login Page' }}">
+                                        <span class="material-symbols-outlined notranslate text-[16px]">storefront</span>
+                                    </button>
                                     <a href="{{ route('isp.service-profiles.edit', $profile->id) }}" class="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-amber-100 dark:bg-amber-900/50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 rounded-md transition-colors" title="Edit">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     </a>
@@ -196,7 +216,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="12" class="px-6 py-16 text-center">
+                        <td colspan="13" class="px-6 py-16 text-center">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
                                     <svg class="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>

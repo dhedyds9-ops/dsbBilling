@@ -246,6 +246,27 @@ class Index extends BaseNetworkComponent
     }
 
     /**
+     * Toggle tampilkan di landing & login page
+     */
+    public function toggleLanding($id)
+    {
+        try {
+            $profile = ServiceProfileModel::withoutGlobalScopes()->findOrFail($id);
+            $newLanding = ! (bool) $profile->show_on_landing;
+            $profile->show_on_landing = $newLanding;
+            $profile->save();
+
+            $statusText = $newLanding ? 'ditampilkan di Landing & Login Page' : 'disembunyikan dari Landing & Login Page';
+            $this->dispatch('toast', type: 'success', message: 'Paket ' . $profile->name . ' berhasil ' . $statusText . '!');
+            session()->flash('success', 'Paket ' . $profile->name . ' berhasil ' . $statusText . '!');
+        } catch (Throwable $e) {
+            Log::error('Toggle Landing Failed: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengubah status landing: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengubah status landing: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Duplicate package
      */
     public function duplicate($id)
