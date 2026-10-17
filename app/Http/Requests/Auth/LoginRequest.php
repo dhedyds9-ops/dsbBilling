@@ -119,18 +119,21 @@ class LoginRequest extends FormRequest
     {
         $lower = mb_strtolower(trim($identity));
         
-        // 1. Coba cari di tabel customers dulu berdasarkan code (ID Pelanggan)
-        $customerByCode = \App\Models\CRM\Customer::whereRaw('LOWER(code) = ?', [$lower])->first();
-        
-        // 1b. Jika belum ketemu dan formatnya angka (misal 2026101607 atau 7), coba cari via ID atau sequence
-        if (!$customerByCode && is_numeric($identity)) {
-            if (strlen($identity) >= 9) {
-                $idSuffix = (int) substr($identity, 8);
-                if ($idSuffix > 0) {
-                    $customerByCode = \App\Models\CRM\Customer::find($idSuffix);
+        $customerByCode = null;
+        if (\Illuminate\Support\Facades\Schema::hasTable('customers')) {
+            // 1. Coba cari di tabel customers dulu berdasarkan code (ID Pelanggan)
+            $customerByCode = \App\Models\CRM\Customer::withoutGlobalScopes()->whereRaw('LOWER(code) = ?', [$lower])->first();
+            
+            // 1b. Jika belum ketemu dan formatnya angka (misal 2026101607 atau 7), coba cari via ID atau sequence
+            if (!$customerByCode && is_numeric($identity)) {
+                if (strlen($identity) >= 9) {
+                    $idSuffix = (int) substr($identity, 8);
+                    if ($idSuffix > 0) {
+                        $customerByCode = \App\Models\CRM\Customer::withoutGlobalScopes()->find($idSuffix);
+                    }
+                } else {
+                    $customerByCode = \App\Models\CRM\Customer::withoutGlobalScopes()->find((int)$identity);
                 }
-            } else {
-                $customerByCode = \App\Models\CRM\Customer::find((int)$identity);
             }
         }
 
@@ -161,7 +164,9 @@ class LoginRequest extends FormRequest
 
             // Jika user masih belum ada sama sekali, buatkan akun User untuk customer ini sekarang juga!
             if (!$u) {
-                $service = \App\Models\Customer\CustomerService::where('customer_id', $customerByCode->id)->first();
+                $service = \Illuminate\Support\Facades\Schema::hasTable('customer_services')
+                    ? \App\Models\Customer\CustomerService::withoutGlobalScopes()->where('customer_id', $customerByCode->id)->first()
+                    : null;
                 $defaultPass = !empty($service->password) ? $service->password : '123456';
                 
                 $u = \App\Models\User::create([
@@ -192,9 +197,12 @@ class LoginRequest extends FormRequest
         }
 
         // 2. Coba cari di tabel customer_services (PPPoE/Hotspot Username)
-        $customerService = \App\Models\Customer\CustomerService::with('customer')
-            ->whereRaw('LOWER(username) = ?', [$lower])
-            ->first();
+        $customerService = null;
+        if (\Illuminate\Support\Facades\Schema::hasTable('customer_services')) {
+            $customerService = \App\Models\Customer\CustomerService::withoutGlobalScopes()->with('customer')
+                ->whereRaw('LOWER(username) = ?', [$lower])
+                ->first();
+        }
             
         if ($customerService && $customerService->customer) {
             $customer = $customerService->customer;
