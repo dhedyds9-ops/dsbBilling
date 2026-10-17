@@ -69,6 +69,14 @@
       </div>
   </div>
 
+  {{-- ERROR MESSAGE ALERT --}}
+  @if($this->errorMessage)
+      <div class="mb-6 flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
+          <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+          <span>{{ $this->errorMessage }}</span>
+      </div>
+  @endif
+
   <!-- Main Content Card (Toolbar + Table) -->
   <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-6">
       <!-- Toolbar -->
@@ -154,7 +162,7 @@
           </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
-        @forelse ($rows as $row)
+        @forelse ($rows ?? [] as $row)
           @php
             $displayId = $row->display_id ?? "{$row->source_type}-{$row->id}";
             $phone = $row->customer_phone ?? '';

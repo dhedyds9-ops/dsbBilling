@@ -295,6 +295,16 @@ class Index extends BaseEnterpriseList
     public function render()
     {
         $rows = $this->getRows();
+        if (!$rows) {
+            $perPage = is_numeric($this->perPage) ? (int)$this->perPage : 20;
+            $rows = new \Illuminate\Pagination\LengthAwarePaginator(
+                items: [],
+                total: 0,
+                perPage: $perPage,
+                currentPage: 1
+            );
+        }
+
         return view('livewire.pelanggan.isolir.index', [
             'rows' => $rows,
         ]);

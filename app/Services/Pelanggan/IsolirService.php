@@ -24,9 +24,14 @@ class IsolirService
 
     protected function unionBaseQuery(?string $search, array $filters): Builder
     {
+        $customerTable = \Illuminate\Support\Facades\Schema::hasTable('customers') ? 'customers' : 'members';
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $pppoeDisplayId = $isSqlite ? "('P-' || pppoe_users.id)" : "CONCAT('P-', pppoe_users.id)";
+        $hotspotDisplayId = $isSqlite ? "('H-' || hotspot_users.id)" : "CONCAT('H-', hotspot_users.id)";
+
         $pppoe = PPPoEUser::query()
             ->leftJoin('customer_services as cs_p', 'pppoe_users.customer_service_id', '=', 'cs_p.id')
-            ->leftJoin('members as m_p', 'cs_p.customer_id', '=', 'm_p.id')
+            ->leftJoin("{$customerTable} as m_p", 'cs_p.customer_id', '=', 'm_p.id')
             ->leftJoin('service_profiles as sp_p', 'pppoe_users.service_profile_id', '=', 'sp_p.id')
             ->leftJoin('subscriptions as sub_p', 'cs_p.id', '=', 'sub_p.customer_service_id')
             ->leftJoin('invoices as inv_p', function ($j) {
@@ -37,7 +42,7 @@ class IsolirService
             ->select([
                 DB::raw("'pppoe' as source_type"),
                 'pppoe_users.id as id',
-                DB::raw("('P-' || pppoe_users.id) as display_id"),
+                DB::raw("{$pppoeDisplayId} as display_id"),
                 'pppoe_users.username',
                 'm_p.name as customer_name',
                 'm_p.phone as customer_phone',
@@ -59,7 +64,7 @@ class IsolirService
 
         $hotspot = HotspotUser::query()
             ->leftJoin('customer_services as cs_h', 'hotspot_users.customer_service_id', '=', 'cs_h.id')
-            ->leftJoin('members as m_h', 'cs_h.customer_id', '=', 'm_h.id')
+            ->leftJoin("{$customerTable} as m_h", 'cs_h.customer_id', '=', 'm_h.id')
             ->leftJoin('service_profiles as sp_h', 'hotspot_users.service_profile_id', '=', 'sp_h.id')
             ->leftJoin('subscriptions as sub_h', 'cs_h.id', '=', 'sub_h.customer_service_id')
             ->leftJoin('invoices as inv_h', function ($j) {
@@ -70,7 +75,7 @@ class IsolirService
             ->select([
                 DB::raw("'hotspot' as source_type"),
                 'hotspot_users.id as id',
-                DB::raw("('H-' || hotspot_users.id) as display_id"),
+                DB::raw("{$hotspotDisplayId} as display_id"),
                 'hotspot_users.username',
                 'm_h.name as customer_name',
                 'm_h.phone as customer_phone',
