@@ -196,7 +196,6 @@ class Index extends AdminComponent
     ];
 
     public ?string $balanceInfo = null;
-    public string $savedStatus = '';
 
     public function mount(): void
     {
