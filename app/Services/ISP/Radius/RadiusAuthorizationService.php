@@ -98,7 +98,7 @@ final class RadiusAuthorizationService
                                 $bThUl = (int)($sp->burst_threshold_upload ?? (int)(($ul + $bUl) / 2));
                                 $bTmDl = (int)($sp->burst_time_download ?? 8);
                                 $bTmUl = (int)($sp->burst_time_upload ?? 8);
-                                $rl .= " {$bUl}M/{$bDl}M {$bThUl}M/{$bThDl}M {$bTmUl}s/{$bTmDl}s";
+                                $rl .= " {$bUl}M/{$bDl}M {$bThUl}M/{$bThDl}M {$bTmUl}/{$bTmDl}";
                             }
                             $reply['MikroTik-Rate-Limit'] = $rl;
                         } elseif (!empty($sp->rate_download_kbps) && !empty($sp->rate_upload_kbps)) {
@@ -110,13 +110,25 @@ final class RadiusAuthorizationService
                 }
 
                 // Framed-IP Pool assignment
-                if (empty($reply['Framed-Pool'])) {
+                // CATATAN KRITIS: Untuk Hotspot / Voucher, klien sudah mendapatkan IP dari Hotspot DHCP.
+                // Jika RADIUS mengirim Framed-Pool ke Hotspot, MikroTik akan mencoba 1:1 NAT yang menyebabkan
+                // "Tersambung tapi tidak ada internet". Framed-Pool HANYA untuk PPPoE.
+                $isHotspot = ($ctx->protocol === 'hotspot' || $ctx->voucher !== null || $ctx->hotspotUser !== null);
+                if (empty($reply['Framed-Pool']) && !$isHotspot) {
                     if ($sp && !empty($sp->radius_framed_pool) && !str_contains(strtolower($sp->radius_framed_pool), 'unknown')) {
                         $reply['Framed-Pool'] = $sp->radius_framed_pool;
                     } elseif ($sp && !empty($sp->ip_pool_name) && !str_contains(strtolower($sp->ip_pool_name), 'unknown')) {
                         $reply['Framed-Pool'] = $sp->ip_pool_name;
                     } elseif ($ctx->protocol === 'pppoe' || $ctx->pppoeUser !== null) {
                         $reply['Framed-Pool'] = 'pool-pppoe';
+                    }
+                }
+
+                // Assign MikroTik-Group (User Profile di MikroTik Hotspot) jika ada
+                if ($isHotspot && empty($reply['MikroTik-Group'])) {
+                    $group = $sp?->hotspot_profile ?: ($sp?->user_profile ?: ($sp?->mikrotik_profile ?: null));
+                    if (!empty($group)) {
+                        $reply['MikroTik-Group'] = $group;
                     }
                 }
 
