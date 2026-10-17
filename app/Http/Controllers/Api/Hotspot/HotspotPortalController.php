@@ -51,6 +51,12 @@ class HotspotPortalController extends Controller
                   ->orWhere('status', 'active');
             });
 
+            // Hanya paket yang diizinkan tampil di Landing Page / Login Page
+            $query->where(function ($q) {
+                $q->where('show_on_landing', true)
+                  ->orWhere('show_on_landing', 1);
+            });
+
             if ($type === 'hotspot') {
                 $query->where(function ($q) {
                     $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot'])
@@ -115,10 +121,18 @@ class HotspotPortalController extends Controller
 
                 $price = (int) ($profile->promo_price > 0 ? $profile->promo_price : ($profile->base_price ?? $profile->cost_price ?? 0));
 
+                $rawType = strtolower((string)($profile->service_type ?? 'voucher'));
+                $normalizedType = 'voucher';
+                if (str_contains($rawType, 'hotspot')) {
+                    $normalizedType = 'hotspot';
+                } elseif (str_contains($rawType, 'pppoe') || str_contains($rawType, 'ftth') || str_contains($rawType, 'kombinasi')) {
+                    $normalizedType = 'pppoe';
+                }
+
                 return [
                     'id' => $profile->id,
                     'profile_name' => $profile->name,
-                    'service_type' => strtolower($profile->service_type ?? 'voucher'),
+                    'service_type' => $normalizedType,
                     'price_sell' => $price,
                     'shared' => (int) ($profile->max_devices ?? $profile->radius_simultaneous_use ?? 1),
                     'time_limit' => $timeLimit,
