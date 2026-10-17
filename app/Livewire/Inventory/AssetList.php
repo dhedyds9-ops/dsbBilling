@@ -51,6 +51,51 @@ class AssetList extends AdminComponent
         parent::mount();
         $this->activeModule = 'inventory';
         $this->activePage = 'assets';
+        $this->syncInstalledOnus(false);
+    }
+
+    public function syncInstalledOnus(bool $flash = true): void
+    {
+        try {
+            $onus = \App\Models\ISP\Onu::all();
+            $synced = 0;
+            foreach ($onus as $onu) {
+                $sn = $onu->serial_number ?: ($onu->code ?: 'ONU-' . $onu->id);
+                $code = $onu->code ?: ('ONU-' . substr(preg_replace('/[^A-Za-z0-9]/', '', $sn), -6));
+                $name = $onu->name ?: ('ONU Modem ' . ($onu->model ?: $sn));
+                $status = ($onu->status === 'active' || $onu->provision_status === 'success' || !empty($onu->provisioned_at)) ? 'in_use' : 'available';
+
+                $asset = Asset::where('serial_number', $sn)
+                    ->orWhere('code', $code)
+                    ->first();
+
+                if (!$asset) {
+                    Asset::create([
+                        'code' => $code,
+                        'name' => $name,
+                        'type' => 'onu',
+                        'status' => $status,
+                        'condition' => 'good',
+                        'serial_number' => $sn,
+                        'mac_address' => $onu->mac_address,
+                        'installed_at' => $onu->provisioned_at ?: $onu->created_at,
+                    ]);
+                    $synced++;
+                } else {
+                    $asset->update([
+                        'status' => $status,
+                        'mac_address' => $onu->mac_address ?: $asset->mac_address,
+                        'installed_at' => $onu->provisioned_at ?: ($asset->installed_at ?: $onu->created_at),
+                    ]);
+                }
+            }
+
+            if ($flash && $synced > 0) {
+                session()->flash('success', "Berhasil mensinkronkan {$synced} perangkat ONU ke daftar aset.");
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Sync ONUs to assets error: ' . $e->getMessage());
+        }
     }
 
     public function getAssets()

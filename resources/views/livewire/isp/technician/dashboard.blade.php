@@ -1,4 +1,32 @@
+@php
+    $hasCheckedIn = false;
+    if (auth()->check()) {
+        $hasCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', auth()->id())
+            ->whereDate('date', \Carbon\Carbon::today())
+            ->whereNotNull('checked_in_at')
+            ->exists();
+    }
+@endphp
+
 <div class="space-y-4 p-4 pb-24">
+
+    {{-- Alert Belum Absen --}}
+    @if(!$hasCheckedIn)
+        <div class="bg-gradient-to-r from-amber-500 to-orange-600 text-white p-4 rounded-2xl shadow-md flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined" style="font-size:24px">fingerprint</span>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm leading-tight">Anda Belum Absen Hari Ini</h3>
+                    <p class="text-xs text-amber-100 mt-0.5">Silakan Absen Masuk untuk membuka akses tugas & instalasi.</p>
+                </div>
+            </div>
+            <a href="{{ route('technician.attendance') }}" class="px-3.5 py-2 bg-white text-amber-950 font-bold rounded-xl text-xs hover:bg-amber-100 transition-all shrink-0 shadow-sm">
+                Absen Sekarang
+            </a>
+        </div>
+    @endif
 
     {{-- Hero Banner --}}
     <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
@@ -11,21 +39,39 @@
             <p class="text-indigo-200 text-sm">{{ now()->translatedFormat('l, d F Y') }}</p>
         </div>
         <div class="relative z-10 mt-4 flex gap-2">
-            <a href="{{ route('technician.my-jobs.index') }}"
-               class="flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
-                <span class="material-symbols-outlined" style="font-size:20px">assignment</span>
-                Tugas
-            </a>
-            <a href="{{ route('technician.installation.wizard') }}"
-               class="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
-                <span class="material-symbols-outlined" style="font-size:20px">build_circle</span>
-                Instalasi
-            </a>
-            <a href="{{ route('technician.audit.form') }}"
-               class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
-                <span class="material-symbols-outlined" style="font-size:20px">radar</span>
-                Sensus
-            </a>
+            @if(!$hasCheckedIn)
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
+                   class="flex-1 py-2.5 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl text-white/80 text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined" style="font-size:20px">lock</span>
+                    Tugas
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
+                   class="flex-1 py-2.5 bg-amber-400/80 hover:bg-amber-400 text-amber-950 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:20px">lock</span>
+                    Instalasi
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
+                   class="flex-1 py-2.5 bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:20px">lock</span>
+                    Sensus
+                </button>
+            @else
+                <a href="{{ route('technician.my-jobs.index') }}"
+                   class="flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined" style="font-size:20px">assignment</span>
+                    Tugas
+                </a>
+                <a href="{{ route('technician.installation.wizard') }}"
+                   class="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:20px">build_circle</span>
+                    Instalasi
+                </a>
+                <a href="{{ route('technician.audit.form') }}"
+                   class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:20px">radar</span>
+                    Sensus
+                </a>
+            @endif
         </div>
     </div>
 
@@ -66,20 +112,35 @@
                 <span class="text-xs font-bold">Slip Gaji</span>
             </a>
             
-            <a href="{{ route('technician.installation.scan') }}" class="flex-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-blue-100 dark:border-blue-800 text-center">
-                <span class="material-symbols-outlined" style="font-size:28px">qr_code_scanner</span>
-                <span class="text-xs font-bold">Scan ONU</span>
-            </a>
-            
-            <a href="{{ route('technician.odp.nearest') }}" class="flex-1 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-emerald-100 dark:border-emerald-800 text-center">
-                <span class="material-symbols-outlined" style="font-size:28px">share_location</span>
-                <span class="text-xs font-bold">Peta ODP</span>
-            </a>
+            @if(!$hasCheckedIn)
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-center cursor-not-allowed">
+                    <span class="material-symbols-outlined" style="font-size:28px">lock</span>
+                    <span class="text-xs font-bold">Scan ONU</span>
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-center cursor-not-allowed">
+                    <span class="material-symbols-outlined" style="font-size:28px">lock</span>
+                    <span class="text-xs font-bold">Peta ODP</span>
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-center cursor-not-allowed">
+                    <span class="material-symbols-outlined" style="font-size:28px">lock</span>
+                    <span class="text-xs font-bold">Cari ODP</span>
+                </button>
+            @else
+                <a href="{{ route('technician.installation.scan') }}" class="flex-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-blue-100 dark:border-blue-800 text-center">
+                    <span class="material-symbols-outlined" style="font-size:28px">qr_code_scanner</span>
+                    <span class="text-xs font-bold">Scan ONU</span>
+                </a>
+                
+                <a href="{{ route('technician.odp.nearest') }}" class="flex-1 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-emerald-100 dark:border-emerald-800 text-center">
+                    <span class="material-symbols-outlined" style="font-size:28px">share_location</span>
+                    <span class="text-xs font-bold">Peta ODP</span>
+                </a>
 
-            <a href="{{ route('technician.odp.search') }}" class="flex-1 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-amber-100 dark:border-amber-800 text-center">
-                <span class="material-symbols-outlined" style="font-size:28px">search</span>
-                <span class="text-xs font-bold">Cari ODP</span>
-            </a>
+                <a href="{{ route('technician.odp.search') }}" class="flex-1 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-amber-100 dark:border-amber-800 text-center">
+                    <span class="material-symbols-outlined" style="font-size:28px">search</span>
+                    <span class="text-xs font-bold">Cari ODP</span>
+                </a>
+            @endif
         </div>
     </div>
 

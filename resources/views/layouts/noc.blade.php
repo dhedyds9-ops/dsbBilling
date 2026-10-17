@@ -73,7 +73,17 @@
     <div class="fixed inset-0" style="background-color: #0a0e1a !important; z-index: -50; width: 100vw; height: 100vh;"></div>
     <header class="flex-none h-10 flex items-center px-3 gap-3 border-b" style="background:#111827;border-color:#1f2937;">
 
-        {{-- Logo + Label --}}
+    @php
+        $__nocCheckedIn = false;
+        if (auth()->check()) {
+            $__nocCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', auth()->id())
+                ->whereDate('date', \Carbon\Carbon::today())
+                ->whereNotNull('checked_in_at')
+                ->exists();
+        }
+    @endphp
+
+    {{-- Logo + Label --}}
         <div class="flex items-center gap-2 flex-none">
             <button @click="navOpen = !navOpen" class="text-gray-400 hover:text-gray-200 transition-colors" title="Navigation">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,12 +118,17 @@
             @endphp
             @foreach($nocNav as $item)
                 @if(\Illuminate\Support\Facades\Route::has($item['route']))
-                <a href="{{ route($item['route']) }}"
+                @php
+                    $isExempt = in_array($item['route'], ['dashboard', 'noc.overview']);
+                    $isLocked = !$__nocCheckedIn && !$isExempt;
+                @endphp
+                <a href="{{ $isLocked ? 'javascript:void(0)' : route($item['route']) }}"
+                   @if($isLocked) onclick="alert('Wajib Check-In: Silakan tekan tombol Check-In di pojok kanan atas sebelum membuka menu {{ $item['label'] }}.'); return false;" @endif
                    class="flex items-center gap-1 px-2 py-1 rounded text-xs whitespace-nowrap transition-colors
-                          {{ request()->routeIs(str_replace('.index', '.*', $item['route'])) || request()->routeIs($item['route'])
+                          {{ $isLocked ? 'text-gray-600 dark:text-gray-500 cursor-not-allowed opacity-75' : (request()->routeIs(str_replace('.index', '.*', $item['route'])) || request()->routeIs($item['route'])
                               ? 'bg-blue-900 text-blue-300 font-medium'
-                              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800' }}">
-                    <i class="bi bi-{{ $item['icon'] }} text-xs"></i>
+                              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800') }}">
+                    <i class="bi bi-{{ $isLocked ? 'lock' : $item['icon'] }} text-xs"></i>
                     {{ $item['label'] }}
                 </a>
                 @endif
@@ -159,6 +174,15 @@
         </div>
     </header>
 
+    @if(!$__nocCheckedIn)
+        <div class="w-full bg-amber-500 text-slate-950 px-4 py-1.5 text-xs flex items-center justify-between shadow-sm z-30 font-medium">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-shield-lock-fill text-sm"></i>
+                <span><strong>Status: Belum Check-In Dinas.</strong> Silakan klik tombol <strong>"Check-In"</strong> di pojok kanan atas untuk membuka seluruh menu operasional NOC.</span>
+            </div>
+        </div>
+    @endif
+
     {{-- ============================================================
          SLIDE-IN NAVIGATION PANEL (for mobile / compact access)
          ============================================================ --}}
@@ -188,13 +212,18 @@
             <div class="flex-1 overflow-y-auto py-2">
                 @foreach($nocNav ?? [] as $item)
                     @if(\Illuminate\Support\Facades\Route::has($item['route']))
-                    <a href="{{ route($item['route']) }}"
+                    @php
+                        $isExempt = in_array($item['route'], ['dashboard', 'noc.overview']);
+                        $isLocked = !$__nocCheckedIn && !$isExempt;
+                    @endphp
+                    <a href="{{ $isLocked ? 'javascript:void(0)' : route($item['route']) }}"
+                       @if($isLocked) onclick="alert('Wajib Check-In: Silakan tekan tombol Check-In di pojok kanan atas sebelum membuka menu {{ $item['label'] }}.'); return false;" @endif
                        class="flex items-center gap-3 px-4 py-2 text-sm transition-colors
-                              {{ request()->routeIs(str_replace('.index', '.*', $item['route'])) || request()->routeIs($item['route'])
+                              {{ $isLocked ? 'text-gray-600 dark:text-gray-500 cursor-not-allowed opacity-75' : (request()->routeIs(str_replace('.index', '.*', $item['route'])) || request()->routeIs($item['route'])
                                   ? 'bg-blue-900/50 text-blue-300 border-l-2 border-blue-400'
-                                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800' }}"
-                       @click="navOpen = false">
-                        <i class="bi bi-{{ $item['icon'] }} text-sm w-4 text-center"></i>
+                                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800') }}"
+                       @click="{{ $isLocked ? '' : 'navOpen = false' }}">
+                        <i class="bi bi-{{ $isLocked ? 'lock' : $item['icon'] }} text-sm w-4 text-center"></i>
                         {{ $item['label'] }}
                     </a>
                     @endif

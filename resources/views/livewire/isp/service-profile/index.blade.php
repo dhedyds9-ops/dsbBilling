@@ -1,25 +1,27 @@
-<div class="max-w-7xl mx-auto p-3">
-    {{-- Breadcrumb --}}
-    <x-admin.breadcrumbs />
+@section('page_title')
+    <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">inventory_2</span>
+        <span class="text-lg">Profil Paket Internet</span>
+    </div>
+@endsection
 
+<div class="space-y-5 pb-10">
     {{-- Flash Messages --}}
     @if(session()->has('success'))
-        <div class="mb-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 rounded-lg text-sm">{{ session('success') }}</div>
+        <div class="mb-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 rounded-xl text-sm">{{ session('success') }}</div>
     @endif
     @if(session()->has('error'))
-        <div class="mb-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-300 rounded-lg text-sm">{{ session('error') }}</div>
+        <div class="mb-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-300 rounded-xl text-sm">{{ session('error') }}</div>
     @endif
 
     {{-- Header --}}
-    <div class="flex justify-between items-center mb-4">
-    @section('page_title')
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Paket Internet</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Kelola seluruh paket layanan internet</p>
         </div>
-        @endsection
         <div class="flex items-center gap-2">
-            <a href="{{ route('isp.service-profiles.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium">
+            <a href="{{ route('isp.service-profiles.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors text-sm font-medium shadow-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                 Tambah Paket
             </a>

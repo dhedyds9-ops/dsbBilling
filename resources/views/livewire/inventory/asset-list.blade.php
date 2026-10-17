@@ -81,6 +81,11 @@
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
                 Tambah Asset
             </button>
+            <button wire:click="syncInstalledOnus(true)" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-3 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-medium rounded-lg shadow-sm transition-all" title="Sinkronkan data dari instalasi ONU">
+                <span class="material-symbols-outlined notranslate mr-1.5 text-indigo-500" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading.remove wire:target="syncInstalledOnus">Sinkronkan ONU</span>
+                <span wire:loading wire:target="syncInstalledOnus">Sinkronisasi...</span>
+            </button>
         </div>
         
         <div class="flex items-center gap-2 w-full sm:w-auto">

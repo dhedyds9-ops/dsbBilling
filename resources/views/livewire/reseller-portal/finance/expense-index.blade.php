@@ -308,7 +308,7 @@
                             </label>
                             <div class="relative">
                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-slate-400">Rp</span>
-                                <input wire:model="amount" type="number" step="1000" min="1" placeholder="Contoh: 150000"
+                                <input wire:model="amount" type="number" step="any" min="0" placeholder="Contoh: 150000"
                                        class="w-full pl-9 pr-3 py-2 text-sm font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none @error('amount') border-rose-500 @enderror">
                             </div>
                             @error('amount') <span class="text-rose-500 text-[11px] mt-1 block">{{ $message }}</span> @enderror

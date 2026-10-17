@@ -93,27 +93,26 @@ $cs = fn() => view('coming-soon');
 Route::middleware(['auth'])->group(function () use ($cs) {
 
     // ==================== TECHNICIAN PORTAL ====================
-    Route::middleware(['role:administrator,manager', 'job_function:TECHNICIAN'])->group(function () {
+    Route::middleware(['role:administrator,manager,technician', 'job_function:TECHNICIAN'])->group(function () {
         Route::get('/technician-portal/dashboard', \App\Livewire\Isp\Technician\Dashboard::class)->name('technician.dashboard');
+        Route::get('/technician-portal/attendance', \App\Livewire\Isp\Technician\Attendance\Index::class)->name('technician.attendance');
+        Route::get('/technician-portal/payroll', \App\Livewire\Isp\Technician\Payroll\Index::class)->name('technician.payroll.index');
+        Route::get('/technician-portal/payroll/{id}', \App\Livewire\Isp\Technician\Payroll\Show::class)->name('technician.payroll.show');
+
         Route::middleware(['workforce.checked_in'])->group(function () {
             Route::get('/technician-portal/my-jobs', \App\Livewire\Isp\Technician\MyJobs\Index::class)->name('technician.my-jobs.index');
             Route::get('/technician-portal/my-jobs/{job}', \App\Livewire\Isp\Technician\MyJobs\Show::class)->name('technician.my-jobs.show');
             Route::get('/technician-portal/installation/wizard', \App\Livewire\Isp\Technician\Installation\Wizard::class)->name('technician.installation.wizard');
             Route::get('/technician-portal/provisioning/{id}', \App\Livewire\Isp\Technician\Provisioning\Show::class)->name('technician.provisioning.show');
             Route::get('/technician-portal/audit', \App\Livewire\Isp\Technician\Audit\Form::class)->name('technician.audit.form');
+            Route::get('/technician-portal/my-jobs/psb', \App\Livewire\Isp\Technician\MyJobs\Psb::class)->name('technician.my-jobs.psb');
+            Route::get('/technician-portal/my-jobs/maintenance', \App\Livewire\Isp\Technician\MyJobs\Maintenance::class)->name('technician.my-jobs.maintenance');
+            Route::get('/technician-portal/tickets', \App\Livewire\Isp\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
+            Route::get('/technician-portal/installation/scan', \App\Livewire\Isp\Technician\Installation\Scan::class)->name('technician.installation.scan');
+            Route::get('/technician-portal/installation/register', \App\Livewire\Isp\Technician\Installation\Register::class)->name('technician.installation.register');
+            Route::get('/technician-portal/odp/search', \App\Livewire\Isp\Technician\Odp\Search::class)->name('technician.odp.search');
+            Route::get('/technician-portal/odp/nearest', \App\Livewire\Isp\Technician\Odp\Nearest::class)->name('technician.odp.nearest');
         });
-        Route::get('/technician-portal/attendance', \App\Livewire\Isp\Technician\Attendance\Index::class)->name('technician.attendance');
-        Route::get('/technician-portal/payroll', \App\Livewire\Isp\Technician\Payroll\Index::class)->name('technician.payroll.index');
-        Route::get('/technician-portal/payroll/{id}', \App\Livewire\Isp\Technician\Payroll\Show::class)->name('technician.payroll.show');
-        
-        // Fallback/Dummy routes to prevent MenuRegistry crashes
-        Route::get('/technician-portal/my-jobs/psb', \App\Livewire\Isp\Technician\MyJobs\Psb::class)->name('technician.my-jobs.psb');
-        Route::get('/technician-portal/my-jobs/maintenance', \App\Livewire\Isp\Technician\MyJobs\Maintenance::class)->name('technician.my-jobs.maintenance');
-        Route::get('/technician-portal/tickets', \App\Livewire\Isp\Technician\Tickets\Index::class)->name('technician.my-jobs.troubleshooting');
-        Route::get('/technician-portal/installation/scan', \App\Livewire\Isp\Technician\Installation\Scan::class)->name('technician.installation.scan');
-        Route::get('/technician-portal/installation/register', \App\Livewire\Isp\Technician\Installation\Register::class)->name('technician.installation.register');
-        Route::get('/technician-portal/odp/search', \App\Livewire\Isp\Technician\Odp\Search::class)->name('technician.odp.search');
-        Route::get('/technician-portal/odp/nearest', \App\Livewire\Isp\Technician\Odp\Nearest::class)->name('technician.odp.nearest');
     });
 
     // ==================== STAFF / ADMIN AREA ====================
@@ -330,19 +329,19 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::prefix('noc')->name('noc.')->middleware(['job_function:NOC'])->group(function () {
             Route::get('/', \App\Livewire\NOC\Overview::class)->name('overview');
             
-            Route::prefix('acs')->name('acs.')->group(function () {
-                Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
-                Route::get('/devices', \App\Livewire\ACS\Device\Index::class)->name('devices.index');
-                Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
-                Route::get('/devices/{id}', \App\Livewire\ACS\Device\Show::class)->name('devices.show');
-                Route::get('/tasks', \App\Livewire\ACS\Task\Index::class)->name('tasks.index');
-                Route::get('/alarms', \App\Livewire\ACS\Alarm\Index::class)->name('alarms.index');
-                Route::get('/firmware', \App\Livewire\ACS\Firmware\Index::class)->name('firmware.index');
-                Route::get('/firmware/create', \App\Livewire\ACS\Firmware\Create::class)->name('firmware.create');
-                Route::get('/firmware/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('firmware.edit');
-                Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
-            });
             Route::middleware(['workforce.checked_in'])->group(function () {
+                Route::prefix('acs')->name('acs.')->group(function () {
+                    Route::get('/dashboard', \App\Livewire\ACS\Dashboard::class)->name('dashboard');
+                    Route::get('/devices', \App\Livewire\ACS\Device\Index::class)->name('devices.index');
+                    Route::get('/devices/{id}/edit', \App\Livewire\ACS\Device\Edit::class)->name('devices.edit');
+                    Route::get('/devices/{id}', \App\Livewire\ACS\Device\Show::class)->name('devices.show');
+                    Route::get('/tasks', \App\Livewire\ACS\Task\Index::class)->name('tasks.index');
+                    Route::get('/alarms', \App\Livewire\ACS\Alarm\Index::class)->name('alarms.index');
+                    Route::get('/firmware', \App\Livewire\ACS\Firmware\Index::class)->name('firmware.index');
+                    Route::get('/firmware/create', \App\Livewire\ACS\Firmware\Create::class)->name('firmware.create');
+                    Route::get('/firmware/{id}/edit', \App\Livewire\ACS\Firmware\Edit::class)->name('firmware.edit');
+                    Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
+                });
                 Route::get('/alarms', \App\Livewire\NOC\Alarms\Index::class)->name('alarms.index');
                 Route::get('/alarms/{alarm}', \App\Livewire\NOC\Alarms\Show::class)->name('alarms.show');
                 Route::get('/provisioning', \App\Livewire\NOC\Provisioning\Index::class)->name('provisioning.index');
@@ -355,7 +354,6 @@ Route::middleware(['auth'])->group(function () use ($cs) {
                 Route::get('/onus/{onu}', \App\Livewire\NOC\Onu\Show::class)->name('onus.show');
                 Route::get('/pppoe', \App\Livewire\NOC\Pppoe\Index::class)->name('pppoe.index');
                 Route::get('/topology', \App\Livewire\NOC\Topology\Index::class)->name('topology.index');
-                
             });
         });
 

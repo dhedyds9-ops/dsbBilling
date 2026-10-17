@@ -79,6 +79,27 @@ class Onu extends Model
 
         static::saved(function ($model) {
             Cache::forget('gis_map_data');
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('assets')) {
+                    $sn = $model->serial_number ?: ($model->code ?: 'ONU-' . $model->id);
+                    $code = $model->code ?: ('ONU-' . substr(preg_replace('/[^A-Za-z0-9]/', '', $sn), -6));
+                    $name = $model->name ?: ('ONU Modem ' . ($model->model ?: $sn));
+                    $status = ($model->status === 'active' || $model->provision_status === 'success' || !empty($model->provisioned_at)) ? 'in_use' : 'available';
+
+                    \App\Models\Inventory\Asset::updateOrCreate(
+                        ['serial_number' => $sn],
+                        [
+                            'code' => $code,
+                            'name' => $name,
+                            'type' => 'onu',
+                            'status' => $status,
+                            'condition' => 'good',
+                            'mac_address' => $model->mac_address,
+                            'installed_at' => $model->provisioned_at ?: ($model->created_at ?: now()),
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {}
         });
 
         static::deleted(function ($model) {

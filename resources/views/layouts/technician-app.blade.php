@@ -1,5 +1,12 @@
 @php
     $__isDashboard = request()->routeIs('technician.dashboard');
+    $__hasCheckedIn = false;
+    if (auth()->check()) {
+        $__hasCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', auth()->id())
+            ->whereDate('date', \Carbon\Carbon::today())
+            ->whereNotNull('checked_in_at')
+            ->exists();
+    }
 @endphp
 
 <x-layouts.base
@@ -58,6 +65,18 @@
             </div>
         </header>
 
+        @if(!$__hasCheckedIn && !request()->routeIs('technician.attendance'))
+            <div class="bg-amber-500 text-white px-4 py-2 text-xs flex items-center justify-between shadow-sm z-30">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size:18px">lock</span>
+                    <span class="font-semibold">Wajib Absen Masuk untuk membuka menu pekerjaan</span>
+                </div>
+                <a href="{{ route('technician.attendance') }}" class="px-2.5 py-1 bg-white text-amber-900 font-bold rounded-lg text-[11px] shadow hover:bg-amber-50 transition-colors shrink-0">
+                    Absen Sekarang
+                </a>
+            </div>
+        @endif
+
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto pb-20">
             {{ $slot ?? '' }}
@@ -70,21 +89,42 @@
                 <span class="material-symbols-outlined {{ request()->routeIs('technician.dashboard') ? 'fill' : '' }}" style="font-size:24px">home</span>
                 <span class="text-[10px] font-semibold">Home</span>
             </a>
-            <a href="{{ route('technician.my-jobs.index') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('technician.my-jobs.index') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('technician.my-jobs.index') ? 'fill' : '' }}" style="font-size:24px">assignment</span>
-                <span class="text-[10px] font-semibold">PSB</span>
-            </a>
-            <a href="{{ route('technician.my-jobs.troubleshooting') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('technician.my-jobs.troubleshooting') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('technician.my-jobs.troubleshooting') ? 'fill' : '' }}" style="font-size:24px">build</span>
-                <span class="text-[10px] font-semibold">Gangguan</span>
-            </a>
-            <a href="{{ route('technician.installation.wizard') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('technician.installation.*') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
-                <span class="material-symbols-outlined {{ request()->routeIs('technician.installation.*') ? 'fill' : '' }}" style="font-size:24px">build_circle</span>
-                <span class="text-[10px] font-semibold">Instalasi</span>
-            </a>
-            <a href="{{ route('technician.attendance') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('technician.attendance') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
+            @if(!$__hasCheckedIn)
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu pada menu Absensi.'); window.location.href='{{ route('technician.attendance') }}';" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-slate-300 dark:text-slate-600 relative" title="Menu Terkunci - Wajib Absen">
+                    <span class="material-symbols-outlined" style="font-size:24px">lock</span>
+                    <span class="text-[10px] font-semibold">PSB</span>
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu pada menu Absensi.'); window.location.href='{{ route('technician.attendance') }}';" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-slate-300 dark:text-slate-600 relative" title="Menu Terkunci - Wajib Absen">
+                    <span class="material-symbols-outlined" style="font-size:24px">lock</span>
+                    <span class="text-[10px] font-semibold">Gangguan</span>
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu pada menu Absensi.'); window.location.href='{{ route('technician.attendance') }}';" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-slate-300 dark:text-slate-600 relative" title="Menu Terkunci - Wajib Absen">
+                    <span class="material-symbols-outlined" style="font-size:24px">lock</span>
+                    <span class="text-[10px] font-semibold">Instalasi</span>
+                </button>
+            @else
+                <a href="{{ route('technician.my-jobs.index') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('technician.my-jobs.index') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
+                    <span class="material-symbols-outlined {{ request()->routeIs('technician.my-jobs.index') ? 'fill' : '' }}" style="font-size:24px">assignment</span>
+                    <span class="text-[10px] font-semibold">PSB</span>
+                </a>
+                <a href="{{ route('technician.my-jobs.troubleshooting') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('technician.my-jobs.troubleshooting') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
+                    <span class="material-symbols-outlined {{ request()->routeIs('technician.my-jobs.troubleshooting') ? 'fill' : '' }}" style="font-size:24px">build</span>
+                    <span class="text-[10px] font-semibold">Gangguan</span>
+                </a>
+                <a href="{{ route('technician.installation.wizard') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors {{ request()->routeIs('technician.installation.*') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 dark:text-slate-500 dark:text-slate-400' }}">
+                    <span class="material-symbols-outlined {{ request()->routeIs('technician.installation.*') ? 'fill' : '' }}" style="font-size:24px">build_circle</span>
+                    <span class="text-[10px] font-semibold">Instalasi</span>
+                </a>
+            @endif
+            <a href="{{ route('technician.attendance') }}" class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors relative {{ request()->routeIs('technician.attendance') ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : ($__hasCheckedIn ? 'text-slate-400 dark:text-slate-500' : 'text-amber-500 font-bold') }}">
+                @if(!$__hasCheckedIn)
+                    <span class="absolute -top-1 right-2 flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                @endif
                 <span class="material-symbols-outlined {{ request()->routeIs('technician.attendance') ? 'fill' : '' }}" style="font-size:24px">fingerprint</span>
-                <span class="text-[10px] font-semibold">Absensi</span>
+                <span class="text-[10px] font-semibold">{{ $__hasCheckedIn ? 'Absensi' : 'Wajib Absen' }}</span>
             </a>
             <form method="POST" action="{{ route('logout') }}" class="m-0">
                 @csrf
