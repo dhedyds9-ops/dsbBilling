@@ -15,130 +15,210 @@ class IncomeReportService
 
     public function getTransactions(array $filters = []): array
     {
-        $query = Invoice::whereIn('status', ['paid', 'success', 'lunas'])
-            ->with(['customer.customerServices.serviceProfile', 'customer.reseller', 'customer.createdBy', 'items', 'payments' => function($q) {
-                $q->where('status', 'success');
-            }]);
-
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $start = \Carbon\Carbon::parse($filters['start_date'])->startOfDay();
-            $end = \Carbon\Carbon::parse($filters['end_date'])->endOfDay();
-            $query->whereHas('payments', function($q) use ($start, $end) {
-                $q->where('status', 'success')
-                  ->whereBetween('paid_at', [$start, $end]);
-            });
-        }
-
-        if (!empty($filters['reseller_id']) && $filters['reseller_id'] !== 'all') {
-            $resellerId = $filters['reseller_id'];
-            $query->whereHas('customer', function($q) use ($resellerId) {
-                $q->where('reseller_id', $resellerId)
-                  ->orWhere('created_by', $resellerId);
-            });
-        }
-
-        if (!empty($filters['user_type']) && $filters['user_type'] !== 'all') {
-            $userType = $filters['user_type'];
-            $query->whereHas('customer', function($q) use ($userType) {
-                if ($userType === 'customer') {
-                    $q->where('role', 'customer');
-                } else if ($userType === 'voucher') {
-                    $q->where('role', 'voucher');
-                }
-            });
-        }
-
-        $invoices = $query->latest('updated_at')->get();
-
         $rows = collect();
         $totalProfit = 0;
         $totalFeeSeller = 0;
         $totalPlusPpn = 0;
 
-        $calc = new \App\Services\Keuangan\SettlementCalculator();
+        $userType = $filters['user_type'] ?? 'all';
 
-        foreach ($invoices as $invoice) {
-            $payment = $invoice->payments->sortByDesc('paid_at')->first();
-            $paidAt = $payment ? $payment->paid_at : $invoice->updated_at;
+        // 1. Ambil data Invoice Pelanggan (PPPoE / Hotspot Member) jika bukan filter 'voucher'
+        if ($userType !== 'voucher') {
+            $query = Invoice::whereIn('status', ['paid', 'success', 'lunas'])
+                ->with(['customer.customerServices.serviceProfile', 'customer.reseller', 'customer.createdBy', 'items', 'payments' => function($q) {
+                    $q->where('status', 'success');
+                }]);
 
-            $hargaPpn = (float)$invoice->total_amount;
-            $feeSeller = 0;
-            
-            foreach ($invoice->items as $item) {
-                $qty = max(1, (int) $item->quantity);
-                $unitPrice = (float) $item->unit_price;
-                $ownerPrice = (float) $item->owner_settlement_price;
-                $branchPrice = (float) $item->branch_settlement_price;
-                $resellerPrice = (float) $item->reseller_settlement_price;
-
-                $allocation = $calc->calculateItem(
-                    $unitPrice,
-                    $ownerPrice,
-                    $branchPrice,
-                    $resellerPrice,
-                    $qty,
-                    1.0
-                );
-                $feeSeller += $allocation['reseller_margin'];
+            if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+                $start = \Carbon\Carbon::parse($filters['start_date'])->startOfDay();
+                $end = \Carbon\Carbon::parse($filters['end_date'])->endOfDay();
+                $query->whereHas('payments', function($q) use ($start, $end) {
+                    $q->where('status', 'success')
+                      ->whereBetween('paid_at', [$start, $end]);
+                });
             }
 
-            $profit = $hargaPpn - $feeSeller;
-            
-            $serviceType = 'POST';
-            $profilePaketId = null;
+            if (!empty($filters['reseller_id']) && $filters['reseller_id'] !== 'all') {
+                $resellerId = $filters['reseller_id'];
+                $query->whereHas('customer', function($q) use ($resellerId) {
+                    $q->where('reseller_id', $resellerId)
+                      ->orWhere('created_by', $resellerId);
+                });
+            }
 
-            if ($invoice->customer && $invoice->customer->customerServices->isNotEmpty()) {
-                $plan = $invoice->customer->customerServices->first()->serviceProfile;
-                if ($plan) {
-                    $profilePaketId = $plan->id;
-                    if ($plan->service_type === 'hotspot') {
-                        $serviceType = 'PRE HOTSPOT';
-                    } elseif ($plan->service_type === 'pppoe') {
-                        $serviceType = 'POST PPPOE';
-                    } else {
-                        $serviceType = strtoupper($plan->service_type);
+            $invoices = $query->latest('updated_at')->get();
+            $calc = new \App\Services\Keuangan\SettlementCalculator();
+
+            foreach ($invoices as $invoice) {
+                $payment = $invoice->payments->sortByDesc('paid_at')->first();
+                $paidAt = $payment ? $payment->paid_at : $invoice->updated_at;
+
+                $hargaPpn = (float)$invoice->total_amount;
+                $feeSeller = 0;
+                $hasReseller = !empty($invoice->customer?->reseller_id) || !empty($invoice->reseller_id);
+                
+                foreach ($invoice->items as $item) {
+                    $qty = max(1, (int) $item->quantity);
+                    $unitPrice = (float) $item->unit_price;
+                    $ownerPrice = (float) $item->owner_settlement_price;
+                    $branchPrice = (float) $item->branch_settlement_price;
+                    $resellerPrice = $hasReseller ? (float) $item->reseller_settlement_price : $unitPrice;
+
+                    $allocation = $calc->calculateItem(
+                        $unitPrice,
+                        $ownerPrice,
+                        $branchPrice,
+                        $resellerPrice,
+                        $qty,
+                        1.0
+                    );
+                    $feeSeller += $allocation['reseller_margin'];
+                }
+
+                $profit = $hargaPpn - $feeSeller;
+                
+                $serviceType = 'POST';
+                $profilePaketId = null;
+
+                if ($invoice->customer && $invoice->customer->customerServices->isNotEmpty()) {
+                    $plan = $invoice->customer->customerServices->first()->serviceProfile;
+                    if ($plan) {
+                        $profilePaketId = $plan->id;
+                        if ($plan->service_type === 'hotspot') {
+                            $serviceType = 'PRE HOTSPOT';
+                        } elseif ($plan->service_type === 'pppoe') {
+                            $serviceType = 'POST PPPOE';
+                        } else {
+                            $serviceType = strtoupper($plan->service_type);
+                        }
                     }
                 }
-            }
 
-            if (!empty($filters['service_type']) && $filters['service_type'] !== 'all') {
-                if (stripos($serviceType, $filters['service_type']) === false) {
-                    continue;
+                if (!empty($filters['service_type']) && $filters['service_type'] !== 'all') {
+                    if (stripos($serviceType, $filters['service_type']) === false) {
+                        continue;
+                    }
                 }
-            }
-            if (!empty($filters['profile_paket']) && $filters['profile_paket'] !== 'all') {
-                if ($profilePaketId != $filters['profile_paket']) {
-                    continue;
+                if (!empty($filters['profile_paket']) && $filters['profile_paket'] !== 'all') {
+                    if ($profilePaketId != $filters['profile_paket']) {
+                        continue;
+                    }
                 }
-            }
 
-            $totalProfit += $profit;
-            $totalFeeSeller += $feeSeller;
-            $totalPlusPpn += $hargaPpn;
+                $totalProfit += $profit;
+                $totalFeeSeller += $feeSeller;
+                $totalPlusPpn += $hargaPpn;
 
-            $resellerName = '-';
-            if ($invoice->customer) {
-                if ($invoice->customer->reseller) {
-                    $resellerName = $invoice->customer->reseller->name;
-                } elseif ($invoice->customer->createdBy) {
-                    $resellerName = $invoice->customer->createdBy->name;
+                $resellerName = '-';
+                if ($invoice->customer) {
+                    if ($invoice->customer->reseller) {
+                        $resellerName = $invoice->customer->reseller->name;
+                    } elseif ($invoice->customer->createdBy) {
+                        $resellerName = $invoice->customer->createdBy->name;
+                    }
                 }
-            }
 
-            $rows->push([
-                'id' => $invoice->id,
-                'invoice_number' => $invoice->invoice_number,
-                'customer_id' => $invoice->customer?->code ?? 'n/a',
-                'customer_name' => $invoice->customer?->name ?? 'N/A',
-                'reseller_name' => $resellerName,
-                'service_type' => $serviceType,
-                'package_name' => $invoice->items->first()?->description ?? 'Unknown',
-                'harga_ppn' => $hargaPpn,
-                'fee_seller' => $feeSeller,
-                'profit' => $profit,
-                'paid_at' => $paidAt ? $paidAt->format('Y-m-d H:i:s') : '-',
-            ]);
+                $rows->push([
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'customer_id' => $invoice->customer?->code ?? 'n/a',
+                    'customer_name' => $invoice->customer?->name ?? 'N/A',
+                    'reseller_name' => $resellerName,
+                    'service_type' => $serviceType,
+                    'package_name' => $invoice->items->first()?->description ?? 'Unknown',
+                    'harga_ppn' => $hargaPpn,
+                    'fee_seller' => $feeSeller,
+                    'profit' => $profit,
+                    'paid_at' => $paidAt ? $paidAt->format('Y-m-d H:i:s') : '-',
+                    'timestamp' => $paidAt ? $paidAt->timestamp : 0,
+                ]);
+            }
         }
+
+        // 2. Ambil data Voucher yang terjual / aktif jika bukan filter 'customer'
+        if ($userType !== 'customer') {
+            $voucherQuery = \App\Models\ISP\Voucher::withoutGlobalScopes()
+                ->with(['serviceProfile', 'reseller', 'createdBy'])
+                ->where(function($q) {
+                    $q->whereIn('status', ['used', 'active'])
+                      ->orWhereNotNull('activated_at');
+                });
+
+            if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+                $start = \Carbon\Carbon::parse($filters['start_date'])->startOfDay();
+                $end = \Carbon\Carbon::parse($filters['end_date'])->endOfDay();
+                $voucherQuery->where(function($q) use ($start, $end) {
+                    $q->where(function($sq) use ($start, $end) {
+                        $sq->whereNotNull('activated_at')->whereBetween('activated_at', [$start, $end]);
+                    })->orWhere(function($sq) use ($start, $end) {
+                        $sq->whereNull('activated_at')->whereBetween('created_at', [$start, $end]);
+                    });
+                });
+            }
+
+            if (!empty($filters['reseller_id']) && $filters['reseller_id'] !== 'all') {
+                $resellerId = $filters['reseller_id'];
+                $voucherQuery->where(function($q) use ($resellerId) {
+                    $q->where('reseller_id', $resellerId)
+                      ->orWhere('created_by', $resellerId);
+                });
+            }
+
+            if (!empty($filters['profile_paket']) && $filters['profile_paket'] !== 'all') {
+                $voucherQuery->where('service_profile_id', $filters['profile_paket']);
+            }
+
+            $vouchers = $voucherQuery->latest('activated_at')->latest('created_at')->get();
+
+            foreach ($vouchers as $voucher) {
+                $sp = $voucher->serviceProfile;
+                $serviceType = strtoupper($sp?->service_type ?? 'VOUCHER');
+                if (!str_contains($serviceType, 'VOUCHER') && !str_contains($serviceType, 'HOTSPOT')) {
+                    $serviceType = 'PRE VOUCHER';
+                }
+
+                if (!empty($filters['service_type']) && $filters['service_type'] !== 'all') {
+                    if (stripos($serviceType, $filters['service_type']) === false) {
+                        continue;
+                    }
+                }
+
+                $basePrice = (float)($sp?->base_price ?: ($sp?->price ?: 0));
+                $resellerPrice = (float)($sp?->reseller_price ?: ($sp?->reseller_settlement_price ?: 0));
+                
+                $feeSeller = 0;
+                if (!empty($voucher->reseller_id)) {
+                    $feeSeller = (float)($voucher->fee_seller ?: max(0, $basePrice - $resellerPrice));
+                }
+                $profit = max(0, $basePrice - $feeSeller);
+
+                $actAt = $voucher->activated_at ?? $voucher->created_at;
+                $paidAtStr = $actAt ? $actAt->format('Y-m-d H:i:s') : '-';
+
+                $resellerName = $voucher->reseller?->name ?? ($voucher->createdBy?->name ?? 'Pusat');
+
+                $totalProfit += $profit;
+                $totalFeeSeller += $feeSeller;
+                $totalPlusPpn += $basePrice;
+
+                $rows->push([
+                    'id' => $voucher->id,
+                    'invoice_number' => $voucher->code,
+                    'customer_id' => $voucher->code,
+                    'customer_name' => 'Voucher: ' . $voucher->code,
+                    'reseller_name' => $resellerName,
+                    'service_type' => $serviceType,
+                    'package_name' => $sp?->name ?? 'Voucher Hotspot',
+                    'harga_ppn' => $basePrice,
+                    'fee_seller' => $feeSeller,
+                    'profit' => $profit,
+                    'paid_at' => $paidAtStr,
+                    'timestamp' => $actAt ? $actAt->timestamp : 0,
+                ]);
+            }
+        }
+
+        $sortedRows = $rows->sortByDesc('timestamp')->values();
 
         return [
             'summary' => [
@@ -146,7 +226,7 @@ class IncomeReportService
                 'fee_seller' => $totalFeeSeller,
                 'total_ppn' => $totalPlusPpn,
             ],
-            'rows' => $rows
+            'rows' => $sortedRows
         ];
     }
     public function daily(array $filters = []): array
