@@ -30,13 +30,116 @@ class VoucherTemplateSeeder extends Seeder
     {
         return [
             [
+                'name' => 'Voucher MSRadius Dynamic Color',
+                'slug' => 'voucher-msradius-color',
+                'category' => VoucherTemplateCategory::Classic->value,
+                'description' => 'Template voucher dinamis bergaya MSRadius / Mikhmon dengan warna otomatis sesuai nominal harga (Rp 2rb - 70rb), logo, dan QR Code login.',
+                'is_system' => false,
+                'is_active' => true,
+                'is_default' => true,
+                'settings' => [
+                    'paper_size' => 'A4',
+                    'grid_preset' => '3x6',
+                    'page_margins' => ['top' => 5, 'right' => 5, 'bottom' => 5, 'left' => 5],
+                    'card_margins' => ['top' => 2, 'right' => 2, 'bottom' => 2, 'left' => 2],
+                ],
+                'css_code' => '.qrcode img {
+    height: 50px;
+    width: 50px;
+    border-radius: 5px;
+    box-sizing: border-box;
+}',
+                'template_code' => '{assign var="v_price" value=$voucher.price}
+{if $v_price == 2000}
+ {assign var="color" value="#000000"}
+{elseif $v_price == 3000}
+ {assign var="color" value="#0ca5ff"}
+{elseif $v_price == 5000}
+ {assign var="color" value="#FF0000"}
+{elseif $v_price == 7000}
+ {assign var="color" value="#A52A2A"}
+{elseif $v_price == 25000}
+ {assign var="color" value="#8B008B"}
+{elseif $v_price == 65000}
+ {assign var="color" value="#FF00FF"}
+{elseif $v_price == 70000}
+ {assign var="color" value="#32CD32"}
+{else}
+ {assign var="color" value="#4f46e5"}
+{/if}
+<table style="display:inline-block; border-collapse:collapse; border:1.5px solid #444; margin:1.5px; width:210px; position:relative; padding:0px; margin-right:8px; margin-bottom:10px; background:#fff; font-family:Arial,sans-serif;">
+ <tbody>
+ <tr>
+ <td style="color:#666; padding:2px;" valign="top">
+ <table style="width:100%;">
+ <tbody>
+ <tr> 
+ <td style="width:85px">
+ <img style="object-fit:contain;" width="85" height="22" src="{{company.logo}}" alt="logo"> 
+ </td> 
+ <td style="text-align:right;">
+ <div style="font-weight:bold; font-size:18px; color:{$color};"> 
+ <small style="font-size:12px;">Rp</small>
+ {{voucher.price|number_format(0, \',\', \'.\')}}
+ </div> 
+ </td> 
+ </tr>
+ </tbody>
+ </table>
+ </td>
+ </tr>
+ <tr>
+ <td style="color:#666; border-collapse:collapse; padding:2px;" valign="top">
+ <table style="width:100%; border-collapse:collapse;">
+ <tbody>
+ <tr>
+ <td style="width:115px;" valign="top">
+ <div style="clear:both; color:#555; margin-bottom:2px;">
+ {if $voucher.password == $voucher.code} 
+ <div style="border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:10px; color:#444">KODE VOUCHER</div> 
+ <div style="padding:2px; border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:14px; color:#000">{{voucher.code}}</div>
+ {else}
+ <div style="border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:9px; color:#444">MEMBER</div> 
+ <div style="padding:1px; border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:11px; color:{$color}">
+ {{voucher.code}}<br>{{voucher.password}}
+ </div>
+ {/if}
+ </div>
+ <div style="text-align:left; color:#111; font-size:8px; font-weight:bold; line-height:1.2; margin-top:2px;">
+ Durasi : {{package.duration}}<br>
+ Masa Aktif : {{voucher.validity}}<br>
+ Tgl Cetak : {{voucher.created_at}}<br>
+ Agen : {{owner.name}}<br>
+ </div>
+ </td> 
+ <td style="width:85px; text-align:right;" valign="middle">
+ <div class="qrcode" style="float:right;">
+   <img style="border: 1.5px solid {$color};" src="{qr($voucher.code, 100)}" alt="QR" />
+ </div>
+ </td> 
+ </tr>
+ <tr>
+ <td style="background:{$color}; color:#fff; padding:2px;" valign="top" colspan="2">
+ <div style="text-align:left; color:#fff; font-size:8px; font-weight:bold; padding:1px 3px;">
+ Login manual: {{voucher.login_url}}
+ </div>
+ </td> 
+ </tr>
+ </tbody>
+ </table>
+ </td>
+ </tr>
+ </tbody>
+</table>',
+            ],
+            [
                 'name' => 'Kartu Modern WiFi (A4 Grid)',
                 'slug' => 'kartu-modern-wifi-a4',
                 'category' => VoucherTemplateCategory::Modern->value,
                 'description' => 'Template kartu voucher modern untuk dicetak di kertas A4 (grid 3x6). Dilengkapi logo, QR Code login, username & password jelas, badge harga dan durasi.',
                 'is_system' => true,
                 'is_active' => true,
-                'is_default' => true,
+                'is_default' => false,
                 'settings' => [
                     'paper_size' => 'A4',
                     'grid_preset' => '3x6',
