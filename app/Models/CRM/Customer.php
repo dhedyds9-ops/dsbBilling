@@ -149,4 +149,12 @@ class Customer extends Model
     {
         $this->attributes['code'] = $value;
     }
+
+    public function scopeWithoutGuests($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('code')
+              ->orWhere('code', 'not like', 'GST-%');
+        });
+    }
 }

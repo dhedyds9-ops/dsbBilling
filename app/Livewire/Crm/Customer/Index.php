@@ -108,7 +108,7 @@ class Index extends BaseCrmComponent
 
     public function getCustomersQuery()
     {
-        $query = Customer::with([
+        $query = Customer::withoutGuests()->with([
             'customerServices.serviceProfile',
             'customerServices.service',
             'customerServices.pppoeUser',
@@ -136,14 +136,15 @@ class Index extends BaseCrmComponent
     {
         $query = $this->getCustomersQuery();
 
-        // KPI
+        // KPI (hanya pelanggan reguler, mengecualikan guest voucher)
         try {
-            $totalCustomers   = Customer::count();
-            $activeCustomers  = Customer::where('status', 'active')->count();
-            $suspendCustomers = Customer::where('status', 'suspend')->count();
-            $newCustomers     = Customer::whereMonth('created_at', now()->month)
-                                        ->whereYear('created_at', now()->year)
-                                        ->count();
+            $baseKpi          = Customer::withoutGuests();
+            $totalCustomers   = (clone $baseKpi)->count();
+            $activeCustomers  = (clone $baseKpi)->where('status', 'active')->count();
+            $suspendCustomers = (clone $baseKpi)->where('status', 'suspend')->count();
+            $newCustomers     = (clone $baseKpi)->whereMonth('created_at', now()->month)
+                                                ->whereYear('created_at', now()->year)
+                                                ->count();
         } catch (\Exception $e) {
             $totalCustomers = $activeCustomers = $suspendCustomers = $newCustomers = 0;
         }

@@ -57,12 +57,13 @@ class Index extends Component
             default => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()], // 'this_month'
         };
 
-        // 1. Customer Metrics
+        // 1. Customer Metrics (hanya pelanggan reguler)
         try {
-            $totalCustomers = Customer::count();
-            $activeCustomers = Customer::where('status', 'active')->count();
-            $suspendCustomers = Customer::where('status', 'suspend')->count();
-            $newCustomers = Customer::whereBetween('created_at', [$startDate, $endDate])->count();
+            $baseCust         = Customer::withoutGuests();
+            $totalCustomers   = (clone $baseCust)->count();
+            $activeCustomers  = (clone $baseCust)->where('status', 'active')->count();
+            $suspendCustomers = (clone $baseCust)->where('status', 'suspend')->count();
+            $newCustomers     = (clone $baseCust)->whereBetween('created_at', [$startDate, $endDate])->count();
         } catch (\Exception $e) {
             $totalCustomers = 0; $activeCustomers = 0; $suspendCustomers = 0; $newCustomers = 0;
         }
