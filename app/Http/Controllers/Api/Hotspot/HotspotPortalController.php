@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Hotspot;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Models\Billing\Invoice;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
@@ -278,24 +279,76 @@ class HotspotPortalController extends Controller
 
         try {
             $queryLower = strtolower($query);
+            $user = null;
+            $customer = null;
 
-            // 1. Cari Customer langsung
-            $customer = Customer::withoutGlobalScopes()
-                ->where(function ($q) use ($query, $queryLower) {
-                    if (is_numeric($query)) {
-                        $q->where('id', (int)$query)
-                          ->orWhereRaw('LOWER(code) = ?', [$queryLower])
-                          ->orWhereRaw('LOWER(phone) = ?', [$queryLower]);
-                    } else {
+            // 1. Cari User langsung (customer_code, username, pppoe_username, email)
+            $user = User::withoutGlobalScopes()
+                ->where(function ($q) use ($queryLower) {
+                    $q->whereRaw('LOWER(customer_code) = ?', [$queryLower])
+                      ->orWhereRaw('LOWER(username) = ?', [$queryLower])
+                      ->orWhereRaw('LOWER(pppoe_username) = ?', [$queryLower])
+                      ->orWhereRaw('LOWER(email) = ?', [$queryLower]);
+                })
+                ->first();
+
+            if ($user) {
+                $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+            }
+
+            // 2. Cari Customer langsung (Code, Email, Phone, Name)
+            if (!$customer) {
+                $customer = Customer::withoutGlobalScopes()
+                    ->where(function ($q) use ($queryLower) {
                         $q->whereRaw('LOWER(code) = ?', [$queryLower])
                           ->orWhereRaw('LOWER(email) = ?', [$queryLower])
                           ->orWhereRaw('LOWER(phone) = ?', [$queryLower])
                           ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%']);
-                    }
-                })
-                ->first();
+                    })
+                    ->first();
+            }
 
-            // 2. Jika belum ketemu, cari via PPPoEUser, CustomerService, atau HotspotUser
+            // 3. Jika input berupa angka (misal format tanggal+urutan '2026101607' atau ID '7')
+            if (is_numeric($query)) {
+                $num = (int)$query;
+
+                if (!$customer) {
+                    $customer = Customer::withoutGlobalScopes()->find($num);
+                }
+                if (!$user && !$customer) {
+                    $user = User::withoutGlobalScopes()->find($num);
+                    if ($user) {
+                        $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+                    }
+                }
+
+                // Format YmdXX (panjang >= 9 digit, misal 2026101607 -> suffix 07 = 7)
+                if (strlen($query) >= 9) {
+                    $idSuffix = (int) substr($query, 8);
+                    if ($idSuffix > 0) {
+                        if (!$customer) {
+                            $customer = Customer::withoutGlobalScopes()->find($idSuffix);
+                        }
+                        if (!$customer) {
+                            $customer = Customer::withoutGlobalScopes()
+                                ->where('code', (string)$idSuffix)
+                                ->orWhere('code', str_pad((string)$idSuffix, 2, '0', STR_PAD_LEFT))
+                                ->orWhere('code', str_pad((string)$idSuffix, 3, '0', STR_PAD_LEFT))
+                                ->orWhere('code', str_pad((string)$idSuffix, 4, '0', STR_PAD_LEFT))
+                                ->orWhere('code', 'like', '%' . $idSuffix)
+                                ->first();
+                        }
+                        if (!$user && !$customer) {
+                            $user = User::withoutGlobalScopes()->find($idSuffix);
+                            if ($user) {
+                                $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Jika belum ketemu, cari via PPPoEUser, CustomerService, atau HotspotUser
             if (!$customer) {
                 $pppoe = PPPoEUser::withoutGlobalScopes()->whereRaw('LOWER(username) = ?', [$queryLower])->with(['customerService.customer'])->first();
                 if ($pppoe) {
@@ -317,7 +370,11 @@ class HotspotPortalController extends Controller
                 }
             }
 
-            // 3. Cari Invoice langsung jika input adalah No Invoice
+            if ($customer && !$user && $customer->user_id) {
+                $user = User::withoutGlobalScopes()->find($customer->user_id);
+            }
+
+            // 5. Cari Invoice langsung jika input adalah No Invoice
             $directInvoice = Invoice::withoutGlobalScopes()
                 ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
                 ->with(['customer', 'items'])
@@ -325,23 +382,52 @@ class HotspotPortalController extends Controller
 
             $invoices = collect();
 
-            if ($customer) {
+            if ($directInvoice) {
+                $invoices = collect([$directInvoice]);
+                if (!$customer) {
+                    $customer = $directInvoice->customer;
+                }
+            } elseif ($customer || $user) {
+                $targetIds = array_values(array_unique(array_filter([$customer?->id, $user?->id])));
                 $invoices = Invoice::withoutGlobalScopes()
-                    ->where('customer_id', $customer->id)
-                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                    ->where(function ($q) use ($targetIds, $customer, $user) {
+                        if (!empty($targetIds)) {
+                            $q->whereIn('customer_id', $targetIds);
+                        }
+                        if ($customer?->code) {
+                            $q->orWhere('customer_id', $customer->code);
+                        }
+                        if ($user?->customer_code) {
+                            $q->orWhere('customer_id', $user->customer_code);
+                        }
+                    })
+                    ->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue'])
                     ->orderBy('due_date', 'asc')
                     ->with('items')
                     ->get();
-            } elseif ($directInvoice) {
-                $invoices = collect([$directInvoice]);
-                $customer = $directInvoice->customer;
             }
 
             if ($invoices->isEmpty()) {
+                if ($customer || $user) {
+                    $custName = $customer?->name ?? $user?->name ?? 'Pelanggan';
+                    $custCode = $customer?->code ?? $user?->customer_code ?? $query;
+                    return $this->jsonResponse([
+                        'code' => 200,
+                        'status' => 'paid',
+                        'msg' => 'Pelanggan "' . $custName . '" (' . $custCode . ') tidak memiliki tagihan aktif yang belum lunas (semua tagihan lunas).',
+                        'data' => [
+                            'customer_name' => $custName,
+                            'customer_code' => $custCode,
+                            'invoices' => [],
+                            'total_unpaid' => 0,
+                        ],
+                    ]);
+                }
+
                 return $this->jsonResponse([
                     'code' => 404,
                     'status' => 'not_found',
-                    'msg' => 'Tidak ditemukan tagihan belum lunas untuk "' . $query . '". Pastikan ID Pelanggan / No HP / Invoice benar.',
+                    'msg' => 'Tidak ditemukan tagihan atau data pelanggan untuk "' . $query . '". Pastikan ID Pelanggan / No HP / Invoice benar.',
                 ], 404);
             }
 

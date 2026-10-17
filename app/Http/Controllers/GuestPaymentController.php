@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\CRM\Customer;
 use App\Models\Billing\Invoice;
 use App\Models\ISP\Voucher;
@@ -21,6 +22,7 @@ class GuestPaymentController extends Controller
         ]);
 
         $query = trim($validated['q'] ?? '');
+        $user = null;
         $customer = null;
         $invoices = collect();
         $summary = null;
@@ -34,13 +36,27 @@ class GuestPaymentController extends Controller
         if ($query !== '') {
             $queryLower = strtolower($query);
 
-            // 1. Cek Voucher
+            // 1. Cek User langsung (customer_code, username, pppoe_username, email)
+            $user = User::withoutGlobalScopes()
+                ->where(function ($q) use ($queryLower) {
+                    $q->whereRaw('LOWER(customer_code) = ?', [$queryLower])
+                      ->orWhereRaw('LOWER(username) = ?', [$queryLower])
+                      ->orWhereRaw('LOWER(pppoe_username) = ?', [$queryLower])
+                      ->orWhereRaw('LOWER(email) = ?', [$queryLower]);
+                })
+                ->first();
+
+            if ($user) {
+                $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+            }
+
+            // 2. Cek Voucher
             $voucher = Voucher::withoutGlobalScopes()
                 ->with(['serviceProfile', 'hotspotUser.customerService.customer'])
                 ->whereRaw('LOWER(code) = ?', [$queryLower])
                 ->first();
 
-            // 2. Cek Hotspot
+            // 3. Cek Hotspot
             if (!$voucher) {
                 $hotspot = HotspotUser::withoutGlobalScopes()
                     ->with(['serviceProfile', 'customerService.customer'])
@@ -50,18 +66,120 @@ class GuestPaymentController extends Controller
                 $hotspot = $voucher->hotspotUser;
             }
 
-            // 3. Cek PPPoE User
+            // 4. Cek PPPoE User
             $pppoe = PPPoEUser::withoutGlobalScopes()
                 ->with(['serviceProfile', 'customerService.customer'])
                 ->whereRaw('LOWER(username) = ?', [$queryLower])
                 ->first();
 
-            // 4. Cek Customer Service (Layanan Internet / PPPoE / Static)
+            // 5. Cek Customer Service (Layanan Internet / PPPoE / Static)
             if (!$pppoe && !$hotspot) {
                 $customerService = CustomerService::withoutGlobalScopes()
                     ->with(['serviceProfile', 'customer'])
                     ->whereRaw('LOWER(username) = ?', [$queryLower])
                     ->first();
+            }
+
+            // 6. Cek Customer langsung (Code, Email, Phone, Name)
+            if (!$customer) {
+                $customer = Customer::withoutGlobalScopes()
+                    ->where(function ($q) use ($queryLower) {
+                        $q->whereRaw('LOWER(code) = ?', [$queryLower])
+                          ->orWhereRaw('LOWER(email) = ?', [$queryLower])
+                          ->orWhereRaw('LOWER(phone) = ?', [$queryLower])
+                          ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%']);
+                    })
+                    ->first();
+            }
+
+            // 7. Jika input berupa angka (misal format tanggal+urutan '2026101607' atau ID '7')
+            if (is_numeric($query)) {
+                $num = (int)$query;
+
+                // 7a. Coba jika ID langsung
+                if (!$customer) {
+                    $customer = Customer::withoutGlobalScopes()->find($num);
+                }
+                if (!$user && !$customer) {
+                    $user = User::withoutGlobalScopes()->find($num);
+                    if ($user) {
+                        $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+                    }
+                }
+
+                // 7b. Format YmdXX (panjang >= 9 digit, misal 2026101607 -> suffix 07 = 7)
+                if (strlen($query) >= 9) {
+                    $idSuffix = (int) substr($query, 8);
+                    if ($idSuffix > 0) {
+                        if (!$customer) {
+                            $customer = Customer::withoutGlobalScopes()->find($idSuffix);
+                        }
+                        if (!$customer) {
+                            $customer = Customer::withoutGlobalScopes()
+                                ->where('code', (string)$idSuffix)
+                                ->orWhere('code', str_pad((string)$idSuffix, 2, '0', STR_PAD_LEFT))
+                                ->orWhere('code', str_pad((string)$idSuffix, 3, '0', STR_PAD_LEFT))
+                                ->orWhere('code', str_pad((string)$idSuffix, 4, '0', STR_PAD_LEFT))
+                                ->orWhere('code', 'like', '%' . $idSuffix)
+                                ->first();
+                        }
+                        if (!$user && !$customer) {
+                            $user = User::withoutGlobalScopes()->find($idSuffix);
+                            if ($user) {
+                                $customer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 8. Relasi fallback dari pppoe / customerService / hotspot / voucher
+            if (!$customer) {
+                if ($pppoe) {
+                    $customer = $pppoe->customerService?->customer ?? $pppoe->customer;
+                } elseif ($customerService) {
+                    $customer = $customerService->customer;
+                } elseif ($hotspot) {
+                    $customer = $hotspot->customerService?->customer ?? $hotspot->customer;
+                } elseif ($voucher && $voucher->hotspotUser) {
+                    $customer = $voucher->hotspotUser->customerService?->customer ?? $voucher->hotspotUser->customer;
+                }
+            }
+
+            if ($customer && !$user && $customer->user_id) {
+                $user = User::withoutGlobalScopes()->find($customer->user_id);
+            }
+
+            // 9. Cek Invoice langsung jika query adalah Nomor Invoice
+            $directInvoice = Invoice::withoutGlobalScopes()
+                ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
+                ->with(['customer', 'items'])
+                ->first();
+
+            // 10. Ambil Tagihan
+            if ($directInvoice) {
+                $invoices = collect([$directInvoice]);
+                if (!$customer) {
+                    $customer = $directInvoice->customer;
+                }
+            } elseif ($customer || $user) {
+                $targetIds = array_values(array_unique(array_filter([$customer?->id, $user?->id])));
+                $invoices = Invoice::withoutGlobalScopes()
+                    ->where(function ($q) use ($targetIds, $customer, $user) {
+                        if (!empty($targetIds)) {
+                            $q->whereIn('customer_id', $targetIds);
+                        }
+                        if ($customer?->code) {
+                            $q->orWhere('customer_id', $customer->code);
+                        }
+                        if ($user?->customer_code) {
+                            $q->orWhere('customer_id', $user->customer_code);
+                        }
+                    })
+                    ->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue'])
+                    ->orderBy('due_date', 'asc')
+                    ->with('items')
+                    ->get();
             }
 
             // Cek session aktif
@@ -77,64 +195,16 @@ class GuestPaymentController extends Controller
                 })->whereNull('acct_stop_time')->count();
             }
 
-            // 5. Cek Customer langsung (berdasarkan Code, ID, Email, No HP, atau Nama)
-            $customerQuery = Customer::withoutGlobalScopes();
-            if (is_numeric($query)) {
-                $customerQuery->where('id', (int)$query)
-                    ->orWhereRaw('LOWER(code) = ?', [$queryLower])
-                    ->orWhereRaw('LOWER(phone) = ?', [$queryLower]);
-            } else {
-                $customerQuery->whereRaw('LOWER(code) = ?', [$queryLower])
-                    ->orWhereRaw('LOWER(email) = ?', [$queryLower])
-                    ->orWhereRaw('LOWER(phone) = ?', [$queryLower])
-                    ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%']);
-            }
-            $customer = $customerQuery->first();
-
-            // Jika belum ketemu dari input langsung, cari customer dari relasi akun internetnya
-            if (!$customer) {
-                if ($pppoe) {
-                    $customer = $pppoe->customerService?->customer ?? $pppoe->customer;
-                } elseif ($customerService) {
-                    $customer = $customerService->customer;
-                } elseif ($hotspot) {
-                    $customer = $hotspot->customerService?->customer ?? $hotspot->customer;
-                } elseif ($voucher && $voucher->hotspotUser) {
-                    $customer = $voucher->hotspotUser->customerService?->customer ?? $voucher->hotspotUser->customer;
-                }
-            }
-
-            // 6. Cek Invoice langsung jika query adalah Nomor Invoice
-            $directInvoice = Invoice::withoutGlobalScopes()
-                ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
-                ->with(['customer', 'items'])
-                ->first();
-
-            if ($directInvoice) {
-                $invoices = collect([$directInvoice]);
-                if (!$customer) {
-                    $customer = $directInvoice->customer;
-                }
-            } elseif ($customer) {
-                $invoices = Invoice::withoutGlobalScopes()
-                    ->where('customer_id', $customer->id)
-                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
-                    ->orderBy('due_date', 'asc')
-                    ->with('items')
-                    ->get();
-            }
-
             if ($invoices->isNotEmpty()) {
                 $summary = [
                     'count' => $invoices->count(),
                     'total' => $invoices->sum(fn($i) => $i->total_amount - ($i->paid_amount ?? 0)),
                 ];
             } else {
-                // Tentukan pesan jika tagihan tidak ada
-                if ($customer) {
-                    if (!$voucher && !$hotspot && !$pppoe && !$customerService) {
-                        $error = 'Pelanggan "' . e($customer->name) . '" (' . e($customer->code) . ') tidak memiliki tagihan aktif yang belum lunas.';
-                    }
+                if ($customer || $user) {
+                    $custName = $customer?->name ?? $user?->name ?? 'Pelanggan';
+                    $custCode = $customer?->code ?? $user?->customer_code ?? $query;
+                    $error = 'Pelanggan "' . e($custName) . '" (' . e($custCode) . ') ditemukan, namun tidak memiliki tagihan aktif yang belum lunas (semua tagihan lunas).';
                 } elseif (!$voucher && !$hotspot && !$pppoe && !$customerService) {
                     $error = 'Tidak ditemukan data Tagihan, Pelanggan, PPPoE, Voucher, atau Hotspot dengan pencarian "' . e($query) . '".';
                 }
