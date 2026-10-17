@@ -64,6 +64,7 @@ Route::prefix('v1')->group(function () {
         Route::match(['GET', 'OPTIONS'], '/check-user', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'checkUser'])->name('check-user');
         Route::match(['GET', 'OPTIONS'], '/check-bill', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'checkBill'])->name('check-bill');
         Route::match(['GET', 'POST', 'OPTIONS'], '/kick-user', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'kickUser'])->name('kick-user');
+        Route::match(['POST', 'OPTIONS'], '/register-lead', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'registerLead'])->name('register-lead');
     });
 
     // Compatibility aliases with legacy MSRadius endpoints

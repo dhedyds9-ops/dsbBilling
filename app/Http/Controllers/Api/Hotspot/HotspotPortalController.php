@@ -614,4 +614,94 @@ class HotspotPortalController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * 5. POST|OPTIONS /api/v1/hotspot/register-lead
+     * Menerima form pendaftaran baru (Hotspot Member / PPPoE) dari LoginPage atau landing
+     */
+    public function registerLead(Request $request): JsonResponse
+    {
+        if ($request->isMethod('OPTIONS')) {
+            return $this->jsonResponse(['code' => 200, 'msg' => 'OK']);
+        }
+
+        try {
+            $name = trim((string)$request->input('name', ''));
+            $phone = trim((string)$request->input('phone', ''));
+            $address = trim((string)$request->input('address', ''));
+            $packageName = trim((string)$request->input('package', ''));
+            $packageId = $request->input('package_id');
+
+            if (empty($name)) {
+                return $this->jsonResponse(['code' => 422, 'status' => 'error', 'msg' => 'Nama lengkap wajib diisi.'], 422);
+            }
+            if (empty($phone)) {
+                return $this->jsonResponse(['code' => 422, 'status' => 'error', 'msg' => 'Nomor WhatsApp wajib diisi.'], 422);
+            }
+            if (empty($address)) {
+                return $this->jsonResponse(['code' => 422, 'status' => 'error', 'msg' => 'Alamat pemasangan / lokasi wajib diisi.'], 422);
+            }
+
+            if (empty($packageName) && !empty($packageId)) {
+                $profile = ServiceProfile::withoutGlobalScopes()->find($packageId);
+                if ($profile) {
+                    $packageName = $profile->name;
+                }
+            }
+
+            $lead = \App\Models\CRM\Lead::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'name' => $name,
+                'phone' => $phone,
+                'address' => $address,
+                'notes' => 'Pendaftaran paket: ' . ($packageName ?: '-'),
+                'source' => 'hotspot_loginpage',
+                'status' => 'new',
+            ]);
+
+            // Kirim notifikasi WhatsApp ke Admin jika dikonfigurasi
+            try {
+                $adminPhone = \App\Models\User::whereHas('roles', function($q) {
+                    $q->where('name', 'admin');
+                })->whereNotNull('whatsapp')->first()?->whatsapp 
+                ?? \App\Models\Setting::getValue('company.phone');
+
+                if ($adminPhone) {
+                    $waService = app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class);
+                    $messageText = "*[PENDAFTARAN BARU - LOGINPAGE HOTSPOT]*\n\n"
+                        . "Ada pendaftaran baru dari LoginPage Hotspot:\n"
+                        . "Nama: {$lead->name}\n"
+                        . "WA: {$lead->phone}\n"
+                        . "Paket: " . ($packageName ?: '-') . "\n"
+                        . "Alamat: {$lead->address}\n\n"
+                        . "Silakan tindak lanjuti di panel Admin menu Calon Pelanggan.";
+
+                    $msg = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
+                        toPhone: $adminPhone,
+                        type: 'text',
+                        text: $messageText,
+                        category: 'info',
+                        priorityHigh: true
+                    );
+                    $waService->sendImmediate($msg);
+                }
+            } catch (\Throwable $th) {
+                Log::warning('Hotspot register-lead WA notif error: ' . $th->getMessage());
+            }
+
+            return $this->jsonResponse([
+                'code' => 200,
+                'status' => 'success',
+                'msg' => 'Terima kasih, pendaftaran Anda telah berhasil dikirim! Tim kami akan segera menghubungi Anda.',
+                'lead_id' => $lead->id,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Hotspot register-lead error: ' . $e->getMessage());
+            return $this->jsonResponse([
+                'code' => 500,
+                'status' => 'error',
+                'msg' => 'Gagal memproses pendaftaran: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

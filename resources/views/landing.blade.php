@@ -481,7 +481,7 @@
                     </ul>
 
                     <button @click.prevent="pkgName = '{{ addslashes($pkg->name) }}'; regOpen = true" class="w-full {{ $isPopular ? 'btn-primary text-white' : 'btn-secondary text-primary' }} text-center font-label-bold py-3.5 rounded-xl mt-auto transition-all flex items-center justify-center gap-2">
-                        <span>Berlangganan Sekarang</span>
+                        <span>Daftar Sekarang</span>
                         <span class="material-symbols-outlined text-sm">arrow_forward</span>
                     </button>
                 </div>
@@ -651,7 +651,7 @@
                     </ul>
 
                     <button @click.prevent="pkgName = '{{ addslashes($mem->name) }}'; regOpen = true" class="w-full {{ $isPopular ? 'btn-primary text-white' : 'btn-secondary text-primary' }} text-center font-label-bold py-3.5 rounded-xl mt-auto transition-all flex items-center justify-center gap-2 shadow-lg">
-                        <span>Daftar Member</span>
+                        <span>Daftar Sekarang</span>
                         <span class="material-symbols-outlined text-sm">arrow_forward</span>
                     </button>
                 </div>
