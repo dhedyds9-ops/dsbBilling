@@ -4,6 +4,8 @@ namespace App\Livewire\Isp\Voucher;
 
 use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\Voucher;
+use App\Models\ISP\HotspotActiveSession;
+use App\Models\ISP\OnlineSession;
 use App\Exports\VoucherExport;
 use App\Imports\VoucherImport;
 use Illuminate\Support\Facades\Auth;
@@ -58,10 +60,12 @@ class Index extends BaseNetworkComponent
     public function updatedSelectAll($value)
     {
         if ($value) {
+            $onlineUsers = $this->getOnlineUsers();
             $query = $this->voucherQuery()->getListQuery(
                 search: $this->search,
                 filters: $this->filters,
                 withTrashed: $this->showTrashed,
+                onlineUsers: $onlineUsers,
             )->where('vouchers.type', '!=', 'evoucher');
 
             $this->selectedIds = $query->pluck('id')->toArray();
@@ -200,6 +204,53 @@ class Index extends BaseNetworkComponent
         }
     }
 
+    public function markAsExpired($id)
+    {
+        try {
+            $voucher = Voucher::findOrFail($id);
+            $voucher->update([
+                'status' => 'expired',
+                'expires_at' => ($voucher->expires_at && $voucher->expires_at <= now()) ? $voucher->expires_at : now(),
+            ]);
+            session()->flash('success', "Voucher {$voucher->code} berhasil ditandai sebagai Expired!");
+        } catch (Throwable $e) {
+            Log::error('Mark as expired failed', ['voucher_id' => $id, 'message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal menandai voucher sebagai expired: ' . $e->getMessage());
+        }
+    }
+
+    public function bulkMarkAsExpired()
+    {
+        if (empty($this->selectedIds)) {
+            session()->flash('error', 'Silakan pilih setidaknya satu Voucher!');
+            return;
+        }
+
+        try {
+            $count = Voucher::whereIn('id', $this->selectedIds)->update([
+                'status' => 'expired',
+                'expires_at' => now(),
+            ]);
+            $this->resetActionState();
+            session()->flash('success', "{$count} Voucher berhasil ditandai sebagai Expired!");
+        } catch (Throwable $e) {
+            Log::error('Bulk mark as expired failed', ['voucher_ids' => $this->selectedIds, 'message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal menandai voucher: ' . $e->getMessage());
+        }
+    }
+
+    protected function getOnlineUsers(): array
+    {
+        try {
+            $hotspotActive = HotspotActiveSession::pluck('user')->toArray();
+            $onlineSessions = OnlineSession::hotspot()->pluck('username')->toArray();
+            return array_values(array_unique(array_filter(array_merge($hotspotActive, $onlineSessions))));
+        } catch (Throwable $e) {
+            Log::warning('Failed fetching online users: ' . $e->getMessage());
+            return [];
+        }
+    }
+
     public function export()
     {
         Log::info(__METHOD__);
@@ -324,10 +375,24 @@ class Index extends BaseNetworkComponent
 
     public function render()
     {
+        // 1. Auto-sinkronkan voucher yang jatuh tempo sudah lewat menjadi 'expired'
+        try {
+            Voucher::where('status', 'used')
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now())
+                ->update(['status' => 'expired']);
+        } catch (Throwable $e) {
+            // Ignore non-fatal sync error
+        }
+
+        $onlineUsers = $this->getOnlineUsers();
+        $onlineLookup = array_flip($onlineUsers);
+
         $query = $this->voucherQuery()->getListQuery(
             search: $this->search,
             filters: $this->filters,
             withTrashed: $this->showTrashed,
+            onlineUsers: $onlineUsers,
         )->where('vouchers.type', '!=', 'evoucher');
 
         $direction = strtolower($this->sortDirection) === 'asc' ? 'asc' : 'desc';
@@ -370,15 +435,45 @@ class Index extends BaseNetworkComponent
         $vouchers = $query->paginate((int) $this->perPage);
 
         // Stats calculation
-        $statsQuery = clone $query;
-        // avoid pagination for stats
-        $statsQuery->limit(PHP_INT_MAX)->offset(0);
-        
+        $baseVoucherQuery = Voucher::where('type', '!=', 'evoucher');
+        $onlineCount = (clone $baseVoucherQuery)
+            ->whereIn('code', $onlineUsers)
+            ->where('status', '!=', 'expired')
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })->count();
+
+        $usedCount = (clone $baseVoucherQuery)
+            ->where(function ($q) {
+                $q->where('status', 'used')->orWhereNotNull('activated_at');
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->when(!empty($onlineUsers), fn ($q) => $q->whereNotIn('code', $onlineUsers))
+            ->count();
+
+        $expiredCount = (clone $baseVoucherQuery)
+            ->where(function ($q) {
+                $q->where('status', 'expired')
+                    ->orWhere(function ($sq) {
+                        $sq->whereNotNull('expires_at')->where('expires_at', '<=', now());
+                    });
+            })->count();
+
+        $availableCount = (clone $baseVoucherQuery)
+            ->where('status', 'available')
+            ->whereNull('activated_at')
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })->count();
+
         $stats = [
-            'total' => Voucher::where('type', '!=', 'evoucher')->count(),
-            'available' => Voucher::where('type', '!=', 'evoucher')->where('status', 'available')->count(),
-            'used' => Voucher::where('type', '!=', 'evoucher')->where('status', 'used')->count(),
-            'expired' => Voucher::where('type', '!=', 'evoucher')->where('status', 'expired')->count(),
+            'total' => (clone $baseVoucherQuery)->count(),
+            'available' => $availableCount,
+            'online' => $onlineCount,
+            'used' => $usedCount,
+            'expired' => $expiredCount,
         ];
 
         $voucherPools = \App\Models\ISP\VoucherPool::orderBy('id', 'desc')->get(['id', 'name', 'created_at']);
@@ -392,7 +487,7 @@ class Index extends BaseNetworkComponent
                   ->orWhere('service_type', 'combined');
             })->get();
 
-        return view('livewire.isp.voucher.index', compact('vouchers', 'stats', 'voucherPools', 'nasDevices', 'resellers', 'serviceProfiles'));
+        return view('livewire.isp.voucher.index', compact('vouchers', 'stats', 'voucherPools', 'nasDevices', 'resellers', 'serviceProfiles', 'onlineLookup'));
     }
 
     private function voucherQuery(): VoucherListQuery

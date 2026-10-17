@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class VoucherListQuery
 {
-    public function getListQuery(?string $search = null, array $filters = [], bool $withTrashed = false): Builder
+    public function getListQuery(?string $search = null, array $filters = [], bool $withTrashed = false, array $onlineUsers = []): Builder
     {
         return $this->applyResellerScope(Voucher::query(), 'vouchers.reseller_id')
             ->leftJoin('service_profiles', 'vouchers.service_profile_id', '=', 'service_profiles.id')
@@ -35,8 +35,44 @@ class VoucherListQuery
                         ->orWhere('nas_devices.name', 'like', '%' . $search . '%');
                 });
             })
-            ->when(!empty($filters['status']), function ($q) use ($filters) {
-                $q->where('vouchers.status', $filters['status']);
+            ->when(!empty($filters['status']), function ($q) use ($filters, $onlineUsers) {
+                if ($filters['status'] === 'online') {
+                    $q->whereIn('vouchers.code', $onlineUsers)
+                        ->where('vouchers.status', '!=', 'expired')
+                        ->where(function ($sq) {
+                            $sq->whereNull('vouchers.expires_at')
+                                ->orWhere('vouchers.expires_at', '>', now());
+                        });
+                } elseif ($filters['status'] === 'expired') {
+                    $q->where(function ($sq) {
+                        $sq->where('vouchers.status', 'expired')
+                            ->orWhere(function ($ssq) {
+                                $ssq->whereNotNull('vouchers.expires_at')
+                                    ->where('vouchers.expires_at', '<=', now());
+                            });
+                    });
+                } elseif ($filters['status'] === 'used') {
+                    $q->where(function ($sq) {
+                        $sq->where('vouchers.status', 'used')
+                            ->orWhereNotNull('vouchers.activated_at');
+                    })
+                    ->where(function ($sq) {
+                        $sq->whereNull('vouchers.expires_at')
+                            ->orWhere('vouchers.expires_at', '>', now());
+                    });
+                    if (!empty($onlineUsers)) {
+                        $q->whereNotIn('vouchers.code', $onlineUsers);
+                    }
+                } elseif ($filters['status'] === 'available') {
+                    $q->where('vouchers.status', 'available')
+                        ->whereNull('vouchers.activated_at')
+                        ->where(function ($sq) {
+                            $sq->whereNull('vouchers.expires_at')
+                                ->orWhere('vouchers.expires_at', '>', now());
+                        });
+                } else {
+                    $q->where('vouchers.status', $filters['status']);
+                }
             })
             ->when(!empty($filters['voucher_pool_id']), function ($q) use ($filters) {
                 $q->where('vouchers.voucher_pool_id', $filters['voucher_pool_id']);
