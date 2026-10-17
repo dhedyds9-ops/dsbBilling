@@ -118,23 +118,23 @@
                 </div>
             @else
                 
-                @if($hotspot || $voucher)
+                @if($hotspot || $voucher || $pppoe)
                     <div class="bg-surface-container/60 backdrop-blur-2xl rounded-[24px] p-6 sm:p-8 mb-8 border border-outline-variant shadow-xl">
                         <div class="flex items-center gap-3 mb-6">
                             <div class="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center">
-                                <span class="material-symbols-outlined text-secondary">wifi</span>
+                                <span class="material-symbols-outlined text-secondary">{{ $pppoe ? 'router' : 'wifi' }}</span>
                             </div>
-                            <h2 class="text-xl font-heading font-bold text-white">Status Layanan Internet</h2>
+                            <h2 class="text-xl font-heading font-bold text-white">Status Layanan Internet {{ $pppoe ? '(PPPoE)' : '' }}</h2>
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div class="bg-surface-container-highest rounded-xl p-5 border border-outline-variant/50">
                                 <p class="text-sm text-gray-400 mb-1">Username / Kode</p>
-                                <p class="text-lg font-bold text-white">{{ $hotspot->username ?? $voucher->code }}</p>
+                                <p class="text-lg font-bold text-white">{{ $hotspot->username ?? $voucher->code ?? $pppoe->username }}</p>
                             </div>
                             <div class="bg-surface-container-highest rounded-xl p-5 border border-outline-variant/50">
                                 <p class="text-sm text-gray-400 mb-1">Paket</p>
-                                <p class="text-lg font-bold text-white">{{ $hotspot->serviceProfile->name ?? $voucher->serviceProfile->name ?? '-' }}</p>
+                                <p class="text-lg font-bold text-white">{{ $hotspot->serviceProfile->name ?? $voucher->serviceProfile->name ?? $pppoe->serviceProfile->name ?? '-' }}</p>
                             </div>
                             <div class="bg-surface-container-highest rounded-xl p-5 border border-outline-variant/50">
                                 <p class="text-sm text-gray-400 mb-1">Status Sesi</p>
@@ -149,11 +149,15 @@
                                 @endif
                             </div>
                             <div class="bg-surface-container-highest rounded-xl p-5 border border-outline-variant/50">
-                                <p class="text-sm text-gray-400 mb-1">Batas Waktu / Kuota</p>
+                                <p class="text-sm text-gray-400 mb-1">{{ $pppoe ? 'Pelanggan' : 'Batas Waktu / Kuota' }}</p>
                                 <p class="text-base font-bold text-white">
-                                    {{ $hotspot->uptime_limit ?? $voucher->uptime_limit ?? 'Unlimited' }}
-                                    @if($hotspot->bytes_out_limit || $voucher->bytes_out_limit)
-                                        / {{ $hotspot->bytes_out_limit ?? $voucher->bytes_out_limit }}
+                                    @if($pppoe)
+                                        {{ $customer->name ?? '-' }}
+                                    @else
+                                        {{ $hotspot->uptime_limit ?? $voucher->uptime_limit ?? 'Unlimited' }}
+                                        @if($hotspot->bytes_out_limit || $voucher->bytes_out_limit)
+                                            / {{ $hotspot->bytes_out_limit ?? $voucher->bytes_out_limit }}
+                                        @endif
                                     @endif
                                 </p>
                             </div>
@@ -164,12 +168,16 @@
                             <div class="flex items-start gap-4">
                                 <span class="material-symbols-outlined text-error shrink-0 mt-0.5">devices</span>
                                 <div class="flex-1">
-                                    <h4 class="font-bold text-white mb-1">Tidak bisa login di perangkat baru?</h4>
-                                    <p class="text-sm text-gray-300 mb-4">Hal ini biasanya terjadi karena Anda belum logout dari perangkat sebelumnya atau sesi internet masih nyangkut di sistem.</p>
+                                    <h4 class="font-bold text-white mb-1">Sesi Internet Sedang Aktif</h4>
+                                    <p class="text-sm text-gray-300 mb-4">Jika koneksi Anda bermasalah atau sesi tersangkut di router, Anda dapat mereset sesi.</p>
                                     
                                     <form method="POST" action="{{ route('guest.payment.reset') }}">
                                         @csrf
-                                        <input type="hidden" name="hotspot_user_id" value="{{ $hotspot->id }}">
+                                        @if($hotspot)
+                                            <input type="hidden" name="hotspot_user_id" value="{{ $hotspot->id }}">
+                                        @elseif($pppoe)
+                                            <input type="hidden" name="pppoe_user_id" value="{{ $pppoe->id }}">
+                                        @endif
                                         <input type="hidden" name="q" value="{{ $query }}">
                                         <button type="submit" class="px-5 py-2.5 bg-error/20 hover:bg-error/30 text-error font-bold rounded-lg transition-colors border border-error/30 text-sm flex items-center gap-2">
                                             <span class="material-symbols-outlined text-sm">restart_alt</span>

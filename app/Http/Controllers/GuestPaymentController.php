@@ -6,6 +6,8 @@ use App\Models\CRM\Customer;
 use App\Models\Billing\Invoice;
 use App\Models\ISP\Voucher;
 use App\Models\ISP\HotspotUser;
+use App\Models\ISP\PPPoEUser;
+use App\Models\Customer\CustomerService;
 use App\Models\ISP\RadiusAccounting;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -25,69 +27,112 @@ class GuestPaymentController extends Controller
         $error = null;
         $voucher = null;
         $hotspot = null;
+        $pppoe = null;
+        $customerService = null;
         $activeSessions = 0;
 
         if ($query !== '') {
             $queryLower = strtolower($query);
 
             // 1. Cek Voucher
-            $voucher = Voucher::with(['serviceProfile', 'hotspotUser'])
+            $voucher = Voucher::with(['serviceProfile', 'hotspotUser.customerService.customer'])
                 ->whereRaw('LOWER(code) = ?', [$queryLower])
                 ->first();
 
             // 2. Cek Hotspot
             if (!$voucher) {
-                $hotspot = HotspotUser::with('serviceProfile')
+                $hotspot = HotspotUser::with(['serviceProfile', 'customerService.customer'])
                     ->whereRaw('LOWER(username) = ?', [$queryLower])
                     ->first();
             } else {
                 $hotspot = $voucher->hotspotUser;
             }
 
-            // Cek session aktif
-            if ($hotspot) {
-                $activeSessions = RadiusAccounting::where('hotspot_user_id', $hotspot->id)
-                    ->whereNull('acct_stop_time')
-                    ->count();
+            // 3. Cek PPPoE User
+            $pppoe = PPPoEUser::with(['serviceProfile', 'customerService.customer'])
+                ->whereRaw('LOWER(username) = ?', [$queryLower])
+                ->first();
+
+            // 4. Cek Customer Service (Layanan Internet / PPPoE / Static)
+            if (!$pppoe && !$hotspot) {
+                $customerService = CustomerService::with(['serviceProfile', 'customer'])
+                    ->whereRaw('LOWER(username) = ?', [$queryLower])
+                    ->first();
             }
 
-            // 3. Cek Tagihan jika bukan voucher/hotspot
-            if (!$voucher && !$hotspot) {
-                $customer = Customer::query()
-                    ->whereRaw('LOWER(code) = ?', [$queryLower])
+            // Cek session aktif
+            if ($hotspot) {
+                $activeSessions = RadiusAccounting::where(function ($q) use ($hotspot) {
+                    $q->where('hotspot_user_id', $hotspot->id)
+                      ->orWhere('username', $hotspot->username);
+                })->whereNull('acct_stop_time')->count();
+            } elseif ($pppoe) {
+                $activeSessions = RadiusAccounting::where(function ($q) use ($pppoe) {
+                    $q->where('pppoe_user_id', $pppoe->id)
+                      ->orWhere('username', $pppoe->username);
+                })->whereNull('acct_stop_time')->count();
+            }
+
+            // 5. Cek Customer langsung (berdasarkan Code, ID, Email, No HP, atau Nama)
+            $customerQuery = Customer::query();
+            if (is_numeric($query)) {
+                $customerQuery->where('id', (int)$query)
+                    ->orWhereRaw('LOWER(code) = ?', [$queryLower])
+                    ->orWhereRaw('LOWER(phone) = ?', [$queryLower]);
+            } else {
+                $customerQuery->whereRaw('LOWER(code) = ?', [$queryLower])
                     ->orWhereRaw('LOWER(email) = ?', [$queryLower])
                     ->orWhereRaw('LOWER(phone) = ?', [$queryLower])
-                    ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%'])
-                    ->first();
+                    ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%']);
+            }
+            $customer = $customerQuery->first();
 
-                $directInvoice = Invoice::query()
-                    ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
-                    ->with('customer')
-                    ->first();
-
-                if ($customer) {
-                    $invoices = Invoice::query()
-                        ->where('customer_id', $customer->id)
-                        ->whereIn('status', ['unpaid', 'partial', 'overdue'])
-                        ->orderBy('due_date', 'asc')
-                        ->with('items')
-                        ->get();
-
-                    if ($invoices->isEmpty()) {
-                        $error = 'Tidak ditemukan tagihan belum bayar untuk pelanggan ini.';
-                    }
-                } elseif ($directInvoice) {
-                    $invoices = collect([$directInvoice]);
-                    $customer = $directInvoice->customer;
-                } else {
-                    $error = 'Tidak ditemukan data Tagihan, Voucher, atau Hotspot dengan pencarian "' . e($query) . '".';
+            // Jika belum ketemu dari input langsung, cari customer dari relasi akun internetnya
+            if (!$customer) {
+                if ($pppoe) {
+                    $customer = $pppoe->customerService?->customer ?? $pppoe->customer;
+                } elseif ($customerService) {
+                    $customer = $customerService->customer;
+                } elseif ($hotspot) {
+                    $customer = $hotspot->customerService?->customer ?? $hotspot->customer;
+                } elseif ($voucher && $voucher->hotspotUser) {
+                    $customer = $voucher->hotspotUser->customerService?->customer ?? $voucher->hotspotUser->customer;
                 }
+            }
 
-                if ($invoices->isNotEmpty()) {
-                    $summary = [
-                        'count' => $invoices->count(),
-                        'total' => $invoices->sum(fn($i) => $i->total_amount - ($i->paid_amount ?? 0)),
-                    ];
+            // 6. Cek Invoice langsung jika query adalah Nomor Invoice
+            $directInvoice = Invoice::query()
+                ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
+                ->with(['customer', 'items'])
+                ->first();
+
+            if ($directInvoice) {
+                $invoices = collect([$directInvoice]);
+                if (!$customer) {
+                    $customer = $directInvoice->customer;
+                }
+            } elseif ($customer) {
+                $invoices = Invoice::query()
+                    ->where('customer_id', $customer->id)
+                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                    ->orderBy('due_date', 'asc')
+                    ->with('items')
+                    ->get();
+            }
+
+            if ($invoices->isNotEmpty()) {
+                $summary = [
+                    'count' => $invoices->count(),
+                    'total' => $invoices->sum(fn($i) => $i->total_amount - ($i->paid_amount ?? 0)),
+                ];
+            } else {
+                // Tentukan pesan jika tagihan tidak ada
+                if ($customer) {
+                    if (!$voucher && !$hotspot && !$pppoe && !$customerService) {
+                        $error = 'Pelanggan "' . e($customer->name) . '" (' . e($customer->code) . ') tidak memiliki tagihan aktif yang belum lunas.';
+                    }
+                } elseif (!$voucher && !$hotspot && !$pppoe && !$customerService) {
+                    $error = 'Tidak ditemukan data Tagihan, Pelanggan, PPPoE, Voucher, atau Hotspot dengan pencarian "' . e($query) . '".';
                 }
             }
         }
@@ -112,6 +157,8 @@ class GuestPaymentController extends Controller
             'error',
             'voucher',
             'hotspot',
+            'pppoe',
+            'customerService',
             'activeSessions',
             'activeGateways'
         ));
@@ -157,24 +204,42 @@ class GuestPaymentController extends Controller
     public function resetSession(Request $request)
     {
         $validated = $request->validate([
-            'hotspot_user_id' => 'required|exists:hotspot_users,id',
+            'hotspot_user_id' => 'nullable|exists:hotspot_users,id',
+            'pppoe_user_id' => 'nullable|exists:pppoe_users,id',
             'q' => 'required|string'
         ]);
 
-        $hotspot = HotspotUser::with('serviceProfile')->find($validated['hotspot_user_id']);
+        $hotspot = !empty($validated['hotspot_user_id']) ? HotspotUser::with('serviceProfile')->find($validated['hotspot_user_id']) : null;
+        $pppoe = !empty($validated['pppoe_user_id']) ? PPPoEUser::with('serviceProfile')->find($validated['pppoe_user_id']) : null;
         
-        if ($hotspot && $hotspot->serviceProfile && $hotspot->serviceProfile->router_id) {
+        $routerId = $hotspot?->serviceProfile?->router_id ?? $pppoe?->serviceProfile?->router_id ?? null;
+        $username = $hotspot?->username ?? $pppoe?->username ?? null;
+
+        if ($routerId && $username) {
             try {
-                $driver = \App\Integration\MikroTik\MikroTikServiceFactory::makeRouterOSDriverByRouterId($hotspot->serviceProfile->router_id);
+                $driver = \App\Integration\MikroTik\MikroTikServiceFactory::makeRouterOSDriverByRouterId($routerId);
                 if ($driver && $driver->connect()) {
-                    $driver->disconnectHotspotUser($hotspot->username);
+                    if ($hotspot) {
+                        $driver->disconnectHotspotUser($username);
+                    } else {
+                        $driver->disconnectPppoeUser($username);
+                    }
                     $driver->disconnect();
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('Guest reset session failed', ['err' => $e->getMessage()]);
             }
+        }
 
-            RadiusAccounting::where('hotspot_user_id', $hotspot->id)
+        if ($hotspot) {
+            RadiusAccounting::where(fn($q) => $q->where('hotspot_user_id', $hotspot->id)->orWhere('username', $hotspot->username))
+                ->whereNull('acct_stop_time')
+                ->update([
+                    'acct_stop_time' => now(),
+                    'acct_terminate_cause' => 'Admin-Reset'
+                ]);
+        } elseif ($pppoe) {
+            RadiusAccounting::where(fn($q) => $q->where('pppoe_user_id', $pppoe->id)->orWhere('username', $pppoe->username))
                 ->whereNull('acct_stop_time')
                 ->update([
                     'acct_stop_time' => now(),
@@ -182,6 +247,6 @@ class GuestPaymentController extends Controller
                 ]);
         }
 
-        return redirect()->route('guest.payment', ['q' => $validated['q']])->with('success', 'Sesi perangkat berhasil direset. Silakan login kembali.');
+        return redirect()->route('guest.payment', ['q' => $validated['q']])->with('success', 'Sesi perangkat berhasil direset. Silakan koneksi ulang.');
     }
 }

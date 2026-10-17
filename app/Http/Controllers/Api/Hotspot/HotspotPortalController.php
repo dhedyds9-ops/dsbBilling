@@ -8,6 +8,7 @@ use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\HotspotActiveSession;
 use App\Models\ISP\HotspotUser;
+use App\Models\ISP\PPPoEUser;
 use App\Models\ISP\OnlineSession;
 use App\Models\ISP\Router;
 use App\Models\ISP\ServiceProfile;
@@ -131,16 +132,21 @@ class HotspotPortalController extends Controller
         }
 
         try {
-            // 1. Cari data user / voucher
+            // 1. Cari data user / voucher / pppoe
             $hotspotUser = HotspotUser::where('username', $unique)->with('serviceProfile')->first();
             $voucher = null;
             $customerService = null;
+            $pppoeUser = null;
 
             if (!$hotspotUser) {
                 $voucher = Voucher::where('code', $unique)->with('serviceProfile')->first();
             }
 
             if (!$hotspotUser && !$voucher) {
+                $pppoeUser = PPPoEUser::where('username', $unique)->with(['customerService.customer', 'serviceProfile'])->first();
+            }
+
+            if (!$hotspotUser && !$voucher && !$pppoeUser) {
                 $customerService = CustomerService::where('username', $unique)->with(['customer', 'serviceProfile'])->first();
             }
 
@@ -202,6 +208,9 @@ class HotspotPortalController extends Controller
             } elseif ($voucher) {
                 $profileName = $voucher->serviceProfile->name ?? 'Voucher Hotspot';
                 $expiry = $voucher->expires_at ? $voucher->expires_at->format('Y-m-d H:i:s') : '-';
+            } elseif ($pppoeUser) {
+                $profileName = $pppoeUser->serviceProfile->name ?? 'Langganan PPPoE';
+                $expiry = $pppoeUser->expires_at ? $pppoeUser->expires_at->format('Y-m-d H:i:s') : '-';
             } elseif ($customerService) {
                 $profileName = $customerService->serviceProfile->name ?? 'Langganan Internet';
                 $expiry = $customerService->expired_at ? $customerService->expired_at->format('Y-m-d H:i:s') : '-';
@@ -215,8 +224,9 @@ class HotspotPortalController extends Controller
 
             // Cari tagihan terakhir jika ada
             $latestInvoice = null;
-            if ($customerService && $customerService->customer_id) {
-                $latestInvoice = Invoice::where('customer_id', $customerService->customer_id)
+            $targetCustId = $customerService?->customer_id ?? $pppoeUser?->customerService?->customer_id ?? $hotspotUser?->customerService?->customer_id ?? null;
+            if ($targetCustId) {
+                $latestInvoice = Invoice::where('customer_id', $targetCustId)
                     ->orderBy('created_at', 'desc')
                     ->first();
             }
@@ -272,12 +282,20 @@ class HotspotPortalController extends Controller
             // 1. Cari Customer langsung
             $customer = Customer::query()
                 ->whereRaw('LOWER(code) = ?', [$queryLower])
+                ->orWhere('id', is_numeric($query) ? (int)$query : 0)
                 ->orWhereRaw('LOWER(email) = ?', [$queryLower])
                 ->orWhereRaw('LOWER(phone) = ?', [$queryLower])
                 ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%'])
                 ->first();
 
-            // 2. Jika belum ketemu, cari via CustomerService username atau HotspotUser
+            // 2. Jika belum ketemu, cari via PPPoEUser, CustomerService, atau HotspotUser
+            if (!$customer) {
+                $pppoe = PPPoEUser::whereRaw('LOWER(username) = ?', [$queryLower])->with(['customerService.customer'])->first();
+                if ($pppoe) {
+                    $customer = $pppoe->customerService?->customer ?? $pppoe->customer;
+                }
+            }
+
             if (!$customer) {
                 $cs = CustomerService::whereRaw('LOWER(username) = ?', [$queryLower])->with('customer')->first();
                 if ($cs && $cs->customer) {
@@ -286,9 +304,9 @@ class HotspotPortalController extends Controller
             }
 
             if (!$customer) {
-                $hu = HotspotUser::whereRaw('LOWER(username) = ?', [$queryLower])->with('customerService.customer')->first();
-                if ($hu && $hu->customerService && $hu->customerService->customer) {
-                    $customer = $hu->customerService->customer;
+                $hu = HotspotUser::whereRaw('LOWER(username) = ?', [$queryLower])->with(['customerService.customer'])->first();
+                if ($hu) {
+                    $customer = $hu->customerService?->customer ?? $hu->customer;
                 }
             }
 
