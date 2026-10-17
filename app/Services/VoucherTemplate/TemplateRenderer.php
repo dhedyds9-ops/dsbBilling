@@ -1303,7 +1303,45 @@ class TemplateRenderer
                     }
                     continue;
                 }
-                $tokens[] = ['IDENT', $word];
+
+                $peek = $i;
+                while ($peek < $len && ctype_space($expr[$peek])) {
+                    $peek++;
+                }
+                if ($peek < $len && $expr[$peek] === '(') {
+                    $tokens[] = ['IDENT', $word];
+                    continue;
+                }
+
+                while ($i < $len) {
+                    if (ctype_alnum($expr[$i]) || $expr[$i] === '_' || $expr[$i] === '.') {
+                        $i++;
+                    } elseif ($expr[$i] === '-' && $i + 1 < $len && $expr[$i + 1] === '>') {
+                        $i += 2;
+                    } else {
+                        break;
+                    }
+                }
+                if ($i < $len && $expr[$i] === '[') {
+                    $braceDepth = 1;
+                    $i++;
+                    while ($i < $len && $braceDepth > 0) {
+                        if ($expr[$i] === '[') {
+                            $braceDepth++;
+                        }
+                        if ($expr[$i] === ']') {
+                            $braceDepth--;
+                        }
+                        $i++;
+                    }
+                }
+                if ($i < $len && $expr[$i] === '@') {
+                    $i++;
+                    while ($i < $len && (ctype_alnum($expr[$i]) || $expr[$i] === '_')) {
+                        $i++;
+                    }
+                }
+                $tokens[] = ['VAR', '$' . substr($expr, $start, $i - $start)];
                 continue;
             }
 

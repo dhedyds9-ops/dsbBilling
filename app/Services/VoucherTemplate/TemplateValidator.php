@@ -950,7 +950,7 @@ class TemplateValidator
                 }
 
                 $cleanPath = ltrim($path, '/');
-                if ($cleanPath !== '' && !preg_match('~^(https?:|data:|#)~i', $cleanPath)) {
+                if ($cleanPath !== '' && !preg_match('~^(https?:|data:|#|\{|\$)~i', $cleanPath) && !str_contains($cleanPath, '{')) {
                     try {
                         $exists = Storage::disk('public')->exists($cleanPath);
                     } catch (\Throwable) {
@@ -1008,7 +1008,7 @@ class TemplateValidator
             }
 
             $isSelfClosing = in_array($tagName, self::SELF_CLOSING_TAGS, true)
-                || preg_match('#\/\s*>$#', trim($attrs . $full[0])) !== false;
+                || preg_match('#\/\s*>$#', $full[0]) === 1;
 
             if ($isSelfClosing && !$isClosing) {
                 continue;

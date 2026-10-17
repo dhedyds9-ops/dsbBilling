@@ -49,6 +49,6 @@ class DatabaseSeeder extends Seeder
         // Seed journals
         $this->call(JournalSeeder::class);
         $this->call(VendorSeeder::class);
-
-        }
+        $this->call(VoucherTemplateSeeder::class);
+    }
 }
