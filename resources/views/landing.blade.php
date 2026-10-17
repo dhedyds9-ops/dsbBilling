@@ -179,25 +179,52 @@
             $dl = $pkg->download_speed;
             $up = $pkg->upload_speed;
             if ($dl && $dl > 0) {
-                $dlText = ($dl >= 1000) ? (round($dl / 1000, 1) . ' Mbps') : ($dl . ' Kbps');
-                if ($up && $up > 0 && $up != $dl) {
-                    $upText = ($up >= 1000) ? (round($up / 1000, 1) . ' Mbps') : ($up . ' Kbps');
-                    return $dlText . ' (Up ' . $upText . ')';
+                $dlNum = ($dl >= 1000) ? round($dl / 1000, 1) : $dl;
+                $upNum = ($up && $up > 0) ? (($up >= 1000) ? round($up / 1000, 1) : $up) : null;
+                if ($upNum && $upNum != $dlNum) {
+                    return $dlNum . ' Mbps / Up ' . $upNum . ' Mbps';
                 }
-                return $dlText;
+                return $dlNum . ' Mbps';
             }
             preg_match('/(\d+)\s*(mbps|kbps|m|k)/i', ($pkg->name . ' ' . ($pkg->description ?? '')), $matches);
             if (!empty($matches[0])) {
-                return strtoupper($matches[0]);
+                $num = preg_replace('/\D/', '', $matches[0]);
+                return $num . ' Mbps';
             }
-            return 'Up to 20 Mbps';
+            return '10 Mbps';
         };
 
         $formatType = function($pkg) {
             $type = strtolower($pkg->package_type ?? 'unlimited');
-            if ($type === 'time_based') return 'Berbasis Waktu';
-            if ($type === 'quota_based') return 'Berbasis Kuota';
-            return 'Unlimited (Tanpa FUP)';
+            if ($type === 'quota_based' && !empty($pkg->quota_value) && $pkg->quota_value > 0) {
+                return $pkg->quota_value . ' ' . ($pkg->quota_unit ?? 'MB');
+            }
+            return 'Unlimited';
+        };
+
+        $formatValidity = function($pkg) {
+            $vUnit = strtolower((string)($pkg->validity_unit ?? ''));
+            $vDays = (int)($pkg->validity_days ?? 0);
+            $vHours = (int)($pkg->validity_hours ?? 0);
+            $dVal = (int)($pkg->duration_value ?? 0);
+            $dUnit = strtolower((string)($pkg->duration_unit ?? ''));
+
+            if ($vUnit === 'months' || ($vDays > 0 && $vDays % 30 === 0 && $vDays >= 30 && empty($vHours))) {
+                $months = $vDays > 0 ? round($vDays / 30) : ($dVal > 0 ? $dVal : 1);
+                return $months . ' Bulan';
+            } elseif ($vUnit === 'days' || $vDays > 0) {
+                return $vDays . ' Hari';
+            } elseif ($vUnit === 'hours' || $vHours > 0) {
+                return $vHours . ' Jam';
+            } elseif ($dVal > 0) {
+                $unitLabel = ($dUnit === 'months') ? 'Bulan' : (($dUnit === 'days') ? 'Hari' : 'Jam');
+                return $dVal . ' ' . $unitLabel;
+            }
+            $st = strtolower((string)($pkg->service_type ?? ''));
+            if (str_contains($st, 'pppoe') || str_contains($st, 'hotspot')) {
+                return '1 Bulan';
+            }
+            return '30 Hari';
         };
 
         $formatServiceType = function($pkg) {
@@ -483,7 +510,7 @@
                 @php
                     $speed = $formatSpeed($hot);
                     $type = $formatType($hot);
-                    $validity = $hot->duration_value ? ($hot->duration_value . ' ' . ($hot->duration_unit ?: 'Jam')) : ($hot->validity_hours ? $hot->validity_hours . ' Jam' : ($hot->validity_days ? $hot->validity_days . ' Hari' : '1 Sesi'));
+                    $validity = $formatValidity($hot);
                 @endphp
                 <div class="bg-surface-container-high/80 rounded-2xl overflow-hidden flex flex-col border border-white/10 hover:border-amber-400/40 transition-all duration-300 shadow-lg h-full">
                     <div class="p-5 flex-grow bg-gradient-to-br from-amber-500/10 via-primary/5 to-transparent">
@@ -599,7 +626,7 @@
                         </div>
                         <div class="p-2.5 rounded-xl bg-surface-container-lowest/60 border border-white/5">
                             <span class="text-[9px] font-bold uppercase text-slate-400 block mb-0.5">Masa Aktif</span>
-                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-amber-400 text-[14px]">calendar_today</span> 30 Hari</strong>
+                            <strong class="text-on-surface text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-amber-400 text-[14px]">calendar_today</span> {{ $formatValidity($mem) }}</strong>
                         </div>
                     </div>
 

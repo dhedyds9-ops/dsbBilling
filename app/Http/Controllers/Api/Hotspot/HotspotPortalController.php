@@ -88,35 +88,50 @@ class HotspotPortalController extends Controller
             $profiles = $query->orderBy('base_price', 'asc')->get();
 
             $packages = $profiles->map(function ($profile) {
-                // Formatting time & active period
-                $timeLimit = '-';
-                if (!empty($profile->duration_value)) {
-                    $timeLimit = $profile->duration_value . ' ' . ($profile->duration_unit ?? 'Jam');
-                } elseif (!empty($profile->validity_hours)) {
-                    $timeLimit = $profile->validity_hours . ' Jam';
-                } elseif (!empty($profile->validity_days)) {
-                    $timeLimit = $profile->validity_days . ' Hari';
-                }
+                // Formatting time & active period (Jam, Hari, atau Bulan sesuai yang dibuat)
+                $vUnit = strtolower((string)($profile->validity_unit ?? ''));
+                $vDays = (int)($profile->validity_days ?? 0);
+                $vHours = (int)($profile->validity_hours ?? 0);
+                $dVal = (int)($profile->duration_value ?? 0);
+                $dUnit = strtolower((string)($profile->duration_unit ?? ''));
 
                 $activePeriod = '-';
-                if (!empty($profile->validity_days)) {
-                    $activePeriod = $profile->validity_days . ' Hari';
-                } elseif (!empty($profile->validity_hours)) {
-                    $activePeriod = $profile->validity_hours . ' Jam';
+                if ($vUnit === 'months' || ($vDays > 0 && $vDays % 30 === 0 && $vDays >= 30 && empty($vHours))) {
+                    $months = $vDays > 0 ? round($vDays / 30) : ($dVal > 0 ? $dVal : 1);
+                    $activePeriod = $months . ' Bulan';
+                } elseif ($vUnit === 'days' || $vDays > 0) {
+                    $activePeriod = $vDays . ' Hari';
+                } elseif ($vUnit === 'hours' || $vHours > 0) {
+                    $activePeriod = $vHours . ' Jam';
+                } elseif ($dVal > 0) {
+                    $unitLabel = ($dUnit === 'months') ? 'Bulan' : (($dUnit === 'days') ? 'Hari' : 'Jam');
+                    $activePeriod = $dVal . ' ' . $unitLabel;
                 } else {
-                    $activePeriod = $timeLimit;
+                    $activePeriod = '30 Hari';
                 }
+                $timeLimit = $activePeriod;
 
-                // Quota
+                // Kuota: Harus Unlimited kecuali jika package_type secara eksplisit quota_based dengan kuota positif
+                $pkgType = strtolower((string)($profile->package_type ?? 'unlimited'));
                 $quotaLimit = 'Unlimited';
-                if (!empty($profile->quota_value) && $profile->quota_value > 0) {
+                if ($pkgType === 'quota_based' && !empty($profile->quota_value) && $profile->quota_value > 0) {
                     $quotaLimit = $profile->quota_value . ' ' . ($profile->quota_unit ?? 'MB');
                 }
 
-                // Speed
-                $speed = '-';
-                if (!empty($profile->download_speed) || !empty($profile->upload_speed)) {
-                    $speed = ($profile->download_speed ?? '-') . ' / ' . ($profile->upload_speed ?? '-');
+                // Kecepatan: Wajib ada satuan Mbps
+                $dl = $profile->download_speed;
+                $up = $profile->upload_speed;
+                $speed = '10 Mbps';
+                if (!empty($dl) || !empty($up)) {
+                    $dlNum = ($dl >= 1000) ? round($dl / 1000, 1) : $dl;
+                    $upNum = ($up >= 1000) ? round($up / 1000, 1) : $up;
+                    if ($dlNum && $upNum && $dlNum != $upNum) {
+                        $speed = $dlNum . ' Mbps / ' . $upNum . ' Mbps';
+                    } elseif ($dlNum) {
+                        $speed = $dlNum . ' Mbps';
+                    } elseif ($upNum) {
+                        $speed = $upNum . ' Mbps';
+                    }
                 }
 
                 $price = (int) ($profile->promo_price > 0 ? $profile->promo_price : ($profile->base_price ?? $profile->cost_price ?? 0));
