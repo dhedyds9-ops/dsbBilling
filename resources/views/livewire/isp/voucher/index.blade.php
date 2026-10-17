@@ -16,7 +16,7 @@
         {{-- KPI CARDS --}}
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {{-- Total --}}
-            <div wire:click="$set('filters.status', '')" class="relative overflow-x-auto rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-md bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div wire:click="filterByStatus('')" class="relative overflow-x-auto rounded-xl border {{ $activeTab === 'all' && empty($filters['status']) ? 'border-indigo-500 ring-2 ring-indigo-500' : 'border-indigo-200 dark:border-indigo-800/60' }} shadow-md bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
                 <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-400 rounded-t-xl"></div>
                 <div class="absolute top-3 right-3 opacity-10 text-indigo-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">confirmation_number</span>
@@ -24,12 +24,12 @@
                 <div class="p-4 pt-5">
                     <h3 class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2">Total Voucher</h3>
                     <div class="text-3xl lg:text-4xl font-black text-indigo-700 dark:text-indigo-300 mb-3">{{ number_format($stats['total'] ?? 0) }}</div>
-                    <div class="text-xs text-slate-500 dark:text-slate-400">Klik untuk memfilter</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">Klik untuk melihat semua</div>
                 </div>
             </div>
 
             {{-- Available --}}
-            <div wire:click="$set('filters.status', 'available')" class="relative overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div wire:click="filterByStatus('available')" class="relative overflow-x-auto rounded-xl border {{ $activeTab === 'active' && ($filters['status'] ?? '') === 'available' ? 'border-emerald-500 ring-2 ring-emerald-500' : 'border-emerald-200 dark:border-emerald-800/60' }} shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
                 <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-t-xl"></div>
                 <div class="absolute top-3 right-3 opacity-10 text-emerald-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">check_circle</span>
@@ -42,7 +42,7 @@
             </div>
 
             {{-- Online --}}
-            <div wire:click="$set('filters.status', 'online')" class="relative overflow-x-auto rounded-xl border border-blue-200 dark:border-blue-800/60 shadow-md bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div wire:click="filterByStatus('online')" class="relative overflow-x-auto rounded-xl border {{ $activeTab === 'active' && ($filters['status'] ?? '') === 'online' ? 'border-blue-500 ring-2 ring-blue-500' : 'border-blue-200 dark:border-blue-800/60' }} shadow-md bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
                 <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-xl"></div>
                 <div class="absolute top-3 right-3 opacity-10 text-blue-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">wifi_tethering</span>
@@ -58,7 +58,7 @@
             </div>
 
             {{-- Used --}}
-            <div wire:click="$set('filters.status', 'used')" class="relative overflow-x-auto rounded-xl border border-amber-200 dark:border-amber-800/60 shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div wire:click="filterByStatus('used')" class="relative overflow-x-auto rounded-xl border {{ $activeTab === 'active' && ($filters['status'] ?? '') === 'used' ? 'border-amber-500 ring-2 ring-amber-500' : 'border-amber-200 dark:border-amber-800/60' }} shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
                 <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-400 rounded-t-xl"></div>
                 <div class="absolute top-3 right-3 opacity-10 text-amber-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">person_check</span>
@@ -71,7 +71,7 @@
             </div>
 
             {{-- Expired --}}
-            <div wire:click="$set('filters.status', 'expired')" class="relative overflow-x-auto rounded-xl border border-red-200 dark:border-red-800/60 shadow-md bg-gradient-to-br from-red-50 to-white dark:from-red-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
+            <div wire:click="filterByStatus('expired')" class="relative overflow-x-auto rounded-xl border {{ $activeTab === 'expired' ? 'border-red-500 ring-2 ring-red-500' : 'border-red-200 dark:border-red-800/60' }} shadow-md bg-gradient-to-br from-red-50 to-white dark:from-red-950/50 dark:to-slate-800 group hover:shadow-lg transition-all cursor-pointer">
                 <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-rose-400 rounded-t-xl"></div>
                 <div class="absolute top-3 right-3 opacity-10 text-red-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">hourglass_disabled</span>
@@ -79,10 +79,55 @@
                 <div class="p-4 pt-5">
                     <h3 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Kedaluwarsa</h3>
                     <div class="text-3xl lg:text-4xl font-black text-red-700 dark:text-red-300 mb-3">{{ number_format($stats['expired'] ?? 0) }}</div>
-                    <div class="text-xs text-slate-500 dark:text-slate-400">Klik untuk memfilter</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">Klik untuk buka arsip</div>
                 </div>
             </div>
         </div>
+
+        {{-- LIFECYCLE TABS --}}
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <button wire:click="setTab('active')" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all {{ $activeTab === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">task_alt</span>
+                    Voucher Aktif
+                    <span class="px-2 py-0.5 text-xs rounded-full {{ $activeTab === 'active' ? 'bg-indigo-500/80 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold' }}">
+                        {{ number_format(($stats['available'] ?? 0) + ($stats['online'] ?? 0) + ($stats['used'] ?? 0)) }}
+                    </span>
+                </button>
+
+                <button wire:click="setTab('expired')" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all {{ $activeTab === 'expired' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">archive</span>
+                    Kedaluwarsa (Arsip)
+                    <span class="px-2 py-0.5 text-xs rounded-full {{ $activeTab === 'expired' ? 'bg-red-500/80 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold' }}">
+                        {{ number_format($stats['expired'] ?? 0) }}
+                    </span>
+                </button>
+
+                <button wire:click="setTab('all')" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all {{ $activeTab === 'all' ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">list_alt</span>
+                    Semua Data
+                    <span class="px-2 py-0.5 text-xs rounded-full {{ $activeTab === 'all' ? 'bg-slate-700 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold' }}">
+                        {{ number_format($stats['total'] ?? 0) }}
+                    </span>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="{{ route('keuangan.income-harian', ['user_type' => 'voucher']) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-100 transition-colors">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">account_balance_wallet</span>
+                    Buka Halaman Keuangan &rarr;
+                </a>
+            </div>
+        </div>
+
+        @if($activeTab === 'expired')
+            <div class="p-3.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
+                <div class="flex items-center gap-2.5 text-red-700 dark:text-red-300">
+                    <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size: 20px">info</span>
+                    <span>Voucher yang telah kedaluwarsa dipisahkan di tab arsip ini agar <strong>tidak menumpuk</strong> di daftar voucher aktif. Seluruh rekap penerimaan uang tersimpan permanen di <strong>Halaman Keuangan</strong>.</span>
+                </div>
+            </div>
+        @endif
 
         {{-- TOOLBAR --}}
         <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
@@ -124,11 +169,20 @@
                     @endforeach
                 </select>
                 <select wire:model.live="filters.status" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                    <option value="">Semua Status</option>
-                    <option value="available">Tersedia</option>
-                    <option value="online">Online</option>
-                    <option value="used">Terpakai (Offline)</option>
-                    <option value="expired">Kedaluwarsa</option>
+                    @if($activeTab === 'active')
+                        <option value="">Semua Voucher Aktif</option>
+                        <option value="available">Tersedia</option>
+                        <option value="online">Online</option>
+                        <option value="used">Terpakai (Offline)</option>
+                    @elseif($activeTab === 'expired')
+                        <option value="">Semua Kedaluwarsa</option>
+                    @else
+                        <option value="">Semua Status</option>
+                        <option value="available">Tersedia</option>
+                        <option value="online">Online</option>
+                        <option value="used">Terpakai (Offline)</option>
+                        <option value="expired">Kedaluwarsa</option>
+                    @endif
                 </select>
                 <select wire:model.live="perPage" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                     <option value="20">20 / halaman</option>

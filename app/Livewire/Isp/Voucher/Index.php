@@ -37,6 +37,7 @@ class Index extends BaseNetworkComponent
     public $prefix;
     public $code_combination = 'uppercase_alphanumeric';
     public $notes;
+    public string $activeTab = 'active'; // 'active', 'expired', 'all'
 
     public function mount()
     {
@@ -57,6 +58,30 @@ class Index extends BaseNetworkComponent
         ];
     }
 
+    public function setTab(string $tab)
+    {
+        $this->activeTab = $tab;
+        $this->filters['status'] = '';
+        $this->resetPage();
+        $this->resetActionState();
+    }
+
+    public function filterByStatus(string $status)
+    {
+        if ($status === 'expired') {
+            $this->activeTab = 'expired';
+            $this->filters['status'] = '';
+        } elseif ($status === '') {
+            $this->activeTab = 'all';
+            $this->filters['status'] = '';
+        } else {
+            $this->activeTab = 'active';
+            $this->filters['status'] = $status;
+        }
+        $this->resetPage();
+        $this->resetActionState();
+    }
+
     public function updatedSelectAll($value)
     {
         if ($value) {
@@ -66,6 +91,7 @@ class Index extends BaseNetworkComponent
                 filters: $this->filters,
                 withTrashed: $this->showTrashed,
                 onlineUsers: $onlineUsers,
+                tab: $this->activeTab,
             )->where('vouchers.type', '!=', 'evoucher');
 
             $this->selectedIds = $query->pluck('id')->toArray();
@@ -270,6 +296,7 @@ class Index extends BaseNetworkComponent
             'voucher_pool_id' => '',
             'created_date' => '',
         ];
+        $this->activeTab = 'active';
         $this->search = '';
         $this->showTrashed = false;
         $this->resetActionState();
@@ -393,6 +420,7 @@ class Index extends BaseNetworkComponent
             filters: $this->filters,
             withTrashed: $this->showTrashed,
             onlineUsers: $onlineUsers,
+            tab: $this->activeTab,
         )->where('vouchers.type', '!=', 'evoucher');
 
         $direction = strtolower($this->sortDirection) === 'asc' ? 'asc' : 'desc';
