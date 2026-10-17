@@ -185,17 +185,30 @@ class IncomeReportService
 
                 $basePrice = (float)($sp?->base_price ?: ($sp?->price ?: 0));
                 $resellerPrice = (float)($sp?->reseller_price ?: ($sp?->reseller_settlement_price ?: 0));
+
+                $resellerUser = $voucher->reseller;
+                if (!$resellerUser && $voucher->createdBy) {
+                    if (method_exists($voucher->createdBy, 'hasRole') && $voucher->createdBy->hasRole('reseller')) {
+                        $resellerUser = $voucher->createdBy;
+                    }
+                }
+
+                $hasReseller = !empty($voucher->reseller_id) || ($resellerUser !== null);
                 
                 $feeSeller = 0;
-                if (!empty($voucher->reseller_id)) {
-                    $feeSeller = (float)($voucher->fee_seller ?: max(0, $basePrice - $resellerPrice));
+                if ($hasReseller) {
+                    if (!empty($voucher->fee_seller) && (float)$voucher->fee_seller > 0) {
+                        $feeSeller = (float)$voucher->fee_seller;
+                    } elseif ($resellerPrice > 0 && $resellerPrice < $basePrice) {
+                        $feeSeller = max(0, $basePrice - $resellerPrice);
+                    }
                 }
                 $profit = max(0, $basePrice - $feeSeller);
 
                 $actAt = $voucher->activated_at ?? $voucher->created_at;
                 $paidAtStr = $actAt ? $actAt->format('Y-m-d H:i:s') : '-';
 
-                $resellerName = $voucher->reseller?->name ?? ($voucher->createdBy?->name ?? 'Pusat');
+                $resellerName = $resellerUser?->name ?? ($voucher->createdBy?->name ?? 'Pusat');
 
                 $totalProfit += $profit;
                 $totalFeeSeller += $feeSeller;
