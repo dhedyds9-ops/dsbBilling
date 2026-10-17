@@ -58,6 +58,19 @@ Route::prefix('radius')->name('radius.')->middleware(['radius.nas_secret'])->gro
 
 Route::prefix('v1')->group(function () {
 
+    // =============================== HOTSPOT PORTAL API ==================================
+    Route::prefix('hotspot')->name('hotspot.')->group(function () {
+        Route::match(['GET', 'OPTIONS'], '/packages', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'packages'])->name('packages');
+        Route::match(['GET', 'OPTIONS'], '/check-user', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'checkUser'])->name('check-user');
+        Route::match(['GET', 'OPTIONS'], '/check-bill', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'checkBill'])->name('check-bill');
+        Route::match(['GET', 'POST', 'OPTIONS'], '/kick-user', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'kickUser'])->name('kick-user');
+    });
+
+    // Compatibility aliases with legacy MSRadius endpoints
+    Route::match(['GET', 'OPTIONS'], '/evoucher', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'packages']);
+    Route::match(['GET', 'OPTIONS'], '/checkusername', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'checkUser']);
+    Route::match(['GET', 'POST', 'OPTIONS'], '/optimizeusername', [\App\Http\Controllers\Api\Hotspot\HotspotPortalController::class, 'kickUser']);
+
     // =============================== ISP FIBER API ======================================
     Route::prefix('isp')->middleware(['auth:sanctum', 'ability:isp:operate'])->name('isp.api.')->group(function () {
         // ------- OLT -------
