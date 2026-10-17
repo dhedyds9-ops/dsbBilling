@@ -40,7 +40,7 @@ class HotspotPortalController extends Controller
     public function packages(): JsonResponse
     {
         try {
-            $profiles = ServiceProfile::query()
+            $profiles = ServiceProfile::withoutGlobalScopes()
                 ->where(function ($q) {
                     $q->whereIn('service_type', ['Hotspot', 'Voucher'])
                       ->orWhere('service_type', 'like', '%Hotspot%')
@@ -133,21 +133,21 @@ class HotspotPortalController extends Controller
 
         try {
             // 1. Cari data user / voucher / pppoe
-            $hotspotUser = HotspotUser::where('username', $unique)->with('serviceProfile')->first();
+            $hotspotUser = HotspotUser::withoutGlobalScopes()->where('username', $unique)->with('serviceProfile')->first();
             $voucher = null;
             $customerService = null;
             $pppoeUser = null;
 
             if (!$hotspotUser) {
-                $voucher = Voucher::where('code', $unique)->with('serviceProfile')->first();
+                $voucher = Voucher::withoutGlobalScopes()->where('code', $unique)->with('serviceProfile')->first();
             }
 
             if (!$hotspotUser && !$voucher) {
-                $pppoeUser = PPPoEUser::where('username', $unique)->with(['customerService.customer', 'serviceProfile'])->first();
+                $pppoeUser = PPPoEUser::withoutGlobalScopes()->where('username', $unique)->with(['customerService.customer', 'serviceProfile'])->first();
             }
 
             if (!$hotspotUser && !$voucher && !$pppoeUser) {
-                $customerService = CustomerService::where('username', $unique)->with(['customer', 'serviceProfile'])->first();
+                $customerService = CustomerService::withoutGlobalScopes()->where('username', $unique)->with(['customer', 'serviceProfile'])->first();
             }
 
             // 2. Ambil sesi aktif
@@ -226,7 +226,7 @@ class HotspotPortalController extends Controller
             $latestInvoice = null;
             $targetCustId = $customerService?->customer_id ?? $pppoeUser?->customerService?->customer_id ?? $hotspotUser?->customerService?->customer_id ?? null;
             if ($targetCustId) {
-                $latestInvoice = Invoice::where('customer_id', $targetCustId)
+                $latestInvoice = Invoice::withoutGlobalScopes()->where('customer_id', $targetCustId)
                     ->orderBy('created_at', 'desc')
                     ->first();
             }
@@ -280,38 +280,45 @@ class HotspotPortalController extends Controller
             $queryLower = strtolower($query);
 
             // 1. Cari Customer langsung
-            $customer = Customer::query()
-                ->whereRaw('LOWER(code) = ?', [$queryLower])
-                ->orWhere('id', is_numeric($query) ? (int)$query : 0)
-                ->orWhereRaw('LOWER(email) = ?', [$queryLower])
-                ->orWhereRaw('LOWER(phone) = ?', [$queryLower])
-                ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%'])
+            $customer = Customer::withoutGlobalScopes()
+                ->where(function ($q) use ($query, $queryLower) {
+                    if (is_numeric($query)) {
+                        $q->where('id', (int)$query)
+                          ->orWhereRaw('LOWER(code) = ?', [$queryLower])
+                          ->orWhereRaw('LOWER(phone) = ?', [$queryLower]);
+                    } else {
+                        $q->whereRaw('LOWER(code) = ?', [$queryLower])
+                          ->orWhereRaw('LOWER(email) = ?', [$queryLower])
+                          ->orWhereRaw('LOWER(phone) = ?', [$queryLower])
+                          ->orWhereRaw('LOWER(name) LIKE ?', ['%' . $queryLower . '%']);
+                    }
+                })
                 ->first();
 
             // 2. Jika belum ketemu, cari via PPPoEUser, CustomerService, atau HotspotUser
             if (!$customer) {
-                $pppoe = PPPoEUser::whereRaw('LOWER(username) = ?', [$queryLower])->with(['customerService.customer'])->first();
+                $pppoe = PPPoEUser::withoutGlobalScopes()->whereRaw('LOWER(username) = ?', [$queryLower])->with(['customerService.customer'])->first();
                 if ($pppoe) {
                     $customer = $pppoe->customerService?->customer ?? $pppoe->customer;
                 }
             }
 
             if (!$customer) {
-                $cs = CustomerService::whereRaw('LOWER(username) = ?', [$queryLower])->with('customer')->first();
+                $cs = CustomerService::withoutGlobalScopes()->whereRaw('LOWER(username) = ?', [$queryLower])->with('customer')->first();
                 if ($cs && $cs->customer) {
                     $customer = $cs->customer;
                 }
             }
 
             if (!$customer) {
-                $hu = HotspotUser::whereRaw('LOWER(username) = ?', [$queryLower])->with(['customerService.customer'])->first();
+                $hu = HotspotUser::withoutGlobalScopes()->whereRaw('LOWER(username) = ?', [$queryLower])->with(['customerService.customer'])->first();
                 if ($hu) {
                     $customer = $hu->customerService?->customer ?? $hu->customer;
                 }
             }
 
             // 3. Cari Invoice langsung jika input adalah No Invoice
-            $directInvoice = Invoice::query()
+            $directInvoice = Invoice::withoutGlobalScopes()
                 ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
                 ->with(['customer', 'items'])
                 ->first();
@@ -319,7 +326,7 @@ class HotspotPortalController extends Controller
             $invoices = collect();
 
             if ($customer) {
-                $invoices = Invoice::query()
+                $invoices = Invoice::withoutGlobalScopes()
                     ->where('customer_id', $customer->id)
                     ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->orderBy('due_date', 'asc')

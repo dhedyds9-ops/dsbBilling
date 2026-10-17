@@ -26,8 +26,21 @@ trait HasResellerScope
     {
         // GLOBAL SCOPE: Selalu diterapkan pada query SELECT
         static::addGlobalScope('reseller_isolation', function (Builder $builder) {
-            // Bypass jika dijalankan di Console (Artisan, Queue, Cron) atau API internal RADIUS / Webhook
-            if (app()->runningInConsole() || request()->is('api/radius*') || request()->is('api/v1/radius*') || request()->is('api/webhooks*') || request()->is('webhook*')) {
+            // Bypass jika dijalankan di Console (Artisan, Queue, Cron) atau API internal RADIUS / Webhook / Portal Publik Pelanggan
+            if (app()->runningInConsole() 
+                || request()->is('api/radius*') 
+                || request()->is('api/v1/radius*') 
+                || request()->is('api/webhooks*') 
+                || request()->is('webhook*')
+                || request()->is('payment*')
+                || request()->is('bayar-tagihan*')
+                || request()->is('guest*')
+                || request()->is('api/v1/hotspot*')
+                || request()->is('api/hotspot*')
+                || request()->is('api/evoucher*')
+                || request()->is('api/checkusername*')
+                || request()->is('api/optimizeusername*')
+            ) {
                 return;
             }
 

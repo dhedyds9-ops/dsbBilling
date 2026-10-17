@@ -35,13 +35,15 @@ class GuestPaymentController extends Controller
             $queryLower = strtolower($query);
 
             // 1. Cek Voucher
-            $voucher = Voucher::with(['serviceProfile', 'hotspotUser.customerService.customer'])
+            $voucher = Voucher::withoutGlobalScopes()
+                ->with(['serviceProfile', 'hotspotUser.customerService.customer'])
                 ->whereRaw('LOWER(code) = ?', [$queryLower])
                 ->first();
 
             // 2. Cek Hotspot
             if (!$voucher) {
-                $hotspot = HotspotUser::with(['serviceProfile', 'customerService.customer'])
+                $hotspot = HotspotUser::withoutGlobalScopes()
+                    ->with(['serviceProfile', 'customerService.customer'])
                     ->whereRaw('LOWER(username) = ?', [$queryLower])
                     ->first();
             } else {
@@ -49,13 +51,15 @@ class GuestPaymentController extends Controller
             }
 
             // 3. Cek PPPoE User
-            $pppoe = PPPoEUser::with(['serviceProfile', 'customerService.customer'])
+            $pppoe = PPPoEUser::withoutGlobalScopes()
+                ->with(['serviceProfile', 'customerService.customer'])
                 ->whereRaw('LOWER(username) = ?', [$queryLower])
                 ->first();
 
             // 4. Cek Customer Service (Layanan Internet / PPPoE / Static)
             if (!$pppoe && !$hotspot) {
-                $customerService = CustomerService::with(['serviceProfile', 'customer'])
+                $customerService = CustomerService::withoutGlobalScopes()
+                    ->with(['serviceProfile', 'customer'])
                     ->whereRaw('LOWER(username) = ?', [$queryLower])
                     ->first();
             }
@@ -74,7 +78,7 @@ class GuestPaymentController extends Controller
             }
 
             // 5. Cek Customer langsung (berdasarkan Code, ID, Email, No HP, atau Nama)
-            $customerQuery = Customer::query();
+            $customerQuery = Customer::withoutGlobalScopes();
             if (is_numeric($query)) {
                 $customerQuery->where('id', (int)$query)
                     ->orWhereRaw('LOWER(code) = ?', [$queryLower])
@@ -101,7 +105,7 @@ class GuestPaymentController extends Controller
             }
 
             // 6. Cek Invoice langsung jika query adalah Nomor Invoice
-            $directInvoice = Invoice::query()
+            $directInvoice = Invoice::withoutGlobalScopes()
                 ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
                 ->with(['customer', 'items'])
                 ->first();
@@ -112,7 +116,7 @@ class GuestPaymentController extends Controller
                     $customer = $directInvoice->customer;
                 }
             } elseif ($customer) {
-                $invoices = Invoice::query()
+                $invoices = Invoice::withoutGlobalScopes()
                     ->where('customer_id', $customer->id)
                     ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->orderBy('due_date', 'asc')
@@ -171,7 +175,7 @@ class GuestPaymentController extends Controller
             'gateway' => 'required|string'
         ]);
 
-        $invoice = Invoice::with('customer')->where('invoice_number', $validated['invoice_number'])->firstOrFail();
+        $invoice = Invoice::withoutGlobalScopes()->with('customer')->where('invoice_number', $validated['invoice_number'])->firstOrFail();
         
         $amountIdr = (int) max(0, $invoice->total_amount - $invoice->paid_amount);
         if ($amountIdr <= 0) {
@@ -209,8 +213,8 @@ class GuestPaymentController extends Controller
             'q' => 'required|string'
         ]);
 
-        $hotspot = !empty($validated['hotspot_user_id']) ? HotspotUser::with('serviceProfile')->find($validated['hotspot_user_id']) : null;
-        $pppoe = !empty($validated['pppoe_user_id']) ? PPPoEUser::with('serviceProfile')->find($validated['pppoe_user_id']) : null;
+        $hotspot = !empty($validated['hotspot_user_id']) ? HotspotUser::withoutGlobalScopes()->with('serviceProfile')->find($validated['hotspot_user_id']) : null;
+        $pppoe = !empty($validated['pppoe_user_id']) ? PPPoEUser::withoutGlobalScopes()->with('serviceProfile')->find($validated['pppoe_user_id']) : null;
         
         $routerId = $hotspot?->serviceProfile?->router_id ?? $pppoe?->serviceProfile?->router_id ?? null;
         $username = $hotspot?->username ?? $pppoe?->username ?? null;
