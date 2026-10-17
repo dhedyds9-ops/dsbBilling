@@ -135,12 +135,13 @@ class IncomeReportService
             }
         }
 
-        // 2. Ambil data Voucher yang terjual / aktif jika bukan filter 'customer'
+        // 2. Ambil data Voucher yang terjual / aktif jika bukan filter 'customer' (termasuk yang di-soft delete dari UI)
         if ($userType !== 'customer') {
-            $voucherQuery = \App\Models\ISP\Voucher::withoutGlobalScopes()
+            $voucherQuery = \App\Models\ISP\Voucher::withTrashed()
+                ->withoutGlobalScopes()
                 ->with(['serviceProfile', 'reseller', 'createdBy'])
                 ->where(function($q) {
-                    $q->whereIn('status', ['used', 'active'])
+                    $q->whereIn('status', ['used', 'active', 'expired'])
                       ->orWhereNotNull('activated_at');
                 });
 

@@ -265,6 +265,24 @@ class Index extends BaseNetworkComponent
         }
     }
 
+    public function clearExpiredFromUi()
+    {
+        try {
+            $count = Voucher::where(function($q) {
+                $q->where('status', 'expired')
+                  ->orWhere(function($sq) {
+                      $sq->whereNotNull('expires_at')->where('expires_at', '<=', now());
+                  });
+            })->delete(); // Soft delete: sets deleted_at, record stays 100% intact in DB & Keuangan!
+
+            $this->resetActionState();
+            session()->flash('success', "{$count} Voucher kedaluwarsa berhasil dibersihkan dari tampilan UI! Data fisik tetap tersimpan di database & pembukuan keuangan aman.");
+        } catch (Throwable $e) {
+            Log::error('Clear expired from UI failed', ['message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal membersihkan voucher: ' . $e->getMessage());
+        }
+    }
+
     protected function getOnlineUsers(): array
     {
         try {

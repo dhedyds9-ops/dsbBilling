@@ -124,8 +124,14 @@
             <div class="p-3.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
                 <div class="flex items-center gap-2.5 text-red-700 dark:text-red-300">
                     <span class="material-symbols-outlined notranslate shrink-0" translate="no" style="font-size: 20px">info</span>
-                    <span>Voucher yang telah kedaluwarsa dipisahkan di tab arsip ini agar <strong>tidak menumpuk</strong> di daftar voucher aktif. Seluruh rekap penerimaan uang tersimpan permanen di <strong>Halaman Keuangan</strong>.</span>
+                    <span>Voucher kedaluwarsa dipisahkan di tab arsip ini agar <strong>tidak menumpuk</strong> di daftar aktif. Penghapusan dari UI menggunakan <strong>Soft Delete</strong> sehingga data di database & pembukuan keuangan tetap 100% aman.</span>
                 </div>
+                @if(($stats['expired'] ?? 0) > 0)
+                    <button wire:click="clearExpiredFromUi" onclick="confirm('Bersihkan semua voucher kedaluwarsa dari tampilan UI? Data fisik di database & laporan keuangan tetap tersimpan aman.') || event.stopImmediatePropagation()" type="button" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-colors">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 16px">delete_sweep</span>
+                        Bersihkan Expired dari UI
+                    </button>
+                @endif
             </div>
         @endif
 
