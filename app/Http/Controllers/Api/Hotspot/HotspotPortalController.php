@@ -140,7 +140,7 @@ class HotspotPortalController extends Controller
                     'quota_limit' => $quotaLimit,
                     'speed' => $speed,
                     'description' => $profile->description ?? '',
-                    'buy_url' => url('/payment?package_id=' . $profile->id),
+                    'buy_url' => url('/buy-voucher?paket=' . $profile->id),
                 ];
             });
 

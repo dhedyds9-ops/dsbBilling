@@ -15,8 +15,18 @@ use Illuminate\View\View;
 
 class GuestPaymentController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
+        // Jika parameter pembelian paket (package_id / paket) dikirimkan, alihkan langsung ke halaman buy-voucher
+        if ($request->filled('package_id') || $request->filled('paket')) {
+            $paketId = $request->input('package_id') ?: $request->input('paket');
+            $phone = $request->input('phone') ?: $request->input('wa');
+            return redirect()->route('buy-voucher.page', array_filter([
+                'paket' => $paketId,
+                'phone' => $phone,
+            ]));
+        }
+
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:255'],
         ]);

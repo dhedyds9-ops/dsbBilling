@@ -20,13 +20,24 @@ class BuyVoucher extends Component
 
     public function mount()
     {
-        $this->service_profile_id = request()->query('paket');
-        $this->wa_number = request()->query('phone');
+        $this->service_profile_id = request()->query('paket') ?: request()->query('package_id');
+        $this->wa_number = request()->query('phone') ?: request()->query('wa');
 
         if ($this->service_profile_id) {
-            $this->serviceProfile = ServiceProfile::where('status', 'active')
-                ->where('service_type', 'voucher')
+            $this->serviceProfile = ServiceProfile::where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', 'active');
+                })
+                ->where(function ($q) {
+                    $q->whereIn(DB::raw('LOWER(service_type)'), ['voucher', 'hotspot', 'member_hotspot', 'pppoe', 'ftth', 'kombinasi'])
+                      ->orWhere('service_type', 'like', '%voucher%')
+                      ->orWhere('service_type', 'like', '%hotspot%')
+                      ->orWhereNull('service_type');
+                })
                 ->find($this->service_profile_id);
+
+            if (!$this->serviceProfile) {
+                $this->serviceProfile = ServiceProfile::find($this->service_profile_id);
+            }
         }
 
         if (!$this->serviceProfile) {
