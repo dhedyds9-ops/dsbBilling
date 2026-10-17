@@ -24,25 +24,20 @@ class BuyVoucher extends Component
         $this->wa_number = request()->query('phone') ?: request()->query('wa');
 
         if ($this->service_profile_id) {
-            $this->serviceProfile = ServiceProfile::where(function ($q) {
-                    $q->whereNull('status')->orWhere('status', 'active');
-                })
+            $this->serviceProfile = ServiceProfile::withoutGlobalScopes()
                 ->where(function ($q) {
-                    $q->whereIn(DB::raw('LOWER(service_type)'), ['voucher', 'hotspot', 'member_hotspot', 'pppoe', 'ftth', 'kombinasi'])
-                      ->orWhere('service_type', 'like', '%voucher%')
-                      ->orWhere('service_type', 'like', '%hotspot%')
-                      ->orWhereNull('service_type');
+                    $q->whereNull('status')->orWhere('status', 'active');
                 })
                 ->find($this->service_profile_id);
 
             if (!$this->serviceProfile) {
-                $this->serviceProfile = ServiceProfile::find($this->service_profile_id);
+                $this->serviceProfile = ServiceProfile::withoutGlobalScopes()->find($this->service_profile_id);
             }
         }
 
         if (!$this->serviceProfile) {
-            // Redirect if not found
-            return redirect('/#packages');
+            // Redirect ke section hotspot jika paket tidak ditemukan
+            return redirect('/#hotspot');
         }
     }
 
@@ -62,8 +57,8 @@ class BuyVoucher extends Component
         try {
             DB::beginTransaction();
 
-            // 1. Cari atau Buat Customer Guest
-            $customer = Customer::firstOrCreate(
+            // 1. Cari atau Buat Customer Guest (tanpa global scope reseller)
+            $customer = Customer::withoutGlobalScopes()->firstOrCreate(
                 ['phone' => $waNumber],
                 [
                     'code' => 'GST-' . strtoupper(Str::random(6)),
