@@ -25,6 +25,29 @@ class Index extends Component
         'status' => ['except' => ''],
     ];
 
+    public function mount()
+    {
+        if (VoucherTemplate::count() === 0) {
+            try {
+                $seeder = new \Database\Seeders\VoucherTemplateSeeder();
+                $seeder->run();
+            } catch (\Throwable $e) {
+                // Ignore error silently
+            }
+        }
+    }
+
+    public function seedDefaultTemplates()
+    {
+        try {
+            $seeder = new \Database\Seeders\VoucherTemplateSeeder();
+            $seeder->run();
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Template default berhasil dipasang!']);
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal memasang template: ' . $e->getMessage()]);
+        }
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();

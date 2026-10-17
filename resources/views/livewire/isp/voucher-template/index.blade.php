@@ -49,8 +49,14 @@
                 </div>
             </div>
         @empty
-            <div class="col-span-full bg-white dark:bg-slate-800 p-8 text-center text-slate-500 dark:text-slate-400 rounded-lg shadow">
-                Tidak ada template yang ditemukan.
+            <div class="col-span-full bg-white dark:bg-slate-800 p-8 text-center text-slate-500 dark:text-slate-400 rounded-lg shadow space-y-3">
+                <p class="text-base font-medium text-slate-700 dark:text-slate-300">Belum ada template voucher yang terpasang di sistem.</p>
+                <p class="text-xs text-slate-400">Klik tombol di bawah ini untuk memasang template bawaan (Kartu Modern A4, Struk Kasir Thermal, & Hemat Tinta).</p>
+                <div class="pt-2">
+                    <button wire:click="seedDefaultTemplates" type="button" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs rounded-lg transition-all shadow-md hover:shadow-lg">
+                        <span class="material-symbols-outlined notranslate text-sm" translate="no">magic_button</span> Pasang Template Default Sekarang
+                    </button>
+                </div>
             </div>
         @endforelse
     </div>
