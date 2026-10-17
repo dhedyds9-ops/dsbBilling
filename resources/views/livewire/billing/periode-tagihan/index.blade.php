@@ -108,15 +108,6 @@
 
         {{-- DATA TABLE --}}
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden overflow-x-auto relative">
-            @if($this->loading)
-            <div class="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center">
-                <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg">
-                    <span class="material-symbols-outlined notranslate animate-spin text-blue-600" translate="no">refresh</span>
-                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Memproses...</span>
-                </div>
-            </div>
-            @endif
-
             <table class="w-full text-sm text-left">
                 <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/80">
