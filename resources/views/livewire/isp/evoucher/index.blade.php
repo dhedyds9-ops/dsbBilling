@@ -123,7 +123,12 @@
                                 {{ $order->invoice?->payments?->first()?->gateway ?? 'Manual' }}
                             </td>
                             <td class="px-4 py-3 text-right whitespace-nowrap">
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center justify-end gap-1">
+                                    @if(!$isCompleted || empty($order->voucher_username))
+                                        <button wire:click="retryProvisioning({{ $order->id }})" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 transition-colors" title="Generate Voucher Sekarang">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">bolt</span>
+                                        </button>
+                                    @endif
                                     <button wire:click="delete({{ $order->id }})" onclick="confirm('Yakin ingin menghapus transaksi ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
@@ -156,6 +161,21 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener('livewire:init', () => {
+        Livewire.on('evoucher-provisioned', (data) => {
+            const isDark = document.documentElement.classList.contains('dark');
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                title: payload.success ? 'Berhasil' : 'Pemberitahuan',
+                text: payload.message,
+                icon: payload.success ? 'success' : 'warning',
+                timer: 3500,
+                showConfirmButton: false,
+                width: '25rem',
+                background: isDark ? '#1e293b' : '#fff',
+                color: isDark ? '#f8fafc' : '#0f172a'
+            });
+        });
+
         Livewire.on('evoucher-deleted', () => {
             const isDark = document.documentElement.classList.contains('dark');
             Swal.fire({

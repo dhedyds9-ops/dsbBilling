@@ -25,7 +25,7 @@ class ProvisionVoucherOrderJob implements ShouldQueue
         public int $voucherOrderId
     ) {}
 
-    public function handle(GenerateVoucherAction $generateAction, WhatsAppChannel $waChannel): void
+    public function handle(GenerateVoucherAction $generateAction, ?WhatsAppChannel $waChannel = null): void
     {
         $lockKey = "provision_voucher_order_{$this->voucherOrderId}";
 
@@ -44,8 +44,24 @@ class ProvisionVoucherOrderJob implements ShouldQueue
                 return;
             }
 
-            // Validasi Idempotency: Jika sudah completed, skip!
-            if ($order->status === VoucherOrder::STATUS_COMPLETED || $order->voucher_id) {
+            // Validasi Idempotency & Auto-repair: Jika voucher_id sudah ada tapi username kosong, perbaiki langsung
+            if ($order->voucher_id) {
+                $voucher = $order->voucher ?: \App\Models\ISP\Voucher::find($order->voucher_id);
+                if ($voucher) {
+                    $voucherCode = $voucher->code;
+                    $order->update([
+                        'status' => VoucherOrder::STATUS_COMPLETED,
+                        'voucher_username' => $voucherCode,
+                        'voucher_password' => $voucherCode,
+                        'voucher_generated_at' => $order->voucher_generated_at ?: now(),
+                        'completed_at' => $order->completed_at ?: now(),
+                    ]);
+                    Log::info('[ProvisionVoucherOrderJob] Voucher order berhasil diperbaiki dari voucher_id yang ada.', ['order_id' => $order->id, 'code' => $voucherCode]);
+                }
+                return;
+            }
+
+            if ($order->status === VoucherOrder::STATUS_COMPLETED && !empty($order->voucher_username)) {
                 Log::info('[ProvisionVoucherOrderJob] Voucher sudah ter-generate.', ['order_id' => $order->id]);
                 return;
             }
@@ -65,34 +81,44 @@ class ProvisionVoucherOrderJob implements ShouldQueue
             $vouchers = $generateAction->generateAdHocVouchers($attrs, 1, 1);
 
             if (empty($vouchers)) {
-                throw new \Exception('Mikrotik gagal membuat voucher. Respons kosong.');
+                throw new \Exception('Sistem gagal membuat voucher. Respons kosong.');
             }
 
-            $generatedVoucher = $vouchers[0]; // Ambil yang pertama (karena quantity 1)
+            /** @var \App\Models\ISP\Voucher $generatedVoucher */
+            $generatedVoucher = $vouchers[0]; // Ambil voucher pertama yang dibuat
 
-            // Update order
+            // Ambil kredensial voucher (di dsBilling kode voucher disimpan di atribut 'code')
+            $voucherCode = $generatedVoucher->code;
+
+            // Update order menjadi completed
             $order->update([
                 'status' => VoucherOrder::STATUS_COMPLETED,
                 'voucher_id' => $generatedVoucher->id,
-                'voucher_username' => $generatedVoucher->username,
-                'voucher_password' => $generatedVoucher->password,
+                'voucher_username' => $voucherCode,
+                'voucher_password' => $voucherCode,
                 'voucher_generated_at' => now(),
                 'completed_at' => now(),
             ]);
 
-            Log::info('[ProvisionVoucherOrderJob] Provisioning sukses.', ['order_id' => $order->id, 'voucher' => $generatedVoucher->username]);
+            Log::info('[ProvisionVoucherOrderJob] Provisioning sukses.', ['order_id' => $order->id, 'voucher_code' => $voucherCode]);
 
             // Dispatch pesan WA secara aman (non-blocking ke transaksi jika error)
             try {
-                $payNo = substr($order->uuid, 0, 8);
-                $msg = "🎉 *Pembelian Berhasil!*\n\n"
-                     . "Terima kasih telah membeli *{$order->service_profile_name}* via dsBilling.\n\n"
-                     . "Gunakan kredensial berikut untuk *Login Hotspot*:\n"
-                     . "Username: *{$generatedVoucher->username}*\n"
-                     . "Password: *{$generatedVoucher->password}*\n\n"
-                     . "Simpan pesan ini baik-baik. Selamat berselancar!";
-                     
-                $waChannel->send($order->wa_number, $msg);
+                if (!empty($order->wa_number)) {
+                    $msg = "🎉 *Pembelian Berhasil!*\n\n"
+                         . "Terima kasih telah membeli *{$order->service_profile_name}* via dsBilling.\n\n"
+                         . "Gunakan kredensial berikut untuk *Login Hotspot*:\n"
+                         . "Username: *{$voucherCode}*\n"
+                         . "Password: *{$voucherCode}*\n\n"
+                         . "Simpan pesan ini baik-baik. Selamat berselancar!";
+                         
+                    if (class_exists(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)) {
+                        $waService = app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class);
+                        if (method_exists($waService, 'dispatchSend')) {
+                            $waService->dispatchSend($order->wa_number, $msg, category: 'info', priorityHigh: true);
+                        }
+                    }
+                }
             } catch (\Throwable $waError) {
                 Log::error('[ProvisionVoucherOrderJob] Gagal mengirim WA.', [
                     'order_id' => $order->id,

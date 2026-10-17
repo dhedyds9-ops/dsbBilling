@@ -11,7 +11,37 @@ class Index extends BaseNetworkComponent
     public $search = '';
     public $statusFilter = '';
 
-        public function delete($id)
+    public function retryProvisioning($id)
+    {
+        try {
+            $order = \App\Models\VoucherOrder::findOrFail($id);
+            
+            // Jalankan provisioning secara langsung (sync)
+            \App\Jobs\ISP\Voucher\ProvisionVoucherOrderJob::dispatchSync($order->id);
+            
+            $order->refresh();
+
+            if ($order->status === \App\Models\VoucherOrder::STATUS_COMPLETED && !empty($order->voucher_username)) {
+                $this->dispatch('evoucher-provisioned', [
+                    'success' => true,
+                    'message' => "Voucher berhasil dibuat! Akun: {$order->voucher_username}"
+                ]);
+            } else {
+                $this->dispatch('evoucher-provisioned', [
+                    'success' => false,
+                    'message' => "Gagal generate voucher: " . ($order->failure_reason ?? 'Status belum selesai.')
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error provisioning evoucher: ' . $e->getMessage());
+            $this->dispatch('evoucher-provisioned', [
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function delete($id)
     {
         try {
             $order = \App\Models\VoucherOrder::findOrFail($id);
