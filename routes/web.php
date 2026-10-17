@@ -283,6 +283,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/whatsapp', \App\Livewire\Pengaturan\WhatsApp\Index::class)->name('whatsapp');
             // Payment Gateway: Midtrans, Xendit, BCA VA, dll
             Route::get('/payment-gateway', \App\Livewire\Pengaturan\PaymentGateway\Index::class)->name('payment-gateway');
+            // LoginPage Hotspot: Download template & panduan integrasi
+            Route::get('/loginpage', \App\Livewire\Pengaturan\LoginPage\Index::class)->name('loginpage');
         });
 
         // === GenieACS (BACKEND ONLY —- Koneksi Perangkat
