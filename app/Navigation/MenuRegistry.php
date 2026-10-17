@@ -140,7 +140,6 @@ class MenuRegistry
                         'icon' => 'settings',
                         'items' => [
                             ['label' => 'Identitas Perusahaan', 'route' => 'pengaturan.perusahaan', 'active' => 'pengaturan.perusahaan'],
-                            ['label' => 'Koneksi Perangkat', 'route' => 'pengaturan.koneksi', 'active' => 'pengaturan.koneksi'],
                             ['label' => 'Payment Gateway', 'route' => 'pengaturan.payment-gateway', 'active' => 'pengaturan.payment-gateway'],
                             ['label' => 'WhatsApp API', 'route' => 'pengaturan.whatsapp', 'active' => 'pengaturan.whatsapp'],
                             ['label' => 'Telegram Bot', 'route' => 'pengaturan.telegram', 'active' => 'pengaturan.telegram'],

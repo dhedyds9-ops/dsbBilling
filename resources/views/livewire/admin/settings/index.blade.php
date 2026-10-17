@@ -98,18 +98,6 @@
                 </div>
             </a>
 
-            {{-- Koneksi --}}
-            <a href="{{ route('pengaturan.koneksi') }}"
-                class="flex items-start gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-600 hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-all group">
-                <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center shrink-0 group-hover:bg-orange-200 dark:group-hover:bg-orange-800/50 transition">
-                    <span class="material-symbols-outlined notranslate text-orange-600 dark:text-orange-400" style="font-size:20px">cable</span>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Koneksi & API</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">Konfigurasi API eksternal, webhook, dan integrasi sistem</p>
-                </div>
-            </a>
-
             {{-- Billing (tab ini) --}}
             <button wire:click="$set('settingsTab','billing')"
                 class="flex items-start gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-all group text-left">
