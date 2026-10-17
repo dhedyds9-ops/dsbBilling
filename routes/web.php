@@ -7,30 +7,32 @@ use Illuminate\Support\Facades\Auth;
 
 // ==================== PUBLIC ROUTES ====================
 Route::get('/', function () {
-    // 1. Ambil paket PPPoE / FTTH aktif yang diizinkan tampil di Landing Page
-    $packagesPppoe = \App\Models\ISP\ServiceProfile::where('status', 'active')
+    // Query dasar untuk paket yang diizinkan tampil di Landing Page (guest context)
+    $baseQuery = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()
+        ->where(function ($q) {
+            $q->whereNull('status')
+              ->orWhere('status', 'active');
+        })
+        ->where(function ($q) {
+            $q->where('show_on_landing', true)
+              ->orWhere('show_on_landing', 1);
+        });
+
+    // 1. Ambil paket PPPoE / FTTH aktif
+    $packagesPppoe = (clone $baseQuery)
         ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['pppoe', 'ftth', 'kombinasi'])
-        ->where(function ($q) {
-            $q->where('show_on_landing', true)->orWhere('show_on_landing', 1);
-        })
         ->orderBy('base_price')
         ->get();
 
-    // 2. Ambil paket Member Hotspot aktif yang diizinkan tampil di Landing Page
-    $packagesHotspot = \App\Models\ISP\ServiceProfile::where('status', 'active')
-        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot'])
-        ->where(function ($q) {
-            $q->where('show_on_landing', true)->orWhere('show_on_landing', 1);
-        })
+    // 2. Ambil paket Member Hotspot aktif
+    $packagesHotspot = (clone $baseQuery)
+        ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['hotspot', 'member_hotspot', 'member'])
         ->orderBy('base_price')
         ->get();
 
-    // 3. Ambil paket Voucher Hotspot aktif yang diizinkan tampil di Landing Page
-    $packagesVoucher = \App\Models\ISP\ServiceProfile::where('status', 'active')
+    // 3. Ambil paket Voucher Hotspot aktif
+    $packagesVoucher = (clone $baseQuery)
         ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(service_type)'), ['voucher'])
-        ->where(function ($q) {
-            $q->where('show_on_landing', true)->orWhere('show_on_landing', 1);
-        })
         ->orderBy('base_price')
         ->get();
 

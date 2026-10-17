@@ -28,6 +28,8 @@ trait HasResellerScope
         static::addGlobalScope('reseller_isolation', function (Builder $builder) {
             // Bypass jika dijalankan di Console (Artisan, Queue, Cron) atau API internal RADIUS / Webhook / Portal Publik Pelanggan
             if (app()->runningInConsole() 
+                || request()->is('/')
+                || request()->is('buy-voucher*')
                 || request()->is('api/radius*') 
                 || request()->is('api/v1/radius*') 
                 || request()->is('api/webhooks*') 
