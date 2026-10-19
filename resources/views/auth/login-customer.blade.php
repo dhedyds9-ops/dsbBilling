@@ -1,10 +1,15 @@
+@php
+    $companyName = \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
+    $companyLogo = \App\Models\Setting::getValue('company.logo_url', null);
+    $logoSrc = $companyLogo ? (\Illuminate\Support\Str::startsWith($companyLogo, ['http://', 'https://']) ? $companyLogo : asset($companyLogo)) : null;
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'dsBilling') }} - Customer Portal</title>
+    <title>{{ $companyName }} - Customer Portal</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,15 +43,18 @@
         
         <!-- Logo -->
         <div class="relative z-10 text-right">
-            <a href="{{ route('home') }}" class="inline-flex flex-row-reverse items-center gap-2 text-4xl font-heading font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-l from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 transition-all">
-                @php $companyLogo = \App\Models\Setting::getValue('company.logo_url', null); @endphp
-                @if($companyLogo)
-                    <img src="{{ asset($companyLogo) }}" alt="Logo" class="h-10 w-auto object-contain">
+            <a href="{{ route('home') }}" class="inline-flex flex-row-reverse items-center gap-2 group transition-transform hover:scale-[1.02] focus:outline-none">
+                @if($logoSrc)
+                    <img src="{{ $logoSrc }}" alt="{{ $companyName }}" class="h-11 w-auto max-w-[240px] object-contain drop-shadow-md"
+                         onerror="this.style.display='none'; if(this.nextElementSibling){ this.nextElementSibling.classList.remove('hidden'); }">
+                    <div class="hidden">
+                        <x-application-logo class="h-11 w-auto max-w-[240px]" />
+                    </div>
                 @else
-                    {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
+                    <x-application-logo class="h-11 w-auto max-w-[240px]" />
                 @endif
             </a>
-            <div class="mt-2 text-emerald-400/80 font-medium tracking-widest text-xs uppercase letter-spacing-2">Portal Pelanggan</div>
+            <div class="mt-3 text-emerald-400/80 font-medium tracking-widest text-xs uppercase letter-spacing-2">Portal Pelanggan</div>
         </div>
 
         <!-- Hero Text -->
@@ -62,26 +70,36 @@
         
         <!-- Footer Info -->
         <div class="relative z-10 flex items-center justify-between text-sm text-slate-500 flex-row-reverse">
-            <span>&copy; {{ date('Y') }} {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}</span>
+            <span>&copy; {{ date('Y') }} {{ $companyName }}</span>
             <span class="flex items-center gap-1 flex-row-reverse"><span class="material-symbols-outlined text-[16px]">support_agent</span> 24/7 Support</span>
         </div>
     </div>
 
     <!-- Left Side: Login Form -->
-    <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
-        <div class="absolute top-4 left-4 lg:hidden">
-            <a href="{{ route('home') }}" class="text-2xl font-heading font-black text-emerald-500">
-                {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
-            </a>
-        </div>
-
-        <div class="w-full max-w-md">
-            <div class="text-center lg:text-left mb-10">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 mb-6 lg:hidden border border-emerald-500/20">
-                    <span class="material-symbols-outlined text-2xl">account_circle</span>
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative min-h-screen">
+        <div class="w-full max-w-md py-6">
+            <!-- Mobile Brand Header (Logo & Role Badge) -->
+            <div class="lg:hidden flex flex-col items-center text-center mb-8">
+                <a href="{{ route('home') }}" class="inline-flex items-center justify-center focus:outline-none transition-transform hover:scale-105">
+                    @if($logoSrc)
+                        <img src="{{ $logoSrc }}" alt="{{ $companyName }}" class="h-12 w-auto max-w-[220px] object-contain drop-shadow-md"
+                             onerror="this.style.display='none'; if(this.nextElementSibling){ this.nextElementSibling.classList.remove('hidden'); }">
+                        <div class="hidden">
+                            <x-application-logo class="h-10 w-auto max-w-[220px]" />
+                        </div>
+                    @else
+                        <x-application-logo class="h-10 w-auto max-w-[220px]" />
+                    @endif
+                </a>
+                <div class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold tracking-wide">
+                    <span class="material-symbols-outlined text-[18px]">account_circle</span>
+                    <span>Portal Pelanggan</span>
                 </div>
-                <h2 class="text-3xl font-heading font-bold text-white mb-2">Selamat Datang</h2>
-                <p class="text-slate-400">Masuk untuk mengelola layanan internet Anda.</p>
+            </div>
+
+            <div class="text-center lg:text-left mb-8">
+                <h2 class="text-2xl sm:text-3xl font-heading font-bold text-white mb-2">Selamat Datang</h2>
+                <p class="text-slate-400 text-sm sm:text-base">Masuk untuk mengelola layanan internet Anda.</p>
             </div>
 
             <!-- Session Status -->
@@ -121,7 +139,7 @@
                         </div>
                         <input id="password" x-bind:type="showPassword ? 'text' : 'password'" name="password" required autocomplete="current-password"
                             class="block w-full pl-12 pr-12 py-4 bg-slate-900/50 border border-slate-700/50 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
-                            placeholder="••••••••">
+                            placeholder="********">
                         <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors focus:outline-none">
                             <span class="material-symbols-outlined text-[20px]" x-text="showPassword ? 'visibility_off' : 'visibility'">visibility</span>
                         </button>
@@ -152,7 +170,7 @@
                     <span class="material-symbols-outlined text-[18px]">home</span>
                     Kembali ke Beranda
                 </a>
-                <a href="{{ route('admin.login') }}" class="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5 flex-row-reverse">
+                <a href="{{ route('admin.login') }}" class="text-sm font-medium text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
                     Admin Area
                 </a>

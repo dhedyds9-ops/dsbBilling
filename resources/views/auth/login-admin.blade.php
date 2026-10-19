@@ -1,10 +1,15 @@
+@php
+    $companyName = \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
+    $companyLogo = \App\Models\Setting::getValue('company.logo_url', null);
+    $logoSrc = $companyLogo ? (\Illuminate\Support\Str::startsWith($companyLogo, ['http://', 'https://']) ? $companyLogo : asset($companyLogo)) : null;
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'dsBilling') }} - Admin Access</title>
+    <title>{{ $companyName }} - Admin Access</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,15 +43,18 @@
         
         <!-- Logo -->
         <div class="relative z-10">
-            <a href="{{ route('home') }}" class="inline-flex items-center gap-2 text-4xl font-heading font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 transition-all">
-                @php $companyLogo = \App\Models\Setting::getValue('company.logo_url', null); @endphp
-                @if($companyLogo)
-                    <img src="{{ asset($companyLogo) }}" alt="Logo" class="h-10 w-auto object-contain">
+            <a href="{{ route('home') }}" class="inline-flex items-center gap-2 group transition-transform hover:scale-[1.02] focus:outline-none">
+                @if($logoSrc)
+                    <img src="{{ $logoSrc }}" alt="{{ $companyName }}" class="h-11 w-auto max-w-[240px] object-contain drop-shadow-md"
+                         onerror="this.style.display='none'; if(this.nextElementSibling){ this.nextElementSibling.classList.remove('hidden'); }">
+                    <div class="hidden">
+                        <x-application-logo class="h-11 w-auto max-w-[240px]" />
+                    </div>
                 @else
-                    {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
+                    <x-application-logo class="h-11 w-auto max-w-[240px]" />
                 @endif
             </a>
-            <div class="mt-2 text-cyan-400/80 font-medium tracking-widest text-xs uppercase letter-spacing-2">ISP Management System</div>
+            <div class="mt-3 text-cyan-400/80 font-medium tracking-widest text-xs uppercase letter-spacing-2">ISP Management System</div>
         </div>
 
         <!-- Hero Text -->
@@ -62,26 +70,36 @@
         
         <!-- Footer Info -->
         <div class="relative z-10 flex items-center justify-between text-sm text-slate-500">
-            <span>&copy; {{ date('Y') }} {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}</span>
+            <span>&copy; {{ date('Y') }} {{ $companyName }}</span>
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">verified_user</span> Secure Access</span>
         </div>
     </div>
 
     <!-- Right Side: Login Form -->
-    <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
-        <div class="absolute top-4 right-4 lg:hidden">
-            <a href="{{ route('home') }}" class="text-2xl font-heading font-black text-cyan-500">
-                {{ \App\Models\Setting::getValue('company.name', 'dsBilling') }}
-            </a>
-        </div>
-
-        <div class="w-full max-w-md">
-            <div class="text-center lg:text-left mb-10">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 mb-6 lg:hidden border border-cyan-500/20">
-                    <span class="material-symbols-outlined text-2xl">admin_panel_settings</span>
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative min-h-screen">
+        <div class="w-full max-w-md py-6">
+            <!-- Mobile Brand Header (Logo & Role Badge) -->
+            <div class="lg:hidden flex flex-col items-center text-center mb-8">
+                <a href="{{ route('home') }}" class="inline-flex items-center justify-center focus:outline-none transition-transform hover:scale-105">
+                    @if($logoSrc)
+                        <img src="{{ $logoSrc }}" alt="{{ $companyName }}" class="h-12 w-auto max-w-[220px] object-contain drop-shadow-md"
+                             onerror="this.style.display='none'; if(this.nextElementSibling){ this.nextElementSibling.classList.remove('hidden'); }">
+                        <div class="hidden">
+                            <x-application-logo class="h-10 w-auto max-w-[220px]" />
+                        </div>
+                    @else
+                        <x-application-logo class="h-10 w-auto max-w-[220px]" />
+                    @endif
+                </a>
+                <div class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold tracking-wide">
+                    <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                    <span>Admin Panel</span>
                 </div>
-                <h2 class="text-3xl font-heading font-bold text-white mb-2">Welcome Back, Admin</h2>
-                <p class="text-slate-400">Silakan masuk ke ruang kendali Anda.</p>
+            </div>
+
+            <div class="text-center lg:text-left mb-8">
+                <h2 class="text-2xl sm:text-3xl font-heading font-bold text-white mb-2">Welcome Back, Admin</h2>
+                <p class="text-slate-400 text-sm sm:text-base">Silakan masuk ke ruang kendali Anda.</p>
             </div>
 
             <!-- Session Status -->
