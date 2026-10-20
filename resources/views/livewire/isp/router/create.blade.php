@@ -12,7 +12,7 @@
 
     {{-- CARD FORM UTAMA --}}
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <form wire:submit.prevent="save" class="p-6 space-y-6">
+        <form wire:submit.prevent="save" class="p-4 space-y-6">
             {{-- BAGIAN 1: INFORMASI UTAMA ROUTER --}}
             <div>
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-slate-700 gap-3">
@@ -267,7 +267,7 @@
                         </button>
                     </div>
 
-                    <div class="p-6 space-y-4">
+                    <div class="p-4 space-y-4">
                         <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                             Skrip ini otomatis mengaktifkan service API, membuat akun API aman, mengonfigurasi RADIUS Client (PPPoE &amp; Hotspot), serta membuka port firewall MikroTik.
                         </p>

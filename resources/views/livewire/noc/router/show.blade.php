@@ -1,4 +1,4 @@
-﻿{{--
+{{--
  NOC: Router Detail View
  Tabs: Overview | Sessions | Health | Traffic | Alarms | Interfaces | Logs
  Polling: 60 seconds
@@ -410,7 +410,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="p-6 text-center text-xs noc-muted">Tidak ada sesi PPPoE aktif.</td></tr>
+                    <tr><td colspan="7" class="p-4 text-center text-xs noc-muted">Tidak ada sesi PPPoE aktif.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -450,7 +450,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="p-6 text-center text-xs noc-muted">Tidak ada sesi Hotspot aktif.</td></tr>
+                    <tr><td colspan="7" class="p-4 text-center text-xs noc-muted">Tidak ada sesi Hotspot aktif.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -489,7 +489,7 @@
                         <td class="p-3 noc-muted text-xs">{{ $sess->session_started_at?->format('d M H:i:s') }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="p-6 text-center text-xs noc-muted">No active sessions.</td></tr>
+                    <tr><td colspan="6" class="p-4 text-center text-xs noc-muted">No active sessions.</td></tr>
                     @endforelse
                 </tbody>
             </table>

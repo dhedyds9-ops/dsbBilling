@@ -187,7 +187,7 @@
                 </button>
             </div>
             
-            <form wire:submit.prevent="saveSchedule" class="p-6 space-y-4">
+            <form wire:submit.prevent="saveSchedule" class="p-4 space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Tanggal & Waktu Survei</label>
@@ -259,7 +259,7 @@
                 </button>
             </div>
             
-            <form wire:submit.prevent="saveSurveyResult" class="p-6 space-y-5">
+            <form wire:submit.prevent="saveSurveyResult" class="p-4 space-y-5">
                 {{-- ODP & Port --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>

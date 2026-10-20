@@ -17,7 +17,7 @@
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Masukkan detail kontak dan informasi awal lead.</p>
         </div>
         
-        <form wire:submit.prevent="save" class="p-6 space-y-6">
+        <form wire:submit.prevent="save" class="p-4 space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nama Lengkap *</label>

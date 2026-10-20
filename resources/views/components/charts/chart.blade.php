@@ -65,7 +65,7 @@ $defaultOptions = [
 $mergedOptions = array_merge_recursive($defaultOptions, $options);
 @endphp
 
-<div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-soft" {{ $attributes }}>
+<div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-soft" {{ $attributes }}>
     @if ($title)
         <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ $title }}</h3>
     @endif

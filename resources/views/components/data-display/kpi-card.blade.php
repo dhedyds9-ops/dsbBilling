@@ -32,7 +32,7 @@ $chartColorMap = [
 ];
 @endphp
 
-<div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-soft" {{ $attributes }}>
+<div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-soft" {{ $attributes }}>
     {{-- Header --}}
     <div class="flex items-center justify-between mb-4">
         <div>

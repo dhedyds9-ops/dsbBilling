@@ -117,7 +117,7 @@
         </div>
 
         <!-- Page Content -->
-        <main class="flex-1 p-6 print:p-0 print:m-0">
+        <main class="flex-1 p-4 print:p-0 print:m-0">
             {{ $slot ?? '' }}
             @yield('content')
         </main>

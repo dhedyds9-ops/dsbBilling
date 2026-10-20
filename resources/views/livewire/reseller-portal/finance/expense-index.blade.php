@@ -1,4 +1,4 @@
-<div class="p-6 bg-slate-50 dark:bg-slate-900/30 min-h-screen">
+<div class="p-4 bg-slate-50 dark:bg-slate-900/30 min-h-screen">
 
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -277,7 +277,7 @@
                     </div>
 
                     <!-- Modal Body -->
-                    <div class="p-6 space-y-4">
+                    <div class="p-4 space-y-4">
                         <!-- Tanggal & Kategori -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -401,7 +401,7 @@
             <div wire:click="cancelDelete" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"></div>
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-slate-200 dark:border-slate-700 p-6">
+            <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-slate-200 dark:border-slate-700 p-4">
                 <div class="flex items-start gap-4">
                     <div class="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                         <span class="material-symbols-outlined notranslate text-xl" translate="no">warning</span>

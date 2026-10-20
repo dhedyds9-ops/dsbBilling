@@ -246,7 +246,7 @@
     @if($showImportModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-500/75 dark:bg-slate-900/80">
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="w-full max-w-lg bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6">
+                <div class="w-full max-w-lg bg-white dark:bg-slate-800 rounded-xl shadow-xl p-4">
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Import Paket Internet</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Pilih file Excel (.xlsx, .xls) atau CSV untuk diimpor.</p>
                     <div class="space-y-4">
@@ -269,7 +269,7 @@
     @if($showBulkEditModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-500/75 dark:bg-slate-900/80">
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6">
+                <div class="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-xl shadow-xl p-4">
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Edit Massal {{ count($selectedPackages) }} Paket</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Isi hanya kolom yang ingin diubah.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

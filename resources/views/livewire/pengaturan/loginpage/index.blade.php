@@ -1,6 +1,6 @@
-<div class="space-y-6">
+<div class="space-y-4 pb-10">
     <!-- Header -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <div class="flex items-center gap-2">
                 <span class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
@@ -27,11 +27,11 @@
     </div>
 
     <!-- Main Content Cards Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Left: Download Box & Feature Overview (2 cols) -->
-        <div class="lg:col-span-2 space-y-6">
+        <div class="lg:col-span-2 space-y-4">
             <!-- Download Hero Banner -->
-            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
                 <div class="absolute -right-8 -bottom-8 opacity-10">
                     <span class="material-symbols-outlined text-[200px]" translate="no">download</span>
                 </div>
@@ -59,7 +59,7 @@
             </div>
 
             <!-- Features Highlights -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
                 <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span class="material-symbols-outlined text-blue-500" translate="no">featured_play_list</span>
                     <span>Fitur & Keunggulan Template</span>
@@ -110,8 +110,8 @@
         </div>
 
         <!-- Right: Installation Guide (1 col) -->
-        <div class="space-y-6">
-            <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+        <div class="space-y-4 pb-10">
+            <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
                 <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span class="material-symbols-outlined text-blue-500" translate="no">install_mobile</span>
                     <span>Panduan Pemasangan</span>

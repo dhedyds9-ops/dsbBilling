@@ -1,5 +1,5 @@
 <div class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-4">
         <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6">Generate Payroll</h2>
 
         @if (session()->has('error'))

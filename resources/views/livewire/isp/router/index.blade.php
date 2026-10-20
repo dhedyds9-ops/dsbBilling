@@ -172,7 +172,7 @@
                         <span class="material-symbols-outlined notranslate text-[20px]" translate="no">close</span>
                     </button>
                 </div>
-                <div class="p-6 space-y-4">
+                <div class="p-4 space-y-4">
                     <!-- Tab Selector -->
                     <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
                         <button type="button" wire:click="$set('modalTab', 'oneline')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer {{ $modalTab === 'oneline' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200' }}">

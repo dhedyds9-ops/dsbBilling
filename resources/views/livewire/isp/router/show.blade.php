@@ -7,7 +7,7 @@
     <div class="mt-6">
         @if($activeTab === 'overview')
     <!-- TopBar / Header Section -->
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
         <div class="flex items-center gap-4">
             <a href="{{ route('isp.routers.index') }}" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Kembali">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">arrow_back</span>
@@ -47,19 +47,19 @@
         </div>
     </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col justify-center">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-col justify-center">
                     <p class="text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2">
                         <span class="material-symbols-outlined notranslate text-[16px]" translate="no">fingerprint</span> Identity
                     </p>
                     <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ $systemInfo['identity'] ?? '-' }}</p>
                 </div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col justify-center">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-col justify-center">
                     <p class="text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2">
                         <span class="material-symbols-outlined notranslate text-[16px]" translate="no">verified</span> Version
                     </p>
                     <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ $systemInfo['version'] ?? '-' }}</p>
                 </div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col justify-center">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-col justify-center">
                     <p class="text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2">
                         <span class="material-symbols-outlined notranslate text-[16px]" translate="no">memory</span> CPU Load
                     </p>
@@ -67,7 +67,7 @@
                         <p class="text-3xl font-bold {{ ($systemInfo['cpu_load'] ?? 0) > 80 ? 'text-red-500' : 'text-slate-900 dark:text-white' }}">{{ $systemInfo['cpu_load'] ?? 0 }}%</p>
                     </div>
                 </div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col justify-center">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-col justify-center">
                     <p class="text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2">
                         <span class="material-symbols-outlined notranslate text-[16px]" translate="no">schedule</span> Uptime
                     </p>
@@ -77,7 +77,7 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- System Hardware Info -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
                     <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
                         <span class="material-symbols-outlined notranslate text-blue-500 text-[20px]" translate="no">developer_board</span>
                         Model Board
@@ -99,7 +99,7 @@
                 </div>
 
                 <!-- Storage & Memory -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
                     <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
                         <span class="material-symbols-outlined notranslate text-emerald-500 text-[20px]" translate="no">storage</span>
                         Memory (RAM)
@@ -781,7 +781,7 @@
                         $max = max($maxTx, $maxRx, 1000000);
                     @endphp
                     
-                    <div class="p-6">
+                    <div class="p-4">
                         <div class="grid grid-cols-2 gap-4 mb-6">
                             <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/50">
                                 <p class="text-sm font-bold text-blue-600 dark:text-blue-400 mb-1">TX (Upload)</p>

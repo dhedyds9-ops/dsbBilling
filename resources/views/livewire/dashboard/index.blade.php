@@ -341,7 +341,7 @@
                         </div>
                     </div>
                     @empty
-                    <div class="p-6 text-center flex flex-col items-center justify-center h-full">
+                    <div class="p-4 text-center flex flex-col items-center justify-center h-full">
                         <span class="material-symbols-outlined notranslate text-emerald-500 text-[36px] mb-2" translate="no">check_circle</span>
                         <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Semua Layanan Normal</p>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Tidak ada gangguan jaringan atau tagihan tertunda kritis.</p>

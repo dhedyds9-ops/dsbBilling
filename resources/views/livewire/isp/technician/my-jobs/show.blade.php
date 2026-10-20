@@ -10,7 +10,7 @@
         </div>
     </div>
     <x-ui.card>
-        <div class="p-6 text-center text-slate-500 dark:text-slate-400">
+        <div class="p-4 text-center text-slate-500 dark:text-slate-400">
             Detail job akan ditampilkan di sini.
         </div>
     </x-ui.card>

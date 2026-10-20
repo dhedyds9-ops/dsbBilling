@@ -55,7 +55,7 @@
         </div>
     </div>
 
-    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-6 text-blue-800 dark:text-blue-300">
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 text-blue-800 dark:text-blue-300">
         <h4 class="font-bold mb-2 flex items-center gap-2"><span class="material-symbols-outlined notranslate text-lg" translate="no">info</span> Informasi Margin</h4>
         <p class="text-sm">Laporan komisi ini merupakan estimasi keuntungan bersih (*Net Profit*) yang didapatkan dari seluruh invoice yang telah berstatus LUNAS pada bulan berjalan. Perhitungan didapat dari: <strong>(Total Harga Jual ke Pelanggan) - (Harga Modal/Settlement dari Pusat)</strong>.</p>
     </div>

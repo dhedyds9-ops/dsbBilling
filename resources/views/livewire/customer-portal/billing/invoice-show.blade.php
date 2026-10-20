@@ -23,7 +23,7 @@
                 <span class="material-symbols-outlined text-white text-2xl">payments</span>
                 <h3 class="text-lg font-bold text-white">Pembayaran</h3>
             </div>
-            <div class="p-4 sm:p-6 space-y-4">
+            <div class="p-4 sm:p-4 space-y-4">
                 <p class="text-sm text-slate-500">Pilih metode pembayaran di bawah ini untuk melunasi tagihan sebesar <strong class="text-slate-800 dark:text-white">Rp {{ number_format(max(0, $invoice->total_amount - $invoice->paid_amount), 0, ',', '.') }}</strong></p>
 
                 @forelse($activeGateways ?? [] as $key => $gateway)
@@ -174,7 +174,7 @@
 
         <!-- Invoice Viewer Container -->
         <div class="w-full overflow-x-auto bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-2 sm:p-4 print-reset-padding print-hide-bg">
-            <div class="min-w-[700px] bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 sm:p-8 text-slate-800 dark:text-slate-200">
+            <div class="min-w-[700px] bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 sm:p-8 text-slate-800 dark:text-slate-200">
                 <x-billing.invoice-document :invoice="$invoice" :company="$company" />
             </div>
         </div>

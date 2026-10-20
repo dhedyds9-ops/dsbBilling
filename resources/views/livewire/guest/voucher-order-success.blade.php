@@ -20,7 +20,7 @@
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Voucher internet Anda sudah siap digunakan.</p>
                 </div>
 
-                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-6 border border-gray-200 dark:border-gray-700 mb-6 relative overflow-hidden">
+                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700 mb-6 relative overflow-hidden">
                     <div class="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-primary-100 rounded-bl-full z-0"></div>
                     
                     <div class="relative z-10 space-y-4">

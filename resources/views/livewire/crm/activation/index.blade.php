@@ -175,7 +175,7 @@
 
             {{-- Modal Body --}}
             <form wire:submit="activateService">
-                <div class="p-6 space-y-6">
+                <div class="p-4 space-y-6">
                     {{-- Alert Box --}}
                     <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 flex gap-3 text-blue-800 dark:text-blue-300">
                         <span class="material-symbols-outlined notranslate shrink-0" translate="no">info</span>

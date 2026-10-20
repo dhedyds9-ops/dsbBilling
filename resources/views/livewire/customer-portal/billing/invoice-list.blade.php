@@ -1,6 +1,6 @@
 @section('header_title', 'Tagihan Saya')
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)]">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)]">
     
     <div class="mb-4">
         <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Riwayat Tagihan</h1>

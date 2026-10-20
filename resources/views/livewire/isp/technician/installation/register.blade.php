@@ -23,7 +23,7 @@
     @endif
 
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <form wire:submit="registerOnu" class="p-6">
+        <form wire:submit="registerOnu" class="p-4">
             <div class="flex flex-col gap-6">
                 <!-- Data Perangkat -->
                 <div>

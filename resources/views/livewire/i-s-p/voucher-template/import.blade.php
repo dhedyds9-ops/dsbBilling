@@ -8,7 +8,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-slate-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
+                <div class="p-4 text-gray-900 dark:text-gray-100">
                     
                     <div class="mb-6 bg-blue-50 dark:bg-blue-900/30 p-4 rounded border border-blue-200">
                         <h3 class="text-blue-800 font-bold mb-2">Sistem Migrasi Otomatis</h3>
@@ -77,7 +77,7 @@
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Kode ini yang akan disimpan dan dapat diedit lebih lanjut di Template Editor.</p>
                                 </div>
                             @else
-                                <div class="h-full flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900/50 p-6 text-center text-gray-500 dark:text-gray-400">
+                                <div class="h-full flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900/50 p-4 text-center text-gray-500 dark:text-gray-400">
                                     Silakan masukkan source code legacy dan klik "Preview Konversi" untuk melihat hasilnya.
                                 </div>
                             @endif

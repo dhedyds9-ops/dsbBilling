@@ -5,7 +5,7 @@
     </a>
 @endsection
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] pb-24">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] pb-24">
     <div class="mb-5">
         <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Laporkan Kendala</h1>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Sampaikan keluhan atau permintaan bantuan kepada tim teknis kami.</p>

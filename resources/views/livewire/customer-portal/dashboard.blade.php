@@ -11,7 +11,7 @@
     $serviceBadgeLabel = $isHotspotService ? 'Hotspot' : 'PPPoE';
 @endphp
 
-<div class="max-w-md mx-auto sm:max-w-full p-4 sm:p-6 bg-slate-50 dark:bg-slate-900 min-h-[calc(100vh-4rem)] pb-24">
+<div class="max-w-md mx-auto sm:max-w-full p-4 sm:p-4 bg-slate-50 dark:bg-slate-900 min-h-[calc(100vh-4rem)] pb-24">
     <!-- MOBILE WRAPPER (Cards & spacing optimized for mobile, scales up for desktop) -->
     <div class="max-w-md mx-auto sm:max-w-4xl space-y-4">
         
@@ -25,7 +25,7 @@
             <div class="absolute bottom-0 left-0 w-40 h-40 bg-emerald-300/20 dark:bg-emerald-900/40 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3"></div>
             
             <!-- Content -->
-            <div class="relative z-10 p-5 sm:p-6 flex items-center justify-between">
+            <div class="relative z-10 p-5 sm:p-4 flex items-center justify-between">
                 <div class="flex-1 pr-2">
                     <!-- Status Badge -->
                     <div class="inline-flex items-center gap-1.5 px-2.5 py-1 

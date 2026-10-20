@@ -20,7 +20,7 @@
             <div class="absolute top-3 right-3 opacity-10 text-indigo-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:64px">account_balance_wallet</span>
             </div>
-            <div class="p-6">
+            <div class="p-4">
                 <h3 class="text-sm font-bold text-indigo-500 uppercase tracking-widest mb-2">Saldo Aktif Saat Ini</h3>
                 <div class="text-4xl font-black text-indigo-700 dark:text-indigo-300 mb-3">Rp {{ number_format($user->balance, 0, ',', '.') }}</div>
                 <div class="flex items-center text-xs">
@@ -45,7 +45,7 @@
             <div class="absolute top-3 right-3 opacity-10 text-emerald-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:64px">payments</span>
             </div>
-            <div class="p-6">
+            <div class="p-4">
                 <h3 class="text-sm font-bold text-emerald-500 uppercase tracking-widest mb-2">Total Pengisian Bulan Ini</h3>
                 <div class="text-4xl font-black text-emerald-700 dark:text-emerald-300 mb-3">Rp {{ number_format($totalTopup, 0, ',', '.') }}</div>
                 <div class="text-xs text-slate-500 dark:text-slate-400">
@@ -60,7 +60,7 @@
             <div class="absolute top-3 right-3 opacity-10 text-amber-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:64px">hourglass_top</span>
             </div>
-            <div class="p-6">
+            <div class="p-4">
                 <h3 class="text-sm font-bold text-amber-500 uppercase tracking-widest mb-2">Menunggu Persetujuan</h3>
                 <div class="text-4xl font-black text-amber-700 dark:text-amber-300 mb-3">Rp {{ number_format($totalPending, 0, ',', '.') }}</div>
                 <div class="text-xs text-slate-500 dark:text-slate-400">
@@ -71,7 +71,7 @@
     </div>
 
     <!-- Info Section -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
         <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
             <span class="material-symbols-outlined notranslate mr-2 text-indigo-500" translate="no">info</span>
             Informasi Penggunaan Saldo

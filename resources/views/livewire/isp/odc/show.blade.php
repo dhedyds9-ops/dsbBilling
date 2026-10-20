@@ -33,7 +33,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div class="p-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div class="p-4">
             <x-slot name="header">
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Informasi ODC</h3>
             </x-slot>
@@ -79,7 +79,7 @@
             </div>
         </div></div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div class="p-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div class="p-4">
             <x-slot name="header">
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Statistik</h3>
             </x-slot>

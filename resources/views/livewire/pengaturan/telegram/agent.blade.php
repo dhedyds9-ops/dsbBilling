@@ -115,13 +115,13 @@
     @if($showModal)
         <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="px-4 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ $form['id'] ? 'Edit Agen' : 'Tambah Agen Baru' }}</h3>
                     <button wire:click="$set('showModal', false)" class="text-slate-400 hover:text-slate-500 dark:text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-                <div class="p-6 space-y-4">
+                <div class="p-4 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Agen *</label>

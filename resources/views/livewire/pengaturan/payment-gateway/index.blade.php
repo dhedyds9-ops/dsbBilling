@@ -1,48 +1,51 @@
-<div>
-  <div class="px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-wrap gap-3">
-    <div>
-      <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan Payment Gateway</h1>
-      <div class="text-xs text-slate-500 dark:text-slate-400">Midtrans, Xendit, Duitku, Tripay, Manual Bank Transfer & e-Wallet</div>
+<div class="space-y-4 pb-10">
+  {{-- Header & Tab Navigation Card --}}
+  <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan Payment Gateway</h1>
+        <div class="text-xs text-slate-500 dark:text-slate-400">Midtrans, Xendit, Duitku, Tripay, Manual Bank Transfer & e-Wallet</div>
+      </div>
+      <div class="flex items-center gap-2">
+        @if ($savedStatus === 'saved')
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">check</span>
+            Tersimpan
+          </span>
+        @elseif ($savedStatus === 'error')
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">error</span>
+            Gagal Disimpan
+          </span>
+        @endif
+        <span class="text-xs text-slate-400 dark:text-slate-500 italic hidden sm:inline">Simpan dilakukan per tab ↓</span>
+      </div>
     </div>
-    <div class="flex items-center gap-2">
-      @if ($savedStatus === 'saved')
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium">
-          <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">check</span>
-          Tersimpan
-        </span>
-      @elseif ($savedStatus === 'error')
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium">
-          <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">error</span>
-          Gagal Disimpan
-        </span>
-      @endif
-      <span class="text-xs text-slate-400 dark:text-slate-500 italic">Simpan dilakukan per tab ↓</span>
-    </div>
-  </div>
 
-  <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-    <nav class="flex items-center gap-1 text-sm font-medium overflow-x-auto flex-wrap">
-      @foreach(['midtrans'=>'Midtrans','xendit'=>'Xendit','duitku'=>'Duitku','tripay'=>'Tripay','ipaymu'=>'iPaymu','manual'=>'Bank Manual','ewallet'=>'e-Wallet Manual','general'=>'Umum'] as $k=>$l)
-        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">{{ $l }}</button>
-      @endforeach
-    </nav>
+    <div class="px-3 py-2 bg-slate-50/50 dark:bg-slate-900/30 overflow-x-auto no-scrollbar">
+      <nav class="flex items-center gap-1.5 text-xs sm:text-sm font-medium min-w-max pb-0.5">
+        @foreach(['midtrans'=>'Midtrans','xendit'=>'Xendit','duitku'=>'Duitku','tripay'=>'Tripay','ipaymu'=>'iPaymu','manual'=>'Bank Manual','ewallet'=>'e-Wallet Manual','general'=>'Umum'] as $k=>$l)
+          <button type="button" wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-colors {{ $activeTab===$k ? 'bg-indigo-600 text-white shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700/60' }}">{{ $l }}</button>
+        @endforeach
+      </nav>
+    </div>
   </div>
 
   @if (!empty($errorMessage))
-    <div class="mx-4 mt-3 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+    <div class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
       <span class="material-symbols-outlined notranslate text-red-500 mt-0.5" style="font-size:18px">error</span>
       <div class="flex-1 font-medium">{{ $errorMessage }}</div>
     </div>
   @endif
 
   @if (!empty($successMessage))
-    <div class="mx-4 mt-3 p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+    <div class="p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-300">
       <span class="material-symbols-outlined notranslate text-emerald-500 mt-0.5" style="font-size:18px">check_circle</span>
       <div class="flex-1 font-medium">{{ $successMessage }}</div>
     </div>
   @endif
 
-  <div class="p-4 grid grid-cols-1 xl:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
     <form class="xl:col-span-2 space-y-4 text-sm">
       @if($activeTab === 'general')
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">

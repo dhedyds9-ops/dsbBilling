@@ -1,9 +1,9 @@
-<div class="space-y-6">
+<div class="space-y-4 pb-10">
     <x-admin.page-header title="Aktivasi Lisensi dsBilling" subtitle="Verifikasi lisensi dsBilling Anda.">
     </x-admin.page-header>
     <x-admin.breadcrumbs :breadcrumbs="$breadcrumbs" />
 
-    <div class="p-4 sm:p-6 pb-24 lg:pb-6">
+    <div class="pb-10">
         <div class="max-w-3xl mx-auto mt-4">
             <!-- Flash Messages -->
             @if(session()->has('success'))
@@ -19,7 +19,7 @@
             @endif
 
             <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
+                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
                     <h3 class="text-base font-semibold text-slate-900 dark:text-white">Status Lisensi dsBilling</h3>
                     
                     @if($isValid)
@@ -35,8 +35,8 @@
                     @endif
                 </div>
                 
-                <div class="p-6">
-                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">
+                <div class="p-4">
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
                         Silakan masukkan <strong>License Key</strong> yang Anda dapatkan saat membeli dsBilling. Lisensi ini mengikat pada Hardware ID server Anda saat ini untuk mencegah pembajakan.
                     </p>
 

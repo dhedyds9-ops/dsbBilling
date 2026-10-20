@@ -7,7 +7,7 @@
     </div>
 
     <form wire:submit="save" class="bg-white dark:bg-slate-800 shadow-sm rounded-2xl border border-slate-200 dark:border-slate-700">
-        <div class="p-6 space-y-6 sm:p-8">
+        <div class="p-4 space-y-6 sm:p-8">
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div class="sm:col-span-2">
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Nama Profile <span class="text-red-500">*</span></label>

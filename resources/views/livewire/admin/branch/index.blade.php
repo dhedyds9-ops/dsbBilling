@@ -178,7 +178,7 @@
             </div>
 
             {{-- Body --}}
-            <div class="p-6 overflow-y-auto">
+            <div class="p-4 overflow-y-auto">
                 <form wire:submit.prevent="save" id="branchForm">
                     <div class="space-y-4">
 

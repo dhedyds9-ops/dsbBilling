@@ -96,7 +96,7 @@
                         <span class="text-sm font-bold text-emerald-600">{{ $row['value'] ?? 0 }}%</span>
                     </div>
                 @empty
-                    <div class="p-6 text-center text-slate-500 dark:text-slate-400 text-sm">Tidak ada data</div>
+                    <div class="p-4 text-center text-slate-500 dark:text-slate-400 text-sm">Tidak ada data</div>
                 @endforelse
             </div>
         </div>
@@ -116,7 +116,7 @@
                         <span class="text-sm font-bold text-red-600">{{ $row['value'] ?? 0 }}%</span>
                     </div>
                 @empty
-                    <div class="p-6 text-center text-slate-500 dark:text-slate-400 text-sm">Tidak ada perangkat bermasalah</div>
+                    <div class="p-4 text-center text-slate-500 dark:text-slate-400 text-sm">Tidak ada perangkat bermasalah</div>
                 @endforelse
             </div>
         </div>

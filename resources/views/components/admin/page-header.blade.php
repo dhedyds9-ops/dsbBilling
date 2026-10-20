@@ -52,7 +52,7 @@
                       radial-gradient(circle_at_bottom_left,var(--ds-secondary),transparent_55%)]"
         ></div>
 
-        <div class="relative p-5 sm:p-6 flex flex-col gap-5">
+        <div class="relative p-4 flex flex-col gap-4">
             <div
                 class="flex flex-col md:flex-row md:items-start md:justify-between
                        gap-5"

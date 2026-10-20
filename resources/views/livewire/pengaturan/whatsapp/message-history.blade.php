@@ -147,13 +147,13 @@
     @if($showSendModal)
         <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="px-4 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Kirim Pesan Manual</h3>
                     <button wire:click="$set('showSendModal'- false)" class="text-slate-400 hover:text-slate-500 dark:text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-                <div class="p-6 space-y-4">
+                <div class="p-4 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nomor Tujuan *</label>
                         <input type="text" wire:model="newPhone" placeholder="628xxx" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-blue-500 text-sm dark:bg-slate-900 dark:text-slate-100">
@@ -165,7 +165,7 @@
                         @error('newMessage') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
                 </div>
-                <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                <div class="px-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
                     <button wire:click="$set('showSendModal'- false)" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors">Batal</button>
                     <button wire:click="sendManualMessage" class="px-4 py-2 text-sm font-medium bg-[#25D366] text-white rounded-lg hover:bg-[#128C7E] transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
@@ -180,13 +180,13 @@
     @if($showAssignModal)
         <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="px-4 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Assign Agen</h3>
                     <button wire:click="$set('showAssignModal'- false)" class="text-slate-400 hover:text-slate-500 dark:text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-                <div class="p-6">
+                <div class="p-4">
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pilih Agen</label>
                     <select wire:model="assigneeId" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-blue-500 text-sm dark:bg-slate-900 dark:text-slate-100">
                         <option value="">-- Tidak Ada (Unassigned) --</option>
@@ -195,7 +195,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                <div class="px-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
                     <button wire:click="$set('showAssignModal'- false)" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors">Batal</button>
                     <button wire:click="saveAssign" class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">Simpan</button>
                 </div>
@@ -207,13 +207,13 @@
     @if($showDetailModal && $selectedMessage)
         <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                <div class="px-4 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
                     <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Detail Pesan</h3>
                     <button wire:click="closeDetail" class="text-slate-400 hover:text-slate-500 dark:text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-                <div class="p-6 overflow-y-auto space-y-6">
+                <div class="p-4 overflow-y-auto space-y-6">
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div>
                             <span class="block text-slate-500 dark:text-slate-400 mb-1">Penerima</span>

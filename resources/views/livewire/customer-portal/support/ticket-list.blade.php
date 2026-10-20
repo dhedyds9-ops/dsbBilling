@@ -1,6 +1,6 @@
 @section('header_title', 'Dukungan & Tiket')
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] relative pb-24">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] relative pb-24">
     <div class="mb-5">
         <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Riwayat Pengaduan</h1>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Pantau status tiket bantuan teknis Anda.</p>

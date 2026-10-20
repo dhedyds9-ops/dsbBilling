@@ -133,13 +133,13 @@
     @if($showModal)
         <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white dark:bg-slate-800 rounded shadow-xl w-full max-w-md overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="px-4 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ $form['id'] ?'Edit Agen' : 'Tambah Agen Email' }}</h3>
                     <button wire:click="$set('showModal'- false)" class="text-slate-400 hover:text-slate-500 dark:text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-                <div class="p-6 space-y-4 text-sm">
+                <div class="p-4 space-y-4 text-sm">
                     <div>
                         <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Agen / Departemen *</label>
                         <input type="text" wire:model="form.name" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
@@ -160,7 +160,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                <div class="px-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
                     <button wire:click="$set('showModal'- false)" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-700 rounded transition-colors">Batal</button>
                     <button wire:click="save" class="px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors">Simpan</button>
                 </div>

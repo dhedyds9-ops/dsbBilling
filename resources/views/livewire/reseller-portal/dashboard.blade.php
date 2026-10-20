@@ -1,4 +1,4 @@
-<div class="p-6 bg-slate-50 dark:bg-slate-900/30 min-h-screen">
+<div class="p-4 bg-slate-50 dark:bg-slate-900/30 min-h-screen">
 
     <!-- Page Header -->
     @section('page_title')
@@ -380,7 +380,7 @@
         <div class="p-4 border-b border-slate-100 dark:border-slate-700">
             <h2 class="text-sm font-bold text-slate-800 dark:text-white">Feed Aktivitas Pelanggan</h2>
         </div>
-        <div class="p-6 max-h-[600px] overflow-y-auto space-y-4">
+        <div class="p-4 max-h-[600px] overflow-y-auto space-y-4">
             @if($activities && count($activities) > 0)
                 @foreach($activities as $act)
                     <div class="flex gap-4 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">

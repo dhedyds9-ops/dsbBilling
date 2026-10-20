@@ -199,7 +199,7 @@
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
             <div class="inline-block align-bottom bg-white dark:bg-slate-900 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-slate-200 dark:border-slate-700">
                 <form wire:submit.prevent="save">
-                    <div class="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="px-4 pt-5 pb-4 sm:p-4 sm:pb-4">
                         <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-200 dark:border-slate-800">
                             <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100" id="modal-title">
                                 {{ $assetId ? 'Edit Aset' : 'Tambah Aset' }}

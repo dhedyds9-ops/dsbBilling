@@ -14,7 +14,7 @@
 
     <!-- Result: Available -->
     @if($status === 'available')
-        <div class="max-w-2xl mx-auto bg-green-50 dark:bg-green-900/30 border border-green-200 rounded-2xl p-6 sm:p-8 text-center animate-pulse-once">
+        <div class="max-w-2xl mx-auto bg-green-50 dark:bg-green-900/30 border border-green-200 rounded-2xl p-4 sm:p-8 text-center animate-pulse-once">
             <div class="w-16 h-16 bg-green-100 dark:bg-green-900/50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span class="material-symbols-outlined text-[32px]">check_circle</span>
             </div>
@@ -26,14 +26,14 @@
 
     <!-- Result: Unavailable -->
     @if($status === 'unavailable')
-        <div class="max-w-2xl mx-auto bg-orange-50 border border-orange-200 rounded-2xl p-6 sm:p-8 text-center">
+        <div class="max-w-2xl mx-auto bg-orange-50 border border-orange-200 rounded-2xl p-4 sm:p-8 text-center">
             <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span class="material-symbols-outlined text-[32px]">warning</span>
             </div>
             <h3 class="text-xl sm:text-xl font-bold text-orange-800 mb-2">Maaf, Area Belum Terdeteksi</h3>
             <p class="text-orange-700 mb-6">Lokasi <strong>{{ $searchQuery }}</strong> belum terdeteksi di database jaringan kami. Tinggalkan data Anda agar kami dapat melakukan survei area.</p>
             
-            <form wire:submit="submitLead" class="text-left space-y-4 max-w-md mx-auto mt-6 bg-white dark:bg-slate-800 p-6 rounded-xl border border-orange-100 shadow-sm">
+            <form wire:submit="submitLead" class="text-left space-y-4 max-w-md mx-auto mt-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-orange-100 shadow-sm">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Lengkap</label>
                     <input type="text" wire:model="formName" required class="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 dark:bg-slate-900 dark:text-slate-100">
@@ -59,7 +59,7 @@
 
     <!-- Result: Submitted -->
     @if($status === 'submitted')
-        <div class="max-w-2xl mx-auto bg-blue-50 dark:bg-blue-900/30 border border-blue-200 rounded-2xl p-6 sm:p-8 text-center animate-pulse-once">
+        <div class="max-w-2xl mx-auto bg-blue-50 dark:bg-blue-900/30 border border-blue-200 rounded-2xl p-4 sm:p-8 text-center animate-pulse-once">
             <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/50 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span class="material-symbols-outlined text-[32px]">mark_email_read</span>
             </div>

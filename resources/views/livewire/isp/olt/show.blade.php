@@ -92,7 +92,7 @@
 
         {{-- Informasi OLT --}}
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div class="p-6">
+            <div class="p-4">
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Informasi OLT</h3>
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
@@ -147,7 +147,7 @@
 
         {{-- Distribusi PON Port --}}
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div class="p-6">
+            <div class="p-4">
                 <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Distribusi Port PON</h3>
                 <div class="space-y-4">
                     <div class="grid grid-cols-3 gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">

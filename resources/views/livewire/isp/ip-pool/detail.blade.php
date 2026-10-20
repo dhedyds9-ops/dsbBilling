@@ -22,7 +22,7 @@
                 <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                     <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Informasi Umum</h2>
                 </div>
-                <div class="p-6">
+                <div class="p-4">
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                         <div>
                             <dt class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nama Pool</dt>
@@ -173,7 +173,7 @@
                 <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                     <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">IP Usage</h2>
                 </div>
-                <div class="p-6 space-y-4">
+                <div class="p-4 space-y-4">
                     <div>
                         <div class="flex items-center justify-between text-sm">
                             <span class="text-slate-600 dark:text-slate-400">Total IP</span>
@@ -253,7 +253,7 @@
                 <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                     <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Audit</h2>
                 </div>
-                <div class="p-6 space-y-3 text-sm">
+                <div class="p-4 space-y-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500 dark:text-slate-400">Dibuat Oleh</span>
                         <span class="font-medium text-slate-900 dark:text-slate-100">{{ optional($pool->createdBy)->name ?? '-' }}</span>

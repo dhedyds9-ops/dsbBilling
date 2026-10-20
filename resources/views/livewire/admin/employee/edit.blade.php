@@ -1,4 +1,4 @@
-<div class="p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md max-w-4xl mx-auto">
+<div class="p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-semibold text-gray-800 dark:text-slate-100">Edit Employee</h2>
         <a href="/admin/employee" class="text-gray-500 dark:text-slate-300 hover:underline">Back to List</a>

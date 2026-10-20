@@ -345,7 +345,7 @@
     @if($showImportModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm transition-opacity">
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
-                <div class="p-6">
+                <div class="p-4">
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Import Data Hotspot</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Unggah file Excel (.xlsx, .csv) untuk impor data pengguna / voucher Hotspot secara massal.</p>
                     

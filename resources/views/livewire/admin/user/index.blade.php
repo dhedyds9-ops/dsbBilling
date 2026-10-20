@@ -152,7 +152,7 @@
                     </button>
                 </div>
                 
-                <div class="p-6">
+                <div class="p-4">
                     @if($summaryUser->hasRole('reseller'))
                         <div class="space-y-6">
                             {{-- Keuangan --}}

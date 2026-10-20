@@ -1,6 +1,6 @@
 <div class="container mx-auto px-4 py-8">
     <div class="max-w-2xl mx-auto">
-        <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
             <h1 class="text-2xl font-bold mb-6">Create Prospect</h1>
 
             <form wire:submit="save">

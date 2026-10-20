@@ -1,42 +1,45 @@
-<div>
+<div class="space-y-4 pb-10">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-    @section('page_title')
-  <div>
-      <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan Perusahaan</h1>
-      <div class="text-xs text-slate-500 dark:text-slate-400">Identitas, kontak, dan informasi legal perusahaan billing ISP</div>
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined notranslate" style="font-size:22px">business</span>
+      </div>
+      <div>
+        <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan Perusahaan & Identitas</h1>
+        <div class="text-xs text-slate-500 dark:text-slate-400">Identitas, logo, kontak, dan informasi legal perusahaan billing ISP</div>
+      </div>
     </div>
-    @endsection
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 flex-wrap">
       @if ($savedStatus === 'saved')
         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium">
-        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">check</span>
-        Berhasil disimpan
-      </span>
+          <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">check</span>
+          Berhasil disimpan
+        </span>
       @endif
-      <button wire:click="testEmail" class="px-3 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 inline-flex items-center gap-1.5 transition-colors">
+      <button type="button" wire:click="testEmail" class="px-3 py-2 text-xs sm:text-sm border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 inline-flex items-center gap-1.5 transition-colors">
         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">mail</span>
         Test Email
       </button>
-      <button wire:click="save" wire:loading.attr="disabled" class="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors">
+      <button type="button" wire:click="save" wire:loading.attr="disabled" class="px-4 py-2 text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors shadow-sm">
         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
         Simpan Pengaturan
       </button>
     </div>
   </div>
 
-      <!-- Tampilkan error validasi jika ada -->
+  <!-- Tampilkan error validasi jika ada -->
   @if(session('success'))
-    <div class="m-4 p-4 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-      <div class="font-bold flex items-center gap-2">
+    <div class="p-4 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+      <div class="font-bold flex items-center gap-2 text-sm">
         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">check_circle</span>
         {{ session('success') }}
       </div>
     </div>
   @endif
   @if($errors->any())
-    <div class="m-4 p-4 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
-      <div class="font-bold mb-1">Gagal menyimpan, silakan periksa kembali:</div>
-      <ul class="list-disc pl-5 text-sm">
+    <div class="p-4 rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+      <div class="font-bold mb-1 text-sm">Gagal menyimpan, silakan periksa kembali:</div>
+      <ul class="list-disc pl-5 text-xs sm:text-sm">
         @foreach($errors->all() as $err)
           <li>{{ $err }}</li>
         @endforeach
@@ -44,7 +47,7 @@
     </div>
   @endif
 
-  <div class="p-4 grid grid-cols-1 xl:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
     <form class="xl:col-span-2 space-y-4">
       <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30">

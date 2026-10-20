@@ -1,4 +1,4 @@
-<div class="p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+<div class="p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md">
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-800 dark:text-slate-100">Employees</h2>
         <a href="/admin/employee/create" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Add Employee</a>

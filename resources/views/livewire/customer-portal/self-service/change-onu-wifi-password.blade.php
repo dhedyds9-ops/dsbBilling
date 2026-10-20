@@ -1,4 +1,4 @@
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] relative pb-24">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] relative pb-24">
     <div class="mb-5">
         <h1 class="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Pengaturan Wi-Fi (ONU)</h1>
         <p class="text-xs text-slate-500 dark:text-slate-400">Ganti nama Wi-Fi (SSID) dan password secara berkala agar lebih aman. Data diambil langsung dari perangkat (GenieACS).</p>

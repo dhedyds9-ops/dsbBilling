@@ -1,6 +1,6 @@
 @section('header_title', 'Profil Saya')
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] space-y-6 pb-20">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] space-y-6 pb-20">
 
     @if($message)
         <div class="p-3 rounded-xl text-sm font-medium \{{ $messageType === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 border border-emerald-100' : 'bg-red-50 dark:bg-red-900/30 text-red-600 border border-red-100' }}">

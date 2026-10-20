@@ -13,7 +13,7 @@
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-slate-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
+                <div class="p-4 text-gray-900 dark:text-gray-100">
                     
                     <div class="relative border-l border-gray-200 dark:border-gray-700 ml-3">
                         @foreach($template->versions as $version)

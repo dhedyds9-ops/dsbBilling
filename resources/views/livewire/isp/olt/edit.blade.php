@@ -41,7 +41,7 @@
     @endif
 
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <form wire:submit.prevent="save" class="p-6 space-y-6">
+        <form wire:submit.prevent="save" class="p-4 space-y-6">
             {{-- BAGIAN 1: INFORMASI UTAMA OLT --}}
             <div>
                 <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-slate-700">

@@ -1,6 +1,6 @@
 @section('header_title', 'Tugas Troubleshooting')
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] relative pb-24">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] relative pb-24">
     <!-- Tabs -->
     <div class="flex items-center gap-2 mb-6 bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl">
         <button wire:click="switchTab('open')" 

@@ -1,4 +1,4 @@
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] flex flex-col items-center pb-24" id="speedtest-container">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] flex flex-col items-center pb-24" id="speedtest-container">
     @section('header_title', 'Speedtest')
     
     <!-- Header Title -->

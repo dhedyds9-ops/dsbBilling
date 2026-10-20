@@ -1,32 +1,35 @@
-<div>
-  <div class="px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-wrap gap-3">
-    <div>
-      <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan Koneksi</h1>
-      <div class="text-xs text-slate-500 dark:text-slate-400">Radius Engine & Client</div>
+<div class="space-y-4 pb-10">
+  {{-- Header & Tab Navigation Card --}}
+  <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan Koneksi</h1>
+        <div class="text-xs text-slate-500 dark:text-slate-400">Radius Engine & Client</div>
+      </div>
+      <div class="flex items-center gap-2">
+        @if ($savedStatus)
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md {{ $savedStatus==='saved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' }} text-xs font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">{{ $savedStatus==='saved' ? 'check' : 'warning' }}</span>
+            {{ $savedStatus==='saved' ? 'Berhasil disimpan' : 'Gagal' }}
+          </span>
+        @endif
+        <button type="button" wire:click="save" class="px-4 py-2 text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors shadow-sm">
+          <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
+          Simpan
+        </button>
+      </div>
     </div>
-    <div class="flex items-center gap-2">
-      @if ($savedStatus)
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md {{ $savedStatus==='saved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' }} text-xs font-medium">
-        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">{{ $savedStatus==='saved' ? 'check' : 'warning' }}</span>
-        {{ $savedStatus==='saved' ? 'Berhasil disimpan' : 'Gagal' }}
-      </span>
-      @endif
-      <button wire:click="save" class="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors">
-        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
-        Simpan
-      </button>
+
+    <div class="px-3 py-2 bg-slate-50/50 dark:bg-slate-900/30 overflow-x-auto no-scrollbar">
+      <nav class="flex items-center gap-1.5 text-xs sm:text-sm font-medium min-w-max pb-0.5">
+        @foreach(['radius'=>'Radius Engine','radius_client'=>'Radius Client','zabbix'=>'Zabbix API'] as $k=>$l)
+          <button type="button" wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-colors {{ $activeTab===$k ? 'bg-indigo-600 text-white shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700/60' }}">{{ $l }}</button>
+        @endforeach
+      </nav>
     </div>
   </div>
 
-  <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-    <nav class="flex items-center gap-1 text-sm font-medium overflow-x-auto">
-      @foreach(['radius'=>'Radius Engine','radius_client'=>'Radius Client','zabbix'=>'Zabbix API'] as $k=>$l)
-        <button wire:click="setActiveTab('{{$k}}')" class="whitespace-nowrap px-3 py-1.5 rounded-md transition-colors {{ $activeTab===$k ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700' }}">{{ $l }}</button>
-      @endforeach
-    </nav>
-  </div>
-
-  <div class="p-4">
+  <div>
     @if($activeTab === 'radius')
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">

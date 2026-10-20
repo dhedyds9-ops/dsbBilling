@@ -26,7 +26,7 @@
 
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <form wire:submit.prevent="save">
-            <div class="p-6 space-y-8">
+            <div class="p-4 space-y-8">
                 <!-- Section 1: Identitas Pelanggan -->
                 <div>
                     <div class="flex items-center gap-2 mb-4 text-indigo-600 dark:text-indigo-400">

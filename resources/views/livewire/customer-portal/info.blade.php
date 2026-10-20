@@ -1,6 +1,6 @@
 @section('header_title', 'Notifikasi')
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)]">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)]">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/60">
         <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100 mb-4">Pusat Notifikasi</h3>
         

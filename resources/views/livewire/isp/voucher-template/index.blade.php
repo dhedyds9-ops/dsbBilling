@@ -14,7 +14,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         @forelse($templates as $template)
             <div class="bg-white dark:bg-slate-800 overflow-hidden shadow-sm rounded-lg border border-slate-200 dark:border-slate-700">
-                <div class="p-6">
+                <div class="p-4">
                     <div class="flex justify-between items-start">
                         <div>
                             <div class="flex items-center gap-2">

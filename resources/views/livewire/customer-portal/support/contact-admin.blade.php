@@ -1,6 +1,6 @@
 @section('header_title', 'Pusat Bantuan')
 
-<div class="p-4 sm:p-6 min-h-[calc(100vh-4rem)] space-y-4 pb-24">
+<div class="p-4 sm:p-4 min-h-[calc(100vh-4rem)] space-y-4 pb-24">
     <!-- Header Illustration / Intro -->
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/60 text-center">
         <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/50 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-3">

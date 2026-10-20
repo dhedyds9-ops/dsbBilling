@@ -68,7 +68,7 @@
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
             <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-lg text-left overflow-x-auto shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <form wire:submit.prevent="submitProvision">
-                    <div class="bg-white dark:bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="bg-white dark:bg-slate-800 px-4 pt-5 pb-4 sm:p-4 sm:pb-4">
                         <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100" id="modal-title">Provision ONU: {{ $provisionData['serial_number'] }}</h3>
                         <div class="mt-4 space-y-4">
                             <div>

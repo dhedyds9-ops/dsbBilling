@@ -1,11 +1,14 @@
-<div>
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
-    @section('page_title')
-  <div>
-      <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan WhatsApp</h1>
-      <div class="text-xs text-slate-500 dark:text-slate-400">Integrasi WA Gateway untuk notifikasi tagihan, reminder, dan broadcast</div>
+<div class="space-y-4 pb-10">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined notranslate" style="font-size:22px">chat</span>
+      </div>
+      <div>
+        <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Pengaturan WhatsApp</h1>
+        <div class="text-xs text-slate-500 dark:text-slate-400">Integrasi WA Gateway untuk notifikasi tagihan, reminder, dan broadcast</div>
+      </div>
     </div>
-    @endsection
     <div class="flex items-center gap-2 flex-wrap">
       @if ($savedStatus)
         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium">
@@ -13,18 +16,18 @@
           Tersimpan
         </span>
       @endif
-      <button wire:click="checkDeviceStatus" class="text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 transition-colors">
-        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">health_and_safety</span>
+      <button type="button" wire:click="checkDeviceStatus" class="text-xs px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 transition-colors">
+        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">health_and_safety</span>
         Status Device
       </button>
-      <button wire:click="save" class="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors">
+      <button type="button" wire:click="save" class="px-4 py-2 text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors shadow-sm">
         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
         Simpan
       </button>
     </div>
   </div>
 
-  <div class="p-4 grid grid-cols-1 xl:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
     <form class="xl:col-span-2 space-y-4">
       <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
         <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 font-semibold text-slate-900 dark:text-slate-100">Koneksi Provider WA Gateway</div>
