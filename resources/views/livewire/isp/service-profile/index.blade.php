@@ -52,45 +52,46 @@
     @endif
 
     {{-- TOOLBAR --}}
-    <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-4">
+    <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-4">
         {{-- Search --}}
-        <div class="flex-1 w-full relative max-w-sm">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+        <div class="relative w-full lg:w-72">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </span>
             <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama paket atau bandwidth..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all dark:bg-slate-900 dark:text-slate-100">
         </div>
 
         {{-- Filters --}}
-        <div class="flex items-center gap-2 flex-wrap">
-            <select wire:model.live="filters.service_type" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
+            <select wire:model.live="filters.service_type" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                 <option value="">Semua Jenis</option>
                 <option value="pppoe">PPPoE</option>
                 <option value="hotspot">Hotspot</option>
                 <option value="voucher">Voucher</option>
             </select>
-            <select wire:model.live="filters.status" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="filters.status" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                 <option value="">Semua Status</option>
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
             </select>
             @php $isAdministrator = auth()->user()->hasRole('administrator') ?? false; @endphp
             @if($isAdministrator)
-                <select wire:model.live="filters.owner_id" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                <select wire:model.live="filters.owner_id" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                     <option value="">Semua Owner</option>
                     @foreach(\App\Models\User::select('id', 'name')->whereHas('roles', fn($q) => $q->whereIn('name', \App\Enums\UserRole::backofficeRoles()))->orderBy('name')->limit(100)->get() as $user)
                         <option value="{{ $user->id }}">{{ $user->name }}</option>
                     @endforeach
                 </select>
             @endif
-            <select wire:model.live="perPage" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="perPage" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                 <option value="10">10 Baris</option>
                 <option value="25">25 Baris</option>
                 <option value="50">50 Baris</option>
                 <option value="100">100 Baris</option>
             </select>
-            <button wire:click="resetFilters" title="Reset Filter" class="p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors">
+            <button wire:click="resetFilters" title="Reset Filter" class="col-span-2 sm:col-auto inline-flex items-center justify-center p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span class="sm:hidden text-xs font-medium ml-1.5">Reset Filter</span>
             </button>
         </div>
     </div>

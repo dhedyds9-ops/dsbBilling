@@ -74,28 +74,31 @@
         </div>
 
         {{-- TOOLBAR & FILTERS --}}
-        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex-1 w-full relative flex gap-2">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto flex-1">
                 <div class="relative w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size: 18px">search</span>
                     </div>
-                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari reseller / ref..." class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 px-3 py-2 dark:bg-slate-900 dark:text-slate-100">
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari reseller / ref..." class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 pr-3 py-2">
                 </div>
-                @foreach($this->filterConfig as $f)
-                    @if($f['type'] === 'select')
-                        <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2 min-w-[120px] dark:bg-slate-900 dark:text-slate-100">
-                            <option value="">{{ $f['label'] }}</option>
-                            @foreach($f['options'] as $val => $lbl)
-                                <option value="{{ $val }}">{{ $lbl }}</option>
-                            @endforeach
-                        </select>
-                    @endif
-                @endforeach
+                <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                    @foreach($this->filterConfig as $f)
+                        @if($f['type'] === 'select')
+                            <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto px-3 py-2">
+                                <option value="">{{ $f['label'] }}</option>
+                                @foreach($f['options'] as $val => $lbl)
+                                    <option value="{{ $val }}">{{ $lbl }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                    @endforeach
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button wire:click="exportCsv" class="px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:bg-emerald-900/50 dark:hover:bg-emerald-900/40 transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export CSV
+            <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
+                <button wire:click="exportCsv" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">download</span>
+                    <span>Export CSV</span>
                 </button>
             </div>
         </div>
@@ -200,17 +203,18 @@
         </div>
 
         @if ($rows->hasPages())
-            <div class="px-3 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-between gap-2 flex-wrap">
-                <div class="text-xs text-slate-600 dark:text-slate-400">
+            <div class="px-3 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-600 dark:text-slate-400 text-center sm:text-left">
                     Menampilkan {{ $rows->firstItem() }} - {{ $rows->lastItem() }} dari {{ $rows->total() }} data
                 </div>
-                <div>{{ $rows->links() }}</div>
-                <div class="flex items-center gap-1">
-                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-700 py-1 px-2 bg-white dark:bg-slate-900 dark:bg-slate-700 dark:text-slate-200 dark:bg-slate-900 dark:text-slate-100">
-                        <option value="10">10 / hal</option>
-                        <option value="25">25 / hal</option>
-                        <option value="50">50 / hal</option>
-                        <option value="100">100 / hal</option>
+                <div class="w-full sm:w-auto flex justify-center">{{ $rows->links() }}</div>
+                <div class="flex items-center gap-1.5 self-center sm:self-auto">
+                    <span class="text-xs text-slate-500">Per hal:</span>
+                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-700 py-1 px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
                     </select>
                 </div>
             </div>

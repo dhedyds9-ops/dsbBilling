@@ -63,7 +63,7 @@ Usage:
             </button>
         @endforeach
 
-        <div class="relative">
+        <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
             <input
                 wire:model.live="search"
                 type="search"

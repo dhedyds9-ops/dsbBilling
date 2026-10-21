@@ -120,43 +120,39 @@
     @endif
 
     <!-- Toolbar -->
-    <x-base.card class="mb-3">
-        <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+    <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <!-- Search -->
-            <div class="w-full lg:w-1/3">
+            <div class="relative w-full sm:flex-1 sm:max-w-md">
                 <label for="search" class="sr-only">Search</label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0a7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                    <input wire:model.live.debounce.300ms="search" type="text" class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-slate-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all dark:bg-slate-900 dark:text-slate-100" placeholder="Cari kode, nama, atau alamat..." />
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                 </div>
+                <input wire:model.live.debounce.300ms="search" type="text" class="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm transition-all dark:bg-slate-900 dark:text-slate-100" placeholder="Cari kode, nama, atau alamat..." />
             </div>
 
             <!-- Filters -->
-            <div class="flex items-center gap-3 flex-wrap">
-                <div>
-                    <select wire:model.live="filters.status" class="block w-full pl-3 pr-10 py-2.5 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-lg transition-all dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">Semua Status</option>
-                        <option value="active">Aktif</option>
-                        <option value="inactive">Nonaktif</option>
-                    </select>
-                </div>
+            <div class="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
+                <select wire:model.live="filters.status" class="w-full sm:w-auto pl-3 pr-8 py-2 text-sm border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-lg transition-all dark:bg-slate-900 dark:text-slate-100">
+                    <option value="">Semua Status</option>
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                </select>
                 <!-- Show Trashed Toggle -->
-                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
-                    Tampilkan Tower Dihapus
+                <label class="flex items-center gap-1.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 cursor-pointer whitespace-nowrap bg-slate-50 dark:bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-slate-300 dark:border-slate-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+                    <span>Sampah</span>
                 </label>
-                <button wire:click="resetFilters" class="p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-800 rounded-lg transition-colors">
+                <button wire:click="resetFilters" title="Reset Filter" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                 </button>
             </div>
         </div>
-    </x-base.card>
+    </div>
 
     <!-- Table -->
     <x-base.card class="overflow-hidden">

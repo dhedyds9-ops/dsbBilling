@@ -98,42 +98,40 @@
     </div>
 
     <!-- Toolbar & Filter -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3 sm:p-4 mb-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <!-- Search -->
-            <div class="lg:col-span-2 relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <div class="w-full lg:w-72 relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate text-lg" translate="no">search</span>
                 </span>
                 <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari keterangan, kode..." 
                        class="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none">
             </div>
 
-            <!-- Category -->
-            <div>
-                <select wire:model.live="filterCategory" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
+                <!-- Category -->
+                <select wire:model.live="filterCategory" class="w-full sm:w-auto px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none">
                     <option value="">Semua Kategori</option>
                     @foreach($categories as $key => $name)
                         <option value="{{ $key }}">{{ $name }}</option>
                     @endforeach
                 </select>
-            </div>
 
-            <!-- Status -->
-            <div>
-                <select wire:model.live="filterStatus" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <!-- Status -->
+                <select wire:model.live="filterStatus" class="w-full sm:w-auto px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none">
                     <option value="">Semua Status</option>
-                    <option value="approved">Disetujui / Selesai</option>
-                    <option value="pending_approval">Menunggu Approval</option>
+                    <option value="approved">Disetujui</option>
+                    <option value="pending_approval">Menunggu</option>
                     <option value="draft">Draft</option>
                 </select>
-            </div>
 
-            <!-- Date Range -->
-            <div class="flex items-center gap-1.5">
-                <input wire:model.live="startDate" type="date" class="w-1/2 px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none" title="Dari Tanggal">
-                <span class="text-slate-400 text-xs">-</span>
-                <input wire:model.live="endDate" type="date" class="w-1/2 px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none" title="Sampai Tanggal">
+                <!-- Date Range -->
+                <div class="col-span-2 sm:col-auto flex items-center gap-1.5 w-full sm:w-auto">
+                    <input wire:model.live="startDate" type="date" class="w-1/2 sm:w-auto px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none" title="Dari Tanggal">
+                    <span class="text-slate-400 text-xs">-</span>
+                    <input wire:model.live="endDate" type="date" class="w-1/2 sm:w-auto px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none" title="Sampai Tanggal">
+                </div>
             </div>
         </div>
     </div>
@@ -248,7 +246,7 @@
         </div>
 
         @if($expenses->hasPages())
-            <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+            <div class="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-center sm:justify-start overflow-x-auto">
                 {{ $expenses->links() }}
             </div>
         @endif

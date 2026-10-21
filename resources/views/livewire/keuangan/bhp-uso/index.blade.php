@@ -16,11 +16,11 @@
   @endsection
 
   {{-- TOOLBAR & FILTERS --}}
-  <div class="mb-4 flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-      <div class="flex-1 w-full relative flex gap-2">
+  <div class="mb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+      <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto flex-1">
           @foreach($this->filterConfig as $f)
               @if($f['type'] === 'select')
-                  <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2 min-w-[120px] dark:bg-slate-900 dark:text-slate-100">
+                  <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto px-3 py-2">
                       <option value="">{{ $f['label'] }}</option>
                       @foreach($f['options'] as $val => $lbl)
                           <option value="{{ $val }}">{{ $lbl }}</option>
@@ -29,19 +29,17 @@
               @endif
           @endforeach
       </div>
-      <div class="flex items-center gap-2">
-          <button wire:click="exportCsv" class="px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:bg-emerald-900/50 dark:hover:bg-emerald-900/40 transition-colors flex items-center gap-2">
-              <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> CSV
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0 justify-end">
+          <button wire:click="exportCsv" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors whitespace-nowrap">
+              <span class="material-symbols-outlined notranslate text-[18px]">download</span> <span>CSV</span>
           </button>
-          <button wire:click="cetakSkri" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
-              <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">printer</span> Cetak SPT
+          <button wire:click="cetakSkri" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
+              <span class="material-symbols-outlined notranslate text-[18px]">printer</span> <span>Cetak SPT</span>
+          </button>
+          <button wire:click="confirmRowAction('pay-bhp', 0)" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap">
+              <span class="material-symbols-outlined notranslate text-[18px]">payments</span> <span>Bayar BHP/USO</span>
           </button>
       </div>
-       <div>
-              <button wire:click="confirmRowAction('pay-bhp', 0)" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
-                  <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">payments</span> Bayar BHP/USO
-              </button>
-          </div>
   </div>
 
   <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm">

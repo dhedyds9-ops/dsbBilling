@@ -54,27 +54,28 @@
         {{-- MAIN TABLE --}}
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
             {{-- Toolbar --}}
-            <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-t-xl">
-                <div class="flex items-center gap-2 flex-wrap flex-1">
-                    <div x-data="{ open: false }" @click.away="open = false" class="relative z-50">
-                        <button @click="open = !open" type="button" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined notranslate" style="font-size:18px">calendar_month</span> Pilih Periode
+            <div class="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-t-xl">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto flex-1">
+                    <div x-data="{ open: false }" @click.away="open = false" class="relative z-30 w-full sm:w-auto">
+                        <button @click="open = !open" type="button" class="w-full sm:w-auto px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                            <span class="material-symbols-outlined notranslate" style="font-size:18px">calendar_month</span>
+                            <span>Pilih Periode</span>
                         </button>
                         
-                        <div x-show="open" x-transition style="display: none;" class="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-4">
+                        <div x-show="open" x-transition style="display: none;" class="absolute top-full left-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-4">
                             <div class="mb-3">
                                 <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Dari</label>
-                                <input type="date" wire:model.defer="filters.start_date" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block px-3 py-2 dark:bg-slate-900 dark:text-slate-100">
+                                <input type="date" wire:model.defer="filters.start_date" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block px-3 py-2">
                             </div>
                             <div class="mb-4">
                                 <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Sampai</label>
-                                <input type="date" wire:model.defer="filters.end_date" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block px-3 py-2 dark:bg-slate-900 dark:text-slate-100">
+                                <input type="date" wire:model.defer="filters.end_date" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block px-3 py-2">
                             </div>
                             <div class="space-y-2">
                                 <button @click="open = false; $wire.$refresh()" type="button" class="w-full px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors">
                                     Terapkan
                                 </button>
-                                <button @click="open = false; $wire.set('filters.start_date', ''); $wire.set('filters.end_date', '');" type="button" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors">
+                                <button @click="open = false; $wire.set('filters.start_date', ''); $wire.set('filters.end_date', '');" type="button" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors">
                                     Lihat Semua Data
                                 </button>
                             </div>
@@ -82,25 +83,27 @@
                     </div>
                     
                     @if(isset($this->filterConfig) && is_array($this->filterConfig))
-                        @foreach($this->filterConfig as $f)
-                            @if($f['type'] === 'select')
-                                <select wire:model.live="filters.{{ $f['key'] }}" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-10 py-2 dark:bg-slate-900 dark:text-slate-100">
-                                    <option value="all">{{ $f['label'] }}</option>
-                                    @foreach($f['options'] as $val => $lbl)
-                                        <option value="{{ $val }}">{{ $lbl }}</option>
-                                    @endforeach
-                                </select>
-                            @endif
-                        @endforeach
+                        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                            @foreach($this->filterConfig as $f)
+                                @if($f['type'] === 'select')
+                                    <select wire:model.live="filters.{{ $f['key'] }}" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto px-3 py-2">
+                                        <option value="all">{{ $f['label'] }}</option>
+                                        @foreach($f['options'] as $val => $lbl)
+                                            <option value="{{ $val }}">{{ $lbl }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                            @endforeach
+                        </div>
                     @endif
                 </div>
                 
-                <div class="flex items-center gap-2">
-                    <button wire:click="exportExcel" type="button" class="px-4 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:bg-emerald-900/50 dark:hover:bg-emerald-900/40 transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined notranslate" style="font-size:18px">table_view</span> Excel
+                <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
+                    <button wire:click="exportExcel" type="button" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 dark:text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate text-[18px]">table_view</span> <span>Excel</span>
                     </button>
-                    <button wire:click="exportPdf" type="button" class="px-4 py-2 bg-rose-50 text-rose-600 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 dark:text-rose-400 rounded-lg text-sm font-medium hover:bg-rose-100 dark:bg-rose-900/50 dark:hover:bg-rose-900/40 transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined notranslate" style="font-size:18px">picture_as_pdf</span> PDF
+                    <button wire:click="exportPdf" type="button" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-rose-50 text-rose-600 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 dark:text-rose-400 rounded-lg text-sm font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate text-[18px]">picture_as_pdf</span> <span>PDF</span>
                     </button>
                 </div>
             </div>

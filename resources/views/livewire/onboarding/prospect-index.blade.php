@@ -1,7 +1,7 @@
-<div class="container mx-auto px-4">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Prospects</h1>
-        <a href="{{ route('onboarding.prospects.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded">
+<div class="container mx-auto px-2 sm:px-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-200">Prospects</h1>
+        <a href="{{ route('onboarding.prospects.create') }}" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors whitespace-nowrap">
             Add Prospect
         </a>
     </div>

@@ -21,21 +21,21 @@
     @endif
 
     {{-- TOP ACTION BAR --}}
-    <div class="flex flex-col sm:flex-row gap-3 justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div class="flex flex-col sm:flex-row gap-3 justify-between sm:items-center bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <div class="flex items-center gap-2 w-full sm:w-auto">
-            <a href="{{ route('isp.routers.create') }}" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all">
+            <a href="{{ route('isp.routers.create') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
                 Tambah Router
             </a>
         </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto">
+        <div class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
             <div class="relative w-full sm:w-64">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari router..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
             </div>
-            <select wire:model.live="filters.status" class="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+            <select wire:model.live="filters.status" class="w-full sm:w-auto px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                 <option value="">Semua Status</option>
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>

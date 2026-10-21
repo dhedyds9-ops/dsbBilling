@@ -68,33 +68,33 @@
         </div>
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex-1 w-full relative max-w-md flex items-center gap-2">
-                <div class="relative flex-1">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto flex-1">
+                <div class="relative w-full sm:w-64">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">search</span>
                     </span>
-                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari periode..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari periode..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                 </div>
-                <select wire:model.live="filters.tahun" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2 dark:bg-slate-900 dark:text-slate-100">
+                <select wire:model.live="filters.tahun" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2">
                     <option value="">Semua Tahun</option>
                     @foreach(range(date('Y')-2, date('Y')+1) as $y)
                         <option value="{{ $y }}">{{ $y }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <button wire:click="exportCsv" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0 justify-end">
+                <button wire:click="exportCsv" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate text-[18px]">download</span> <span>Export</span>
                 </button>
-                <button wire:click="kirimWaSemua" class="px-4 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-sm font-medium hover:bg-green-100 dark:bg-green-900/50 dark:hover:bg-green-900/40 transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span> WhatsApp
+                <button wire:click="kirimWaSemua" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate text-[18px]">send</span> <span>WhatsApp</span>
                 </button>
-                <button wire:click="openRegenerate" class="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-medium hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-900/40 transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">repeat</span> Regenerate
+                <button wire:click="openRegenerate" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate text-[18px]">repeat</span> <span>Regenerate</span>
                 </button>
-                <button wire:click="openGenerate" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span> Generate Manual
+                <button wire:click="openGenerate" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate text-[18px]">add</span> <span>Generate Manual</span>
                 </button>
             </div>
         </div>

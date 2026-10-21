@@ -4,8 +4,8 @@
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Saldo Deposit</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kelola dan pantau modal saldo internet Anda.</p>
         </div>
-        <div class="flex items-center gap-3">
-            <a href="{{ route('reseller-portal.finance.topup') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+            <a href="{{ route('reseller-portal.finance.topup') }}" class="w-full sm:w-auto justify-center inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">add_circle</span>
                 Isi Saldo (Top Up)
             </a>

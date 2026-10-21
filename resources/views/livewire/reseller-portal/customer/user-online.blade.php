@@ -76,14 +76,14 @@
         </div>
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex-1 w-full relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="w-full sm:w-72 relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
                 </span>
-                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari User, IP, Router..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari User, IP, Router..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
             </div>
-            <div class="text-sm text-slate-500 dark:text-slate-400">
+            <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 self-start sm:self-center">
                 Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ ucfirst($activeTab) }}</span> online
             </div>
         </div>
@@ -192,7 +192,7 @@
                 </tbody>
             </table>
             @if($results->hasPages())
-                <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-center sm:justify-start overflow-x-auto">
                     {{ $results->links() }}
                 </div>
             @endif

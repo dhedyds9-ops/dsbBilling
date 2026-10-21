@@ -4,8 +4,8 @@
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Laporan Penjualan</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Ringkasan aktivitas penjualan layanan dan voucher Anda.</p>
         </div>
-        <div>
-            <a href="{{ route('reseller-portal.reports.sales.print') }}" target="_blank" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors shadow-sm text-sm font-medium">
+        <div class="w-full sm:w-auto">
+            <a href="{{ route('reseller-portal.reports.sales.print') }}" target="_blank" class="w-full sm:w-auto justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors shadow-sm text-sm font-medium">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">picture_as_pdf</span>
                 Unduh PDF Laporan
             </a>

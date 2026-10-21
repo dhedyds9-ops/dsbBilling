@@ -2,20 +2,20 @@
  NOC: Router Monitoring Index
 --}}
 <div class="h-full flex flex-col noc-bg w-full" style="background-color: #0a0e1a !important; min-height: 100vh;">
-    <div class="flex-none px-3 py-2 border-b noc-border flex items-center justify-between gap-3 flex-wrap noc-panel-bg">
-        <div class="flex items-center gap-3">
+    <div class="flex-none p-3 sm:px-4 sm:py-2.5 border-b noc-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 noc-panel-bg">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <h1 class="text-base font-bold noc-text">Router Monitoring</h1>
             <span class="noc-count-badge">{{ $summary['total'] }} Total</span>
             <span class="noc-count-online">{{ $summary['online'] }} Online</span>
             <span class="noc-count-offline">{{ $summary['offline'] }} Offline</span>
         </div>
-        <div class="flex items-center gap-2">
-            <select wire:model.live="statusFilter" class="px-2 py-1 text-xs rounded border focus:outline-none noc-input dark:bg-slate-900 dark:text-slate-100">
+        <div class="grid grid-cols-1 sm:grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <select wire:model.live="statusFilter" class="px-2 py-1.5 sm:py-1 text-xs rounded border focus:outline-none noc-input dark:bg-slate-900 dark:text-slate-100 w-full sm:w-auto">
                 <option value="all">All Status</option>
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
             </select>
-            <input type="text" wire:model.live.debounce.400ms="search" placeholder="Name / IP / Model…" class="px-2 py-1 text-xs rounded border focus:outline-none w-56 noc-input dark:bg-slate-900 dark:text-slate-100">
+            <input type="text" wire:model.live.debounce.400ms="search" placeholder="Name / IP / Model…" class="px-2 py-1.5 sm:py-1 text-xs rounded border focus:outline-none w-full sm:w-56 noc-input dark:bg-slate-900 dark:text-slate-100">
         </div>
     </div>
 
@@ -84,7 +84,7 @@
     </div>
 
     @if($routers->hasPages())
-    <div class="flex-none px-3 py-2 border-t noc-panel-bg noc-border">
+    <div class="flex-none px-3 py-2 border-t noc-panel-bg noc-border overflow-x-auto">
         {{ $routers->links(data: ['scrollTo' => false]) }}
     </div>
     @endif

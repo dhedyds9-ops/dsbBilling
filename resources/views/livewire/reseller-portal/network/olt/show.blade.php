@@ -20,12 +20,13 @@
     @endif
 
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-        <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700/50">
+        <div class="p-3 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700/50">
             <h2 class="font-bold text-slate-800 dark:text-slate-100 text-lg">
                 ONU / Modem Terhubung
             </h2>
-            <div class="flex items-center gap-2 w-full md:w-auto">
-                <input type="text" wire:model.live.debounce.500ms="search" placeholder="Cari ONU..." class="w-full md:w-64 px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="relative w-full sm:w-64">
+                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] pointer-events-none" translate="no">search</span>
+                <input type="text" wire:model.live.debounce.500ms="search" placeholder="Cari ONU..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
         </div>
         
@@ -99,7 +100,7 @@
         </div>
         
         @if($onus->hasPages())
-            <div class="p-5 border-t border-slate-100 dark:border-slate-700/50">
+            <div class="p-3 sm:p-5 border-t border-slate-100 dark:border-slate-700/50 flex justify-center sm:justify-start overflow-x-auto">
                 {{ $onus->links() }}
             </div>
         @endif

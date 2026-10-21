@@ -13,14 +13,14 @@
         </div>
 
         <div class="noc-panel-bg border noc-border rounded mb-4 overflow-hidden">
-            <div class="flex border-b noc-border">
-                <button wire:click="setTab('olt')" class="px-4 py-2.5 text-xs font-medium border-b-2 transition {{ $activeTab==='olt' ? 'noc-tab-active' : 'noc-tab-inactive' }}">
+            <div class="flex border-b noc-border overflow-x-auto">
+                <button wire:click="setTab('olt')" class="whitespace-nowrap px-4 py-2.5 text-xs font-medium border-b-2 transition {{ $activeTab==='olt' ? 'noc-tab-active' : 'noc-tab-inactive' }}">
                     OLT Impact
                 </button>
-                <button wire:click="setTab('pon')" class="px-4 py-2.5 text-xs font-medium border-b-2 transition {{ $activeTab==='pon' ? 'noc-tab-active' : 'noc-tab-inactive' }}">
+                <button wire:click="setTab('pon')" class="whitespace-nowrap px-4 py-2.5 text-xs font-medium border-b-2 transition {{ $activeTab==='pon' ? 'noc-tab-active' : 'noc-tab-inactive' }}">
                     PON Port Impact
                 </button>
-                <button wire:click="setTab('router')" class="px-4 py-2.5 text-xs font-medium border-b-2 transition {{ $activeTab==='router' ? 'noc-tab-active' : 'noc-tab-inactive' }}">
+                <button wire:click="setTab('router')" class="whitespace-nowrap px-4 py-2.5 text-xs font-medium border-b-2 transition {{ $activeTab==='router' ? 'noc-tab-active' : 'noc-tab-inactive' }}">
                     Router Impact
                 </button>
             </div>
@@ -167,7 +167,7 @@
                 </table>
             </div>
             @if($affectedCustomers->hasPages())
-                <div class="px-3 py-2 border-t noc-border text-xs noc-muted">
+                <div class="px-3 py-2 border-t noc-border text-xs noc-muted overflow-x-auto">
                     {{ $affectedCustomers->onEachSide(1)->links() }}
                 </div>
             @endif

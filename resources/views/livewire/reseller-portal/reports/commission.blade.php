@@ -6,12 +6,12 @@
         </div>
     </div>
 
-    <div class="mb-4 flex justify-end">
-    <a href="{{ route('reseller-portal.reports.commission.print') }}" target="_blank" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors shadow-sm text-sm font-medium">
-        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">picture_as_pdf</span>
-        Cetak PDF Laporan
-    </a>
-</div>
+    <div class="mb-4 flex flex-col sm:flex-row sm:justify-end gap-3">
+        <a href="{{ route('reseller-portal.reports.commission.print') }}" target="_blank" class="w-full sm:w-auto justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors shadow-sm text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">picture_as_pdf</span>
+            Cetak PDF Laporan
+        </a>
+    </div>
 <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -61,9 +61,9 @@
     </div>
     <!-- Details Table -->
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden mt-6 mb-6">
-        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-            <h3 class="font-bold text-slate-800 dark:text-slate-200">Rincian Transaksi Komisi</h3>
-            <select wire:model.live="perPage" class="pl-3 pr-8 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-slate-50 dark:bg-slate-900/50">
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 text-sm sm:text-base">Rincian Transaksi Komisi</h3>
+            <select wire:model.live="perPage" class="w-full sm:w-auto pl-3 pr-8 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                 <option value="10">10 / halaman</option>
                 <option value="25">25 / halaman</option>
                 <option value="50">50 / halaman</option>
@@ -121,14 +121,14 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">Belum ada rincian komisi.</td>
+                            <td colspan="5" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">Belum ada rincian komisi.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         @if($details->hasPages())
-            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 overflow-x-auto">
                 {{ $details->links(data: ['scrollTo' => false]) }}
             </div>
         @endif

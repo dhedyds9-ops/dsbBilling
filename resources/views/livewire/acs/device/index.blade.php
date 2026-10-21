@@ -22,26 +22,26 @@
   <div class="{{ $isNocLayout ? 'h-full flex flex-col' : 'space-y-5 pb-10' }}">
     
     {{-- TOOLBAR & FILTER --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-2">
-            <button wire:click="syncDevices" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto">
+            <button wire:click="syncDevices" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
                 <span wire:loading.remove wire:target="syncDevices" class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">sync</span>
                 <span wire:loading wire:target="syncDevices" class="material-symbols-outlined notranslate mr-1.5 animate-spin" translate="no" style="font-size:18px">sync</span>
                 Sinkronisasi
             </button>
-            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border hover:brightness-110' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300' }} text-sm font-medium rounded-lg shadow-sm transition-all">
+            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border hover:brightness-110' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300' }} text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">download</span>
                 Export
             </button>
-            <button wire:click="deleteAllOfflineDevices" wire:confirm="Yakin ingin menghapus semua device ACS yang berstatus offline secara permanen dari aplikasi?" class="inline-flex items-center justify-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-rose-200 dark:shadow-none transition-all">
+            <button wire:click="deleteAllOfflineDevices" wire:confirm="Yakin ingin menghapus semua device ACS yang berstatus offline secara permanen dari aplikasi?" class="inline-flex items-center justify-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-rose-200 dark:shadow-none transition-all whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">delete_sweep</span>
                 Hapus Offline
             </button>
         </div>
         
-        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
             {{-- Search --}}
-            <div class="flex-1 relative min-w-[250px]">
+            <div class="relative w-full sm:w-64">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
@@ -50,31 +50,32 @@
                        class="w-full pl-9 pr-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border placeholder-gray-500 focus:ring-emerald-500 focus:border-transparent' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 transition-all">
             </div>
             
-            {{-- Status Filter --}}
-            <select wire:model.live="filters.status"
-                    class="pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
-                <option value="">Semua Status</option>
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
-            </select>
-            
-            {{-- Per Page --}}
-            <select wire:model.live="perPage"
-                    class="pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
-                <option value="20">20 / halaman</option>
-                <option value="50">50 / halaman</option>
-                <option value="100">100 / halaman</option>
-                <option value="500">500 / halaman</option>
-                <option value="999999">Semua</option>
-            </select>
-            
-            @if($search || count(array_filter($filters)) > 0)
-            <button wire:click="resetFilters"
-                    class="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
-                Reset
-            </button>
-            @endif
+            {{-- Status Filter & PerPage --}}
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="filters.status"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
+                    <option value="">Semua Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+                
+                <select wire:model.live="perPage"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
+                    <option value="20">20 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
+                    <option value="500">500 / hal</option>
+                    <option value="999999">Semua</option>
+                </select>
+                
+                @if($search || count(array_filter($filters)) > 0)
+                <button wire:click="resetFilters"
+                        class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                    Reset
+                </button>
+                @endif
+            </div>
         </div>
     </div>
 

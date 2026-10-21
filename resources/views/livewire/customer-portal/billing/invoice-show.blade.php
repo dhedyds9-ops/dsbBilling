@@ -173,8 +173,8 @@
         @endif
 
         <!-- Invoice Viewer Container -->
-        <div class="w-full overflow-x-auto bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-2 sm:p-4 print-reset-padding print-hide-bg">
-            <div class="min-w-[700px] bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 sm:p-8 text-slate-800 dark:text-slate-200">
+        <div class="w-full bg-slate-100 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-1 sm:p-4 print-reset-padding print-hide-bg">
+            <div class="w-full bg-white dark:bg-slate-900 rounded-xl shadow-sm p-2 sm:p-6 text-slate-800 dark:text-slate-200 overflow-hidden">
                 <x-billing.invoice-document :invoice="$invoice" :company="$company" />
             </div>
         </div>

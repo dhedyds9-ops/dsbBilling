@@ -2,27 +2,29 @@
  NOC: Active Sessions Index
 --}}
 <div class="h-full flex flex-col noc-bg w-full" style="background-color: #0a0e1a !important; min-height: 100vh;">
-    <div class="flex-none px-3 py-2 border-b noc-border flex flex-col sm:flex-row items-center justify-between gap-3 noc-panel-bg">
-        <div class="flex items-center gap-3">
+    <div class="flex-none p-3 sm:px-4 sm:py-2.5 border-b noc-border flex flex-col lg:flex-row lg:items-center justify-between gap-3 noc-panel-bg">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <h1 class="text-base font-bold noc-text">Active Sessions</h1>
             
-            <div class="flex bg-slate-800 rounded p-0.5 ml-2">
+            <div class="flex bg-slate-800 rounded p-0.5">
                 <button wire:click="setTab('pppoe')" class="px-3 py-1 text-xs font-semibold rounded {{ $activeTab === 'pppoe' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200' }}">PPPoE</button>
                 <button wire:click="setTab('hotspot')" class="px-3 py-1 text-xs font-semibold rounded {{ $activeTab === 'hotspot' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200' }}">Hotspot</button>
             </div>
 
-            <span class="noc-count-info ml-2">{{ number_format($summary['total']) }} Online</span>
-            <span class="text-xs noc-muted">TX: <span class="noc-mono text-blue-500">{{ $summary['tx'] ? number_format($summary['tx'] / 1024 / 1024, 2) . ' Mbps' : '-' }}</span></span>
-            <span class="text-xs noc-muted">RX: <span class="noc-mono text-emerald-500">{{ $summary['rx'] ? number_format($summary['rx'] / 1024 / 1024, 2) . ' Mbps' : '-' }}</span></span>
+            <div class="flex items-center gap-2 text-xs">
+                <span class="noc-count-info">{{ number_format($summary['total']) }} Online</span>
+                <span class="noc-muted">TX: <span class="noc-mono text-blue-500">{{ $summary['tx'] ? number_format($summary['tx'] / 1024 / 1024, 2) . ' Mbps' : '-' }}</span></span>
+                <span class="noc-muted">RX: <span class="noc-mono text-emerald-500">{{ $summary['rx'] ? number_format($summary['rx'] / 1024 / 1024, 2) . ' Mbps' : '-' }}</span></span>
+            </div>
         </div>
-        <div class="flex items-center gap-2">
-            <select wire:model.live="routerFilter" class="px-2 py-1 text-xs rounded border focus:outline-none noc-input dark:bg-slate-900 dark:text-slate-100">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-2 w-full lg:w-auto">
+            <select wire:model.live="routerFilter" class="px-2 py-1.5 sm:py-1 text-xs rounded border focus:outline-none noc-input dark:bg-slate-900 dark:text-slate-100 w-full sm:w-auto">
                 <option value="">All Routers</option>
                 @foreach($routers as $r)
                 <option value="{{ $r->id }}">{{ $r->name }}</option>
                 @endforeach
             </select>
-            <input type="text" wire:model.live.debounce.400ms="search" placeholder="Username / IP / Pelanggan…" class="px-2 py-1 text-xs rounded border focus:outline-none w-56 noc-input dark:bg-slate-900 dark:text-slate-100">
+            <input type="text" wire:model.live.debounce.400ms="search" placeholder="Username / IP / Pelanggan…" class="px-2 py-1.5 sm:py-1 text-xs rounded border focus:outline-none w-full sm:w-56 noc-input dark:bg-slate-900 dark:text-slate-100">
         </div>
     </div>
 
@@ -62,7 +64,7 @@
     </div>
 
     @if($sessions->hasPages())
-    <div class="flex-none px-3 py-2 border-t noc-panel-bg noc-border">
+    <div class="flex-none px-3 py-2 border-t noc-panel-bg noc-border overflow-x-auto">
         {{ $sessions->links(data: ['scrollTo' => false]) }}
     </div>
     @endif

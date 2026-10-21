@@ -36,13 +36,13 @@
         </div>
 
         <div class="noc-panel-bg border noc-border rounded p-3 mb-4">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
-                <div class="md:col-span-4">
+            <div class="grid grid-cols-2 md:grid-cols-12 gap-2 sm:gap-3 items-end">
+                <div class="col-span-2 md:col-span-4">
                     <label class="noc-section-label">Search</label>
-                    <input wire:model.live.debounce.250ms="search" type="text" placeholder="Title- description- source…"
+                    <input wire:model.live.debounce.250ms="search" type="text" placeholder="Title, description, source…"
                            class="w-full noc-input rounded px-2.5 py-1.5 text-sm dark:bg-slate-900 dark:text-slate-100">
                 </div>
-                <div class="md:col-span-2">
+                <div class="col-span-1 md:col-span-2">
                     <label class="noc-section-label">Level</label>
                     <select wire:model.live="levelFilter" class="w-full noc-input rounded px-2 py-1.5 text-sm dark:bg-slate-900 dark:text-slate-100">
                         <option value="all">All</option>
@@ -51,7 +51,7 @@
                         <option value="info">Info</option>
                     </select>
                 </div>
-                <div class="md:col-span-2">
+                <div class="col-span-1 md:col-span-2">
                     <label class="noc-section-label">Status</label>
                     <select wire:model.live="statusFilter" class="w-full noc-input rounded px-2 py-1.5 text-sm dark:bg-slate-900 dark:text-slate-100">
                         <option value="all">All</option>
@@ -60,7 +60,7 @@
                         <option value="resolved">Resolved</option>
                     </select>
                 </div>
-                <div class="md:col-span-2">
+                <div class="col-span-1 md:col-span-2">
                     <label class="noc-section-label">Source</label>
                     <select wire:model.live="sourceFilter" class="w-full noc-input rounded px-2 py-1.5 text-sm dark:bg-slate-900 dark:text-slate-100">
                         <option value="all">All</option>
@@ -69,8 +69,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="md:col-span-2 flex gap-1.5">
-                    <button wire:click="resetPage" class="flex-1 px-2.5 py-1.5 text-xs border rounded noc-btn-outline transition">Reset</button>
+                <div class="col-span-1 md:col-span-2 flex gap-1.5">
+                    <button wire:click="resetPage" class="w-full px-2.5 py-1.5 text-xs border rounded noc-btn-outline transition">Reset</button>
                 </div>
             </div>
         </div>
@@ -168,7 +168,7 @@
                 </table>
             </div>
             @if($alarms->hasPages())
-                <div class="px-3 py-2 border-t noc-border text-xs noc-muted">
+                <div class="px-3 py-2 border-t noc-border text-xs noc-muted overflow-x-auto">
                     {{ $alarms->onEachSide(1)->links() }}
                 </div>
             @endif

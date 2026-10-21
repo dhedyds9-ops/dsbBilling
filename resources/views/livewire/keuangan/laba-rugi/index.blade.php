@@ -16,11 +16,11 @@
     @endsection
 
     {{-- TOOLBAR & FILTERS --}}
-    <div class="mb-4 flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-        <div class="flex-1 w-full relative flex flex-wrap gap-2">
+    <div class="mb-4 flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto flex-1">
             @foreach($filterConfig as $f)
                 @if($f['type'] === 'select')
-                    <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2 min-w-[120px] dark:bg-slate-900 dark:text-slate-100">
+                    <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto px-3 py-2">
                         <option value="">{{ $f['label'] }}</option>
                         @foreach($f['options'] as $val => $lbl)
                             <option value="{{ $val }}">{{ $lbl }}</option>
@@ -29,12 +29,12 @@
                 @endif
             @endforeach
         </div>
-        <div class="flex items-center gap-2">
-            <button wire:click="exportCsv" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> CSV
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button wire:click="exportCsv" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">download</span> <span>CSV</span>
             </button>
-            <button wire:click="exportPdf" class="px-4 py-2 bg-red-50 text-red-600 dark:bg-red-900/20 border border-red-200 dark:border-red-800 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-900/40 transition-colors flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">picture_as_pdf</span> PDF
+            <button wire:click="exportPdf" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-red-50 text-red-600 dark:bg-red-900/20 border border-red-200 dark:border-red-800 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">picture_as_pdf</span> <span>PDF</span>
             </button>
         </div>
     </div>

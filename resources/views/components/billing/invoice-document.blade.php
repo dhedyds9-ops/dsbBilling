@@ -75,17 +75,17 @@
             }
             /* Utilities for grid layout in print */
             .print-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-            .w-1/2 { width: 50% !)mportant; }
+            .print-w-1-2 { width: 50% !important; }
             .print-flex-row { flex-direction: row !important; }
-            . { gap: 0 !important; }
             .print-overflow-visible { overflow: visible !important; }
             .print-min-w-full { min-width: 100% !important; }
-            .text-right { text-align: right !important; }
+            .print-text-right { text-align: right !important; }
             .print-mt-0 { margin-top: 0 !important; }
+            .print-items-end { align-items: flex-end !important; }
             .print-items-center { align-items: center !important; }
             .print-text-3xl { font-size: 1.875rem !important; line-height: 2.25rem !important; }
-            .print-hidden-line { display: none !)mportant; }
-            .print-show-line { display: block !)mportant; }
+            .print-hidden-line { display: none !important; }
+            .print-show-line { display: block !important; }
         }
         @media screen {
             .invoice-document-wrapper {
@@ -93,16 +93,20 @@
                 display: flex;
                 justify-content: center;
                 width: 100%;
+                overflow-x: hidden;
             }
             .invoice-document {
-                
                 width: 100%;
                 max-width: 210mm;
                 min-height: auto;
-                padding: 1.5rem;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                border-radius: 4px;
-                
+                padding: 1rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+                border-radius: 8px;
+            }
+            @media (min-width: 640px) {
+                .invoice-document {
+                    padding: 2rem;
+                }
             }
         }
     </style>
@@ -111,11 +115,11 @@
     <article class="invoice-document relative overflow-hidden text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
         
         <!-- HEADER SECTION -->
-        <header class="flex flex-row justify-between items-start gap-4  border-b border-slate-300 dark:border-slate-600 pb-4 mb-6">
-            <div class="flex flex-row items-center gap-4">
+        <header class="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-300 dark:border-slate-600 pb-4 mb-6 print-flex-row">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
                 <!-- ISP Info -->
-                <div class="flex items-center gap-4">
-                    <div class="h-24 w-28 rounded flex items-center justify-center p-1">
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="h-16 w-20 sm:h-24 sm:w-28 rounded flex items-center justify-center p-1 shrink-0">
                         @if(!empty($company['logo_url']))
                             <img src="{{ asset(ltrim($company['logo_url'], '/')) }}" alt="Logo" class="w-full h-full object-contain">
                         @else
@@ -123,9 +127,9 @@
                         @endif
                     </div>
                     <div>
-                        <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight uppercase">{{ ($company['name'] ?? '') ?: 'ISP INDONESIA' }}</h1>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-xs leading-relaxed">{!! nl2br(e($companyAddress)) !!}</p>
-                        <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                        <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight uppercase">{{ ($company['name'] ?? '') ?: 'ISP INDONESIA' }}</h1>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1 max-w-xs leading-relaxed">{!! nl2br(e($companyAddress)) !!}</p>
+                        <div class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1">
                             @if (($company['mobile'] ?? '') !== '')<span>Telp: {{ $company['mobile'] }}</span><br>@endif
                             @if (($company['email'] ?? '') !== '')<span>Email: {{ $company['email'] }}</span>@endif
                         </div>
@@ -133,10 +137,10 @@
                 </div>
 
                 @if($showPartner)
-                    <div class="block h-12 w-px bg-slate-300 mx-2"></div>
+                    <div class="hidden sm:block h-12 w-px bg-slate-300 mx-2"></div>
                     <!-- Partner Info -->
-                    <div class="flex items-center gap-4">
-                        <div class="h-14 w-14 rounded flex items-center justify-center p-1">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="h-12 w-12 sm:h-14 sm:w-14 rounded flex items-center justify-center p-1 shrink-0">
                             @if(!empty($company['partner_logo_url']))
                                 <img src="{{ asset(ltrim($company['partner_logo_url'], '/')) }}" alt="Partner Logo" class="w-full h-full object-contain">
                             @else
@@ -144,7 +148,7 @@
                             @endif
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">{{ ($company['partner_name'] ?? '') ?: 'Mitra' }}</h3>
+                            <h3 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200">{{ ($company['partner_name'] ?? '') ?: 'Mitra' }}</h3>
                             <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Mitra Resmi</p>
                             <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                                 @if (($company['partner_mobile'] ?? '') !== '')<span>{{ $company['partner_mobile'] }}</span>@endif
@@ -155,27 +159,27 @@
                 @endif
             </div>
 
-            <div class="w-1/2 text-right mt-0">
-                <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-200 tracking-widest uppercase">INVOICE</h2>
-                <p class="text-sm font-mono text-slate-600 dark:text-slate-400 mt-1">#{{ $invoice->invoice_number ?? $invoice->id }}</p>
-                <table class="mt-4 mt-4 w-full text-right text-xs flex flex-col items-end">
+            <div class="w-full sm:w-1/2 text-left sm:text-right mt-1 sm:mt-0 print-w-1-2 print-text-right">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-200 tracking-widest uppercase">INVOICE</h2>
+                <p class="text-xs sm:text-sm font-mono text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1">#{{ $invoice->invoice_number ?? $invoice->id }}</p>
+                <table class="mt-2 sm:mt-4 w-full sm:w-auto sm:ml-auto text-left sm:text-right text-xs">
                     <tr>
-                        <td class="text-slate-500 dark:text-slate-400 py-1 pr-4 w-auto">Tanggal</td>
-                        <td class="font-semibold text-slate-800 dark:text-slate-200 py-1">{{ $invoice->issue_date ? $invoice->issue_date->format('d M Y') : '-' }}</td>
+                        <td class="text-slate-500 dark:text-slate-400 py-0.5 sm:py-1 pr-4 w-auto">Tanggal</td>
+                        <td class="font-semibold text-slate-800 dark:text-slate-200 py-0.5 sm:py-1 text-right">{{ $invoice->issue_date ? $invoice->issue_date->format('d M Y') : '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="text-slate-500 dark:text-slate-400 py-1 pr-4">Jatuh Tempo</td>
-                        <td class="font-semibold text-slate-800 dark:text-slate-200 py-1">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : '-' }}</td>
+                        <td class="text-slate-500 dark:text-slate-400 py-0.5 sm:py-1 pr-4">Jatuh Tempo</td>
+                        <td class="font-semibold text-slate-800 dark:text-slate-200 py-0.5 sm:py-1 text-right">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : '-' }}</td>
                     </tr>
                 </table>
             </div>
         </header>
 
         <!-- BILL TO & STATUS SECTION -->
-        <section class="invoice-section grid grid-cols-2 gap-6 mb-8">
-            <div class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded p-5">
-                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">DITAGIHKAN KEPADA</h3>
-                <p class="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">{{ $invoice->customer?->name ?? 'Pelanggan' }}</p>
+        <section class="invoice-section grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8 print-grid-cols-2">
+            <div class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded p-4 sm:p-5">
+                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 sm:mb-3">DITAGIHKAN KEPADA</h3>
+                <p class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 mb-1">{{ $invoice->customer?->name ?? 'Pelanggan' }}</p>
                 @if(!empty($invoice->customer?->code))
                     <p class="text-xs text-slate-600 dark:text-slate-400 font-mono mb-2">ID: {{ $invoice->customer->code }}</p>
                 @endif
@@ -185,47 +189,47 @@
                 </div>
             </div>
 
-            <div class="border border-slate-200 dark:border-slate-700 rounded p-5 flex flex-col justify-center items-end text-right">
-                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 w-full text-right">STATUS PEMBAYARAN</h3>
-                <div class="mb-3 w-full text-right">
+            <div class="border border-slate-200 dark:border-slate-700 rounded p-4 sm:p-5 flex flex-col justify-center items-start sm:items-end text-left sm:text-right print-items-end print-text-right">
+                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 w-full text-left sm:text-right print-text-right">STATUS PEMBAYARAN</h3>
+                <div class="mb-2 sm:mb-3 w-full text-left sm:text-right print-text-right">
                     <span class="inline-flex px-3 py-1.5 rounded-sm text-xs font-bold tracking-widest border {{ $isPaid ? 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' : 'border-red-500 text-red-600 bg-red-50 dark:bg-red-900/30' }}">
                         {{ $isPaid ? 'LUNAS' : 'BELUM LUNAS' }}
                     </span>
                 </div>
-                <p class="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Rp {{ number_format($isPaid ? $invoice->paid_amount : $sisaTagihan, 0, ',', '.') }}</p>
+                <p class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Rp {{ number_format($isPaid ? $invoice->paid_amount : $sisaTagihan, 0, ',', '.') }}</p>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ $isPaid ? 'Total Dibayar' : 'Sisa Tagihan' }}</p>
             </div>
         </section>
 
         <!-- ITEMS SECTION -->
-        <section class="invoice-section mb-8">
-            <div class="w-full overflow-visible">
-                <table class="w-full text-left border-collapse invoice-table w-full">
+        <section class="invoice-section mb-6 sm:mb-8">
+            <div class="w-full overflow-x-auto">
+                <table class="w-full text-left border-collapse invoice-table min-w-full">
                     <thead>
                         <tr class="bg-slate-50 dark:bg-slate-900/50 border-b border-t border-slate-300 dark:border-slate-600">
-                            <th class="py-3 px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-12 text-center">No</th>
-                            <th class="py-3 px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Deskripsi Layanan</th>
-                            <th class="py-3 px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-center">Periode</th>
-                            <th class="py-3 px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-right">Jumlah</th>
+                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-10 sm:w-12 text-center">No</th>
+                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Deskripsi Layanan</th>
+                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-center">Periode</th>
+                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-right">Jumlah</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200 dark:divide-slate-700 border-b border-slate-300 dark:border-slate-600">
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-700 border-b border-slate-300 dark:border-slate-600 text-xs sm:text-sm">
                         @forelse($invoice->item_details ?? ($invoice->items ?? []) as $idx => $item)
                             <tr>
-                                <td class="py-4 px-4 text-center text-slate-600 dark:text-slate-400">{{ $loop->iteration }}</td>
-                                <td class="py-4 px-4">
-                                    <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan') }}</p>
+                                <td class="py-3 sm:py-4 px-2 sm:px-4 text-center text-slate-600 dark:text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="py-3 sm:py-4 px-2 sm:px-4">
+                                    <p class="font-semibold text-slate-900 dark:text-slate-100">{{ is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan') }}</p>
                                 </td>
-                                <td class="py-4 px-4 text-center text-slate-600 dark:text-slate-400">
+                                <td class="py-3 sm:py-4 px-2 sm:px-4 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap">
                                     {{ $invoice->issue_date ? $invoice->issue_date->format('M Y') : '-' }}
                                 </td>
-                                <td class="py-4 px-4 text-right font-medium text-slate-900 dark:text-slate-100">
+                                <td class="py-3 sm:py-4 px-2 sm:px-4 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                                     Rp {{ number_format(is_array($item) ? ($item['subtotal'] ?? 0) : ($item->subtotal ?? $item->total ?? 0), 0, ',', '.') }}
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="py-8 text-center text-slate-500 dark:text-slate-400 text-sm# italic">Tidak ada detail layanan.</td>
+                                <td colspan="4" class="py-8 text-center text-slate-500 dark:text-slate-400 text-sm italic">Tidak ada detail layanan.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -234,16 +238,15 @@
         </section>
 
         <!-- TOTALS & INSTRUCTIONS SECTION -->
-        <section class="invoice-section grid grid-cols-2 gap-8 mb-8">
+        <section class="invoice-section grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8 print-grid-cols-2">
             <div>
-                <div class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded p-5 h-full">
-                    <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3">Instruksi Pembayaran</h4>
+                <div class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded p-4 sm:p-5 h-full">
+                    <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 sm:mb-3">Instruksi Pembayaran</h4>
                     <div class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                         @if($isPaid)
                             <p class="font-semibold text-slate-900 dark:text-slate-100">Terima kasih, pembayaran untuk tagihan ini telah kami terima.</p>
                         @else
                             {!! nl2br(e($termsText ?? 'Silakan lakukan pembayaran sesuai dengan total tagihan sebelum tanggal jatuh tempo.')) !!}
-
 
                             @php
                                 $manualBanks = [];
@@ -262,12 +265,12 @@
                                     <p class="font-bold text-slate-800 dark:text-slate-200 mb-2">Transfer Pembayaran Manual:</p>
                                     <div class="flex flex-col gap-2">
                                         @foreach($manualBanks as $bank)
-                                            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-2 flex justify-between items-center">
-                                                <div>
-                                                    <p class="font-bold text-slate-800 dark:text-slate-200">{{ strtoupper($bank['bank_name'] ?? '') }}</p>
-                                                    <p class="text-[10px] text-slate-500 dark:text-slate-400">a.n. {{ $bank['account_holder'] ?? '-' }}</p>
+                                            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-2 flex justify-between items-center gap-2">
+                                                <div class="min-w-0">
+                                                    <p class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ strtoupper($bank['bank_name'] ?? '') }}</p>
+                                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">a.n. {{ $bank['account_holder'] ?? '-' }}</p>
                                                 </div>
-                                                <p class="font-mono font-bold text-primary-700 tracking-wider">{{ $bank['account_number'] ?? '' }}</p>
+                                                <p class="font-mono font-bold text-primary-700 tracking-wider text-xs shrink-0">{{ $bank['account_number'] ?? '' }}</p>
                                             </div>
                                         @endforeach
                                     </div>
@@ -279,24 +282,24 @@
             </div>
 
             <div>
-                <table class="w-full text-sm">
+                <table class="w-full text-xs sm:text-sm">
                     <tr>
-                        <td class="py-2.5 text-slate-600 dark:text-slate-400">Subtotal</td>
-                        <td class="py-2.5 text-right font-medium text-slate-900 dark:text-slate-100">Rp {{ number_format($invoice->subtotal, 0, ',', '.') }}</td>
+                        <td class="py-2 text-slate-600 dark:text-slate-400">Subtotal</td>
+                        <td class="py-2 text-right font-medium text-slate-900 dark:text-slate-100">Rp {{ number_format($invoice->subtotal, 0, ',', '.') }}</td>
                     </tr>
                     @if($invoice->tax_amount > 0)
                     <tr>
-                        <td class="py-2.5 text-slate-600 dark:text-slate-400">PPN {{ $invoice->tax_rate > 0 ? '('.$invoice->tax_rate.'%)' : '' }}</td>
-                        <td class="py-2.5 text-right font-medium text-slate-900 dark:text-slate-100">Rp {{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
+                        <td class="py-2 text-slate-600 dark:text-slate-400">PPN {{ $invoice->tax_rate > 0 ? '('.$invoice->tax_rate.'%)' : '' }}</td>
+                        <td class="py-2 text-right font-medium text-slate-900 dark:text-slate-100">Rp {{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
                     </tr>
                     @endif
                     <tr class="border-t-2 border-slate-400">
-                        <td class="py-4 font-bold text-slate-900 dark:text-slate-100 text-base uppercase tracking-wider">TOTAL</td>
-                        <td class="py-4 text-right font-black text-slate-900 dark:text-slate-100 text-xl">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</td>
+                        <td class="py-3 sm:py-4 font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base uppercase tracking-wider">TOTAL</td>
+                        <td class="py-3 sm:py-4 text-right font-black text-slate-900 dark:text-slate-100 text-lg sm:text-xl">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</td>
                     </tr>
                     <tr>
-                        <td class="py-2.5 text-slate-600 dark:text-slate-400 text-xs font-semibold">Sudah Dibayar</td>
-                        <td class="py-2.5 text-right font-bold text-slate-900 dark:text-slate-100 text-xs">Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}</td>
+                        <td class="py-2 text-slate-600 dark:text-slate-400 text-xs font-semibold">Sudah Dibayar</td>
+                        <td class="py-2 text-right font-bold text-slate-900 dark:text-slate-100 text-xs">Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}</td>
                     </tr>
                 </table>
             </div>
@@ -324,7 +327,7 @@
         <!-- WATERMARK -->
         @if($isPaid)
         <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10 z-0 overflow-hidden" style="display: flex !important;">
-            <div class="transform -rotate-45 text-[120px] font-black text-emerald-700 leading-none">PAID</div>
+            <div class="transform -rotate-45 text-6xl sm:text-[120px] font-black text-emerald-700 leading-none select-none">PAID</div>
         </div>
         @endif
     </article>

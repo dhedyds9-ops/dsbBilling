@@ -91,40 +91,40 @@
     <!-- Filters -->
     <div class="card">
         <div class="card-body">
-            <div class="flex flex-wrap items-center gap-4">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <!-- Search -->
-                <div class="flex-1 min-w-[200px]">
-                    <div class="relative">
-                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input type="text" wire:model.live.debounce.300ms="filters.search" placeholder="Search customers..." class="input pl-10 dark:bg-slate-900 dark:text-slate-100">
-                    </div>
+                <div class="relative w-full sm:flex-1 sm:max-w-md">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" wire:model.live.debounce.300ms="filters.search" placeholder="Search customers..." class="input pl-10 w-full dark:bg-slate-900 dark:text-slate-100">
                 </div>
 
-                <!-- Status Filter -->
-                <select wire:model.live="filters.status" class="select w-auto dark:bg-slate-900 dark:text-slate-100">
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="suspended">Suspended</option>
-                </select>
+                <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                    <!-- Status Filter -->
+                    <select wire:model.live="filters.status" class="select w-full sm:w-auto dark:bg-slate-900 dark:text-slate-100">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
 
-                <!-- Package Filter -->
-                <select wire:model.live="filters.package" class="select w-auto dark:bg-slate-900 dark:text-slate-100">
-                    <option value="all">All Packages</option>
-                    <option value="basic">Basic 50 Mbps</option>
-                    <option value="standard">Standard 75 Mbps</option>
-                    <option value="premium">Premium 100 Mbps</option>
-                </select>
+                    <!-- Package Filter -->
+                    <select wire:model.live="filters.package" class="select w-full sm:w-auto dark:bg-slate-900 dark:text-slate-100">
+                        <option value="all">All Packages</option>
+                        <option value="basic">Basic 50 Mbps</option>
+                        <option value="standard">Standard 75 Mbps</option>
+                        <option value="premium">Premium 100 Mbps</option>
+                    </select>
 
-                <!-- Area Filter -->
-                <select wire:model.live="filters.area" class="select w-auto dark:bg-slate-900 dark:text-slate-100">
-                    <option value="all">All Areas</option>
-                    <option value="jakarta_selatan">Jakarta Selatan</option>
-                    <option value="jakarta_barat">Jakarta Barat</option>
-                    <option value="jakarta_timur">Jakarta Timur</option>
-                </select>
+                    <!-- Area Filter -->
+                    <select wire:model.live="filters.area" class="select col-span-2 sm:col-auto w-full sm:w-auto dark:bg-slate-900 dark:text-slate-100">
+                        <option value="all">All Areas</option>
+                        <option value="jakarta_selatan">Jakarta Selatan</option>
+                        <option value="jakarta_barat">Jakarta Barat</option>
+                        <option value="jakarta_timur">Jakarta Timur</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>

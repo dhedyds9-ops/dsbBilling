@@ -1,14 +1,14 @@
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
         <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Payroll Records</h2>
-        <a href="{{ route('admin.payroll.generate') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        <a href="{{ route('admin.payroll.generate') }}" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm whitespace-nowrap">
             Generate Payroll
         </a>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6 flex space-x-4">
-        <div>
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6 grid grid-cols-2 sm:flex sm:items-center gap-3">
+        <div class="w-full sm:w-48">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Month</label>
             <select wire:model.live="month" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 @for ($i = 1; $i <= 12; $i++)
@@ -16,7 +16,7 @@
                 @endfor
             </select>
         </div>
-        <div>
+        <div class="w-full sm:w-48">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Year</label>
             <select wire:model.live="year" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 @for ($i = date('Y') - 5; $i <= date('Y') + 1; $i++)
@@ -83,7 +83,7 @@
                 @endforelse
             </tbody>
         </table>
-        <div class="px-6 py-4">
+        <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-center sm:justify-start overflow-x-auto">
             {{ $payrolls->links() }}
         </div>
     </div>

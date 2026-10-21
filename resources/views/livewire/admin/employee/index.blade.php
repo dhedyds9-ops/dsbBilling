@@ -1,7 +1,7 @@
 <div class="p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-    <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-slate-100">Employees</h2>
-        <a href="/admin/employee/create" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Add Employee</a>
+    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-4">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-slate-100">Karyawan</h2>
+        <a href="/admin/employee/create" class="w-full sm:w-auto text-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-sm font-medium text-sm">Tambah Karyawan</a>
     </div>
 
     @if (session()->has('message'))

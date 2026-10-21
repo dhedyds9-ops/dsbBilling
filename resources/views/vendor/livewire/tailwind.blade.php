@@ -13,26 +13,33 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
 <div>
     @if ($paginator->hasPages())
         <nav role="navigation" aria-label="Pagination Navigation" class="flex items-center justify-between">
-            <div class="flex justify-between flex-1 sm:hidden">
+            <div class="flex items-center justify-between flex-1 sm:hidden gap-2">
                 <span>
                     @if ($paginator->onFirstPage())
-                        <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 cursor-default leading-5 rounded-md">
+                        <span class="relative inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 cursor-default leading-5 rounded-lg">
                             {!! __('pagination.previous') !!}
                         </span>
                     @else
-                        <button type="button" wire:click="previousPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" wire:loading.attr="disabled" dusk="previousPage{{ $paginator->getPageName() == 'page' ? '' : '.' . $paginator->getPageName() }}.before" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-blue-300 focus:border-blue-300 active:bg-gray-100 dark:bg-gray-800 active:text-gray-700 dark:text-gray-300 transition ease-in-out duration-150">
+                        <button type="button" wire:click="previousPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" wire:loading.attr="disabled" dusk="previousPage{{ $paginator->getPageName() == 'page' ? '' : '.' . $paginator->getPageName() }}.before" class="relative inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 leading-5 rounded-lg hover:text-gray-500 focus:outline-none focus:ring-1 ring-indigo-500 transition ease-in-out duration-150">
                             {!! __('pagination.previous') !!}
                         </button>
                     @endif
                 </span>
 
+                <div class="text-xs text-slate-600 dark:text-slate-400 font-medium text-center">
+                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ $paginator->currentPage() }}</span> / <span>{{ $paginator->lastPage() }}</span>
+                    @if(method_exists($paginator, 'total'))
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500 block">({{ number_format($paginator->total()) }} data)</span>
+                    @endif
+                </div>
+
                 <span>
                     @if ($paginator->hasMorePages())
-                        <button type="button" wire:click="nextPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" wire:loading.attr="disabled" dusk="nextPage{{ $paginator->getPageName() == 'page' ? '' : '.' . $paginator->getPageName() }}.before" class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 leading-5 rounded-md hover:text-gray-500 focus:outline-none focus:ring ring-blue-300 focus:border-blue-300 active:bg-gray-100 dark:bg-gray-800 active:text-gray-700 dark:text-gray-300 transition ease-in-out duration-150">
+                        <button type="button" wire:click="nextPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" wire:loading.attr="disabled" dusk="nextPage{{ $paginator->getPageName() == 'page' ? '' : '.' . $paginator->getPageName() }}.before" class="relative inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 leading-5 rounded-lg hover:text-gray-500 focus:outline-none focus:ring-1 ring-indigo-500 transition ease-in-out duration-150">
                             {!! __('pagination.next') !!}
                         </button>
                     @else
-                        <span class="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 cursor-default leading-5 rounded-md">
+                        <span class="relative inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 cursor-default leading-5 rounded-lg">
                             {!! __('pagination.next') !!}
                         </span>
                     @endif

@@ -30,7 +30,7 @@
         </table>
     </div>
 
-    <div class="mt-4">
+    <div class="mt-4 flex justify-center sm:justify-start overflow-x-auto">
         {{ $invoices->links() }}
     </div>
 </div>

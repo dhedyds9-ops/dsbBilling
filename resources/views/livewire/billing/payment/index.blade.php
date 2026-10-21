@@ -76,43 +76,47 @@
         </div>
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex-1 w-full relative max-w-md">
+        <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="flex-1 w-full relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari No. Referensi atau Pelanggan..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:bg-slate-900 dark:text-slate-100">
             </div>
-            <div class="flex items-center gap-2">
-                <select wire:model.live="filters.status" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
-                    <option value="">Semua Status</option>
-                    <option value="success">Berhasil (Success)</option>
-                    <option value="pending">Menunggu (Pending)</option>
-                    <option value="failed">Gagal (Failed)</option>
-                </select>
-                <select wire:model.live="filters.payment_method" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
-                    <option value="">Semua Metode</option>
-                    <option value="cash">Tunai (Cash)</option>
-                    <option value="transfer">Transfer Bank</option>
-                    <option value="qris">QRIS</option>
-                    <option value="payment_gateway">Payment Gateway</option>
-                </select>
-                                <select wire:model.live="perPage" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
-                    <option value="10">10 Baris</option>
-                    <option value="25">25 Baris</option>
-                    <option value="50">50 Baris</option>
-                    <option value="100">100 Baris</option>
-                </select>
-                <button wire:click="syncAllPending" wire:loading.attr="disabled" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm" title="Periksa status semua transaksi pending ke payment gateway">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
-                    <span class="hidden sm:inline">Sinkronkan Gateway</span>
-                </button>
-                <button wire:click="export" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export
-                </button>
-                <a href="{{ route('billing.payments.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span> Catat Pembayaran
-                </a>
+            <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
+                <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                    <select wire:model.live="filters.status" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">Semua Status</option>
+                        <option value="success">Berhasil</option>
+                        <option value="pending">Menunggu</option>
+                        <option value="failed">Gagal</option>
+                    </select>
+                    <select wire:model.live="filters.payment_method" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">Semua Metode</option>
+                        <option value="cash">Tunai</option>
+                        <option value="transfer">Transfer Bank</option>
+                        <option value="qris">QRIS</option>
+                        <option value="payment_gateway">Gateway</option>
+                    </select>
+                    <select wire:model.live="perPage" class="col-span-2 sm:col-auto w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                        <option value="10">10 Baris</option>
+                        <option value="25">25 Baris</option>
+                        <option value="50">50 Baris</option>
+                        <option value="100">100 Baris</option>
+                    </select>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button wire:click="syncAllPending" wire:loading.attr="disabled" class="flex-1 sm:flex-none justify-center px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm whitespace-nowrap" title="Periksa status transaksi pending">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
+                        <span>Sinkron</span>
+                    </button>
+                    <button wire:click="export" class="flex-1 sm:flex-none justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export
+                    </button>
+                    <a href="{{ route('billing.payments.create') }}" class="w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span> Catat Pembayaran
+                    </a>
+                </div>
             </div>
         </div>
 

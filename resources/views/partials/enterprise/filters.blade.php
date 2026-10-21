@@ -32,8 +32,8 @@ Usage:
             @endif
         </div>
     @endforeach
-    <div class="flex items-end gap-2">
-        <button wire:click="resetFilters" class="px-3 py-1.5 text-sm rounded-md border border-slate-200 hover:bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 dark:text-slate-300">Reset</button>
+    <div class="col-span-2 sm:col-span-1 flex items-end gap-2">
+        <button wire:click="resetFilters" class="w-full sm:w-auto px-3 py-1.5 text-sm rounded-md border border-slate-200 hover:bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 dark:text-slate-300 transition-colors">Reset</button>
     </div>
 </div>
 @endif

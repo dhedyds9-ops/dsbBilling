@@ -1,25 +1,27 @@
 <div class="h-full flex flex-col noc-bg w-full" style="background-color: #0a0e1a !important; min-height: 100vh;">
     {{-- Header --}}
-    <div class="flex-none px-4 py-3 border-b noc-border flex items-center justify-between noc-panel-bg">
-        <div class="flex items-center gap-3">
-            <h1 class="text-lg font-bold noc-text">OLT Monitoring</h1>
+    <div class="flex-none p-3 sm:px-4 sm:py-3 border-b noc-border flex flex-col lg:flex-row lg:items-center justify-between gap-3 noc-panel-bg">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 class="text-base sm:text-lg font-bold noc-text">OLT Monitoring</h1>
             <span class="noc-count-badge">{{ $summary['total'] }} Total</span>
             <span class="noc-count-online">{{ $summary['online'] }} Online</span>
             <span class="noc-count-offline">{{ $summary['offline'] }} Offline</span>
             <span class="noc-count-warning">{{ $summary['warning'] }} Warning</span>
         </div>
 
-        <div class="flex items-center gap-2">
-            <button wire:click="syncAll" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors" wire:loading.attr="disabled">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+            <button wire:click="syncAll" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 sm:py-1 rounded text-sm flex items-center justify-center gap-1 transition-colors shrink-0" wire:loading.attr="disabled">
                 <i class="bi bi-arrow-repeat" wire:loading.class="animate-spin" wire:target="syncAll"></i> Sync All
             </button>
-            <select wire:model.live="statusFilter" class="noc-input px-2 py-1 text-sm rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100">
-                <option value="all">All Status</option>
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
-                <option value="warning">Warning</option>
-            </select>
-            <input type="text" wire:model.live.debounce.400ms="search" placeholder="Search OLT..." class="noc-input px-3 py-1 text-sm rounded border focus:outline-none w-64 dark:bg-slate-900 dark:text-slate-100">
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="statusFilter" class="noc-input px-2 py-1.5 sm:py-1 text-sm rounded border focus:outline-none dark:bg-slate-900 dark:text-slate-100 w-full sm:w-auto">
+                    <option value="all">All Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="warning">Warning</option>
+                </select>
+                <input type="text" wire:model.live.debounce.400ms="search" placeholder="Search OLT..." class="noc-input px-3 py-1.5 sm:py-1 text-sm rounded border focus:outline-none w-full sm:w-64 dark:bg-slate-900 dark:text-slate-100">
+            </div>
         </div>
     </div>
 
@@ -76,7 +78,7 @@
     
     {{-- Pagination --}}
     @if($olts->hasPages())
-    <div class="flex-none px-4 py-3 border-t noc-border noc-panel-bg">
+    <div class="flex-none px-4 py-3 border-t noc-border noc-panel-bg overflow-x-auto">
         {{ $olts->links(data: ['scrollTo' => false]) }}
     </div>
     @endif

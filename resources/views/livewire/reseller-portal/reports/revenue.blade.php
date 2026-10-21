@@ -12,13 +12,13 @@
         </div>
 
         <!-- Filter Periode (Bulan & Tahun) -->
-        <div class="flex items-center gap-2">
-            <select wire:model.live="selectedMonth" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <select wire:model.live="selectedMonth" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm w-full sm:w-auto">
                 @for($m = 1; $m <= 12; $m++)
                     <option value="{{ $m }}">{{ \Carbon\Carbon::create(null, $m, 1)->translatedFormat('F') }}</option>
                 @endfor
             </select>
-            <select wire:model.live="selectedYear" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+            <select wire:model.live="selectedYear" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm w-full sm:w-auto">
                 @for($y = now()->year - 2; $y <= now()->year + 1; $y++)
                     <option value="{{ $y }}">{{ $y }}</option>
                 @endfor
@@ -104,22 +104,22 @@
     </div>
 
     <!-- Filter Tab Navigation -->
-    <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 inline-flex shadow-sm">
+    <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto w-full sm:w-auto inline-flex shadow-sm">
         <button wire:click="setFilterType('all')" type="button"
-                class="px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
+                class="whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
                        {{ $filterType === 'all' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
             <span>Semua Pendapatan</span>
             <span class="px-1.5 py-0.5 rounded-full text-[10px] {{ $filterType === 'all' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400' }}">{{ $transactionCount }}</span>
         </button>
         <button wire:click="setFilterType('pelanggan')" type="button"
-                class="px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
+                class="whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
                        {{ $filterType === 'pelanggan' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
             <span class="material-symbols-outlined notranslate text-sm" translate="no">account_circle</span>
             <span>Pendapatan Pelanggan</span>
             <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">{{ $pelangganCount }}</span>
         </button>
         <button wire:click="setFilterType('voucher')" type="button"
-                class="px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
+                class="whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
                        {{ $filterType === 'voucher' ? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
             <span class="material-symbols-outlined notranslate text-sm" translate="no">confirmation_number</span>
             <span>Pendapatan Voucher</span>
@@ -129,7 +129,7 @@
 
     <!-- Payments Table -->
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-slate-50 dark:bg-slate-900/50">
             <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-primary-600 text-lg" translate="no">history</span>
                 Riwayat Transaksi Pendapatan {{ $filterType !== 'all' ? '(' . ucfirst($filterType) . ')' : '' }}

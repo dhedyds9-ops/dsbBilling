@@ -13,7 +13,7 @@
 {{-- ============================================================
      HEADER BAR â€” Network Health Summary
      ============================================================ --}}
-<div class="flex-none px-3 py-2 border-b flex items-center gap-4 flex-wrap" style="background:#111827;border-color:#1f2937;">
+<div class="flex-none px-3 py-2 border-b flex items-center gap-2 sm:gap-4 overflow-x-auto whitespace-nowrap" style="background:#111827;border-color:#1f2937;">
 
     {{-- OLT --}}
     <div class="flex items-center gap-2">

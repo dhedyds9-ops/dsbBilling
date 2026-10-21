@@ -18,18 +18,18 @@
 @endphp
 <div>
   <!-- Header -->
-  <div class="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+  <div class="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
       <div>
-          <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center text-red-600 dark:text-red-400 font-bold text-sm">
+          <h1 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center text-red-600 dark:text-red-400 font-bold text-sm shrink-0">
                   <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">wifi_off</span>
               </div>
               Pelanggan Terisolir
           </h1>
-          <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm ml-[3.25rem]">Daftar pelanggan yang layanannya saat ini ditangguhkan akibat tunggakan pembayaran.</p>
+          <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm sm:ml-[3.25rem]">Daftar pelanggan yang layanannya saat ini ditangguhkan akibat tunggakan pembayaran.</p>
       </div>
-      <div class="flex items-center gap-3">
-          <button wire:click="exportCsv" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/50 shadow-sm flex items-center gap-2 transition-colors">
+      <div class="flex items-center gap-3 w-full sm:w-auto">
+          <button wire:click="exportCsv" class="w-full sm:w-auto justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/50 shadow-sm flex items-center gap-2 transition-colors whitespace-nowrap">
               <span class="material-symbols-outlined notranslate text-[18px]" translate="no">download</span>
               Export Data
           </button>
@@ -80,28 +80,26 @@
   <!-- Main Content Card (Toolbar + Table) -->
   <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-6">
       <!-- Toolbar -->
-      <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-          <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              <div class="relative w-full sm:w-64">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:18px">search</span>
-                  </div>
-                  <input wire:model.live.debounce.300ms="search" type="text" 
-                      class="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 placeholder-slate-400 dark:bg-slate-900 dark:text-slate-100" 
-                      placeholder="Cari nama pelanggan...">
+      <div class="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center bg-slate-50/50 dark:bg-slate-800/50">
+          <div class="relative w-full sm:flex-1 sm:max-w-md">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:18px">search</span>
               </div>
+              <input wire:model.live.debounce.300ms="search" type="text" 
+                  class="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 placeholder-slate-400" 
+                  placeholder="Cari nama pelanggan...">
           </div>
 
-          <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <div class="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
               @if(count($this->selected) > 0)
-                  <div class="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
-                      <span class="text-xs font-medium text-indigo-700 dark:text-indigo-400">{{ count($this->selected) }} terpilih</span>
-                      <div class="h-4 w-px bg-indigo-200 dark:bg-indigo-700 mx-1"></div>
-                      <button wire:click="handleBulkAction('activate', {{ json_encode($this->selected) }})" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 px-2 py-1 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 rounded transition-colors">Aktifkan</button>
-                      <button wire:click="handleBulkAction('send-wa', {{ json_encode($this->selected) }})" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-2 py-1 hover:bg-indigo-50 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 rounded transition-colors">Kirim WA</button>
+                  <div class="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
+                      <span class="text-xs font-medium text-indigo-700 dark:text-indigo-400 whitespace-nowrap">{{ count($this->selected) }} terpilih</span>
+                      <div class="h-4 w-px bg-indigo-200 dark:bg-indigo-700 mx-0.5"></div>
+                      <button wire:click="handleBulkAction('activate', {{ json_encode($this->selected) }})" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded transition-colors whitespace-nowrap">Aktifkan</button>
+                      <button wire:click="handleBulkAction('send-wa', {{ json_encode($this->selected) }})" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 rounded transition-colors whitespace-nowrap">Kirim WA</button>
                   </div>
               @endif
-              <select wire:model.live="perPage" class="py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+              <select wire:model.live="perPage" class="w-full sm:w-auto py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
                   <option value="20">20 / halaman</option>
                   <option value="50">50 / halaman</option>
                   <option value="all">Semua</option>

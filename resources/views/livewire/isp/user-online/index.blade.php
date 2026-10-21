@@ -76,22 +76,22 @@
         </div>
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex-1 w-full relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="relative w-full sm:flex-1 sm:max-w-md">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari User, IP, Router..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:bg-slate-900 dark:text-slate-100">
             </div>
-            <div class="flex items-center gap-3">
-                <button wire:click="syncRouters" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50">
+            <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ ucfirst($activeTab) }}</span> online
+                </div>
+                <button wire:click="syncRouters" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap">
                     <span class="material-symbols-outlined notranslate text-sm" wire:loading.class="animate-spin" translate="no">sync</span>
                     <span wire:loading.remove>Sinkronkan MikroTik</span>
                     <span wire:loading>Menyinkronkan...</span>
                 </button>
-                <div class="text-sm text-slate-500 dark:text-slate-400">
-                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ ucfirst($activeTab) }}</span> online
-                </div>
             </div>
         </div>
 

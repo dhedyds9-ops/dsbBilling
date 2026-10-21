@@ -75,42 +75,42 @@
     </div>
 
     {{-- SEARCH & FILTER BAR --}}
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4">
-        <div class="flex flex-col md:flex-row gap-3">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-3 sm:p-4">
+        <div class="flex flex-col lg:flex-row gap-2.5 sm:gap-3 items-stretch lg:items-center">
             {{-- Search --}}
-            <div class="flex-1 relative">
+            <div class="flex-1 w-full relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search"
                        placeholder="Cari nama, email, telepon..."
-                       class="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
+                       class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
             </div>
-            {{-- Status Filter --}}
-            <select wire:model.live="statusFilter"
-                    class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                <option value="">Semua Status</option>
-                <option value="active">Aktif</option>
-                <option value="suspend">Suspend</option>
-                <option value="inactive">Nonaktif</option>
-            </select>
-            {{-- Per Page --}}
-            <select wire:model.live="perPage"
-                    class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                <option value="20">20 / halaman</option>
-                <option value="50">50 / halaman</option>
-                <option value="100">100 / halaman</option>
-                <option value="500">500 / halaman</option>
-                <option value="999999">Semua</option>
-            </select>
-            {{-- Reset --}}
-            @if($search || $statusFilter)
-            <button wire:click="resetFilters"
-                    class="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
-                Reset
-            </button>
-            @endif
+            {{-- Filters & PerPage --}}
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
+                <select wire:model.live="statusFilter"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                    <option value="">Semua Status</option>
+                    <option value="active">Aktif</option>
+                    <option value="suspend">Suspend</option>
+                    <option value="inactive">Nonaktif</option>
+                </select>
+                <select wire:model.live="perPage"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                    <option value="20">20 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
+                    <option value="500">500 / hal</option>
+                    <option value="999999">Semua</option>
+                </select>
+                @if($search || $statusFilter)
+                <button wire:click="resetFilters"
+                        class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                    Reset
+                </button>
+                @endif
+            </div>
             
             {{-- Bulk Delete Button --}}
             @if(count($selectedCustomers) > 0)

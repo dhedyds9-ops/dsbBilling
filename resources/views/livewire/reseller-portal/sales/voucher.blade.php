@@ -69,47 +69,50 @@
         </div>
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex-1 w-full relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
-                </span>
-                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari kode voucher / pelanggan..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
-            </div>
-            <div class="flex items-center gap-2 w-full sm:w-auto">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
                 @if(count($selectedIds) > 0)
-                    <button onclick="confirm('Yakin ingin menghapus {{ count($selectedIds) }} voucher?') || event.stopImmediatePropagation()" wire:click="confirmBulkDelete" class="inline-flex items-center px-4 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors">
+                    <button onclick="confirm('Yakin ingin menghapus {{ count($selectedIds) }} voucher?') || event.stopImmediatePropagation()" wire:click="confirmBulkDelete" class="inline-flex items-center px-3.5 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
                         <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">delete</span>
                         Hapus ({{ count($selectedIds) }})
                     </button>
-                    <button wire:click="printSelected" class="inline-flex items-center px-4 py-2 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-colors">
+                    <button wire:click="printSelected" class="inline-flex items-center px-3.5 py-2 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap">
                         <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">print</span>
                         Cetak ({{ count($selectedIds) }})
                     </button>
                 @endif
-                <button wire:click="$set('showGenerateModal', true)" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+                <button wire:click="$set('showGenerateModal', true)" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap">
                     <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">add</span>
                     Generate Voucher
                 </button>
             </div>
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-                <select wire:model.live="filters.voucher_pool_id" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                    <option value="">Semua Tanggal Buat</option>
-                    @foreach($voucherPools as $pool)
-                        <option value="{{ $pool->id }}">vc-{{ $pool->created_at->format('d-m-Y-H:i:s') }}</option>
-                    @endforeach
-                </select>
-                <select wire:model.live="filters.status" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                    <option value="">Semua Status</option>
-                    <option value="available">Tersedia</option>
-                    <option value="used">Sudah Dipakai</option>
-                    <option value="expired">Kedaluwarsa</option>
-                </select>
-                <select wire:model.live="perPage" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                    <option value="20">20 / halaman</option>
-                    <option value="50">50 / halaman</option>
-                    <option value="100">100 / halaman</option>
-                </select>
+            
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto flex-1 lg:justify-end">
+                <div class="relative w-full sm:w-60">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">search</span>
+                    </span>
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari kode voucher..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                </div>
+                <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                    <select wire:model.live="filters.voucher_pool_id" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="">Semua Batch</option>
+                        @foreach($voucherPools as $pool)
+                            <option value="{{ $pool->id }}">vc-{{ $pool->created_at->format('d-m-Y-H:i:s') }}</option>
+                        @endforeach
+                    </select>
+                    <select wire:model.live="filters.status" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="">Semua Status</option>
+                        <option value="available">Tersedia</option>
+                        <option value="used">Sudah Dipakai</option>
+                        <option value="expired">Kedaluwarsa</option>
+                    </select>
+                    <select wire:model.live="perPage" class="col-span-2 sm:col-auto w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="20">20 / hal</option>
+                        <option value="50">50 / hal</option>
+                        <option value="100">100 / hal</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -249,7 +252,7 @@
                 </table>
             </div>
             @if($vouchers->hasPages())
-                <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-center sm:justify-start overflow-x-auto">
                     {{ $vouchers->links() }}
                 </div>
             @endif

@@ -7,16 +7,16 @@
 
     <div class="max-w-6xl mx-auto space-y-6">
         
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-4 w-full sm:w-auto">
-                <div class="flex-1 sm:flex-none">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="w-full sm:w-auto">
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tanggal</label>
-                    <input type="date" wire:model.live="dateFilter" class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                    <input type="date" wire:model.live="dateFilter" class="w-full sm:w-auto px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100">
                 </div>
             </div>
             <div class="w-full sm:w-72 relative">
-                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" translate="no" style="font-size:20px">search</span>
-                <input type="text" wire:model.live.debounce.300ms="search" class="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100" placeholder="Cari nama teknisi...">
+                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" translate="no" style="font-size:20px">search</span>
+                <input type="text" wire:model.live.debounce.300ms="search" class="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100" placeholder="Cari nama teknisi...">
             </div>
         </div>
 
@@ -116,6 +116,11 @@
                     </tbody>
                 </table>
             </div>
+            @if(method_exists($attendances, 'hasPages') && $attendances->hasPages())
+                <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex justify-center sm:justify-start overflow-x-auto">
+                    {{ $attendances->links() }}
+                </div>
+            @endif
         </div>
     </div>
 </div>

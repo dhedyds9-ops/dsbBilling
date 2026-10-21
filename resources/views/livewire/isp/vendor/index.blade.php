@@ -62,30 +62,32 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-            <div class="flex-1 relative sm:w-64">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
+            <div class="relative w-full sm:w-60">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search"
                        placeholder="Cari nama vendor..."
-                       class="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
             </div>
-            <select wire:model.live="filters.status" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                <option value="">Semua Status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-            </select>
-            <select wire:model.live="perPage" class="hidden sm:block pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                <option value="10">10 Baris</option>
-                <option value="25">25 Baris</option>
-                <option value="50">50 Baris</option>
-                <option value="100">100 Baris</option>
-            </select>
-            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer ml-1 bg-slate-50 dark:bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
-                Sampah
-            </label>
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="filters.status" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Semua Status</option>
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                </select>
+                <select wire:model.live="perPage" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="10">10 Baris</option>
+                    <option value="25">25 Baris</option>
+                    <option value="50">50 Baris</option>
+                    <option value="100">100 Baris</option>
+                </select>
+                <label class="col-span-2 sm:col-auto flex items-center justify-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer bg-slate-50 dark:bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+                    <span>Sampah</span>
+                </label>
+            </div>
         </div>
     </div>
 

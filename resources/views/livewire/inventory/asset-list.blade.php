@@ -75,41 +75,43 @@
     </div>
 
     {{-- TOOLBAR & FILTER --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-2">
-            <button wire:click="create" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto">
+            <button wire:click="create" class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
                 Tambah Asset
             </button>
-            <button wire:click="syncInstalledOnus(true)" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-3 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-medium rounded-lg shadow-sm transition-all" title="Sinkronkan data dari instalasi ONU">
+            <button wire:click="syncInstalledOnus(true)" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap" title="Sinkronkan data dari instalasi ONU">
                 <span class="material-symbols-outlined notranslate mr-1.5 text-indigo-500" translate="no" style="font-size:18px">sync</span>
                 <span wire:loading.remove wire:target="syncInstalledOnus">Sinkronkan ONU</span>
                 <span wire:loading wire:target="syncInstalledOnus">Sinkronisasi...</span>
             </button>
         </div>
         
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-            <div class="flex-1 relative sm:w-64">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
+            <div class="relative w-full sm:w-64">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="filters.search"
                        placeholder="Cari kode, nama, SN..."
-                       class="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
             </div>
-            <select wire:model.live="filters.status" class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                <option value="all">Semua Status</option>
-                <option value="in_use">In Use</option>
-                <option value="available">Available</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="retired">Retired</option>
-            </select>
-            <select wire:model.live="perPage" class="hidden sm:block pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                <option value="15">15 Baris</option>
-                <option value="25">25 Baris</option>
-                <option value="50">50 Baris</option>
-                <option value="100">100 Baris</option>
-            </select>
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="filters.status" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+                    <option value="all">Semua Status</option>
+                    <option value="in_use">In Use</option>
+                    <option value="available">Available</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="retired">Retired</option>
+                </select>
+                <select wire:model.live="perPage" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+                    <option value="15">15 Baris</option>
+                    <option value="25">25 Baris</option>
+                    <option value="50">50 Baris</option>
+                    <option value="100">100 Baris</option>
+                </select>
+            </div>
         </div>
     </div>
 

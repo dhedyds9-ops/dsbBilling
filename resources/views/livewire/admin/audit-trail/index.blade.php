@@ -74,7 +74,7 @@
 
   {{-- Pagination --}}
   @if($auditLogs->hasPages())
-    <div class="px-6 py-3 border-t border-slate-100 dark:border-slate-700">
+    <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-700 flex justify-center sm:justify-start overflow-x-auto">
       {{ $auditLogs->links() }}
     </div>
   @endif

@@ -58,12 +58,12 @@
         {{-- Table Card --}}
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             {{-- Search --}}
-            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h2 class="font-bold text-slate-800 dark:text-slate-200">Daftar Cabang</h2>
-                <div class="relative">
-                    <x-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama- kode- kota..." 
-                        class="pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-64 dark:bg-slate-900 dark:text-slate-100">
+                <div class="relative w-full sm:w-64">
+                    <x-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama, kode, kota..." 
+                        class="pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full dark:bg-slate-900 dark:text-slate-100">
                 </div>
             </div>
 
@@ -156,7 +156,7 @@
             </div>
 
             @if($branches->hasPages())
-                <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700">
+                <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-700 flex justify-center sm:justify-start overflow-x-auto">
                     {{ $branches->links() }}
                 </div>
             @endif

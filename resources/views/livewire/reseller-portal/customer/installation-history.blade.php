@@ -13,13 +13,13 @@
         </div>
 
         <!-- Filter Periode (Bulan & Tahun) -->
-        <div class="flex items-center gap-2">
-            <select wire:model.live="selectedMonth" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <select wire:model.live="selectedMonth" class="w-full sm:w-auto px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
                 @for($m = 1; $m <= 12; $m++)
                     <option value="{{ $m }}">{{ \Carbon\Carbon::create(null, $m, 1)->translatedFormat('F') }}</option>
                 @endfor
             </select>
-            <select wire:model.live="selectedYear" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+            <select wire:model.live="selectedYear" class="w-full sm:w-auto px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
                 @for($y = now()->year - 2; $y <= now()->year + 1; $y++)
                     <option value="{{ $y }}">{{ $y }}</option>
                 @endfor
@@ -67,22 +67,22 @@
     </div>
 
     <!-- Filters & Search Toolbar -->
-    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
         {{-- Tipe Tabs --}}
-        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto">
             <button wire:click="setTypeFilter('all')" type="button"
-                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap
                            {{ $typeFilter === 'all' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
                 Semua Pekerjaan
             </button>
             <button wire:click="setTypeFilter('installation')" type="button"
-                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 whitespace-nowrap
                            {{ $typeFilter === 'installation' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
                 <span class="material-symbols-outlined notranslate text-xs" translate="no">build_circle</span>
                 Pasang Baru (PSB)
             </button>
             <button wire:click="setTypeFilter('repair')" type="button"
-                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 whitespace-nowrap
                            {{ $typeFilter === 'repair' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
                 <span class="material-symbols-outlined notranslate text-xs" translate="no">build</span>
                 Perbaikan
@@ -90,8 +90,8 @@
         </div>
 
         {{-- Search Input --}}
-        <div class="relative w-full sm:w-72">
-            <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" translate="no">search</span>
+        <div class="relative w-full lg:w-72">
+            <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none" translate="no">search</span>
             <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari pelanggan, SN ONU, teknisi..."
                    class="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500">
             @if($search)
@@ -199,7 +199,7 @@
         </div>
 
         @if($items->hasPages())
-            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 flex justify-center sm:justify-start overflow-x-auto">
                 {{ $items->links() }}
             </div>
         @endif

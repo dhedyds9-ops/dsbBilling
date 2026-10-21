@@ -75,29 +75,130 @@
         </div>
 
       @elseif($activeTab === 'midtrans')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        @php
+          $mEnv = $midtrans['environment'] ?? 'sandbox';
+        @endphp
+        <div x-data="{ env: '{{ $mEnv }}' }" x-init="env = '{{ $mEnv }}'" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="font-semibold text-slate-900 dark:text-slate-100">Midtrans (Pembayaran Indonesia)</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $general['mode'] === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }}">
-                Mode Aktif: {{ strtoupper($general['mode']) }}
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $mEnv === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' }}"
+                    :class="env === 'production' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'"
+                    x-text="'Mode Aktif: ' + env.toUpperCase()">
+                Mode Aktif: {{ strtoupper($mEnv) }}
               </span>
             </div>
-            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="midtrans.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan Midtrans</label>
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input type="checkbox" wire:model="midtrans.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
+              Aktifkan Midtrans
+            </label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode Midtrans</label>
-              <select wire:model.live="midtrans.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
-                <option value="sandbox">Sandbox (Testing / Uji Coba)</option>
-                <option value="production">Production (Live / Transaksi Nyata)</option>
-              </select>
+            {{-- Mode Midtrans (Radio Buttons) --}}
+            <div class="md:col-span-2">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">Mode Midtrans</label>
+              <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                <label class="relative flex items-center gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-lg border cursor-pointer transition-all {{ $mEnv === 'sandbox' ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-200 ring-1 ring-amber-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300' }}"
+                       :class="env === 'sandbox' ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-200 ring-1 ring-amber-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300'">
+                  <input type="radio" 
+                         name="midtrans_environment" 
+                         value="sandbox" 
+                         wire:model.live="midtrans.environment" 
+                         @change="env = 'sandbox'" 
+                         class="text-amber-600 focus:ring-amber-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer">
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-xs font-bold leading-tight flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                      <span class="truncate">Sandbox</span>
+                    </span>
+                    <span class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">Uji Coba / Testing</span>
+                  </div>
+                </label>
+
+                <label class="relative flex items-center gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-lg border cursor-pointer transition-all {{ $mEnv === 'production' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300' }}"
+                       :class="env === 'production' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300'">
+                  <input type="radio" 
+                         name="midtrans_environment" 
+                         value="production" 
+                         wire:model.live="midtrans.environment" 
+                         @change="env = 'production'" 
+                         class="text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer">
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-xs font-bold leading-tight flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                      <span class="truncate">Production</span>
+                    </span>
+                    <span class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">Live Transaksi</span>
+                  </div>
+                </label>
+              </div>
             </div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Merchant ID</label><input type="text" wire:model="midtrans.merchant_id" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Server Key Sandbox</label><input type="password" wire:model="midtrans.server_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="SB-Mid-server-..."></div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Server Key Production</label><input type="password" wire:model="midtrans.server_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="Mid-server-..."></div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Client Key Sandbox</label><input type="text" wire:model="midtrans.client_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="SB-Mid-client-..."></div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Client Key Production</label><input type="text" wire:model="midtrans.client_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="Mid-client-..."></div>
+
+            {{-- Merchant ID --}}
+            <div class="md:col-span-2">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Merchant ID</label>
+              <input type="text" wire:model="midtrans.merchant_id" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs dark:bg-slate-900 dark:text-slate-100" placeholder="Contoh: G123456789">
+            </div>
+
+            {{-- Server Key Sandbox (Tampil saat Sandbox) --}}
+            <div x-show="env === 'sandbox'" 
+                 @if($mEnv !== 'sandbox') style="display: none;" @endif>
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Server Key Sandbox <span class="text-amber-500 font-normal text-[11px]">(Testing)</span>
+              </label>
+              <div class="relative" x-data="{ showKey: false }">
+                <input :type="showKey ? 'text' : 'password'" 
+                       wire:model="midtrans.server_key_sandbox" 
+                       class="w-full pl-3 pr-9 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs focus:ring-1 focus:ring-amber-500 focus:border-amber-500" 
+                       placeholder="SB-Mid-server-...">
+                <button type="button" 
+                        @click="showKey = !showKey" 
+                        class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" 
+                        tabindex="-1"
+                        title="Tampilkan / Sembunyikan Key">
+                  <span class="material-symbols-outlined text-[18px]" x-text="showKey ? 'visibility_off' : 'visibility'">visibility</span>
+                </button>
+              </div>
+            </div>
+
+            {{-- Client Key Sandbox (Tampil saat Sandbox) --}}
+            <div x-show="env === 'sandbox'" 
+                 @if($mEnv !== 'sandbox') style="display: none;" @endif>
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Client Key Sandbox <span class="text-amber-500 font-normal text-[11px]">(Testing)</span>
+              </label>
+              <input type="text" wire:model="midtrans.client_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs focus:ring-1 focus:ring-amber-500 focus:border-amber-500" placeholder="SB-Mid-client-...">
+            </div>
+
+            {{-- Server Key Production (Tampil saat Production) --}}
+            <div x-show="env === 'production'" 
+                 @if($mEnv !== 'production') style="display: none;" @endif>
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Server Key Production <span class="text-emerald-500 font-normal text-[11px]">(Live)</span>
+              </label>
+              <div class="relative" x-data="{ showKey: false }">
+                <input :type="showKey ? 'text' : 'password'" 
+                       wire:model="midtrans.server_key_production" 
+                       class="w-full pl-3 pr-9 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500" 
+                       placeholder="Mid-server-...">
+                <button type="button" 
+                        @click="showKey = !showKey" 
+                        class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" 
+                        tabindex="-1"
+                        title="Tampilkan / Sembunyikan Key">
+                  <span class="material-symbols-outlined text-[18px]" x-text="showKey ? 'visibility_off' : 'visibility'">visibility</span>
+                </button>
+              </div>
+            </div>
+
+            {{-- Client Key Production (Tampil saat Production) --}}
+            <div x-show="env === 'production'" 
+                 @if($mEnv !== 'production') style="display: none;" @endif>
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Client Key Production <span class="text-emerald-500 font-normal text-[11px]">(Live)</span>
+              </label>
+              <input type="text" wire:model="midtrans.client_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Mid-client-...">
+            </div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Expiry (satuan)</label><select wire:model="midtrans.expiry_unit" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm dark:bg-slate-900 dark:text-slate-100"><option value="minute">Menit</option><option value="hour">Jam</option><option value="day">Hari</option></select></div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Durasi Expiry</label><input type="number" wire:model="midtrans.expiry_duration" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
             <div class="md:col-span-2 flex flex-wrap items-center gap-4">

@@ -38,13 +38,13 @@
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
             <div class="lg:col-span-3 space-y-4">
                 <div class="noc-panel-bg border noc-border rounded p-3">
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
-                        <div class="md:col-span-7">
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-3 items-end">
+                        <div class="sm:col-span-6 lg:col-span-7">
                             <label class="noc-section-label">Search</label>
-                            <input wire:model.live.debounce.250ms="search" type="text" placeholder="UUID- customer name- codeâ€¦"
+                            <input wire:model.live.debounce.250ms="search" type="text" placeholder="UUID, customer name, code…"
                                    class="w-full noc-input border rounded px-2.5 py-1.5 text-sm dark:bg-slate-900 dark:text-slate-100">
                         </div>
-                        <div class="md:col-span-3">
+                        <div class="sm:col-span-4 lg:col-span-3">
                             <label class="noc-section-label">Status</label>
                             <select wire:model.live="statusFilter" class="w-full noc-input border rounded px-2 py-1.5 text-sm dark:bg-slate-900 dark:text-slate-100">
                                 <option value="all">All</option>
@@ -54,8 +54,8 @@
                                 <option value="failed">Failed</option>
                             </select>
                         </div>
-                        <div class="md:col-span-2 flex gap-1.5">
-                            <button wire:click="resetPage" class="flex-1 px-2.5 py-1.5 text-xs border rounded noc-btn-outline">Reset</button>
+                        <div class="sm:col-span-2 lg:col-span-2 flex gap-1.5">
+                            <button wire:click="resetPage" class="w-full px-2.5 py-1.5 text-xs border rounded noc-btn-outline">Reset</button>
                         </div>
                     </div>
                 </div>
@@ -143,7 +143,7 @@
                         </table>
                     </div>
                     @if($pipelines->hasPages())
-                        <div class="px-3 py-2 border-t noc-border noc-muted text-xs">
+                        <div class="px-3 py-2 border-t noc-border noc-muted text-xs overflow-x-auto">
                             {{ $pipelines->onEachSide(1)->links() }}
                         </div>
                     @endif

@@ -7,12 +7,12 @@
     </div>
 
     <!-- Filter & Toolbar -->
-    <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
-        <div class="flex-1 w-full relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+    <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+        <div class="w-full sm:w-72 relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
             </span>
-            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari pelanggan / voucher..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari pelanggan / voucher..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
         </div>
     </div>
 
@@ -74,7 +74,7 @@
             </table>
         </div>
         @if($commissions->hasPages())
-            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-center sm:justify-start overflow-x-auto">
                 {{ $commissions->links(data: ['scrollTo' => false]) }}
             </div>
         @endif

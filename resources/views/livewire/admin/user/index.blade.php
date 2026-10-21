@@ -9,8 +9,8 @@
 
 <div class="space-y-6 pb-10">
     {{-- Toolbar --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-        <div class="flex flex-wrap items-center gap-3">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
             {{-- Search --}}
             <div class="relative w-full sm:w-64">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -19,28 +19,32 @@
                 <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari nama atau email..." 
                     class="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 placeholder-slate-400 dark:bg-slate-900 dark:text-slate-100">
             </div>
-            
-            <button wire:click="resetFilters" class="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-300 font-medium hidden sm:block">
-                Reset
-            </button>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                {{-- Per Page Selector --}}
+                <select wire:model.live="perPage" class="w-full sm:w-auto py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
+                    <option value="10">10 / hal</option>
+                    <option value="25">25 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
+                    <option value="all">Semua</option>
+                </select>
+
+                @if($search)
+                <button wire:click="resetFilters" class="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100 font-medium whitespace-nowrap">
+                    Reset
+                </button>
+                @endif
+            </div>
         </div>
 
-        <div class="flex items-center gap-3">
-            {{-- Per Page Selector --}}
-            <select wire:model.live="perPage" class="py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
-                <option value="10">10 / halaman</option>
-                <option value="25">25 / halaman</option>
-                <option value="50">50 / halaman</option>
-                <option value="100">100 / halaman</option>
-                <option value="all">Semua</option>
-            </select>
-            
-            <button wire:click="export" class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors">
+        <div class="flex items-center gap-2 w-full lg:w-auto">
+            <button wire:click="export" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span>
                 Export
             </button>
 
-            <a href="{{ route('admin.users.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors whitespace-nowrap">
+            <a href="{{ route('admin.users.create') }}" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">person_add</span>
                 Tambah User
             </a>

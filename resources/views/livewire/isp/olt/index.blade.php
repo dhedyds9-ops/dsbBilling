@@ -317,56 +317,58 @@
     </div>
 
     {{-- TOOLBAR & FILTER --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-2">
-            <a href="{{ route('isp.olts.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
+            <a href="{{ route('isp.olts.create') }}" class="inline-flex items-center justify-center px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
                 Tambah OLT
             </a>
-            <a href="{{ route('isp.onus.index') }}" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-emerald-200 dark:shadow-none transition-all" title="Daftar & Manajemen Semua ONU">
+            <a href="{{ route('isp.onus.index') }}" class="inline-flex items-center justify-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-emerald-200 dark:shadow-none transition-all whitespace-nowrap" title="Daftar & Manajemen Semua ONU">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">router</span>
                 Kelola ONU
             </a>
-            <button wire:click="syncAll" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-200 dark:shadow-none transition-all cursor-pointer" title="Sinkronkan status semua OLT">
+            <button wire:click="syncAll" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-200 dark:shadow-none transition-all cursor-pointer whitespace-nowrap" title="Sinkronkan status semua OLT">
                 <span class="material-symbols-outlined notranslate mr-1.5" wire:loading.class="animate-spin" wire:target="syncAll" translate="no" style="font-size:18px">sync</span>
                 <span wire:loading.remove wire:target="syncAll">Sinkronkan Semua</span>
                 <span wire:loading wire:target="syncAll">Sinkronisasi...</span>
             </button>
-            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer">
+            <button wire:click="export" class="inline-flex items-center justify-center px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">download</span>
                 Export
             </button>
         </div>
         
-        <div class="flex items-center gap-2">
-            <div class="flex-1 relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
+            <div class="relative w-full sm:w-60">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search"
                        placeholder="Cari kode, nama..."
-                       class="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:bg-slate-900 dark:text-slate-100">
             </div>
-            <select wire:model.live="filters.status"
-                    class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                <option value="" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">Semua Status</option>
-                <option value="active" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">Aktif</option>
-                <option value="inactive" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">Nonaktif</option>
-            </select>
-            <select wire:model.live="perPage"
-                    class="pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                <option value="10" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">10 / halaman</option>
-                <option value="25" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">25 / halaman</option>
-                <option value="50" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">50 / halaman</option>
-                <option value="100" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">100 / halaman</option>
-            </select>
-            @if($search || $filters['status'])
-            <button wire:click="resetFilters"
-                    class="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
-                Reset
-            </button>
-            @endif
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="filters.status"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                    <option value="" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">Semua Status</option>
+                    <option value="active" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">Aktif</option>
+                    <option value="inactive" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">Nonaktif</option>
+                </select>
+                <select wire:model.live="perPage"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                    <option value="10" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">10 / hal</option>
+                    <option value="25" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">25 / hal</option>
+                    <option value="50" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">50 / hal</option>
+                    <option value="100" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">100 / hal</option>
+                </select>
+                @if($search || $filters['status'])
+                <button wire:click="resetFilters"
+                        class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                    Reset
+                </button>
+                @endif
+            </div>
         </div>
     </div>
     

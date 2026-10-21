@@ -32,10 +32,10 @@ $showEllipsisEnd = $currentPage < $totalPages - 3;
 @endphp
 
 @if ($hasPages || $showInfo)
-    <nav class="flex items-center justify-between">
+    <nav class="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
         {{-- Info --}}
         @if ($showInfo)
-            <div class="text-sm text-slate-600 dark:text-slate-400">
+            <div class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 text-center sm:text-left">
                 Showing
                 <span class="font-medium">{{ $from }}</span>
                 to

@@ -13,24 +13,24 @@
     </div>
 
     <!-- Filter & Toolbar -->
-    <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
-        <div class="flex-1 w-full relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+    <div class="flex flex-col lg:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+        <div class="w-full lg:w-72 relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
             </span>
-            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nomor referensi..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nomor referensi..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
         </div>
-        <div class="flex items-center gap-3 w-full sm:w-auto">
-            <select wire:model.live="status" class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
+            <select wire:model.live="status" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                 <option value="">Semua Status</option>
-                <option value="pending">Menunggu Konfirmasi</option>
-                <option value="approved">Berhasil (Approved)</option>
+                <option value="pending">Menunggu</option>
+                <option value="approved">Berhasil</option>
                 <option value="rejected">Ditolak</option>
             </select>
-            <select wire:model.live="perPage" class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                <option value="10">10 / halaman</option>
-                <option value="25">25 / halaman</option>
-                <option value="50">50 / halaman</option>
+            <select wire:model.live="perPage" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                <option value="10">10 / hal</option>
+                <option value="25">25 / hal</option>
+                <option value="50">50 / hal</option>
             </select>
         </div>
     </div>
@@ -98,7 +98,7 @@
             </table>
         </div>
         @if($topups->hasPages())
-            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-center sm:justify-start overflow-x-auto">
                 {{ $topups->links(data: ['scrollTo' => false]) }}
             </div>
         @endif
