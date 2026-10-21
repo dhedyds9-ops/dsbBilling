@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Reseller;
 
 use App\Http\Controllers\Controller;
-use App\Models\Billing\Invoice;
-use App\Models\Billing\InvoiceItem;
-use Illuminate\Support\Facades\DB;
-use App\Models\User;
+use App\Services\Keuangan\IncomeReportService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -16,22 +14,23 @@ class ReportPrintController extends Controller
     public function printSales(Request $request)
     {
         $reseller = Auth::user();
-        $resellerId = $reseller->id;
+        $resellerId = $reseller->getEffectiveResellerId() ?? ($reseller->hasRole('reseller') ? $reseller->id : null);
 
-        $month = $request->input('month', now()->month);
-        $year = $request->input('year', now()->year);
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
 
-        $sales = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })
-        ->where('status', 'paid')
-        ->whereMonth('updated_at', $month)
-        ->whereYear('updated_at', $year)
-        ->with('customer')
-        ->orderBy('updated_at', 'asc')
-        ->get();
+        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth()->format('Y-m-d');
+        $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
 
-        $totalRevenue = $sales->sum('total_amount');
+        $incomeService = app(IncomeReportService::class);
+        $reportData = $incomeService->getTransactions([
+            'reseller_id' => $resellerId,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
+
+        $sales = $reportData['rows'];
+        $totalRevenue = (float) ($reportData['summary']['total_plus_ppn'] ?? 0);
 
         $data = [
             'reseller' => $reseller,
@@ -48,48 +47,41 @@ class ReportPrintController extends Controller
     
     public function printCommission(Request $request)
     {
-        $resellerId = Auth::id();
-        $currentMonth = now()->month;
-        $currentYear = now()->year;
+        $reseller = Auth::user();
+        $resellerId = $reseller->getEffectiveResellerId() ?? ($reseller->hasRole('reseller') ? $reseller->id : null);
 
-        $query = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })
-        ->where('status', 'paid')
-        ->whereMonth('updated_at', $currentMonth)
-        ->whereYear('updated_at', $currentYear);
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
 
-        $invoiceIds = (clone $query)->pluck('id');
+        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth()->format('Y-m-d');
+        $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
 
-        $grossRevenue = 0;
-        $totalCost = 0;
+        $incomeService = app(IncomeReportService::class);
+        $reportData = $incomeService->getTransactions([
+            'reseller_id' => $resellerId,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
 
-        if ($invoiceIds->count() > 0) {
-            $grossRevenue = InvoiceItem::whereIn('invoice_id', $invoiceIds)->sum('subtotal');
-            $totalCost = InvoiceItem::whereIn('invoice_id', $invoiceIds)->sum(DB::raw('COALESCE(reseller_settlement_price, 0)'));
-        }
-
-        $netMargin = $grossRevenue - $totalCost;
-        if ($totalCost == 0 && $grossRevenue > 0) {
-            $netMargin = $grossRevenue * 0.15;
-            $totalCost = $grossRevenue - $netMargin;
-        }
-
+        $summary = $reportData['summary'];
+        $grossRevenue = (float) ($summary['total_plus_ppn'] ?? 0);
+        $netMargin = (float) ($summary['fee_seller'] ?? 0);
+        $totalCost = (float) ($summary['profit'] ?? 0);
         $profitMarginPercent = $grossRevenue > 0 ? ($netMargin / $grossRevenue) * 100 : 0;
 
-        $details = (clone $query)->with(['customer', 'items'])->orderBy('updated_at', 'desc')->get();
+        $monthDate = Carbon::createFromDate($year, $month, 1);
 
         $data = [
-            'reseller' => Auth::user(),
-            'monthName' => now()->translatedFormat('F Y'),
+            'reseller' => $reseller,
+            'monthName' => $monthDate->translatedFormat('F Y'),
             'grossRevenue' => $grossRevenue,
             'totalCost' => $totalCost,
             'netMargin' => $netMargin,
             'profitMarginPercent' => $profitMarginPercent,
-            'details' => $details,
+            'details' => $reportData['rows'],
         ];
 
         $pdf = Pdf::loadView('reports.reseller.commission-pdf', $data);
-        return $pdf->stream('Laporan_Komisi_' . now()->format('Y-m') . '.pdf');
+        return $pdf->stream('Laporan_Komisi_' . $reseller->name . '_' . $month . '_' . $year . '.pdf');
     }
 }

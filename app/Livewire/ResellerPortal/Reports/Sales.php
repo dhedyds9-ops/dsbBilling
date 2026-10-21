@@ -3,19 +3,25 @@
 namespace App\Livewire\ResellerPortal\Reports;
 
 use App\Livewire\AdminComponent;
-use App\Models\User;
-use App\Models\ISP\Voucher;
-use App\Models\Billing\Invoice;
+use App\Models\CRM\Customer;
+use App\Services\Keuangan\IncomeReportService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class Sales extends AdminComponent
 {
+    public $selectedMonth;
+    public $selectedYear;
+
     public function mount()
     {
         parent::mount();
         $this->activeModule = 'reseller-portal';
         $this->activePage = 'reseller-portal.reports.sales';
         
+        $this->selectedMonth = (int) now()->month;
+        $this->selectedYear = (int) now()->year;
+
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => '#'],
             ['label' => 'Laporan', 'url' => '#'],
@@ -25,43 +31,45 @@ class Sales extends AdminComponent
 
     public function render()
     {
-        $resellerId = Auth::user()->getEffectiveResellerId();
+        $user = Auth::user();
+        $resellerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+        $month = (int) ($this->selectedMonth ?: now()->month);
+        $year = (int) ($this->selectedYear ?: now()->year);
 
-        // Total active customers
-        $totalCustomers = \App\Models\CRM\Customer::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+        // Total active customers for this reseller
+        $totalCustomers = Customer::withoutGlobalScopes()->where(function($q) use ($resellerId) {
             $q->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
         })->count();
 
-        // Total vouchers (used)
-        $totalVouchers = Voucher::withoutGlobalScopes()->where('reseller_id', $resellerId)->where('status', 'used')->count();
+        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth()->format('Y-m-d');
+        $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
 
-        // Total invoices this month
-        $thisMonthInvoices = Invoice::withoutGlobalScopes()->where(function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId)
-              ->orWhereHas('customer', function($cq) use ($resellerId) {
-                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
-              });
-        })->whereMonth('created_at', now()->month)
-          ->whereYear('created_at', now()->year)
-          ->count();
+        $incomeService = app(IncomeReportService::class);
+        $reportData = $incomeService->getTransactions([
+            'reseller_id' => $resellerId,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
 
-        // Recent successful sales (paid invoices)
-        $recentSales = Invoice::withoutGlobalScopes()->where(function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId)
-              ->orWhereHas('customer', function($cq) use ($resellerId) {
-                  $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
-              });
-        })->where('status', 'paid')
-          ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
-          ->orderBy('updated_at', 'desc')
-          ->take(5)
-          ->get();
+        $rows = $reportData['rows'];
+        $customerRows = $rows->filter(fn($r) => !str_starts_with((string) $r['id'], 'VCR-'));
+        $voucherRows = $rows->filter(fn($r) => str_starts_with((string) $r['id'], 'VCR-'));
+
+        $totalVouchers = $voucherRows->count();
+        $thisMonthInvoices = $customerRows->count();
+        $totalSalesMonth = (float) ($reportData['summary']['total_plus_ppn'] ?? 0);
+
+        // Top 10 recent sales transactions
+        $recentSales = $rows->take(10);
+        $monthDate = Carbon::createFromDate($year, $month, 1);
 
         return view('livewire.reseller-portal.reports.sales', [
             'totalCustomers' => $totalCustomers,
             'totalVouchers' => $totalVouchers,
             'thisMonthInvoices' => $thisMonthInvoices,
+            'totalSalesMonth' => $totalSalesMonth,
             'recentSales' => $recentSales,
+            'currentMonthName' => $monthDate->translatedFormat('F Y'),
         ]);
     }
 }

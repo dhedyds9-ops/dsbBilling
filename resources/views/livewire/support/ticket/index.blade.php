@@ -29,7 +29,7 @@ $statusLabels = [
 <div class="flex flex-col h-full min-h-0 bg-slate-50 dark:bg-slate-900">
 
     @include('partials.enterprise.list-toolbar', [
-        'title' => 'Support > Tiket Support',
+        'title' => '',
         'primaryAction' => null,
         'actions' => $toolbarActions,
         'searchPlaceholder' => 'Cari judul, customer, ticket ID...',
@@ -178,87 +178,163 @@ $statusLabels = [
         </div>
     @else
         <div class="flex-1 overflow-auto min-h-0">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
-                    <tr class="text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">
-                        <th class="w-10 px-3 py-2"><input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"></th>
-                        <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('id')">Ticket ID</th>
-                        <th class="px-3 py-2 text-left">Title</th>
-                        <th class="px-3 py-2 text-left">Customer</th>
-                        <th class="px-3 py-2 text-left">Category</th>
-                        <th class="px-3 py-2 text-left">Priority</th>
-                        <th class="px-3 py-2 text-left">Status</th>
-                        <th class="px-3 py-2 text-left">Assignee</th>
-                        <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('due_date')">Due</th>
-                        <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('updated_at')">Last Update</th>
-                        <th class="px-3 py-2 text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
-                    @php
-                        $pageRows = $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? $rows->items() : (is_array($rows) ? $rows : $rows->all());
-                    @endphp
-                    @forelse ($pageRows as $t)
-                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40">
-                            <td class="px-3 py-2"><input type="checkbox" wire:model.live="selected" value="{{ (string) $t->id }}" class="rounded border-slate-300 dark:border-slate-600"></td>
-                            <td class="px-3 py-2 font-mono text-xs">
-                                <span class="text-slate-500 dark:text-slate-400">#{{ $t->id }}</span>
-                                <span class="text-slate-400 block">{{ substr($t->uuid, -6) }}</span>
-                            </td>
-                            <td class="px-3 py-2 max-w-xs truncate font-medium">{{ $t->title }}</td>
-                            <td class="px-3 py-2 text-xs">{{ $t->customer?->name ?? '-' }}</td>
-                            <td class="px-3 py-2 text-xs capitalize">{{ $t->category }}</td>
-                            <td class="px-3 py-2"><span class="text-[10px] px-2 py-0.5 rounded-full {{ $priorityBadge[$t->priority] ?? '' }}">{{ strtoupper($t->priority) }}</span></td>
-                            <td class="px-3 py-2"><span class="text-[10px] px-2 py-0.5 rounded-full border {{ $statusBadge[$t->status] ?? '' }}">{{ $statusLabels[$t->status] ?? $t->status }}</span></td>
-                            <td class="px-3 py-2 text-xs">
+            @php
+                $pageRows = $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? $rows->items() : (is_array($rows) ? $rows : $rows->all());
+            @endphp
+
+            {{-- Mobile Cards View (Hidden on Desktop) --}}
+            <div class="block md:hidden p-2 space-y-2.5">
+                @forelse ($pageRows as $t)
+                    <div class="p-3.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" wire:model.live="selected" value="{{ (string) $t->id }}" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900">
+                                <span class="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">#{{ $t->id }}</span>
+                                <span class="text-[10px] text-slate-400 font-mono">· {{ substr($t->uuid, -6) }}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full {{ $priorityBadge[$t->priority] ?? '' }} font-semibold">{{ strtoupper($t->priority) }}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full border {{ $statusBadge[$t->status] ?? '' }} font-medium">{{ $statusLabels[$t->status] ?? $t->status }}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="font-bold text-sm text-slate-900 dark:text-slate-100 leading-snug">{{ $t->title }}</div>
+                            <div class="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                <span class="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{{ $t->customer?->name ?? '-' }}</span>
+                                <span>•</span>
+                                <span class="capitalize text-slate-500 dark:text-slate-400">{{ $t->category }}</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-1.5 min-w-0">
                                 @if ($t->assignedTo)
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-[9px] font-semibold">{{ strtoupper(substr($t->assignedTo->name,0,1)) }}</span>
-                                        <span class="truncate max-w-[80px]">{{ $t->assignedTo->name }}</span>
-                                    </div>
+                                    <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-[9px] font-bold shrink-0">{{ strtoupper(substr($t->assignedTo->name, 0, 1)) }}</span>
+                                    <span class="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[90px]">{{ $t->assignedTo->name }}</span>
                                 @else
-                                    <span class="text-slate-400 italic text-[10px]">Unassigned</span>
+                                    <span class="text-slate-400 italic text-[11px]">Unassigned</span>
                                 @endif
-                            </td>
-                            <td class="px-3 py-2 text-xs {{ $t->due_date && \Illuminate\Support\Carbon::parse($t->due_date)->isPast() && !in_array($t->status, ['resolved','closed']) ? 'text-red-600 dark:text-red-400 font-semibold' : '' }}">
-                                {{ $t->due_date ? \Illuminate\Support\Carbon::parse($t->due_date)->format('d/m/Y') : '-' }}
-                            </td>
-                            <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ \Illuminate\Support\Carbon::parse($t->updated_at)->diffForHumans() }}</td>
-                            <td class="px-3 py-2 text-right whitespace-nowrap">
-                                <div class="inline-flex items-center gap-0.5">
-                                    <button wire:click="rowDetail({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Detail/Timeline">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                @if ($t->due_date)
+                                    <span class="text-[11px] text-slate-400 ml-1 {{ \Illuminate\Support\Carbon::parse($t->due_date)->isPast() && !in_array($t->status, ['resolved','closed']) ? 'text-red-500 font-semibold' : '' }}">Due {{ \Illuminate\Support\Carbon::parse($t->due_date)->format('d/m') }}</span>
+                                @endif
+                            </div>
+
+                            <div class="flex items-center gap-0.5 shrink-0">
+                                <button wire:click="rowDetail({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg" title="Detail">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                                <button wire:click="rowEdit({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg" title="Edit">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                </button>
+                                <button wire:click="rowAssign({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg" title="Assign">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                </button>
+                                @if (!in_array($t->status, ['resolved','closed']))
+                                    <button wire:click="rowResolve({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg" title="Resolve">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                     </button>
-                                    <button wire:click="rowEdit({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Edit">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                @endif
+                                @if ($t->status !== 'closed')
+                                    <button wire:click="rowClose({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg" title="Close">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
-                                    <button wire:click="rowAssign({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:bg-amber-900/30 rounded dark:hover:bg-amber-900/30" title="Assign">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    </button>
-                                    @if (!in_array($t->status, ['resolved','closed']))
-                                        <button wire:click="rowResolve({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 rounded dark:hover:bg-emerald-900/30" title="Resolve">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        </button>
-                                    @endif
-                                    @if ($t->status !== 'closed')
-                                        <button wire:click="rowClose({{ $t->id }})" class="p-1 text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 rounded dark:hover:bg-slate-700" title="Close">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    @endif
-                                    <button wire:click="rowDelete({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 rounded dark:hover:bg-red-900/30" title="Delete">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
-                                    </button>
-                                </div>
-                            </td>
+                                @endif
+                                <button wire:click="rowDelete({{ $t->id }})" class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg" title="Delete">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="py-12 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                        <div class="text-sm font-medium">Tidak ada tiket</div>
+                    </div>
+                @endforelse
+            </div>
+
+            {{-- Desktop Table View (Hidden on Mobile) --}}
+            <div class="hidden md:block overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
+                        <tr class="text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            <th class="w-10 px-3 py-2"><input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"></th>
+                            <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('id')">Ticket ID</th>
+                            <th class="px-3 py-2 text-left">Title</th>
+                            <th class="px-3 py-2 text-left">Customer</th>
+                            <th class="px-3 py-2 text-left">Category</th>
+                            <th class="px-3 py-2 text-left">Priority</th>
+                            <th class="px-3 py-2 text-left">Status</th>
+                            <th class="px-3 py-2 text-left">Assignee</th>
+                            <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('due_date')">Due</th>
+                            <th class="px-3 py-2 text-left cursor-pointer" wire:click="sortBy('updated_at')">Last Update</th>
+                            <th class="px-3 py-2 text-right">Action</th>
                         </tr>
-                    @empty
-                        <tr><td colspan="100" class="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
-                            <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
-                            <div class="font-medium">Tidak ada tiket</div>
-                        </td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+                        @forelse ($pageRows as $t)
+                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40">
+                                <td class="px-3 py-2"><input type="checkbox" wire:model.live="selected" value="{{ (string) $t->id }}" class="rounded border-slate-300 dark:border-slate-600"></td>
+                                <td class="px-3 py-2 font-mono text-xs">
+                                    <span class="text-slate-500 dark:text-slate-400">#{{ $t->id }}</span>
+                                    <span class="text-slate-400 block">{{ substr($t->uuid, -6) }}</span>
+                                </td>
+                                <td class="px-3 py-2 max-w-xs truncate font-medium">{{ $t->title }}</td>
+                                <td class="px-3 py-2 text-xs">{{ $t->customer?->name ?? '-' }}</td>
+                                <td class="px-3 py-2 text-xs capitalize">{{ $t->category }}</td>
+                                <td class="px-3 py-2"><span class="text-[10px] px-2 py-0.5 rounded-full {{ $priorityBadge[$t->priority] ?? '' }}">{{ strtoupper($t->priority) }}</span></td>
+                                <td class="px-3 py-2"><span class="text-[10px] px-2 py-0.5 rounded-full border {{ $statusBadge[$t->status] ?? '' }}">{{ $statusLabels[$t->status] ?? $t->status }}</span></td>
+                                <td class="px-3 py-2 text-xs">
+                                    @if ($t->assignedTo)
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-[9px] font-semibold">{{ strtoupper(substr($t->assignedTo->name,0,1)) }}</span>
+                                            <span class="truncate max-w-[80px]">{{ $t->assignedTo->name }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-slate-400 italic text-[10px]">Unassigned</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-xs {{ $t->due_date && \Illuminate\Support\Carbon::parse($t->due_date)->isPast() && !in_array($t->status, ['resolved','closed']) ? 'text-red-600 dark:text-red-400 font-semibold' : '' }}">
+                                    {{ $t->due_date ? \Illuminate\Support\Carbon::parse($t->due_date)->format('d/m/Y') : '-' }}
+                                </td>
+                                <td class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{{ \Illuminate\Support\Carbon::parse($t->updated_at)->diffForHumans() }}</td>
+                                <td class="px-3 py-2 text-right whitespace-nowrap">
+                                    <div class="inline-flex items-center gap-0.5">
+                                        <button wire:click="rowDetail({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Detail/Timeline">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+                                        <button wire:click="rowEdit({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 rounded dark:hover:bg-blue-900/30" title="Edit">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                        </button>
+                                        <button wire:click="rowAssign({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:bg-amber-900/30 rounded dark:hover:bg-amber-900/30" title="Assign">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                        </button>
+                                        @if (!in_array($t->status, ['resolved','closed']))
+                                            <button wire:click="rowResolve({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 rounded dark:hover:bg-emerald-900/30" title="Resolve">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            </button>
+                                        @endif
+                                        @if ($t->status !== 'closed')
+                                            <button wire:click="rowClose({{ $t->id }})" class="p-1 text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 rounded dark:hover:bg-slate-700" title="Close">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        @endif
+                                        <button wire:click="rowDelete({{ $t->id }})" class="p-1 text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:bg-red-900/30 rounded dark:hover:bg-red-900/30" title="Delete">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="100" class="px-6 py-16 text-center text-slate-500 dark:text-slate-400">
+                                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                                <div class="font-medium">Tidak ada tiket</div>
+                            </td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         @if ($rows instanceof \Illuminate\Pagination\LengthAwarePaginator && $rows->hasPages())

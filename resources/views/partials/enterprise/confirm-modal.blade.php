@@ -4,8 +4,8 @@ Enterprise Confirmation Modal SSOT — auto wired to BaseEnterpriseList
 <div
     x-data="{ show: false }"
     x-init="$watch('show', v => v ? document.body.classList.add('overflow-hidden') : document.body.classList.remove('overflow-hidden'))"
-    x-on:open-modal.window="if ($event.detail.name === 'confirm' || $event.detail === 'confirm') show = true"
-    x-on:close-modal.window="if ($event.detail.name === 'confirm' || $event.detail === 'confirm') show = false"
+    x-on:open-modal.window="if (($event.detail && $event.detail.name === 'confirm') || $event.detail === 'confirm') show = true"
+    x-on:close-modal.window="if (($event.detail && $event.detail.name === 'confirm') || $event.detail === 'confirm') show = false"
     x-show="show" x-transition.opacity
     class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
     <div x-show="show" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"

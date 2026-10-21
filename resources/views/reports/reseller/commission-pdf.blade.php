@@ -6,7 +6,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             color: #333;
             margin: 0;
             padding: 0;
@@ -45,7 +45,7 @@
             font-weight: bold;
         }
         .summary-box .value {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             color: #0f172a;
             margin-top: 5px;
@@ -60,13 +60,14 @@
         }
         table.data-table th, table.data-table td {
             border: 1px solid #cbd5e1;
-            padding: 8px;
+            padding: 7px;
             text-align: left;
         }
         table.data-table th {
             background-color: #f1f5f9;
             font-weight: bold;
             color: #334155;
+            font-size: 10px;
         }
         .text-right {
             text-align: right !important;
@@ -112,43 +113,37 @@
         </tr>
     </table>
 
-    <h3 style="font-size: 14px; margin-bottom: 10px; color: #334155;">Rincian Transaksi Komisi</h3>
+    <h3 style="font-size: 13px; margin-bottom: 10px; color: #334155;">Rincian Transaksi Komisi</h3>
     <table class="data-table">
         <thead>
             <tr>
-                <th width="15%">Tgl Lunas</th>
-                <th width="35%">Pelanggan / No Tagihan</th>
-                <th width="20%">Profil Paket</th>
+                <th width="15%">Tgl Transaksi</th>
+                <th width="30%">Pelanggan / No Ref</th>
+                <th width="20%">Paket / Layanan</th>
                 <th width="15%" class="text-right">Harga Jual</th>
-                <th width="15%" class="text-right">Estimasi Margin</th>
+                <th width="10%" class="text-right">Modal</th>
+                <th width="10%" class="text-right">Margin</th>
             </tr>
         </thead>
         <tbody>
             @forelse($details as $row)
-                @php
-                    $subtotal = $row->items->sum('subtotal');
-                    $cost = $row->items->sum('reseller_settlement_price');
-                    if ($cost <= 0) {
-                        $margin = $subtotal * 0.15;
-                    } else {
-                        $margin = $subtotal - $cost;
-                    }
-                    $sp = $row->customer ? $row->customer->customerServices()->with('serviceProfile')->first() : null;
-                    $paket = ($sp && $sp->serviceProfile) ? $sp->serviceProfile->name : '-';
-                @endphp
                 <tr>
-                    <td>{{ $row->updated_at->format('d/m/Y H:i') }}</td>
+                    <td>{{ $row['paid_at'] }}</td>
                     <td>
-                        <strong>{{ $row->customer->name ?? '-' }}</strong><br>
-                        <span style="font-size: 10px; color: #64748b;">{{ $row->invoice_number }}</span>
+                        <strong>{{ $row['customer_name'] ?? '-' }}</strong><br>
+                        <span style="font-size: 9px; color: #64748b;">Ref: {{ $row['invoice_number'] }}</span>
                     </td>
-                    <td>{{ $paket }}</td>
-                    <td class="text-right">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
-                    <td class="text-right" style="color: #059669; font-weight: bold;">Rp {{ number_format($margin, 0, ',', '.') }}</td>
+                    <td>
+                        {{ $row['package_name'] ?? '-' }}<br>
+                        <span style="font-size: 9px; color: #64748b;">{{ $row['service_type'] }}</span>
+                    </td>
+                    <td class="text-right">Rp {{ number_format($row['harga_ppn'], 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($row['profit'], 0, ',', '.') }}</td>
+                    <td class="text-right" style="color: #059669; font-weight: bold;">+ Rp {{ number_format($row['fee_seller'], 0, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="text-center">Tidak ada data transaksi komisi pada bulan ini.</td>
+                    <td colspan="6" class="text-center">Tidak ada data transaksi komisi pada periode ini.</td>
                 </tr>
             @endforelse
         </tbody>

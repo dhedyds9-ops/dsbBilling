@@ -29,11 +29,21 @@ class Index extends BaseCrmComponent
 
     public function render()
     {
-        $query = Installation::query();
+        $query = Installation::query()->with(['contract.customer', 'survey.prospect', 'assignedTo', 'onu']);
 
         if ($this->search) {
-            $query->where(function($q) {
-                $q->where('customer_name', 'like', '%' . $this->search . '%');
+            $s = trim($this->search);
+            $query->where(function($q) use ($s) {
+                $q->where('onu_serial_number', 'like', "%{$s}%")
+                  ->orWhere('router_serial_number', 'like', "%{$s}%")
+                  ->orWhereHas('contract', function($cq) use ($s) {
+                      $cq->where('customer_name', 'like', "%{$s}%")
+                         ->orWhere('contract_number', 'like', "%{$s}%")
+                         ->orWhereHas('customer', fn($ccq) => $ccq->where('name', 'like', "%{$s}%")->orWhere('phone', 'like', "%{$s}%"));
+                  })
+                  ->orWhereHas('survey.prospect', function($pq) use ($s) {
+                      $pq->where('name', 'like', "%{$s}%")->orWhere('phone', 'like', "%{$s}%");
+                  });
             });
         }
 

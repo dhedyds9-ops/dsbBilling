@@ -3,14 +3,18 @@
 namespace App\Livewire\ResellerPortal\Reports;
 
 use App\Livewire\AdminComponent;
-use App\Models\Billing\Invoice;
-use App\Models\Billing\InvoiceItem;
+use App\Services\Keuangan\IncomeReportService;
+use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class Commission extends AdminComponent
 {
     public $perPage = 10;
+    public $selectedMonth;
+    public $selectedYear;
+    public string $filterType = 'all'; // all, customer, voucher
 
     public function mount()
     {
@@ -18,6 +22,9 @@ class Commission extends AdminComponent
         $this->activeModule = 'reseller-portal';
         $this->activePage = 'reseller-portal.reports.commission';
         
+        $this->selectedMonth = (int) now()->month;
+        $this->selectedYear = (int) now()->year;
+
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => '#'],
             ['label' => 'Laporan', 'url' => '#'],
@@ -25,42 +32,64 @@ class Commission extends AdminComponent
         ];
     }
 
+    public function updatedSelectedMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedYear()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterType()
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
-        $resellerId = Auth::user()->getEffectiveResellerId();
-        $currentMonth = now()->month;
-        $currentYear = now()->year;
+        $user = Auth::user();
+        $resellerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+        $month = (int) ($this->selectedMonth ?: now()->month);
+        $year = (int) ($this->selectedYear ?: now()->year);
 
-        // Base query for invoices
-        $query = Invoice::whereHas('customer', function ($q) use ($resellerId) {
-            $q->where('reseller_id', $resellerId);
-        })
-        ->where('status', 'paid')
-        ->whereMonth('updated_at', $currentMonth)
-        ->whereYear('updated_at', $currentYear);
+        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth()->format('Y-m-d');
+        $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
 
-        $invoiceIds = (clone $query)->pluck('id');
+        $incomeService = app(IncomeReportService::class);
+        $reportData = $incomeService->getTransactions([
+            'reseller_id' => $resellerId,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'user_type' => $this->filterType,
+        ]);
 
-        $grossRevenue = 0;
-        $totalCost = 0;
-
-        if ($invoiceIds->count() > 0) {
-            $grossRevenue = InvoiceItem::whereIn('invoice_id', $invoiceIds)->sum('subtotal');
-            $totalCost = InvoiceItem::whereIn('invoice_id', $invoiceIds)->sum(DB::raw('COALESCE(reseller_settlement_price, 0)'));
-        }
-
-        $netMargin = $grossRevenue - $totalCost;
+        $summary = $reportData['summary'];
+        $grossRevenue = (float) ($summary['total_plus_ppn'] ?? 0);
+        $netMargin = (float) ($summary['fee_seller'] ?? 0);
+        $totalCost = (float) ($summary['profit'] ?? 0);
         $profitMarginPercent = $grossRevenue > 0 ? ($netMargin / $grossRevenue) * 100 : 0;
 
-        // Get paginated list for the detail table
-        $details = (clone $query)->with(['customer', 'items'])->orderBy('updated_at', 'desc')->paginate($this->perPage);
+        $rows = $reportData['rows'];
+        $currentPage = Paginator::resolveCurrentPage('page');
+        $currentItems = $rows->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
+        $details = new LengthAwarePaginator(
+            $currentItems,
+            $rows->count(),
+            $this->perPage,
+            $currentPage,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page']
+        );
+
+        $monthDate = Carbon::createFromDate($year, $month, 1);
 
         return view('livewire.reseller-portal.reports.commission', [
             'grossRevenue' => $grossRevenue,
             'totalCost' => $totalCost,
             'netMargin' => $netMargin,
             'profitMarginPercent' => $profitMarginPercent,
-            'currentMonthName' => now()->translatedFormat('F Y'),
+            'currentMonthName' => $monthDate->translatedFormat('F Y'),
             'details' => $details,
         ]);
     }

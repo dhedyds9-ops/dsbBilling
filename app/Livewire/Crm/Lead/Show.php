@@ -21,36 +21,52 @@ class Show extends AdminComponent
 
     public function render()
     {
-        // Sample timeline and activity data
-        $timeline = [
-            [
-                'date' => now(),
-                'title' => 'Lead Dibuat',
-                'description' => 'Lead baru ditambahkan ke sistem',
-                'type' => 'create',
-            ],
-            [
-                'date' => now()->subDays(1),
-                'title' => 'Dihubungi',
-                'description' => 'Tim sales telah menghubungi lead via telepon',
-                'type' => 'contact',
-            ],
-        ];
+        $this->lead->loadMissing(['createdBy', 'updatedBy', 'prospect']);
 
-        $activities = [
-            [
-                'user' => 'Admin',
-                'action' => 'Membuat lead baru',
+        $timeline = [];
+        $activities = [];
+
+        if ($this->lead->created_at) {
+            $creator = $this->lead->createdBy?->name ?? 'Sistem';
+            $timeline[] = [
+                'date' => $this->lead->created_at,
+                'title' => 'Lead Dibuat',
+                'description' => "Lead didaftarkan oleh {$creator}",
+                'type' => 'create',
+            ];
+            $activities[] = [
+                'user' => $creator,
+                'action' => 'Mendaftarkan calon lead baru ke sistem',
                 'module' => 'CRM',
-                'time' => '2 jam lalu',
-            ],
-            [
-                'user' => 'Sales 1',
-                'action' => 'Mengupdate status lead menjadi contacted',
+                'time' => $this->lead->created_at->diffForHumans(),
+            ];
+        }
+
+        if ($this->lead->updated_at && $this->lead->updated_at->gt($this->lead->created_at)) {
+            $updater = $this->lead->updatedBy?->name ?? 'Sistem';
+            $statusLabel = ucfirst($this->lead->status ?? 'Updated');
+            $timeline[] = [
+                'date' => $this->lead->updated_at,
+                'title' => 'Status: ' . $statusLabel,
+                'description' => "Lead diperbarui oleh {$updater}",
+                'type' => 'contact',
+            ];
+            $activities[] = [
+                'user' => $updater,
+                'action' => "Memperbarui status lead menjadi {$statusLabel}",
                 'module' => 'CRM',
-                'time' => '1 hari lalu',
-            ],
-        ];
+                'time' => $this->lead->updated_at->diffForHumans(),
+            ];
+        }
+
+        if ($this->lead->prospect) {
+            $timeline[] = [
+                'date' => $this->lead->prospect->created_at ?? now(),
+                'title' => 'Dikonversi ke Prospek',
+                'description' => "Lead berhasil dikonversi ke pipeline prospek survey",
+                'type' => 'contact',
+            ];
+        }
 
         return view('livewire.crm.lead.show', compact('timeline', 'activities'));
     }

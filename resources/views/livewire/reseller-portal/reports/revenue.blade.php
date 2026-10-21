@@ -145,99 +145,57 @@
                         <th class="px-6 py-3 text-left font-semibold">Kategori</th>
                         <th class="px-6 py-3 text-left font-semibold">Referensi</th>
                         <th class="px-6 py-3 text-left font-semibold">Pelanggan / Keterangan</th>
-                        <th class="px-6 py-3 text-left font-semibold">Metode</th>
+                        <th class="px-6 py-3 text-left font-semibold">Layanan</th>
                         <th class="px-6 py-3 text-right font-semibold">Nominal</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                    {{-- 1. Customer Payments --}}
-                    @if($filterType !== 'voucher')
-                        @foreach($recentPayments as $payment)
-                            @php
-                                $isVoucher = in_array($payment->id, $voucherPaymentIds ?? []);
-                            @endphp
-                            @if($filterType === 'pelanggan' && $isVoucher)
-                                @continue
-                            @endif
-                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td class="px-6 py-3.5 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                                    {{ $payment->paid_at?->format('d M Y H:i') ?? $payment->created_at->format('d M Y H:i') }}
-                                </td>
-                                <td class="px-6 py-3.5 whitespace-nowrap">
-                                    @if($isVoucher)
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                                            <span class="material-symbols-outlined notranslate text-xs" translate="no">confirmation_number</span>
-                                            Voucher
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                            <span class="material-symbols-outlined notranslate text-xs" translate="no">account_circle</span>
-                                            Pelanggan
-                                        </span>
-                                    @endif
-                                </td>
-                                <td class="px-6 py-3.5 font-mono text-slate-700 dark:text-slate-300 text-xs">
-                                    {{ $payment->reference_number ?? '-' }}
-                                </td>
-                                <td class="px-6 py-3.5 text-slate-800 dark:text-slate-200">
-                                    <div class="font-semibold text-xs">{{ $payment->customer?->name ?? ($isVoucher ? 'Voucher Hotspot Order' : '-') }}</div>
-                                    <div class="text-[11px] text-slate-400 dark:text-slate-500">
-                                        {{ $payment->customer?->phone ?? ($payment->customer?->customer_id ?? 'Invoice Langganan') }}
-                                    </div>
-                                </td>
-                                <td class="px-6 py-3.5 text-slate-600 dark:text-slate-400 uppercase text-xs">
-                                    {{ str_replace('_', ' ', $payment->method ?? 'cash') }}
-                                </td>
-                                <td class="px-6 py-3.5 text-right font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                                    Rp {{ number_format($payment->amount, 0, ',', '.') }}
-                                </td>
-                            </tr>
-                        @endforeach
-                    @endif
-
-                    {{-- 2. Vouchers Sold / Activated --}}
-                    @if($filterType === 'voucher' || $filterType === 'all')
-                        @foreach($recentVouchers as $voucher)
-                            @php
-                                $vPrice = $voucher->fee_seller > 0 ? $voucher->fee_seller : ($voucher->serviceProfile?->reseller_price ?: ($voucher->serviceProfile?->base_price ?: 0));
-                            @endphp
-                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td class="px-6 py-3.5 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                                    {{ $voucher->activated_at?->format('d M Y H:i') ?? $voucher->created_at->format('d M Y H:i') }}
-                                </td>
-                                <td class="px-6 py-3.5 whitespace-nowrap">
+                    @forelse($recentTransactions as $row)
+                        @php
+                            $isVoucher = str_starts_with((string)$row['id'], 'VCR-');
+                        @endphp
+                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-3.5 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                {{ $row['paid_at'] }}
+                            </td>
+                            <td class="px-6 py-3.5 whitespace-nowrap">
+                                @if($isVoucher)
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">confirmation_number</span>
                                         Voucher
                                     </span>
-                                </td>
-                                <td class="px-6 py-3.5 font-mono text-slate-700 dark:text-slate-300 text-xs">
-                                    {{ $voucher->code }}
-                                </td>
-                                <td class="px-6 py-3.5 text-slate-800 dark:text-slate-200">
-                                    <div class="font-semibold text-xs">{{ $voucher->serviceProfile?->name ?? 'Voucher Hotspot' }}</div>
-                                    <div class="text-[11px] text-slate-400 dark:text-slate-500">
-                                        Status: <span class="capitalize">{{ $voucher->status }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-3.5 text-slate-600 dark:text-slate-400 uppercase text-xs">
-                                    Voucher Fisik
-                                </td>
-                                <td class="px-6 py-3.5 text-right font-mono font-bold text-sm text-teal-600 dark:text-teal-400 whitespace-nowrap">
-                                    Rp {{ number_format($vPrice, 0, ',', '.') }}
-                                </td>
-                            </tr>
-                        @endforeach
-                    @endif
-
-                    @if($recentPayments->isEmpty() && $recentVouchers->isEmpty())
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                        <span class="material-symbols-outlined notranslate text-xs" translate="no">account_circle</span>
+                                        Pelanggan
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-3.5 font-mono text-slate-700 dark:text-slate-300 text-xs">
+                                {{ $row['invoice_number'] }}
+                            </td>
+                            <td class="px-6 py-3.5 text-slate-800 dark:text-slate-200">
+                                <div class="font-semibold text-xs">{{ $row['customer_name'] ?? '-' }}</div>
+                                <div class="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                                    {{ $row['customer_id'] ?? '' }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-3.5 text-slate-600 dark:text-slate-400 text-xs">
+                                <span class="font-medium text-slate-700 dark:text-slate-300">{{ $row['package_name'] ?? '-' }}</span>
+                                <span class="block text-[10px] text-slate-400 font-semibold">{{ $row['service_type'] }}</span>
+                            </td>
+                            <td class="px-6 py-3.5 text-right font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                                Rp {{ number_format($row['harga_ppn'], 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    @empty
                         <tr>
                             <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <span class="material-symbols-outlined notranslate text-4xl text-slate-300 dark:text-slate-600 mb-2 block" translate="no">receipt_long</span>
                                 Belum ada data pendapatan pada periode {{ $currentMonthName }}.
                             </td>
                         </tr>
-                    @endif
+                    @endforelse
                 </tbody>
             </table>
         </div>

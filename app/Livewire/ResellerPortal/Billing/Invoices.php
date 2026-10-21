@@ -5,6 +5,7 @@ namespace App\Livewire\ResellerPortal\Billing;
 use App\Livewire\AdminComponent;
 use App\Models\Billing\Invoice;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class Invoices extends AdminComponent
@@ -34,6 +35,21 @@ class Invoices extends AdminComponent
         ];
     }
 
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage()
+    {
+        $this->resetPage();
+    }
+
     public function viewDetail($id)
     {
         $resellerId = Auth::user()->getEffectiveResellerId();
@@ -42,7 +58,14 @@ class Invoices extends AdminComponent
               ->orWhereHas('customer', function ($cq) use ($resellerId) {
                   $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
               });
-        })->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'items'])->find($id);
+        })
+        ->whereNotExists(function ($sub) {
+            $sub->select('id')
+                ->from('voucher_orders')
+                ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
+        })
+        ->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'items'])
+        ->find($id);
 
         if ($this->selectedInvoice) {
             $this->showDetailModal = true;
@@ -57,7 +80,13 @@ class Invoices extends AdminComponent
               ->orWhereHas('customer', function ($cq) use ($resellerId) {
                   $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
               });
-        })->findOrFail($id);
+        })
+        ->whereNotExists(function ($sub) {
+            $sub->select('id')
+                ->from('voucher_orders')
+                ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
+        })
+        ->findOrFail($id);
 
         $this->paymentInvoiceId = $invoice->id;
         $this->paymentInvoiceTotal = max(0, $invoice->total_amount - $invoice->paid_amount);
@@ -88,7 +117,13 @@ class Invoices extends AdminComponent
                   ->orWhereHas('customer', function ($cq) use ($resellerId) {
                       $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
                   });
-            })->find($this->paymentInvoiceId);
+            })
+            ->whereNotExists(function ($sub) {
+                $sub->select('id')
+                    ->from('voucher_orders')
+                    ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
+            })
+            ->find($this->paymentInvoiceId);
 
             if (!$invoice) {
                 throw new \Exception("Tagihan invoice #{$this->paymentInvoiceId} tidak ditemukan atau Anda tidak memiliki akses.");
@@ -117,13 +152,19 @@ class Invoices extends AdminComponent
     {
         $resellerId = Auth::user()->getEffectiveResellerId();
 
-        // Start querying invoices for customers belonging to this reseller
+        // Start querying customer subscription invoices for this reseller (excluding one-time voucher orders)
         $query = Invoice::withoutGlobalScopes()->where(function($q) use ($resellerId) {
             $q->where('reseller_id', $resellerId)
               ->orWhereHas('customer', function ($cq) use ($resellerId) {
                   $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
               });
-        })->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'items']);
+        })
+        ->whereNotExists(function ($sub) {
+            $sub->select('id')
+                ->from('voucher_orders')
+                ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
+        })
+        ->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'items']);
 
         // Search by Invoice Number or Customer Name / Code / Phone
         if ($this->search) {
@@ -139,8 +180,20 @@ class Invoices extends AdminComponent
             });
         }
 
-        // Filter by Status
-        if ($this->status) {
+        // Filter by Status aligned with standard billing logic
+        if ($this->status === 'unpaid') {
+            $query->whereIn('status', ['pending', 'unpaid', 'partial', 'draft']);
+        } elseif ($this->status === 'paid') {
+            $query->where('status', 'paid');
+        } elseif ($this->status === 'overdue') {
+            $today = Carbon::today()->toDateString();
+            $query->where(function ($q) use ($today) {
+                $q->whereDate('due_date', '<', $today)
+                  ->whereIn('status', ['pending', 'unpaid', 'partial', 'draft']);
+            });
+        } elseif ($this->status === 'canceled') {
+            $query->where('status', 'canceled');
+        } elseif ($this->status) {
             $query->where('status', $this->status);
         }
 

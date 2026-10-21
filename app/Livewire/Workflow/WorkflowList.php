@@ -24,24 +24,21 @@ class WorkflowList extends AdminComponent
 
     public function getWorkflows(): \Illuminate\Support\Collection
     {
-        // Placeholder - dalam implementasi nyata, fetch dari repository
-        return collect([
-            ['id' => 1, 'name' => 'Customer Installation', 'module' => 'CRM', 'status' => 'active', 'instances' => 5, 'tasks' => 12, 'created_at' => now()->subDays(10)],
-            ['id' => 2, 'name' => 'Invoice Approval', 'module' => 'Billing', 'status' => 'active', 'instances' => 3, 'tasks' => 8, 'created_at' => now()->subDays(5)],
-            ['id' => 3, 'name' => 'Asset Transfer', 'module' => 'Inventory', 'status' => 'draft', 'instances' => 0, 'tasks' => 0, 'created_at' => now()->subDays(2)],
-            ['id' => 4, 'name' => 'Complaint Handling', 'module' => 'CRM', 'status' => 'active', 'instances' => 7, 'tasks' => 15, 'created_at' => now()->subDays(7)],
-        ]);
+        return \App\Models\Workflow\Workflow::query()
+            ->when(isset($this->filters['status']) && $this->filters['status'] !== 'all', fn($q) => $q->where('status', $this->filters['status']))
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
     }
 
     public function getWorkflowStats(): array
     {
-        $workflows = $this->getWorkflows();
+        $all = \App\Models\Workflow\Workflow::all();
         return [
-            'total' => $workflows->count(),
-            'active' => $workflows->where('status', 'active')->count(),
-            'draft' => $workflows->where('status', 'draft')->count(),
-            'total_instances' => $workflows->sum('instances'),
-            'total_tasks' => $workflows->sum('tasks'),
+            'total' => $all->count(),
+            'active' => $all->where('status', 'active')->count(),
+            'draft' => $all->where('status', 'draft')->count(),
+            'total_instances' => 0,
+            'total_tasks' => 0,
         ];
     }
 

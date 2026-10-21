@@ -170,6 +170,4 @@
             </div>
         </div>
     </div>
-    
-    @include('partials.enterprise.confirm-modal')
 </div>

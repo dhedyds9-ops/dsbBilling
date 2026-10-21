@@ -20,7 +20,9 @@ Usage:
 ])
 <div class="flex flex-col lg:flex-row gap-3 p-2 lg:p-3 items-stretch lg:items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
     <div class="flex items-center gap-3 min-w-0">
-        <h2 class="text-base lg:text-lg font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">{{ $title }}</h2>
+        @if (!empty($title))
+            <h2 class="text-base lg:text-lg font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">{{ $title }}</h2>
+        @endif
         @if (isset($tabs) && is_array($tabs) && count($tabs) > 0)
             <div class="flex items-center gap-1 overflow-x-auto whitespace-nowrap">
                 @foreach ($tabs as $k => $label)

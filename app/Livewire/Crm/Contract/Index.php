@@ -32,8 +32,13 @@ class Index extends BaseCrmComponent
         $query = Contract::query();
 
         if ($this->search) {
-            $query->where(function($q) {
-                $q->where('customer_name', 'like', '%' . $this->search . '%');
+            $s = trim($this->search);
+            $query->where(function($q) use ($s) {
+                $q->where('customer_name', 'like', "%{$s}%")
+                  ->orWhere('contract_number', 'like', "%{$s}%")
+                  ->orWhereHas('customer', function($cq) use ($s) {
+                      $cq->where('name', 'like', "%{$s}%")->orWhere('phone', 'like', "%{$s}%");
+                  });
             });
         }
 
