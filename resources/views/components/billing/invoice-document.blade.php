@@ -1,19 +1,31 @@
-@props(['invoice', 'company' => null])
-	@php
+@props(['invoice', 'company' => null, 'isPortal' => null])
+@php
+    $isPortal = $isPortal ?? request()->is('customer-portal*');
+
     $companyAddress = collect([
         $company['address'] ?? '',
         $company['city'] ?? '',
-        $company['lrovince'] ?? '',
+        $company['province'] ?? $company['lrovince'] ?? '',
     ])->filter()->join(', ');
 
     $showPartner = \App\Services\Pengaturan\CompanySettingsService::shouldShowPartner($company ?? []);
 
     $isPaid = $invoice->status === 'paid';
     $sisaTagihan = max(0, $invoice->total_amount - $invoice->paid_amount);
+
+    $manualBanks = [];
+    try {
+        $setting = \App\Models\Setting::where('key', 'payment_gateway.manual_transfer')->first();
+        if ($setting && isset($setting->value['bank_accounts'])) {
+            $manualBanks = collect($setting->value['bank_accounts'])
+                ->filter(fn($b) => $b['active'] ?? true)
+                ->toArray();
+        }
+    } catch (\Exception $e) {}
 @endphp
 
 <!-- START: GLOBAL INVOICE DOCUMENT -->
-<div class="invoice-document-wrapper">
+<div class="invoice-document-wrapper w-full">
     <style>
         /* Print/PDF Base Rules */
         @media print {
@@ -29,22 +41,19 @@
                 padding: 0 !important;
                 font-family: Arial, Helvetica, sans-serif !important;
             }
-            /* Hide unnecessary UI elements globally just in case */
             .no-print, nav, aside, button, .sidebar, .navbar {
                 display: none !important;
             }
-            /* Force white background and reset shadows on the document itself */
             .invoice-document {
                 background: #FFFFFF !important;
                 box-shadow: none !important;
                 border: none !important;
-                padding: 10mm !important;
+                padding: 0 !important;
                 margin: 0 !important;
                 width: 100% !important;
                 max-width: none !important;
                 color: #111827 !important;
             }
-            /* Force borders to standard gray */
             .invoice-document .border, 
             .invoice-document .border-b, 
             .invoice-document .border-t, 
@@ -52,28 +61,23 @@
             .invoice-document .border-r {
                 border-color: #292b2bff !important;
             }
-            /* Reset all text colors to standard dark gray/black to avoid neon/cyan */
-            .invoice-document .text-slate-800 dark:text-slate-200, 
-            .invoice-document .text-slate-900 dark:text-slate-100,
+            .invoice-document .text-slate-800,
+            .invoice-document .text-slate-900,
             .invoice-document .dark\:text-slate-100,
+            .invoice-document .dark\:text-slate-200,
             .invoice-document .text-primary-600 {
                 color: #111827 !important;
             }
-            .invoice-document .text-slate-500 dark:text-slate-400,
-            .invoice-document .text-slate-600 dark:text-slate-400 {
+            .invoice-document .text-slate-500,
+            .invoice-document .text-slate-600,
+            .invoice-document .dark\:text-slate-400 {
                 color: #4B5563 !important;
             }
-            /* Backgrounds inside cards */
-            .invoice-document .bg-slate-50 dark:bg-slate-900/50 {
+            .invoice-document .bg-slate-50,
+            .invoice-document .bg-emerald-50,
+            .invoice-document .bg-red-50 {
                 background-color: transparent !important;
             }
-            .invoice-document .bg-emerald-50 dark:bg-emerald-900/30 {
-                background-color: transparent !important;
-            }
-            .invoice-document .bg-red-50 dark:bg-red-900/30 {
-                background-color: transparent !important;
-            }
-            /* Utilities for grid layout in print */
             .print-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
             .print-w-1-2 { width: 50% !important; }
             .print-flex-row { flex-direction: row !important; }
@@ -86,257 +90,223 @@
             .print-text-3xl { font-size: 1.875rem !important; line-height: 2.25rem !important; }
             .print-hidden-line { display: none !important; }
             .print-show-line { display: block !important; }
+            .portal-screen-only { display: none !important; }
+            .portal-print-only { display: block !important; }
         }
         @media screen {
+            .portal-print-only { display: none !important; }
             .invoice-document-wrapper {
                 background: transparent;
                 display: flex;
                 justify-content: center;
                 width: 100%;
-                overflow-x: hidden;
             }
             .invoice-document {
                 width: 100%;
                 max-width: 210mm;
                 min-height: auto;
-                padding: 1rem;
+                padding: 1.5rem;
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
                 border-radius: 8px;
             }
             @media (min-width: 640px) {
                 .invoice-document {
-                    padding: 2rem;
+                    padding: 2.5rem;
                 }
             }
         }
     </style>
 
-    <!-- THE DOCUMENT -->
-    <article class="invoice-document relative overflow-hidden text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-        
-        <!-- HEADER SECTION -->
-        <header class="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-300 dark:border-slate-600 pb-4 mb-6 print-flex-row">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                <!-- ISP Info -->
-                <div class="flex items-center gap-3 sm:gap-4">
-                    <div class="h-16 w-20 sm:h-24 sm:w-28 rounded flex items-center justify-center p-1 shrink-0">
-                        @if(!empty($company['logo_url']))
-                            <img src="{{ asset(ltrim($company['logo_url'], '/')) }}" alt="Logo" class="w-full h-full object-contain">
-                        @else
-                            <span class="font-bold text-slate-400 text-xs text-center">LOGO</span>
-                        @endif
+    @if($isPortal)
+        {{-- ========================================================
+             CUSTOMER PORTAL: MOBILE SCREEN VIEW
+             ======================================================== --}}
+        <div class="portal-screen-only w-full space-y-4 text-slate-800 dark:text-slate-200">
+            <!-- 1. Header Identitas Perusahaan -->
+            <div class="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div class="h-12 w-14 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center p-1 shrink-0 border border-slate-200/80 dark:border-slate-700">
+                    @if(!empty($company['logo_url']))
+                        <img src="{{ asset(ltrim($company['logo_url'], '/')) }}" alt="Logo" class="max-h-full max-w-full object-contain">
+                    @else
+                        <span class="font-bold text-slate-400 text-xs">LOGO</span>
+                    @endif
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-slate-900 dark:text-slate-100 text-sm tracking-tight truncate">{{ ($company['name'] ?? '') ?: 'ISP INDONESIA' }}</h3>
+                    @if(!empty($company['email']))
+                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ $company['email'] }}</p>
+                    @elseif(!empty($company['mobile']))
+                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ $company['mobile'] }}</p>
+                    @endif
+                </div>
+                @if($showPartner && !empty($company['partner_name']))
+                    <div class="text-right shrink-0">
+                        <span class="text-[10px] text-slate-400 block">Mitra</span>
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ $company['partner_name'] }}</span>
                     </div>
+                @endif
+            </div>
+
+            <!-- 2. Tagihan & Periode Card -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700/60 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Nomor Invoice</span>
+                    <span class="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 truncate">#{{ $invoice->invoice_number ?? $invoice->id }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
                     <div>
-                        <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight uppercase">{{ ($company['name'] ?? '') ?: 'ISP INDONESIA' }}</h1>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1 max-w-xs leading-relaxed">{!! nl2br(e($companyAddress)) !!}</p>
-                        <div class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1">
-                            @if (($company['mobile'] ?? '') !== '')<span>Telp: {{ $company['mobile'] }}</span><br>@endif
-                            @if (($company['email'] ?? '') !== '')<span>Email: {{ $company['email'] }}</span>@endif
-                        </div>
+                        <span class="text-[10px] text-slate-400 block">Tgl Terbit</span>
+                        <span class="font-semibold text-slate-700 dark:text-slate-300">{{ $invoice->issue_date ? $invoice->issue_date->format('d M Y') : '-' }}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-slate-400 block">Jatuh Tempo</span>
+                        <span class="font-semibold text-slate-700 dark:text-slate-300">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : '-' }}</span>
                     </div>
                 </div>
-
-                @if($showPartner)
-                    <div class="hidden sm:block h-12 w-px bg-slate-300 mx-2"></div>
-                    <!-- Partner Info -->
-                    <div class="flex items-center gap-3 sm:gap-4">
-                        <div class="h-12 w-12 sm:h-14 sm:w-14 rounded flex items-center justify-center p-1 shrink-0">
-                            @if(!empty($company['partner_logo_url']))
-                                <img src="{{ asset(ltrim($company['partner_logo_url'], '/')) }}" alt="Partner Logo" class="w-full h-full object-contain">
-                            @else
-                                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V1a2 2 0 002-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                            @endif
-                        </div>
-                        <div>
-                            <h3 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200">{{ ($company['partner_name'] ?? '') ?: 'Mitra' }}</h3>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Mitra Resmi</p>
-                            <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                @if (($company['partner_mobile'] ?? '') !== '')<span>{{ $company['partner_mobile'] }}</span>@endif
-                                @if (($company['partner_phone'] ?? '') !== '')<span>{{ $company['partner_phone'] }}</span>@endif
-                            </div>
-                        </div>
-                    </div>
-                @endif
             </div>
 
-            <div class="w-full sm:w-1/2 text-left sm:text-right mt-1 sm:mt-0 print-w-1-2 print-text-right">
-                <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-200 tracking-widest uppercase">INVOICE</h2>
-                <p class="text-xs sm:text-sm font-mono text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1">#{{ $invoice->invoice_number ?? $invoice->id }}</p>
-                <table class="mt-2 sm:mt-4 w-full sm:w-auto sm:ml-auto text-left sm:text-right text-xs">
-                    <tr>
-                        <td class="text-slate-500 dark:text-slate-400 py-0.5 sm:py-1 pr-4 w-auto">Tanggal</td>
-                        <td class="font-semibold text-slate-800 dark:text-slate-200 py-0.5 sm:py-1 text-right">{{ $invoice->issue_date ? $invoice->issue_date->format('d M Y') : '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-slate-500 dark:text-slate-400 py-0.5 sm:py-1 pr-4">Jatuh Tempo</td>
-                        <td class="font-semibold text-slate-800 dark:text-slate-200 py-0.5 sm:py-1 text-right">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : '-' }}</td>
-                    </tr>
-                </table>
-            </div>
-        </header>
-
-        <!-- BILL TO & STATUS SECTION -->
-        <section class="invoice-section grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8 print-grid-cols-2">
-            <div class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded p-4 sm:p-5">
-                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 sm:mb-3">DITAGIHKAN KEPADA</h3>
-                <p class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 mb-1">{{ $invoice->customer?->name ?? 'Pelanggan' }}</p>
-                @if(!empty($invoice->customer?->code))
-                    <p class="text-xs text-slate-600 dark:text-slate-400 font-mono mb-2">ID: {{ $invoice->customer->code }}</p>
-                @endif
-                <div class="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                    @if(!empty($invoice->customer?->address))<p>{{ $invoice->customer->address }}</p>@endif
-                    @if(!empty($invoice->customer?->phone))<p>{{ $invoice->customer->phone }}</p>@endif
-                </div>
-            </div>
-
-            <div class="border border-slate-200 dark:border-slate-700 rounded p-4 sm:p-5 flex flex-col justify-center items-start sm:items-end text-left sm:text-right print-items-end print-text-right">
-                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 w-full text-left sm:text-right print-text-right">STATUS PEMBAYARAN</h3>
-                <div class="mb-2 sm:mb-3 w-full text-left sm:text-right print-text-right">
-                    <span class="inline-flex px-3 py-1.5 rounded-sm text-xs font-bold tracking-widest border {{ $isPaid ? 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' : 'border-red-500 text-red-600 bg-red-50 dark:bg-red-900/30' }}">
+            <!-- 3. Status Tagihan Banner -->
+            <div class="rounded-xl p-4 border {{ $isPaid ? 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200' : 'bg-rose-50/70 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800/60 text-rose-900 dark:text-rose-200' }}">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status Pembayaran</span>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide {{ $isPaid ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white' }}">
+                        <span class="material-symbols-outlined text-xs">{{ $isPaid ? 'check_circle' : 'pending' }}</span>
                         {{ $isPaid ? 'LUNAS' : 'BELUM LUNAS' }}
                     </span>
                 </div>
-                <p class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Rp {{ number_format($isPaid ? $invoice->paid_amount : $sisaTagihan, 0, ',', '.') }}</p>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ $isPaid ? 'Total Dibayar' : 'Sisa Tagihan' }}</p>
+                <div class="mt-2">
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400 block">{{ $isPaid ? 'Total Telah Dibayar' : 'Sisa Tagihan yang Harus Dibayar' }}</span>
+                    <p class="text-2xl font-black font-mono mt-0.5 {{ $isPaid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">
+                        Rp {{ number_format($isPaid ? $invoice->paid_amount : $sisaTagihan, 0, ',', '.') }}
+                    </p>
+                </div>
             </div>
-        </section>
 
-        <!-- ITEMS SECTION -->
-        <section class="invoice-section mb-6 sm:mb-8">
-            <div class="w-full overflow-x-auto">
-                <table class="w-full text-left border-collapse invoice-table min-w-full">
-                    <thead>
-                        <tr class="bg-slate-50 dark:bg-slate-900/50 border-b border-t border-slate-300 dark:border-slate-600">
-                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider w-10 sm:w-12 text-center">No</th>
-                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Deskripsi Layanan</th>
-                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-center">Periode</th>
-                            <th class="py-2.5 sm:py-3 px-2 sm:px-4 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-right">Jumlah</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-200 dark:divide-slate-700 border-b border-slate-300 dark:border-slate-600 text-xs sm:text-sm">
-                        @forelse($invoice->item_details ?? ($invoice->items ?? []) as $idx => $item)
-                            <tr>
-                                <td class="py-3 sm:py-4 px-2 sm:px-4 text-center text-slate-600 dark:text-slate-400">{{ $loop->iteration }}</td>
-                                <td class="py-3 sm:py-4 px-2 sm:px-4">
-                                    <p class="font-semibold text-slate-900 dark:text-slate-100">{{ is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan') }}</p>
-                                </td>
-                                <td class="py-3 sm:py-4 px-2 sm:px-4 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                                    {{ $invoice->issue_date ? $invoice->issue_date->format('M Y') : '-' }}
-                                </td>
-                                <td class="py-3 sm:py-4 px-2 sm:px-4 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                                    Rp {{ number_format(is_array($item) ? ($item['subtotal'] ?? 0) : ($item->subtotal ?? $item->total ?? 0), 0, ',', '.') }}
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="py-8 text-center text-slate-500 dark:text-slate-400 text-sm italic">Tidak ada detail layanan.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+            <!-- 4. Ditagihkan Kepada -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3.5 space-y-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Ditagihkan Kepada</span>
+                <p class="font-bold text-slate-900 dark:text-slate-100 text-sm">{{ $invoice->customer?->name ?? 'Pelanggan' }}</p>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    @if(!empty($invoice->customer?->code))
+                        <span class="font-mono">ID: {{ $invoice->customer->code }}</span>
+                    @endif
+                    @if(!empty($invoice->customer?->phone))
+                        <span>Telp: {{ $invoice->customer->phone }}</span>
+                    @endif
+                </div>
+                @if(!empty($invoice->customer?->address))
+                    <p class="text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/50 dark:border-slate-700/50 mt-1 leading-relaxed">{{ $invoice->customer->address }}</p>
+                @endif
             </div>
-        </section>
 
-        <!-- TOTALS & INSTRUCTIONS SECTION -->
-        <section class="invoice-section grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8 print-grid-cols-2">
-            <div>
-                <div class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded p-4 sm:p-5 h-full">
-                    <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 sm:mb-3">Instruksi Pembayaran</h4>
-                    <div class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                        @if($isPaid)
-                            <p class="font-semibold text-slate-900 dark:text-slate-100">Terima kasih, pembayaran untuk tagihan ini telah kami terima.</p>
-                        @else
-                            {!! nl2br(e($termsText ?? 'Silakan lakukan pembayaran sesuai dengan total tagihan sebelum tanggal jatuh tempo.')) !!}
+            <!-- 5. Rincian Item Layanan & Total -->
+            <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-xs">
+                <div class="bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <span class="font-bold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider">Rincian Layanan</span>
+                    <span class="text-[11px] text-slate-400">{{ count($invoice->item_details ?? ($invoice->items ?? [])) }} Item</span>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @forelse($invoice->item_details ?? ($invoice->items ?? []) as $item)
+                        <div class="p-3.5 flex justify-between items-start gap-3">
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-xs text-slate-800 dark:text-slate-200 leading-snug">{{ is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan') }}</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Periode: {{ $invoice->issue_date ? $invoice->issue_date->format('M Y') : '-' }}</p>
+                            </div>
+                            <p class="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 shrink-0">
+                                Rp {{ number_format(is_array($item) ? ($item['subtotal'] ?? 0) : ($item->subtotal ?? $item->total ?? 0), 0, ',', '.') }}
+                            </p>
+                        </div>
+                    @empty
+                        <div class="p-4 text-center text-xs text-slate-400 italic">Tidak ada detail layanan.</div>
+                    @endforelse
+                </div>
+                <div class="bg-slate-50/70 dark:bg-slate-800/40 p-3.5 border-t border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+                    <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span>Subtotal</span>
+                        <span class="font-mono font-semibold">Rp {{ number_format($invoice->subtotal, 0, ',', '.') }}</span>
+                    </div>
+                    @if($invoice->tax_amount > 0)
+                    <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span>PPN {{ $invoice->tax_rate > 0 ? '('.$invoice->tax_rate.'%)' : '' }}</span>
+                        <span class="font-mono font-semibold">Rp {{ number_format($invoice->tax_amount, 0, ',', '.') }}</span>
+                    </div>
+                    @endif
+                    <div class="flex justify-between font-bold text-sm text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <span>Total Tagihan</span>
+                        <span class="font-mono text-base text-teal-600 dark:text-teal-400">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</span>
+                    </div>
+                    @if($invoice->paid_amount > 0)
+                    <div class="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 pt-1">
+                        <span>Telah Dibayar</span>
+                        <span class="font-mono font-bold">Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}</span>
+                    </div>
+                    @endif
+                </div>
+            </div>
 
-                            @php
-                                $manualBanks = [];
-                                try {
-                                    $setting = \App\Models\Setting::where('key', 'payment_gateway.manual_transfer')->first();
-                                    if ($setting && isset($setting->value['bank_accounts'])) {
-                                        $manualBanks = collect($setting->value['bank_accounts'])
-                                            ->filter(fn($b) => $b['active'] ?? true)
-                                            ->toArray();
-                                    }
-                                } catch (\Exception $e) {}
-                            @endphp
-
-                            @if(count($manualBanks) > 0)
-                                <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                                    <p class="font-bold text-slate-800 dark:text-slate-200 mb-2">Transfer Pembayaran Manual:</p>
-                                    <div class="flex flex-col gap-2">
-                                        @foreach($manualBanks as $bank)
-                                            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-2 flex justify-between items-center gap-2">
-                                                <div class="min-w-0">
-                                                    <p class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ strtoupper($bank['bank_name'] ?? '') }}</p>
-                                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">a.n. {{ $bank['account_holder'] ?? '-' }}</p>
-                                                </div>
-                                                <p class="font-mono font-bold text-primary-700 tracking-wider text-xs shrink-0">{{ $bank['account_number'] ?? '' }}</p>
-                                            </div>
-                                        @endforeach
-                                    </div>
+            <!-- 6. Instruksi Pembayaran (Transfer Bank Manual jika ada) -->
+            @if(!$isPaid && count($manualBanks) > 0)
+                <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3.5 space-y-2">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Transfer Manual</span>
+                    <div class="space-y-2">
+                        @foreach($manualBanks as $bank)
+                            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 flex justify-between items-center gap-2">
+                                <div class="min-w-0">
+                                    <p class="font-bold text-slate-800 dark:text-slate-200 text-xs">{{ strtoupper($bank['bank_name'] ?? '') }}</p>
+                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">a.n. {{ $bank['account_holder'] ?? '-' }}</p>
                                 </div>
-                            @endif
-                        @endif
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span class="font-mono font-bold text-teal-600 dark:text-teal-400 text-xs">{{ $bank['account_number'] ?? '' }}</span>
+                                    <button type="button"
+                                            onclick="navigator.clipboard && navigator.clipboard.writeText('{{ $bank['account_number'] ?? '' }}')"
+                                            class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                            title="Salin No Rekening">
+                                        <span class="material-symbols-outlined text-[15px]">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
-            </div>
+            @endif
 
-            <div>
-                <table class="w-full text-xs sm:text-sm">
-                    <tr>
-                        <td class="py-2 text-slate-600 dark:text-slate-400">Subtotal</td>
-                        <td class="py-2 text-right font-medium text-slate-900 dark:text-slate-100">Rp {{ number_format($invoice->subtotal, 0, ',', '.') }}</td>
-                    </tr>
-                    @if($invoice->tax_amount > 0)
-                    <tr>
-                        <td class="py-2 text-slate-600 dark:text-slate-400">PPN {{ $invoice->tax_rate > 0 ? '('.$invoice->tax_rate.'%)' : '' }}</td>
-                        <td class="py-2 text-right font-medium text-slate-900 dark:text-slate-100">Rp {{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
-                    </tr>
-                    @endif
-                    <tr class="border-t-2 border-slate-400">
-                        <td class="py-3 sm:py-4 font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base uppercase tracking-wider">TOTAL</td>
-                        <td class="py-3 sm:py-4 text-right font-black text-slate-900 dark:text-slate-100 text-lg sm:text-xl">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</td>
-                    </tr>
-                    <tr>
-                        <td class="py-2 text-slate-600 dark:text-slate-400 text-xs font-semibold">Sudah Dibayar</td>
-                        <td class="py-2 text-right font-bold text-slate-900 dark:text-slate-100 text-xs">Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}</td>
-                    </tr>
-                </table>
-            </div>
-        </section>
-
-        
-        <!-- SIGNATURE SECTION -->
-        <div class="mt-8 w-full flex justify-end">
-            <div class="text-center w-48">
-                <p class="text-xs text-slate-600 dark:text-slate-400 mb-2">Hormat Kami,</p>
-                <div class="flex justify-center mb-2">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode('Disahkan secara digital. Inv: ' . ($invoice->invoice_number ?? '')) }}&color=0f172a" alt="QR Digital Signature" class="w-16 h-16 opacity-90">
+            <!-- 7. Footer & QR Signature -->
+            <div class="pt-3 border-t border-slate-200 dark:border-slate-700 text-center space-y-2">
+                <div class="flex justify-center">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ urlencode('Disahkan secara digital. Inv: ' . ($invoice->invoice_number ?? '')) }}&color=0f172a" alt="QR Digital" class="w-14 h-14 opacity-80 rounded">
                 </div>
-                <p class="font-bold text-slate-800 dark:text-slate-200 text-sm border-b border-slate-400 pb-0.5 mb-1 inline-block min-w-[120px]">{{ $company['owner_name'] ?? 'Pimpinan' }}</p>
-                <p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">{{ $company['name'] ?? 'Manajemen' }}</p>
+                <p class="text-[11px] font-bold text-slate-700 dark:text-slate-300">{{ $company['name'] ?? 'Manajemen' }}</p>
+                <p class="text-[10px] text-slate-400 leading-normal">Terima kasih telah menggunakan layanan internet kami.</p>
             </div>
         </div>
 
-        <!-- FOOTER -->
-        <footer class="mt-12 pt-4 border-t border-slate-300 dark:border-slate-600 text-center text-xs text-slate-500 dark:text-slate-400">
-            <p class="font-bold text-slate-700 dark:text-slate-300 mb-1">Terima kasih atas kepercayaan Anda menggunakan layanan kami.</p>
-            <p>Mohon sertakan nomor invoice sebagai referensi pembayaran. Jika ada pertanyaan, hubungi tim support kami.</p>
-        </footer>
-
-        <!-- WATERMARK -->
-        @if($isPaid)
-        <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10 z-0 overflow-hidden" style="display: flex !important;">
-            <div class="transform -rotate-45 text-6xl sm:text-[120px] font-black text-emerald-700 leading-none select-none">PAID</div>
+        {{-- ========================================================
+             CUSTOMER PORTAL: FORMAL A4 DOCUMENT (PRINT ONLY)
+             ======================================================== --}}
+        <div class="portal-print-only w-full">
+            @include('components.billing.partials.invoice-a4-document', [
+                'invoice' => $invoice,
+                'company' => $company,
+                'companyAddress' => $companyAddress,
+                'showPartner' => $showPartner,
+                'isPaid' => $isPaid,
+                'sisaTagihan' => $sisaTagihan,
+                'manualBanks' => $manualBanks,
+            ])
         </div>
-        @endif
-    </article>
+    @else
+        {{-- ========================================================
+             ADMIN & RESELLER PORTAL: A4 DOCUMENT (SCREEN + PRINT)
+             ======================================================== --}}
+        @include('components.billing.partials.invoice-a4-document', [
+            'invoice' => $invoice,
+            'company' => $company,
+            'companyAddress' => $companyAddress,
+            'showPartner' => $showPartner,
+            'isPaid' => $isPaid,
+            'sisaTagihan' => $sisaTagihan,
+            'manualBanks' => $manualBanks,
+        ])
+    @endif
 </div>
 <!-- END: GLOBAL INVOICE DOCUMENT -->
-
-
-
-
-
-
-
