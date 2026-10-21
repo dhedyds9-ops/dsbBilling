@@ -92,6 +92,14 @@
             .print-show-line { display: block !important; }
             .portal-screen-only { display: none !important; }
             .portal-print-only { display: block !important; }
+            .invoice-document header,
+            .invoice-document .invoice-header {
+                display: flex !important;
+            }
+            .invoice-document footer,
+            .invoice-document .invoice-footer {
+                display: block !important;
+            }
         }
         @media screen {
             .portal-print-only { display: none !important; }

@@ -1,6 +1,6 @@
 <article class="invoice-document relative overflow-hidden text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
     <!-- HEADER SECTION -->
-    <header class="flex flex-row justify-between items-start gap-4 border-b border-slate-300 dark:border-slate-600 pb-4 mb-6 print-flex-row">
+    <header class="flex flex-row justify-between items-start gap-4 border-b border-slate-300 dark:border-slate-600 pb-4 mb-6 print-flex-row invoice-header">
         <div class="flex flex-row items-center gap-4">
             <!-- ISP Info -->
             <div class="flex items-center gap-4">
@@ -191,7 +191,7 @@
     </div>
 
     <!-- FOOTER -->
-    <footer class="mt-12 pt-4 border-t border-slate-300 dark:border-slate-600 text-center text-xs text-slate-500 dark:text-slate-400">
+    <footer class="mt-12 pt-4 border-t border-slate-300 dark:border-slate-600 text-center text-xs text-slate-500 dark:text-slate-400 invoice-footer">
         <p class="font-bold text-slate-700 dark:text-slate-300 mb-1">Terima kasih atas kepercayaan Anda menggunakan layanan kami.</p>
         <p>Mohon sertakan nomor invoice sebagai referensi pembayaran. Jika ada pertanyaan, hubungi tim support kami.</p>
     </footer>

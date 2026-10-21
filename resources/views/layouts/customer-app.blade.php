@@ -51,7 +51,22 @@
                     color: #111827 !important;
                 }
                 /* Hide all UI chrome */
-                .print-hide, nav, header, aside, footer { display: none !important; }
+                .print-hide, 
+                nav.print-hide, 
+                header.print-hide, 
+                aside.print-hide, 
+                footer.print-hide { 
+                    display: none !important; 
+                }
+                /* Ensure invoice document header and footer are always visible in print */
+                .invoice-document header,
+                .invoice-document .invoice-header {
+                    display: flex !important;
+                }
+                .invoice-document footer,
+                .invoice-document .invoice-footer {
+                    display: block !important;
+                }
                 .print-reset-height { min-height: 0 !important; height: auto !important; }
                 .print-reset-overflow { overflow: visible !important; }
                 .print-reset-padding { padding: 0 !important; margin: 0 !important; }
