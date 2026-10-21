@@ -4,7 +4,7 @@
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-primary-600 text-3xl" translate="no">account_balance_wallet</span>
-                Laporan Pendapatan
+                Pemasukan Harian
             </h1>
             <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Rincian penerimaan uang dari langganan pelanggan bulanan dan penjualan voucher hotspot pada periode {{ $currentMonthName }}.

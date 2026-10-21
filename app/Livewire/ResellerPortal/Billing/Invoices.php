@@ -30,8 +30,8 @@ class Invoices extends AdminComponent
         
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => '#'],
-            ['label' => 'Tagihan', 'url' => '#'],
-            ['label' => 'Tagihan Pelanggan', 'url' => route('reseller-portal.billing.invoices')],
+            ['label' => 'Data Tagihan', 'url' => '#'],
+            ['label' => 'Semua Tagihan', 'url' => route('reseller-portal.billing.invoices')],
         ];
     }
 

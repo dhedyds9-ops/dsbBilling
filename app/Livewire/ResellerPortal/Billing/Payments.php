@@ -20,8 +20,8 @@ class Payments extends AdminComponent
         
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => '#'],
-            ['label' => 'Tagihan', 'url' => '#'],
-            ['label' => 'Riwayat Pembayaran', 'url' => route('reseller-portal.billing.payments')],
+            ['label' => 'Data Tagihan', 'url' => '#'],
+            ['label' => 'Pembayaran', 'url' => route('reseller-portal.billing.payments')],
         ];
     }
 

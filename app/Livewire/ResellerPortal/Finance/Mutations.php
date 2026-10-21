@@ -22,7 +22,7 @@ class Mutations extends AdminComponent
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => '#'],
             ['label' => 'Data Keuangan', 'url' => '#'],
-            ['label' => 'Mutasi', 'url' => route('reseller-portal.finance.mutations')],
+            ['label' => 'Mutasi Saldo', 'url' => route('reseller-portal.finance.mutations')],
         ];
     }
 

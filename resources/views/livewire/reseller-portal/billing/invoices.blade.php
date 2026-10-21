@@ -1,7 +1,7 @@
 <div>
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Tagihan Pelanggan</h1>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Semua Tagihan</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kelola dan pantau seluruh tagihan (invoice) dari pelanggan Anda.</p>
         </div>
     </div>

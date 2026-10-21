@@ -24,8 +24,8 @@ class Revenue extends AdminComponent
 
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => '#'],
-            ['label' => 'Laporan', 'url' => '#'],
-            ['label' => 'Pendapatan', 'url' => route('reseller-portal.reports.revenue')],
+            ['label' => 'Data Keuangan', 'url' => '#'],
+            ['label' => 'Pemasukan Harian', 'url' => route('reseller-portal.reports.revenue')],
         ];
     }
 

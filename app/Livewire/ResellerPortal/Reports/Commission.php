@@ -27,8 +27,8 @@ class Commission extends AdminComponent
 
         $this->breadcrumbs = [
             ['label' => 'Reseller Portal', 'url' => '#'],
-            ['label' => 'Laporan', 'url' => '#'],
-            ['label' => 'Komisi / Margin', 'url' => route('reseller-portal.reports.commission')],
+            ['label' => 'Data Keuangan', 'url' => '#'],
+            ['label' => 'Komisi & Margin', 'url' => route('reseller-portal.reports.commission')],
         ];
     }
 

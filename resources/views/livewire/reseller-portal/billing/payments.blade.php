@@ -1,7 +1,7 @@
 <div>
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Riwayat Pembayaran</h1>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Pembayaran</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Lacak semua pembayaran yang telah dilakukan oleh pelanggan Anda.</p>
         </div>
     </div>

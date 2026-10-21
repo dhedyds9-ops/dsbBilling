@@ -3,9 +3,9 @@
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
                 <span class="material-symbols-outlined notranslate text-emerald-600 text-3xl" translate="no">savings</span>
-                Laporan Komisi & Margin
+                Komisi & Margin
             </h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Estimasi keuntungan bersih Anda dari selisih harga jual dan harga modal pada periode {{ $currentMonthName }}.</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Ringkasan komisi dan keuntungan bersih pada periode {{ $currentMonthName }}.</p>
         </div>
 
         <!-- Filter Periode (Bulan & Tahun) & Cetak PDF -->
@@ -68,11 +68,6 @@
             </div>
             <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ number_format($profitMarginPercent, 1) }}%</p>
         </div>
-    </div>
-
-    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 text-blue-800 dark:text-blue-300">
-        <h4 class="font-bold mb-1 flex items-center gap-2 text-sm"><span class="material-symbols-outlined notranslate text-base" translate="no">info</span> Informasi Perhitungan Komisi</h4>
-        <p class="text-xs leading-relaxed">Laporan komisi ini terintegrasi langsung dengan mesin perhitungan settlement ISP dsBilling. Dihitung dari seluruh invoice pelanggan bulanan lunas dan voucher hotspot yang aktif/terjual: <strong>(Total Harga Jual ke Pelanggan) - (Harga Modal/Settlement dari Pusat)</strong>.</p>
     </div>
 
     <!-- Details Table -->

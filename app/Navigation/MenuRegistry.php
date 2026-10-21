@@ -328,10 +328,10 @@ class MenuRegistry
                     ],
                     [
                         'label' => 'Data Tagihan',
-                        'icon' => 'receipt',
+                        'icon' => 'receipt_long',
                         'items' => [
-                            ['label' => 'Semua Tagihan', 'route' => 'reseller-portal.billing.invoices', 'active' => 'reseller-portal.billing.invoices'],
-                            ['label' => 'Pembayaran', 'route' => 'reseller-portal.billing.payments', 'active' => 'reseller-portal.billing.payments'],
+                            ['label' => 'Semua Tagihan', 'route' => 'reseller-portal.billing.invoices', 'active' => 'reseller-portal.billing.invoices*'],
+                            ['label' => 'Pembayaran', 'route' => 'reseller-portal.billing.payments', 'active' => 'reseller-portal.billing.payments*'],
                         ]
                     ],
                     [
@@ -348,19 +348,13 @@ class MenuRegistry
                         'label' => 'Data Keuangan',
                         'icon' => 'account_balance_wallet',
                         'items' => [
+                            ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => 'reseller-portal.reports.revenue'],
+                            ['label' => 'Pemasukan Bulanan', 'route' => 'reseller-portal.reports.sales', 'active' => 'reseller-portal.reports.sales'],
+                            ['label' => 'Komisi & Margin', 'route' => 'reseller-portal.reports.commission', 'active' => 'reseller-portal.reports.commission'],
+                            ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*'],
                             ['label' => 'Saldo Deposit', 'route' => 'reseller-portal.finance.balance', 'active' => 'reseller-portal.finance.balance'],
                             ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup'],
-                            ['label' => 'Mutasi', 'route' => 'reseller-portal.finance.mutations', 'active' => 'reseller-portal.finance.mutations'],
-                            ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*'],
-                        ]
-                    ],
-                    [
-                        'label' => 'Laporan',
-                        'icon' => 'bar_chart',
-                        'items' => [
-                            ['label' => 'Penjualan', 'route' => 'reseller-portal.reports.sales', 'active' => 'reseller-portal.reports.sales'],
-                            ['label' => 'Pendapatan', 'route' => 'reseller-portal.reports.revenue', 'active' => 'reseller-portal.reports.revenue'],
-                            ['label' => 'Komisi', 'route' => 'reseller-portal.reports.commission', 'active' => 'reseller-portal.reports.commission'],
+                            ['label' => 'Mutasi Saldo', 'route' => 'reseller-portal.finance.mutations', 'active' => 'reseller-portal.finance.mutations'],
                         ]
                     ]
                 ]
