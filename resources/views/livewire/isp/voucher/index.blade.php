@@ -84,41 +84,6 @@
             </div>
         </div>
 
-        {{-- LIFECYCLE TABS --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                <button wire:click="setTab('active')" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all {{ $activeTab === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">task_alt</span>
-                    Voucher Aktif
-                    <span class="px-2 py-0.5 text-xs rounded-full {{ $activeTab === 'active' ? 'bg-indigo-500/80 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold' }}">
-                        {{ number_format(($stats['available'] ?? 0) + ($stats['online'] ?? 0) + ($stats['used'] ?? 0)) }}
-                    </span>
-                </button>
-
-                <button wire:click="setTab('expired')" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all {{ $activeTab === 'expired' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">archive</span>
-                    Kedaluwarsa (Arsip)
-                    <span class="px-2 py-0.5 text-xs rounded-full {{ $activeTab === 'expired' ? 'bg-red-500/80 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold' }}">
-                        {{ number_format($stats['expired'] ?? 0) }}
-                    </span>
-                </button>
-
-                <button wire:click="setTab('all')" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all {{ $activeTab === 'all' ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">list_alt</span>
-                    Semua Data
-                    <span class="px-2 py-0.5 text-xs rounded-full {{ $activeTab === 'all' ? 'bg-slate-700 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold' }}">
-                        {{ number_format($stats['total'] ?? 0) }}
-                    </span>
-                </button>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <a href="{{ route('keuangan.income-harian', ['user_type' => 'voucher']) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-100 transition-colors">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">account_balance_wallet</span>
-                    Buka Halaman Keuangan &rarr;
-                </a>
-            </div>
-        </div>
 
         @if($activeTab === 'expired')
             <div class="p-3.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
@@ -176,26 +141,26 @@
             </div>
             <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
                 @if(count($selectedIds) > 0)
-                    <button wire:click="bulkMarkAsExpired" onclick="confirm('Tandai {{ count($selectedIds) }} voucher sebagai Expired?') || event.stopImmediatePropagation()" class="inline-flex items-center px-3.5 py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-lg border border-amber-200 dark:border-amber-700 transition-colors whitespace-nowrap">
-                        <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">timer_off</span>
-                        Tandai Expired ({{ count($selectedIds) }})
+                    <button wire:click="bulkMarkAsExpired" onclick="confirm('Tandai {{ count($selectedIds) }} voucher sebagai Expired?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-lg border border-amber-200 dark:border-amber-700 transition-colors whitespace-nowrap" title="Tandai Expired ({{ count($selectedIds) }})">
+                        <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">timer_off</span>
+                        <span class="hidden sm:inline">Tandai Expired ({{ count($selectedIds) }})</span>
                     </button>
-                    <button onclick="confirm('Yakin ingin menghapus {{ count($selectedIds) }} voucher?') || event.stopImmediatePropagation()" wire:click="confirmBulkDelete" class="inline-flex items-center px-4 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
-                        <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">delete</span>
-                        Hapus ({{ count($selectedIds) }})
+                    <button onclick="confirm('Yakin ingin menghapus {{ count($selectedIds) }} voucher?') || event.stopImmediatePropagation()" wire:click="confirmBulkDelete" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap" title="Hapus ({{ count($selectedIds) }})">
+                        <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">delete</span>
+                        <span class="hidden sm:inline">Hapus ({{ count($selectedIds) }})</span>
                     </button>
-                    <button wire:click="printSelected" class="inline-flex items-center px-4 py-2 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap">
-                        <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">print</span>
-                        Cetak ({{ count($selectedIds) }})
+                    <button wire:click="printSelected" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap" title="Cetak ({{ count($selectedIds) }})">
+                        <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">print</span>
+                        <span class="hidden sm:inline">Cetak ({{ count($selectedIds) }})</span>
                     </button>
                 @endif
-                <a href="{{ route('keuangan.income-harian', ['user_type' => 'voucher']) }}" class="inline-flex items-center px-3.5 py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-sm font-medium rounded-lg border border-emerald-200 dark:border-emerald-700 transition-colors whitespace-nowrap" title="Buka Data & Histori Keuangan Voucher">
-                    <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">payments</span>
-                    Data Keuangan
+                <a href="{{ route('keuangan.income-harian', ['user_type' => 'voucher']) }}" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-sm font-medium rounded-lg border border-emerald-200 dark:border-emerald-700 transition-colors whitespace-nowrap" title="Buka Data & Histori Keuangan Voucher">
+                    <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">payments</span>
+                    <span class="hidden sm:inline">Data Keuangan</span>
                 </a>
-                <button wire:click="$set('showGenerateModal', true)" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">add</span>
-                    Generate Voucher
+                <button wire:click="$set('showGenerateModal', true)" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap" title="Generate Voucher">
+                    <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">add</span>
+                    <span class="hidden sm:inline">Generate Voucher</span>
                 </button>
             </div>
         </div>
