@@ -24,6 +24,9 @@ class TicketCreatedListener
 
             $customer = $ticket->customer;
 
+            $creator = !empty($event->userId) ? User::find((int) $event->userId) : null;
+            $creatorLabel = $creator ? "Admin ({$creator->name})" : 'Portal Pelanggan';
+
             // ── 1. Kirim notifikasi ke semua Admin/NOC ────────────────
             $admins = User::whereHas('roles', function ($q) {
                 $q->whereIn('name', ['super-admin', 'admin', 'noc']);
@@ -56,7 +59,7 @@ class TicketCreatedListener
                         'category'      => $ticket->category ?? '-',
                         'priority'      => $ticket->priority ?? 'medium',
                         'customer_name' => $customer?->name ?? 'Pelanggan',
-                        'created_by'    => 'Portal Pelanggan',
+                        'created_by'    => $creatorLabel,
                     ]);
                     $msg = new WaOutgoingMessage(
                         to: $adminPhone,
@@ -95,7 +98,7 @@ class TicketCreatedListener
                     'category'      => $ticket->category ?? '-',
                     'priority'      => $ticket->priority ?? 'medium',
                     'customer_name' => $customer?->name ?? 'Pelanggan',
-                    'created_by'    => 'Portal Pelanggan / Sistem',
+                    'created_by'    => $creatorLabel,
                 ]);
                 $msg = new WaOutgoingMessage(
                     to: $ticketGroupId,

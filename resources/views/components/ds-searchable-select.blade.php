@@ -78,6 +78,7 @@
         debounce: {{ (int) $debounce }},
         maxResults: {{ (int) $maxResults }},
         placeholder: '{{ addslashes($placeholder) }}',
+        searchPlaceholder: '{{ addslashes($searchPlaceholder) }}',
         selectedLabel: '{{ addslashes($selectedLabel ?? '') }}',
         selectedSublabel: '{{ addslashes($selectedSublabel ?? '') }}',
     })"
@@ -102,48 +103,45 @@
             <input type="hidden" name="{{ $attributes->get('name') }}" :value="value">
         @endif
 
-        {{-- Dropdown Trigger Button --}}
-        <button
-            type="button"
+        {{-- Dropdown Trigger (div role=combobox to avoid nested button parser issues) --}}
+        <div
+            role="combobox"
+            :tabindex="disabled ? -1 : 0"
             @click="toggle()"
             @keydown.enter.prevent="onEnter()"
             @keydown.space.prevent="openDropdown()"
             @keydown.arrow-down.prevent="onArrowDown()"
             @keydown.arrow-up.prevent="onArrowUp()"
-            :disabled="disabled"
+            :aria-expanded="open"
+            aria-haspopup="listbox"
             :class="{
                 'opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-800': disabled,
                 'border-red-500 ring-2 ring-red-500/20': {{ $error ? 'true' : 'false' }},
                 'border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500': !{{ $error ? 'true' : 'false' }},
                 'ring-2 ring-indigo-500 border-indigo-500': open
             }"
-            class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 text-left border rounded-xl text-sm transition-all flex items-center justify-between gap-2 shadow-sm cursor-pointer select-none"
-            aria-haspopup="listbox"
-            :aria-expanded="open"
+            class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 text-left border rounded-xl text-sm transition-all flex items-center justify-between gap-2 shadow-sm cursor-pointer select-none outline-none"
         >
-            <div class="flex items-center gap-2 truncate min-w-0">
-                <template x-if="value && selectedLabel">
-                    <div class="flex flex-col text-left truncate">
-                        <span class="font-medium text-slate-900 dark:text-slate-100 truncate" x-text="selectedLabel"></span>
-                        <span x-show="selectedSublabel" class="text-xs text-slate-400 dark:text-slate-500 truncate" x-text="selectedSublabel"></span>
-                    </div>
-                </template>
-                <template x-if="!value || !selectedLabel">
-                    <span class="text-slate-400 dark:text-slate-500 truncate" x-text="placeholder"></span>
-                </template>
+            <div class="flex items-center gap-2 truncate min-w-0 flex-1">
+                <div x-show="value && selectedLabel" class="flex flex-col text-left truncate">
+                    <span class="font-medium text-slate-900 dark:text-slate-100 truncate" x-text="selectedLabel"></span>
+                    <span x-show="selectedSublabel" class="text-xs text-slate-400 dark:text-slate-500 truncate" x-text="selectedSublabel"></span>
+                </div>
+                <span x-show="!value || !selectedLabel" class="text-slate-400 dark:text-slate-500 truncate" x-text="placeholder"></span>
             </div>
 
             <div class="flex items-center gap-1 shrink-0 text-slate-400">
                 {{-- Clear Button --}}
-                <button
+                <span
                     x-show="clearable && value && !disabled"
                     @click.stop="clear()"
-                    type="button"
-                    class="p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    role="button"
+                    tabindex="0"
+                    class="p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors inline-flex items-center justify-center cursor-pointer"
                     title="Hapus pilihan"
                 >
                     <span class="material-symbols-outlined notranslate text-base block" translate="no">close</span>
-                </button>
+                </span>
 
                 {{-- Chevron --}}
                 <span
@@ -152,7 +150,7 @@
                     translate="no"
                 >expand_more</span>
             </div>
-        </button>
+        </div>
 
         {{-- Dropdown Floating Panel --}}
         <div
@@ -167,23 +165,25 @@
             style="display: none;"
         >
             {{-- Search Box --}}
-            <div x-show="searchable" class="p-2.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 relative">
-                <span class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <span class="material-symbols-outlined notranslate text-lg" translate="no">search</span>
-                </span>
-                <input
-                    x-ref="searchInput"
-                    type="text"
-                    x-model="search"
-                    @keydown.arrow-down.prevent="onArrowDown()"
-                    @keydown.arrow-up.prevent="onArrowUp()"
-                    @keydown.enter.prevent="onEnter()"
-                    @keydown.escape.prevent="close()"
-                    :placeholder="searchPlaceholder"
-                    class="w-full pl-9 pr-8 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                >
-                <div x-show="loading" class="absolute right-5 top-1/2 -translate-y-1/2">
-                    <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+            <div x-show="searchable" class="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <div class="relative flex items-center">
+                    <span class="absolute left-3 text-slate-400 pointer-events-none flex items-center">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                    </span>
+                    <input
+                        x-ref="searchInput"
+                        type="text"
+                        x-model="search"
+                        @keydown.arrow-down.prevent="onArrowDown()"
+                        @keydown.arrow-up.prevent="onArrowUp()"
+                        @keydown.enter.prevent="onEnter()"
+                        @keydown.escape.prevent="close()"
+                        :placeholder="searchPlaceholder"
+                        class="w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    >
+                    <div x-show="loading && search !== ''" class="absolute flex items-center pointer-events-none" style="right: 12px;">
+                        <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+                    </div>
                 </div>
             </div>
 

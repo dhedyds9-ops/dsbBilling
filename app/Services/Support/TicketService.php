@@ -104,6 +104,9 @@ class TicketService
     public function create(array $data, int $userId): Ticket
     {
         return DB::transaction(function () use ($data, $userId) {
+            $assignedTo = !empty($data['assigned_to']) ? (int) $data['assigned_to'] : null;
+            $status = $data['status'] ?? ($assignedTo ? 'in_progress' : 'open');
+
             $ticket = Ticket::create([
                 'uuid' => (string) Str::uuid(),
                 'customer_id' => $data['customer_id'],
@@ -111,8 +114,8 @@ class TicketService
                 'description' => $data['description'] ?? '',
                 'category' => $data['category'] ?? 'other',
                 'priority' => $data['priority'] ?? 'medium',
-                'status' => $data['status'] ?? 'open',
-                'assigned_to' => $data['assigned_to'] ?? null,
+                'status' => $status,
+                'assigned_to' => $assignedTo,
                 'due_date' => $data['due_date'] ?? null,
             ]);
 
@@ -124,6 +127,14 @@ class TicketService
                 $ticket->priority,
                 (string) $userId,
             ));
+
+            if ($assignedTo) {
+                Event::dispatch(TicketAssignedEvent::create(
+                    (string) $ticket->id,
+                    (string) $assignedTo,
+                    (string) $userId,
+                ));
+            }
 
             return $ticket;
         });
