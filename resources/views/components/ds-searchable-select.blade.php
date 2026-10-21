@@ -65,11 +65,8 @@
     class="w-full space-y-1.5"
     x-data="dsSearchableSelect({
         strategy: '{{ $strategy }}',
-        @if($isLivewire)
-            value: @entangle($attributes->wire('model')),
-        @else
-            value: '{{ addslashes($attributes->get('value', '')) }}',
-        @endif
+        wireModel: '{{ $wireModel }}',
+        initialValue: '{{ addslashes($attributes->get('value', '')) }}',
         options: {{ Js::from($normalizedOptions) }},
         searchAction: '{{ $searchAction }}',
         searchable: {{ $searchable ? 'true' : 'false' }},
@@ -82,6 +79,10 @@
         selectedLabel: '{{ addslashes($selectedLabel ?? '') }}',
         selectedSublabel: '{{ addslashes($selectedSublabel ?? '') }}',
     })"
+    @if($isLivewire)
+        wire:model="{{ $wireModel }}"
+        x-modelable="value"
+    @endif
     @keydown.escape.stop="close()"
     @click.outside="close()"
     id="{{ $componentId }}"
@@ -107,7 +108,7 @@
         <div
             role="combobox"
             :tabindex="disabled ? -1 : 0"
-            @click="toggle()"
+            @click.stop="toggle()"
             @keydown.enter.prevent="onEnter()"
             @keydown.space.prevent="openDropdown()"
             @keydown.arrow-down.prevent="onArrowDown()"
@@ -155,6 +156,7 @@
         {{-- Dropdown Floating Panel --}}
         <div
             x-show="open"
+            @click.stop
             x-transition:enter="transition ease-out duration-150"
             x-transition:enter-start="opacity-0 translate-y-1 scale-98"
             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
@@ -196,7 +198,8 @@
                 {{-- Options template --}}
                 <template x-for="(opt, index) in options" :key="opt.value">
                     <div
-                        @click="select(opt)"
+                        @mousedown.stop.prevent="select(opt)"
+                        @click.stop="select(opt)"
                         @mouseenter="highlightedIndex = index"
                         role="option"
                         :aria-selected="String(value) === String(opt.value)"
@@ -252,225 +255,276 @@
 {{-- Shared Component Script --}}
 @once
 <script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('dsSearchableSelect', (config) => ({
-        open: false,
-        search: '',
-        value: config.value,
-        selectedLabel: config.selectedLabel || '',
-        selectedSublabel: config.selectedSublabel || '',
-        options: [],
-        allLocalOptions: [],
-        highlightedIndex: -1,
-        loading: false,
-        errorMessage: null,
-        searchTimeout: null,
-        requestId: 0,
-        strategy: config.strategy || 'local',
-        searchAction: config.searchAction || '',
-        searchable: config.searchable ?? true,
-        clearable: config.clearable ?? true,
-        disabled: config.disabled ?? false,
-        debounce: config.debounce || 300,
-        maxResults: config.maxResults || 20,
-        placeholder: config.placeholder || '-- Pilih --',
-        searchPlaceholder: config.searchPlaceholder || 'Cari...',
+(function() {
+    function registerDsSearchableSelect() {
+        if (!window.Alpine || window.__dsSearchableSelectRegistered) {
+            return;
+        }
+        window.__dsSearchableSelectRegistered = true;
 
-        init() {
-            this.allLocalOptions = Array.isArray(config.options) ? JSON.parse(JSON.stringify(config.options)) : [];
-            this.options = this.allLocalOptions;
+        Alpine.data('dsSearchableSelect', (config) => ({
+            open: false,
+            search: '',
+            wireModel: config.wireModel || '',
+            value: config.initialValue || null,
+            selectedLabel: config.selectedLabel || '',
+            selectedSublabel: config.selectedSublabel || '',
+            options: [],
+            allLocalOptions: [],
+            highlightedIndex: -1,
+            loading: false,
+            errorMessage: null,
+            searchTimeout: null,
+            requestId: 0,
+            strategy: config.strategy || 'local',
+            searchAction: config.searchAction || '',
+            searchable: config.searchable ?? true,
+            clearable: config.clearable ?? true,
+            disabled: config.disabled ?? false,
+            debounce: config.debounce || 300,
+            maxResults: config.maxResults || 20,
+            placeholder: config.placeholder || '-- Pilih --',
+            searchPlaceholder: config.searchPlaceholder || 'Cari...',
 
-            // Sync initial label
-            this.syncLabelFromValue();
+            init() {
+                this.allLocalOptions = Array.isArray(config.options) ? JSON.parse(JSON.stringify(config.options)) : [];
+                this.options = this.allLocalOptions;
 
-            // Watch for external value changes (Livewire entangle)
-            this.$watch('value', (newVal) => {
+                if (config.selectedLabel) {
+                    this.selectedLabel = config.selectedLabel;
+                }
+                if (config.selectedSublabel) {
+                    this.selectedSublabel = config.selectedSublabel;
+                }
+
+                // Sync initial label
                 this.syncLabelFromValue();
-            });
 
-            // Watch search query
-            this.$watch('search', (query) => {
-                if (!this.open) return;
-                if (this.strategy === 'local') {
-                    this.filterLocal(query);
-                } else if (this.strategy === 'remote') {
-                    this.filterRemoteDebounced(query);
-                }
-            });
-        },
+                // Watch for external value changes
+                this.$watch('value', (newVal) => {
+                    this.syncLabelFromValue();
+                });
 
-        syncLabelFromValue() {
-            if (this.value === null || this.value === '' || this.value === undefined) {
-                this.selectedLabel = '';
-                this.selectedSublabel = '';
-                return;
-            }
+                // Watch search query
+                this.$watch('search', (query) => {
+                    if (!this.open) return;
+                    if (this.strategy === 'local') {
+                        this.filterLocal(query);
+                    } else if (this.strategy === 'remote') {
+                        this.filterRemoteDebounced(query);
+                    }
+                });
+            },
 
-            // Find in current options or local options
-            const match = this.options.find(o => String(o.value) === String(this.value))
-                       || this.allLocalOptions.find(o => String(o.value) === String(this.value));
-
-            if (match) {
-                this.selectedLabel = match.label;
-                this.selectedSublabel = match.sublabel || '';
-            }
-        },
-
-        toggle() {
-            if (this.disabled) return;
-            if (this.open) {
-                this.close();
-            } else {
-                this.openDropdown();
-            }
-        },
-
-        openDropdown() {
-            if (this.disabled) return;
-            this.open = true;
-            this.search = '';
-            this.highlightedIndex = -1;
-            this.errorMessage = null;
-
-            if (this.strategy === 'local') {
-                this.options = this.allLocalOptions.slice(0, this.maxResults);
-            } else if (this.strategy === 'remote') {
-                if (this.options.length === 0) {
-                    this.fetchRemote('');
-                }
-            }
-
-            this.$nextTick(() => {
-                if (this.$refs.searchInput) {
-                    this.$refs.searchInput.focus();
-                }
-            });
-        },
-
-        close() {
-            this.open = false;
-            this.search = '';
-            this.highlightedIndex = -1;
-        },
-
-        filterLocal(query) {
-            if (!query || query.trim() === '') {
-                this.options = this.allLocalOptions.slice(0, this.maxResults);
-                this.highlightedIndex = -1;
-                return;
-            }
-
-            const q = query.toLowerCase().trim();
-            this.options = this.allLocalOptions
-                .filter(o =>
-                    (o.label && String(o.label).toLowerCase().includes(q)) ||
-                    (o.sublabel && String(o.sublabel).toLowerCase().includes(q)) ||
-                    (o.value && String(o.value).toLowerCase().includes(q))
-                )
-                .slice(0, this.maxResults);
-
-            this.highlightedIndex = this.options.length > 0 ? 0 : -1;
-        },
-
-        filterRemoteDebounced(query) {
-            clearTimeout(this.searchTimeout);
-            this.loading = true;
-            this.searchTimeout = setTimeout(() => {
-                this.fetchRemote(query);
-            }, this.debounce);
-        },
-
-        async fetchRemote(query) {
-            const thisRequestId = ++this.requestId;
-            this.loading = true;
-            this.errorMessage = null;
-
-            try {
-                if (!this.searchAction) {
-                    console.error('[DsSearchableSelect] Remote strategy requires searchAction');
-                    this.loading = false;
+            syncLabelFromValue() {
+                if (this.value === null || this.value === '' || this.value === undefined) {
+                    this.selectedLabel = '';
+                    this.selectedSublabel = '';
                     return;
                 }
 
-                // Call Livewire server method
-                const result = await this.$wire.call(this.searchAction, query);
+                // Find in current options or local options
+                const match = this.options.find(o => String(o.value) === String(this.value))
+                           || this.allLocalOptions.find(o => String(o.value) === String(this.value));
 
-                // Discard stale responses
-                if (thisRequestId !== this.requestId) return;
+                if (match) {
+                    this.selectedLabel = match.label;
+                    this.selectedSublabel = match.sublabel || '';
+                }
+            },
 
-                if (Array.isArray(result)) {
-                    this.options = result.slice(0, this.maxResults);
+            toggle() {
+                if (this.disabled) return;
+                if (this.open) {
+                    this.close();
                 } else {
-                    this.options = [];
+                    this.openDropdown();
                 }
+            },
+
+            openDropdown() {
+                if (this.disabled) return;
+                this.open = true;
+                this.search = '';
+                this.highlightedIndex = -1;
+                this.errorMessage = null;
+
+                if (this.strategy === 'local') {
+                    this.options = this.allLocalOptions.slice(0, this.maxResults);
+                } else if (this.strategy === 'remote') {
+                    if (this.options.length === 0) {
+                        this.fetchRemote('');
+                    }
+                }
+
+                this.$nextTick(() => {
+                    if (this.$refs.searchInput) {
+                        this.$refs.searchInput.focus();
+                    }
+                });
+            },
+
+            close() {
+                this.open = false;
+                this.search = '';
+                this.highlightedIndex = -1;
+            },
+
+            filterLocal(query) {
+                if (!query || query.trim() === '') {
+                    this.options = this.allLocalOptions.slice(0, this.maxResults);
+                    this.highlightedIndex = -1;
+                    return;
+                }
+
+                const q = query.toLowerCase().trim();
+                this.options = this.allLocalOptions
+                    .filter(o =>
+                        (o.label && String(o.label).toLowerCase().includes(q)) ||
+                        (o.sublabel && String(o.sublabel).toLowerCase().includes(q)) ||
+                        (o.value && String(o.value).toLowerCase().includes(q))
+                    )
+                    .slice(0, this.maxResults);
+
                 this.highlightedIndex = this.options.length > 0 ? 0 : -1;
-            } catch (err) {
-                if (thisRequestId === this.requestId) {
-                    this.errorMessage = 'Gagal memuat data dari server.';
-                    console.error('[DsSearchableSelect] Remote search error:', err);
+            },
+
+            filterRemoteDebounced(query) {
+                clearTimeout(this.searchTimeout);
+                this.loading = true;
+                this.searchTimeout = setTimeout(() => {
+                    this.fetchRemote(query);
+                }, this.debounce);
+            },
+
+            async fetchRemote(query) {
+                const thisRequestId = ++this.requestId;
+                this.loading = true;
+                this.errorMessage = null;
+
+                try {
+                    if (!this.searchAction) {
+                        console.error('[DsSearchableSelect] Remote strategy requires searchAction');
+                        this.loading = false;
+                        return;
+                    }
+
+                    let result;
+                    if (this.$wire && typeof this.$wire[this.searchAction] === 'function') {
+                        result = await this.$wire[this.searchAction](query);
+                    } else if (this.$wire && typeof this.$wire.call === 'function') {
+                        result = await this.$wire.call(this.searchAction, query);
+                    } else {
+                        console.error('[DsSearchableSelect] Livewire $wire is not available');
+                        this.errorMessage = 'Gagal memuat data dari server.';
+                        return;
+                    }
+
+                    // Discard stale responses
+                    if (thisRequestId !== this.requestId) return;
+
+                    if (Array.isArray(result)) {
+                        this.options = result.slice(0, this.maxResults);
+                    } else {
+                        this.options = [];
+                    }
+                    this.highlightedIndex = this.options.length > 0 ? 0 : -1;
+                } catch (err) {
+                    if (thisRequestId === this.requestId) {
+                        this.errorMessage = 'Gagal memuat data dari server.';
+                        console.error('[DsSearchableSelect] Remote search error:', err);
+                    }
+                } finally {
+                    if (thisRequestId === this.requestId) {
+                        this.loading = false;
+                    }
                 }
-            } finally {
-                if (thisRequestId === this.requestId) {
-                    this.loading = false;
+            },
+
+            select(opt) {
+                this.value = opt.value;
+                this.selectedLabel = opt.label;
+                this.selectedSublabel = opt.sublabel || '';
+
+                if (this.wireModel && this.$wire) {
+                    if (typeof this.$wire.set === 'function') {
+                        this.$wire.set(this.wireModel, opt.value);
+                    } else {
+                        this.$wire[this.wireModel] = opt.value;
+                    }
                 }
-            }
-        },
 
-        select(opt) {
-            this.value = opt.value;
-            this.selectedLabel = opt.label;
-            this.selectedSublabel = opt.sublabel || '';
-            this.$dispatch('change', opt.value);
-            this.close();
-        },
+                this.$dispatch('change', opt.value);
+                this.$dispatch('input', opt.value);
+                this.close();
+            },
 
-        clear() {
-            this.value = '';
-            this.selectedLabel = '';
-            this.selectedSublabel = '';
-            this.$dispatch('change', '');
-            this.close();
-        },
+            clear() {
+                this.value = '';
+                this.selectedLabel = '';
+                this.selectedSublabel = '';
 
-        onArrowDown() {
-            if (!this.open) {
-                this.openDropdown();
-                return;
-            }
-            if (this.options.length === 0) return;
-            this.highlightedIndex = (this.highlightedIndex + 1) % this.options.length;
-            this.scrollHighlightedIntoView();
-        },
-
-        onArrowUp() {
-            if (!this.open) {
-                this.openDropdown();
-                return;
-            }
-            if (this.options.length === 0) return;
-            this.highlightedIndex = (this.highlightedIndex - 1 + this.options.length) % this.options.length;
-            this.scrollHighlightedIntoView();
-        },
-
-        onEnter() {
-            if (!this.open) {
-                this.openDropdown();
-                return;
-            }
-            if (this.highlightedIndex >= 0 && this.highlightedIndex < this.options.length) {
-                this.select(this.options[this.highlightedIndex]);
-            }
-        },
-
-        scrollHighlightedIntoView() {
-            this.$nextTick(() => {
-                const el = this.$refs.optionsList?.children[this.highlightedIndex];
-                if (el) {
-                    el.scrollIntoView({ block: 'nearest' });
+                if (this.wireModel && this.$wire) {
+                    if (typeof this.$wire.set === 'function') {
+                        this.$wire.set(this.wireModel, '');
+                    } else {
+                        this.$wire[this.wireModel] = '';
+                    }
                 }
-            });
-        }
-    }));
-});
+
+                this.$dispatch('change', '');
+                this.$dispatch('input', '');
+                this.close();
+            },
+
+            onArrowDown() {
+                if (!this.open) {
+                    this.openDropdown();
+                    return;
+                }
+                if (this.options.length === 0) return;
+                this.highlightedIndex = (this.highlightedIndex + 1) % this.options.length;
+                this.scrollHighlightedIntoView();
+            },
+
+            onArrowUp() {
+                if (!this.open) {
+                    this.openDropdown();
+                    return;
+                }
+                if (this.options.length === 0) return;
+                this.highlightedIndex = (this.highlightedIndex - 1 + this.options.length) % this.options.length;
+                this.scrollHighlightedIntoView();
+            },
+
+            onEnter() {
+                if (!this.open) {
+                    this.openDropdown();
+                    return;
+                }
+                if (this.highlightedIndex >= 0 && this.highlightedIndex < this.options.length) {
+                    this.select(this.options[this.highlightedIndex]);
+                }
+            },
+
+            scrollHighlightedIntoView() {
+                this.$nextTick(() => {
+                    const el = this.$refs.optionsList?.children[this.highlightedIndex];
+                    if (el) {
+                        el.scrollIntoView({ block: 'nearest' });
+                    }
+                });
+            }
+        }));
+    }
+
+    if (window.Alpine) {
+        registerDsSearchableSelect();
+    } else {
+        document.addEventListener('alpine:init', registerDsSearchableSelect);
+    }
+    document.addEventListener('livewire:navigated', registerDsSearchableSelect);
+    document.addEventListener('DOMContentLoaded', registerDsSearchableSelect);
+})();
 </script>
 @endonce

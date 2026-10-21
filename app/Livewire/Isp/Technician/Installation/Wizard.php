@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 #[Layout('layouts.technician-app')]
 class Wizard extends Component
 {
+    public $breadcrumbs = [];
     public $currentStep = 1;
 
     // Search Fields
