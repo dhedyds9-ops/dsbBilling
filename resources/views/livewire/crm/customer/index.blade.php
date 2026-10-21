@@ -105,9 +105,10 @@
                 </select>
                 @if($search || $statusFilter)
                 <button wire:click="resetFilters"
+                        title="Reset Filter"
                         class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
-                    Reset
+                    <span class="hidden sm:inline">Reset</span>
                 </button>
                 @endif
             </div>
@@ -115,9 +116,11 @@
             {{-- Bulk Delete Button --}}
             @if(count($selectedCustomers) > 0)
                 <button wire:click="bulkDelete" wire:confirm="Anda akan menghapus secara permanen {{ count($selectedCustomers) }} pelanggan terpilih beserta layanannya. Tindakan ini tidak dapat dibatalkan." type="button"
-                        class="inline-flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete_sweep</span>
-                    Hapus Terpilih ({{ count($selectedCustomers) }})
+                        title="Hapus Terpilih ({{ count($selectedCustomers) }})"
+                        class="inline-flex items-center justify-center p-2 sm:px-3 sm:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm">
+                    <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:16px">delete_sweep</span>
+                    <span class="hidden sm:inline">Hapus Terpilih ({{ count($selectedCustomers) }})</span>
+                    <span class="sm:hidden text-xs">({{ count($selectedCustomers) }})</span>
                 </button>
             @endif
         </div>

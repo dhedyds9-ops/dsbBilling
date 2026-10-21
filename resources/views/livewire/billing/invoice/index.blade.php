@@ -107,11 +107,13 @@
                     </select>
                 </div>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <button wire:click="export" class="flex-1 sm:flex-none justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 whitespace-nowrap">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export
+                    <button wire:click="export" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap" title="Export">
+                        <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">download</span>
+                        <span class="hidden sm:inline">Export</span>
                     </button>
-                    <a href="{{ route('billing.invoices.create') }}" class="flex-1 sm:flex-none justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span> Buat Manual
+                    <a href="{{ route('billing.invoices.create') }}" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap" title="Buat Manual">
+                        <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">add</span>
+                        <span class="hidden sm:inline">Buat Manual</span>
                     </a>
                 </div>
             </div>
@@ -127,11 +129,13 @@
                 <span class="text-sm font-medium text-indigo-900 dark:text-indigo-200">Invoice terpilih</span>
             </div>
             <div class="flex items-center gap-2">
-                <button wire:click="bulkPaymentModal" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
-                    <span class="material-symbols-outlined" style="font-size:18px">payments</span> Bayar Semua
+                <button wire:click="bulkPaymentModal" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm" title="Bayar Semua">
+                    <span class="material-symbols-outlined sm:mr-1.5" style="font-size:18px">payments</span>
+                    <span class="hidden sm:inline">Bayar Semua</span>
                 </button>
-                <button wire:click="bulkDelete" wire:confirm="Yakin ingin menghapus {{ count($selected) }} invoice? Hanya invoice yang belum dibayar yang akan dihapus secara permanen." class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
-                    <span class="material-symbols-outlined" style="font-size:18px">delete</span> Hapus ({{ count($selected) }})
+                <button wire:click="bulkDelete" wire:confirm="Yakin ingin menghapus {{ count($selected) }} invoice? Hanya invoice yang belum dibayar yang akan dihapus secara permanen." class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm" title="Hapus ({{ count($selected) }})">
+                    <span class="material-symbols-outlined sm:mr-1.5" style="font-size:18px">delete</span>
+                    <span class="hidden sm:inline">Hapus ({{ count($selected) }})</span>
                 </button>
             </div>
         </div>

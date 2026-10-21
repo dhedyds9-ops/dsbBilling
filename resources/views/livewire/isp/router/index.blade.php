@@ -23,9 +23,9 @@
     {{-- TOP ACTION BAR --}}
     <div class="flex flex-col sm:flex-row gap-3 justify-between sm:items-center bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <div class="flex items-center gap-2 w-full sm:w-auto">
-            <a href="{{ route('isp.routers.create') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
-                Tambah Router
+            <a href="{{ route('isp.routers.create') }}" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap" title="Tambah Router">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">add</span>
+                <span class="hidden sm:inline">Tambah Router</span>
             </a>
         </div>
         <div class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">

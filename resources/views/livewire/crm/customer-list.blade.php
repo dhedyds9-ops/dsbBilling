@@ -16,18 +16,18 @@
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Customers</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Manage your customers and their services</p>
         </div>
-        <div class="flex items-center gap-3">
-            <a href="{{ route('crm.customers.export') }}" class="btn-outline btn-sm">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="flex items-center gap-2">
+            <a href="{{ route('crm.customers.export') }}" class="btn-outline btn-sm p-2 sm:px-3 inline-flex items-center justify-center" title="Export">
+                <svg class="w-4 h-4 sm:mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Export
+                <span class="hidden sm:inline">Export</span>
             </a>
-            <a href="{{ route('crm.customers.create') }}" class="btn-primary">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="{{ route('crm.customers.create') }}" class="btn-primary p-2 sm:px-4 inline-flex items-center justify-center" title="Add Customer">
+                <svg class="w-4 h-4 sm:mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                Add Customer
+                <span class="hidden sm:inline">Add Customer</span>
             </a>
         </div>
     </div>

@@ -76,15 +76,15 @@
 
     {{-- TOOLBAR & FILTER --}}
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto">
-            <button wire:click="create" class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
-                Tambah Asset
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
+            <button wire:click="create" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap" title="Tambah Asset">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">add</span>
+                <span class="hidden sm:inline">Tambah Asset</span>
             </button>
-            <button wire:click="syncInstalledOnus(true)" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap" title="Sinkronkan data dari instalasi ONU">
-                <span class="material-symbols-outlined notranslate mr-1.5 text-indigo-500" translate="no" style="font-size:18px">sync</span>
-                <span wire:loading.remove wire:target="syncInstalledOnus">Sinkronkan ONU</span>
-                <span wire:loading wire:target="syncInstalledOnus">Sinkronisasi...</span>
+            <button wire:click="syncInstalledOnus(true)" wire:loading.attr="disabled" class="inline-flex items-center justify-center p-2 sm:px-3 sm:py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap" title="Sinkronkan data dari instalasi ONU">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5 text-indigo-500" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading.remove wire:target="syncInstalledOnus" class="hidden sm:inline">Sinkronkan ONU</span>
+                <span wire:loading wire:target="syncInstalledOnus" class="hidden sm:inline">Sinkronisasi...</span>
             </button>
         </div>
         

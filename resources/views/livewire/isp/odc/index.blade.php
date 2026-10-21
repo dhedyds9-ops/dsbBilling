@@ -23,13 +23,13 @@
     {{-- TOOLBAR & FILTER --}}
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
-            <a href="{{ route('isp.odcs.create') }}" class="inline-flex items-center justify-center px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">add</span>
-                Tambah ODC
+            <a href="{{ route('isp.odcs.create') }}" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap" title="Tambah ODC">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">add</span>
+                <span class="hidden sm:inline">Tambah ODC</span>
             </a>
-            <button wire:click="export" class="inline-flex items-center justify-center px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap cursor-pointer">
-                <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">download</span>
-                Export
+            <button wire:click="export" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap cursor-pointer" title="Export">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">download</span>
+                <span class="hidden sm:inline">Export</span>
             </button>
         </div>
         
@@ -58,9 +58,10 @@
                 </select>
                 @if($search || $filters['status'])
                 <button wire:click="resetFilters"
+                        title="Reset Filter"
                         class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
-                    Reset
+                    <span class="hidden sm:inline">Reset</span>
                 </button>
                 @endif
             </div>

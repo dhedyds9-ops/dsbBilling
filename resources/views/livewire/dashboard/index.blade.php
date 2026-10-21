@@ -43,25 +43,25 @@
             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">bolt</span>
             Aksi Cepat
         </span>
-        <a href="{{ route('crm.customers.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">person_add</span>
-            Pelanggan
+        <a href="{{ route('crm.customers.index') }}" class="inline-flex items-center justify-center p-2 sm:px-3 sm:py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px" title="Pelanggan">
+            <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:15px">person_add</span>
+            <span class="hidden sm:inline">Pelanggan</span>
         </a>
-        <a href="{{ route('isp.pppoe-users.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-800/50 text-sky-700 dark:text-sky-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">router</span>
-            PPPoE
+        <a href="{{ route('isp.pppoe-users.index') }}" class="inline-flex items-center justify-center p-2 sm:px-3 sm:py-1.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-800/50 text-sky-700 dark:text-sky-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px" title="PPPoE">
+            <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:15px">router</span>
+            <span class="hidden sm:inline">PPPoE</span>
         </a>
-        <a href="{{ route('isp.hotspot-users.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/30 dark:hover:bg-orange-800/50 text-orange-700 dark:text-orange-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">wifi_tethering</span>
-            Hotspot
+        <a href="{{ route('isp.hotspot-users.index') }}" class="inline-flex items-center justify-center p-2 sm:px-3 sm:py-1.5 bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/30 dark:hover:bg-orange-800/50 text-orange-700 dark:text-orange-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px" title="Hotspot">
+            <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:15px">wifi_tethering</span>
+            <span class="hidden sm:inline">Hotspot</span>
         </a>
-        <a href="{{ route('billing.invoices.create') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-800/50 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">receipt_long</span>
-            Buat Tagihan
+        <a href="{{ route('billing.invoices.create') }}" class="inline-flex items-center justify-center p-2 sm:px-3 sm:py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-800/50 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px" title="Buat Tagihan">
+            <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:15px">receipt_long</span>
+            <span class="hidden sm:inline">Buat Tagihan</span>
         </a>
-        <a href="{{ route('isp.routers.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-800/50 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">device_hub</span>
-            Router
+        <a href="{{ route('isp.routers.index') }}" class="inline-flex items-center justify-center p-2 sm:px-3 sm:py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-800/50 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer hover:shadow-sm hover:-translate-y-px" title="Router">
+            <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:15px">device_hub</span>
+            <span class="hidden sm:inline">Router</span>
         </a>
     </div>
 

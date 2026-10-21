@@ -25,17 +25,17 @@
 
         {{-- TOOLBAR & FILTER --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div class="flex flex-wrap items-center gap-3">
-            <a href="{{ route('isp.vendors.create') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm shadow-indigo-500/20">
-                <span class="material-symbols-outlined notranslate" style="font-size:20px" translate="no">add</span>
-                Tambah Vendor
+        <div class="flex items-center gap-2">
+            <a href="{{ route('isp.vendors.create') }}" class="inline-flex items-center justify-center p-2 sm:px-5 sm:py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm shadow-indigo-500/20" title="Tambah Vendor">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5" style="font-size:20px" translate="no">add</span>
+                <span class="hidden sm:inline">Tambah Vendor</span>
             </a>
 
             <div x-data="{ open: false }" class="relative inline-block text-left">
                 <div>
-                    <button @click="open = !open" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium shadow-sm">
-                        <span class="material-symbols-outlined notranslate" style="font-size:20px" translate="no">more_vert</span>
-                        Aksi Lainnya
+                    <button @click="open = !open" type="button" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium shadow-sm" title="Aksi Lainnya">
+                        <span class="material-symbols-outlined notranslate sm:mr-1.5" style="font-size:20px" translate="no">more_vert</span>
+                        <span class="hidden sm:inline">Aksi Lainnya</span>
                     </button>
                 </div>
                 <div x-show="open" @click.away="open = false" x-transition class="origin-top-left absolute left-0 mt-2 w-64 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
