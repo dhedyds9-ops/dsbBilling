@@ -40,9 +40,9 @@
 ])
 
 @php
-    $componentId = $id ?? 'ds-select-' . \Illuminate\Support\Str::random(8);
     $wireModel = $attributes->wire('model')->value();
     $isLivewire = !empty($wireModel);
+    $componentId = $id ?? ($wireModel ? 'ds-select-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $wireModel) : 'ds-select-' . substr(md5($placeholder . $searchAction . ($label ?? '')), 0, 10));
 
     // Normalize options for local strategy
     $normalizedOptions = [];
@@ -63,6 +63,8 @@
 
 <div
     class="w-full space-y-1.5"
+    wire:key="{{ $componentId }}"
+    id="{{ $componentId }}"
     x-data="dsSearchableSelect({
         strategy: '{{ $strategy }}',
         wireModel: '{{ $wireModel }}',
@@ -85,7 +87,6 @@
     @endif
     @keydown.escape.stop="close()"
     @click.outside="close()"
-    id="{{ $componentId }}"
 >
     {{-- Form Label --}}
     @if ($label)
@@ -391,7 +392,6 @@
 
             filterRemoteDebounced(query) {
                 clearTimeout(this.searchTimeout);
-                this.loading = true;
                 this.searchTimeout = setTimeout(() => {
                     this.fetchRemote(query);
                 }, this.debounce);
@@ -409,14 +409,15 @@
                         return;
                     }
 
-                    let result;
-                    if (this.$wire && typeof this.$wire[this.searchAction] === 'function') {
-                        result = await this.$wire[this.searchAction](query);
-                    } else if (this.$wire && typeof this.$wire.call === 'function') {
-                        result = await this.$wire.call(this.searchAction, query);
+                    let result = null;
+                    if (this.$wire && typeof this.$wire.call === 'function') {
+                        result = await this.$wire.call(this.searchAction, query || '');
+                    } else if (this.$wire && typeof this.$wire[this.searchAction] === 'function') {
+                        result = await this.$wire[this.searchAction](query || '');
                     } else {
                         console.error('[DsSearchableSelect] Livewire $wire is not available');
                         this.errorMessage = 'Gagal memuat data dari server.';
+                        this.loading = false;
                         return;
                     }
 

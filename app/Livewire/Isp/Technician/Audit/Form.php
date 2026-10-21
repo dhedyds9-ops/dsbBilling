@@ -3,6 +3,7 @@
 namespace App\Livewire\Isp\Technician\Audit;
 
 use Livewire\Component;
+use Livewire\Attributes\Renderless;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\Olt;
@@ -79,6 +80,7 @@ class Form extends Component
         return redirect()->route("technician.dashboard");
     }
 
+    #[Renderless]
     public function searchCustomers(string $query = ''): array
     {
         $q = trim($query);

@@ -54,11 +54,14 @@ trait HasResellerScope
 
             $user = auth()->user();
 
-            // Administrator dan Manager: NO scope (semua data)
+            // Administrator, Manager, and Operational Staff: NO reseller isolation scope
             if ($user->hasRole(UserRole::Administrator->value)
                 || $user->hasRole(UserRole::Manager->value)
                 || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
-                || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['administrator', 'admin', 'super_admin', 'superadmin', 'manager', 'owner', 'root']))) {
+                || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole([
+                    'administrator', 'admin', 'super_admin', 'superadmin', 'manager', 'owner', 'root',
+                    'technician', 'teknisi', 'field_technician', 'noc', 'helpdesk', 'operator'
+                ]))) {
                 return;
             }
 

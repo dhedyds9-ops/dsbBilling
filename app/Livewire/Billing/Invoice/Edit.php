@@ -3,6 +3,7 @@
 namespace App\Livewire\Billing\Invoice;
 
 use App\Livewire\AdminComponent;
+use Livewire\Attributes\Renderless;
 use App\Models\Billing\Invoice;
 use App\Models\CRM\Customer;
 use App\Services\Billing\InvoiceService;
@@ -177,6 +178,7 @@ class Edit extends AdminComponent
         return redirect()->route('billing.invoices.show', $this->invoiceId);
     }
 
+    #[Renderless]
     public function searchCustomers(string $query = ''): array
     {
         $q = trim($query);

@@ -7,6 +7,7 @@ use App\Models\Payment\Payment;
 use App\Models\CRM\Customer;
 use App\Models\Billing\Invoice;
 use App\Services\Billing\PaymentService;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 
 class Create extends AdminComponent
@@ -84,6 +85,7 @@ class Create extends AdminComponent
         return redirect()->route('billing.payments.index');
     }
 
+    #[Renderless]
     public function searchCustomers(string $query = ''): array
     {
         $q = trim($query);

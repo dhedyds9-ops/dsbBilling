@@ -5,6 +5,7 @@ namespace App\Livewire\Isp\Technician\Installation;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use App\Models\CRM\Customer;
 use App\Models\ISP\ServiceProfile;
 use App\Models\ISP\Odp;
@@ -228,6 +229,7 @@ class Wizard extends Component
         }
     }
 
+    #[Renderless]
     public function searchCustomers(string $query = ''): array
     {
         $q = trim($query);
@@ -239,8 +241,9 @@ class Wizard extends Component
                         ->orWhere('code', 'like', "%{$q}%");
                 });
             })
+            ->latest('id')
             ->take(20)
-            ->get()
+            ->get(['id', 'name', 'phone', 'code'])
             ->map(function ($c) {
                 return [
                     'value' => (string) $c->id,
@@ -251,6 +254,7 @@ class Wizard extends Component
             ->toArray();
     }
 
+    #[Renderless]
     public function searchOdps(string $query = ''): array
     {
         $q = trim($query);
@@ -261,6 +265,7 @@ class Wizard extends Component
                         ->orWhere('code', 'like', "%{$q}%");
                 });
             })
+            ->latest('id')
             ->take(20)
             ->get()
             ->map(function ($odp) {
