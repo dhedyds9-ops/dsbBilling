@@ -79,20 +79,57 @@ class Form extends Component
         return redirect()->route("technician.dashboard");
     }
 
+    public function searchCustomers(string $query = ''): array
+    {
+        $q = trim($query);
+        return Customer::withoutGuests()
+            ->when(!empty($q), function ($builder) use ($q) {
+                $builder->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('phone', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%");
+                });
+            })
+            ->take(20)
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'value' => (string) $c->id,
+                    'label' => $c->name,
+                    'sublabel' => $c->phone . ($c->code ? " ({$c->code})" : ''),
+                ];
+            })
+            ->toArray();
+    }
+
+    public function getSelectedCustomerLabelProperty(): ?string
+    {
+        if (!$this->customer_id) return null;
+        $c = Customer::withoutGuests()->find($this->customer_id);
+        return $c ? "{$c->name} ({$c->phone})" : null;
+    }
+
     public function render()
     {
-        $customers = Customer::query()
-            ->when($this->searchCustomer, function($q) {
-                $q->where("name", "like", "%" . $this->searchCustomer . "%")
-                  ->orWhere("phone", "like", "%" . $this->searchCustomer . "%");
-            })
-            ->take(15)
-            ->get();
+        $oltsOptions = Olt::all()->map(function ($o) {
+            return [
+                'value' => (string) $o->id,
+                'label' => $o->name,
+                'sublabel' => $o->ip_address ?? '',
+            ];
+        })->toArray();
+
+        $servicesOptions = ServiceProfile::all()->map(function ($s) {
+            return [
+                'value' => (string) $s->id,
+                'label' => $s->name,
+                'sublabel' => 'Rp' . number_format($s->base_price ?? 0, 0, ',', '.'),
+            ];
+        })->toArray();
 
         return view("livewire.isp.technician.audit.form", [
-            "customers" => $customers,
-            "olts" => Olt::all(),
-            "services" => ServiceProfile::all(),
+            "oltsOptions" => $oltsOptions,
+            "servicesOptions" => $servicesOptions,
         ])->layout("layouts.technician-app");
     }
 }

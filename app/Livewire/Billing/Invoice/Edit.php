@@ -177,20 +177,49 @@ class Edit extends AdminComponent
         return redirect()->route('billing.invoices.show', $this->invoiceId);
     }
 
-    public function render()
+    public function searchCustomers(string $query = ''): array
     {
-        $customers = Customer::query()
-            ->when(auth()->user()->hasRole('reseller'), function ($q) {
-                $q->where(function ($qq) {
+        $q = trim($query);
+        return Customer::withoutGuests()
+            ->when(auth()->user()->hasRole('reseller'), function ($builder) {
+                $builder->where(function ($qq) {
                     $qq->where('reseller_id', auth()->id())
                        ->orWhere('created_by', auth()->id());
                 });
             })
             ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'code', 'reseller_id', 'created_by']);
+            ->when(!empty($q), function ($builder) use ($q) {
+                $builder->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('phone', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%");
+                });
+            })
+            ->take(20)
+            ->get(['id', 'name', 'code', 'phone'])
+            ->map(function ($c) {
+                return [
+                    'value' => (string) $c->id,
+                    'label' => $c->name,
+                    'sublabel' => $c->code ? "({$c->code})" : ($c->phone ?? ''),
+                ];
+            })
+            ->toArray();
+    }
 
-        return view('livewire.billing.invoice.edit', compact('customers'));
+    public function getSelectedCustomerLabelProperty(): ?string
+    {
+        if (!$this->customer_id) return null;
+        if ($this->invoice && $this->invoice->customer_id == $this->customer_id && $this->invoice->customer) {
+            return $this->invoice->customer->name;
+        }
+        $c = Customer::withoutGuests()->find($this->customer_id);
+        return $c ? $c->name : null;
+    }
+
+    public function render()
+    {
+        return view('livewire.billing.invoice.edit');
     }
 }
 

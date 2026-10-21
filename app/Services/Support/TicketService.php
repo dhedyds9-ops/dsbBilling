@@ -284,7 +284,8 @@ class TicketService
      */
     public function getCustomerOptions(): array
     {
-        return Customer::where('status', 'active')
+        return Customer::withoutGuests()
+            ->where('status', 'active')
             ->orderBy('name')
             ->pluck('name', 'id')
             ->toArray();

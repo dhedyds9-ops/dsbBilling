@@ -311,13 +311,14 @@ $statusLabels = [
                 <div class="px-5 py-4 space-y-3">
                     <div class="grid grid-cols-2 gap-3">
                         <div class="col-span-2">
-                            <label class="block text-xs font-medium mb-1">Customer *</label>
-                            <select wire:model.live="newTicket.customer_id" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100">
-                                <option value="">-- Pilih --</option>
-                                @foreach (($this->filterOptions['customers'] ?? []) as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
-                            </select>
+                            <x-ds-searchable-select
+                                wire:model.live="newTicket.customer_id"
+                                strategy="local"
+                                :options="$this->filterOptions['customers'] ?? []"
+                                label="Customer *"
+                                placeholder="-- Pilih Customer --"
+                                search-placeholder="Cari customer..."
+                            />
                         </div>
                         <div class="col-span-2">
                             <label class="block text-xs font-medium mb-1">Title *</label>
@@ -328,29 +329,34 @@ $statusLabels = [
                             <textarea wire:model.live="newTicket.description" rows="3" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100"></textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium mb-1">Kategori</label>
-                            <select wire:model.live="newTicket.category" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100">
-                                @foreach (($this->filterOptions['categories'] ?? []) as $v => $l)
-                                    <option value="{{ $v }}">{{ $l }}</option>
-                                @endforeach
-                            </select>
+                            <x-ds-searchable-select
+                                wire:model.live="newTicket.category"
+                                strategy="local"
+                                :options="$this->filterOptions['categories'] ?? []"
+                                label="Kategori"
+                                placeholder="-- Kategori --"
+                                :searchable="false"
+                            />
                         </div>
                         <div>
-                            <label class="block text-xs font-medium mb-1">Priority</label>
-                            <select wire:model.live="newTicket.priority" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100">
-                                @foreach (($this->filterOptions['priorities'] ?? []) as $v => $l)
-                                    <option value="{{ $v }}">{{ $l }}</option>
-                                @endforeach
-                            </select>
+                            <x-ds-searchable-select
+                                wire:model.live="newTicket.priority"
+                                strategy="local"
+                                :options="$this->filterOptions['priorities'] ?? []"
+                                label="Priority"
+                                placeholder="-- Priority --"
+                                :searchable="false"
+                            />
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium mb-1">Assignee</label>
-                            <select wire:model.live="newTicket.assigned_to" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100">
-                                <option value="">-- Opsional --</option>
-                                @foreach (($this->filterOptions['assignees'] ?? []) as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
-                            </select>
+                        <div class="col-span-2">
+                            <x-ds-searchable-select
+                                wire:model.live="newTicket.assigned_to"
+                                strategy="local"
+                                :options="$this->filterOptions['assignees'] ?? []"
+                                label="Assignee"
+                                placeholder="-- Opsional (Pilih Petugas) --"
+                                search-placeholder="Cari petugas..."
+                            />
                         </div>
                         <div>
                             <label class="block text-xs font-medium mb-1">Due Date</label>

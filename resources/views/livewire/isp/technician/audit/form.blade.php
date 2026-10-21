@@ -11,29 +11,29 @@
         {{-- Pelanggan --}}
         <div>
             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Pelanggan</label>
-            <div class="relative mb-2">
-                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:18px">search</span>
-                <input type="text" wire:model.live.debounce.300ms="searchCustomer" class="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100" placeholder="Cari nama atau no HP...">
-            </div>
-            <select wire:model="customer_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                <option value="">-- Pilih Pelanggan --</option>
-                @foreach($customers as $c)
-                    <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->phone }})</option>
-                @endforeach
-            </select>
-            @error("customer_id") <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <x-ds-searchable-select
+                wire:model="customer_id"
+                strategy="remote"
+                search-action="searchCustomers"
+                placeholder="-- Pilih Pelanggan --"
+                search-placeholder="Cari nama atau no HP..."
+                :selected-label="$this->selectedCustomerLabel"
+                :error="$errors->first('customer_id')"
+            />
         </div>
 
         {{-- OLT & PON --}}
         <div class="grid grid-cols-2 gap-3">
             <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">OLT</label>
-                <select wire:model="olt_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                    <option value="">-- OLT --</option>
-                    @foreach($olts as $olt)
-                        <option value="{{ $olt->id }}">{{ $olt->name }}</option>
-                    @endforeach
-                </select>
+                <x-ds-searchable-select
+                    wire:model="olt_id"
+                    strategy="local"
+                    :options="$oltsOptions"
+                    placeholder="-- OLT --"
+                    search-placeholder="Cari OLT..."
+                    :error="$errors->first('olt_id')"
+                />
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">PON Port</label>
@@ -44,12 +44,14 @@
         {{-- Paket Layanan --}}
         <div>
             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Profil Layanan Aktif</label>
-            <select wire:model="service_profile_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                <option value="">-- Pilih Profil --</option>
-                @foreach($services as $svc)
-                    <option value="{{ $svc->id }}">{{ $svc->name }}</option>
-                @endforeach
-            </select>
+            <x-ds-searchable-select
+                wire:model="service_profile_id"
+                strategy="local"
+                :options="$servicesOptions"
+                placeholder="-- Pilih Profil --"
+                search-placeholder="Cari profil..."
+                :error="$errors->first('service_profile_id')"
+            />
         </div>
 
         {{-- Scan ONU --}}

@@ -17,14 +17,17 @@
         <form wire:submit.prevent="save" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Customer</label>
-                    <select wire:model="customer_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">Pilih Customer</option>
-                        @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('customer_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    <x-ds-searchable-select
+                        wire:model="customer_id"
+                        strategy="remote"
+                        search-action="searchCustomers"
+                        label="Customer"
+                        placeholder="Pilih Customer"
+                        search-placeholder="Cari nama atau kode customer..."
+                        :selected-label="$this->selectedCustomerLabel"
+                        :error="$errors->first('customer_id')"
+                        required
+                    />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nomor Invoice</label>

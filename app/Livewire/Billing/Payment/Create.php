@@ -84,14 +84,44 @@ class Create extends AdminComponent
         return redirect()->route('billing.payments.index');
     }
 
+    public function searchCustomers(string $query = ''): array
+    {
+        $q = trim($query);
+        return Customer::withoutGuests()
+            ->where('status', 'active')
+            ->when(!empty($q), function ($builder) use ($q) {
+                $builder->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('phone', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%");
+                });
+            })
+            ->take(20)
+            ->get(['id', 'name', 'code', 'phone'])
+            ->map(function ($c) {
+                return [
+                    'value' => (string) $c->id,
+                    'label' => $c->name,
+                    'sublabel' => $c->code ? "({$c->code})" : ($c->phone ?? ''),
+                ];
+            })
+            ->toArray();
+    }
+
+    public function getSelectedCustomerLabelProperty(): ?string
+    {
+        if (!$this->customer_id) return null;
+        $c = Customer::withoutGuests()->find($this->customer_id);
+        return $c ? $c->name : null;
+    }
+
     public function render()
     {
-        $customers = Customer::where('status', 'active')->get();
         $invoices = Invoice::where('customer_id', $this->customer_id)
                           ->where('status', '!=', 'paid')
                           ->get();
 
-        return view('livewire.billing.payment.create', compact('customers', 'invoices'));
+        return view('livewire.billing.payment.create', compact('invoices'));
     }
 }
 
