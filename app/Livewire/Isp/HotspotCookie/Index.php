@@ -11,6 +11,7 @@ class Index extends Component
     public $routers = [];
     public $selectedRouter = "";
     public $cookies = [];
+    public string $search = "";
     public $isLoading = false;
 
     public function mount()
@@ -24,7 +25,13 @@ class Index extends Component
 
     public function updatedSelectedRouter()
     {
+        $this->search = "";
         $this->loadCookies();
+    }
+
+    public function resetSearch()
+    {
+        $this->search = "";
     }
 
     public function loadCookies()
@@ -45,6 +52,25 @@ class Index extends Component
         $this->isLoading = false;
     }
 
+    public function getFilteredCookiesProperty(): array
+    {
+        if (empty(trim($this->search))) {
+            return $this->cookies;
+        }
+
+        $query = strtolower(trim($this->search));
+
+        return array_values(array_filter($this->cookies, function ($item) use ($query) {
+            $user   = strtolower($item['user'] ?? '');
+            $mac    = strtolower($item['mac-address'] ?? '');
+            $domain = strtolower($item['domain'] ?? '');
+
+            return str_contains($user, $query)
+                || str_contains($mac, $query)
+                || str_contains($domain, $query);
+        }));
+    }
+
     public function removeCookie($macAddress)
     {
         try {
@@ -62,6 +88,8 @@ class Index extends Component
 
     public function render()
     {
-        return view("livewire.isp.hotspot-cookie.index")->layout("layouts.app");
+        return view("livewire.isp.hotspot-cookie.index", [
+            'filteredCookies' => $this->filteredCookies,
+        ])->layout("layouts.app");
     }
 }
