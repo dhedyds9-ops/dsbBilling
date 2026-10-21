@@ -227,35 +227,97 @@ class Wizard extends Component
         }
     }
 
-    public function render()
+    public function searchCustomers(string $query = ''): array
     {
-        $customers = Customer::query()
-            ->when($this->searchCustomer, function($q) {
-                $q->where('name', 'like', '%' . $this->searchCustomer . '%')
-                  ->orWhere('phone', 'like', '%' . $this->searchCustomer . '%');
-            })
-            ->take(15)
-            ->get();
-
-        $odps = Odp::query()
-            ->when($this->searchOdp, function($q) {
-                $q->where('name', 'like', '%' . $this->searchOdp . '%');
+        $q = trim($query);
+        return Customer::withoutGuests()
+            ->when(!empty($q), function ($builder) use ($q) {
+                $builder->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('phone', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%");
+                });
             })
             ->take(20)
-            ->get();
-            
-        $resellers = \App\Models\User::whereHas('roles', function($q) {
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'value' => (string) $c->id,
+                    'label' => $c->name,
+                    'sublabel' => $c->phone . ($c->code ? " ({$c->code})" : ''),
+                ];
+            })
+            ->toArray();
+    }
+
+    public function searchOdps(string $query = ''): array
+    {
+        $q = trim($query);
+        return Odp::query()
+            ->when(!empty($q), function ($builder) use ($q) {
+                $builder->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%");
+                });
+            })
+            ->take(20)
+            ->get()
+            ->map(function ($odp) {
+                return [
+                    'value' => (string) $odp->id,
+                    'label' => $odp->name,
+                    'sublabel' => "Sisa: {$odp->available_ports} port",
+                ];
+            })
+            ->toArray();
+    }
+
+    public function getSelectedCustomerLabelProperty(): ?string
+    {
+        if (!$this->customer_id) return null;
+        $c = Customer::withoutGuests()->find($this->customer_id);
+        return $c ? "{$c->name} ({$c->phone})" : null;
+    }
+
+    public function getSelectedOdpLabelProperty(): ?string
+    {
+        if (!$this->odp_id) return null;
+        $odp = Odp::find($this->odp_id);
+        return $odp ? $odp->name : null;
+    }
+
+    public function render()
+    {
+        $servicesOptions = ServiceProfile::whereIn('service_type', ['pppoe', 'hotspot'])
+            ->get()
+            ->map(function ($s) {
+                return [
+                    'value' => (string) $s->id,
+                    'label' => $s->name,
+                    'sublabel' => 'Rp' . number_format($s->base_price, 0, ',', '.'),
+                ];
+            })
+            ->toArray();
+
+        $resellersOptions = \App\Models\User::whereHas('roles', function($q) {
             $q->where('name', 'reseller');
-        })->get();
-        
+        })
+        ->get()
+        ->map(function ($r) {
+            return [
+                'value' => (string) $r->id,
+                'label' => $r->name,
+                'sublabel' => $r->email ?? '',
+            ];
+        })
+        ->toArray();
+
         $vendors = \App\Models\ISP\Vendor::all();
 
         return view('livewire.isp.technician.installation.wizard', [
-            'customers' => $customers,
-            'services' => ServiceProfile::whereIn('service_type', ['pppoe', 'hotspot'])->get(),
-            'odps' => $odps,
+            'servicesOptions' => $servicesOptions,
+            'resellersOptions' => $resellersOptions,
             'olts' => Olt::all(),
-            'resellers' => $resellers,
             'vendors' => $vendors,
         ]);
     }

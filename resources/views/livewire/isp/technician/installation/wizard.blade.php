@@ -62,27 +62,26 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Owner / Reseller (Opsional)</label>
-                        <select wire:model="new_customer_reseller_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
-                            <option value="">-- Pilih Owner/Reseller --</option>
-                            @foreach($resellers as $reseller)
-                                <option value="{{ $reseller->id }}">{{ $reseller->name }}</option>
-                            @endforeach
-                        </select>
+                        <x-ds-searchable-select
+                            wire:model="new_customer_reseller_id"
+                            strategy="local"
+                            :options="$resellersOptions"
+                            placeholder="-- Pilih Owner/Reseller --"
+                            search-placeholder="Cari reseller..."
+                        />
                     </div>
                 </div>
             @else
                 <div class="space-y-3">
-                    <div class="relative">
-                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:18px">search</span>
-                        <input type="text" wire:model.live.debounce.300ms="searchCustomer" class="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100" placeholder="Cari nama atau nomor HP...">
-                    </div>
-                    <select wire:model="customer_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">-- Pilih Pelanggan --</option>
-                        @foreach($customers as $c)
-                            <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->phone }})</option>
-                        @endforeach
-                    </select>
-                    @error('customer_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    <x-ds-searchable-select
+                        wire:model="customer_id"
+                        strategy="remote"
+                        search-action="searchCustomers"
+                        placeholder="-- Pilih Pelanggan Terdaftar --"
+                        search-placeholder="Cari nama, nomor HP, atau kode..."
+                        :selected-label="$this->selectedCustomerLabel"
+                        :error="$errors->first('customer_id')"
+                    />
                 </div>
             @endif
         @endif
@@ -91,13 +90,14 @@
             <h3 class="text-base font-black mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">package</span> Paket Layanan
             </h3>
-            <select wire:model="service_profile_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
-                <option value="">-- Pilih Paket --</option>
-                @foreach($services as $s)
-                    <option value="{{ $s->id }}">{{ $s->name }} (Rp{{ number_format($s->base_price, 0, ',', '.') }})</option>
-                @endforeach
-            </select>
-            @error('service_profile_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <x-ds-searchable-select
+                wire:model="service_profile_id"
+                strategy="local"
+                :options="$servicesOptions"
+                placeholder="-- Pilih Paket --"
+                search-placeholder="Cari paket..."
+                :error="$errors->first('service_profile_id')"
+            />
 
             <div class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center justify-between">
@@ -121,13 +121,15 @@
             <h3 class="text-base font-black mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">router</span> Pemilihan ODP
             </h3>
-            <select wire:model="odp_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
-                <option value="">-- Pilih ODP Terdekat --</option>
-                @foreach($odps as $odp)
-                    <option value="{{ $odp->id }}">{{ $odp->name }} (Sisa: {{ $odp->available_ports }} port)</option>
-                @endforeach
-            </select>
-            @error('odp_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <x-ds-searchable-select
+                wire:model="odp_id"
+                strategy="remote"
+                search-action="searchOdps"
+                placeholder="-- Pilih ODP Terdekat --"
+                search-placeholder="Cari nama atau kode ODP..."
+                :selected-label="$this->selectedOdpLabel"
+                :error="$errors->first('odp_id')"
+            />
         @endif
 
         @if($currentStep === 4)
