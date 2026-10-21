@@ -33,7 +33,7 @@ $userRole = ucwords(strtolower($userRole));
 <div x-data="{ open: false }" class="relative">
     <button
         @click="open = !open"
-        class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800/50 transition-colors"
+        class="flex items-center gap-2.5 p-1 sm:p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors focus:outline-none"
     >
         <x-display.avatar
             :src="$userAvatar"

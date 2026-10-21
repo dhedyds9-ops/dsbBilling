@@ -30,8 +30,8 @@
             type="button"
             @click="sidebarMobileOpen = true"
             class="lg:hidden p-2 rounded-xl
-                   text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 dark:hover:text-slate-100
-                   hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800/50 transition-colors"
+                   text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100
+                   hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
             aria-label="Buka menu"
         >
             <span class="material-symbols-outlined">menu</span>
@@ -42,8 +42,8 @@
             type="button"
             @click="sidebarCollapsed = !sidebarCollapsed"
             class="hidden lg:flex p-2 rounded-xl
-                   text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 dark:hover:text-slate-100
-                   hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800/50 transition-colors"
+                   text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100
+                   hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
             aria-label="Toggle menu"
         >
             <span class="material-symbols-outlined transition-transform duration-300" :class="sidebarCollapsed ? '' : ''">menu</span>
@@ -74,8 +74,8 @@
                 type="button"
                 @click="darkMode = !darkMode"
                 class="relative p-2 rounded-xl
-                       text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-slate-100 dark:hover:text-slate-100
-                       hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800/50 transition-colors"
+                       text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100
+                       hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
                 :title="darkMode ? 'Mode Terang' : 'Mode Gelap'"
                 aria-label="Toggle theme"
             >
