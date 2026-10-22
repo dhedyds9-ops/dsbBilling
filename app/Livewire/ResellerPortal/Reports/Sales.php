@@ -6,12 +6,16 @@ use App\Livewire\AdminComponent;
 use App\Models\CRM\Customer;
 use App\Services\Keuangan\IncomeReportService;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 
 class Sales extends AdminComponent
 {
     public $selectedMonth;
     public $selectedYear;
+    public string $filterType = 'all'; // all, pelanggan, voucher
+    public int $perPage = 10;
 
     public function mount()
     {
@@ -27,6 +31,27 @@ class Sales extends AdminComponent
             ['label' => 'Data Keuangan', 'url' => '#'],
             ['label' => 'Pemasukan Bulanan', 'url' => route('reseller-portal.reports.sales')],
         ];
+    }
+
+    public function updatedSelectedMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedYear()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage()
+    {
+        $this->resetPage();
+    }
+
+    public function setFilterType(string $type)
+    {
+        $this->filterType = in_array($type, ['all', 'pelanggan', 'voucher']) ? $type : 'all';
+        $this->resetPage();
     }
 
     public function render()
@@ -45,30 +70,67 @@ class Sales extends AdminComponent
         $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
 
         $incomeService = app(IncomeReportService::class);
-        $reportData = $incomeService->getTransactions([
+        $allReportData = $incomeService->getTransactions([
             'reseller_id' => $resellerId,
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'user_type' => 'all',
         ]);
 
-        $rows = $reportData['rows'];
-        $customerRows = $rows->filter(fn($r) => !str_starts_with((string) $r['id'], 'VCR-'));
-        $voucherRows = $rows->filter(fn($r) => str_starts_with((string) $r['id'], 'VCR-'));
+        $allRows = $allReportData['rows'];
+        $customerRows = $allRows->filter(fn($r) => !str_starts_with((string) $r['id'], 'VCR-'));
+        $voucherRows = $allRows->filter(fn($r) => str_starts_with((string) $r['id'], 'VCR-'));
 
-        $totalVouchers = $voucherRows->count();
         $thisMonthInvoices = $customerRows->count();
-        $totalSalesMonth = (float) ($reportData['summary']['total_ppn'] ?? $reportData['summary']['total_plus_ppn'] ?? $rows->sum('harga_ppn'));
+        $pelangganRevenue = (float) $customerRows->sum('harga_ppn');
+        $totalVouchers = $voucherRows->count();
+        $voucherRevenue = (float) $voucherRows->sum('harga_ppn');
 
-        // Top 10 recent sales transactions
-        $recentSales = $rows->take(10);
+        $totalSalesAll = (float) ($allReportData['summary']['total_ppn'] ?? ($pelangganRevenue + $voucherRevenue));
+        $totalMarginAll = (float) ($allReportData['summary']['fee_seller'] ?? 0);
+        $totalCostAll = (float) ($allReportData['summary']['profit'] ?? 0);
+
+        // Filter rows by active tab
+        if ($this->filterType === 'pelanggan') {
+            $activeRows = $customerRows;
+            $totalSalesMonth = $pelangganRevenue;
+            $totalMarginMonth = (float) $customerRows->sum('fee_seller');
+            $totalCostMonth = (float) $customerRows->sum('profit');
+        } elseif ($this->filterType === 'voucher') {
+            $activeRows = $voucherRows;
+            $totalSalesMonth = $voucherRevenue;
+            $totalMarginMonth = (float) $voucherRows->sum('fee_seller');
+            $totalCostMonth = (float) $voucherRows->sum('profit');
+        } else {
+            $activeRows = $allRows;
+            $totalSalesMonth = $totalSalesAll;
+            $totalMarginMonth = $totalMarginAll;
+            $totalCostMonth = $totalCostAll;
+        }
+
+        $currentPage = Paginator::resolveCurrentPage('page');
+        $currentItems = $activeRows->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
+        $paginatedSales = new LengthAwarePaginator(
+            $currentItems,
+            $activeRows->count(),
+            $this->perPage,
+            $currentPage,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page']
+        );
+
         $monthDate = Carbon::createFromDate($year, $month, 1);
 
         return view('livewire.reseller-portal.reports.sales', [
             'totalCustomers' => $totalCustomers,
             'totalVouchers' => $totalVouchers,
+            'voucherRevenue' => $voucherRevenue,
             'thisMonthInvoices' => $thisMonthInvoices,
+            'pelangganRevenue' => $pelangganRevenue,
+            'allCount' => $allRows->count(),
             'totalSalesMonth' => $totalSalesMonth,
-            'recentSales' => $recentSales,
+            'totalMarginMonth' => $totalMarginMonth,
+            'totalCostMonth' => $totalCostMonth,
+            'paginatedSales' => $paginatedSales,
             'currentMonthName' => $monthDate->translatedFormat('F Y'),
         ]);
     }

@@ -30,7 +30,9 @@ class ReportPrintController extends Controller
         ]);
 
         $sales = $reportData['rows'];
-        $totalRevenue = (float) ($reportData['summary']['total_plus_ppn'] ?? 0);
+        $totalRevenue = (float) ($reportData['summary']['total_ppn'] ?? $reportData['summary']['total_plus_ppn'] ?? 0);
+        $totalMargin = (float) ($reportData['summary']['fee_seller'] ?? 0);
+        $totalCost = (float) ($reportData['summary']['profit'] ?? 0);
 
         $data = [
             'reseller' => $reseller,
@@ -38,6 +40,8 @@ class ReportPrintController extends Controller
             'month' => $month,
             'year' => $year,
             'totalRevenue' => $totalRevenue,
+            'totalMargin' => $totalMargin,
+            'totalCost' => $totalCost,
             'datePrinted' => now()->format('d M Y H:i')
         ];
 
@@ -64,7 +68,7 @@ class ReportPrintController extends Controller
         ]);
 
         $summary = $reportData['summary'];
-        $grossRevenue = (float) ($summary['total_plus_ppn'] ?? 0);
+        $grossRevenue = (float) ($summary['total_ppn'] ?? $summary['total_plus_ppn'] ?? 0);
         $netMargin = (float) ($summary['fee_seller'] ?? 0);
         $totalCost = (float) ($summary['profit'] ?? 0);
         $profitMarginPercent = $grossRevenue > 0 ? ($netMargin / $grossRevenue) * 100 : 0;

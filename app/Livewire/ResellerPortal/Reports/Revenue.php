@@ -5,6 +5,8 @@ namespace App\Livewire\ResellerPortal\Reports;
 use App\Livewire\AdminComponent;
 use App\Services\Keuangan\IncomeReportService;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 
 class Revenue extends AdminComponent
@@ -14,6 +16,7 @@ class Revenue extends AdminComponent
     public string $periodMode = 'daily'; // daily, monthly
     public $selectedMonth;
     public $selectedYear;
+    public int $perPage = 10;
 
     public function mount()
     {
@@ -35,17 +38,47 @@ class Revenue extends AdminComponent
     public function setPeriodMode(string $mode)
     {
         $this->periodMode = in_array($mode, ['daily', 'monthly']) ? $mode : 'daily';
+        $this->resetPage();
     }
 
     public function setFilterType(string $type)
     {
         $this->filterType = in_array($type, ['all', 'pelanggan', 'voucher']) ? $type : 'all';
+        $this->resetPage();
     }
 
     public function setToday()
     {
         $this->selectedDate = now()->toDateString();
         $this->periodMode = 'daily';
+        $this->resetPage();
+    }
+
+    public function setYesterday()
+    {
+        $this->selectedDate = now()->subDay()->toDateString();
+        $this->periodMode = 'daily';
+        $this->resetPage();
+    }
+
+    public function updatedSelectedDate()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedYear()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage()
+    {
+        $this->resetPage();
     }
 
     public function render()
@@ -67,50 +100,66 @@ class Revenue extends AdminComponent
         }
 
         $incomeService = app(IncomeReportService::class);
-        $reportData = $incomeService->getTransactions([
+        $allReportData = $incomeService->getTransactions([
             'reseller_id' => $resellerId,
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'user_type' => 'all',
         ]);
 
-        $rows = $reportData['rows'];
+        $allRows = $allReportData['rows'];
+        $customerRows = $allRows->filter(fn($r) => !str_starts_with((string) $r['id'], 'VCR-'));
+        $voucherRows = $allRows->filter(fn($r) => str_starts_with((string) $r['id'], 'VCR-'));
 
-        $customerRows = $rows->filter(fn($r) => !str_starts_with((string) $r['id'], 'VCR-'));
-        $voucherRows = $rows->filter(fn($r) => str_starts_with((string) $r['id'], 'VCR-'));
-
-        $pelangganRevenue = (float) $customerRows->sum('harga_ppn');
         $pelangganCount = $customerRows->count();
-
-        $voucherRevenue = (float) $voucherRows->sum('harga_ppn');
+        $pelangganRevenue = (float) $customerRows->sum('harga_ppn');
         $voucherCount = $voucherRows->count();
+        $voucherRevenue = (float) $voucherRows->sum('harga_ppn');
 
-        $totalRevenue = (float) ($reportData['summary']['total_ppn'] ?? ($pelangganRevenue + $voucherRevenue));
-        $transactionCount = $pelangganCount + $voucherCount;
-        $averagePayment = $transactionCount > 0 ? $totalRevenue / $transactionCount : 0;
+        // Total for entire period
+        $totalRevenueAll = (float) ($allReportData['summary']['total_ppn'] ?? ($pelangganRevenue + $voucherRevenue));
+        $resellerCommissionAll = (float) ($allReportData['summary']['fee_seller'] ?? 0);
+        $netCostAll = (float) ($allReportData['summary']['profit'] ?? 0);
 
-        // Filter transactions for table
+        // Filter rows by active tab
         if ($this->filterType === 'pelanggan') {
-            $filteredTransactions = $customerRows;
+            $activeRows = $customerRows;
+            $totalRevenue = $pelangganRevenue;
+            $resellerCommission = (float) $customerRows->sum('fee_seller');
+            $netCost = (float) $customerRows->sum('profit');
         } elseif ($this->filterType === 'voucher') {
-            $filteredTransactions = $voucherRows;
+            $activeRows = $voucherRows;
+            $totalRevenue = $voucherRevenue;
+            $resellerCommission = (float) $voucherRows->sum('fee_seller');
+            $netCost = (float) $voucherRows->sum('profit');
         } else {
-            $filteredTransactions = $rows;
+            $activeRows = $allRows;
+            $totalRevenue = $totalRevenueAll;
+            $resellerCommission = $resellerCommissionAll;
+            $netCost = $netCostAll;
         }
 
-        $recentTransactions = $filteredTransactions->take(50);
-        $monthDate = Carbon::createFromDate($year, $month, 1);
+        $currentPage = Paginator::resolveCurrentPage('page');
+        $currentItems = $activeRows->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
+        $paginatedRows = new LengthAwarePaginator(
+            $currentItems,
+            $activeRows->count(),
+            $this->perPage,
+            $currentPage,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page']
+        );
 
         return view('livewire.reseller-portal.reports.revenue', [
             'totalRevenue' => $totalRevenue,
-            'pelangganRevenue' => $pelangganRevenue,
+            'resellerCommission' => $resellerCommission,
+            'netCost' => $netCost,
+            'allCount' => $allRows->count(),
             'pelangganCount' => $pelangganCount,
-            'voucherRevenue' => $voucherRevenue,
+            'pelangganRevenue' => $pelangganRevenue,
             'voucherCount' => $voucherCount,
-            'transactionCount' => $transactionCount,
-            'averagePayment' => $averagePayment,
-            'recentTransactions' => $recentTransactions,
-            'currentMonthName' => $monthDate->translatedFormat('F Y'),
+            'voucherRevenue' => $voucherRevenue,
             'periodLabel' => $periodLabel,
+            'paginatedRows' => $paginatedRows,
         ]);
     }
 }

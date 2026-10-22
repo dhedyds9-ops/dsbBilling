@@ -1,5 +1,5 @@
 <div class="space-y-6">
-    <!-- Header -->
+    <!-- Header & Filter Toolbar -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
@@ -29,6 +29,9 @@
                     <button type="button" wire:click="setToday" class="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm">
                         Hari Ini
                     </button>
+                    <button type="button" wire:click="setYesterday" class="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm">
+                        Kemarin
+                    </button>
                 </div>
             @else
                 <div class="flex items-center gap-2">
@@ -47,178 +50,177 @@
         </div>
     </div>
 
-    <!-- Summary Cards (Breakdown Pelanggan vs Voucher) -->
+    <!-- Summary KPI Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total Pendapatan -->
+        <!-- 1. Total Bruto (Penjualan) -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between relative overflow-hidden group">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
             <div>
-                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Pendapatan</p>
+                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Bruto Terbayar</p>
                 <p class="text-2xl font-black text-slate-900 dark:text-white mt-2">
                     Rp {{ number_format($totalRevenue, 0, ',', '.') }}
                 </p>
-                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    {{ $transactionCount }} total transaksi sukses
-                </p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Total pembayaran yang diterima</p>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <div class="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
                 <span class="material-symbols-outlined notranslate text-2xl" translate="no">payments</span>
             </div>
         </div>
 
-        <!-- Pendapatan Pelanggan -->
-        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-indigo-100 dark:border-indigo-900/40 shadow-sm flex items-start justify-between relative overflow-hidden group">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
+        <!-- 2. Komisi Reseller -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-orange-200 dark:border-orange-800/60 shadow-sm flex items-start justify-between relative overflow-hidden group">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-amber-500"></div>
             <div>
-                <p class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
-                    <span class="material-symbols-outlined notranslate text-xs" translate="no">account_circle</span>
-                    Pendapatan Pelanggan
+                <p class="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined notranslate text-xs" translate="no">savings</span>
+                    Komisi Reseller
                 </p>
-                <p class="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-2">
-                    Rp {{ number_format($pelangganRevenue, 0, ',', '.') }}
+                <p class="text-2xl font-black text-orange-600 dark:text-orange-400 mt-2">
+                    Rp {{ number_format($resellerCommission, 0, ',', '.') }}
                 </p>
-                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    {{ $pelangganCount }} tagihan PPPoE & Hotspot
-                </p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Margin keuntungan hak Anda</p>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                <span class="material-symbols-outlined notranslate text-2xl" translate="no">supervised_user_circle</span>
+            <div class="w-11 h-11 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+                <span class="material-symbols-outlined notranslate text-2xl" translate="no">monetization_on</span>
             </div>
         </div>
 
-        <!-- Pendapatan Voucher -->
-        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-teal-100 dark:border-teal-900/40 shadow-sm flex items-start justify-between relative overflow-hidden group">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
+        <!-- 3. Setor ke Pusat (Nett) -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-start justify-between relative overflow-hidden group">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
             <div>
-                <p class="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1">
-                    <span class="material-symbols-outlined notranslate text-xs" translate="no">confirmation_number</span>
-                    Pendapatan Voucher
+                <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined notranslate text-xs" translate="no">account_balance</span>
+                    Setor Pusat (Modal)
                 </p>
-                <p class="text-2xl font-black text-teal-600 dark:text-teal-400 mt-2">
-                    Rp {{ number_format($voucherRevenue, 0, ',', '.') }}
+                <p class="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-2">
+                    Rp {{ number_format($netCost, 0, ',', '.') }}
                 </p>
-                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    {{ $voucherCount }} voucher terjual / aktif
-                </p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Nett disetor / dipotong deposit</p>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0">
-                <span class="material-symbols-outlined notranslate text-2xl" translate="no">confirmation_number</span>
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <span class="material-symbols-outlined notranslate text-2xl" translate="no">check_circle</span>
             </div>
         </div>
 
-        <!-- Rata-Rata Transaksi -->
+        <!-- 4. Rincian Transaksi -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between relative overflow-hidden group">
             <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
             <div>
-                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rata-Rata Transaksi</p>
-                <p class="text-2xl font-black text-purple-600 dark:text-purple-400 mt-2">
-                    Rp {{ number_format($averagePayment, 0, ',', '.') }}
+                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rincian Transaksi</p>
+                <p class="text-xl font-bold text-slate-900 dark:text-slate-100 mt-2">
+                    {{ $pelangganCount }} Tagihan &bull; {{ $voucherCount }} Voucher
                 </p>
                 <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    Per transaksi diterima
+                    Tagihan: Rp {{ number_format($pelangganRevenue, 0, ',', '.') }} | Vcr: Rp {{ number_format($voucherRevenue, 0, ',', '.') }}
                 </p>
             </div>
-            <div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
-                <span class="material-symbols-outlined notranslate text-2xl" translate="no">analytics</span>
+            <div class="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                <span class="material-symbols-outlined notranslate text-2xl" translate="no">receipt_long</span>
             </div>
         </div>
     </div>
 
-    <!-- Filter Tab Navigation -->
-    <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto w-full sm:w-auto inline-flex shadow-sm">
-        <button wire:click="setFilterType('all')" type="button"
-                class="whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
-                       {{ $filterType === 'all' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
-            <span>Semua Pendapatan</span>
-            <span class="px-1.5 py-0.5 rounded-full text-[10px] {{ $filterType === 'all' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400' }}">{{ $transactionCount }}</span>
-        </button>
-        <button wire:click="setFilterType('pelanggan')" type="button"
-                class="whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
-                       {{ $filterType === 'pelanggan' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
-            <span class="material-symbols-outlined notranslate text-sm" translate="no">account_circle</span>
-            <span>Pendapatan Pelanggan</span>
-            <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">{{ $pelangganCount }}</span>
-        </button>
-        <button wire:click="setFilterType('voucher')" type="button"
-                class="whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5
-                       {{ $filterType === 'voucher' ? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white' }}">
-            <span class="material-symbols-outlined notranslate text-sm" translate="no">confirmation_number</span>
-            <span>Pendapatan Voucher</span>
-            <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">{{ $voucherCount }}</span>
-        </button>
-    </div>
+    <!-- Table Section -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <!-- Tabs & Toolbar -->
+        <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/30">
+            <!-- Filter Tabs -->
+            <div class="flex items-center gap-1.5 overflow-x-auto">
+                <button type="button" wire:click="setFilterType('all')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap {{ $filterType === 'all' ? 'bg-primary-600 text-white shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700' }}">
+                    Semua Transaksi
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterType === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' }}">{{ $allCount }}</span>
+                </button>
+                <button type="button" wire:click="setFilterType('pelanggan')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap {{ $filterType === 'pelanggan' ? 'bg-primary-600 text-white shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700' }}">
+                    Tagihan Pelanggan
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterType === 'pelanggan' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' }}">{{ $pelangganCount }}</span>
+                </button>
+                <button type="button" wire:click="setFilterType('voucher')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap {{ $filterType === 'voucher' ? 'bg-primary-600 text-white shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700' }}">
+                    Voucher Hotspot
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $filterType === 'voucher' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' }}">{{ $voucherCount }}</span>
+                </button>
+            </div>
 
-    <!-- Payments Table -->
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-slate-50 dark:bg-slate-900/50">
-            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate text-primary-600 text-lg" translate="no">history</span>
-                Riwayat Transaksi Pendapatan {{ $filterType !== 'all' ? '(' . ucfirst($filterType) . ')' : '' }}
-            </h3>
-            <span class="text-xs text-slate-500 dark:text-slate-400">Periode: {{ $currentMonthName }}</span>
+            <!-- Per Page Selector -->
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500">Tampilkan:</span>
+                <select wire:model.live="perPage" class="pl-2.5 pr-7 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm cursor-pointer">
+                    <option value="10">10 / hal</option>
+                    <option value="25">25 / hal</option>
+                    <option value="50">50 / hal</option>
+                </select>
+            </div>
         </div>
 
+        <!-- Table -->
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800">
-                        <th class="px-6 py-3 text-left font-semibold">Tgl Transaksi</th>
-                        <th class="px-6 py-3 text-left font-semibold">Kategori</th>
-                        <th class="px-6 py-3 text-left font-semibold">Referensi</th>
-                        <th class="px-6 py-3 text-left font-semibold">Pelanggan / Keterangan</th>
-                        <th class="px-6 py-3 text-left font-semibold">Layanan</th>
-                        <th class="px-6 py-3 text-right font-semibold">Nominal</th>
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs uppercase text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">No Tagihan / Ref</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Pelanggan / Keterangan</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Tipe & Layanan</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Total Bruto</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Komisi Reseller</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Setor Pusat (Modal)</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Tgl Transaksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                    @forelse($recentTransactions as $row)
+                    @forelse($paginatedRows as $row)
                         @php
                             $isVoucher = str_starts_with((string)$row['id'], 'VCR-');
                         @endphp
-                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td class="px-6 py-3.5 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                                {{ $row['paid_at'] }}
-                            </td>
-                            <td class="px-6 py-3.5 whitespace-nowrap">
-                                @if($isVoucher)
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                                        <span class="material-symbols-outlined notranslate text-xs" translate="no">confirmation_number</span>
-                                        Voucher
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                        <span class="material-symbols-outlined notranslate text-xs" translate="no">account_circle</span>
-                                        Pelanggan
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-3.5 font-mono text-slate-700 dark:text-slate-300 text-xs">
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors">
+                            <td class="px-4 py-3 whitespace-nowrap font-mono text-xs font-semibold {{ $isVoucher ? 'text-teal-600 dark:text-teal-400' : 'text-blue-600 dark:text-blue-400' }}">
                                 {{ $row['invoice_number'] }}
                             </td>
-                            <td class="px-6 py-3.5 text-slate-800 dark:text-slate-200">
-                                <div class="font-semibold text-xs">{{ $row['customer_name'] ?? '-' }}</div>
-                                <div class="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-                                    {{ $row['customer_id'] ?? '' }}
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
+                                    {{ $row['customer_name'] }}
+                                </div>
+                                <div class="text-[11px] text-slate-400 font-mono">
+                                    ID: {{ $row['customer_id'] }}
                                 </div>
                             </td>
-                            <td class="px-6 py-3.5 text-slate-600 dark:text-slate-400 text-xs">
-                                <span class="font-medium text-slate-700 dark:text-slate-300">{{ $row['package_name'] ?? '-' }}</span>
-                                <span class="block text-[10px] text-slate-400 font-semibold">{{ $row['service_type'] }}</span>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide {{ $isVoucher ? 'bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' }}">
+                                    {{ $row['service_type'] ?? ($isVoucher ? 'VOUCHER' : 'PELANGGAN') }}
+                                </span>
+                                <span class="text-xs text-slate-600 dark:text-slate-300 ml-1">
+                                    {{ $row['package_name'] }}
+                                </span>
                             </td>
-                            <td class="px-6 py-3.5 text-right font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                            <td class="px-4 py-3 whitespace-nowrap text-right font-medium text-slate-900 dark:text-slate-100 text-xs sm:text-sm font-mono">
                                 Rp {{ number_format($row['harga_ppn'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right font-bold text-orange-600 dark:text-orange-400 text-xs sm:text-sm font-mono">
+                                Rp {{ number_format($row['fee_seller'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right font-bold text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm font-mono">
+                                Rp {{ number_format($row['profit'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-center text-xs text-slate-500 dark:text-slate-400">
+                                {{ $row['paid_at'] }}
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="7" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <span class="material-symbols-outlined notranslate text-4xl text-slate-300 dark:text-slate-600 mb-2 block" translate="no">receipt_long</span>
-                                Belum ada data pendapatan pada periode {{ $currentMonthName }}.
+                                Tidak ada transaksi pemasukan pada periode ini.
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+
+        <!-- Pagination -->
+        @if($paginatedRows->hasPages())
+            <div class="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20">
+                {{ $paginatedRows->links() }}
+            </div>
+        @endif
     </div>
 </div>

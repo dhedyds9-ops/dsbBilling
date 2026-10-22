@@ -127,6 +127,12 @@ class IncomeReportService
                         $resellerName = $invoice->customer->createdBy->name;
                     }
                 }
+                if ($resellerName === '-' && !empty($invoice->reseller_id)) {
+                    $rUser = \App\Models\User::find($invoice->reseller_id);
+                    if ($rUser) {
+                        $resellerName = $rUser->name;
+                    }
+                }
 
                 $rows->push([
                     'id' => $invoice->id,

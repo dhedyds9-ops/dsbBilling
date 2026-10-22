@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\Auth;
 
 class Commission extends AdminComponent
 {
-    public $perPage = 10;
+    public int $perPage = 10;
     public $selectedMonth;
     public $selectedYear;
-    public string $filterType = 'all'; // all, customer, voucher
+    public string $filterType = 'all'; // all, pelanggan, voucher
 
     public function mount()
     {
@@ -42,8 +42,14 @@ class Commission extends AdminComponent
         $this->resetPage();
     }
 
-    public function updatedFilterType()
+    public function updatedPerPage()
     {
+        $this->resetPage();
+    }
+
+    public function setFilterType(string $type)
+    {
+        $this->filterType = in_array($type, ['all', 'pelanggan', 'voucher']) ? $type : 'all';
         $this->resetPage();
     }
 
@@ -58,25 +64,50 @@ class Commission extends AdminComponent
         $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
 
         $incomeService = app(IncomeReportService::class);
-        $reportData = $incomeService->getTransactions([
+        $allReportData = $incomeService->getTransactions([
             'reseller_id' => $resellerId,
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'user_type' => $this->filterType,
+            'user_type' => 'all',
         ]);
 
-        $summary = $reportData['summary'];
-        $grossRevenue = (float) ($summary['total_ppn'] ?? $summary['total_plus_ppn'] ?? $rows->sum('harga_ppn'));
-        $netMargin = (float) ($summary['fee_seller'] ?? 0);
-        $totalCost = (float) ($summary['profit'] ?? 0);
+        $allRows = $allReportData['rows'];
+        $customerRows = $allRows->filter(fn($r) => !str_starts_with((string) $r['id'], 'VCR-'));
+        $voucherRows = $allRows->filter(fn($r) => str_starts_with((string) $r['id'], 'VCR-'));
+
+        $pelangganCount = $customerRows->count();
+        $pelangganRevenue = (float) $customerRows->sum('harga_ppn');
+        $voucherCount = $voucherRows->count();
+        $voucherRevenue = (float) $voucherRows->sum('harga_ppn');
+
+        $totalRevenueAll = (float) ($allReportData['summary']['total_ppn'] ?? ($pelangganRevenue + $voucherRevenue));
+        $resellerCommissionAll = (float) ($allReportData['summary']['fee_seller'] ?? 0);
+        $netCostAll = (float) ($allReportData['summary']['profit'] ?? 0);
+
+        if ($this->filterType === 'pelanggan') {
+            $activeRows = $customerRows;
+            $grossRevenue = $pelangganRevenue;
+            $netMargin = (float) $customerRows->sum('fee_seller');
+            $totalCost = (float) $customerRows->sum('profit');
+        } elseif ($this->filterType === 'voucher') {
+            $activeRows = $voucherRows;
+            $grossRevenue = $voucherRevenue;
+            $netMargin = (float) $voucherRows->sum('fee_seller');
+            $totalCost = (float) $voucherRows->sum('profit');
+        } else {
+            $activeRows = $allRows;
+            $grossRevenue = $totalRevenueAll;
+            $netMargin = $resellerCommissionAll;
+            $totalCost = $netCostAll;
+        }
+
         $profitMarginPercent = $grossRevenue > 0 ? ($netMargin / $grossRevenue) * 100 : 0;
 
-        $rows = $reportData['rows'];
         $currentPage = Paginator::resolveCurrentPage('page');
-        $currentItems = $rows->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
+        $currentItems = $activeRows->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
         $details = new LengthAwarePaginator(
             $currentItems,
-            $rows->count(),
+            $activeRows->count(),
             $this->perPage,
             $currentPage,
             ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page']
@@ -89,6 +120,9 @@ class Commission extends AdminComponent
             'totalCost' => $totalCost,
             'netMargin' => $netMargin,
             'profitMarginPercent' => $profitMarginPercent,
+            'allCount' => $allRows->count(),
+            'pelangganCount' => $pelangganCount,
+            'voucherCount' => $voucherCount,
             'currentMonthName' => $monthDate->translatedFormat('F Y'),
             'details' => $details,
         ]);
