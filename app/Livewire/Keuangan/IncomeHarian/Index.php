@@ -249,8 +249,15 @@ class Index extends BaseEnterpriseList
     {
         $data = $this->periodData;
         $rows = $data['rows'] ?? [];
-        $filename = 'income-' . now()->format('YmdHis') . '.xlsx';
-        return Excel::download(new IncomeExport($rows), $filename);
+        $dateStr = !empty($this->filters['date']) ? $this->filters['date'] : now()->format('Y-m-d');
+        $filename = 'income-harian-' . $dateStr . '-' . now()->format('His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($rows) {
+            echo Excel::raw(new IncomeExport($rows, $this->isReseller), \Maatwebsite\Excel\Excel::XLSX);
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     public function exportPdf()

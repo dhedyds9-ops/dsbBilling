@@ -234,7 +234,7 @@ class ResellerTopupService
         return $count;
     }
 
-    public function exportCsv(array $filters = [], string $search = '', string $statusTab = ''): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function exportCsv(array $filters = [], string $search = '', string $statusTab = ''): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $rows = $this->list($filters, $search, 'created_at', 'desc', $statusTab)->limit(10000)->get();
 

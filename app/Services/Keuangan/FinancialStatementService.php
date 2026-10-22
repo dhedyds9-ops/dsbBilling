@@ -525,7 +525,7 @@ class FinancialStatementService
         ];
     }
 
-    public function exportExcel(string $tab, array $filters = []): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function exportExcel(string $tab, array $filters = []): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $headers = [
             'Content-Type' => 'text/csv; charset=utf-8',

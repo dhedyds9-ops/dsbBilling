@@ -710,7 +710,7 @@ class IncomeReportService
         return (string) array_key_first($gatewayCounts);
     }
 
-    public function exportCsvDaily(array $rows): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function exportCsvDaily(array $rows): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $headers = [
             'Content-Type' => 'text/csv; charset=utf-8',
@@ -736,7 +736,7 @@ class IncomeReportService
         return response()->stream($callback, 200, $headers);
     }
 
-    public function excelExport(array $params, int $userId): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function excelExport(array $params, int $userId): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $type = $params['type'] ?? 'monthly';
         $filters = $params['filters'] ?? [];
@@ -779,7 +779,7 @@ class IncomeReportService
         return response()->stream($callback, 200, $headers);
     }
 
-    public function pdfExport(array $params, int $userId): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function pdfExport(array $params, int $userId): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $type = $params['type'] ?? 'monthly';
         $filters = $params['filters'] ?? [];

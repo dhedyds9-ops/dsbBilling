@@ -307,7 +307,7 @@ class Index extends BaseEnterpriseList
         }
     }
 
-    public function exportCsv(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
+    public function exportCsv(): \Symfony\Component\HttpFoundation\StreamedResponse|\Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
     {
         return $this->service->exportCsv($this->filters, $this->search, $this->activeTab);
     }
