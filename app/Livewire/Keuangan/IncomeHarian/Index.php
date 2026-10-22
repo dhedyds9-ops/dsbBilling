@@ -28,18 +28,57 @@ class Index extends BaseEnterpriseList
 
     public $showFilterModal = false;
 
+    #[Computed]
+    public function getIsResellerProperty(): bool
+    {
+        $user = Auth::user();
+        if (!$user) return false;
+        if ($user->hasAnyRole(['administrator', 'superadmin', 'manager'])) {
+            return false;
+        }
+        return $user->hasRole('reseller') || !empty($user->getEffectiveResellerId());
+    }
+
+    #[Computed]
+    public function getEffectiveResellerIdProperty(): ?int
+    {
+        $user = Auth::user();
+        if (!$user) return null;
+        if ($user->hasAnyRole(['administrator', 'superadmin', 'manager'])) {
+            return null;
+        }
+        return $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+    }
+
     public function mount(): void
     {
         parent::mount();
-        $this->activeModule = 'keuangan';
-        $this->activePage = 'income-harian';
+
+        if ($this->isReseller) {
+            $this->activeModule = 'reseller-portal';
+            $this->activePage = 'reports.revenue';
+            $this->breadcrumbs = [
+                ['label' => 'Portal Reseller', 'url' => route('reseller-portal.dashboard')],
+                ['label' => 'Data Keuangan', 'url' => '#'],
+                ['label' => 'Pemasukan Harian', 'url' => ''],
+            ];
+            $defaultResellerId = $this->effectiveResellerId;
+        } else {
+            $this->activeModule = 'keuangan';
+            $this->activePage = 'income-harian';
+            $this->breadcrumbs = [
+                ['label' => 'Data Keuangan', 'url' => '#'],
+                ['label' => 'Pemasukan Harian', 'url' => ''],
+            ];
+            $defaultResellerId = 'all';
+        }
         
         $this->filters = [
             'date' => now()->toDateString(),
             'user_type' => 'all', // all, customer, voucher
             'service_type' => 'all',
             'profile_paket' => 'all',
-            'reseller_id' => 'all',
+            'reseller_id' => $defaultResellerId,
             'method' => '',
         ];
         $this->perPage = 50;
@@ -70,6 +109,9 @@ class Index extends BaseEnterpriseList
     public function getPeriodDataProperty(): array
     {
         $f = $this->filters;
+        if ($this->isReseller) {
+            $f['reseller_id'] = $this->effectiveResellerId;
+        }
         if (!empty($f['date'])) {
             $f['start_date'] = $f['date'];
             $f['end_date'] = $f['date'];
@@ -138,50 +180,54 @@ class Index extends BaseEnterpriseList
     #[Computed]
     public function getFilterConfigProperty(): array
     {
-        $resellerOptions = [];
-        foreach ($this->resellers as $r) {
-            $resellerOptions[$r->id] = $r->name;
+        $configs = [];
+
+        if (!$this->isReseller) {
+            $resellerOptions = [];
+            foreach ($this->resellers as $r) {
+                $resellerOptions[$r->id] = $r->name;
+            }
+            $configs[] = [
+                'key' => 'reseller_id',
+                'label' => 'Semua Reseller',
+                'type' => 'select',
+                'options' => $resellerOptions
+            ];
         }
+
+        $configs[] = [
+            'key' => 'user_type',
+            'label' => 'Semua Tipe Pengguna',
+            'type' => 'select',
+            'options' => [
+                'customer' => 'Customer/Member',
+                'voucher' => 'Voucher'
+            ]
+        ];
 
         $serviceOptions = [];
         foreach ($this->services as $s) {
             $serviceOptions[$s->id] = $s->name;
         }
+        $configs[] = [
+            'key' => 'service_type',
+            'label' => 'Semua Layanan',
+            'type' => 'select',
+            'options' => $serviceOptions
+        ];
 
         $profileOptions = [];
         foreach ($this->profiles as $p) {
             $profileOptions[$p->id] = $p->name;
         }
-
-        return [
-            [
-                'key' => 'reseller_id',
-                'label' => 'Semua Reseller',
-                'type' => 'select',
-                'options' => $resellerOptions
-            ],
-            [
-                'key' => 'user_type',
-                'label' => 'Semua Tipe Pengguna',
-                'type' => 'select',
-                'options' => [
-                    'customer' => 'Customer/Member',
-                    'voucher' => 'Voucher'
-                ]
-            ],
-            [
-                'key' => 'service_type',
-                'label' => 'Semua Layanan',
-                'type' => 'select',
-                'options' => $serviceOptions
-            ],
-            [
-                'key' => 'profile_paket',
-                'label' => 'Semua Profil Paket',
-                'type' => 'select',
-                'options' => $profileOptions
-            ]
+        $configs[] = [
+            'key' => 'profile_paket',
+            'label' => 'Semua Profil Paket',
+            'type' => 'select',
+            'options' => $profileOptions
         ];
+
+        return $configs;
     }
 
     public function getBulkActionsProperty(): array

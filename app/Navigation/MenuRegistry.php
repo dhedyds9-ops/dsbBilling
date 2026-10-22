@@ -12,7 +12,7 @@ class MenuRegistry
             return self::buildTechnicianNavigation();
         }
 
-        if (str_starts_with((string)$prefix, 'reseller-portal')) {
+        if (str_starts_with((string)$prefix, 'reseller-portal') || (auth()->check() && auth()->user()->hasRole('reseller') && !auth()->user()->hasAnyRole(['administrator', 'superadmin', 'manager']))) {
             return self::buildResellerNavigation();
         }
 
@@ -348,9 +348,9 @@ class MenuRegistry
                         'label' => 'Data Keuangan',
                         'icon' => 'account_balance_wallet',
                         'items' => [
-                            ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => 'reseller-portal.reports.revenue'],
-                            ['label' => 'Pemasukan Bulanan', 'route' => 'reseller-portal.reports.sales', 'active' => 'reseller-portal.reports.sales'],
-                            ['label' => 'Komisi & Margin', 'route' => 'reseller-portal.reports.commission', 'active' => 'reseller-portal.reports.commission'],
+                            ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => ['reseller-portal.reports.revenue*', 'keuangan.income-harian*']],
+                            ['label' => 'Pemasukan Bulanan', 'route' => 'reseller-portal.reports.sales', 'active' => ['reseller-portal.reports.sales*', 'keuangan.income-periode*']],
+                            ['label' => 'Komisi & Margin', 'route' => 'reseller-portal.reports.commission', 'active' => 'reseller-portal.reports.commission*'],
                             ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*'],
                             ['label' => 'Saldo Deposit', 'route' => 'reseller-portal.finance.balance', 'active' => 'reseller-portal.finance.balance'],
                             ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup'],

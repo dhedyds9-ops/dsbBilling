@@ -120,6 +120,12 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
     });
 
+    // ==================== SHARED FINANCIAL REPORTS (ADMIN, MANAGER, RESELLER) ====================
+    Route::middleware(['role:administrator,manager,reseller'])->prefix('keuangan')->name('keuangan.')->group(function () {
+        Route::get('/income-harian', \App\Livewire\Keuangan\IncomeHarian\Index::class)->name('income-harian');
+        Route::get('/income-periode', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('income-periode');
+    });
+
     // ==================== STAFF / ADMIN AREA ====================
     Route::middleware(['role:administrator,manager'])->group(function () use ($cs) {
 
@@ -234,10 +240,6 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::prefix('keuangan')->name('keuangan.')->group(function () use ($cs) {
             // Topup Reseller: Summary | Riwayat | Approval | Bukti Transfer | Export
             Route::get('/topup-reseller', \App\Livewire\Keuangan\TopupReseller\Index::class)->name('topup-reseller');
-            // Income Harian: Chart | Top Customer | Top Sales | Payment Method | Cash Flow
-            Route::get('/income-harian', \App\Livewire\Keuangan\IncomeHarian\Index::class)->name('income-harian');
-            // Income Periode: Comparison | Growth | Export Excel | Export PDF
-            Route::get('/income-periode', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('income-periode');
             // Pengeluaran: Kategori | Approval | Attachment | Status
             Route::get('/pengeluaran', \App\Livewire\Keuangan\Pengeluaran\Index::class)->name('pengeluaran');
             // Laba Rugi: Income Statement | Cash Flow | Expense | Top Revenue | AR Aging
@@ -469,11 +471,11 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
 
         Route::prefix('reports')->name('reports.')->group(function() {
-            Route::get('/sales', \App\Livewire\ResellerPortal\Reports\Sales::class)->name('sales');
+            Route::get('/sales', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('sales');
             Route::get('/sales/print', [\App\Http\Controllers\Reseller\ReportPrintController::class, 'printSales'])->name('sales.print');
-        Route::get('/commission/print', [\App\Http\Controllers\Reseller\ReportPrintController::class, 'printCommission'])->name('commission.print');
-            Route::get('/revenue', \App\Livewire\ResellerPortal\Reports\Revenue::class)->name('revenue');
-            Route::get('/commission', \App\Livewire\ResellerPortal\Reports\Commission::class)->name('commission');
+            Route::get('/commission/print', [\App\Http\Controllers\Reseller\ReportPrintController::class, 'printCommission'])->name('commission.print');
+            Route::get('/revenue', \App\Livewire\Keuangan\IncomeHarian\Index::class)->name('revenue');
+            Route::get('/commission', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('commission');
         });
 
                 Route::prefix('sales')->name('sales.')->group(function() {

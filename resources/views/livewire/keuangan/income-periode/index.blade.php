@@ -12,9 +12,9 @@
                 <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-400 rounded-t-xl"></div>
                 <div class="p-4 flex items-center justify-between">
                     <div>
-                        <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">NETT SETELAH RESELLER</h3>
+                        <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">{{ $this->isReseller ? 'SETORAN KE PUSAT (MODAL)' : 'NETT SETELAH RESELLER' }}</h3>
                         <span class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Rp {{ number_format($summary['profit'] ?? 0, 0, ',', '.') }}</span>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Bruto dikurangi komisi reseller</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">{{ $this->isReseller ? 'Harga modal / setoran ke ISP dsBilling' : 'Bruto dikurangi komisi reseller' }}</p>
                     </div>
                     <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                         <span class="material-symbols-outlined notranslate">check_circle</span>
@@ -26,9 +26,9 @@
                 <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-amber-400 rounded-t-xl"></div>
                 <div class="p-4 flex items-center justify-between">
                     <div>
-                        <h3 class="text-xs font-bold text-orange-600 dark:text-orange-500 uppercase tracking-widest mb-1">KOMISI RESELLER</h3>
+                        <h3 class="text-xs font-bold text-orange-600 dark:text-orange-500 uppercase tracking-widest mb-1">{{ $this->isReseller ? 'KOMISI / PENDAPATAN ANDA' : 'KOMISI RESELLER' }}</h3>
                         <span class="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Rp {{ number_format($summary['fee_seller'] ?? 0, 0, ',', '.') }}</span>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Margin harga jual - harga reseller</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">{{ $this->isReseller ? 'Margin keuntungan bersih reseller' : 'Margin harga jual - harga reseller' }}</p>
                     </div>
                     <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center text-orange-600 dark:text-orange-400">
                         <span class="material-symbols-outlined notranslate">groups</span>
@@ -121,9 +121,11 @@
                             <th scope="col" class="px-3 py-3 whitespace-nowrap">Paket Langganan</th>
                             <th scope="col" class="px-3 py-3 whitespace-nowrap text-right">Total Bruto</th>
                             <th scope="col" class="px-3 py-3 whitespace-nowrap text-right">Komisi Reseller</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap text-right">Nett (Stlh Reseller)</th>
+                            <th scope="col" class="px-3 py-3 whitespace-nowrap text-right">{{ $this->isReseller ? 'Setor Pusat' : 'Nett (Stlh Reseller)' }}</th>
                             <th scope="col" class="px-3 py-3 whitespace-nowrap">Tanggal Aktif</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">Owner Data</th>
+                            @if(!$this->isReseller)
+                                <th scope="col" class="px-3 py-3 whitespace-nowrap">Owner Data</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -148,11 +150,13 @@
                                 <td class="px-3 py-2 whitespace-nowrap text-right text-slate-700 dark:text-slate-300">Rp. {{ number_format($r['fee_seller'] ?? 0, 0, ',', '.') }}</td>
                                 <td class="px-3 py-2 whitespace-nowrap text-right font-semibold text-emerald-700 dark:text-emerald-400">Rp. {{ number_format($r['profit'] ?? 0, 0, ',', '.') }}</td>
                                 <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['paid_at'] ?? '-' }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['reseller_name'] ?? '-' }}</td>
+                                @if(!$this->isReseller)
+                                    <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['reseller_name'] ?? '-' }}</td>
+                                @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-3 py-12 text-center text-slate-500 dark:text-slate-400">
+                                <td colspan="{{ $this->isReseller ? 10 : 11 }}" class="px-3 py-12 text-center text-slate-500 dark:text-slate-400">
                                     <svg class="mx-auto mb-2 w-10 h-10 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     Tidak ada data untuk periode ini.
                                 </td>
