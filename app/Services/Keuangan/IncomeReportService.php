@@ -24,10 +24,15 @@ class IncomeReportService
 
         // 1. Ambil data Invoice Pelanggan (PPPoE / Hotspot Member) jika bukan filter 'voucher'
         if ($userType !== 'voucher') {
-            $query = Invoice::whereIn('status', ['paid', 'success', 'lunas'])
-                ->with(['customer.customerServices.serviceProfile', 'customer.reseller', 'customer.createdBy', 'items', 'payments' => function($q) {
-                    $q->where('status', 'success');
-                }]);
+            $query = Invoice::withoutGlobalScopes()
+                ->whereIn('status', ['paid', 'success', 'lunas'])
+                ->with([
+                    'customer' => fn($q) => $q->withoutGlobalScopes()->with(['customerServices.serviceProfile', 'reseller', 'createdBy']),
+                    'items', 
+                    'payments' => function($q) {
+                        $q->where('status', 'success');
+                    }
+                ]);
 
             if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
                 $start = \Carbon\Carbon::parse($filters['start_date'])->startOfDay();
@@ -40,9 +45,14 @@ class IncomeReportService
 
             if (!empty($filters['reseller_id']) && $filters['reseller_id'] !== 'all') {
                 $resellerId = $filters['reseller_id'];
-                $query->whereHas('customer', function($q) use ($resellerId) {
-                    $q->where('reseller_id', $resellerId)
-                      ->orWhere('created_by', $resellerId);
+                $query->where(function($q) use ($resellerId) {
+                    $q->where('invoices.reseller_id', $resellerId)
+                      ->orWhereHas('customer', function($cq) use ($resellerId) {
+                          $cq->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                              $sub->where('customers.reseller_id', $resellerId)
+                                  ->orWhere('customers.created_by', $resellerId);
+                          });
+                      });
                 });
             }
 
@@ -55,7 +65,7 @@ class IncomeReportService
 
                 $hargaPpn = (float)$invoice->total_amount;
                 $feeSeller = 0;
-                $hasReseller = !empty($invoice->customer?->reseller_id) || !empty($invoice->reseller_id);
+                $hasReseller = !empty($invoice->customer?->reseller_id) || !empty($invoice->reseller_id) || !empty($invoice->customer?->created_by);
                 
                 foreach ($invoice->items as $item) {
                     $qty = max(1, (int) $item->quantity);
@@ -239,6 +249,7 @@ class IncomeReportService
                 'profit' => $totalProfit,
                 'fee_seller' => $totalFeeSeller,
                 'total_ppn' => $totalPlusPpn,
+                'total_plus_ppn' => $totalPlusPpn,
             ],
             'rows' => $sortedRows
         ];

@@ -84,6 +84,14 @@ trait HasResellerScope
                     return;
                 }
 
+                if ($table === 'customers') {
+                    $builder->where(function($q) use ($effectiveId) {
+                        $q->where('customers.reseller_id', $effectiveId)
+                          ->orWhere('customers.created_by', $effectiveId);
+                    });
+                    return;
+                }
+
                 if (\Illuminate\Support\Facades\Schema::hasColumn($table, 'reseller_id')) {
                     $column = $table . '.reseller_id';
                     $builder->where($column, $effectiveId);

@@ -57,7 +57,7 @@ class Sales extends AdminComponent
 
         $totalVouchers = $voucherRows->count();
         $thisMonthInvoices = $customerRows->count();
-        $totalSalesMonth = (float) ($reportData['summary']['total_plus_ppn'] ?? 0);
+        $totalSalesMonth = (float) ($reportData['summary']['total_ppn'] ?? $reportData['summary']['total_plus_ppn'] ?? $rows->sum('harga_ppn'));
 
         // Top 10 recent sales transactions
         $recentSales = $rows->take(10);

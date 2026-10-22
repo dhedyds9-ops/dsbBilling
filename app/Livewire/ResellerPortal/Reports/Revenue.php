@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 class Revenue extends AdminComponent
 {
     public string $filterType = 'all'; // all, pelanggan, voucher
+    public $selectedDate;
+    public string $periodMode = 'daily'; // daily, monthly
     public $selectedMonth;
     public $selectedYear;
 
@@ -19,6 +21,7 @@ class Revenue extends AdminComponent
         $this->activeModule = 'reseller-portal';
         $this->activePage = 'reseller-portal.reports.revenue';
         
+        $this->selectedDate = now()->toDateString();
         $this->selectedMonth = (int) now()->month;
         $this->selectedYear = (int) now()->year;
 
@@ -29,9 +32,20 @@ class Revenue extends AdminComponent
         ];
     }
 
+    public function setPeriodMode(string $mode)
+    {
+        $this->periodMode = in_array($mode, ['daily', 'monthly']) ? $mode : 'daily';
+    }
+
     public function setFilterType(string $type)
     {
         $this->filterType = in_array($type, ['all', 'pelanggan', 'voucher']) ? $type : 'all';
+    }
+
+    public function setToday()
+    {
+        $this->selectedDate = now()->toDateString();
+        $this->periodMode = 'daily';
     }
 
     public function render()
@@ -41,8 +55,16 @@ class Revenue extends AdminComponent
         $month = (int) ($this->selectedMonth ?: now()->month);
         $year = (int) ($this->selectedYear ?: now()->year);
 
-        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth()->format('Y-m-d');
-        $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
+        if ($this->periodMode === 'daily') {
+            $date = !empty($this->selectedDate) ? Carbon::parse($this->selectedDate)->format('Y-m-d') : now()->toDateString();
+            $startDate = $date;
+            $endDate = $date;
+            $periodLabel = Carbon::parse($date)->translatedFormat('l, d F Y');
+        } else {
+            $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth()->format('Y-m-d');
+            $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
+            $periodLabel = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
+        }
 
         $incomeService = app(IncomeReportService::class);
         $reportData = $incomeService->getTransactions([
@@ -62,7 +84,7 @@ class Revenue extends AdminComponent
         $voucherRevenue = (float) $voucherRows->sum('harga_ppn');
         $voucherCount = $voucherRows->count();
 
-        $totalRevenue = $pelangganRevenue + $voucherRevenue;
+        $totalRevenue = (float) ($reportData['summary']['total_ppn'] ?? ($pelangganRevenue + $voucherRevenue));
         $transactionCount = $pelangganCount + $voucherCount;
         $averagePayment = $transactionCount > 0 ? $totalRevenue / $transactionCount : 0;
 
@@ -88,6 +110,7 @@ class Revenue extends AdminComponent
             'averagePayment' => $averagePayment,
             'recentTransactions' => $recentTransactions,
             'currentMonthName' => $monthDate->translatedFormat('F Y'),
+            'periodLabel' => $periodLabel,
         ]);
     }
 }

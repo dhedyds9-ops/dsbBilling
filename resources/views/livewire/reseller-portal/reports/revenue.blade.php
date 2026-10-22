@@ -7,22 +7,43 @@
                 Pemasukan Harian
             </h1>
             <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Rincian penerimaan uang dari langganan pelanggan bulanan dan penjualan voucher hotspot pada periode {{ $currentMonthName }}.
+                Ringkasan Periode : <span class="text-emerald-600 font-bold dark:text-emerald-500">{{ $periodLabel }}</span>
             </p>
         </div>
 
-        <!-- Filter Periode (Bulan & Tahun) -->
-        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-            <select wire:model.live="selectedMonth" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm w-full sm:w-auto">
-                @for($m = 1; $m <= 12; $m++)
-                    <option value="{{ $m }}">{{ \Carbon\Carbon::create(null, $m, 1)->translatedFormat('F') }}</option>
-                @endfor
-            </select>
-            <select wire:model.live="selectedYear" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm w-full sm:w-auto">
-                @for($y = now()->year - 2; $y <= now()->year + 1; $y++)
-                    <option value="{{ $y }}">{{ $y }}</option>
-                @endfor
-            </select>
+        <!-- Filter Periode (Harian / Bulanan) -->
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <!-- Mode Toggle -->
+            <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-700/60 p-1">
+                <button type="button" wire:click="setPeriodMode('daily')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all {{ $periodMode === 'daily' ? 'bg-white dark:bg-slate-800 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900' }}">
+                    Harian
+                </button>
+                <button type="button" wire:click="setPeriodMode('monthly')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all {{ $periodMode === 'monthly' ? 'bg-white dark:bg-slate-800 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900' }}">
+                    Bulanan
+                </button>
+            </div>
+
+            @if($periodMode === 'daily')
+                <div class="flex items-center gap-2">
+                    <input type="date" wire:model.live="selectedDate" class="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+                    <button type="button" wire:click="setToday" class="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm">
+                        Hari Ini
+                    </button>
+                </div>
+            @else
+                <div class="flex items-center gap-2">
+                    <select wire:model.live="selectedMonth" class="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+                        @for($m = 1; $m <= 12; $m++)
+                            <option value="{{ $m }}">{{ \Carbon\Carbon::create(null, $m, 1)->translatedFormat('F') }}</option>
+                        @endfor
+                    </select>
+                    <select wire:model.live="selectedYear" class="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+                        @for($y = now()->year - 2; $y <= now()->year + 1; $y++)
+                            <option value="{{ $y }}">{{ $y }}</option>
+                        @endfor
+                    </select>
+                </div>
+            @endif
         </div>
     </div>
 

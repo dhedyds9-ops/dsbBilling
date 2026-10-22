@@ -66,7 +66,7 @@ class Commission extends AdminComponent
         ]);
 
         $summary = $reportData['summary'];
-        $grossRevenue = (float) ($summary['total_plus_ppn'] ?? 0);
+        $grossRevenue = (float) ($summary['total_ppn'] ?? $summary['total_plus_ppn'] ?? $rows->sum('harga_ppn'));
         $netMargin = (float) ($summary['fee_seller'] ?? 0);
         $totalCost = (float) ($summary['profit'] ?? 0);
         $profitMarginPercent = $grossRevenue > 0 ? ($netMargin / $grossRevenue) * 100 : 0;
