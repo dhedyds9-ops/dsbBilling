@@ -1,9 +1,9 @@
 
 <div>
     <div x-data="{ subtitle: 'Periode: {{ \Carbon\Carbon::parse($filters['start_date'] ?? now())->translatedFormat('d F Y') }} s/d {{ \Carbon\Carbon::parse($filters['end_date'] ?? now())->translatedFormat('d F Y') }}' }" x-effect="if(document.getElementById('dynamic-subtitle-periode')) document.getElementById('dynamic-subtitle-periode').innerHTML = subtitle"></div>
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Pemasukan Periode</h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-1">Periode : <span class="text-emerald-600 font-bold dark:text-emerald-500">{{ \Carbon\Carbon::parse($filters['start_date'] ?? now())->translatedFormat('d F Y') }} s/d {{ \Carbon\Carbon::parse($filters['end_date'] ?? now())->translatedFormat('d F Y') }}</span></p>
+    <div class="mb-4">
+        <h1 class="text-xl font-bold text-slate-800 dark:text-slate-100">Pemasukan Periode</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Periode : <span class="text-emerald-600 font-bold dark:text-emerald-500">{{ \Carbon\Carbon::parse($filters['start_date'] ?? now())->translatedFormat('d F Y') }} s/d {{ \Carbon\Carbon::parse($filters['end_date'] ?? now())->translatedFormat('d F Y') }}</span></p>
     </div>
     <div class="space-y-4">
         {{-- KPI CARDS --}}
@@ -110,48 +110,48 @@
 
             {{-- Table --}}
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 uppercase border-b border-slate-200 dark:border-slate-700">
+                <table class="w-full text-xs text-left">
+                    <thead class="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 uppercase border-b border-slate-200 dark:border-slate-700 font-semibold tracking-wider">
                         <tr>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">Id</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">Invoice</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">ID Pelanggan</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">Nama</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">Tipe Service</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">Paket Langganan</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap text-right">Total Bruto</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap text-right">Komisi Reseller</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap text-right">{{ $this->isReseller ? 'Setor Pusat' : 'Nett (Stlh Reseller)' }}</th>
-                            <th scope="col" class="px-3 py-3 whitespace-nowrap">Tanggal Aktif</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">Id</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">Invoice</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">ID Pelanggan</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">Nama</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">Tipe Service</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">Paket Langganan</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap text-right">Total Bruto</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap text-right">Komisi Reseller</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap text-right">{{ $this->isReseller ? 'Setor Pusat' : 'Nett (Stlh Reseller)' }}</th>
+                            <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">Tanggal Aktif</th>
                             @if(!$this->isReseller)
-                                <th scope="col" class="px-3 py-3 whitespace-nowrap">Owner Data</th>
+                                <th scope="col" class="px-2.5 py-2.5 whitespace-nowrap">Owner Data</th>
                             @endif
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
                         @forelse ($rows as $r)
                             <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/30">
-                                <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['id'] ?? '-' }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">{{ $r['invoice_number'] ?? '-' }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['customer_id'] ?? '-' }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">
+                                <td class="px-2.5 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['id'] ?? '-' }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">{{ $r['invoice_number'] ?? '-' }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['customer_id'] ?? '-' }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">
                                     <div class="flex items-center gap-1">
-                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:16px">account_circle</span>
+                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:15px">account_circle</span>
                                         {{ $r['customer_name'] ?? '-' }}
                                     </div>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide {{ str_contains(strtolower($r['service_type'] ?? ''), 'hotspot') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' }}">
+                                <td class="px-2.5 py-2 whitespace-nowrap">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide {{ str_contains(strtolower($r['service_type'] ?? ''), 'hotspot') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' }}">
                                         {{ $r['service_type'] ?? '-' }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['package_name'] ?? '-' }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap text-right font-medium text-slate-700 dark:text-slate-300">Rp. {{ number_format($r['harga_ppn'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap text-right text-slate-700 dark:text-slate-300">Rp. {{ number_format($r['fee_seller'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap text-right font-semibold text-emerald-700 dark:text-emerald-400">Rp. {{ number_format($r['profit'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['paid_at'] ?? '-' }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['package_name'] ?? '-' }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap text-right font-medium text-slate-700 dark:text-slate-300">Rp {{ number_format($r['harga_ppn'] ?? 0, 0, ',', '.') }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap text-right text-slate-700 dark:text-slate-300">Rp {{ number_format($r['fee_seller'] ?? 0, 0, ',', '.') }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap text-right font-semibold text-emerald-700 dark:text-emerald-400">Rp {{ number_format($r['profit'] ?? 0, 0, ',', '.') }}</td>
+                                <td class="px-2.5 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['paid_at'] ?? '-' }}</td>
                                 @if(!$this->isReseller)
-                                    <td class="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['reseller_name'] ?? '-' }}</td>
+                                    <td class="px-2.5 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{{ $r['reseller_name'] ?? '-' }}</td>
                                 @endif
                             </tr>
                         @empty

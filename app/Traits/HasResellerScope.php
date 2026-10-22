@@ -76,8 +76,22 @@ trait HasResellerScope
                         $q->where('invoices.reseller_id', $effectiveId)
                           ->orWhereHas('customer', function($cq) use ($effectiveId) {
                               $cq->withoutGlobalScopes()->where(function($sub) use ($effectiveId) {
-                                  $sub->where('reseller_id', $effectiveId)
-                                      ->orWhere('created_by', $effectiveId);
+                                  $sub->where('customers.reseller_id', $effectiveId)
+                                      ->orWhere('customers.created_by', $effectiveId);
+                              });
+                          });
+                    });
+                    return;
+                }
+
+                if ($table === 'payments') {
+                    $builder->where(function($q) use ($effectiveId) {
+                        $q->where('payments.reseller_id', $effectiveId)
+                          ->orWhere('payments.created_by', $effectiveId)
+                          ->orWhereHas('customer', function($cq) use ($effectiveId) {
+                              $cq->withoutGlobalScopes()->where(function($sub) use ($effectiveId) {
+                                  $sub->where('customers.reseller_id', $effectiveId)
+                                      ->orWhere('customers.created_by', $effectiveId);
                               });
                           });
                     });

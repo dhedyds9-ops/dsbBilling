@@ -30,7 +30,7 @@ class IncomeReportService
                     'customer' => fn($q) => $q->withoutGlobalScopes()->with(['customerServices.serviceProfile', 'reseller', 'createdBy']),
                     'items', 
                     'payments' => function($q) {
-                        $q->where('status', 'success');
+                        $q->withoutGlobalScopes()->where('status', 'success');
                     }
                 ]);
 
@@ -38,7 +38,8 @@ class IncomeReportService
                 $start = \Carbon\Carbon::parse($filters['start_date'])->startOfDay();
                 $end = \Carbon\Carbon::parse($filters['end_date'])->endOfDay();
                 $query->whereHas('payments', function($q) use ($start, $end) {
-                    $q->where('status', 'success')
+                    $q->withoutGlobalScopes()
+                      ->where('status', 'success')
                       ->whereBetween('paid_at', [$start, $end]);
                 });
             }
