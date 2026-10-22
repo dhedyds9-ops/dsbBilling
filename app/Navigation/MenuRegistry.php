@@ -350,7 +350,6 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => ['reseller-portal.reports.revenue*', 'keuangan.income-harian*']],
                             ['label' => 'Pemasukan Bulanan', 'route' => 'reseller-portal.reports.sales', 'active' => ['reseller-portal.reports.sales*', 'keuangan.income-periode*']],
-                            ['label' => 'Komisi & Margin', 'route' => 'reseller-portal.reports.commission', 'active' => 'reseller-portal.reports.commission*'],
                             ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*'],
                             ['label' => 'Saldo Deposit', 'route' => 'reseller-portal.finance.balance', 'active' => 'reseller-portal.finance.balance'],
                             ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup'],

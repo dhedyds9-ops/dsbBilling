@@ -475,7 +475,9 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/sales/print', [\App\Http\Controllers\Reseller\ReportPrintController::class, 'printSales'])->name('sales.print');
             Route::get('/commission/print', [\App\Http\Controllers\Reseller\ReportPrintController::class, 'printCommission'])->name('commission.print');
             Route::get('/revenue', \App\Livewire\Keuangan\IncomeHarian\Index::class)->name('revenue');
-            Route::get('/commission', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('commission');
+            Route::get('/commission', function() {
+                return redirect()->route('reseller-portal.reports.sales');
+            })->name('commission');
         });
 
                 Route::prefix('sales')->name('sales.')->group(function() {
