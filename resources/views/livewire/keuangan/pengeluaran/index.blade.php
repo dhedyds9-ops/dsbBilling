@@ -74,7 +74,7 @@
                 <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                     @foreach($this->filterConfig as $f)
                         @if($f['type'] === 'select')
-                            <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto px-3 py-2">
+                            <select wire:model.live="filters.{{ $f['key'] }}" class="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto pl-3.5 pr-10 py-2 cursor-pointer">
                                 <option value="">{{ $f['label'] }}</option>
                                 @foreach($f['options'] as $val => $lbl)
                                     <option value="{{ $val }}">{{ $lbl }}</option>
@@ -201,7 +201,7 @@
                 <div class="w-full sm:w-auto flex justify-center">{{ $rows->links() }}</div>
                 <div class="flex items-center gap-1.5 self-center sm:self-auto">
                     <span class="text-xs text-slate-500">Per hal:</span>
-                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-700 py-1 px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                    <select wire:model.live="perPage" class="text-xs rounded-md border border-slate-200 dark:border-slate-700 py-1 pl-2.5 pr-8 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 cursor-pointer">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="50">50</option>

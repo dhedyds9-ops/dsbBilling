@@ -111,7 +111,7 @@
 
             <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
                 <!-- Category -->
-                <select wire:model.live="filterCategory" class="w-full sm:w-auto px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <select wire:model.live="filterCategory" class="w-full sm:w-auto pl-3.5 pr-10 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer">
                     <option value="">Semua Kategori</option>
                     @foreach($categories as $key => $name)
                         <option value="{{ $key }}">{{ $name }}</option>
@@ -119,7 +119,7 @@
                 </select>
 
                 <!-- Status -->
-                <select wire:model.live="filterStatus" class="w-full sm:w-auto px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <select wire:model.live="filterStatus" class="w-full sm:w-auto pl-3.5 pr-10 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer">
                     <option value="">Semua Status</option>
                     <option value="approved">Disetujui</option>
                     <option value="pending_approval">Menunggu</option>
@@ -290,7 +290,7 @@
                                 <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                                     Kategori <span class="text-rose-500">*</span>
                                 </label>
-                                <select wire:model="category" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none @error('category') border-rose-500 @enderror">
+                                <select wire:model="category" class="w-full pl-3.5 pr-10 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer @error('category') border-rose-500 @enderror">
                                     @foreach($categories as $key => $name)
                                         <option value="{{ $key }}">{{ $name }}</option>
                                     @endforeach
@@ -327,7 +327,7 @@
                             <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                                 Status Pencatatan <span class="text-rose-500">*</span>
                             </label>
-                            <select wire:model="status" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none @error('status') border-rose-500 @enderror">
+                            <select wire:model="status" class="w-full pl-3.5 pr-10 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer @error('status') border-rose-500 @enderror">
                                 <option value="approved">Selesai / Sudah Terbayar (Approved)</option>
                                 <option value="pending_approval">Menunggu Persetujuan Admin (Pending)</option>
                                 <option value="draft">Draft (Belum Final)</option>

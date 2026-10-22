@@ -11,12 +11,12 @@
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <select wire:model.live="selectedMonth" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+            <select wire:model.live="selectedMonth" class="pl-3 pr-8 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm cursor-pointer">
                 @for($m = 1; $m <= 12; $m++)
                     <option value="{{ $m }}">{{ \Carbon\Carbon::create(null, $m, 1)->translatedFormat('F') }}</option>
                 @endfor
             </select>
-            <select wire:model.live="selectedYear" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm">
+            <select wire:model.live="selectedYear" class="pl-3 pr-8 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 shadow-sm cursor-pointer">
                 @for($y = now()->year - 2; $y <= now()->year + 1; $y++)
                     <option value="{{ $y }}">{{ $y }}</option>
                 @endfor
