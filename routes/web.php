@@ -465,9 +465,10 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
 
         Route::prefix('billing')->name('billing.')->group(function() {
-            Route::get('/invoices', \App\Livewire\ResellerPortal\Billing\Invoices::class)->name('invoices');
-            Route::get('/invoices/{id}', \App\Livewire\ResellerPortal\Billing\InvoiceShow::class)->name('invoices.show');
-            Route::get('/payments', \App\Livewire\ResellerPortal\Billing\Payments::class)->name('payments');
+            Route::get('/invoices', \App\Livewire\Billing\Invoice\Index::class)->name('invoices');
+            Route::get('/invoices/{id}', \App\Livewire\Billing\Invoice\Show::class)->name('invoices.show');
+            Route::get('/payments', \App\Livewire\Billing\Payment\Index::class)->name('payments');
+            Route::get('/payments/{id}', \App\Livewire\Billing\Payment\Show::class)->name('payments.show');
         });
 
         Route::prefix('reports')->name('reports.')->group(function() {

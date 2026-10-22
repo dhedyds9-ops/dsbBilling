@@ -14,15 +14,18 @@ class Show extends AdminComponent
     public function mount($id = null)
     {
         parent::mount();
-        $this->activeModule = 'billing';
-        $this->activePage = 'invoices';
+        $user = auth()->user();
+        $isReseller = $user && ($user->hasRole('reseller') || !empty($user->getEffectiveResellerId()));
+
         $this->invoiceId = $id;
-        $this->invoice = Invoice::withTrashed()->with(['customer', 'items', 'payments'])->find($id);
+        $this->invoice = Invoice::withoutGlobalScopes()->withTrashed()->with(['customer', 'items', 'payments'])->find($id);
 
         if (!$this->invoice) {
             session()->flash('error', "Invoice #{$id} tidak ditemukan atau telah dihapus.");
-            return redirect()->route('billing.invoices.index');
+            return redirect()->route($isReseller ? 'reseller-portal.billing.invoices' : 'billing.invoices.index');
         }
+
+        $this->authorize('view', $this->invoice);
 
         try {
             $this->company = app(\App\Services\Pengaturan\CompanySettingsService::class)->getAll();
@@ -90,12 +93,25 @@ class Show extends AdminComponent
             ];
         }
 
-        $this->breadcrumbs = [
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Billing', 'url' => route('billing.invoices.index')],
-            ['label' => 'Invoices', 'url' => route('billing.invoices.index')],
-            ['label' => $this->invoice->invoice_number],
-        ];
+        if ($isReseller) {
+            $this->activeModule = 'reseller-portal';
+            $this->activePage = 'reseller-portal.billing.invoices';
+            $this->breadcrumbs = [
+                ['label' => 'Portal Reseller', 'url' => route('reseller-portal.dashboard')],
+                ['label' => 'Data Tagihan', 'url' => route('reseller-portal.billing.invoices')],
+                ['label' => 'Semua Tagihan', 'url' => route('reseller-portal.billing.invoices')],
+                ['label' => $this->invoice->invoice_number],
+            ];
+        } else {
+            $this->activeModule = 'billing';
+            $this->activePage = 'invoices';
+            $this->breadcrumbs = [
+                ['label' => 'Dashboard', 'url' => route('dashboard')],
+                ['label' => 'Billing', 'url' => route('billing.invoices.index')],
+                ['label' => 'Invoices', 'url' => route('billing.invoices.index')],
+                ['label' => $this->invoice->invoice_number],
+            ];
+        }
     }
 
     public $showPaymentModal = false;

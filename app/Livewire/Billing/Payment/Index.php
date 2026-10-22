@@ -120,7 +120,8 @@ class Index extends BaseBillingComponent
 
     public function delete($id)
     {
-        $payment = Payment::with('invoices')->findOrFail($id);
+        $payment = Payment::withoutGlobalScopes()->with('invoices')->findOrFail($id);
+        $this->authorize('delete', $payment);
         
         // Reverse invoice paid_amount
         foreach ($payment->invoices as $invoice) {
@@ -137,10 +138,15 @@ class Index extends BaseBillingComponent
     {
         if (empty($this->selected)) return;
 
-        $payments = Payment::with('invoices')->whereIn('id', array_map('intval', $this->selected))->get();
+        $payments = Payment::withoutGlobalScopes()->with('invoices')->whereIn('id', array_map('intval', $this->selected))->get();
         $count = 0;
         
         foreach ($payments as $payment) {
+            try {
+                $this->authorize('delete', $payment);
+            } catch (\Throwable) {
+                continue;
+            }
             // Reverse invoice paid_amount
             foreach ($payment->invoices as $invoice) {
                 $invoice->paid_amount = max(0, $invoice->paid_amount - $payment->amount);
@@ -157,51 +163,106 @@ class Index extends BaseBillingComponent
         session()->flash('success', "$count Pembayaran berhasil dihapus dan tagihan terkait telah diperbarui!");
     }
 
-    protected function buildQuery()
+    public function getIsResellerProperty(): bool
     {
-        $query = Payment::with(['customer'])
-            ->when(auth()->user()->hasRole('reseller'), function($q) {
-                $q->whereHas('customer', function($cq) {
-                    $cq->where(function($qq) {
-                        $qq->where('reseller_id', auth()->id())
-                           ->orWhere('created_by', auth()->id());
-                    });
-                });
-            });
+        $user = auth()->user();
+        return $user && ($user->hasRole('reseller') || !empty($user->getEffectiveResellerId()));
+    }
 
-        if ($this->search) {
-            $query->where(function($q) {
-                $q->where('reference_number', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('customer', function($q) {
-                      $q->where('name', 'like', '%' . $this->search . '%');
+    public function getEffectiveResellerIdProperty(): ?int
+    {
+        $user = auth()->user();
+        return $user ? ($user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null)) : null;
+    }
+
+    public function mount()
+    {
+        parent::mount();
+        $this->authorize('viewAny', Payment::class);
+
+        $reqFilters = request('filters', []);
+        $this->filters = [
+            'status' => $reqFilters['status'] ?? '',
+            'method' => $reqFilters['method'] ?? ($reqFilters['payment_method'] ?? ''),
+            'reseller_id' => $reqFilters['reseller_id'] ?? 'all',
+        ];
+
+        if ($this->isReseller) {
+            $this->activeModule = 'reseller-portal';
+            $this->activePage = 'reseller-portal.billing.payments';
+            $this->breadcrumbs = [
+                ['label' => 'Portal Reseller', 'url' => route('reseller-portal.dashboard')],
+                ['label' => 'Data Tagihan', 'url' => route('reseller-portal.billing.payments')],
+                ['label' => 'Pembayaran'],
+            ];
+            $this->filters['reseller_id'] = (string) $this->effectiveResellerId;
+        } else {
+            $this->activeModule = 'billing';
+            $this->activePage = 'payments';
+            $this->breadcrumbs = [
+                ['label' => 'Dashboard', 'url' => route('dashboard')],
+                ['label' => 'Billing', 'url' => route('billing.invoices.index')],
+                ['label' => 'Payments'],
+            ];
+        }
+    }
+
+    protected function buildQuery($forStats = false)
+    {
+        $query = Payment::withoutGlobalScopes()
+            ->with(['customer', 'invoices'])
+            ->where('gateway', '!=', 'reseller_topup');
+
+        if ($this->isReseller) {
+            $effectiveId = $this->effectiveResellerId;
+            $query->where(function($q) use ($effectiveId) {
+                $q->where('payments.reseller_id', $effectiveId)
+                  ->orWhere('payments.created_by', $effectiveId)
+                  ->orWhereHas('customer', function($cq) use ($effectiveId) {
+                      $cq->withoutGlobalScopes()->where(function($sub) use ($effectiveId) {
+                          $sub->where('customers.reseller_id', $effectiveId)
+                              ->orWhere('customers.created_by', $effectiveId);
+                      });
+                  });
+            });
+        } elseif (!empty($this->filters['reseller_id']) && $this->filters['reseller_id'] !== 'all') {
+            $resellerId = $this->filters['reseller_id'];
+            $query->where(function($q) use ($resellerId) {
+                $q->where('payments.reseller_id', $resellerId)
+                  ->orWhere('payments.created_by', $resellerId)
+                  ->orWhereHas('customer', function($cq) use ($resellerId) {
+                      $cq->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                          $sub->where('customers.reseller_id', $resellerId)
+                              ->orWhere('customers.created_by', $resellerId);
+                      });
                   });
             });
         }
 
-        if ($this->filters['status']) {
+        if ($this->search) {
+            $query->where(function($q) {
+                $q->where('reference_number', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('customer', function($cq) {
+                      $cq->withoutGlobalScopes()->where(function($sq) {
+                          $sq->where('name', 'like', '%' . $this->search . '%')
+                            ->orWhere('code', 'like', '%' . $this->search . '%')
+                            ->orWhere('phone', 'like', '%' . $this->search . '%');
+                      });
+                  });
+            });
+        }
+
+        if (!empty($this->filters['status']) && !$forStats) {
             $query->where('status', $this->filters['status']);
         }
 
-        if ($this->filters['method']) {
-            $query->where('method', $this->filters['method']);
+        $methodFilter = $this->filters['method'] ?? ($this->filters['payment_method'] ?? '');
+        if (!empty($methodFilter)) {
+            $query->where('method', $methodFilter);
         }
 
         return $query;
     }
-    public function mount()
-    {
-        parent::mount();
-        $this->activeModule = 'billing';
-        $this->activePage = 'payments';
-        $this->filters = ['status' => '', 'method' => ''];
-        $this->breadcrumbs = [
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Billing', 'url' => route('billing.invoices.index')],
-            ['label' => 'Payments'],
-        ];
-    }
-
-
 
     public function export()
     {
@@ -214,14 +275,7 @@ class Index extends BaseBillingComponent
                        ->orderBy($this->sortField, $this->sortDirection)
                        ->paginate($this->perPage);
 
-        $baseStatsQuery = Payment::query()->when(auth()->user()->hasRole('reseller'), function($q) {
-            $q->whereHas('customer', function($cq) {
-                $cq->where(function($qq) {
-                    $qq->where('reseller_id', auth()->id())
-                       ->orWhere('created_by', auth()->id());
-                });
-            });
-        });
+        $baseStatsQuery = $this->buildQuery(true);
 
         $stats = [
             'total' => (clone $baseStatsQuery)->count(),
@@ -231,6 +285,9 @@ class Index extends BaseBillingComponent
             'failed' => (clone $baseStatsQuery)->where('status', 'failed')->count(),
         ];
 
-        return view('livewire.billing.payment.index', compact('payments', 'stats'));
+        $userQueryService = app(\App\Services\Auth\UserQueryService::class);
+        $resellers = $userQueryService->getResellers();
+
+        return view('livewire.billing.payment.index', compact('payments', 'stats', 'resellers'));
     }
 }

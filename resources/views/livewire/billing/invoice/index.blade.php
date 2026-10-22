@@ -91,7 +91,7 @@
                         <option value="paid">Lunas</option>
                         <option value="overdue">Jatuh Tempo</option>
                     </select>
-                    @if(auth()->user()->hasRole('administrator'))
+                    @if(!$this->isReseller && (auth()->user()->hasAnyRole(['administrator', 'superadmin', 'manager']) || !auth()->user()->hasRole('reseller')))
                     <select wire:model.live="filters.reseller_id" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Semua Reseller</option>
                         @foreach($resellers as $res)

@@ -91,13 +91,21 @@
                         <option value="pending">Menunggu</option>
                         <option value="failed">Gagal</option>
                     </select>
-                    <select wire:model.live="filters.payment_method" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                    <select wire:model.live="filters.method" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Semua Metode</option>
                         <option value="cash">Tunai</option>
                         <option value="transfer">Transfer Bank</option>
                         <option value="qris">QRIS</option>
                         <option value="payment_gateway">Gateway</option>
                     </select>
+                    @if(!$this->isReseller && (auth()->user()->hasAnyRole(['administrator', 'superadmin', 'manager']) || !auth()->user()->hasRole('reseller')))
+                    <select wire:model.live="filters.reseller_id" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">Semua Reseller</option>
+                        @foreach($resellers as $res)
+                            <option value="{{ $res->id }}">{{ $res->name }}</option>
+                        @endforeach
+                    </select>
+                    @endif
                     <select wire:model.live="perPage" class="col-span-2 sm:col-auto w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                         <option value="10">10 Baris</option>
                         <option value="25">25 Baris</option>
@@ -171,11 +179,16 @@
                                     <a href="{{ route('billing.payments.show', $payment->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Detail">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>
-                                    @if(auth()->user()->hasRole('administrator'))
+                                    @if($payment->invoices->count() > 0)
+                                        <a href="{{ route('billing.invoices.show', $payment->invoices->first()->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors" title="Print Invoice">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
+                                        </a>
+                                    @endif
+                                    @can('delete', $payment)
                                         <button wire:click="delete({{ $payment->id }})" onclick="confirm('Yakin ingin menghapus data pembayaran ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors" title="Hapus">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                         </button>
-                                    @endif
+                                    @endcan
                                 </div>
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
@@ -213,20 +226,6 @@
                             <td class="px-4 py-3 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
                                 Rp {{ number_format($payment->amount, 0, ',', '.') }}
                             </td>
-                            <td class="px-4 py-3 text-center whitespace-nowrap">
-    @if($payment->invoices->count() > 0)
-        <a href="{{ route('billing.invoices.show', $payment->invoices->first()->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Print Invoice">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
-        </a>
-    @else
-        <span class="text-xs text-slate-400 italic">Tanpa Invoice</span>
-    @endif
-    @if(auth()->user()->hasRole('administrator'))
-        <button wire:click="delete({{ $payment->id }})" onclick="confirm('Yakin ingin menghapus data pembayaran ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors" title="Hapus">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
-        </button>
-    @endif
-</td>
                         </tr>
                     @empty
                         <tr>

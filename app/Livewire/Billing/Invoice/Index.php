@@ -23,15 +23,25 @@ class Index extends BaseBillingComponent
     public $paymentMethod = 'cash';
     public $paymentReference = '';
 
+    public function getIsResellerProperty(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->hasRole('reseller') || !empty($user->getEffectiveResellerId()));
+    }
+
+    public function getEffectiveResellerIdProperty(): ?int
+    {
+        $user = auth()->user();
+        return $user ? ($user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null)) : null;
+    }
+
     public function mount()
     {
         parent::mount();
 
         $this->authorize('viewAny', Invoice::class);
 
-        $this->activeModule = 'billing';
-        $this->activePage = 'invoices';
-                $reqFilters = request('filters', []);
+        $reqFilters = request('filters', []);
         $defaultStatus = (isset($reqFilters['tahun']) || isset($reqFilters['bulan'])) ? '' : 'unpaid';
         
         $this->filters = [
@@ -42,11 +52,25 @@ class Index extends BaseBillingComponent
             'bulan' => $reqFilters['bulan'] ?? ''
         ];
         $this->perPage = 10;
-        $this->breadcrumbs = [
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Billing', 'url' => route('billing.invoices.index')],
-            ['label' => 'Invoices'],
-        ];
+
+        if ($this->isReseller) {
+            $this->activeModule = 'reseller-portal';
+            $this->activePage = 'reseller-portal.billing.invoices';
+            $this->breadcrumbs = [
+                ['label' => 'Portal Reseller', 'url' => route('reseller-portal.dashboard')],
+                ['label' => 'Data Tagihan', 'url' => route('reseller-portal.billing.invoices')],
+                ['label' => 'Semua Tagihan'],
+            ];
+            $this->filters['reseller_id'] = (string) $this->effectiveResellerId;
+        } else {
+            $this->activeModule = 'billing';
+            $this->activePage = 'invoices';
+            $this->breadcrumbs = [
+                ['label' => 'Dashboard', 'url' => route('dashboard')],
+                ['label' => 'Billing', 'url' => route('billing.invoices.index')],
+                ['label' => 'Invoices'],
+            ];
+        }
     }
 
     public function openFilterModal()
@@ -71,57 +95,71 @@ class Index extends BaseBillingComponent
         $this->resetPage();
     }
 
-    protected function buildScopedQuery()
+    protected function buildScopedQuery($forStats = false)
     {
-        $query = Invoice::query()->with(['customer.customerServices.serviceProfile', 'items', 'customer.reseller'])
+        $query = Invoice::withoutGlobalScopes()->with(['customer.customerServices.serviceProfile', 'items', 'customer.reseller'])
             ->whereNotExists(function ($sub) {
                 $sub->select('id')
                     ->from('voucher_orders')
                     ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
-            })
-            ->when(auth()->user()->hasRole('reseller'), function($q) {
-                $q->whereHas('customer', function($cq) {
-                    $cq->where(function($qq) {
-                        $qq->where('reseller_id', auth()->id())
-                           ->orWhere('created_by', auth()->id());
-                    });
-                });
             });
 
-        if ($this->activeTab === 'unpaid') {
-            $query->whereIn('status', ['pending', 'unpaid', 'partial', 'draft']);
-        } elseif ($this->activeTab === 'paid') {
-            $query->where('status', 'paid');
-        } elseif ($this->activeTab === 'overdue') {
-            $today = Carbon::today()->toDateString();
-            $query->where(function ($q) use ($today) {
-                $q->whereDate('due_date', '<', $today)
-                  ->whereIn('status', ['pending', 'unpaid', 'partial', 'draft']);
+        if ($this->isReseller) {
+            $effectiveId = $this->effectiveResellerId;
+            $query->where(function($q) use ($effectiveId) {
+                $q->where('invoices.reseller_id', $effectiveId)
+                  ->orWhereHas('customer', function($cq) use ($effectiveId) {
+                      $cq->withoutGlobalScopes()->where(function($sub) use ($effectiveId) {
+                          $sub->where('customers.reseller_id', $effectiveId)
+                              ->orWhere('customers.created_by', $effectiveId);
+                      });
+                  });
             });
+        } elseif (!empty($this->filters['reseller_id']) && $this->filters['reseller_id'] !== 'all') {
+            $resellerId = $this->filters['reseller_id'];
+            $query->where(function($q) use ($resellerId) {
+                $q->where('invoices.reseller_id', $resellerId)
+                  ->orWhereHas('customer', function($cq) use ($resellerId) {
+                      $cq->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                          $sub->where('customers.reseller_id', $resellerId)
+                              ->orWhere('customers.created_by', $resellerId);
+                      });
+                  });
+            });
+        }
+
+        if (!$forStats) {
+            if ($this->activeTab === 'unpaid') {
+                $query->whereIn('status', ['pending', 'unpaid', 'partial', 'draft']);
+            } elseif ($this->activeTab === 'paid') {
+                $query->where('status', 'paid');
+            } elseif ($this->activeTab === 'overdue') {
+                $today = Carbon::today()->toDateString();
+                $query->where(function ($q) use ($today) {
+                    $q->whereDate('due_date', '<', $today)
+                      ->whereIn('status', ['pending', 'unpaid', 'partial', 'draft']);
+                });
+            }
         }
 
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('invoice_number', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('customer', function($q) {
-                      $q->where('name', 'like', '%' . $this->search . '%')
-                        ->orWhere('code', 'like', '%' . $this->search . '%');
+                  ->orWhereHas('customer', function($cq) {
+                      $cq->withoutGlobalScopes()->where(function($sq) {
+                          $sq->where('name', 'like', '%' . $this->search . '%')
+                            ->orWhere('code', 'like', '%' . $this->search . '%')
+                            ->orWhere('phone', 'like', '%' . $this->search . '%');
+                      });
                   });
             });
         }
 
-                if (!empty($this->filters['tahun'])) {
+        if (!empty($this->filters['tahun'])) {
             $query->whereYear('issue_date', $this->filters['tahun']);
         }
         if (!empty($this->filters['bulan'])) {
             $query->whereMonth('issue_date', $this->filters['bulan']);
-        }
-
-        if (!empty($this->filters['reseller_id']) && $this->filters['reseller_id'] !== 'all') {
-            $resellerId = $this->filters['reseller_id'];
-            $query->whereHas('customer', function($q) use ($resellerId) {
-                $q->where('reseller_id', $resellerId);
-            });
         }
 
         if (!empty($this->filters['service_type']) && $this->filters['service_type'] !== 'all') {
@@ -212,7 +250,8 @@ class Index extends BaseBillingComponent
                 );
                 
                 session()->flash('success', 'Pembayaran berhasil dicatat!');
-                return redirect()->route('billing.invoices.show', $this->paymentInvoiceId);
+                $redirectRoute = $this->isReseller ? 'reseller-portal.billing.invoices.show' : 'billing.invoices.show';
+                return redirect()->route($redirectRoute, $this->paymentInvoiceId);
             } else {
                 // Bulk Payment
                 $invoices = Invoice::whereIn('id', array_map('intval', $this->selected))

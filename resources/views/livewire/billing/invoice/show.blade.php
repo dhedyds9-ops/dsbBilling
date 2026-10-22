@@ -25,7 +25,7 @@
     </style>
 
     <div class="no-print mb-4 flex justify-between items-center px-4 md:px-8">
-        <a href="{{ route('billing.invoices.index') }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50 flex items-center gap-2 transition-colors">
+        <a href="{{ auth()->user()->hasRole('reseller') ? route('reseller-portal.billing.invoices') : route('billing.invoices.index') }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50 flex items-center gap-2 transition-colors">
             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">arrow_back</span>
             Kembali
         </a>
