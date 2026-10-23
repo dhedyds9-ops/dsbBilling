@@ -219,7 +219,7 @@ class HotspotService
 
     protected function provisionToMikrotik(HotspotUser $hotspotUser, bool $isCreate = false): void
     {
-        if ($isCreate) return;
+        if ($isCreate || $hotspotUser->wasRecentlyCreated) return;
         $this->kickActiveSession($hotspotUser);
     }
 
@@ -240,6 +240,9 @@ class HotspotService
 
     private function kickActiveSession(HotspotUser $hotspotUser): void
     {
+        if ($hotspotUser->wasRecentlyCreated) return;
+        if (!($hotspotUser->is_online ?? false)) return;
+
         $routers = $this->resolveRouters($hotspotUser->serviceProfile);
         if (empty($routers)) return;
 

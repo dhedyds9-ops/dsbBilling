@@ -153,8 +153,10 @@ class Customer extends Model
     public function scopeWithoutGuests($query)
     {
         return $query->where(function ($q) {
-            $q->whereNull('code')
-              ->orWhere('code', 'not like', 'GST-%');
+            $q->where(function ($sq) {
+                $sq->whereNull('code')
+                  ->orWhere('code', 'not like', 'GST-%');
+            })->orWhereHas('customerServices');
         });
     }
 }

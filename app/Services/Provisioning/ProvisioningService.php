@@ -369,17 +369,34 @@ class ProvisioningService
             }
         }
 
-        // Try to find by phone
-        $customer = Customer::where('phone', $data['phone'])->first();
+        // Try to find by phone (normalisasi 0 / 62)
+        $customer = Customer::withoutGlobalScopes()
+            ->where(function($q) use ($phone, $phone0, $phone62) {
+                $q->where('phone', $phone)
+                  ->orWhere('phone', $phone0)
+                  ->orWhere('phone', $phone62);
+            })
+            ->first();
+
+        // Cek apakah customer yang ditemukan adalah akun guest voucher
+        $isGuest = $customer && (empty($customer->code) || str_starts_with($customer->code, 'GST-') || str_starts_with($customer->name, 'Guest '));
+
+        // Jika customer yang ditemukan BUKAN guest tapi namanya berbeda secara signifikan:
+        // Jangan timpa/gabungkan akun orang lain, melainkan buat customer baru
+        if ($customer && !$isGuest && !empty($data['name']) && strcasecmp(trim($customer->name), trim($data['name'])) !== 0) {
+            $customer = null;
+        }
 
         if (!$customer) {
+            $generatedCode = $data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate();
+
             // Create user portal login
             $user = \App\Models\User::create([
                 'name' => $data['name'],
                 'email' => $data['email'] ?? null,
                 'whatsapp' => $data['phone'],
-                'customer_code' => $data['customer_code'] ?? null,
-                'username' => $data['customer_code'] ?? null,
+                'customer_code' => $generatedCode,
+                'username' => $generatedCode,
                 'pppoe_username' => $data['username'] ?? null,
                 'password' => \Illuminate\Support\Facades\Hash::make('123456'),
                 'is_active' => true,
@@ -388,11 +405,6 @@ class ProvisioningService
             if ($role = \App\Models\Role::where('name', 'customer')->first()) {
                 $user->roles()->attach($role->id);
             }
-
-            $generatedCode = $data['customer_code'] ?? $user->customer_code ?? \App\Services\CRM\CustomerCodeGenerator::generate();
-            
-            // Sync generated code back to user
-            $user->update(['customer_code' => $generatedCode]);
 
             $customer = Customer::create([
                 'code' => $generatedCode,
@@ -409,14 +421,59 @@ class ProvisioningService
                 'updated_by' => $userId,
             ]);
         } else {
+            // Jika customer yang ditemukan adalah Guest Voucher, upgrade menjadi regular customer
+            if ($isGuest) {
+                $newCode = $data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate();
+                $customer->update([
+                    'code' => $newCode,
+                    'name' => $data['name'],
+                    'email' => $data['email'] ?? $customer->email,
+                    'address' => $data['address'] ?? $customer->address,
+                    'latitude' => $data['latitude'] ?? $customer->latitude,
+                    'longitude' => $data['longitude'] ?? $customer->longitude,
+                    'reseller_id' => !empty($data['reseller_id']) ? $data['reseller_id'] : $customer->reseller_id,
+                    'status' => 'active',
+                    'updated_by' => $userId,
+                ]);
+
+                if (!empty($customer->user_id)) {
+                    $user = \App\Models\User::find($customer->user_id);
+                    if ($user) {
+                        $user->update([
+                            'name' => $data['name'],
+                            'customer_code' => $newCode,
+                            'username' => $newCode,
+                            'email' => $data['email'] ?? $user->email,
+                            'is_active' => true,
+                        ]);
+                    }
+                }
+            } else {
+                $updateFields = [];
+                if (!empty($data['address']) && empty($customer->address)) {
+                    $updateFields['address'] = $data['address'];
+                }
+                if (!empty($data['reseller_id']) && empty($customer->reseller_id)) {
+                    $updateFields['reseller_id'] = $data['reseller_id'];
+                }
+                if (!empty($updateFields)) {
+                    $customer->update($updateFields);
+                }
+            }
+
             // Jika customer sudah ada tapi belum punya akun login portal, buatkan sekarang
             if (empty($customer->user_id)) {
+                $code = $customer->code ?: ($data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate());
+                if (empty($customer->code)) {
+                    $customer->update(['code' => $code]);
+                }
+
                 $user = \App\Models\User::create([
                     'name' => $customer->name,
                     'email' => $customer->email,
                     'whatsapp' => $customer->phone,
-                    'customer_code' => $customer->code,
-                    'username' => $customer->code,
+                    'customer_code' => $code,
+                    'username' => $code,
                     'password' => \Illuminate\Support\Facades\Hash::make('123456'),
                     'is_active' => true,
                 ]);

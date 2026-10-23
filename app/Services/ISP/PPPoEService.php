@@ -189,7 +189,7 @@ class PPPoEService
 
     protected function provisionToMikrotik(PPPoEUser $pppoeUser, bool $isCreate = false): void
     {
-        if ($isCreate) return;
+        if ($isCreate || $pppoeUser->wasRecentlyCreated) return;
         $this->kickActiveSession($pppoeUser);
     }
 
@@ -205,6 +205,9 @@ class PPPoEService
 
     private function kickActiveSession(PPPoEUser $pppoeUser): void
     {
+        if ($pppoeUser->wasRecentlyCreated) return;
+        if (!$pppoeUser->is_online) return;
+
         $routers = $this->resolveRouters($pppoeUser->serviceProfile);
         if (empty($routers)) return;
 
