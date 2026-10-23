@@ -118,12 +118,20 @@
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
                         <span>Sinkron</span>
                     </button>
-                    <button wire:click="export" class="flex-1 sm:flex-none justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 whitespace-nowrap">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span> Export
+                    <button wire:click="export" wire:loading.attr="disabled" class="flex-1 sm:flex-none justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50" title="Export Excel">
+                        <span wire:loading.remove wire:target="export" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span>
+                        <svg wire:loading wire:target="export" class="animate-spin -ml-1 mr-1 h-4 w-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="export">Export</span>
+                        <span wire:loading wire:target="export">Mengunduh...</span>
                     </button>
+                    @if(!$this->isReseller)
                     <a href="{{ route('billing.payments.create') }}" class="w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span> Catat Pembayaran
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -176,11 +184,11 @@
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sync</span>
                                         </button>
                                     @endif
-                                    <a href="{{ route('billing.payments.show', $payment->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Detail">
+                                    <a href="{{ $this->isReseller ? route('reseller-portal.billing.payments.show', $payment->id) : route('billing.payments.show', $payment->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Detail">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>
                                     @if($payment->invoices->count() > 0)
-                                        <a href="{{ route('billing.invoices.show', $payment->invoices->first()->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors" title="Print Invoice">
+                                        <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $payment->invoices->first()->id) : route('billing.invoices.show', $payment->invoices->first()->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors" title="Print Invoice">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
                                         </a>
                                     @endif
@@ -199,7 +207,7 @@
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
     @if($payment->invoices->count() > 0)
-        <a href="{{ route('billing.invoices.show', $payment->invoices->first()->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
+        <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $payment->invoices->first()->id) : route('billing.invoices.show', $payment->invoices->first()->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
             {{ $payment->invoices->first()->invoice_number }}
         </a>
     @else

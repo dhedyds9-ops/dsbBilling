@@ -390,7 +390,22 @@ class Index extends BaseBillingComponent
     public function export()
     {
         $this->authorize('export', Invoice::class);
-        session()->flash('info', 'Fitur export invoice sedang disiapkan.');
+
+        $invoices = $this->buildScopedQuery()
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+
+        $filename = 'data-tagihan-' . now()->format('YmdHis') . '.xlsx';
+
+        return response()->streamDownload(function () use ($invoices) {
+            echo \Maatwebsite\Excel\Facades\Excel::raw(
+                new \App\Exports\InvoiceExport($invoices, $this->isReseller),
+                \Maatwebsite\Excel\Excel::XLSX
+            );
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     public function render()

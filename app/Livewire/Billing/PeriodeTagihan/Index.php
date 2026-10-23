@@ -192,7 +192,7 @@ class Index extends BaseEnterpriseList
         }, 'Gagal memproses bulk action') ?? 0;
     }
 
-    public function exportCsv(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
+    public function exportCsv(): \Symfony\Component\HttpFoundation\StreamedResponse|\Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\RedirectResponse
     {
         try {
             $svc = app(PeriodeTagihanService::class);
@@ -202,6 +202,11 @@ class Index extends BaseEnterpriseList
             session()->flash('error', 'Export gagal: ' . $e->getMessage());
             return redirect()->back();
         }
+    }
+
+    public function kirimWaPeriode(int $tahun, int $bulan): void
+    {
+        $this->confirmRowAction('send-wa', $tahun, $bulan);
     }
 
     public function confirmRowAction(string $action, int $tahun, int $bulan): void

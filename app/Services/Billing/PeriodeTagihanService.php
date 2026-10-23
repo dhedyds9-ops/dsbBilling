@@ -320,35 +320,46 @@ class PeriodeTagihanService
     {
         $count = 0;
         $invoices = Invoice::with('customer')->whereIn('id', $invoiceIds)->get();
+        $waService = app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class);
+
         foreach ($invoices as $inv) {
             if (!empty($inv->customer?->phone)) {
-                $count++;
+                try {
+                    $waService->notifyInvoiceCreated($inv);
+                    $count++;
+                } catch (\Throwable $e) {
+                    Log::warning("Gagal kirim WA invoice #{$inv->id}: " . $e->getMessage());
+                }
             }
         }
         return $count;
     }
 
-    public function exportCsv($rows): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function exportCsv($rows): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $filename = 'periode_tagihan_' . date('Ymd_His') . '.csv';
-        $path = storage_path('app/private/' . $filename);
-        $handle = fopen($path, 'w+');
-        fputcsv($handle, [
-            'Periode', 'Jumlah Invoice', 'Total Tagihan',
-            'Sudah Dibayar', 'Belum Dibayar', 'Lunas (%)', 'Overdue',
-        ]);
-        foreach ($rows as $r) {
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
             fputcsv($handle, [
-                $r->label_periode ?? ($r->tahun . '-' . $r->bulan),
-                $r->jumlah_invoice,
-                (string)$r->total_tagihan,
-                (string)$r->sudah_dibayar,
-                (string)$r->belum_dibayar,
-                ($r->lunas_pct ?? 0) . '%',
-                (string)($r->overdue_count ?? 0),
+                'Periode', 'Jumlah Invoice', 'Total Tagihan',
+                'Sudah Dibayar', 'Belum Dibayar', 'Lunas (%)', 'Overdue',
             ]);
-        }
-        fclose($handle);
-        return response()->download($path, $filename)->deleteFileAfterSend(true);
+            foreach ($rows as $r) {
+                fputcsv($handle, [
+                    $r->label_periode ?? ($r->tahun . '-' . $r->bulan),
+                    $r->jumlah_invoice,
+                    (string)$r->total_tagihan,
+                    (string)$r->sudah_dibayar,
+                    (string)$r->belum_dibayar,
+                    ($r->lunas_pct ?? 0) . '%',
+                    (string)($r->overdue_count ?? 0),
+                ]);
+            }
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }

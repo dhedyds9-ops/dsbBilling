@@ -266,7 +266,23 @@ class Index extends BaseBillingComponent
 
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        $this->authorize('export', Payment::class);
+
+        $payments = $this->buildQuery()
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+
+        $filename = 'data-pembayaran-' . now()->format('YmdHis') . '.xlsx';
+
+        return response()->streamDownload(function () use ($payments) {
+            echo \Maatwebsite\Excel\Facades\Excel::raw(
+                new \App\Exports\PaymentExport($payments, $this->isReseller),
+                \Maatwebsite\Excel\Excel::XLSX
+            );
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     public function render()

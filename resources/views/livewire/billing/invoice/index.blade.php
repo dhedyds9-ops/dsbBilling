@@ -107,14 +107,21 @@
                     </select>
                 </div>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <button wire:click="export" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap" title="Export">
-                        <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">download</span>
-                        <span class="hidden sm:inline">Export</span>
+                    <button wire:click="export" wire:loading.attr="disabled" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap disabled:opacity-50" title="Export Excel">
+                        <span wire:loading.remove wire:target="export" class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">download</span>
+                        <svg wire:loading wire:target="export" class="animate-spin -ml-1 mr-2 h-4 w-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="export" class="hidden sm:inline">Export</span>
+                        <span wire:loading wire:target="export" class="hidden sm:inline">Mengunduh...</span>
                     </button>
+                    @if(!$this->isReseller)
                     <a href="{{ route('billing.invoices.create') }}" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap" title="Buat Manual">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">add</span>
                         <span class="hidden sm:inline">Buat Manual</span>
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -168,7 +175,7 @@
                             </td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-1.5">
-                                    <a href="{{ route('billing.invoices.show', $invoice->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Detail">
+                                    <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $invoice->id) : route('billing.invoices.show', $invoice->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Detail">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>
                                     @if(in_array($invoice->status, ['unpaid', 'partial', 'overdue', 'pending']))
@@ -179,7 +186,7 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                                <a href="{{ route('billing.invoices.show', $invoice->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $invoice->id) : route('billing.invoices.show', $invoice->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $invoice->invoice_number }}
                                 </a>
                             </td>

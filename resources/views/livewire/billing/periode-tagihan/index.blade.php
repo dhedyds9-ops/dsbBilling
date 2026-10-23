@@ -84,11 +84,23 @@
                 </select>
             </div>
             <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0 justify-end">
-                <button wire:click="exportCsv" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate text-[18px]">download</span> <span>Export</span>
+                <button wire:click="exportCsv" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap disabled:opacity-50">
+                    <span wire:loading.remove wire:target="exportCsv" class="material-symbols-outlined notranslate text-[18px]">download</span>
+                    <svg wire:loading wire:target="exportCsv" class="animate-spin -ml-1 mr-1 h-4 w-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span wire:loading.remove wire:target="exportCsv">Export</span>
+                    <span wire:loading wire:target="exportCsv">Mengunduh...</span>
                 </button>
-                <button wire:click="kirimWaSemua" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate text-[18px]">send</span> <span>WhatsApp</span>
+                <button wire:click="kirimWaSemua" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors whitespace-nowrap disabled:opacity-50">
+                    <span wire:loading.remove wire:target="kirimWaSemua" class="material-symbols-outlined notranslate text-[18px]">send</span>
+                    <svg wire:loading wire:target="kirimWaSemua" class="animate-spin -ml-1 mr-1 h-4 w-4 text-green-700 dark:text-green-400" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span wire:loading.remove wire:target="kirimWaSemua">WhatsApp</span>
+                    <span wire:loading wire:target="kirimWaSemua">Mengirim...</span>
                 </button>
                 <button wire:click="openRegenerate" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors whitespace-nowrap">
                     <span class="material-symbols-outlined notranslate text-[18px]">repeat</span> <span>Regenerate</span>
