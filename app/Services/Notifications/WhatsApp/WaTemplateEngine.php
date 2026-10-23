@@ -52,24 +52,39 @@ final class WaTemplateEngine
     public function customerCreated(array $d): string
     {
         $nama = $this->e($d['customer_name'] ?? 'Pelanggan');
-        $username = $this->e($d['username'] ?? '-');
-        $password = $this->e($d['password'] ?? '-');
-        $portalCode = $this->e($d['portal_password'] ?? '-');
-        $portalUrl = rtrim(config('app.url'), '/') . '/login/customer';
+        $paket = $this->e($d['package_name'] ?? ($d['paket'] ?? '-'));
+        $due = $this->e($d['due_date'] ?? ($d['tanggal_jatuh_tempo'] ?? '-'));
+        $serviceType = strtolower($d['service_type'] ?? ($d['layanan'] ?? 'pppoe'));
         
-        return "🎉 *SELAMAT DATANG!*\n\n"
-            . "Yth. *{$nama}*,\n"
-            . "Terima kasih telah bergabung dengan layanan internet kami.\n\n"
-            . "Berikut adalah detail akun layanan Anda:\n"
-            . "👤 Username Internet : *{$username}*\n"
-            . "🔑 Password Internet : *{$password}*\n\n"
-            . "📱 *AKSES PORTAL PELANGGAN*\n"
-            . "Untuk melihat tagihan dan paket, silakan login di portal:\n"
-            . "🔗 Link: {$portalUrl}\n"
-            . "Ketik salah satu data berikut di kolom login:\n"
-            . "• No WhatsApp Anda\n"
-            . "• Kode Akses: *{$portalCode}*\n\n"
+        $portalUrl = rtrim(config('app.url'), '/') . '/login/customer';
+        $portalUser = $this->e($d['portal_username'] ?? ($d['username'] ?? '-'));
+        $portalPass = $this->e($d['portal_password'] ?? '123456');
+
+        $msg = "🎉 *SELAMAT DATANG!*\n\n"
+            . "Halo *{$nama}*,\n"
+            . "Terima kasih telah bergabung dengan layanan internet kami. Layanan Anda telah aktif.\n\n"
+            . "📋 *INFORMASI LANGGANAN*\n"
+            . "• Nama Pelanggan : *{$nama}*\n"
+            . "• Paket          : *{$paket}*\n"
+            . "• Jatuh Tempo    : *{$due}*\n\n";
+
+        if ($serviceType === 'hotspot') {
+            $hotspotUser = $this->e($d['hotspot_username'] ?? ($d['username'] ?? '-'));
+            $hotspotPass = $this->e($d['hotspot_password'] ?? ($d['password'] ?? '-'));
+            $msg .= "📶 *AKUN LOGIN HOTSPOT*\n"
+                . "• Username Hotspot : *{$hotspotUser}*\n"
+                . "• Password Hotspot : *{$hotspotPass}*\n\n";
+        }
+
+        $msg .= "📱 *LOGIN PORTAL CUSTOMER*\n"
+            . "Akses info tagihan, profil, dan layanan Anda melalui portal:\n"
+            . "• Link Portal : {$portalUrl}\n"
+            . "• Username    : *{$portalUser}*\n"
+            . "• Password    : *{$portalPass}*\n\n"
+            . "Simpan pesan ini untuk kenyamanan Anda dalam menggunakan layanan.\n"
             . "Terima kasih 🙏\n— " . $this->brand();
+
+        return $msg;
     }
 
     /** 2. Reminder tagihan H-3 / H-1 sebelum jatuh tempo */

@@ -180,6 +180,28 @@ class ProvisioningService
                 $userId
             ));
 
+            // Step 11: Otomatis kirim notifikasi WhatsApp ke Pelanggan Baru via Gateway
+            try {
+                $user = \App\Models\User::find($customer->user_id);
+                $dueDate = isset($invoice) && $invoice?->due_date 
+                    ? (is_object($invoice->due_date) ? $invoice->due_date->format('d M Y') : (string)$invoice->due_date)
+                    : now()->addMonth()->format('d M Y');
+
+                app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->notifyCustomerCreated(
+                    $customer,
+                    [
+                        'service_type' => 'pppoe',
+                        'package_name' => $serviceProfile?->name ?? 'Internet PPPoE',
+                        'due_date' => $dueDate,
+                        'portal_username' => $user?->username ?? $customer->code ?? $customer->phone,
+                        'portal_password' => '123456',
+                    ],
+                    sync: true
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Gagal kirim WA notif pelanggan PPPoE baru: ' . $e->getMessage());
+            }
+
             return [
                 'success' => true,
                 'customer' => $customer,
@@ -333,6 +355,30 @@ class ProvisioningService
                 $customer->id,
                 $userId
             ));
+
+            // Step 11: Otomatis kirim notifikasi WhatsApp ke Pelanggan Baru via Gateway
+            try {
+                $user = \App\Models\User::find($customer->user_id);
+                $dueDate = isset($invoice) && $invoice?->due_date 
+                    ? (is_object($invoice->due_date) ? $invoice->due_date->format('d M Y') : (string)$invoice->due_date)
+                    : now()->addMonth()->format('d M Y');
+
+                app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->notifyCustomerCreated(
+                    $customer,
+                    [
+                        'service_type' => 'hotspot',
+                        'package_name' => $serviceProfile?->name ?? 'Internet Hotspot',
+                        'due_date' => $dueDate,
+                        'hotspot_username' => $data['username'],
+                        'hotspot_password' => $data['password'],
+                        'portal_username' => $user?->username ?? $customer->code ?? $customer->phone,
+                        'portal_password' => '123456',
+                    ],
+                    sync: true
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Gagal kirim WA notif pelanggan Hotspot baru: ' . $e->getMessage());
+            }
 
             return [
                 'success' => true,

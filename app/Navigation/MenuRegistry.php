@@ -69,7 +69,7 @@ class MenuRegistry
                             ['label' => 'Customer', 'route' => 'crm.customers.index', 'active' => 'crm.customers.*'],
                             ['label' => 'PPPoE', 'route' => 'isp.pppoe-users.index', 'active' => 'isp.pppoe-users.*'],
                             ['label' => 'Hotspot', 'route' => 'isp.hotspot-users.index', 'active' => 'isp.hotspot-users.*'],
-                            ['label' => 'Hotspot Cookies', 'route' => 'isp.hotspot-cookies.index', 'active' => 'isp.hotspot-cookies.*'],
+                            ['label' => 'Cookies', 'route' => 'isp.hotspot-cookies.index', 'active' => 'isp.hotspot-cookies.*'],
                             ['label' => 'Voucher', 'route' => 'isp.vouchers.index', 'active' => 'isp.vouchers.*'],
                             ['label' => 'E-Voucher', 'route' => 'isp.evouchers.index', 'active' => 'isp.evouchers.*'],
                             ['label' => 'Online', 'route' => 'isp.user-online.index', 'active' => 'isp.user-online.*'],
@@ -317,11 +317,11 @@ class MenuRegistry
                         'label' => 'List Pelanggan',
                         'icon' => 'people',
                         'items' => [
-                            ['label' => 'Semua Customer', 'route' => 'reseller-portal.customers.index', 'active' => 'reseller-portal.customers.index'],
+                            ['label' => 'Customer', 'route' => 'reseller-portal.customers.index', 'active' => 'reseller-portal.customers.index'],
                             ['label' => 'PPPoE', 'route' => 'reseller-portal.customers.pppoe', 'active' => 'reseller-portal.customers.pppoe'],
                             ['label' => 'Hotspot', 'route' => 'reseller-portal.customers.hotspot', 'active' => 'reseller-portal.customers.hotspot'],
                             ['label' => 'Voucher', 'route' => 'reseller-portal.sales.voucher', 'active' => 'reseller-portal.sales.voucher'],
-                            ['label' => 'User Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online'],
+                            ['label' => 'Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online'],
                             ['label' => 'Riwayat Instalasi', 'route' => 'reseller-portal.customers.installation-history', 'active' => 'reseller-portal.customers.installation-history'],
                             ['label' => 'Terisolir', 'route' => 'reseller-portal.customers.isolated', 'active' => 'reseller-portal.customers.isolated'],
                         ]

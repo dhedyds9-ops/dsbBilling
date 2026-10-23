@@ -175,7 +175,6 @@
                             <th class="px-4 py-3 text-left font-semibold">
                                 <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
                             </th>
-                            <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Id</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Username</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Password</th>
@@ -187,7 +186,8 @@
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Jatuh Tempo</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner Data</th>
                             <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
-                            </tr>
+                            <th class="px-4 py-3 text-right font-semibold whitespace-nowrap">Aksi</th>
+                        </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                         @forelse($vouchers as $voucher)
@@ -232,21 +232,6 @@
                             <tr class="{{ $rowBg }}">
                                 <td class="px-4 py-3">
                                     <input type="checkbox" wire:model.live="selectedIds" value="{{ $voucher->id }}" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm focus:ring-indigo-500">
-                                </td>
-                                <td class="px-4 py-3 text-center whitespace-nowrap">
-                                    <div class="flex items-center justify-center gap-1">
-                                        <button wire:click="printSingle({{ $voucher->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Cetak Voucher & Batch">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
-                                        </button>
-                                        @if(!$isExpired)
-                                            <button wire:click="markAsExpired({{ $voucher->id }})" onclick="confirm('Tandai voucher ini sebagai Expired?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Tandai Expired">
-                                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">timer_off</span>
-                                            </button>
-                                        @endif
-                                        <button wire:click="delete({{ $voucher->id }})" onclick="confirm('Yakin ingin menghapus voucher ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
-                                        </button>
-                                    </div>
                                 </td>
                                 <td class="px-4 py-3 {{ $textSecondary }} font-mono text-xs">
                                     {{ $voucher->id }}
@@ -315,10 +300,25 @@
                                         </span>
                                     @endif
                                 </td>
+                                <td class="px-4 py-3 text-right whitespace-nowrap">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button wire:click="printSingle({{ $voucher->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Cetak Voucher & Batch">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
+                                        </button>
+                                        @if(!$isExpired)
+                                            <button wire:click="markAsExpired({{ $voucher->id }})" onclick="confirm('Tandai voucher ini sebagai Expired?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Tandai Expired">
+                                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">timer_off</span>
+                                            </button>
+                                        @endif
+                                        <button wire:click="delete({{ $voucher->id }})" onclick="confirm('Yakin ingin menghapus voucher ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                                <td colspan="14" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
                                     <div class="flex flex-col items-center justify-center">
                                         <span class="material-symbols-outlined notranslate mb-2 text-slate-300" translate="no" style="font-size:48px">confirmation_number</span>
                                         <p>Belum ada data Voucher</p>

@@ -4,7 +4,7 @@
             <span class="material-symbols-outlined notranslate" translate="no">cookie</span>
         </div>
         <div>
-            <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Hotspot Cookies</h1>
+            <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Cookies</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">Daftar active MAC-Cookies dari Router MikroTik</p>
         </div>
     </div>

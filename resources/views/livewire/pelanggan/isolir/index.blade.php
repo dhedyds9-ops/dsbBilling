@@ -123,7 +123,6 @@
                 class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
             </label>
           </th>
-          <th class="w-32 px-3 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aksi</th>
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('username')">
             Username{!! $sortIcon('username') !!}
           </th>
@@ -148,6 +147,7 @@
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('last_due_date')">
             Jatuh Tempo Terakhir{!! $sortIcon('last_due_date') !!}
           </th>
+          <th class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aksi</th>
           </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
@@ -163,19 +163,6 @@
                 <input type="checkbox" value="{{ $displayId }}" wire:model.live="selected"
                   class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
               </label>
-            </td>
-            <td class="px-3 py-2 text-center whitespace-nowrap">
-              <div class="flex items-center justify-center gap-1">
-                @if($row->status === 'isolated')
-                  <button wire:click="restoreOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1 rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100" title="Pulihkan">
-                    <span class="material-symbols-outlined text-[16px]">lock_open</span>
-                  </button>
-                @else
-                  <button wire:click="isolateOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100" title="Isolir">
-                    <span class="material-symbols-outlined text-[16px]">lock</span>
-                  </button>
-                @endif
-              </div>
             </td>
             <td class="px-3 py-2">
               <div class="flex items-center gap-2">
@@ -205,8 +192,17 @@
             <td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-xs">
               {{ $row->last_due_date ? (is_string($row->last_due_date) ? $row->last_due_date : \Illuminate\Support\Carbon::parse($row->last_due_date)->format('d/m/Y')) : '-' }}
             </td>
-            <td class="px-3 py-2">
+            <td class="px-3 py-2 text-right">
               <div class="flex items-center justify-end gap-1">
+                @if($row->status === 'isolated')
+                  <button wire:click="restoreOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1.5 rounded-md text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400" title="Pulihkan">
+                    <span class="material-symbols-outlined notranslate text-[16px]">lock_open</span>
+                  </button>
+                @else
+                  <button wire:click="isolateOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1.5 rounded-md text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400" title="Isolir">
+                    <span class="material-symbols-outlined notranslate text-[16px]">lock</span>
+                  </button>
+                @endif
                 <button wire:click="confirmRowAction('activate', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Aktifkan"
                   class="p-1.5 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>

@@ -76,22 +76,21 @@ final class WhatsAppNotificationService
     }
 
     /**
+     * @param array<string,mixed> $credentials
      * @param array<string,mixed> $extra
      */
-    public function notifyCustomerCreated(Customer $customer, array $credentials, array $extra = []): void
+    public function notifyCustomerCreated(object $customer, array $credentials, array $extra = [], bool $sync = true): void
     {
         $phone = $this->phoneOf($customer);
         if (!$phone) return;
         
         $txt = $this->template->customerCreated([
             'customer_name' => $customer->name ?? $customer->full_name ?? 'Pelanggan',
-            'username' => $credentials['username'] ?? '-',
-            'password' => $credentials['password'] ?? '-',
-            'portal_password' => $credentials['portal_password'] ?? '-',
+            ...$credentials,
             ...$extra,
         ]);
         
-        $this->dispatchSend($phone, $txt, category: 'info', priorityHigh: true);
+        $this->dispatchSend($phone, $txt, category: 'info', priorityHigh: true, sync: $sync);
     }
 
     /**
@@ -423,7 +422,7 @@ final class WhatsAppNotificationService
     //  HELPERS
     // ================================================================
 
-    private function dispatchSend(string $phone, string $text, string $category = 'general', bool $priorityHigh = false): void
+    private function dispatchSend(string $phone, string $text, string $category = 'general', bool $priorityHigh = false, bool $sync = false): void
     {
         $msg = new WaOutgoingMessage(
             toPhone: $phone,
@@ -440,6 +439,15 @@ final class WhatsAppNotificationService
             'category' => $category,
             'status' => 'pending'
         ]);
+
+        if ($sync) {
+            try {
+                SendWaMessageJob::dispatchSync($msg, $history->id);
+                return;
+            } catch (\Throwable $e) {
+                Log::warning('[WA-DISPATCH] Sync send failed, falling back to queue: ' . $e->getMessage());
+            }
+        }
 
         SendWaMessageJob::dispatch($msg, $history->id)->onQueue('notifications-wa');
     }
