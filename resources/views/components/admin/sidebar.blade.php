@@ -120,7 +120,7 @@
                                     @endphp
                                     <a
                                         href="{{ $itemUrl }}"
-                                        class="group flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors {{ $itemIsActive ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 font-medium' }}"
+                                        class="group flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors {{ $itemIsActive ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 font-medium' }}"
                                     >
                                         <span class="material-symbols-outlined w-5 h-5 flex items-center justify-center transition-colors {{ $itemIsActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400' }}">{{ $itemIcon }}</span>
                                         <span x-show="!sidebarCollapsed" class="flex-1">{{ $itemLabel }}</span>
@@ -168,12 +168,12 @@
 
                                                 <!-- Active Blue Dot -->
                                                 @if($itemIsActive)
-                                                    <div class="absolute left-[19px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full bg-blue-600 ring-4 ring-white dark:ring-[#111c36] z-10"></div>
+                                                    <div class="absolute left-[18px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-900/70 z-10"></div>
                                                 @endif
 
                                                 <a
                                                     href="{{ $itemUrl }}"
-                                                    class="block px-3 py-2 text-sm rounded-lg transition-colors {{ $itemIsActive ? 'bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60' }}"
+                                                    class="block px-3 py-2 text-sm rounded-lg transition-colors {{ $itemIsActive ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60' }}"
                                                 >
                                                     {{ $itemLabel }}
                                                 </a>

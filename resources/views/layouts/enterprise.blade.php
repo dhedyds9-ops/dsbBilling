@@ -59,6 +59,57 @@
         }
 
         /* ====================================================
+           GLOBAL TABLE SINGLE-LINE (NOWRAP) & HORIZONTAL SCROLL
+           Prevents table text from wrapping downwards (multi-line).
+           Keeps row heights uniform and text flowing to the right.
+           ==================================================== */
+        table th,
+        table td {
+            white-space: nowrap !important;
+            vertical-align: middle;
+        }
+
+        /* Opt-out escape hatch for specific cells if needed */
+        table th.whitespace-normal,
+        table td.whitespace-normal,
+        table .whitespace-normal,
+        table th.break-words,
+        table td.break-words {
+            white-space: normal !important;
+        }
+
+        /* Smooth horizontal scrollbar for tables */
+        .overflow-x-auto,
+        .table-responsive {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar,
+        .table-responsive::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-track,
+        .table-responsive::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 4px;
+        }
+        .dark .overflow-x-auto::-webkit-scrollbar-track,
+        .dark .table-responsive::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb,
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5);
+            border-radius: 4px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover,
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.8);
+        }
+
+        /* ====================================================
            GLOBAL PRINT RESET
            Ensures the dark-mode root background (dark:bg-slate-900
            on <html>) never bleeds into the printed page.

@@ -26,52 +26,52 @@
             </div>
 
             <!-- Dashboard/Ringkasan -->
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'overview']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'overview' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'overview']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'overview' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">dashboard</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Dashboard</span>
             </a>
             
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'interfaces']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'interfaces' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'interfaces']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'interfaces' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">settings_ethernet</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Interface</span>
             </a>
             
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'ppp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'ppp' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'ppp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'ppp' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">account_tree</span>
                 <span class="truncate" x-show="!sidebarCollapsed">PPP</span>
             </a>
             
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'hotspot']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'hotspot' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'hotspot']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'hotspot' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">wifi</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Hotspot</span>
             </a>
             
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'logs']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'logs' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'logs']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'logs' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">list_alt</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Log Router</span>
             </a>
 
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'terminal']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'terminal' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'terminal']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'terminal' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">terminal</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Web Terminal</span>
             </a>
 
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'dhcp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'dhcp' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'dhcp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'dhcp' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">lan</span>
                 <span class="truncate" x-show="!sidebarCollapsed">DHCP Server</span>
             </a>
             
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'firewall']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'firewall' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'firewall']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'firewall' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">security</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Firewall</span>
             </a>
             
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'routing']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'routing' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'routing']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'routing' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">route</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Routing</span>
             </a>
             
-            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'traffic']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'traffic' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'traffic']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'traffic' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">monitoring</span>
                 <span class="truncate" x-show="!sidebarCollapsed">Traffic Monitoring</span>
             </a>
