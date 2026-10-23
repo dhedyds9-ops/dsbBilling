@@ -93,6 +93,7 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/80">
+                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Nama Pelanggan</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Akun (Username)</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner / Reseller</th>
@@ -104,12 +105,23 @@
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Uptime</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Traffic (In/Out)</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Mulai Session</th>
-                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($results as $session)
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                <button 
+                                    @if($activeTab === 'pppoe')
+                                        wire:click="kickPppoe({{ $session->id }})" 
+                                    @else
+                                        wire:click="kickHotspot({{ $session->id }})" 
+                                    @endif
+                                    onclick="confirm('Yakin ingin memutuskan koneksi sesi ini?') || event.stopImmediatePropagation()"
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors" title="Kick / Putuskan Koneksi">
+                                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">power_settings_new</span>
+                                </button>
+                            </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                                 @if($activeTab === 'pppoe')
                                     {{ $session->pppoeUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
@@ -164,18 +176,6 @@
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
                                 {{ $session->session_started_at ? $session->session_started_at->format('d/m/Y H:i:s') : '-' }}
-                            </td>
-                            <td class="px-4 py-3 text-center whitespace-nowrap">
-                                <button 
-                                    @if($activeTab === 'pppoe')
-                                        wire:click="kickPppoe({{ $session->id }})" 
-                                    @else
-                                        wire:click="kickHotspot({{ $session->id }})" 
-                                    @endif
-                                    onclick="confirm('Yakin ingin memutuskan koneksi sesi ini?') || event.stopImmediatePropagation()"
-                                    class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors" title="Kick / Putuskan Koneksi">
-                                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">power_settings_new</span>
-                                </button>
                             </td>
                         </tr>
                     @empty

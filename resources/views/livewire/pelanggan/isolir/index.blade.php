@@ -123,6 +123,7 @@
                 class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
             </label>
           </th>
+          <th class="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aksi</th>
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('username')">
             Username{!! $sortIcon('username') !!}
           </th>
@@ -147,8 +148,7 @@
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('last_due_date')">
             Jatuh Tempo Terakhir{!! $sortIcon('last_due_date') !!}
           </th>
-          <th class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aksi</th>
-          </tr>
+        </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 dark:divide-slate-700/70">
         @forelse ($rows ?? [] as $row)
@@ -163,6 +163,35 @@
                 <input type="checkbox" value="{{ $displayId }}" wire:model.live="selected"
                   class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
               </label>
+            </td>
+            <td class="px-3 py-2 text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1">
+                @if($row->status === 'isolated')
+                  <button wire:click="restoreOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1.5 rounded-md text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400" title="Pulihkan">
+                    <span class="material-symbols-outlined notranslate text-[16px]">lock_open</span>
+                  </button>
+                @else
+                  <button wire:click="isolateOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1.5 rounded-md text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400" title="Isolir">
+                    <span class="material-symbols-outlined notranslate text-[16px]">lock</span>
+                  </button>
+                @endif
+                <button wire:click="confirmRowAction('activate', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Aktifkan"
+                  class="p-1.5 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                </button>
+                <button wire:click="confirmRowAction('perpanjang', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Perpanjang"
+                  class="p-1.5 rounded-md text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 dark:text-slate-400 dark:hover:bg-blue-900/30">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
+                <button wire:click="confirmRowAction('ganti-paket', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Ganti Paket"
+                  class="p-1.5 rounded-md text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:text-slate-400 dark:hover:bg-purple-900/30">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"/></svg>
+                </button>
+                <button wire:click="confirmRowAction('wa', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Kirim WA"
+                  class="p-1.5 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+              </div>
             </td>
             <td class="px-3 py-2">
               <div class="flex items-center gap-2">
@@ -191,35 +220,6 @@
             </td>
             <td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-xs">
               {{ $row->last_due_date ? (is_string($row->last_due_date) ? $row->last_due_date : \Illuminate\Support\Carbon::parse($row->last_due_date)->format('d/m/Y')) : '-' }}
-            </td>
-            <td class="px-3 py-2 text-right">
-              <div class="flex items-center justify-end gap-1">
-                @if($row->status === 'isolated')
-                  <button wire:click="restoreOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1.5 rounded-md text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400" title="Pulihkan">
-                    <span class="material-symbols-outlined notranslate text-[16px]">lock_open</span>
-                  </button>
-                @else
-                  <button wire:click="isolateOne('{{ $row->source_type }}', {{ $row->id }})" class="p-1.5 rounded-md text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400" title="Isolir">
-                    <span class="material-symbols-outlined notranslate text-[16px]">lock</span>
-                  </button>
-                @endif
-                <button wire:click="confirmRowAction('activate', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Aktifkan"
-                  class="p-1.5 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
-                </button>
-                <button wire:click="confirmRowAction('perpanjang', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Perpanjang"
-                  class="p-1.5 rounded-md text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 dark:text-slate-400 dark:hover:bg-blue-900/30">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                </button>
-                <button wire:click="confirmRowAction('ganti-paket', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Ganti Paket"
-                  class="p-1.5 rounded-md text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:text-slate-400 dark:hover:bg-purple-900/30">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"/></svg>
-                </button>
-                <button wire:click="confirmRowAction('wa', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Kirim WA"
-                  class="p-1.5 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                </button>
-              </div>
             </td>
           </tr>
         @empty

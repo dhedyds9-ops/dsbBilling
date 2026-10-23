@@ -138,6 +138,7 @@
                         <th class="w-10">
                             <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </th>
+                        <th class="text-center font-semibold">Actions</th>
                         <th class="cursor-pointer" wire:click="sortBy('name')">
                             <div class="flex items-center gap-2">
                                 Customer
@@ -169,7 +170,6 @@
                                 @endif
                             </div>
                         </th>
-                        <th class="text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,6 +177,21 @@
                     <tr>
                         <td>
                             <input type="checkbox" value="{{ $customer['id'] }}" wire:model.live="selected" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
+                        </td>
+                        <td class="text-center">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <a href="{{ route('crm.customers.view', $customer['id']) }}" class="p-1.5 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors" title="Lihat">
+                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </a>
+                                <a href="{{ route('crm.customers.edit', $customer['id']) }}" class="p-1.5 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors" title="Edit">
+                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </a>
+                            </div>
                         </td>
                         <td>
                             <div class="flex items-center gap-3">
@@ -206,26 +221,6 @@
                         </td>
                         <td>
                             <span class="text-sm text-slate-500 dark:text-slate-400">{{ $customer['created_at']->diffForHumans() }}</span>
-                        </td>
-                        <td class="text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('crm.customers.view', $customer['id']) }}" class="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </a>
-                                <a href="{{ route('crm.customers.edit', $customer['id']) }}" class="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                </a>
-                                <button class="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                    </svg>
-                                </button>
-                            </div>
                         </td>
                     </tr>
                     @endforeach

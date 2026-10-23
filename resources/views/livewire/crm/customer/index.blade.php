@@ -135,6 +135,7 @@
                         <th class="px-4 py-3 w-10 text-center">
                             <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-600 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                         </th>
+                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
                             <button wire:click="sortBy('id')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                                 Id
@@ -157,7 +158,6 @@
                             </button>
                         </th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tgl Isolir</th>
-                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -219,6 +219,24 @@
                             <td class="px-4 py-3 whitespace-nowrap text-center">
                                 <input type="checkbox" wire:model.live="selectedCustomers" value="{{ $customer->id }}" 
                                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-900 dark:border-slate-600">
+                            </td>
+
+                            {{-- Aksi --}}
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    {{-- Edit / Detail --}}
+                                    <a href="{{ route('crm.customers.show', $customer->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-900/50 transition-colors" title="Edit / Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
+                                    </a>
+                                    {{-- Customer Portal --}}
+                                    <button type="button" wire:click="impersonate({{ $customer->id }})" class="p-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded hover:bg-sky-100 dark:bg-sky-900/50 transition-colors cursor-pointer" title="Buka Portal Pelanggan">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">language</span>
+                                    </button>
+                                    {{-- Hapus --}}
+                                    <button wire:click="delete({{ $customer->id }})" wire:confirm="Yakin ingin menghapus pelanggan ini?" class="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-900/50 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
+                                    </button>
+                                </div>
                             </td>
 
                             {{-- Id + Checkbox Toggle --}}
@@ -327,24 +345,6 @@
                             {{-- Tgl Isolir --}}
                             <td class="px-4 py-3 whitespace-nowrap {{ $textSecondary }}">
                                 {{ $tglIsolir }}
-                            </td>
-
-                            {{-- Aksi --}}
-                            <td class="px-4 py-3 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-1.5">
-                                    {{-- Edit / Detail --}}
-                                    <a href="{{ route('crm.customers.show', $customer->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-900/50 transition-colors" title="Edit / Detail">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
-                                    </a>
-                                    {{-- Customer Portal --}}
-                                    <button type="button" wire:click="impersonate({{ $customer->id }})" class="p-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded hover:bg-sky-100 dark:bg-sky-900/50 transition-colors cursor-pointer" title="Buka Portal Pelanggan">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">language</span>
-                                    </button>
-                                    {{-- Hapus --}}
-                                    <button wire:click="delete({{ $customer->id }})" wire:confirm="Yakin ingin menghapus pelanggan ini?" class="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-900/50 transition-colors" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
-                                    </button>
-                                </div>
                             </td>
                         </tr>
                     @empty
