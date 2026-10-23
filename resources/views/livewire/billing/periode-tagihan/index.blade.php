@@ -141,32 +141,52 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right cursor-pointer hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800" wire:click="sortBy('belum_dibayar')">
                             Sisa Tagihan {!! $sortIcon('belum_dibayar') !!}
                         </th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">
+                            Status & Pelunasan
+                        </th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Tindakan</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($rows as $row)
-                        @php $key = $periodeKey($row->tahun, $row->bulan); @endphp
+                        @php 
+                            $key = $periodeKey($row->tahun, $row->bulan); 
+                            $pct = $row->lunas_pct ?? ($row->total_tagihan > 0 ? min(100, (int)round(($row->sudah_dibayar / $row->total_tagihan) * 100)) : 0);
+                        @endphp
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-4 py-3">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $key }}" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:bg-slate-900 dark:text-slate-100">
                             </td>
-                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                                 {{ date('F', mktime(0, 0, 0, $row->bulan, 10)) }} {{ $row->tahun }}
                             </td>
-                            <td class="px-4 py-3 text-right text-slate-600 dark:text-slate-400">
-                                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300 rounded-full">
-                                    {{ number_format($row->jumlah_invoice) }}
+                            <td class="px-4 py-3 text-right text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300 rounded-full">
+                                    {{ number_format($row->jumlah_invoice) }} Tagihan
                                 </span>
+                                @if(($row->overdue_count ?? 0) > 0)
+                                    <div class="text-[10px] text-red-500 font-medium mt-0.5">{{ $row->overdue_count }} Lewat Tempo</div>
+                                @endif
                             </td>
-                            <td class="px-4 py-3 text-right font-mono font-medium text-blue-600 dark:text-blue-400">
+                            <td class="px-4 py-3 text-right font-mono font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">
                                 {{ $rupiah($row->total_tagihan) }}
                             </td>
-                            <td class="px-4 py-3 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                            <td class="px-4 py-3 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                                 {{ $rupiah($row->sudah_dibayar) }}
                             </td>
-                            <td class="px-4 py-3 text-right font-mono font-medium text-red-600 dark:text-red-400">
+                            <td class="px-4 py-3 text-right font-mono font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
                                 {{ $rupiah($row->belum_dibayar) }}
+                            </td>
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                <div class="inline-flex flex-col items-center">
+                                    <span class="text-xs font-semibold {{ $pct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : ($pct >= 50 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400') }}">
+                                        {{ $pct }}% Lunas
+                                    </span>
+                                    <div class="w-24 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden mt-1">
+                                        <div class="h-1.5 rounded-full {{ $pct >= 100 ? 'bg-emerald-500' : ($pct >= 50 ? 'bg-blue-500' : 'bg-amber-500') }}" style="width: {{ $pct }}%"></div>
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 mt-0.5">Lunas: {{ $row->paid_count ?? 0 }} / {{ $row->jumlah_invoice }}</span>
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <button wire:click="kirimWaPeriode('{{ $row->tahun }}', '{{ $row->bulan }}')" onclick="confirm('Kirim pesan tagihan (WA) untuk periode ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors" title="Kirim WA Tagihan">
@@ -179,7 +199,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="8" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">date_range</span>
                                     <p class="text-lg font-medium text-slate-900 dark:text-slate-100 mt-2">Tidak Ada Data</p>

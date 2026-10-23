@@ -164,17 +164,26 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">No. Referensi</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Pelanggan</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Invoice</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Invoice Terkait</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Tanggal Bayar</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Metode</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Metode & Saluran</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Nominal</th>
-                        </tr>
+                        @if(!$this->isReseller)
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Reseller / Mitra</th>
+                        @endif
+                    </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($payments as $payment)
+                        @php
+                            $cleanPhone = $payment->customer?->phone ? preg_replace('/[^0-9]/', '', $payment->customer->phone) : null;
+                            if ($cleanPhone && str_starts_with($cleanPhone, '0')) {
+                                $cleanPhone = '62' . substr($cleanPhone, 1);
+                            }
+                        @endphp
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td class="px-4 py-3 text-center">
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $payment->id }}" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-600 cursor-pointer">
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-center">
@@ -199,28 +208,49 @@
                                     @endcan
                                 </div>
                             </td>
-                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                                {{ $payment->reference_number ?? '-' }}
+                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                                <div>{{ $payment->reference_number ?? ('PAY-' . str_pad($payment->id, 6, '0', STR_PAD_LEFT)) }}</div>
+                                @if($payment->gateway_transaction_id)
+                                    <div class="text-[10px] text-slate-400 font-mono">{{ $payment->gateway_transaction_id }}</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                                <div class="font-medium">{{ $payment->customer?->name ?? '-' }}</div>
+                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ $payment->customer?->name ?? '-' }}</div>
+                                <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                    <span>{{ $payment->customer?->code ?? '-' }}</span>
+                                    @if($cleanPhone)
+                                        <span>•</span>
+                                        <a href="https://wa.me/{{ $cleanPhone }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-0.5 text-green-600 dark:text-green-400 hover:underline" title="Chat WhatsApp">
+                                            <span class="material-symbols-outlined notranslate text-[13px]">chat</span>
+                                            <span>{{ $payment->customer->phone }}</span>
+                                        </a>
+                                    @endif
+                                </div>
                             </td>
-                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
-    @if($payment->invoices->count() > 0)
-        <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $payment->invoices->first()->id) : route('billing.invoices.show', $payment->invoices->first()->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
-            {{ $payment->invoices->first()->invoice_number }}
-        </a>
-    @else
-        -
-    @endif
-</td>
-                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
-                                {{ $payment->paid_at?->format('d M Y, H:i') ?? '-' }}
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                @if($payment->invoices->count() > 0)
+                                    @foreach($payment->invoices as $inv)
+                                        <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $inv->id) : route('billing.invoices.show', $inv->id) }}" class="inline-block text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs mr-1">
+                                            {{ $inv->invoice_number }}
+                                        </a>
+                                    @endforeach
+                                @else
+                                    <span class="text-slate-400 text-xs">-</span>
+                                @endif
                             </td>
-                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 uppercase text-xs font-semibold">
-                                {{ str_replace('_', ' ', $payment->method) }}
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs">
+                                <div>{{ $payment->paid_at?->format('d M Y') ?? ($payment->created_at?->format('d M Y') ?? '-') }}</div>
+                                <div class="text-[10px] text-slate-400">{{ $payment->paid_at?->format('H:i') ?? ($payment->created_at?->format('H:i') ?? '') }} WIB</div>
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                <div class="text-xs font-semibold uppercase text-slate-800 dark:text-slate-200">
+                                    {{ str_replace('_', ' ', $payment->method ?? '-') }}
+                                </div>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium {{ ($payment->gateway && strtolower($payment->gateway) !== 'manual') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' }}">
+                                    {{ strtoupper($payment->gateway ?? 'MANUAL') }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 @if($payment->status === 'success')
                                     <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">check_circle</span> Sukses</span>
                                 @elseif($payment->status === 'pending')
@@ -231,13 +261,29 @@
                                     <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">{{ ucfirst($payment->status) }}</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                            <td class="px-4 py-3 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                                 Rp {{ number_format($payment->amount, 0, ',', '.') }}
                             </td>
+                            @if(!$this->isReseller)
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                @php
+                                    $resellerName = $payment->customer?->reseller?->name ?? ($payment->reseller?->name ?? null);
+                                @endphp
+                                @if($resellerName)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                        <span class="material-symbols-outlined notranslate text-[12px]">store</span> {{ $resellerName }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                        Direct / ISP
+                                    </span>
+                                @endif
+                            </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="{{ $this->isReseller ? 9 : 10 }}" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">payments</span>
                                     <p class="text-lg font-medium text-slate-900 dark:text-slate-100 mt-2">Tidak Ada Data</p>

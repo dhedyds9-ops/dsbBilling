@@ -159,15 +159,31 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">No. Invoice</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Pelanggan</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Layanan / Paket</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Periode</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Tgl Terbit</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Jatuh Tempo</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Total</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Dibayar</th>
-                        </tr>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Total Tagihan</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Terbayar</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Sisa Tagihan</th>
+                        @if(!$this->isReseller)
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Reseller / Mitra</th>
+                        @endif
+                    </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($invoices as $invoice)
+                        @php
+                            $planName = $invoice->customer?->customerServices?->first()?->serviceProfile?->name 
+                                ?? $invoice->items?->first()?->description 
+                                ?? '-';
+                            $sisaTagihan = max(0, (float)($invoice->total_amount ?? 0) - (float)($invoice->paid_amount ?? 0));
+                            $cleanPhone = $invoice->customer?->phone ? preg_replace('/[^0-9]/', '', $invoice->customer->phone) : null;
+                            if ($cleanPhone && str_starts_with($cleanPhone, '0')) {
+                                $cleanPhone = '62' . substr($cleanPhone, 1);
+                            }
+                        @endphp
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-4 py-3 whitespace-nowrap text-center">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $invoice->id }}" 
@@ -175,32 +191,54 @@
                             </td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-1.5">
-                                    <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $invoice->id) : route('billing.invoices.show', $invoice->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Detail">
+                                    <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $invoice->id) : route('billing.invoices.show', $invoice->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Detail Invoice">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>
                                     @if(in_array($invoice->status, ['unpaid', 'partial', 'overdue', 'pending']))
                                         <button wire:click="openPaymentModal({{ $invoice->id }})" type="button" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors" title="Proses Bayar">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">payments</span>
                                         </button>
+                                        @if($invoice->customer?->phone)
+                                        <button wire:click="sendWhatsApp({{ $invoice->id }})" wire:loading.attr="disabled" type="button" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors" title="Kirim Tagihan WhatsApp">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span>
+                                        </button>
+                                        @endif
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                                 <a href="{{ $this->isReseller ? route('reseller-portal.billing.invoices.show', $invoice->id) : route('billing.invoices.show', $invoice->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     {{ $invoice->invoice_number }}
                                 </a>
                             </td>
                             <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                                <div class="font-medium">{{ $invoice->customer?->name ?? '-' }}</div>
-                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $invoice->customer?->code ?? '-' }}</div>
+                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ $invoice->customer?->name ?? '-' }}</div>
+                                <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                    <span>{{ $invoice->customer?->code ?? '-' }}</span>
+                                    @if($cleanPhone)
+                                        <span>•</span>
+                                        <a href="https://wa.me/{{ $cleanPhone }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-0.5 text-green-600 dark:text-green-400 hover:underline" title="Chat WhatsApp">
+                                            <span class="material-symbols-outlined notranslate text-[13px]">chat</span>
+                                            <span>{{ $invoice->customer->phone }}</span>
+                                        </a>
+                                    @endif
+                                </div>
                             </td>
-                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
+                                <div class="font-medium text-slate-800 dark:text-slate-200 text-xs sm:text-sm">{{ $planName }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                    {{ $invoice->issue_date ? $invoice->issue_date->translatedFormat('M Y') : '-' }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs">
                                 {{ $invoice->issue_date?->format('d M Y') ?? '-' }}
                             </td>
-                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs">
                                 {{ $invoice->due_date?->format('d M Y') ?? '-' }}
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 @if($invoice->status === 'paid')
                                     <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"><span class="material-symbols-outlined notranslate" style="font-size:14px" translate="no">check_circle</span> Lunas</span>
                                 @elseif($invoice->status === 'unpaid' || $invoice->status === 'pending')
@@ -213,16 +251,35 @@
                                     <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">{{ ucfirst($invoice->status) }}</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right font-mono font-medium text-slate-900 dark:text-slate-100">
+                            <td class="px-4 py-3 text-right font-mono font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
                                 Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}
                             </td>
-                            <td class="px-4 py-3 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                            <td class="px-4 py-3 text-right font-mono text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                                 Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}
                             </td>
+                            <td class="px-4 py-3 text-right font-mono font-medium whitespace-nowrap {{ $sisaTagihan > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400' }}">
+                                Rp {{ number_format($sisaTagihan, 0, ',', '.') }}
+                            </td>
+                            @if(!$this->isReseller)
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                @php
+                                    $resellerName = $invoice->customer?->reseller?->name ?? ($invoice->reseller?->name ?? null);
+                                @endphp
+                                @if($resellerName)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                        <span class="material-symbols-outlined notranslate text-[12px]">store</span> {{ $resellerName }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                        Direct / ISP
+                                    </span>
+                                @endif
+                            </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="{{ $this->isReseller ? 12 : 13 }}" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">receipt_long</span>
                                     <p class="text-lg font-medium text-slate-900 dark:text-slate-100 mt-2">Tidak Ada Data</p>

@@ -97,7 +97,7 @@ class Index extends BaseBillingComponent
 
     protected function buildScopedQuery($forStats = false)
     {
-        $query = Invoice::withoutGlobalScopes()->with(['customer.customerServices.serviceProfile', 'items', 'customer.reseller'])
+        $query = Invoice::withoutGlobalScopes()->with(['customer.customerServices.serviceProfile', 'items', 'customer.reseller', 'reseller'])
             ->whereNotExists(function ($sub) {
                 $sub->select('id')
                     ->from('voucher_orders')

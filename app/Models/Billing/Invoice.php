@@ -48,6 +48,11 @@ class Invoice extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
+    public function reseller()
+    {
+        return $this->belongsTo(User::class, 'reseller_id');
+    }
+
     public function payments()
     {
         return $this->belongsToMany(Payment::class, 'invoice_payment')->withTimestamps();

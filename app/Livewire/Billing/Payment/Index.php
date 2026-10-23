@@ -210,7 +210,7 @@ class Index extends BaseBillingComponent
     protected function buildQuery($forStats = false)
     {
         $query = Payment::withoutGlobalScopes()
-            ->with(['customer', 'invoices'])
+            ->with(['customer.reseller', 'reseller', 'invoices'])
             ->where('gateway', '!=', 'reseller_topup');
 
         if ($this->isReseller) {
