@@ -67,47 +67,91 @@
             </div>
         </div>
 
-        {{-- TOOLBAR --}}
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto flex-1">
-                <div class="relative w-full sm:w-64">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">search</span>
-                    </span>
-                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari periode..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+        {{-- TOOLBAR & FILTERS --}}
+        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-3">
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+                {{-- Search & Date Filters --}}
+                <div class="flex flex-wrap items-center gap-2.5 flex-1">
+                    {{-- Search --}}
+                    <div class="relative w-full sm:w-52">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">search</span>
+                        </span>
+                        <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari periode..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    </div>
+
+                    {{-- Dari Tanggal --}}
+                    <div class="flex items-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500">
+                        <span class="text-xs font-medium text-slate-500 dark:text-slate-400 mr-2 whitespace-nowrap">Dari:</span>
+                        <input type="date" wire:model.live="filters.start_date" class="bg-transparent border-0 p-0 text-sm text-slate-700 dark:text-slate-300 focus:ring-0 focus:outline-none">
+                    </div>
+
+                    {{-- Sampai Tanggal --}}
+                    <div class="flex items-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500">
+                        <span class="text-xs font-medium text-slate-500 dark:text-slate-400 mr-2 whitespace-nowrap">Sampai:</span>
+                        <input type="date" wire:model.live="filters.end_date" class="bg-transparent border-0 p-0 text-sm text-slate-700 dark:text-slate-300 focus:ring-0 focus:outline-none">
+                    </div>
+
+                    {{-- Reseller Filter (Admin only) --}}
+                    @if(!$this->isReseller)
+                    <select wire:model.live="filters.reseller_id" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2">
+                        <option value="">Semua Reseller</option>
+                        @foreach(($filterOptions['resellers'] ?? []) as $res)
+                            <option value="{{ $res->id }}">{{ $res->name }}</option>
+                        @endforeach
+                    </select>
+                    @endif
+
+                    {{-- Tahun --}}
+                    <select wire:model.live="filters.tahun" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2">
+                        <option value="">Semua Tahun</option>
+                        @foreach(range(date('Y')-3, date('Y')+1) as $y)
+                            <option value="{{ $y }}">{{ $y }}</option>
+                        @endforeach
+                    </select>
+
+                    {{-- Bulan --}}
+                    <select wire:model.live="filters.bulan" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2">
+                        <option value="">Semua Bulan</option>
+                        @foreach(($filterOptions['bulan'] ?? []) as $mNum => $mName)
+                            <option value="{{ $mNum }}">{{ $mName }}</option>
+                        @endforeach
+                    </select>
+
+                    {{-- Reset Filter Button --}}
+                    <button wire:click="resetFilters" type="button" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium transition-colors whitespace-nowrap" title="Reset semua filter">
+                        <span class="material-symbols-outlined notranslate text-[18px]">restart_alt</span>
+                        <span>Reset</span>
+                    </button>
                 </div>
-                <select wire:model.live="filters.tahun" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2">
-                    <option value="">Semua Tahun</option>
-                    @foreach(range(date('Y')-2, date('Y')+1) as $y)
-                        <option value="{{ $y }}">{{ $y }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0 justify-end">
-                <button wire:click="exportCsv" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap disabled:opacity-50">
-                    <span wire:loading.remove wire:target="exportCsv" class="material-symbols-outlined notranslate text-[18px]">download</span>
-                    <svg wire:loading wire:target="exportCsv" class="animate-spin -ml-1 mr-1 h-4 w-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span wire:loading.remove wire:target="exportCsv">Export</span>
-                    <span wire:loading wire:target="exportCsv">Mengunduh...</span>
-                </button>
-                <button wire:click="kirimWaSemua" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors whitespace-nowrap disabled:opacity-50">
-                    <span wire:loading.remove wire:target="kirimWaSemua" class="material-symbols-outlined notranslate text-[18px]">send</span>
-                    <svg wire:loading wire:target="kirimWaSemua" class="animate-spin -ml-1 mr-1 h-4 w-4 text-green-700 dark:text-green-400" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span wire:loading.remove wire:target="kirimWaSemua">WhatsApp</span>
-                    <span wire:loading wire:target="kirimWaSemua">Mengirim...</span>
-                </button>
-                <button wire:click="openRegenerate" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate text-[18px]">repeat</span> <span>Regenerate</span>
-                </button>
-                <button wire:click="openGenerate" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate text-[18px]">add</span> <span>Generate Manual</span>
-                </button>
+
+                {{-- Action Buttons --}}
+                <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 shrink-0 justify-end">
+                    <button wire:click="exportCsv" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap disabled:opacity-50">
+                        <span wire:loading.remove wire:target="exportCsv" class="material-symbols-outlined notranslate text-[18px]">download</span>
+                        <svg wire:loading wire:target="exportCsv" class="animate-spin -ml-1 mr-1 h-4 w-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="exportCsv">Export</span>
+                        <span wire:loading wire:target="exportCsv">Mengunduh...</span>
+                    </button>
+                    <button wire:click="kirimWaSemua" wire:loading.attr="disabled" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors whitespace-nowrap disabled:opacity-50">
+                        <span wire:loading.remove wire:target="kirimWaSemua" class="material-symbols-outlined notranslate text-[18px]">send</span>
+                        <svg wire:loading wire:target="kirimWaSemua" class="animate-spin -ml-1 mr-1 h-4 w-4 text-green-700 dark:text-green-400" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="kirimWaSemua">WhatsApp</span>
+                        <span wire:loading wire:target="kirimWaSemua">Mengirim...</span>
+                    </button>
+                    <button wire:click="openRegenerate" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate text-[18px]">repeat</span> <span>Regenerate</span>
+                    </button>
+                    <button wire:click="openGenerate" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate text-[18px]">add</span> <span>Generate Manual</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -158,7 +202,7 @@
                                 <input type="checkbox" wire:model.live="selected" value="{{ $key }}" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:bg-slate-900 dark:text-slate-100">
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                                {{ date('F', mktime(0, 0, 0, $row->bulan, 10)) }} {{ $row->tahun }}
+                                {{ $row->label_periode ?? ((['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][$row->bulan] ?? $row->bulan) . ' ' . $row->tahun) }}
                             </td>
                             <td class="px-4 py-3 text-right text-slate-600 dark:text-slate-400 whitespace-nowrap">
                                 <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300 rounded-full">
@@ -192,7 +236,7 @@
                                 <button wire:click="kirimWaPeriode('{{ $row->tahun }}', '{{ $row->bulan }}')" onclick="confirm('Kirim pesan tagihan (WA) untuk periode ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors" title="Kirim WA Tagihan">
                                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span>
                                 </button>
-                                <a href="{{ route('billing.invoices.index') }}?filters[tahun]={{ $row->tahun }}&filters[bulan]={{ $row->bulan }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Invoice">
+                                <a href="{{ route('billing.invoices.index') }}?filters[tahun]={{ $row->tahun }}&filters[bulan]={{ $row->bulan }}{{ !empty($filters['reseller_id']) ? '&filters[reseller_id]=' . $filters['reseller_id'] : '' }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Invoice">
                                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                 </a>
                             </td>

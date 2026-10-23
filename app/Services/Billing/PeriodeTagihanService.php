@@ -53,10 +53,18 @@ class PeriodeTagihanService
         if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $query->where('invoices.status', $filters['status']);
         }
-        if (!empty($filters['tahun'])) {
-            $query->whereYear('invoices.issue_date', (int)$filters['tahun']);
+        if (!empty($filters['start_date'])) {
+            $query->whereDate('invoices.issue_date', '>=', $filters['start_date']);
         }
-        if (!empty($filters['bulan'])) {
+        if (!empty($filters['end_date'])) {
+            $query->whereDate('invoices.issue_date', '<=', $filters['end_date']);
+        }
+        if (empty($filters['start_date']) && empty($filters['end_date'])) {
+            if (!empty($filters['tahun']) && $filters['tahun'] !== 'all') {
+                $query->whereYear('invoices.issue_date', (int)$filters['tahun']);
+            }
+        }
+        if (!empty($filters['bulan']) && $filters['bulan'] !== 'all') {
             $query->whereMonth('invoices.issue_date', (int)$filters['bulan']);
         }
         if (!empty($filters['sales_id'])) {
@@ -68,7 +76,13 @@ class PeriodeTagihanService
             });
         }
         if (!empty($filters['reseller_id']) && $filters['reseller_id'] !== 'all') {
-            $query->where('invoices.created_by', $filters['reseller_id']);
+            $resellerId = $filters['reseller_id'];
+            $query->where(function ($sq) use ($resellerId) {
+                $sq->where('invoices.reseller_id', $resellerId)
+                   ->orWhere('invoices.created_by', $resellerId)
+                   ->orWhere('customers.reseller_id', $resellerId)
+                   ->orWhere('customers.created_by', $resellerId);
+            });
         }
         if (!empty($filters['package_id'])) {
             $query->whereExists(function ($sq) use ($filters) {
@@ -127,10 +141,12 @@ class PeriodeTagihanService
             ->mergeBindings($base->getQuery())
             ->groupBy('tahun', 'bulan');
 
-        if (!empty($filters['tahun'])) {
-            $raw->having('tahun', (int)$filters['tahun']);
+        if (empty($filters['start_date']) && empty($filters['end_date'])) {
+            if (!empty($filters['tahun']) && $filters['tahun'] !== 'all') {
+                $raw->having('tahun', (int)$filters['tahun']);
+            }
         }
-        if (!empty($filters['bulan'])) {
+        if (!empty($filters['bulan']) && $filters['bulan'] !== 'all') {
             $raw->having('bulan', (int)$filters['bulan']);
         }
 

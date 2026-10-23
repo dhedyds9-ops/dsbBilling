@@ -32,23 +32,56 @@ class Index extends BaseEnterpriseList
     public bool $showGenerateModal = false;
     public bool $showRegenerateModal = false;
 
+    public function getIsResellerProperty(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->hasRole('reseller') || !empty($user->getEffectiveResellerId()));
+    }
+
+    public function getEffectiveResellerIdProperty(): ?int
+    {
+        $user = auth()->user();
+        return $user ? ($user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null)) : null;
+    }
+
     public function mount(): void
     {
         $this->generateTahun = (int) now()->year;
         $this->generateBulan = (int) now()->month;
 
         $this->filters = [
-            'tahun' => (string) now()->year,
-            'bulan' => (string) now()->month,
-            'status' => '',
-            'router_id' => '',
-            'sales_id' => '',
-            'reseller_id' => '',
-            'package_id' => '',
+            'start_date' => request()->get('start_date', ''),
+            'end_date' => request()->get('end_date', ''),
+            'tahun' => (string) request()->get('tahun', now()->year),
+            'bulan' => (string) request()->get('bulan', ''),
+            'status' => request()->get('status', ''),
+            'router_id' => request()->get('router_id', ''),
+            'sales_id' => request()->get('sales_id', ''),
+            'reseller_id' => $this->isReseller ? (string) $this->effectiveResellerId : request()->get('reseller_id', ''),
+            'package_id' => request()->get('package_id', ''),
         ];
         parent::mount();
         $this->loadSummary();
         $this->loadFilterOptions();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->search = '';
+        $this->filters = [
+            'start_date' => '',
+            'end_date' => '',
+            'tahun' => (string) now()->year,
+            'bulan' => '',
+            'status' => '',
+            'router_id' => '',
+            'sales_id' => '',
+            'reseller_id' => $this->isReseller ? (string) $this->effectiveResellerId : '',
+            'package_id' => '',
+        ];
+        $this->activeTab = 'all';
+        $this->resetPage();
+        $this->loadSummary();
     }
 
     public function authorizeAccess(): void
@@ -74,7 +107,7 @@ class Index extends BaseEnterpriseList
             'routers' => Router::pluck('name', 'id')->all(),
             'packages' => ServiceProfile::active()->pluck('name', 'id')->all(),
             'sales' => User::pluck('name', 'id')->all(),
-            'resellers' => User::pluck('name', 'id')->all(),
+            'resellers' => app(\App\Services\Auth\UserQueryService::class)->getResellers(),
             'tahun' => collect(range(now()->year - 3, now()->year + 1))->mapWithKeys(fn($v) => [$v => $v])->all(),
             'bulan' => [
                 1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
@@ -314,14 +347,41 @@ class Index extends BaseEnterpriseList
     {
         $this->withLoading(function () {
             $svc = app(PeriodeTagihanService::class);
-            $tahun = (int) ($this->filters['tahun'] ?? now()->year);
-            $bulan = (int) ($this->filters['bulan'] ?? now()->month);
-            $invIds = Invoice::query()
-                ->when($tahun, fn($q) => $q->whereYear('issue_date', $tahun))
-                ->when($bulan, fn($q) => $q->whereMonth('issue_date', $bulan))
-                ->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue'])
-                ->pluck('id')
-                ->all();
+            $tahun = !empty($this->filters['tahun']) ? (int) $this->filters['tahun'] : null;
+            $bulan = !empty($this->filters['bulan']) ? (int) $this->filters['bulan'] : null;
+            $startDate = !empty($this->filters['start_date']) ? $this->filters['start_date'] : null;
+            $endDate = !empty($this->filters['end_date']) ? $this->filters['end_date'] : null;
+            $resellerId = $this->isReseller ? $this->effectiveResellerId : (!empty($this->filters['reseller_id']) && $this->filters['reseller_id'] !== 'all' ? $this->filters['reseller_id'] : null);
+
+            $query = Invoice::query()
+                ->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue']);
+
+            if ($startDate) {
+                $query->whereDate('issue_date', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('issue_date', '<=', $endDate);
+            }
+            if (!$startDate && !$endDate && $tahun) {
+                $query->whereYear('issue_date', $tahun);
+            }
+            if ($bulan) {
+                $query->whereMonth('issue_date', $bulan);
+            }
+            if ($resellerId) {
+                $query->where(function($q) use ($resellerId) {
+                    $q->where('reseller_id', $resellerId)
+                      ->orWhere('created_by', $resellerId)
+                      ->orWhereHas('customer', function($cq) use ($resellerId) {
+                          $cq->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                              $sub->where('customers.reseller_id', $resellerId)
+                                  ->orWhere('customers.created_by', $resellerId);
+                          });
+                      });
+                });
+            }
+
+            $invIds = $query->pluck('id')->all();
             $n = $svc->sendWaBulk($invIds);
             session()->flash('success', "WA reminder disiapkan untuk {$n} invoice unpaid.");
             return null;
