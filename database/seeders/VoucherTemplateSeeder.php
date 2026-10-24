@@ -30,10 +30,10 @@ class VoucherTemplateSeeder extends Seeder
     {
         return [
             [
-                'name' => 'MSRadius Template 107 (Dynamic Color)',
-                'slug' => 'msradius-template-107-dynamic',
+                'name' => 'Voucher MSRadius Dynamic Color',
+                'slug' => 'voucher-msradius-color',
                 'category' => VoucherTemplateCategory::Classic->value,
-                'description' => 'Template voucher MSRadius 107 dengan sudut badge harga melengkung, kotak kode voucher tebal, kuota & durasi, instruksi WiFi, serta badge WA dan domain login dengan aksen warna dinamis otomatis sesuai nominal harga.',
+                'description' => 'Template voucher dinamis bergaya MSRadius / Mikhmon dengan warna otomatis sesuai nominal harga (Rp 2rb - 70rb), logo, dan QR Code login.',
                 'is_system' => false,
                 'is_active' => true,
                 'is_default' => true,
@@ -43,253 +43,108 @@ class VoucherTemplateSeeder extends Seeder
                     'page_margins' => ['top' => 5, 'right' => 5, 'bottom' => 5, 'left' => 5],
                     'card_margins' => ['top' => 2, 'right' => 2, 'bottom' => 2, 'left' => 2],
                 ],
-                'css_code' => '.card-107 {
-  width: 220px;
-  height: 122px;
-  background: #ffffff;
-  border-radius: 4px;
-  box-sizing: border-box;
-  position: relative;
-  overflow: hidden;
-  font-family: Arial, Helvetica, sans-serif;
-  margin: 3px;
-  display: inline-block;
-  vertical-align: top;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-.card-107-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 3px 0 0 5px;
-}
-
-.card-107-logo-box {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  max-width: 130px;
-}
-
-.card-107-logo {
-  height: 18px;
-  max-width: 70px;
-  object-fit: contain;
-}
-
-.card-107-brand {
-  font-size: 11px;
-  font-weight: 800;
-  color: #0284c7;
-  letter-spacing: -0.2px;
-}
-
-.card-107-price-badge {
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 900;
-  padding: 2px 10px 3px 12px;
-  border-bottom-left-radius: 12px;
-  letter-spacing: 0.3px;
-  box-shadow: -1px 1px 2px rgba(0,0,0,0.15);
-}
-
-.card-107-kode-title {
-  font-size: 9px;
-  font-weight: 800;
-  color: #1e293b;
-  letter-spacing: 0.8px;
-  padding-left: 8px;
-  margin-top: 1px;
-}
-
-.card-107-body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 6px;
-  gap: 6px;
-}
-
-.card-107-code-box {
-  flex: 1.2;
-  background: #ffffff;
-  border-radius: 4px;
-  font-size: 15px;
-  font-weight: 900;
-  font-family: "Courier New", Courier, monospace;
-  text-align: center;
-  padding: 4px 2px;
-  letter-spacing: 0.5px;
-  line-height: 1;
-}
-
-.card-107-dur-box {
-  flex: 0.9;
-  text-align: center;
-  line-height: 1.1;
-}
-
-.card-107-dur-title {
-  font-size: 14px;
-  font-weight: 900;
-  color: #0f172a;
-}
-
-.card-107-dur-sub {
-  font-size: 8px;
-  color: #64748b;
-  font-weight: 600;
-}
-
-.card-107-dur-quota {
-  font-size: 8.5px;
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.card-107-notes {
-  text-align: center;
-  font-size: 7.5px;
-  font-weight: 700;
-  color: #475569;
-  line-height: 1.15;
-  margin-top: 2px;
-}
-
-.card-107-subnotes {
-  font-size: 7px;
-  font-weight: normal;
-  color: #64748b;
-}
-
-.card-107-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 4px 2px 4px;
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
-}
-
-.card-107-wa-pill {
-  background: #10b981;
-  color: #ffffff;
-  font-size: 7.5px;
-  font-weight: 800;
-  padding: 1.5px 5px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.card-107-wa-icon {
-  font-size: 8px;
-}
-
-.card-107-login-pill {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 7.5px;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.card-107-triangle {
-  width: 0;
-  height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 6px solid #00a2ff;
-  display: inline-block;
-}
-
-.card-107-chrome-icon {
-  font-size: 8px;
-}
-
-.card-107-login-url {
-  font-family: monospace;
+                'css_code' => '.qrcode img {
+    height: 50px !important;
+    width: 50px !important;
+    border-radius: 4px;
+    box-sizing: border-box;
+    display: inline-block;
 }',
                 'template_code' => '{assign var="v_price" value=$voucher.price}
 {assign var="pkg" value=$package.name}
-{if $v_price <= 2000 || $pkg == "1 JAM" || $pkg == "1 Jam" || $pkg == "2 JAM" || $pkg == "2 Jam"}
- {assign var="color" value="#1e293b"}
+{if $v_price == 2000 || $v_price <= 2000 || $pkg == "1 JAM" || $pkg == "1 Jam" || $pkg == "2 JAM" || $pkg == "2 Jam"}
+ {assign var="color" value="#000000"}
 {elseif $v_price == 3000 || $pkg == "3 JAM" || $pkg == "3 Jam" || $pkg == "6 JAM" || $pkg == "6 Jam"}
- {assign var="color" value="#00a2ff"}
+ {assign var="color" value="#0ca5ff"}
 {elseif $v_price == 5000 || $pkg == "12 JAM" || $pkg == "12 Jam"}
- {assign var="color" value="#e11d48"}
+ {assign var="color" value="#FF0000"}
 {elseif $v_price == 7000 || $pkg == "24 JAM" || $pkg == "24 Jam" || $pkg == "1 Hari"}
- {assign var="color" value="#8b5cf6"}
+ {assign var="color" value="#A52A2A"}
 {elseif $v_price == 10000}
  {assign var="color" value="#10b981"}
 {elseif $v_price == 20000 || $v_price == 25000}
- {assign var="color" value="#f59e0b"}
-{elseif $v_price >= 50000}
- {assign var="color" value="#ec4899"}
+ {assign var="color" value="#8B008B"}
+{elseif $v_price == 50000 || $v_price == 65000}
+ {assign var="color" value="#FF00FF"}
+{elseif $v_price >= 70000}
+ {assign var="color" value="#32CD32"}
 {else}
- {assign var="color" value="#00a2ff"}
+ {assign var="color" value="#0ca5ff"}
 {/if}
-<div class="card-107" style="display:inline-block; width:220px; height:122px; border:1.5px solid {$color}; box-sizing:border-box; background:#ffffff; position:relative; overflow:hidden; vertical-align:top; margin:3px; font-family:Arial,Helvetica,sans-serif;">
-  <!-- Header: Logo & Badge Harga -->
-  <div class="card-107-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding:3px 0 0 5px;">
-    <div class="card-107-logo-box" style="display:flex; align-items:center; gap:3px; max-width:130px; height:20px; overflow:hidden;">
-      {if $company.logo}
-        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" style="max-height:18px; max-width:70px; width:auto; height:auto; object-fit:contain; display:inline-block; vertical-align:middle;" onerror="this.style.display=\'none\'">
-      {/if}
-      <span class="card-107-brand" style="font-size:11px; font-weight:800; color:#0284c7; letter-spacing:-0.2px;">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
-    </div>
-    <div class="card-107-price-badge" style="background:{$color}; color:#ffffff; font-size:13px; font-weight:900; padding:2px 10px 3px 12px; border-bottom-left-radius:12px; letter-spacing:0.3px; box-shadow:-1px 1px 2px rgba(0,0,0,0.15); line-height:1.2;">
-      Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
-    </div>
-  </div>
-
-  <!-- Label Kode -->
-  <div class="card-107-kode-title" style="font-size:9px; font-weight:800; color:#1e293b; letter-spacing:0.8px; padding-left:8px; margin-top:1px;">KODE VOUCHER</div>
-
-  <!-- Body: Kotak Kode di kiri & Durasi di kanan -->
-  <div class="card-107-body" style="display:flex; align-items:center; justify-content:space-between; padding:2px 6px; gap:6px;">
-    <div class="card-107-code-box" style="flex:1.2; background:#ffffff; border-radius:4px; font-size:15px; font-weight:900; font-family:\'Courier New\',Courier,monospace; text-align:center; padding:4px 2px; letter-spacing:0.5px; line-height:1; border:2px solid {$color}; color:{$color};">
-      {{voucher.code}}
-    </div>
-    <div class="card-107-dur-box" style="flex:0.9; text-align:center; line-height:1.1;">
-      <div class="card-107-dur-title" style="font-size:14px; font-weight:900; color:#0f172a;">{if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}6 JAM{/if}</div>
-      <div class="card-107-dur-sub" style="font-size:8px; color:#64748b; font-weight:600;">Masa Pakai</div>
-      <div class="card-107-dur-quota" style="font-size:8.5px; color:#0f172a; font-weight:700;">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
-    </div>
-  </div>
-
-  <!-- Petunjuk Sambungan -->
-  <div class="card-107-notes" style="text-align:center; font-size:7.5px; font-weight:700; color:#475569; line-height:1.15; margin-top:2px;">
-    Sambungkan Ke WiFi {if $company.name}{{company.name}}{else}Winets.id{/if}<br>
-    <span class="card-107-subnotes" style="font-size:7px; font-weight:normal; color:#64748b;">jika tidak muncul otomatis buka google</span>
-  </div>
-
-  <!-- Footer Bar -->
-  <div class="card-107-footer" style="position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:2px 4px 2px 4px; background:#f8fafc; border-top:1px solid #e2e8f0;">
-    <div class="card-107-wa-pill" style="background:#10b981; color:#ffffff; font-size:7.5px; font-weight:800; padding:1.5px 5px; border-radius:10px; display:flex; align-items:center; gap:2px;">
-      <span class="card-107-wa-icon">&#9742;</span> {if $company.phone}{{company.phone}}{else}083139935920{/if}
-    </div>
-    <div class="card-107-login-pill" style="display:flex; align-items:center; gap:2px; font-size:7.5px; font-weight:800; color:#0f172a;">
-      <span class="card-107-triangle" style="width:0; height:0; border-top:4px solid transparent; border-bottom:4px solid transparent; border-left:6px solid {$color}; display:inline-block;"></span>
-      <span class="card-107-chrome-icon">&#127760;</span>
-      <span class="card-107-login-url" style="font-family:monospace;">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
-    </div>
-  </div>
-</div>',
+<table style="display:inline-block; border-collapse:collapse; border:1.5px solid #444; margin:1.5px; width:210px; position:relative; padding:0px; margin-right:8px; margin-bottom:10px; background:#fff; font-family:Arial,sans-serif; vertical-align:top; box-sizing:border-box;">
+ <tbody>
+ <tr>
+ <td style="color:#666; padding:2px 4px;" valign="top">
+ <table style="width:100%; border-collapse:collapse;">
+ <tbody>
+ <tr> 
+ <td style="width:85px; vertical-align:middle;">
+ {if $company.logo}
+ <img style="object-fit:contain; max-height:22px; max-width:85px; display:inline-block; vertical-align:middle;" src="{{company.logo}}" alt="logo" onerror="this.style.display=\'none\'">
+ {else}
+ <span style="font-weight:bold; font-size:12px; color:{$color};">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
+ {/if}
+ </td> 
+ <td style="text-align:right; vertical-align:middle;">
+ <div style="font-weight:bold; font-size:18px; color:{$color}; line-height:1.1;"> 
+ <small style="font-size:12px;">Rp</small>
+ {{voucher.price|number_format(0, \',\', \'.\')}}
+ </div> 
+ </td> 
+ </tr>
+ </tbody>
+ </table>
+ </td>
+ </tr>
+ <tr>
+ <td style="color:#666; border-collapse:collapse; padding:2px 4px;" valign="top">
+ <table style="width:100%; border-collapse:collapse;">
+ <tbody>
+ <tr>
+ <td style="width:125px; vertical-align:top;">
+ <div style="clear:both; color:#555; margin-bottom:2px;">
+ {if $voucher.password == $voucher.code || empty($voucher.password)} 
+ <div style="border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:10px; color:#444;">KODE VOUCHER</div> 
+ <div style="padding:2px; border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:14px; color:#000; font-family:monospace;">{{voucher.code}}</div>
+ {else}
+ <div style="border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:9px; color:#444;">MEMBER</div> 
+ <div style="padding:1px; border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:11px; color:{$color}; font-family:monospace; line-height:1.2;">
+ {{voucher.code}}<br>{{voucher.password}}
+ </div>
+ {/if}
+ </div>
+ <div style="text-align:left; color:#111; font-size:8px; font-weight:bold; line-height:1.25; margin-top:2px;">
+ Durasi : {if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}3 Jam{/if}<br>
+ Masa Aktif : {if $voucher.validity}{{voucher.validity}}{else}3 jam{/if}<br>
+ Tgl Cetak : {{voucher.created_at}}<br>
+ Agen : {if $owner.name}{{owner.name}}{else}Owner Demo{/if}<br>
+ </div>
+ </td> 
+ <td style="width:75px; text-align:right; vertical-align:middle;">
+ <div class="qrcode" style="display:inline-block;">
+   <img style="border:1.5px solid {$color}; width:50px; height:50px; display:inline-block;" src="{qr($voucher.code, 100)}" alt="QR" />
+ </div>
+ </td> 
+ </tr>
+ <tr>
+ <td style="background:{$color}; color:#fff; padding:2px 4px;" valign="top" colspan="2">
+ <div style="text-align:left; color:#fff; font-size:8px; font-weight:bold; padding:1px 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+ Login manual: {if $voucher.login_url}{{voucher.login_url}}{else}http://wifi.demo.id/login{/if}
+ </div>
+ </td> 
+ </tr>
+ </tbody>
+ </table>
+ </td>
+ </tr>
+ </tbody>
+</table>',
             ],
             [
-                'name' => 'Voucher MSRadius Dynamic Color',
-                'slug' => 'voucher-msradius-color',
+                'name' => 'MSRadius Template 107 (Dynamic Color)',
+                'slug' => 'msradius-template-107-dynamic',
                 'category' => VoucherTemplateCategory::Classic->value,
-                'description' => 'Template voucher dinamis bergaya MSRadius / Mikhmon Card 107 dengan warna otomatis sesuai nominal harga (Rp 2rb - 70rb), logo, dan QR Code login.',
+                'description' => 'Template voucher MSRadius 107 dengan sudut badge harga melengkung, kotak kode voucher tebal, kuota & durasi, instruksi WiFi, serta badge WA dan domain login dengan aksen warna dinamis otomatis sesuai nominal harga.',
                 'is_system' => false,
                 'is_active' => true,
                 'is_default' => false,
@@ -299,181 +154,7 @@ class VoucherTemplateSeeder extends Seeder
                     'page_margins' => ['top' => 5, 'right' => 5, 'bottom' => 5, 'left' => 5],
                     'card_margins' => ['top' => 2, 'right' => 2, 'bottom' => 2, 'left' => 2],
                 ],
-                'css_code' => '.card-107 {
-  width: 220px;
-  height: 122px;
-  background: #ffffff;
-  border-radius: 4px;
-  box-sizing: border-box;
-  position: relative;
-  overflow: hidden;
-  font-family: Arial, Helvetica, sans-serif;
-  margin: 3px;
-  display: inline-block;
-  vertical-align: top;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-.card-107-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 3px 0 0 5px;
-}
-
-.card-107-logo-box {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  max-width: 130px;
-}
-
-.card-107-logo {
-  height: 18px;
-  max-width: 70px;
-  object-fit: contain;
-}
-
-.card-107-brand {
-  font-size: 11px;
-  font-weight: 800;
-  color: #0284c7;
-  letter-spacing: -0.2px;
-}
-
-.card-107-price-badge {
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 900;
-  padding: 2px 10px 3px 12px;
-  border-bottom-left-radius: 12px;
-  letter-spacing: 0.3px;
-  box-shadow: -1px 1px 2px rgba(0,0,0,0.15);
-}
-
-.card-107-kode-title {
-  font-size: 9px;
-  font-weight: 800;
-  color: #1e293b;
-  letter-spacing: 0.8px;
-  padding-left: 8px;
-  margin-top: 1px;
-}
-
-.card-107-body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 6px;
-  gap: 6px;
-}
-
-.card-107-code-box {
-  flex: 1.2;
-  background: #ffffff;
-  border-radius: 4px;
-  font-size: 15px;
-  font-weight: 900;
-  font-family: "Courier New", Courier, monospace;
-  text-align: center;
-  padding: 4px 2px;
-  letter-spacing: 0.5px;
-  line-height: 1;
-}
-
-.card-107-dur-box {
-  flex: 0.9;
-  text-align: center;
-  line-height: 1.1;
-}
-
-.card-107-dur-title {
-  font-size: 14px;
-  font-weight: 900;
-  color: #0f172a;
-}
-
-.card-107-dur-sub {
-  font-size: 8px;
-  color: #64748b;
-  font-weight: 600;
-}
-
-.card-107-dur-quota {
-  font-size: 8.5px;
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.card-107-notes {
-  text-align: center;
-  font-size: 7.5px;
-  font-weight: 700;
-  color: #475569;
-  line-height: 1.15;
-  margin-top: 2px;
-}
-
-.card-107-subnotes {
-  font-size: 7px;
-  font-weight: normal;
-  color: #64748b;
-}
-
-.card-107-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 4px 2px 4px;
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
-}
-
-.card-107-wa-pill {
-  background: #10b981;
-  color: #ffffff;
-  font-size: 7.5px;
-  font-weight: 800;
-  padding: 1.5px 5px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.card-107-wa-icon {
-  font-size: 8px;
-}
-
-.card-107-login-pill {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 7.5px;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.card-107-triangle {
-  width: 0;
-  height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 6px solid #00a2ff;
-  display: inline-block;
-}
-
-.card-107-chrome-icon {
-  font-size: 8px;
-}
-
-.card-107-login-url {
-  font-family: monospace;
-}',
+                'css_code' => '',
                 'template_code' => '{assign var="v_price" value=$voucher.price}
 {assign var="pkg" value=$package.name}
 {if $v_price <= 2000 || $pkg == "1 JAM" || $pkg == "1 Jam" || $pkg == "2 JAM" || $pkg == "2 Jam"}
@@ -493,52 +174,53 @@ class VoucherTemplateSeeder extends Seeder
 {else}
  {assign var="color" value="#00a2ff"}
 {/if}
-<div class="card-107" style="display:inline-block; width:220px; height:122px; border:1.5px solid {$color}; box-sizing:border-box; background:#ffffff; position:relative; overflow:hidden; vertical-align:top; margin:3px; font-family:Arial,Helvetica,sans-serif;">
-  <!-- Header: Logo & Badge Harga -->
-  <div class="card-107-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding:3px 0 0 5px;">
-    <div class="card-107-logo-box" style="display:flex; align-items:center; gap:3px; max-width:130px; height:20px; overflow:hidden;">
-      {if $company.logo}
-        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" style="max-height:18px; max-width:70px; width:auto; height:auto; object-fit:contain; display:inline-block; vertical-align:middle;" onerror="this.style.display=\'none\'">
-      {/if}
-      <span class="card-107-brand" style="font-size:11px; font-weight:800; color:#0284c7; letter-spacing:-0.2px;">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
-    </div>
-    <div class="card-107-price-badge" style="background:{$color}; color:#ffffff; font-size:13px; font-weight:900; padding:2px 10px 3px 12px; border-bottom-left-radius:12px; letter-spacing:0.3px; box-shadow:-1px 1px 2px rgba(0,0,0,0.15); line-height:1.2;">
-      Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
-    </div>
-  </div>
-
-  <!-- Label Kode -->
-  <div class="card-107-kode-title" style="font-size:9px; font-weight:800; color:#1e293b; letter-spacing:0.8px; padding-left:8px; margin-top:1px;">KODE VOUCHER</div>
-
-  <!-- Body: Kotak Kode di kiri & Durasi di kanan -->
-  <div class="card-107-body" style="display:flex; align-items:center; justify-content:space-between; padding:2px 6px; gap:6px;">
-    <div class="card-107-code-box" style="flex:1.2; background:#ffffff; border-radius:4px; font-size:15px; font-weight:900; font-family:\'Courier New\',Courier,monospace; text-align:center; padding:4px 2px; letter-spacing:0.5px; line-height:1; border:2px solid {$color}; color:{$color};">
-      {{voucher.code}}
-    </div>
-    <div class="card-107-dur-box" style="flex:0.9; text-align:center; line-height:1.1;">
-      <div class="card-107-dur-title" style="font-size:14px; font-weight:900; color:#0f172a;">{if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}6 JAM{/if}</div>
-      <div class="card-107-dur-sub" style="font-size:8px; color:#64748b; font-weight:600;">Masa Pakai</div>
-      <div class="card-107-dur-quota" style="font-size:8.5px; color:#0f172a; font-weight:700;">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
-    </div>
-  </div>
-
-  <!-- Petunjuk Sambungan -->
-  <div class="card-107-notes" style="text-align:center; font-size:7.5px; font-weight:700; color:#475569; line-height:1.15; margin-top:2px;">
+<div style="display:inline-block; width:220px; border:1.5px solid {$color}; border-radius:6px; background:#fff; overflow:hidden; margin:3px; vertical-align:top; font-family:Arial,Helvetica,sans-serif; box-sizing:border-box;">
+  <table style="width:100%; border-collapse:collapse;">
+    <tr>
+      <td style="padding:3px 0 0 5px; vertical-align:middle;">
+        {if $company.logo}
+        <img src="{{company.logo}}" alt="Logo" style="max-height:18px; max-width:70px; object-fit:contain; vertical-align:middle;" onerror="this.style.display=\'none\'">
+        {/if}
+        <span style="font-size:11px; font-weight:800; color:#0284c7;">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
+      </td>
+      <td style="text-align:right; vertical-align:top; width:95px;">
+        <div style="background:{$color}; color:#fff; font-size:12px; font-weight:900; padding:2px 8px; border-bottom-left-radius:10px; display:inline-block; float:right; line-height:1.2;">
+          Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
+        </div>
+      </td>
+    </tr>
+  </table>
+  <div style="font-size:8.5px; font-weight:800; color:#1e293b; padding-left:6px; margin-top:2px;">KODE VOUCHER</div>
+  <table style="width:100%; border-collapse:collapse; padding:0 6px;">
+    <tr>
+      <td style="width:58%; padding:2px 4px 2px 6px;">
+        <div style="border:2px solid {$color}; color:{$color}; font-size:14px; font-weight:900; font-family:monospace; text-align:center; padding:3px 2px; border-radius:4px; line-height:1;">
+          {{voucher.code}}
+        </div>
+      </td>
+      <td style="width:42%; text-align:center; padding:2px 6px 2px 2px; line-height:1.15;">
+        <div style="font-size:13px; font-weight:900; color:#0f172a;">{if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}6 JAM{/if}</div>
+        <div style="font-size:7.5px; color:#64748b; font-weight:600;">Masa Pakai</div>
+        <div style="font-size:8px; color:#0f172a; font-weight:700;">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
+      </td>
+    </tr>
+  </table>
+  <div style="text-align:center; font-size:7.5px; font-weight:700; color:#475569; line-height:1.15; padding:2px 4px;">
     Sambungkan Ke WiFi {if $company.name}{{company.name}}{else}Winets.id{/if}<br>
-    <span class="card-107-subnotes" style="font-size:7px; font-weight:normal; color:#64748b;">jika tidak muncul otomatis buka google</span>
+    <span style="font-size:7px; font-weight:normal; color:#64748b;">jika tidak muncul otomatis buka google</span>
   </div>
-
-  <!-- Footer Bar -->
-  <div class="card-107-footer" style="position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:2px 4px 2px 4px; background:#f8fafc; border-top:1px solid #e2e8f0;">
-    <div class="card-107-wa-pill" style="background:#10b981; color:#ffffff; font-size:7.5px; font-weight:800; padding:1.5px 5px; border-radius:10px; display:flex; align-items:center; gap:2px;">
-      <span class="card-107-wa-icon">&#9742;</span> {if $company.phone}{{company.phone}}{else}083139935920{/if}
-    </div>
-    <div class="card-107-login-pill" style="display:flex; align-items:center; gap:2px; font-size:7.5px; font-weight:800; color:#0f172a;">
-      <span class="card-107-triangle" style="width:0; height:0; border-top:4px solid transparent; border-bottom:4px solid transparent; border-left:6px solid {$color}; display:inline-block;"></span>
-      <span class="card-107-chrome-icon">&#127760;</span>
-      <span class="card-107-login-url" style="font-family:monospace;">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
-    </div>
-  </div>
+  <table style="width:100%; border-collapse:collapse; background:#f8fafc; border-top:1px solid #e2e8f0; padding:2px 4px;">
+    <tr>
+      <td style="padding:2px 4px; text-align:left;">
+        <span style="background:#10b981; color:#fff; font-size:7.5px; font-weight:800; padding:1px 5px; border-radius:8px;">
+          &#9742; {if $company.phone}{{company.phone}}{else}083139935920{/if}
+        </span>
+      </td>
+      <td style="padding:2px 4px; text-align:right; font-size:7.5px; font-weight:800; color:#0f172a;">
+        &#127760; <span style="font-family:monospace;">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
+      </td>
+    </tr>
+  </table>
 </div>',
             ],
             [

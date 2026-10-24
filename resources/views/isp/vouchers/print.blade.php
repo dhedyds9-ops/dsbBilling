@@ -108,24 +108,25 @@
             margin: 2px;
         }
         
-        /* Proteksi mutlak layout kartu dan ukuran logo */
-        .card-107 {
-            width: 220px !important;
-            height: 122px !important;
-            display: inline-block !important;
-            vertical-align: top !important;
-            box-sizing: border-box !important;
-            position: relative !important;
-            overflow: hidden !important;
-        }
-        .card-107-logo, .card-107 img, .print-area img {
-            max-height: 20px !important;
-            max-width: 80px !important;
+        /* Proteksi ukuran logo perusahaan agar tidak meluber */
+        .company-logo, .card-logo, .card-107-logo {
+            max-height: 22px !important;
+            max-width: 85px !important;
             width: auto !important;
             height: auto !important;
             object-fit: contain !important;
             display: inline-block !important;
             vertical-align: middle !important;
+        }
+
+        /* QR Code dipertahankan ukuran optimal 50px agar mudah discan */
+        .qrcode img {
+            width: 50px !important;
+            height: 50px !important;
+            max-width: 50px !important;
+            max-height: 50px !important;
+            display: inline-block !important;
+            object-fit: contain !important;
         }
     </style>
     @if(!empty($css))

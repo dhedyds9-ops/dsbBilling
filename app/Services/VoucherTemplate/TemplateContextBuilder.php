@@ -236,6 +236,8 @@ class TemplateContextBuilder
         if ($profile !== null) {
             if (!empty($profile->promo_price) && (float) $profile->promo_price > 0) {
                 $rawPrice = $profile->promo_price;
+            } elseif (!empty($profile->price) && (float) $profile->price > 0) {
+                $rawPrice = $profile->price;
             } elseif (!empty($profile->base_price) && (float) $profile->base_price > 0) {
                 $rawPrice = $profile->base_price;
             } elseif (!empty($profile->owner_price) && (float) $profile->owner_price > 0) {
@@ -297,6 +299,8 @@ class TemplateContextBuilder
         $rawPrice = null;
         if (!empty($profile->promo_price) && (float) $profile->promo_price > 0) {
             $rawPrice = $profile->promo_price;
+        } elseif (!empty($profile->price) && (float) $profile->price > 0) {
+            $rawPrice = $profile->price;
         } elseif (!empty($profile->base_price) && (float) $profile->base_price > 0) {
             $rawPrice = $profile->base_price;
         } elseif (!empty($profile->owner_price) && (float) $profile->owner_price > 0) {
