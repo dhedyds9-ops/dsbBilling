@@ -48,9 +48,9 @@ class Edit extends AdminComponent
         $this->activePage = 'employee';
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Administration', 'url' => route('admin.users.index')],
-            ['label' => 'Employees', 'url' => route('admin.employee.index')],
-            ['label' => 'Edit'],
+            ['label' => 'Kepegawaian', 'url' => '#'],
+            ['label' => 'Data Pegawai', 'url' => route('admin.employee.index')],
+            ['label' => 'Edit Pegawai'],
         ];
 
         $this->employee = \App\Models\Employee::findOrFail($id);
@@ -88,9 +88,13 @@ class Edit extends AdminComponent
             'user_id' => $this->user_id ?: null,
         ]);
 
-        session()->flash('message', 'Employee updated successfully.');
+        if ($this->user_id && $this->department) {
+            \App\Models\User::where('id', $this->user_id)->update(['job_function' => $this->department]);
+        }
 
-        return redirect('/admin/employee');
+        session()->flash('success', 'Data pegawai berhasil diperbarui.');
+
+        return redirect()->route('admin.employee.index');
     }
 
     public function render()

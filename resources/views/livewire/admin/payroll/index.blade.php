@@ -1,90 +1,269 @@
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
-        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Payroll Records</h2>
-        <a href="{{ route('admin.payroll.generate') }}" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm whitespace-nowrap">
-            Generate Payroll
-        </a>
+@php
+    $bulanIndo = [
+        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+    ];
+@endphp
+
+<div class="space-y-6 pb-12">
+    {{-- Header & Tombol Generate --}}
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400" style="font-size: 28px;">payments</span>
+                Rekap Gaji / Payroll
+            </h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Kelola slip gaji, perhitungan tunjangan, potongan, dan status pembayaran gaji staf.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('admin.payroll.generate') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors cursor-pointer">
+                <span class="material-symbols-outlined notranslate" style="font-size: 18px;" translate="no">receipt_long</span>
+                Generate Gaji Periode
+            </a>
+        </div>
     </div>
 
-    <!-- Filters -->
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6 grid grid-cols-2 sm:flex sm:items-center gap-3">
-        <div class="w-full sm:w-48">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Month</label>
-            <select wire:model.live="month" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                @for ($i = 1; $i <= 12; $i++)
-                    <option value="{{ $i }}">{{ date('F', mktime(0, 0, 0, $i, 10)) }}</option>
-                @endfor
+    {{-- Kartu Ringkasan Statistik --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no">account_balance_wallet</span>
+            </div>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Beban Gaji</p>
+                <p class="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono">Rp {{ number_format($stats['total_net'] ?? 0, 0, ',', '.') }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no">paid</span>
+            </div>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sudah Dibayar</p>
+                <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">Rp {{ number_format($stats['paid_net'] ?? 0, 0, ',', '.') }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no">pending</span>
+            </div>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Belum Dibayar</p>
+                <p class="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono">Rp {{ number_format($stats['unpaid_net'] ?? 0, 0, ',', '.') }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no">badge</span>
+            </div>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Slip Gaji</p>
+                <p class="text-xl font-bold text-blue-600 dark:text-blue-400">{{ number_format($stats['total_slip'] ?? 0) }} Staf</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- Filter Bar --}}
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 flex-wrap">
+            <div class="flex items-center gap-1.5">
+                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Bulan:</label>
+                <select wire:model.live="month"
+                        class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    @foreach($bulanIndo as $mNum => $mName)
+                        <option value="{{ $mNum }}">{{ $mName }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tahun:</label>
+                <select wire:model.live="year"
+                        class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                    @for($y = (int)date('Y') - 3; $y <= (int)date('Y') + 1; $y++)
+                        <option value="{{ $y }}">{{ $y }}</option>
+                    @endfor
+                </select>
+            </div>
+
+            <select wire:model.live="filterStatus"
+                    class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="">Semua Status</option>
+                <option value="draft">Draft</option>
+                <option value="paid">Sudah Dibayar</option>
             </select>
         </div>
-        <div class="w-full sm:w-48">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Year</label>
-            <select wire:model.live="year" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                @for ($i = date('Y') - 5; $i <= date('Y') + 1; $i++)
-                    <option value="{{ $i }}">{{ $i }}</option>
-                @endfor
-            </select>
+
+        <div class="w-full md:w-72 relative">
+            <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" translate="no" style="font-size:20px">search</span>
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama atau NIK..."
+                   class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
     </div>
 
-    <!-- Messages -->
-    @if (session()->has('message'))
-        <div class="bg-green-100 dark:bg-green-800 border-l-4 border-green-500 text-green-700 dark:text-green-200 p-4 mb-6" role="alert">
-            <p>{{ session('message') }}</p>
-        </div>
-    @endif
-    @if (session()->has('success'))
-        <div class="bg-green-100 dark:bg-green-800 border-l-4 border-green-500 text-green-700 dark:text-green-200 p-4 mb-6" role="alert">
-            <p>{{ session('success') }}</p>
-        </div>
-    @endif
+    {{-- Tabel Gaji --}}
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                        <th class="px-4 py-3.5 text-center w-28">Aksi</th>
+                        <th class="px-4 py-3.5">Pegawai</th>
+                        <th class="px-4 py-3.5">Periode</th>
+                        <th class="px-4 py-3.5">Gaji Pokok</th>
+                        <th class="px-4 py-3.5">Tunjangan</th>
+                        <th class="px-4 py-3.5">Potongan</th>
+                        <th class="px-4 py-3.5">Gaji Bersih (Net)</th>
+                        <th class="px-4 py-3.5 text-center">Status</th>
+                        <th class="px-4 py-3.5">Tgl Pembayaran</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @forelse($payrolls as $payroll)
+                        @php
+                            $emp = $payroll->employee;
+                            $isPaid = $payroll->status === 'paid';
+                            $namaBulan = $bulanIndo[$payroll->period_month] ?? $payroll->period_month;
+                        @endphp
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                            {{-- Aksi di sisi KIRI --}}
+                            <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center gap-1">
+                                    {{-- Lihat Slip Gaji --}}
+                                    <a href="{{ route('admin.payroll.show', $payroll->id) }}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors"
+                                       title="Lihat Slip Gaji">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">description</span>
+                                    </a>
 
-    <!-- Table -->
-    <div class="bg-white dark:bg-gray-800 overflow-x-auto shadow-xl sm:rounded-lg">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Employee</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Period</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Net Salary</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                @forelse ($payrolls as $payroll)
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {{ $payroll->employee?->name ?? 'N/A' }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {{ $payroll->period_month }}/{{ $payroll->period_year }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            Rp {{ number_format($payroll->net_salary, 0, ',', '.') }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $payroll->status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' }}">
-                                {{ ucfirst($payroll->status) }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <a href="{{ route('admin.payroll.show', $payroll->id) }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">Payslip</a>
-                            @if ($payroll->status !== 'paid')
-                                <a href="{{ route('admin.payroll.edit', $payroll->id) }}" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">Edit</a>
-                                <button wire:click="markAsPaid({{ $payroll->id }})" class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300">Mark Paid</button>
-                            @endif
-                            <button wire:click="delete({{ $payroll->id }})" onclick="confirm('Are you sure?') || event.stopImmediatePropagation()" class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Delete</button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">No payroll records found.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-center sm:justify-start overflow-x-auto">
-            {{ $payrolls->links() }}
+                                    {{-- Tombol Bayar / Mark Paid --}}
+                                    @if(!$isPaid)
+                                        <button wire:click="markAsPaid({{ $payroll->id }})" wire:confirm="Tandai slip gaji ini sudah dibayar?"
+                                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors"
+                                                title="Tandai Sudah Dibayar">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+                                        </button>
+                                        <a href="{{ route('admin.payroll.edit', $payroll->id) }}"
+                                           class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 transition-colors"
+                                           title="Edit Gaji">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                        </a>
+                                    @endif
+
+                                    {{-- Hapus --}}
+                                    <button wire:click="confirmDelete({{ $payroll->id }})"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors"
+                                            title="Hapus Slip">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+
+                            {{-- Pegawai --}}
+                            <td class="px-4 py-3.5">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 font-bold flex items-center justify-center text-xs shrink-0">
+                                        {{ strtoupper(substr($emp?->name ?? 'U', 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-slate-900 dark:text-slate-100">{{ $emp?->name ?? 'Pegawai Terhapus' }}</p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $emp?->nik ?: '-' }} • {{ $emp?->position ?: 'Staf' }}</p>
+                                    </div>
+                                </div>
+                            </td>
+
+                            {{-- Periode --}}
+                            <td class="px-4 py-3.5 font-medium text-slate-800 dark:text-slate-200">
+                                {{ $namaBulan }} {{ $payroll->period_year }}
+                            </td>
+
+                            {{-- Gaji Pokok --}}
+                            <td class="px-4 py-3.5 font-mono text-xs text-slate-700 dark:text-slate-300">
+                                Rp {{ number_format($payroll->base_salary, 0, ',', '.') }}
+                            </td>
+
+                            {{-- Tunjangan --}}
+                            <td class="px-4 py-3.5 font-mono text-xs text-emerald-600 dark:text-emerald-400">
+                                + Rp {{ number_format($payroll->allowances ?? 0, 0, ',', '.') }}
+                            </td>
+
+                            {{-- Potongan --}}
+                            <td class="px-4 py-3.5 font-mono text-xs text-rose-600 dark:text-rose-400">
+                                - Rp {{ number_format($payroll->deductions ?? 0, 0, ',', '.') }}
+                            </td>
+
+                            {{-- Gaji Bersih (Net) --}}
+                            <td class="px-4 py-3.5 font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                Rp {{ number_format($payroll->net_salary, 0, ',', '.') }}
+                            </td>
+
+                            {{-- Status --}}
+                            <td class="px-4 py-3.5 text-center">
+                                @if($isPaid)
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                                        Lunas
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                        Draft / Pending
+                                    </span>
+                                @endif
+                            </td>
+
+                            {{-- Tgl Bayar --}}
+                            <td class="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-400 font-mono">
+                                {{ $payroll->payment_date ? $payroll->payment_date->format('d/m/Y') : '-' }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                <div class="flex flex-col items-center justify-center">
+                                    <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 mb-2" style="font-size: 48px;" translate="no">receipt_long</span>
+                                    <p class="text-base font-semibold text-slate-800 dark:text-slate-200">Belum Ada Slip Gaji</p>
+                                    <p class="text-xs text-slate-400 mt-1">Belum ada slip gaji yang dibuat untuk periode {{ $bulanIndo[$month] ?? $month }} {{ $year }}.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
+
+        @if($payrolls->hasPages())
+            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                {{ $payrolls->links() }}
+            </div>
+        @endif
     </div>
+
+    {{-- Modal Konfirmasi Hapus --}}
+    @if($showDeleteModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
+                <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+                    <span class="material-symbols-outlined notranslate" style="font-size: 28px;" translate="no">warning</span>
+                </div>
+                <div class="text-center">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Hapus Slip Gaji?</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Data slip gaji ini akan dihapus permanen. Anda dapat men-generate ulang jika dibutuhkan.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button wire:click="$set('showDeleteModal', false)"
+                            class="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors">
+                        Batal
+                    </button>
+                    <button wire:click="deleteSingle"
+                            class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors">
+                        Ya, Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

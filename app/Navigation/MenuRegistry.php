@@ -113,26 +113,31 @@ class MenuRegistry
                           'label' => 'Kepegawaian',
                           'icon' => 'badge',
                           'items' => [
-                              ['label' => 'Data Pegawai', 'route' => 'admin.employee.index', 'active' => 'admin.employee.*'],
-                              ['label' => 'Rekap Absensi', 'route' => 'admin.attendance.index', 'active' => 'admin.attendance.*'],
-                              ['label' => 'Rekap Gaji', 'route' => 'admin.payroll.index', 'active' => 'admin.payroll.*'],
+                              ['label' => 'Pegawai', 'route' => 'admin.employee.index', 'active' => 'admin.employee.*'],
+                              ['label' => 'Absensi', 'route' => 'admin.attendance.index', 'active' => 'admin.attendance.*'],
+                              ['label' => 'Gaji / Payroll', 'route' => 'admin.payroll.index', 'active' => 'admin.payroll.*'],
                           ]
                       ],
 
                     [
-                        'label' => 'CRM & Support',
+                        'label' => 'CRM',
+                        'icon' => 'handshake',
+                        'items' => [
+                            ['label' => 'Prospek', 'route' => 'crm.leads.index', 'active' => 'crm.leads.*'],
+                            ['label' => 'Survey', 'route' => 'crm.surveys.index', 'active' => 'crm.surveys.*'],
+                            ['label' => 'Penawaran', 'route' => 'crm.quotations.index', 'active' => 'crm.quotations.*'],
+                            ['label' => 'Kontrak', 'route' => 'crm.contracts.index', 'active' => 'crm.contracts.*'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Support',
                         'icon' => 'support_agent',
                         'items' => [
-                            ['label' => 'Tiket Bantuan', 'route' => 'support.ticket', 'active' => 'support.ticket'],
-                            ['label' => 'Calon Pelanggan', 'route' => 'crm.leads.index', 'active' => 'crm.leads.*'],
-                            ['label' => 'Survey Pelanggan', 'route' => 'crm.surveys.index', 'active' => 'crm.surveys.*'],
-                            ['label' => 'Quotation (Penawaran)', 'route' => 'crm.quotations.index', 'active' => 'crm.quotations.*'],
-                            ['label' => 'Kontrak Pelanggan', 'route' => 'crm.contracts.index', 'active' => 'crm.contracts.*'],
-                            ['label' => 'Jadwal Instalasi', 'route' => 'crm.installations.index', 'active' => 'crm.installations.*'],
-                            ['label' => 'Aktivasi Layanan', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*'],
-                            ['label' => 'Riwayat Kerja & Instalasi', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*'],
+                            ['label' => 'Tiket', 'route' => 'support.ticket', 'active' => 'support.ticket'],
+                            ['label' => 'Instalasi', 'route' => 'crm.installations.index', 'active' => 'crm.installations.*'],
+                            ['label' => 'Aktivasi', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*'],
                             ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance'],
-                            ['label' => 'Workflow & Tugas', 'route' => 'workflow.list.index', 'active' => 'workflow.list.*'],
+                            ['label' => 'Riwayat WO', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*'],
                         ]
                     ],
                     [

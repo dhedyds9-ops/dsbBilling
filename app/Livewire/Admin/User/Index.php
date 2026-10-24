@@ -143,7 +143,7 @@ class Index extends AdminComponent
     public function render()
     {
         $query = UserModel::query()
-            ->with('roles')
+            ->with(['roles', 'employee'])
             ->whereDoesntHave('roles', function ($q) {
                 $q->whereIn('name', ['customer', 'pppoe', 'hotspot']);
             });

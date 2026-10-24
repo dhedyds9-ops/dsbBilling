@@ -5,24 +5,34 @@ namespace App\Livewire\Admin\Attendance;
 use App\Livewire\AdminComponent;
 use App\Models\Workforce\Attendance;
 use Carbon\Carbon;
+use Livewire\WithPagination;
 
 class Index extends AdminComponent
 {
+    use WithPagination;
+
     public $dateFilter;
     public $search = '';
+    public $filterStatus = '';
+    public $perPage = 15;
 
     public function mount()
     {
         parent::mount();
         $this->activeModule = 'admin';
-        $this->activePage = 'admin-attendance';
+        $this->activePage = 'attendance';
         $this->dateFilter = Carbon::today()->format('Y-m-d');
         
         $this->breadcrumbs = [
-            ['label' => 'Administration', 'url' => '#'],
-            ['label' => 'Rekap Absensi', 'url' => '#'],
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'Kepegawaian', 'url' => '#'],
+            ['label' => 'Rekap Absensi', 'url' => route('admin.attendance.index')],
         ];
     }
+
+    public function updatingDateFilter() { $this->resetPage(); }
+    public function updatingSearch() { $this->resetPage(); }
+    public function updatingFilterStatus() { $this->resetPage(); }
 
     public function updateStatus($id, $status, $notes = null)
     {
@@ -37,19 +47,32 @@ class Index extends AdminComponent
 
     public function render()
     {
-        $query = Attendance::with('technician')
+        $baseQuery = Attendance::with(['technician.employee'])
             ->whereDate('date', $this->dateFilter);
 
-        if (!empty($this->search)) {
-            $query->whereHas('technician', function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%');
-            });
-        }
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'working' => (clone $baseQuery)->where('status', 'checked_in')->count(),
+            'done' => (clone $baseQuery)->where('status', 'checked_out')->count(),
+            'late' => (clone $baseQuery)->where('status', 'late')->count(),
+            'sick_leave' => (clone $baseQuery)->whereIn('status', ['sick', 'permission', 'absent'])->count(),
+        ];
 
-        $attendances = $query->orderBy('checked_in_at', 'asc')->get();
+        $query = (clone $baseQuery)
+            ->when(!empty($this->search), function($q) {
+                $q->whereHas('technician', function($tq) {
+                    $tq->where('name', 'like', '%' . $this->search . '%')
+                       ->orWhere('email', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->when(!empty($this->filterStatus), fn($q) => $q->where('status', $this->filterStatus))
+            ->orderBy('checked_in_at', 'asc');
+
+        $attendances = $query->paginate($this->perPage);
 
         return view('livewire.admin.attendance.index', [
-            'attendances' => $attendances
-        ])->layout('layouts.enterprise');
+            'attendances' => $attendances,
+            'stats' => $stats,
+        ]);
     }
 }

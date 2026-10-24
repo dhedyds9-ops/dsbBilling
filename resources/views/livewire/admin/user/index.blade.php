@@ -54,24 +54,40 @@
     {{-- Data Table --}}
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
+            <table class="w-full text-sm text-left whitespace-nowrap">
                 <thead class="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th class="px-6 py-4 whitespace-nowrap">Nama</th>
-                        <th class="px-6 py-4 whitespace-nowrap">Username</th>
-                        <th class="px-6 py-4 whitespace-nowrap">Status Akun</th>
-                        <th class="px-6 py-4 whitespace-nowrap">Fungsi / Job</th>
-                        <th class="px-6 py-4 whitespace-nowrap">Role & Hak Akses</th>
-                        <th class="px-6 py-4 whitespace-nowrap">Terdaftar</th>
-                        <th class="px-6 py-4 whitespace-nowrap text-right">Aksi</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap w-24">Aksi</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap">Nama & Email</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap">Status Kepegawaian</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap">Username</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap">Status Akun</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap">Fungsi / Job</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap">Role & Hak Akses</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap">Terdaftar</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     @forelse($users as $user)
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 group transition-colors">
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="flex items-center gap-1.5">
+                                    <button wire:click="showSummary({{ $user->id }})" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center transition-colors" title="Lihat Detail / Ringkasan">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                    </button>
+                                    <a href="{{ route('admin.users.edit', $user->id) }}" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center transition-colors" title="Edit Akun">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    @if($user->id !== auth()->id())
+                                        <button wire:click="delete({{ $user->id }})" wire:confirm="Yakin ingin menghapus user ini?" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:bg-red-900/30 flex items-center justify-center transition-colors" title="Hapus User">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                                    <div class="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold shrink-0 text-sm">
                                         {{ substr($user->name ?? 'U', 0, 1) }}
                                     </div>
                                     <div>
@@ -80,23 +96,35 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 font-mono text-sm text-slate-700 dark:text-slate-300">
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                @if($user->employee)
+                                    <a href="{{ route('admin.employee.edit', $user->employee->id) }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors" title="Buka data pegawai">
+                                        <span class="material-symbols-outlined notranslate text-[14px]" translate="no">badge</span>
+                                        <span>Pegawai: {{ $user->employee->nik }}</span>
+                                    </a>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-normal text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                        Non-Pegawai
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap font-mono text-sm text-slate-700 dark:text-slate-300">
                                 {{ $user->username ?? '-' }}
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 @if($user->is_active)
                                     <span class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Aktif</span>
                                 @else
                                     <span class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">Nonaktif</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="font-medium text-slate-700 dark:text-slate-300">
                                     {{ $user->job_function ?? '-' }}
                                 </div>
                                 <div class="text-xs text-slate-500 dark:text-slate-400">{{ $user->job_title ?? '-' }}</div>
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex flex-wrap gap-1">
                                     @foreach($user->roles as $role)
                                         <span class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
@@ -105,28 +133,13 @@
                                     @endforeach
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                                 {{ $user->created_at?->translatedFormat('d M Y') ?? '-' }}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button wire:click="showSummary({{ $user->id }})" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/30 flex items-center justify-center transition-colors" title="Lihat Detail">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
-                                    </button>
-                                    <a href="{{ route('admin.users.edit', $user->id) }}" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:bg-amber-900/30 dark:hover:bg-amber-900/30 flex items-center justify-center transition-colors" title="Edit">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
-                                    </a>
-                                    @if($user->id !== auth()->id())
-                                        <button wire:click="delete({{ $user->id }})" wire:confirm="Yakin ingin menghapus user ini?" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:bg-red-900/30 dark:hover:bg-red-900/30 flex items-center justify-center transition-colors">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
-                                        </button>
-                                    @endif
-                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="8" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <span class="material-symbols-outlined notranslate block mx-auto text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">group_off</span>
                                 <p class="text-lg font-medium text-slate-900 dark:text-slate-100">Tidak ada User</p>
                                 <p class="text-slate-500 dark:text-slate-400 mt-1">Belum ada data staf atau user yang terdaftar.</p>

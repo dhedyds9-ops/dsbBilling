@@ -22,9 +22,9 @@ class Generate extends AdminComponent
         $this->activePage = 'payroll';
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Administration', 'url' => route('admin.users.index')],
-            ['label' => 'Payroll', 'url' => route('admin.payroll.index')],
-            ['label' => 'Generate'],
+            ['label' => 'Kepegawaian', 'url' => '#'],
+            ['label' => 'Rekap Gaji', 'url' => route('admin.payroll.index')],
+            ['label' => 'Generate Gaji'],
         ];
 
         $this->month = date('m');
@@ -46,12 +46,40 @@ class Generate extends AdminComponent
         $employees = Employee::where('status', 'active')->get();
         $generatedCount = 0;
 
+        $latePenalty = (float) \App\Models\Setting::getValue('payroll.late_penalty', 25000);
+        $absentPenalty = (float) \App\Models\Setting::getValue('payroll.absent_penalty', 100000);
+
         DB::beginTransaction();
         try {
             foreach ($employees as $employee) {
-                // Check if payroll already exists for this period
                 $monthInt = (int) $this->month;
                 $yearInt = (int) $this->year;
+
+                $deductions = 0;
+                $attendanceNotes = [];
+
+                if ($employee->user_id && $this->period_start && $this->period_end) {
+                    $lateCount = \App\Models\Workforce\Attendance::where('technician_id', $employee->user_id)
+                        ->whereBetween('date', [$this->period_start, $this->period_end])
+                        ->where('status', \Src\Domain\Workforce\Enums\AttendanceStatus::LATE)
+                        ->count();
+                    $absentCount = \App\Models\Workforce\Attendance::where('technician_id', $employee->user_id)
+                        ->whereBetween('date', [$this->period_start, $this->period_end])
+                        ->where('status', \Src\Domain\Workforce\Enums\AttendanceStatus::ABSENT)
+                        ->count();
+
+                    if ($lateCount > 0) {
+                        $deductions += ($lateCount * $latePenalty);
+                        $attendanceNotes[] = "Terlambat {$lateCount}x (-Rp " . number_format($lateCount * $latePenalty, 0, ',', '.') . ")";
+                    }
+                    if ($absentCount > 0) {
+                        $deductions += ($absentCount * $absentPenalty);
+                        $attendanceNotes[] = "Alpa {$absentCount}x (-Rp " . number_format($absentCount * $absentPenalty, 0, ',', '.') . ")";
+                    }
+                }
+
+                $fullNotes = trim(($this->notes ?? '') . (empty($attendanceNotes) ? '' : ' | ' . implode(', ', $attendanceNotes)), ' |');
+                $netSalary = max(0, $employee->base_salary - $deductions);
                 
                 // Gunakan withTrashed() agar record yang sudah di soft-delete bisa terdeteksi dan di-restore
                 $payroll = Payroll::withTrashed()
@@ -61,7 +89,6 @@ class Generate extends AdminComponent
                     ->first();
 
                 if ($payroll) {
-                    // Jika ada dan sudah dihapus (soft delete), kita kembalikan (restore) dan perbarui datanya
                     if ($payroll->trashed()) {
                         $payroll->restore();
                         $payroll->update([
@@ -69,14 +96,13 @@ class Generate extends AdminComponent
                             'period_end' => $this->period_end ?: null,
                             'base_salary' => $employee->base_salary,
                             'allowances' => 0,
-                            'deductions' => 0,
-                            'net_salary' => $employee->base_salary,
+                            'deductions' => $deductions,
+                            'net_salary' => $netSalary,
                             'status' => 'draft',
-                            'notes' => $this->notes
+                            'notes' => $fullNotes ?: null
                         ]);
                         $generatedCount++;
                     }
-                    // Jika belum dihapus, biarkan saja (skip) agar tidak menimpa data yang sedang aktif
                 } else {
                     Payroll::create([
                         'employee_id' => $employee->id,
@@ -86,21 +112,21 @@ class Generate extends AdminComponent
                         'period_end' => $this->period_end ?: null,
                         'base_salary' => $employee->base_salary,
                         'allowances' => 0,
-                        'deductions' => 0,
-                        'net_salary' => $employee->base_salary,
+                        'deductions' => $deductions,
+                        'net_salary' => $netSalary,
                         'status' => 'draft',
-                        'notes' => $this->notes
+                        'notes' => $fullNotes ?: null
                     ]);
                     $generatedCount++;
                 }
             }
             DB::commit();
             
-            session()->flash('success', "{$generatedCount} payroll records generated successfully for {$this->month}/{$this->year}.");
+            session()->flash('success', "{$generatedCount} slip gaji berhasil digenerate untuk periode {$this->month}/{$this->year}.");
             return redirect()->route('admin.payroll.index');
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Error generating payroll: " . $e->getMessage());
+            session()->flash('error', "Gagal generate gaji: " . $e->getMessage());
         }
     }
 

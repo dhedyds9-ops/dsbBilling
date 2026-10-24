@@ -14,9 +14,9 @@ class Create extends AdminComponent
         $this->activePage = 'employee';
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Administration', 'url' => route('admin.users.index')],
-            ['label' => 'Employees', 'url' => route('admin.employee.index')],
-            ['label' => 'Create'],
+            ['label' => 'Kepegawaian', 'url' => '#'],
+            ['label' => 'Data Pegawai', 'url' => route('admin.employee.index')],
+            ['label' => 'Tambah Pegawai'],
         ];
     }
     public $nik;
@@ -51,7 +51,7 @@ class Create extends AdminComponent
     {
         $this->validate();
 
-        Employee::create([
+        $emp = Employee::create([
             'nik' => $this->nik,
             'name' => $this->name,
             'position' => $this->position,
@@ -66,9 +66,13 @@ class Create extends AdminComponent
             'user_id' => $this->user_id ?: null,
         ]);
 
-        session()->flash('message', 'Employee created successfully.');
+        if ($this->user_id && $this->department) {
+            \App\Models\User::where('id', $this->user_id)->update(['job_function' => $this->department]);
+        }
 
-        return redirect('/admin/employee');
+        session()->flash('success', 'Data pegawai berhasil ditambahkan.');
+
+        return redirect()->route('admin.employee.index');
     }
 
     public function render()
