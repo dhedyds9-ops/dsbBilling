@@ -103,7 +103,7 @@ class VoucherTemplateSeeder extends Seeder
  <tr>
  <td style="width:125px; vertical-align:top;">
  <div style="clear:both; color:#555; margin-bottom:2px;">
- {if $voucher.password == $voucher.code || empty($voucher.password)} 
+ {if $voucher.password == $voucher.code || $voucher.password == ""} 
  <div style="border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:10px; color:#444;">KODE VOUCHER</div> 
  <div style="padding:2px; border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:14px; color:#000; font-family:monospace;">{{voucher.code}}</div>
  {else}
@@ -297,7 +297,7 @@ class VoucherTemplateSeeder extends Seeder
       <tr>
        <td style="width:95px; vertical-align:top; padding-right:2px;">
         <div style="border:1px solid #ccc; border-radius:3px; margin-bottom:3px; text-align:center; background:#fafafa;">
-         {if $voucher.password == $voucher.code || empty($voucher.password)}
+         {if $voucher.password == $voucher.code || $voucher.password == ""}
           <div style="border-bottom:1px solid #ddd; text-align:center; font-weight:bold; font-size:9px; color:#555; text-transform:uppercase; padding:1px 0;">VOUCHER</div>
           <div style="padding:2px; text-align:center; font-weight:bold; font-size:13px; color:#111; font-family:\'Courier New\',Courier,monospace;">{{voucher.code}}</div>
          {else}
