@@ -30,10 +30,10 @@ class VoucherTemplateSeeder extends Seeder
     {
         return [
             [
-                'name' => 'Voucher MSRadius Dynamic Color',
-                'slug' => 'voucher-msradius-color',
+                'name' => 'MSRadius Template 107 (Dynamic Color)',
+                'slug' => 'msradius-template-107-dynamic',
                 'category' => VoucherTemplateCategory::Classic->value,
-                'description' => 'Template voucher dinamis bergaya MSRadius / Mikhmon dengan warna otomatis sesuai nominal harga (Rp 2rb - 70rb), logo, dan QR Code login.',
+                'description' => 'Template voucher MSRadius 107 dengan sudut badge harga melengkung, kotak kode voucher tebal, kuota & durasi, instruksi WiFi, serta badge WA dan domain login dengan aksen warna dinamis otomatis sesuai nominal harga.',
                 'is_system' => false,
                 'is_active' => true,
                 'is_default' => true,
@@ -43,94 +43,503 @@ class VoucherTemplateSeeder extends Seeder
                     'page_margins' => ['top' => 5, 'right' => 5, 'bottom' => 5, 'left' => 5],
                     'card_margins' => ['top' => 2, 'right' => 2, 'bottom' => 2, 'left' => 2],
                 ],
-                'css_code' => '.qrcode img {
-    height: 50px;
-    width: 50px;
-    border-radius: 5px;
-    box-sizing: border-box;
+                'css_code' => '.card-107 {
+  width: 220px;
+  height: 122px;
+  background: #ffffff;
+  border-radius: 4px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 3px;
+  display: inline-block;
+  vertical-align: top;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.card-107-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 3px 0 0 5px;
+}
+
+.card-107-logo-box {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 130px;
+}
+
+.card-107-logo {
+  height: 18px;
+  max-width: 70px;
+  object-fit: contain;
+}
+
+.card-107-brand {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0284c7;
+  letter-spacing: -0.2px;
+}
+
+.card-107-price-badge {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 2px 10px 3px 12px;
+  border-bottom-left-radius: 12px;
+  letter-spacing: 0.3px;
+  box-shadow: -1px 1px 2px rgba(0,0,0,0.15);
+}
+
+.card-107-kode-title {
+  font-size: 9px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.8px;
+  padding-left: 8px;
+  margin-top: 1px;
+}
+
+.card-107-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px;
+  gap: 6px;
+}
+
+.card-107-code-box {
+  flex: 1.2;
+  background: #ffffff;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 900;
+  font-family: "Courier New", Courier, monospace;
+  text-align: center;
+  padding: 4px 2px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.card-107-dur-box {
+  flex: 0.9;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.card-107-dur-title {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.card-107-dur-sub {
+  font-size: 8px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.card-107-dur-quota {
+  font-size: 8.5px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.card-107-notes {
+  text-align: center;
+  font-size: 7.5px;
+  font-weight: 700;
+  color: #475569;
+  line-height: 1.15;
+  margin-top: 2px;
+}
+
+.card-107-subnotes {
+  font-size: 7px;
+  font-weight: normal;
+  color: #64748b;
+}
+
+.card-107-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 2px 4px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.card-107-wa-pill {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 7.5px;
+  font-weight: 800;
+  padding: 1.5px 5px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.card-107-wa-icon {
+  font-size: 8px;
+}
+
+.card-107-login-pill {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 7.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.card-107-triangle {
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #00a2ff;
+  display: inline-block;
+}
+
+.card-107-chrome-icon {
+  font-size: 8px;
+}
+
+.card-107-login-url {
+  font-family: monospace;
 }',
                 'template_code' => '{assign var="v_price" value=$voucher.price}
-{if $v_price == 2000}
- {assign var="color" value="#000000"}
-{elseif $v_price == 3000}
- {assign var="color" value="#0ca5ff"}
-{elseif $v_price == 5000}
- {assign var="color" value="#FF0000"}
-{elseif $v_price == 7000}
- {assign var="color" value="#A52A2A"}
-{elseif $v_price == 25000}
- {assign var="color" value="#8B008B"}
-{elseif $v_price == 65000}
- {assign var="color" value="#FF00FF"}
-{elseif $v_price == 70000}
- {assign var="color" value="#32CD32"}
+{assign var="pkg" value=$package.name}
+{if $v_price == 2000 || $pkg == "2 JAM" || $pkg == "2 Jam"}
+ {assign var="color" value="#1e293b"}
+{elseif $v_price == 3000 || $pkg == "6 JAM" || $pkg == "6 Jam"}
+ {assign var="color" value="#00a2ff"}
+{elseif $v_price == 5000 || $pkg == "12 JAM" || $pkg == "12 Jam"}
+ {assign var="color" value="#e11d48"}
+{elseif $v_price == 7000 || $pkg == "24 JAM" || $pkg == "24 Jam" || $pkg == "1 Hari"}
+ {assign var="color" value="#8b5cf6"}
+{elseif $v_price == 10000}
+ {assign var="color" value="#10b981"}
+{elseif $v_price == 20000 || $v_price == 25000}
+ {assign var="color" value="#f59e0b"}
+{elseif $v_price >= 50000}
+ {assign var="color" value="#ec4899"}
 {else}
- {assign var="color" value="#4f46e5"}
+ {assign var="color" value="#00a2ff"}
 {/if}
-<table style="display:inline-block; border-collapse:collapse; border:1.5px solid #444; margin:1.5px; width:210px; position:relative; padding:0px; margin-right:8px; margin-bottom:10px; background:#fff; font-family:Arial,sans-serif;">
- <tbody>
- <tr>
- <td style="color:#666; padding:2px;" valign="top">
- <table style="width:100%;">
- <tbody>
- <tr> 
- <td style="width:85px">
- <img style="object-fit:contain;" width="85" height="22" src="{{company.logo}}" alt="logo"> 
- </td> 
- <td style="text-align:right;">
- <div style="font-weight:bold; font-size:18px; color:{$color};"> 
- <small style="font-size:12px;">Rp</small>
- {{voucher.price|number_format(0, \',\', \'.\')}}
- </div> 
- </td> 
- </tr>
- </tbody>
- </table>
- </td>
- </tr>
- <tr>
- <td style="color:#666; border-collapse:collapse; padding:2px;" valign="top">
- <table style="width:100%; border-collapse:collapse;">
- <tbody>
- <tr>
- <td style="width:115px;" valign="top">
- <div style="clear:both; color:#555; margin-bottom:2px;">
- {if $voucher.password == $voucher.code} 
- <div style="border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:10px; color:#444">KODE VOUCHER</div> 
- <div style="padding:2px; border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:14px; color:#000">{{voucher.code}}</div>
- {else}
- <div style="border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:9px; color:#444">MEMBER</div> 
- <div style="padding:1px; border-bottom:1px solid #ccc; text-align:center; font-weight:bold; font-size:11px; color:{$color}">
- {{voucher.code}}<br>{{voucher.password}}
- </div>
- {/if}
- </div>
- <div style="text-align:left; color:#111; font-size:8px; font-weight:bold; line-height:1.2; margin-top:2px;">
- Durasi : {{package.duration}}<br>
- Masa Aktif : {{voucher.validity}}<br>
- Tgl Cetak : {{voucher.created_at}}<br>
- Agen : {{owner.name}}<br>
- </div>
- </td> 
- <td style="width:85px; text-align:right;" valign="middle">
- <div class="qrcode" style="float:right;">
-   <img style="border: 1.5px solid {$color};" src="{qr($voucher.code, 100)}" alt="QR" />
- </div>
- </td> 
- </tr>
- <tr>
- <td style="background:{$color}; color:#fff; padding:2px;" valign="top" colspan="2">
- <div style="text-align:left; color:#fff; font-size:8px; font-weight:bold; padding:1px 3px;">
- Login manual: {{voucher.login_url}}
- </div>
- </td> 
- </tr>
- </tbody>
- </table>
- </td>
- </tr>
- </tbody>
-</table>',
+<div class="card-107" style="border: 1.5px solid {$color};">
+  <!-- Header: Logo & Badge Harga -->
+  <div class="card-107-header">
+    <div class="card-107-logo-box">
+      {if $company.logo}
+        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" onerror="this.style.display=\'none\'">
+      {/if}
+      <span class="card-107-brand">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
+    </div>
+    <div class="card-107-price-badge" style="background: {$color};">
+      Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
+    </div>
+  </div>
+
+  <!-- Label Kode -->
+  <div class="card-107-kode-title">KODE VOUCHER</div>
+
+  <!-- Body: Kotak Kode di kiri & Durasi di kanan -->
+  <div class="card-107-body">
+    <div class="card-107-code-box" style="border: 2px solid {$color}; color: {$color};">
+      {{voucher.code}}
+    </div>
+    <div class="card-107-dur-box">
+      <div class="card-107-dur-title">{if $package.duration}{{package.duration}}{else}6 JAM{/if}</div>
+      <div class="card-107-dur-sub">Masa Pakai</div>
+      <div class="card-107-dur-quota">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
+    </div>
+  </div>
+
+  <!-- Petunjuk Sambungan -->
+  <div class="card-107-notes">
+    Sambungkan Ke WiFi {if $company.name}{{company.name}}{else}Winets.id{/if}<br>
+    <span class="card-107-subnotes">jika tidak muncul otomatis buka google</span>
+  </div>
+
+  <!-- Footer Bar -->
+  <div class="card-107-footer">
+    <div class="card-107-wa-pill">
+      <span class="card-107-wa-icon">&#9742;</span> {if $company.phone}{{company.phone}}{else}083139935920{/if}
+    </div>
+    <div class="card-107-login-pill">
+      <span class="card-107-triangle" style="border-left-color: {$color};"></span>
+      <span class="card-107-chrome-icon">&#127760;</span>
+      <span class="card-107-login-url">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
+    </div>
+  </div>
+</div>',
+            ],
+            [
+                'name' => 'Voucher MSRadius Dynamic Color',
+                'slug' => 'voucher-msradius-color',
+                'category' => VoucherTemplateCategory::Classic->value,
+                'description' => 'Template voucher dinamis bergaya MSRadius / Mikhmon Card 107 dengan warna otomatis sesuai nominal harga (Rp 2rb - 70rb), logo, dan QR Code login.',
+                'is_system' => false,
+                'is_active' => true,
+                'is_default' => false,
+                'settings' => [
+                    'paper_size' => 'A4',
+                    'grid_preset' => '3x6',
+                    'page_margins' => ['top' => 5, 'right' => 5, 'bottom' => 5, 'left' => 5],
+                    'card_margins' => ['top' => 2, 'right' => 2, 'bottom' => 2, 'left' => 2],
+                ],
+                'css_code' => '.card-107 {
+  width: 220px;
+  height: 122px;
+  background: #ffffff;
+  border-radius: 4px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 3px;
+  display: inline-block;
+  vertical-align: top;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.card-107-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 3px 0 0 5px;
+}
+
+.card-107-logo-box {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 130px;
+}
+
+.card-107-logo {
+  height: 18px;
+  max-width: 70px;
+  object-fit: contain;
+}
+
+.card-107-brand {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0284c7;
+  letter-spacing: -0.2px;
+}
+
+.card-107-price-badge {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 2px 10px 3px 12px;
+  border-bottom-left-radius: 12px;
+  letter-spacing: 0.3px;
+  box-shadow: -1px 1px 2px rgba(0,0,0,0.15);
+}
+
+.card-107-kode-title {
+  font-size: 9px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.8px;
+  padding-left: 8px;
+  margin-top: 1px;
+}
+
+.card-107-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px;
+  gap: 6px;
+}
+
+.card-107-code-box {
+  flex: 1.2;
+  background: #ffffff;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 900;
+  font-family: "Courier New", Courier, monospace;
+  text-align: center;
+  padding: 4px 2px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.card-107-dur-box {
+  flex: 0.9;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.card-107-dur-title {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.card-107-dur-sub {
+  font-size: 8px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.card-107-dur-quota {
+  font-size: 8.5px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.card-107-notes {
+  text-align: center;
+  font-size: 7.5px;
+  font-weight: 700;
+  color: #475569;
+  line-height: 1.15;
+  margin-top: 2px;
+}
+
+.card-107-subnotes {
+  font-size: 7px;
+  font-weight: normal;
+  color: #64748b;
+}
+
+.card-107-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 2px 4px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.card-107-wa-pill {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 7.5px;
+  font-weight: 800;
+  padding: 1.5px 5px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.card-107-wa-icon {
+  font-size: 8px;
+}
+
+.card-107-login-pill {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 7.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.card-107-triangle {
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #00a2ff;
+  display: inline-block;
+}
+
+.card-107-chrome-icon {
+  font-size: 8px;
+}
+
+.card-107-login-url {
+  font-family: monospace;
+}',
+                'template_code' => '{assign var="v_price" value=$voucher.price}
+{assign var="pkg" value=$package.name}
+{if $v_price == 2000 || $pkg == "2 JAM" || $pkg == "2 Jam"}
+ {assign var="color" value="#1e293b"}
+{elseif $v_price == 3000 || $pkg == "6 JAM" || $pkg == "6 Jam"}
+ {assign var="color" value="#00a2ff"}
+{elseif $v_price == 5000 || $pkg == "12 JAM" || $pkg == "12 Jam"}
+ {assign var="color" value="#e11d48"}
+{elseif $v_price == 7000 || $pkg == "24 JAM" || $pkg == "24 Jam" || $pkg == "1 Hari"}
+ {assign var="color" value="#8b5cf6"}
+{elseif $v_price == 10000}
+ {assign var="color" value="#10b981"}
+{elseif $v_price == 20000 || $v_price == 25000}
+ {assign var="color" value="#f59e0b"}
+{elseif $v_price >= 50000}
+ {assign var="color" value="#ec4899"}
+{else}
+ {assign var="color" value="#00a2ff"}
+{/if}
+<div class="card-107" style="border: 1.5px solid {$color};">
+  <!-- Header: Logo & Badge Harga -->
+  <div class="card-107-header">
+    <div class="card-107-logo-box">
+      {if $company.logo}
+        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" onerror="this.style.display=\'none\'">
+      {/if}
+      <span class="card-107-brand">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
+    </div>
+    <div class="card-107-price-badge" style="background: {$color};">
+      Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
+    </div>
+  </div>
+
+  <!-- Label Kode -->
+  <div class="card-107-kode-title">KODE VOUCHER</div>
+
+  <!-- Body: Kotak Kode di kiri & Durasi di kanan -->
+  <div class="card-107-body">
+    <div class="card-107-code-box" style="border: 2px solid {$color}; color: {$color};">
+      {{voucher.code}}
+    </div>
+    <div class="card-107-dur-box">
+      <div class="card-107-dur-title">{if $package.duration}{{package.duration}}{else}6 JAM{/if}</div>
+      <div class="card-107-dur-sub">Masa Pakai</div>
+      <div class="card-107-dur-quota">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
+    </div>
+  </div>
+
+  <!-- Petunjuk Sambungan -->
+  <div class="card-107-notes">
+    Sambungkan Ke WiFi {if $company.name}{{company.name}}{else}Winets.id{/if}<br>
+    <span class="card-107-subnotes">jika tidak muncul otomatis buka google</span>
+  </div>
+
+  <!-- Footer Bar -->
+  <div class="card-107-footer">
+    <div class="card-107-wa-pill">
+      <span class="card-107-wa-icon">&#9742;</span> {if $company.phone}{{company.phone}}{else}083139935920{/if}
+    </div>
+    <div class="card-107-login-pill">
+      <span class="card-107-triangle" style="border-left-color: {$color};"></span>
+      <span class="card-107-chrome-icon">&#127760;</span>
+      <span class="card-107-login-url">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
+    </div>
+  </div>
+</div>',
             ],
             [
                 'name' => 'Kartu Modern WiFi (A4 Grid)',
