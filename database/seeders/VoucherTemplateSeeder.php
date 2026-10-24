@@ -226,6 +226,117 @@ class VoucherTemplateSeeder extends Seeder
 </div>',
             ],
             [
+                'name' => 'Template MKS Dynamic Color',
+                'slug' => 'mks-dynamic-color',
+                'category' => VoucherTemplateCategory::Classic->value,
+                'description' => 'Template voucher gaya MKS / Mikhmon dengan logo di kiri, nominal harga di kanan, kotak kode voucher dan kontak CS di kiri, masa aktif, durasi, kuota, QR code di kanan, dan bar login berwarna dinamis di footer.',
+                'is_system' => false,
+                'is_active' => true,
+                'is_default' => false,
+                'settings' => [
+                    'paper_size' => 'A4',
+                    'grid_preset' => '3x6',
+                    'page_margins' => ['top' => 5, 'right' => 5, 'bottom' => 5, 'left' => 5],
+                    'card_margins' => ['top' => 2, 'right' => 2, 'bottom' => 2, 'left' => 2],
+                ],
+                'css_code' => '',
+                'template_code' => '{assign var="v_price" value=$voucher.price}
+{if $v_price == 1000}
+ {assign var="color" value="#752CEB"}
+{elseif $v_price == 2000}
+ {assign var="color" value="#13C013"}
+{elseif $v_price == 3000}
+ {assign var="color" value="#E50877"}
+{elseif $v_price == 4000}
+ {assign var="color" value="#F75418"}
+{elseif $v_price == 5000}
+ {assign var="color" value="#FF69B4"}
+{elseif $v_price == 8000 || $v_price == 10000}
+ {assign var="color" value="#663399"}
+{elseif $v_price == 13000 || $v_price == 15000}
+ {assign var="color" value="#2E8B57"}
+{elseif $v_price == 17000 || $v_price == 20000}
+ {assign var="color" value="#0000FF"}
+{elseif $v_price == 35000 || $v_price == 40000}
+ {assign var="color" value="#6495ED"}
+{elseif $v_price == 80000 || $v_price == 85000}
+ {assign var="color" value="#FF8C00"}
+{elseif $v_price >= 160000}
+ {assign var="color" value="#DC143C"}
+{else}
+ {assign var="color" value="#E50877"}
+{/if}
+<table style="display:inline-block; border-collapse:collapse; border:1px solid #333; margin:2.5px; width:195px; background:#fff; font-family:Arial,Helvetica,sans-serif; vertical-align:top; box-sizing:border-box; page-break-inside:avoid; break-inside:avoid;">
+ <tbody>
+  <tr>
+   <td style="color:#666; padding:3px 4px 2px 4px;" valign="top">
+    <table style="width:100%; border-collapse:collapse; margin:0; padding:0;">
+     <tbody>
+      <tr>
+       <td style="width:85px; text-align:left; vertical-align:middle;">
+        {if $company.logo}
+         <img src="{{company.logo}}" alt="Logo" style="max-height:20px; max-width:85px; object-fit:contain; vertical-align:middle; display:inline-block;" onerror="this.style.display=\'none\'">
+        {else}
+         <span style="font-size:12px; font-weight:800; color:{$color}; vertical-align:middle;">{if $company.name}{{company.name}}{else}MKS.NET{/if}</span>
+        {/if}
+       </td>
+       <td style="text-align:right; vertical-align:middle;">
+        <div style="font-weight:bold; font-family:Tahoma,Arial,sans-serif; font-size:15px; color:{$color}; line-height:1;">
+         <small style="font-size:10px;">Rp</small> {{voucher.price|number_format(0, \',\', \'.\')}}
+        </div>
+       </td>
+      </tr>
+     </tbody>
+    </table>
+   </td>
+  </tr>
+  <tr>
+   <td style="padding:2px 4px 4px 4px;" valign="top">
+    <table style="width:100%; border-collapse:collapse; margin:0; padding:0;">
+     <tbody>
+      <tr>
+       <td style="width:95px; vertical-align:top; padding-right:2px;">
+        <div style="border:1px solid #ccc; border-radius:3px; margin-bottom:3px; text-align:center; background:#fafafa;">
+         {if $voucher.password == $voucher.code || empty($voucher.password)}
+          <div style="border-bottom:1px solid #ddd; text-align:center; font-weight:bold; font-size:9px; color:#555; text-transform:uppercase; padding:1px 0;">VOUCHER</div>
+          <div style="padding:2px; text-align:center; font-weight:bold; font-size:13px; color:#111; font-family:\'Courier New\',Courier,monospace;">{{voucher.code}}</div>
+         {else}
+          <div style="border-bottom:1px solid #ddd; text-align:center; font-weight:bold; font-size:9px; color:#555; text-transform:uppercase; padding:1px 0;">MEMBER</div>
+          <div style="padding:2px; text-align:center; font-weight:bold; font-size:10px; color:{$color}; font-family:\'Courier New\',Courier,monospace; line-height:1.2;">
+           U: {{voucher.username}}<br>P: {{voucher.password}}
+          </div>
+         {/if}
+        </div>
+        <div style="text-align:center; color:#111; font-size:8px; font-weight:bold; line-height:1.2;">
+         CS: {if $company.phone}{{company.phone}}{else}085366567572{/if}
+        </div>
+       </td>
+       <td style="width:90px; text-align:right; vertical-align:top; padding-left:2px;">
+        <div style="font-size:7px; font-weight:bold; color:#111; line-height:1.3; text-align:right; margin-bottom:2px;">
+         Masa Aktif: {if $voucher.validity}{{voucher.validity}}{elseif $package.duration}{{package.duration}}{else}-{/if}<br>
+         Durasi: {if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}-{/if}<br>
+         Kuota: {if $package.quota}{{package.quota}}{else}Unlimited{/if}
+        </div>
+        <div style="text-align:right;">
+         <img src="{qr($voucher.code, 100)}" alt="QR" style="width:50px; height:50px; border:1px solid {$color}; display:inline-block;" />
+        </div>
+       </td>
+      </tr>
+     </tbody>
+    </table>
+   </td>
+  </tr>
+  <tr>
+   <td style="background:{$color}; color:#fff; padding:2px 4px; text-align:left; vertical-align:middle;">
+    <div style="color:#ffffff; font-size:7.5px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+     <b>login/logout:</b> {if $voucher.login_url}{{voucher.login_url}}{elseif $company.website}{{company.website}}{else}mks.net{/if}
+    </div>
+   </td>
+  </tr>
+ </tbody>
+</table>',
+            ],
+            [
                 'name' => 'Kartu Modern WiFi (A4 Grid)',
                 'slug' => 'kartu-modern-wifi-a4',
                 'category' => VoucherTemplateCategory::Modern->value,
