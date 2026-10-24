@@ -27,7 +27,9 @@ class Index extends Component
 
     public function mount()
     {
-        if (VoucherTemplate::count() === 0) {
+        // Pastikan template MSRadius 107 selalu terpasang & aktif di database
+        $has107 = VoucherTemplate::where('slug', 'msradius-template-107-dynamic')->exists();
+        if (!$has107 || VoucherTemplate::count() <= 4) {
             try {
                 $seeder = new \Database\Seeders\VoucherTemplateSeeder();
                 $seeder->run();
@@ -42,7 +44,7 @@ class Index extends Component
         try {
             $seeder = new \Database\Seeders\VoucherTemplateSeeder();
             $seeder->run();
-            $this->dispatch('notify', ['type' => 'success', 'message' => 'Template default berhasil dipasang!']);
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Template MSRadius 107 berhasil disinkronkan & dipasang sebagai default!']);
         } catch (\Throwable $e) {
             $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal memasang template: ' . $e->getMessage()]);
         }

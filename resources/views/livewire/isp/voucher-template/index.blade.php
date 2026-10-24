@@ -4,7 +4,12 @@
             <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
                 {{ __('Template Voucher') }}
             </h2>
-            <div class="flex space-x-2">
+            <div class="flex items-center space-x-2">
+                <button wire:click="seedDefaultTemplates" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold text-xs tracking-wider transition shadow-sm" title="Sinkronkan template bawaan termasuk Template 107">
+                    <span class="material-symbols-outlined text-sm notranslate" translate="no" wire:loading.remove>sync</span>
+                    <span class="material-symbols-outlined text-sm notranslate animate-spin" translate="no" wire:loading>progress_activity</span>
+                    <span>Sinkronkan Template 107</span>
+                </button>
                 <a href="{{ route('isp.voucher-templates.import') }}" class="inline-flex items-center px-4 py-2 bg-slate-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-slate-700">Import</a>
                 <a href="{{ route('isp.voucher-templates.create') }}" class="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700">Buat Template</a>
             </div>
