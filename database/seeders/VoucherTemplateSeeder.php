@@ -220,9 +220,9 @@ class VoucherTemplateSeeder extends Seeder
 }',
                 'template_code' => '{assign var="v_price" value=$voucher.price}
 {assign var="pkg" value=$package.name}
-{if $v_price == 2000 || $pkg == "2 JAM" || $pkg == "2 Jam"}
+{if $v_price <= 2000 || $pkg == "1 JAM" || $pkg == "1 Jam" || $pkg == "2 JAM" || $pkg == "2 Jam"}
  {assign var="color" value="#1e293b"}
-{elseif $v_price == 3000 || $pkg == "6 JAM" || $pkg == "6 Jam"}
+{elseif $v_price == 3000 || $pkg == "3 JAM" || $pkg == "3 Jam" || $pkg == "6 JAM" || $pkg == "6 Jam"}
  {assign var="color" value="#00a2ff"}
 {elseif $v_price == 5000 || $pkg == "12 JAM" || $pkg == "12 Jam"}
  {assign var="color" value="#e11d48"}
@@ -237,50 +237,50 @@ class VoucherTemplateSeeder extends Seeder
 {else}
  {assign var="color" value="#00a2ff"}
 {/if}
-<div class="card-107" style="border: 1.5px solid {$color};">
+<div class="card-107" style="display:inline-block; width:220px; height:122px; border:1.5px solid {$color}; box-sizing:border-box; background:#ffffff; position:relative; overflow:hidden; vertical-align:top; margin:3px; font-family:Arial,Helvetica,sans-serif;">
   <!-- Header: Logo & Badge Harga -->
-  <div class="card-107-header">
-    <div class="card-107-logo-box">
+  <div class="card-107-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding:3px 0 0 5px;">
+    <div class="card-107-logo-box" style="display:flex; align-items:center; gap:3px; max-width:130px; height:20px; overflow:hidden;">
       {if $company.logo}
-        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" onerror="this.style.display=\'none\'">
+        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" style="max-height:18px; max-width:70px; width:auto; height:auto; object-fit:contain; display:inline-block; vertical-align:middle;" onerror="this.style.display=\'none\'">
       {/if}
-      <span class="card-107-brand">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
+      <span class="card-107-brand" style="font-size:11px; font-weight:800; color:#0284c7; letter-spacing:-0.2px;">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
     </div>
-    <div class="card-107-price-badge" style="background: {$color};">
+    <div class="card-107-price-badge" style="background:{$color}; color:#ffffff; font-size:13px; font-weight:900; padding:2px 10px 3px 12px; border-bottom-left-radius:12px; letter-spacing:0.3px; box-shadow:-1px 1px 2px rgba(0,0,0,0.15); line-height:1.2;">
       Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
     </div>
   </div>
 
   <!-- Label Kode -->
-  <div class="card-107-kode-title">KODE VOUCHER</div>
+  <div class="card-107-kode-title" style="font-size:9px; font-weight:800; color:#1e293b; letter-spacing:0.8px; padding-left:8px; margin-top:1px;">KODE VOUCHER</div>
 
   <!-- Body: Kotak Kode di kiri & Durasi di kanan -->
-  <div class="card-107-body">
-    <div class="card-107-code-box" style="border: 2px solid {$color}; color: {$color};">
+  <div class="card-107-body" style="display:flex; align-items:center; justify-content:space-between; padding:2px 6px; gap:6px;">
+    <div class="card-107-code-box" style="flex:1.2; background:#ffffff; border-radius:4px; font-size:15px; font-weight:900; font-family:\'Courier New\',Courier,monospace; text-align:center; padding:4px 2px; letter-spacing:0.5px; line-height:1; border:2px solid {$color}; color:{$color};">
       {{voucher.code}}
     </div>
-    <div class="card-107-dur-box">
-      <div class="card-107-dur-title">{if $package.duration}{{package.duration}}{else}6 JAM{/if}</div>
-      <div class="card-107-dur-sub">Masa Pakai</div>
-      <div class="card-107-dur-quota">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
+    <div class="card-107-dur-box" style="flex:0.9; text-align:center; line-height:1.1;">
+      <div class="card-107-dur-title" style="font-size:14px; font-weight:900; color:#0f172a;">{if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}6 JAM{/if}</div>
+      <div class="card-107-dur-sub" style="font-size:8px; color:#64748b; font-weight:600;">Masa Pakai</div>
+      <div class="card-107-dur-quota" style="font-size:8.5px; color:#0f172a; font-weight:700;">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
     </div>
   </div>
 
   <!-- Petunjuk Sambungan -->
-  <div class="card-107-notes">
+  <div class="card-107-notes" style="text-align:center; font-size:7.5px; font-weight:700; color:#475569; line-height:1.15; margin-top:2px;">
     Sambungkan Ke WiFi {if $company.name}{{company.name}}{else}Winets.id{/if}<br>
-    <span class="card-107-subnotes">jika tidak muncul otomatis buka google</span>
+    <span class="card-107-subnotes" style="font-size:7px; font-weight:normal; color:#64748b;">jika tidak muncul otomatis buka google</span>
   </div>
 
   <!-- Footer Bar -->
-  <div class="card-107-footer">
-    <div class="card-107-wa-pill">
+  <div class="card-107-footer" style="position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:2px 4px 2px 4px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+    <div class="card-107-wa-pill" style="background:#10b981; color:#ffffff; font-size:7.5px; font-weight:800; padding:1.5px 5px; border-radius:10px; display:flex; align-items:center; gap:2px;">
       <span class="card-107-wa-icon">&#9742;</span> {if $company.phone}{{company.phone}}{else}083139935920{/if}
     </div>
-    <div class="card-107-login-pill">
-      <span class="card-107-triangle" style="border-left-color: {$color};"></span>
+    <div class="card-107-login-pill" style="display:flex; align-items:center; gap:2px; font-size:7.5px; font-weight:800; color:#0f172a;">
+      <span class="card-107-triangle" style="width:0; height:0; border-top:4px solid transparent; border-bottom:4px solid transparent; border-left:6px solid {$color}; display:inline-block;"></span>
       <span class="card-107-chrome-icon">&#127760;</span>
-      <span class="card-107-login-url">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
+      <span class="card-107-login-url" style="font-family:monospace;">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
     </div>
   </div>
 </div>',
@@ -476,9 +476,9 @@ class VoucherTemplateSeeder extends Seeder
 }',
                 'template_code' => '{assign var="v_price" value=$voucher.price}
 {assign var="pkg" value=$package.name}
-{if $v_price == 2000 || $pkg == "2 JAM" || $pkg == "2 Jam"}
+{if $v_price <= 2000 || $pkg == "1 JAM" || $pkg == "1 Jam" || $pkg == "2 JAM" || $pkg == "2 Jam"}
  {assign var="color" value="#1e293b"}
-{elseif $v_price == 3000 || $pkg == "6 JAM" || $pkg == "6 Jam"}
+{elseif $v_price == 3000 || $pkg == "3 JAM" || $pkg == "3 Jam" || $pkg == "6 JAM" || $pkg == "6 Jam"}
  {assign var="color" value="#00a2ff"}
 {elseif $v_price == 5000 || $pkg == "12 JAM" || $pkg == "12 Jam"}
  {assign var="color" value="#e11d48"}
@@ -493,50 +493,50 @@ class VoucherTemplateSeeder extends Seeder
 {else}
  {assign var="color" value="#00a2ff"}
 {/if}
-<div class="card-107" style="border: 1.5px solid {$color};">
+<div class="card-107" style="display:inline-block; width:220px; height:122px; border:1.5px solid {$color}; box-sizing:border-box; background:#ffffff; position:relative; overflow:hidden; vertical-align:top; margin:3px; font-family:Arial,Helvetica,sans-serif;">
   <!-- Header: Logo & Badge Harga -->
-  <div class="card-107-header">
-    <div class="card-107-logo-box">
+  <div class="card-107-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding:3px 0 0 5px;">
+    <div class="card-107-logo-box" style="display:flex; align-items:center; gap:3px; max-width:130px; height:20px; overflow:hidden;">
       {if $company.logo}
-        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" onerror="this.style.display=\'none\'">
+        <img src="{{company.logo}}" alt="Logo" class="card-107-logo" style="max-height:18px; max-width:70px; width:auto; height:auto; object-fit:contain; display:inline-block; vertical-align:middle;" onerror="this.style.display=\'none\'">
       {/if}
-      <span class="card-107-brand">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
+      <span class="card-107-brand" style="font-size:11px; font-weight:800; color:#0284c7; letter-spacing:-0.2px;">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
     </div>
-    <div class="card-107-price-badge" style="background: {$color};">
+    <div class="card-107-price-badge" style="background:{$color}; color:#ffffff; font-size:13px; font-weight:900; padding:2px 10px 3px 12px; border-bottom-left-radius:12px; letter-spacing:0.3px; box-shadow:-1px 1px 2px rgba(0,0,0,0.15); line-height:1.2;">
       Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
     </div>
   </div>
 
   <!-- Label Kode -->
-  <div class="card-107-kode-title">KODE VOUCHER</div>
+  <div class="card-107-kode-title" style="font-size:9px; font-weight:800; color:#1e293b; letter-spacing:0.8px; padding-left:8px; margin-top:1px;">KODE VOUCHER</div>
 
   <!-- Body: Kotak Kode di kiri & Durasi di kanan -->
-  <div class="card-107-body">
-    <div class="card-107-code-box" style="border: 2px solid {$color}; color: {$color};">
+  <div class="card-107-body" style="display:flex; align-items:center; justify-content:space-between; padding:2px 6px; gap:6px;">
+    <div class="card-107-code-box" style="flex:1.2; background:#ffffff; border-radius:4px; font-size:15px; font-weight:900; font-family:\'Courier New\',Courier,monospace; text-align:center; padding:4px 2px; letter-spacing:0.5px; line-height:1; border:2px solid {$color}; color:{$color};">
       {{voucher.code}}
     </div>
-    <div class="card-107-dur-box">
-      <div class="card-107-dur-title">{if $package.duration}{{package.duration}}{else}6 JAM{/if}</div>
-      <div class="card-107-dur-sub">Masa Pakai</div>
-      <div class="card-107-dur-quota">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
+    <div class="card-107-dur-box" style="flex:0.9; text-align:center; line-height:1.1;">
+      <div class="card-107-dur-title" style="font-size:14px; font-weight:900; color:#0f172a;">{if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}6 JAM{/if}</div>
+      <div class="card-107-dur-sub" style="font-size:8px; color:#64748b; font-weight:600;">Masa Pakai</div>
+      <div class="card-107-dur-quota" style="font-size:8.5px; color:#0f172a; font-weight:700;">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
     </div>
   </div>
 
   <!-- Petunjuk Sambungan -->
-  <div class="card-107-notes">
+  <div class="card-107-notes" style="text-align:center; font-size:7.5px; font-weight:700; color:#475569; line-height:1.15; margin-top:2px;">
     Sambungkan Ke WiFi {if $company.name}{{company.name}}{else}Winets.id{/if}<br>
-    <span class="card-107-subnotes">jika tidak muncul otomatis buka google</span>
+    <span class="card-107-subnotes" style="font-size:7px; font-weight:normal; color:#64748b;">jika tidak muncul otomatis buka google</span>
   </div>
 
   <!-- Footer Bar -->
-  <div class="card-107-footer">
-    <div class="card-107-wa-pill">
+  <div class="card-107-footer" style="position:absolute; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:2px 4px 2px 4px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+    <div class="card-107-wa-pill" style="background:#10b981; color:#ffffff; font-size:7.5px; font-weight:800; padding:1.5px 5px; border-radius:10px; display:flex; align-items:center; gap:2px;">
       <span class="card-107-wa-icon">&#9742;</span> {if $company.phone}{{company.phone}}{else}083139935920{/if}
     </div>
-    <div class="card-107-login-pill">
-      <span class="card-107-triangle" style="border-left-color: {$color};"></span>
+    <div class="card-107-login-pill" style="display:flex; align-items:center; gap:2px; font-size:7.5px; font-weight:800; color:#0f172a;">
+      <span class="card-107-triangle" style="width:0; height:0; border-top:4px solid transparent; border-bottom:4px solid transparent; border-left:6px solid {$color}; display:inline-block;"></span>
       <span class="card-107-chrome-icon">&#127760;</span>
-      <span class="card-107-login-url">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
+      <span class="card-107-login-url" style="font-family:monospace;">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
     </div>
   </div>
 </div>',

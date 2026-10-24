@@ -85,7 +85,7 @@ class VoucherPrintController extends Controller
         }
 
         $vouchers = Voucher::whereIn('id', $voucherIds)
-            ->with(['serviceProfile', 'nasDevice', 'hotspotUser', 'owner'])
+            ->with(['serviceProfile', 'voucherPool.serviceProfile', 'nasDevice', 'hotspotUser', 'owner'])
             ->get();
             
         if ($vouchers->isEmpty()) {
@@ -115,13 +115,15 @@ class VoucherPrintController extends Controller
             ? Setting::getGroup('company') 
             : [];
             
+        $firstProfile = $vouchers->first()->serviceProfile ?? $vouchers->first()->voucherPool?->serviceProfile;
         $builder = new TemplateContextBuilder();
-        $globalContext = $builder->buildFromVoucherModels(null, $vouchers->first()->serviceProfile, null, null, $companySettings, 'IDR');
+        $globalContext = $builder->buildFromVoucherModels(null, $firstProfile, null, null, $companySettings, 'IDR');
 
         $voucherContexts = [];
         foreach ($vouchers as $voucher) {
-            $context = $builder->buildFromVoucherModels($voucher, $voucher->serviceProfile, null, $voucher->reseller, $companySettings, 'IDR');
-            $voucherContexts[] = $context['voucher'] ?? [];
+            $profile = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
+            $context = $builder->buildFromVoucherModels($voucher, $profile, null, $voucher->reseller, $companySettings, 'IDR');
+            $voucherContexts[] = $context;
         }
 
         $globalContext['vouchers'] = $voucherContexts;

@@ -95,25 +95,44 @@
                 .print-area .voucher-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 0px;
+            gap: 4px;
             justify-content: flex-start;
             align-content: flex-start;
         }
         
-                
         .print-area .voucher-card {
             page-break-inside: avoid;
             break-inside: avoid;
             overflow: hidden;
             display: inline-block;
+            margin: 2px;
         }
         
-        .print-area .voucher-card > * {
-            max-width: 100%;
-            height: auto;
-            transform-origin: top left;
+        /* Proteksi mutlak layout kartu dan ukuran logo */
+        .card-107 {
+            width: 220px !important;
+            height: 122px !important;
+            display: inline-block !important;
+            vertical-align: top !important;
+            box-sizing: border-box !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+        .card-107-logo, .card-107 img, .print-area img {
+            max-height: 20px !important;
+            max-width: 80px !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
         }
     </style>
+    @if(!empty($css))
+        <style>
+            {!! $css !!}
+        </style>
+    @endif
 </head>
 <body>
 

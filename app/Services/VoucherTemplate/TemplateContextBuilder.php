@@ -70,6 +70,10 @@ class TemplateContextBuilder
         array $companySettings = [],
         ?string $currencyCode = 'IDR',
     ): array {
+        if ($serviceProfile === null && $voucher !== null) {
+            $serviceProfile = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
+        }
+
         $sample = $this->buildSampleContext();
 
         $sample['voucher'] = $this->extractVoucher($voucher, $serviceProfile, $sample['voucher']);
@@ -226,8 +230,21 @@ class TemplateContextBuilder
                 }
             }
 
-            $price = (int) ($profile->promo_price ?? $profile->base_price ?? $fallback['price']);
         }
+
+        $rawPrice = null;
+        if ($profile !== null) {
+            if (!empty($profile->promo_price) && (float) $profile->promo_price > 0) {
+                $rawPrice = $profile->promo_price;
+            } elseif (!empty($profile->base_price) && (float) $profile->base_price > 0) {
+                $rawPrice = $profile->base_price;
+            } elseif (!empty($profile->owner_price) && (float) $profile->owner_price > 0) {
+                $rawPrice = $profile->owner_price;
+            } elseif (!empty($profile->reseller_price) && (float) $profile->reseller_price > 0) {
+                $rawPrice = $profile->reseller_price;
+            }
+        }
+        $price = $rawPrice !== null ? (int) $rawPrice : (int) $fallback['price'];
 
         if ($voucher->hotspotUser !== null) {
             if (isset($voucher->hotspotUser->username) && $voucher->hotspotUser->username !== null && $voucher->hotspotUser->username !== '') {
@@ -276,7 +293,18 @@ class TemplateContextBuilder
 
         $downloadKbps = (int) ($profile->download_speed ?? $fallback['download_speed']);
         $uploadKbps = (int) ($profile->upload_speed ?? $fallback['upload_speed']);
-        $price = (int) ($profile->promo_price ?? $profile->base_price ?? $fallback['price']);
+        
+        $rawPrice = null;
+        if (!empty($profile->promo_price) && (float) $profile->promo_price > 0) {
+            $rawPrice = $profile->promo_price;
+        } elseif (!empty($profile->base_price) && (float) $profile->base_price > 0) {
+            $rawPrice = $profile->base_price;
+        } elseif (!empty($profile->owner_price) && (float) $profile->owner_price > 0) {
+            $rawPrice = $profile->owner_price;
+        } elseif (!empty($profile->reseller_price) && (float) $profile->reseller_price > 0) {
+            $rawPrice = $profile->reseller_price;
+        }
+        $price = $rawPrice !== null ? (int) $rawPrice : (int) $fallback['price'];
 
         $speedLabel = $fallback['speed'];
         if ($downloadKbps > 0) {
