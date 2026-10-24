@@ -9,9 +9,58 @@
     $totalDeduct  = (float)$p->deductions;
     $netSalary    = (float)$p->net_salary;
 
+    // Rekap Hari & Kehadiran dari database
+    $workDays    = (int)($p->work_days ?? 0);
+    $lateDays    = (int)($p->late_days ?? 0);
+    $absentDays  = (int)($p->absent_days ?? 0);
+    $presentDays = (int)($p->present_days ?? 0);
+    $sickDays    = (int)($p->sick_days ?? 0);
+    $permDays    = (int)($p->permission_days ?? 0);
+
+    // Fallback cerdas: Jika slip di-generate sebelum kolom rekap ada di database
+    if ($workDays == 0 && $lateDays == 0 && $absentDays == 0) {
+        if ($p->period_start && $p->period_end) {
+            $periodRange = \Carbon\CarbonPeriod::create($p->period_start, $p->period_end);
+            foreach ($periodRange as $day) {
+                if ($day->dayOfWeek !== \Carbon\Carbon::SUNDAY) {
+                    $workDays++;
+                }
+            }
+
+            if ($emp?->user_id) {
+                $attRows = \App\Models\Workforce\Attendance::where('technician_id', $emp->user_id)
+                    ->whereBetween('date', [$p->period_start, $p->period_end])
+                    ->get(['status']);
+
+                foreach ($attRows as $row) {
+                    $val = $row->status instanceof \Src\Domain\Workforce\Enums\AttendanceStatus
+                        ? $row->status->value
+                        : (string) $row->status;
+
+                    match ($val) {
+                        'checked_in', 'checked_out' => $presentDays++,
+                        'late'                       => $lateDays++,
+                        'sick'                       => $sickDays++,
+                        'permission', 'leave'        => $permDays++,
+                        'absent'                     => $absentDays++,
+                        default                      => null,
+                    };
+                }
+            }
+        }
+
+        // Jika di tabel attendance tidak tercatat namun ada di notes (misal: "Terlambat 3x (-Rp 75.000)")
+        if ($lateDays == 0 && !empty($p->notes) && preg_match('/Terlambat\s+(\d+)x/i', $p->notes, $m)) {
+            $lateDays = (int) $m[1];
+        }
+        if ($absentDays == 0 && !empty($p->notes) && preg_match('/Alpa\s+(\d+)x/i', $p->notes, $m)) {
+            $absentDays = (int) $m[1];
+        }
+    }
+
     // Rincian potongan dari absensi
-    $cutLate   = ($p->late_days   ?? 0) * $latePenalty;
-    $cutAbsent = ($p->absent_days ?? 0) * $absentPenalty;
+    $cutLate   = $lateDays * $latePenalty;
+    $cutAbsent = $absentDays * $absentPenalty;
     $cutOther  = max(0, $totalDeduct - $cutLate - $cutAbsent);
 
     // Periode
@@ -21,11 +70,11 @@
           . \Carbon\Carbon::parse($p->period_end)->translatedFormat('d M Y')
         : \Carbon\Carbon::createFromDate($p->period_year, $p->period_month, 1)->translatedFormat('F Y');
 
-    // Rekap absensi
-    $hasAttendance = ($p->work_days ?? 0) > 0 || ($p->present_days ?? 0) > 0;
-    $sickIzin      = ($p->sick_days ?? 0) + ($p->permission_days ?? 0);
-    $attendancePct = ($p->work_days ?? 0) > 0
-        ? round(( ($p->present_days ?? 0) + ($p->late_days ?? 0) ) / $p->work_days * 100)
+    // Rekap absensi status
+    $hasAttendance = $workDays > 0 || $presentDays > 0 || $lateDays > 0 || $absentDays > 0;
+    $sickIzin      = $sickDays + $permDays;
+    $attendancePct = $workDays > 0
+        ? min(100, round(( ($presentDays + $lateDays) / $workDays ) * 100))
         : 0;
 @endphp
 
@@ -155,37 +204,37 @@
                     {{-- Hari Kerja --}}
                     <div class="bg-slate-100 dark:bg-slate-800 print:border print:border-slate-300 rounded-xl p-3 text-center">
                         <p class="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 print:text-slate-600 tracking-wide mb-1">Hari Kerja</p>
-                        <p class="text-2xl font-black text-slate-900 dark:text-slate-100 print:text-black">{{ $p->work_days ?? 0 }}</p>
+                        <p class="text-2xl font-black text-slate-900 dark:text-slate-100 print:text-black">{{ $workDays }}</p>
                         <p class="text-[10px] text-slate-400 print:text-slate-600">hari</p>
                     </div>
                     {{-- Hadir --}}
                     <div class="bg-emerald-50 dark:bg-emerald-900/30 print:border print:border-emerald-200 rounded-xl p-3 text-center">
                         <p class="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 print:text-slate-600 tracking-wide mb-1">Hadir</p>
-                        <p class="text-2xl font-black text-emerald-700 dark:text-emerald-300 print:text-black">{{ $p->present_days ?? 0 }}</p>
+                        <p class="text-2xl font-black text-emerald-700 dark:text-emerald-300 print:text-black">{{ $presentDays }}</p>
                         <p class="text-[10px] text-emerald-400 print:text-slate-600">hari</p>
                     </div>
                     {{-- Terlambat --}}
                     <div class="bg-amber-50 dark:bg-amber-900/30 print:border print:border-amber-200 rounded-xl p-3 text-center">
                         <p class="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 print:text-slate-600 tracking-wide mb-1">Terlambat</p>
-                        <p class="text-2xl font-black text-amber-700 dark:text-amber-300 print:text-black">{{ $p->late_days ?? 0 }}</p>
+                        <p class="text-2xl font-black text-amber-700 dark:text-amber-300 print:text-black">{{ $lateDays }}</p>
                         <p class="text-[10px] text-amber-400 print:text-slate-600">hari</p>
                     </div>
                     {{-- Sakit --}}
                     <div class="bg-blue-50 dark:bg-blue-900/30 print:border print:border-blue-200 rounded-xl p-3 text-center">
                         <p class="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 print:text-slate-600 tracking-wide mb-1">Sakit</p>
-                        <p class="text-2xl font-black text-blue-700 dark:text-blue-300 print:text-black">{{ $p->sick_days ?? 0 }}</p>
+                        <p class="text-2xl font-black text-blue-700 dark:text-blue-300 print:text-black">{{ $sickDays }}</p>
                         <p class="text-[10px] text-blue-400 print:text-slate-600">hari</p>
                     </div>
                     {{-- Izin --}}
                     <div class="bg-purple-50 dark:bg-purple-900/30 print:border print:border-purple-200 rounded-xl p-3 text-center">
                         <p class="text-[10px] font-bold uppercase text-purple-600 dark:text-purple-400 print:text-slate-600 tracking-wide mb-1">Izin</p>
-                        <p class="text-2xl font-black text-purple-700 dark:text-purple-300 print:text-black">{{ $p->permission_days ?? 0 }}</p>
+                        <p class="text-2xl font-black text-purple-700 dark:text-purple-300 print:text-black">{{ $permDays }}</p>
                         <p class="text-[10px] text-purple-400 print:text-slate-600">hari</p>
                     </div>
                     {{-- Alpa --}}
                     <div class="bg-red-50 dark:bg-red-900/30 print:border print:border-red-200 rounded-xl p-3 text-center">
                         <p class="text-[10px] font-bold uppercase text-red-600 dark:text-red-400 print:text-slate-600 tracking-wide mb-1">Alpa</p>
-                        <p class="text-2xl font-black text-red-700 dark:text-red-300 print:text-black">{{ $p->absent_days ?? 0 }}</p>
+                        <p class="text-2xl font-black text-red-700 dark:text-red-300 print:text-black">{{ $absentDays }}</p>
                         <p class="text-[10px] text-red-400 print:text-slate-600">hari</p>
                     </div>
                 </div>
@@ -245,10 +294,10 @@
                     </h3>
                     <table class="w-full text-sm print:text-black">
                         {{-- Potongan terlambat (per item jelas) --}}
-                        @if(($p->late_days ?? 0) > 0)
+                        @if($lateDays > 0)
                         <tr>
                             <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">
-                                Terlambat {{ $p->late_days }}× 
+                                Terlambat {{ $lateDays }}× 
                                 <span class="text-xs text-slate-400 print:text-slate-600">(@ Rp {{ number_format($latePenalty, 0, ',', '.') }})</span>
                             </td>
                             <td class="py-1.5 text-right font-semibold text-amber-600 dark:text-amber-400 print:text-black font-mono">
@@ -257,10 +306,10 @@
                         </tr>
                         @endif
                         {{-- Potongan alpa --}}
-                        @if(($p->absent_days ?? 0) > 0)
+                        @if($absentDays > 0)
                         <tr>
                             <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">
-                                Alpa {{ $p->absent_days }}×
+                                Alpa {{ $absentDays }}×
                                 <span class="text-xs text-slate-400 print:text-slate-600">(@ Rp {{ number_format($absentPenalty, 0, ',', '.') }})</span>
                             </td>
                             <td class="py-1.5 text-right font-semibold text-red-600 dark:text-red-400 print:text-black font-mono">
@@ -268,10 +317,15 @@
                             </td>
                         </tr>
                         @endif
-                        {{-- Potongan lain-lain (pinjaman dll) --}}
+                        {{-- Potongan lain-lain (pinjaman/kasbon dll) --}}
                         @if($cutOther > 0)
                         <tr>
-                            <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">Potongan Lainnya</td>
+                            <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">
+                                Potongan Lainnya
+                                @if(!empty($p->notes) && !str_contains($p->notes, 'Terlambat') && !str_contains($p->notes, 'Alpa'))
+                                    <span class="block text-xs text-slate-400 print:text-slate-600 italic">({{ $p->notes }})</span>
+                                @endif
+                            </td>
                             <td class="py-1.5 text-right font-semibold text-rose-600 dark:text-rose-400 print:text-black font-mono">
                                 – Rp {{ number_format($cutOther, 0, ',', '.') }}
                             </td>
