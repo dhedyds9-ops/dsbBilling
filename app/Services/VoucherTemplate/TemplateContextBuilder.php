@@ -198,11 +198,24 @@ class TemplateContextBuilder
         $password = $fallback['password'];
         $loginUrl = $fallback['login_url'];
 
+        if ($profile === null && $voucher !== null) {
+            $profile = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
+        }
+
+        $timelimit = null;
+        $validity = null;
+
+        if ($voucher !== null && !empty($voucher->validity_days) && (int) $voucher->validity_days > 0) {
+            $validity = sprintf('%d Hari', (int) $voucher->validity_days);
+        }
+
         if ($profile !== null) {
             if ($profile->radius_session_timeout !== null && (int) $profile->radius_session_timeout > 0) {
                 $sec = (int) $profile->radius_session_timeout;
                 $timelimit = sprintf('%02d:%02d:%02d', (int) ($sec / 3600), (int) (($sec % 3600) / 60), $sec % 60);
-            } elseif ($profile->duration_value !== null) {
+            } elseif (!empty($profile->session_timeout)) {
+                $timelimit = $this->parseDurationString($profile->session_timeout);
+            } elseif ($profile->duration_value !== null && (int) $profile->duration_value > 0) {
                 $unit = strtolower((string) ($profile->duration_unit ?? 'hours'));
                 $val = (int) $profile->duration_value;
                 if ($unit === 'hours' || $unit === 'hour') {
@@ -212,24 +225,47 @@ class TemplateContextBuilder
                 }
             }
 
-            if ($profile->validity_days !== null && (int) $profile->validity_days > 0) {
-                $validity = sprintf('%d hari', (int) $profile->validity_days);
-            } elseif ($profile->validity_hours !== null && (int) $profile->validity_hours > 0) {
-                $validity = sprintf('%d jam', (int) $profile->validity_hours);
-            } elseif ($profile->validity_unit !== null) {
-                $unit = strtolower((string) $profile->validity_unit);
-                $val = (int) ($profile->validity_days ?? $profile->validity_hours ?? 0);
-                if ($val > 0) {
+            if ($validity === null) {
+                if (!empty($profile->validity_hours) && (int) $profile->validity_hours > 0) {
+                    $validity = sprintf('%d Jam', (int) $profile->validity_hours);
+                } elseif (!empty($profile->validity_days) && (int) $profile->validity_days > 0) {
+                    $validity = sprintf('%d Hari', (int) $profile->validity_days);
+                } elseif (!empty($profile->voucher_validity_after_activation)) {
+                    $validity = $this->parseDurationString($profile->voucher_validity_after_activation);
+                } elseif (!empty($profile->validity_unit) && (!empty($profile->validity_days) || !empty($profile->validity_hours))) {
+                    $unit = strtolower((string) $profile->validity_unit);
+                    $val = (int) ($profile->validity_days ?? $profile->validity_hours ?? 0);
+                    if ($val > 0) {
+                        $unitLabel = match ($unit) {
+                            'days', 'day' => 'Hari',
+                            'months', 'month' => 'Bulan',
+                            'hours', 'hour' => 'Jam',
+                            default => ucfirst($unit),
+                        };
+                        $validity = sprintf('%d %s', $val, $unitLabel);
+                    }
+                } elseif (!empty($profile->duration_value) && (int) $profile->duration_value > 0) {
+                    $val = (int) $profile->duration_value;
+                    $unit = strtolower((string) ($profile->duration_unit ?? 'hours'));
                     $unitLabel = match ($unit) {
-                        'days', 'day' => 'hari',
-                        'months', 'month' => 'bulan',
-                        'hours', 'hour' => 'jam',
-                        default => $unit,
+                        'hours', 'hour' => 'Jam',
+                        'days', 'day' => 'Hari',
+                        default => ucfirst($unit),
                     };
                     $validity = sprintf('%d %s', $val, $unitLabel);
+                } elseif (!empty($profile->radius_session_timeout)) {
+                    $validity = $this->parseDurationString($profile->radius_session_timeout);
+                } elseif (!empty($profile->session_timeout)) {
+                    $validity = $this->parseDurationString($profile->session_timeout);
                 }
             }
+        }
 
+        if ($timelimit === null) {
+            $timelimit = $fallback['timelimit'] ?? '';
+        }
+        if ($validity === null) {
+            $validity = $fallback['validity'] ?? '';
         }
 
         $rawPrice = null;
@@ -320,47 +356,62 @@ class TemplateContextBuilder
         }
 
         $duration = null;
-        if ($profile->service_type === 'voucher' || $profile->service_type === 'hotspot') {
-            if ($profile->radius_session_timeout !== null && (int) $profile->radius_session_timeout > 0) {
-                $sec = (int) $profile->radius_session_timeout;
-                if ($sec >= 86400) {
-                    $duration = sprintf('%d Hari', (int) ($sec / 86400));
-                } else {
-                    $duration = sprintf('%d Jam', (int) ($sec / 3600));
-                }
-            } elseif ($profile->validity_hours !== null && (int) $profile->validity_hours > 0) {
-                $duration = sprintf('%d Jam', (int) $profile->validity_hours);
-            } elseif ($profile->validity_days !== null && (int) $profile->validity_days > 0) {
-                $duration = sprintf('%d Hari', (int) $profile->validity_days);
+        if (!empty($profile->duration_value) && (int) $profile->duration_value > 0) {
+            $val = (int) $profile->duration_value;
+            $unit = strtolower((string) ($profile->duration_unit ?? 'hours'));
+            $unitLabel = match ($unit) {
+                'hours', 'hour' => 'Jam',
+                'days', 'day' => 'Hari',
+                'minutes', 'minute' => 'Menit',
+                'months', 'month' => 'Bulan',
+                default => ucfirst($unit),
+            };
+            $duration = sprintf('%d %s', $val, $unitLabel);
+        }
+
+        if ($duration === null && !empty($profile->radius_session_timeout)) {
+            $duration = $this->parseDurationString($profile->radius_session_timeout);
+        }
+
+        if ($duration === null && !empty($profile->session_timeout)) {
+            $duration = $this->parseDurationString($profile->session_timeout);
+        }
+
+        if ($duration === null && !empty($profile->validity_hours) && (int) $profile->validity_hours > 0) {
+            $duration = sprintf('%d Jam', (int) $profile->validity_hours);
+        }
+
+        if ($duration === null && !empty($profile->validity_days) && (int) $profile->validity_days > 0) {
+            $duration = sprintf('%d Hari', (int) $profile->validity_days);
+        }
+
+        if ($duration === null && !empty($profile->voucher_validity_after_activation)) {
+            $duration = $this->parseDurationString($profile->voucher_validity_after_activation);
+        }
+
+        if ($duration === null && !empty($profile->name)) {
+            if (preg_match('/(\d+\s*(?:jam|hari|bulan|menit|hour|day))/i', (string) $profile->name, $matches)) {
+                $duration = ucwords(strtolower($matches[1]));
             }
         }
 
         if ($duration === null) {
-            if ($profile->duration_value !== null) {
-                $val = (int) $profile->duration_value;
-                $unit = strtolower((string) ($profile->duration_unit ?? 'hours'));
-                $unitLabel = match ($unit) {
-                    'hours', 'hour' => 'Jam',
-                    'days', 'day' => 'Hari',
-                    default => ucfirst($unit),
-                };
-                $duration = sprintf('%d %s', $val, $unitLabel);
-            } else {
-                $duration = $fallback['duration'];
-            }
+            $duration = $fallback['duration'] ?? '';
         }
 
-        $quota = $fallback['quota'];
-        if ($profile->package_type !== null && (strtolower((string) $profile->package_type) === 'unlimited' || strtolower((string) $profile->package_type) === 'time_based')) {
-            $quota = 'Unlimited';
-        } elseif ($profile->quota_value !== null && (int) $profile->quota_value > 0) {
-            $val = (int) $profile->quota_value;
+        $quota = null;
+        $qVal = $profile->quota_value ?? $profile->quota ?? null;
+        if ($qVal !== null && (float) $qVal > 0) {
             $unit = strtoupper((string) ($profile->quota_unit ?? 'MB'));
-            $quota = sprintf('%d %s', $val, $unit);
+            $quota = sprintf('%s %s', is_numeric($qVal) ? (int) $qVal : $qVal, $unit);
+        } elseif ($profile->package_type !== null && (strtolower((string) $profile->package_type) === 'unlimited' || strtolower((string) $profile->package_type) === 'time_based')) {
+            $quota = 'Unlimited';
+        } else {
+            $quota = 'Unlimited';
         }
 
         return [
-            'name'           => (string) ($profile->name ?? $fallback['name']),
+            'name'           => (string) ($profile->name ?? $fallback['name'] ?? ''),
             'price'          => $price,
             'speed'          => $speedLabel,
             'download_speed' => $downloadKbps,
@@ -399,12 +450,20 @@ class TemplateContextBuilder
 
     private function extractOwner(?User $owner, array $fallback): array
     {
-        if ($owner === null) {
-            return $fallback;
+        if ($owner !== null && !empty($owner->name)) {
+            return [
+                'name' => (string) $owner->name,
+            ];
+        }
+
+        if (auth()->check() && !empty(auth()->user()->name)) {
+            return [
+                'name' => (string) auth()->user()->name,
+            ];
         }
 
         return [
-            'name' => (string) ($owner->name ?? $fallback['name'] ?? ''),
+            'name' => '',
         ];
     }
 
@@ -418,7 +477,7 @@ class TemplateContextBuilder
     private function extractCompany(array $settings, array $fallback): array
     {
         $logoPath = $settings['logo_url'] ?? $settings['logo'] ?? null;
-        $logo = $logoPath ? asset($logoPath) : $fallback['logo'];
+        $logo = !empty($logoPath) ? (str_starts_with((string) $logoPath, 'http') ? $logoPath : asset($logoPath)) : '';
 
         return [
             'name'     => (string) ($settings['name'] ?? $fallback['name']),
@@ -428,6 +487,67 @@ class TemplateContextBuilder
             'address'  => (string) ($settings['address'] ?? $fallback['address']),
             'website'  => (string) ($settings['website'] ?? $fallback['website']),
         ];
+    }
+
+    /**
+     * Parse string durasi atau detik menjadi label ramah pengguna (misal 3 Jam, 1 Hari).
+     */
+    public function parseDurationString(mixed $val): ?string
+    {
+        if ($val === null || $val === '' || $val === 0 || $val === '0') {
+            return null;
+        }
+
+        if (is_numeric($val)) {
+            $sec = (int) $val;
+            if ($sec >= 86400 && ($sec % 86400 === 0)) {
+                return sprintf('%d Hari', (int) ($sec / 86400));
+            }
+            if ($sec >= 3600) {
+                $hours = (int) ($sec / 3600);
+                $mins = (int) (($sec % 3600) / 60);
+                return $mins > 0 ? sprintf('%d Jam %d Menit', $hours, $mins) : sprintf('%d Jam', $hours);
+            }
+            if ($sec >= 60) {
+                return sprintf('%d Menit', (int) ($sec / 60));
+            }
+            return sprintf('%d Detik', $sec);
+        }
+
+        $str = trim((string) $val);
+        // Format H:i:s
+        if (preg_match('/^(\d+):(\d+)(?::(\d+))?$/', $str, $matches)) {
+            $h = (int) $matches[1];
+            $m = (int) $matches[2];
+            if ($h >= 24 && ($h % 24 === 0) && $m === 0) {
+                return sprintf('%d Hari', (int) ($h / 24));
+            }
+            if ($h > 0 && $m > 0) {
+                return sprintf('%d Jam %d Menit', $h, $m);
+            }
+            if ($h > 0) {
+                return sprintf('%d Jam', $h);
+            }
+            if ($m > 0) {
+                return sprintf('%d Menit', $m);
+            }
+        }
+
+        // Format shorthand 3h, 1d, 30m, 12jam, 1hari
+        if (preg_match('/^(\d+)\s*([a-zA-Z]+)$/', $str, $matches)) {
+            $num = (int) $matches[1];
+            $unit = strtolower($matches[2]);
+            return match ($unit) {
+                'd', 'day', 'days', 'hari', 'hri' => sprintf('%d Hari', $num),
+                'h', 'hr', 'hrs', 'hour', 'hours', 'jam', 'jm' => sprintf('%d Jam', $num),
+                'm', 'min', 'mins', 'minute', 'minutes', 'menit', 'mnt' => sprintf('%d Menit', $num),
+                'w', 'week', 'weeks', 'minggu' => sprintf('%d Minggu', $num),
+                'mo', 'month', 'months', 'bulan' => sprintf('%d Bulan', $num),
+                default => sprintf('%d %s', $num, ucfirst($unit)),
+            };
+        }
+
+        return $str;
     }
 
     /**

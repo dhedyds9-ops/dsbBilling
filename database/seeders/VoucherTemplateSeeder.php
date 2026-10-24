@@ -82,7 +82,7 @@ class VoucherTemplateSeeder extends Seeder
  {if $company.logo}
  <img style="object-fit:contain; max-height:22px; max-width:85px; display:inline-block; vertical-align:middle;" src="{{company.logo}}" alt="logo" onerror="this.style.display=\'none\'">
  {else}
- <span style="font-weight:bold; font-size:12px; color:{$color};">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
+ <span style="font-weight:bold; font-size:12px; color:{$color};">{if $company.name}{{company.name}}{/if}</span>
  {/if}
  </td> 
  <td style="text-align:right; vertical-align:middle;">
@@ -114,10 +114,10 @@ class VoucherTemplateSeeder extends Seeder
  {/if}
  </div>
  <div style="text-align:left; color:#111; font-size:8px; font-weight:bold; line-height:1.25; margin-top:2px;">
- Durasi : {if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}3 Jam{/if}<br>
- Masa Aktif : {if $voucher.validity}{{voucher.validity}}{else}3 jam{/if}<br>
+ Durasi : {if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}-{/if}<br>
+ Masa Aktif : {if $voucher.validity}{{voucher.validity}}{elseif $package.duration}{{package.duration}}{else}-{/if}<br>
  Tgl Cetak : {{voucher.created_at}}<br>
- Agen : {if $owner.name}{{owner.name}}{else}Owner Demo{/if}<br>
+ Agen : {if $owner.name}{{owner.name}}{else}-{/if}<br>
  </div>
  </td> 
  <td style="width:75px; text-align:right; vertical-align:middle;">
@@ -174,49 +174,51 @@ class VoucherTemplateSeeder extends Seeder
 {else}
  {assign var="color" value="#00a2ff"}
 {/if}
-<div style="display:inline-block; width:220px; border:1.5px solid {$color}; border-radius:6px; background:#fff; overflow:hidden; margin:3px; vertical-align:top; font-family:Arial,Helvetica,sans-serif; box-sizing:border-box;">
-  <table style="width:100%; border-collapse:collapse;">
+<div style="display:inline-block; width:220px; border:1.5px solid {$color}; border-radius:6px; background:#fff; overflow:hidden; margin:3px; vertical-align:top; font-family:Arial,Helvetica,sans-serif; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+  <table style="width:100%; border-collapse:collapse; margin:0; padding:0;">
     <tr>
-      <td style="padding:3px 0 0 5px; vertical-align:middle;">
+      <td style="padding:4px 0 0 6px; vertical-align:middle; text-align:left;">
         {if $company.logo}
-        <img src="{{company.logo}}" alt="Logo" style="max-height:18px; max-width:70px; object-fit:contain; vertical-align:middle;" onerror="this.style.display=\'none\'">
+          <img src="{{company.logo}}" alt="Logo" style="max-height:18px; max-width:75px; object-fit:contain; vertical-align:middle; display:inline-block;" onerror="this.style.display=\'none\'">
+        {else}
+          <span style="font-size:12px; font-weight:800; color:#0284c7; vertical-align:middle;">{if $company.name}{{company.name}}{/if}</span>
         {/if}
-        <span style="font-size:11px; font-weight:800; color:#0284c7;">{if $company.name}{{company.name}}{else}WINETS.ID{/if}</span>
       </td>
-      <td style="text-align:right; vertical-align:top; width:95px;">
-        <div style="background:{$color}; color:#fff; font-size:12px; font-weight:900; padding:2px 8px; border-bottom-left-radius:10px; display:inline-block; float:right; line-height:1.2;">
+      <td style="text-align:right; vertical-align:top; width:95px; padding:0;">
+        <div style="background:{$color}; color:#fff; font-size:12px; font-weight:900; padding:2px 8px 3px 10px; border-bottom-left-radius:12px; display:inline-block; line-height:1.2; box-shadow:-1px 1px 2px rgba(0,0,0,0.15);">
           Rp. {{voucher.price|number_format(0, \',\', \'.\')}}
         </div>
       </td>
     </tr>
   </table>
-  <div style="font-size:8.5px; font-weight:800; color:#1e293b; padding-left:6px; margin-top:2px;">KODE VOUCHER</div>
-  <table style="width:100%; border-collapse:collapse; padding:0 6px;">
+  <div style="font-size:8.5px; font-weight:800; color:#1e293b; padding-left:8px; margin-top:2px; letter-spacing:0.5px;">KODE VOUCHER</div>
+  <table style="width:100%; border-collapse:collapse; margin:1px 0 3px 0;">
     <tr>
-      <td style="width:58%; padding:2px 4px 2px 6px;">
-        <div style="border:2px solid {$color}; color:{$color}; font-size:14px; font-weight:900; font-family:monospace; text-align:center; padding:3px 2px; border-radius:4px; line-height:1;">
+      <td style="width:58%; padding:1px 4px 1px 6px; vertical-align:middle;">
+        <div style="border:2px solid {$color}; color:{$color}; font-size:14px; font-weight:900; font-family:\'Courier New\',Courier,monospace; text-align:center; padding:3px 2px; border-radius:4px; line-height:1; letter-spacing:0.5px; background:#ffffff;">
           {{voucher.code}}
         </div>
       </td>
-      <td style="width:42%; text-align:center; padding:2px 6px 2px 2px; line-height:1.15;">
-        <div style="font-size:13px; font-weight:900; color:#0f172a;">{if $package.duration}{{package.duration}}{elseif $package.name}{{package.name}}{else}6 JAM{/if}</div>
-        <div style="font-size:7.5px; color:#64748b; font-weight:600;">Masa Pakai</div>
+      <td style="width:42%; text-align:center; padding:1px 6px 1px 2px; vertical-align:middle; line-height:1.15;">
+        <div style="font-size:13px; font-weight:900; color:#0f172a;">{if $package.duration}{{package.duration}}{elseif $voucher.validity}{{voucher.validity}}{else}{{package.name}}{/if}</div>
+        <div style="font-size:7.5px; color:#64748b; font-weight:600;">Masa Aktif : {if $voucher.validity}{{voucher.validity}}{elseif $package.duration}{{package.duration}}{else}-{/if}</div>
         <div style="font-size:8px; color:#0f172a; font-weight:700;">Kuota {if $package.quota}{{package.quota}}{else}Unlimited{/if}</div>
       </td>
     </tr>
   </table>
-  <div style="text-align:center; font-size:7.5px; font-weight:700; color:#475569; line-height:1.15; padding:2px 4px;">
-    Sambungkan Ke WiFi {if $company.name}{{company.name}}{else}Winets.id{/if}<br>
+  <div style="text-align:center; font-size:7.5px; font-weight:700; color:#475569; line-height:1.2; padding:0 4px 3px 4px;">
+    Sambungkan Ke WiFi <b>{if $company.name}{{company.name}}{else}Winets.id{/if}</b><br>
     <span style="font-size:7px; font-weight:normal; color:#64748b;">jika tidak muncul otomatis buka google</span>
   </div>
-  <table style="width:100%; border-collapse:collapse; background:#f8fafc; border-top:1px solid #e2e8f0; padding:2px 4px;">
+  <table style="width:100%; border-collapse:collapse; background:#f8fafc; border-top:1px solid #e2e8f0; margin:0;">
     <tr>
-      <td style="padding:2px 4px; text-align:left;">
-        <span style="background:#10b981; color:#fff; font-size:7.5px; font-weight:800; padding:1px 5px; border-radius:8px;">
+      <td style="padding:2px 4px; text-align:left; vertical-align:middle;">
+        <span style="background:#10b981; color:#fff; font-size:7.5px; font-weight:800; padding:1.5px 5px; border-radius:10px; display:inline-block;">
           &#9742; {if $company.phone}{{company.phone}}{else}083139935920{/if}
         </span>
       </td>
-      <td style="padding:2px 4px; text-align:right; font-size:7.5px; font-weight:800; color:#0f172a;">
+      <td style="padding:2px 4px; text-align:right; font-size:7.5px; font-weight:800; color:#0f172a; vertical-align:middle;">
+        <span style="display:inline-block; width:0; height:0; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent; border-left:5px solid {$color}; vertical-align:middle; margin-right:2px;"></span>
         &#127760; <span style="font-family:monospace;">{if $voucher.login_url}{{voucher.login_url}}{else}http://winets.id{/if}</span>
       </td>
     </tr>

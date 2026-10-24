@@ -122,7 +122,8 @@ class VoucherPrintController extends Controller
         $voucherContexts = [];
         foreach ($vouchers as $voucher) {
             $profile = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
-            $context = $builder->buildFromVoucherModels($voucher, $profile, null, $voucher->reseller, $companySettings, 'IDR');
+            $owner = $voucher->reseller ?? $voucher->owner ?? $voucher->createdBy ?? (auth()->check() ? auth()->user() : null);
+            $context = $builder->buildFromVoucherModels($voucher, $profile, null, $owner, $companySettings, 'IDR');
             $voucherContexts[] = $context;
         }
 
