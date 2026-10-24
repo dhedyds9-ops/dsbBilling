@@ -48,7 +48,12 @@ class PPPoEUser extends Model
         return $this->hasOneThrough(
             \App\Models\CRM\Customer::class, CustomerService::class,
             'id', 'id', 'customer_service_id', 'customer_id'
-        );
+        )->select('customers.*');
+    }
+
+    public function getRealCustomerAttribute()
+    {
+        return $this->customerService?->customer ?? $this->customer;
     }
 
     public function subscription()

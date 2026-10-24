@@ -182,9 +182,10 @@
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     @forelse($hotspotUsers as $user)
                         @php
+                            $cust = $user->real_customer;
                             $isOnline = $user->is_online ?? false;
                             $isSuspend = $user->status === 'suspended';
-                            $dynamicId = $user->customer ? $user->customer->code : '-';
+                            $dynamicId = $cust ? $cust->display_id : '-';
                             $layanan = 'Hotspot';
                             $loginDate = $user->latestAccounting?->acct_start_time ?? $user->activeSession?->session_started_at;
                             $tglLogin = $loginDate ? $loginDate->format('d-m-Y H:i') : '-';
@@ -216,8 +217,8 @@
                                     <a href="{{ route('isp.hotspot-users.edit', $user->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
-                                    @if(isset($user->customer->id))
-                                        <a href="{{ route('crm.customers.show', $user->customer->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
+                                    @if(isset($cust->id))
+                                        <a href="{{ route('crm.customers.show', $cust->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">account_circle</span>
                                         </a>
                                     @endif
@@ -236,9 +237,9 @@
                                   </div>
                               </td>
                             <td class="px-4 py-3 {{ $textPrimary }}">
-                                @if(isset($user->customer->id))
-                                    <a href="{{ route('crm.customers.show', $user->customer->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors">
-                                        {{ $user->customer->name ?? '-' }}
+                                @if(isset($cust->id))
+                                    <a href="{{ route('crm.customers.show', $cust->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors">
+                                        {{ $cust->name ?? '-' }}
                                     </a>
                                 @else
                                     -

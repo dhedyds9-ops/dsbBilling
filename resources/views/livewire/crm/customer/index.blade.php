@@ -193,7 +193,7 @@
                             $tglRegister = $customer->created_at?->format('d-m-Y');
                             $tglIsolir = $svc?->suspended_at?->format('d-m-Y') ?? '-';
                             $reseller = $customer->reseller->name ?? 'Default';
-                            $dynamicId = $customer->code ?: (($customer->created_at ? $customer->created_at->format('Ymd') : date('Ymd')) . str_pad($customer->id % 100, 2, '0', STR_PAD_LEFT));
+                            $dynamicId = $customer->display_id;
 
                             $isInactive = $customer->status !== 'active';
                             

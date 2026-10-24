@@ -173,9 +173,10 @@
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     @forelse($pppoeUsers as $user)
                         @php
+                            $cust = $user->real_customer;
                             $isOnline = $user->is_online ?? false;
                             $isSuspend = $user->status === 'suspended';
-                            $dynamicId = $user->customer ? (($user->customer->created_at ? $user->customer->created_at->format('Ymd') : date('Ymd')) . str_pad($user->customer->id % 100, 2, '0', STR_PAD_LEFT)) : '-';
+                            $dynamicId = $cust ? $cust->display_id : '-';
                             $layanan = 'PPPoE';
                             $tglLogin = $user->latestAccounting?->acct_start_time ? $user->latestAccounting->acct_start_time->format('d-m-Y H:i') : '-';
                             $tglLogout = $user->latestAccounting?->acct_stop_time ? $user->latestAccounting->acct_stop_time->format('d-m-Y H:i') : '-';
@@ -203,11 +204,11 @@
                             </td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-1">
-                                    <a href="{{ route('reseller-portal.customers.show', $user->customer->id ?? 0) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
+                                    <a href="{{ route('reseller-portal.customers.show', $cust->id ?? 0) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
-                                    @if(isset($user->customer->id))
-                                        <a href="{{ route('reseller-portal.customers.show', $user->customer->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
+                                    @if(isset($cust->id))
+                                        <a href="{{ route('reseller-portal.customers.show', $cust->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">account_circle</span>
                                         </a>
                                     @endif
@@ -226,9 +227,9 @@
                                   </div>
                               </td>
                             <td class="px-4 py-3 {{ $textPrimary }}">
-                                @if(isset($user->customer->id))
-                                    <a href="{{ route('reseller-portal.customers.show', $user->customer->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors">
-                                        {{ $user->customer->name ?? '-' }}
+                                @if(isset($cust->id))
+                                    <a href="{{ route('reseller-portal.customers.show', $cust->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors">
+                                        {{ $cust->name ?? '-' }}
                                     </a>
                                 @else
                                     -

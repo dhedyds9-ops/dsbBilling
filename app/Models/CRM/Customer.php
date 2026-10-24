@@ -150,6 +150,16 @@ class Customer extends Model
         $this->attributes['code'] = $value;
     }
 
+    public function getDisplayIdAttribute(): string
+    {
+        if (!empty($this->code)) {
+            return (string) $this->code;
+        }
+
+        $date = $this->created_at ? $this->created_at->format('Ymd') : date('Ymd');
+        return $date . str_pad((string) ($this->id % 100), 2, '0', STR_PAD_LEFT);
+    }
+
     public function scopeWithoutGuests($query)
     {
         return $query->where(function ($q) {

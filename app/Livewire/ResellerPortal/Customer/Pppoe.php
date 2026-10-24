@@ -166,6 +166,7 @@ class Pppoe extends AdminComponent
     {
         $query = $this->baseQuery()->with([
             'customer' => fn($q) => $q->withoutGlobalScopes(),
+            'customerService.customer' => fn($q) => $q->withoutGlobalScopes(),
             'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
             'activeSession',
             'latestAccounting',
