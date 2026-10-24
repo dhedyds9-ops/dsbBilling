@@ -13,8 +13,10 @@ class Payroll extends Model
     protected $fillable = [
         'employee_id', 'period_month', 'period_year',
         'period_start', 'period_end',
-        'base_salary', 'allowances', 'deductions', 
-        'net_salary', 'status', 'payment_date', 'notes'
+        'base_salary', 'allowances', 'deductions',
+        'net_salary', 'status', 'payment_date', 'notes',
+        'work_days', 'present_days', 'late_days',
+        'sick_days', 'permission_days', 'absent_days',
     ];
 
     protected $casts = [

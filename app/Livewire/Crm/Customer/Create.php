@@ -54,11 +54,34 @@ class Create extends AdminComponent
             'status'             => 'required|in:active,inactive,suspended',
             'service_profile_id' => 'nullable|exists:service_profiles,id',
             'router_id'          => 'nullable|exists:routers,id',
-            'pppoe_username'     => 'nullable|string|unique:pppoe_users,username',
+            'pppoe_username'     => 'nullable|string',
             'pppoe_password'     => 'nullable|string',
             'reseller_id'        => 'nullable|exists:users,id',
             'branch_id'          => 'nullable|exists:branches,id',
         ]);
+
+        try {
+            \App\Services\CRM\CustomerValidationService::validateBeforeCreate([
+                'phone'         => $this->phone,
+                'email'         => $this->email,
+                'username'      => $this->pppoe_username,
+                'customer_code' => $this->customer_code,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'Nomor HP')) {
+                $this->addError('phone', $msg);
+            } elseif (str_contains($msg, 'Username')) {
+                $this->addError('pppoe_username', $msg);
+            } elseif (str_contains($msg, 'Email')) {
+                $this->addError('email', $msg);
+            } elseif (str_contains($msg, 'ID Pelanggan')) {
+                $this->addError('customer_code', $msg);
+            } else {
+                session()->flash('error', $msg);
+            }
+            return;
+        }
 
         try {
             $code = $this->customer_code;

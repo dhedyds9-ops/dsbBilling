@@ -64,14 +64,14 @@ class CreateHotspot extends AdminComponent
         $provisioningService = app(ProvisioningService::class);
         try {
             $this->validate([
-            'name'               => 'required|string|max:255',
-            'phone'              => 'required|string|max:20',
-            'email'              => 'nullable|email|max:255',
-            'username'           => 'required|string|unique:hotspot_users,username',
-            'password'           => 'required|string',
-            'service_profile_id' => 'required|exists:service_profiles,id',
-            'router_id'          => 'nullable|exists:routers,id',
-        ]);
+                'name'               => 'required|string|max:255',
+                'phone'              => 'required|string|max:20',
+                'email'              => 'nullable|email|max:255',
+                'username'           => 'required|string',
+                'password'           => 'required|string',
+                'service_profile_id' => 'required|exists:service_profiles,id',
+                'router_id'          => 'nullable|exists:routers,id',
+            ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             $errors = $e->validator->errors()->all();
             $errorMsg = implode('<br>', $errors);
@@ -80,6 +80,28 @@ class CreateHotspot extends AdminComponent
                 'message' => $errorMsg ?: 'Ada kolom wajib yang belum diisi atau salah!'
             ]);
             throw $e;
+        }
+
+        try {
+            \App\Services\CRM\CustomerValidationService::validateBeforeCreate([
+                'phone' => $this->phone,
+                'email' => $this->email,
+                'username' => $this->username,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            $this->dispatch('toast', [
+                'type' => 'error',
+                'message' => $e->getMessage()
+            ]);
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'Nomor HP')) {
+                $this->addError('phone', $msg);
+            } elseif (str_contains($msg, 'Username')) {
+                $this->addError('username', $msg);
+            } elseif (str_contains($msg, 'Email')) {
+                $this->addError('email', $msg);
+            }
+            return;
         }
 
         try {

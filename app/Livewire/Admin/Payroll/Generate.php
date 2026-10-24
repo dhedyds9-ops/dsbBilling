@@ -5,7 +5,11 @@ namespace App\Livewire\Admin\Payroll;
 use App\Livewire\AdminComponent;
 use App\Models\Employee;
 use App\Models\Payroll;
+use App\Models\Workforce\Attendance;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
+use Src\Domain\Workforce\Enums\AttendanceStatus;
 
 class Generate extends AdminComponent
 {
@@ -27,106 +31,173 @@ class Generate extends AdminComponent
             ['label' => 'Generate Gaji'],
         ];
 
-        $this->month = date('m');
-        $this->year = date('Y');
-        // Default cutoff: 26 prev month to 25 current month
+        $this->month        = date('m');
+        $this->year         = date('Y');
+        // Default cutoff: 26 bulan lalu s/d 25 bulan ini
         $this->period_start = date('Y-m-26', strtotime('-1 month'));
-        $this->period_end = date('Y-m-25');
+        $this->period_end   = date('Y-m-25');
+    }
+
+    /**
+     * Hitung total hari kerja (Senin–Sabtu) dalam rentang periode.
+     * Minggu dianggap libur. Bisa dikembangkan dengan tabel hari libur nasional.
+     */
+    private function countWorkDays(string $start, string $end): int
+    {
+        $period  = CarbonPeriod::create($start, $end);
+        $count   = 0;
+        foreach ($period as $day) {
+            // 0 = Minggu
+            if ($day->dayOfWeek !== Carbon::SUNDAY) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * Ambil rekap absensi satu karyawan dalam periode.
+     *
+     * @return array{present:int, late:int, sick:int, permission:int, absent:int}
+     */
+    private function getAttendanceSummary(int $userId, string $start, string $end): array
+    {
+        $rows = Attendance::where('technician_id', $userId)
+            ->whereBetween('date', [$start, $end])
+            ->get(['status']);
+
+        $summary = [
+            'present'    => 0,  // checked_in + checked_out
+            'late'       => 0,
+            'sick'       => 0,
+            'permission' => 0,
+            'absent'     => 0,
+        ];
+
+        foreach ($rows as $row) {
+            $val = $row->status instanceof AttendanceStatus
+                ? $row->status->value
+                : (string) $row->status;
+
+            match ($val) {
+                'checked_in', 'checked_out' => $summary['present']++,
+                'late'                       => $summary['late']++,
+                'sick'                       => $summary['sick']++,
+                'permission', 'leave'        => $summary['permission']++,
+                'absent'                     => $summary['absent']++,
+                default                      => null,
+            };
+        }
+
+        return $summary;
     }
 
     public function generate()
     {
         $this->validate([
-            'month' => 'required|numeric|min:1|max:12',
-            'year' => 'required|numeric|min:2000|max:2100',
+            'month'        => 'required|numeric|min:1|max:12',
+            'year'         => 'required|numeric|min:2000|max:2100',
             'period_start' => 'nullable|date',
-            'period_end' => 'nullable|date',
+            'period_end'   => 'nullable|date|after_or_equal:period_start',
         ]);
 
-        $employees = Employee::where('status', 'active')->get();
+        $employees     = Employee::where('status', 'active')->get();
         $generatedCount = 0;
 
-        $latePenalty = (float) \App\Models\Setting::getValue('payroll.late_penalty', 25000);
+        $latePenalty   = (float) \App\Models\Setting::getValue('payroll.late_penalty', 25000);
         $absentPenalty = (float) \App\Models\Setting::getValue('payroll.absent_penalty', 100000);
+
+        $workDays = ($this->period_start && $this->period_end)
+            ? $this->countWorkDays($this->period_start, $this->period_end)
+            : 0;
 
         DB::beginTransaction();
         try {
             foreach ($employees as $employee) {
                 $monthInt = (int) $this->month;
-                $yearInt = (int) $this->year;
+                $yearInt  = (int) $this->year;
 
-                $deductions = 0;
-                $attendanceNotes = [];
+                // === Rekap Absensi Otomatis ===
+                $attSummary  = ['present' => 0, 'late' => 0, 'sick' => 0, 'permission' => 0, 'absent' => 0];
+                $deductions  = 0;
+                $attNotes    = [];
 
                 if ($employee->user_id && $this->period_start && $this->period_end) {
-                    $lateCount = \App\Models\Workforce\Attendance::where('technician_id', $employee->user_id)
-                        ->whereBetween('date', [$this->period_start, $this->period_end])
-                        ->where('status', \Src\Domain\Workforce\Enums\AttendanceStatus::LATE)
-                        ->count();
-                    $absentCount = \App\Models\Workforce\Attendance::where('technician_id', $employee->user_id)
-                        ->whereBetween('date', [$this->period_start, $this->period_end])
-                        ->where('status', \Src\Domain\Workforce\Enums\AttendanceStatus::ABSENT)
-                        ->count();
+                    $attSummary = $this->getAttendanceSummary(
+                        $employee->user_id,
+                        $this->period_start,
+                        $this->period_end
+                    );
 
-                    if ($lateCount > 0) {
-                        $deductions += ($lateCount * $latePenalty);
-                        $attendanceNotes[] = "Terlambat {$lateCount}x (-Rp " . number_format($lateCount * $latePenalty, 0, ',', '.') . ")";
+                    // Potongan terlambat
+                    if ($attSummary['late'] > 0) {
+                        $cut = $attSummary['late'] * $latePenalty;
+                        $deductions += $cut;
+                        $attNotes[] = "Terlambat {$attSummary['late']}x (-Rp " . number_format($cut, 0, ',', '.') . ')';
                     }
-                    if ($absentCount > 0) {
-                        $deductions += ($absentCount * $absentPenalty);
-                        $attendanceNotes[] = "Alpa {$absentCount}x (-Rp " . number_format($absentCount * $absentPenalty, 0, ',', '.') . ")";
+                    // Potongan alpa
+                    if ($attSummary['absent'] > 0) {
+                        $cut = $attSummary['absent'] * $absentPenalty;
+                        $deductions += $cut;
+                        $attNotes[] = "Alpa {$attSummary['absent']}x (-Rp " . number_format($cut, 0, ',', '.') . ')';
                     }
                 }
 
-                $fullNotes = trim(($this->notes ?? '') . (empty($attendanceNotes) ? '' : ' | ' . implode(', ', $attendanceNotes)), ' |');
+                $fullNotes = trim(
+                    ($this->notes ?? '') .
+                    (empty($attNotes) ? '' : ' | ' . implode(', ', $attNotes)),
+                    ' |'
+                );
+
                 $netSalary = max(0, $employee->base_salary - $deductions);
-                
-                // Gunakan withTrashed() agar record yang sudah di soft-delete bisa terdeteksi dan di-restore
+
+                $payloadBase = [
+                    'period_start'    => $this->period_start ?: null,
+                    'period_end'      => $this->period_end   ?: null,
+                    'base_salary'     => $employee->base_salary,
+                    'allowances'      => 0,
+                    'deductions'      => $deductions,
+                    'net_salary'      => $netSalary,
+                    'status'          => 'draft',
+                    'notes'           => $fullNotes ?: null,
+                    // Kolom rekap absensi
+                    'work_days'       => $workDays,
+                    'present_days'    => $attSummary['present'],
+                    'late_days'       => $attSummary['late'],
+                    'sick_days'       => $attSummary['sick'],
+                    'permission_days' => $attSummary['permission'],
+                    'absent_days'     => $attSummary['absent'],
+                ];
+
                 $payroll = Payroll::withTrashed()
                     ->where('employee_id', $employee->id)
                     ->where('period_month', $monthInt)
-                    ->where('period_year', $yearInt)
+                    ->where('period_year',  $yearInt)
                     ->first();
 
                 if ($payroll) {
                     if ($payroll->trashed()) {
                         $payroll->restore();
-                        $payroll->update([
-                            'period_start' => $this->period_start ?: null,
-                            'period_end' => $this->period_end ?: null,
-                            'base_salary' => $employee->base_salary,
-                            'allowances' => 0,
-                            'deductions' => $deductions,
-                            'net_salary' => $netSalary,
-                            'status' => 'draft',
-                            'notes' => $fullNotes ?: null
-                        ]);
-                        $generatedCount++;
                     }
+                    $payroll->update($payloadBase);
+                    $generatedCount++;
                 } else {
-                    Payroll::create([
-                        'employee_id' => $employee->id,
+                    Payroll::create(array_merge($payloadBase, [
+                        'employee_id'  => $employee->id,
                         'period_month' => $monthInt,
-                        'period_year' => $yearInt,
-                        'period_start' => $this->period_start ?: null,
-                        'period_end' => $this->period_end ?: null,
-                        'base_salary' => $employee->base_salary,
-                        'allowances' => 0,
-                        'deductions' => $deductions,
-                        'net_salary' => $netSalary,
-                        'status' => 'draft',
-                        'notes' => $fullNotes ?: null
-                    ]);
+                        'period_year'  => $yearInt,
+                    ]));
                     $generatedCount++;
                 }
             }
+
             DB::commit();
-            
+
             session()->flash('success', "{$generatedCount} slip gaji berhasil digenerate untuk periode {$this->month}/{$this->year}.");
             return redirect()->route('admin.payroll.index');
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', "Gagal generate gaji: " . $e->getMessage());
+            session()->flash('error', 'Gagal generate gaji: ' . $e->getMessage());
         }
     }
 

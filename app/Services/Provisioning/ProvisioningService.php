@@ -44,6 +44,11 @@ class ProvisioningService
     public function activatePPPoEService(array $data, int $userId): array
     {
         return DB::transaction(function () use ($data, $userId) {
+            // Validasi Keunikan Data (Nomor HP, Username lintas sistem)
+            if (empty($data['customer_id'])) {
+                \App\Services\CRM\CustomerValidationService::validateBeforeCreate($data);
+            }
+
             // Step 1: Find or Create Customer
             $customer = $this->findOrCreateCustomer($data, $userId);
 
@@ -216,6 +221,11 @@ class ProvisioningService
     public function activateHotspotService(array $data, int $userId): array
     {
         return DB::transaction(function () use ($data, $userId) {
+            // Validasi Keunikan Data (Nomor HP, Username lintas sistem)
+            if (empty($data['customer_id'])) {
+                \App\Services\CRM\CustomerValidationService::validateBeforeCreate($data);
+            }
+
             // Step 1: Find or Create Customer
             $customer = $this->findOrCreateCustomer($data, $userId);
 
@@ -427,10 +437,13 @@ class ProvisioningService
         // Cek apakah customer yang ditemukan adalah akun guest voucher
         $isGuest = $customer && (empty($customer->code) || str_starts_with($customer->code, 'GST-') || str_starts_with($customer->name, 'Guest '));
 
-        // Jika customer yang ditemukan BUKAN guest tapi namanya berbeda secara signifikan:
-        // Jangan timpa/gabungkan akun orang lain, melainkan buat customer baru
-        if ($customer && !$isGuest && !empty($data['name']) && strcasecmp(trim($customer->name), trim($data['name'])) !== 0) {
-            $customer = null;
+        // Jika customer yang ditemukan BUKAN guest dan bukan explicit customer_id, tolak dengan tegas!
+        if ($customer && !$isGuest && empty($data['customer_id'])) {
+            $code = $customer->display_id ?? $customer->code ?? 'ID-' . $customer->id;
+            throw new \InvalidArgumentException(
+                "Nomor HP '{$phone}' sudah terdaftar di database milik pelanggan '{$customer->name}' (ID: {$code}). " .
+                "Satu nomor HP hanya boleh untuk satu pelanggan."
+            );
         }
 
         if (!$customer) {

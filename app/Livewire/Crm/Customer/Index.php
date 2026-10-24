@@ -8,6 +8,9 @@ use App\Models\CRM\Customer;
 class Index extends BaseCrmComponent
 {
     public $statusFilter = '';
+    public $resellerFilter = '';
+    public $packageFilter = '';
+    public $serviceTypeFilter = '';
     public $selectedCustomers = [];
     public $selectAll = false;
 
@@ -28,11 +31,19 @@ class Index extends BaseCrmComponent
         }
     }
 
+    public function updatedResellerFilter()    { $this->resetPage(); }
+    public function updatedPackageFilter()     { $this->resetPage(); }
+    public function updatedServiceTypeFilter() { $this->resetPage(); }
+    public function updatedStatusFilter()      { $this->resetPage(); }
+
     public function resetFilters(): void
     {
         $this->search = '';
         $this->statusFilter = '';
-        $this->perPage = 15;
+        $this->resellerFilter = '';
+        $this->packageFilter = '';
+        $this->serviceTypeFilter = '';
+        $this->perPage = 20;
         $this->resetPage();
     }
 
@@ -129,6 +140,34 @@ class Index extends BaseCrmComponent
             $query->where('status', $this->statusFilter);
         }
 
+        if (!empty($this->resellerFilter)) {
+            if ($this->resellerFilter === 'pusat') {
+                $query->whereNull('reseller_id');
+            } else {
+                $query->where('reseller_id', $this->resellerFilter);
+            }
+        }
+
+        if (!empty($this->packageFilter)) {
+            $query->whereHas('customerServices', function($cs) {
+                $cs->where('service_profile_id', $this->packageFilter);
+            });
+        }
+
+        if (!empty($this->serviceTypeFilter)) {
+            if ($this->serviceTypeFilter === 'pppoe') {
+                $query->whereHas('customerServices', function($cs) {
+                    $cs->whereHas('pppoeUser')
+                       ->orWhereHas('serviceProfile', fn($sp) => $sp->whereIn('service_type', ['pppoe', 'broadband', 'dedicated']));
+                });
+            } elseif ($this->serviceTypeFilter === 'hotspot') {
+                $query->whereHas('customerServices', function($cs) {
+                    $cs->whereHas('hotspotUser')
+                       ->orWhereHas('serviceProfile', fn($sp) => $sp->whereIn('service_type', ['hotspot', 'member_hotspot', 'voucher']));
+                });
+            }
+        }
+
         return $query;
     }
 
@@ -153,12 +192,22 @@ class Index extends BaseCrmComponent
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
 
+        $resellers = \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'reseller'))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $serviceProfiles = \App\Models\ISP\ServiceProfile::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'service_type']);
+
         return view('livewire.crm.customer.index', compact(
             'customers',
             'totalCustomers',
             'activeCustomers',
             'suspendCustomers',
-            'newCustomers'
+            'newCustomers',
+            'resellers',
+            'serviceProfiles'
         ));
     }
 }

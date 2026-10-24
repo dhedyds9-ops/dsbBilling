@@ -64,14 +64,73 @@
     </div>
 
     {{-- Filter Bar --}}
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div class="flex items-center gap-3 flex-wrap">
-            <div>
-                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Pilih Tanggal</label>
-                <input type="date" wire:model.live="dateFilter"
-                       class="px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+        {{-- Row 1: Mode Tabs + Search --}}
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            {{-- Filter Mode Tabs --}}
+            <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 gap-1 flex-wrap">
+                <button wire:click="$set('filterMode','today')"
+                    class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all {{ $filterMode === 'today' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700' }}">
+                    <span class="material-symbols-outlined notranslate align-middle" style="font-size:14px" translate="no">today</span>
+                    Hari Ini
+                </button>
+                <button wire:click="$set('filterMode','month')"
+                    class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all {{ $filterMode === 'month' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700' }}">
+                    <span class="material-symbols-outlined notranslate align-middle" style="font-size:14px" translate="no">calendar_month</span>
+                    Bulan Ini
+                </button>
+                <button wire:click="$set('filterMode','period')"
+                    class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all {{ $filterMode === 'period' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700' }}">
+                    <span class="material-symbols-outlined notranslate align-middle" style="font-size:14px" translate="no">date_range</span>
+                    Pilih Periode
+                </button>
+                <button wire:click="$set('filterMode','all')"
+                    class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all {{ $filterMode === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700' }}">
+                    <span class="material-symbols-outlined notranslate align-middle" style="font-size:14px" translate="no">list</span>
+                    Semua
+                </button>
             </div>
 
+            {{-- Search --}}
+            <div class="w-full sm:w-72 relative">
+                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" translate="no" style="font-size:20px">search</span>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama teknisi..."
+                       class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+        </div>
+
+        {{-- Row 2: Date Range (period mode) + Karyawan + Status + Reset --}}
+        <div class="flex flex-col sm:flex-row items-start sm:items-end gap-3 flex-wrap">
+            {{-- Period Date Range - tampil hanya saat mode 'period' --}}
+            @if($filterMode === 'period')
+            <div class="flex items-end gap-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                    <input type="date" wire:model.live="periodStart"
+                           class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                </div>
+                <span class="text-slate-400 text-sm mb-2.5 px-1">s/d</span>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                    <input type="date" wire:model.live="periodEnd"
+                           class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                </div>
+            </div>
+            @endif
+
+            {{-- Filter Karyawan --}}
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Karyawan</label>
+                <select wire:model.live="employeeFilter"
+                        class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[180px]">
+                    <option value="">Semua Karyawan</option>
+                    @foreach($employees as $emp)
+                        <option value="{{ $emp->user_id }}">{{ $emp->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Filter Status --}}
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Status Kehadiran</label>
                 <select wire:model.live="filterStatus"
@@ -85,12 +144,17 @@
                     <option value="absent">Alpa / Tidak Hadir</option>
                 </select>
             </div>
-        </div>
 
-        <div class="w-full md:w-80 relative">
-            <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" translate="no" style="font-size:20px">search</span>
-            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama teknisi..."
-                   class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            {{-- Tombol Reset --}}
+            @if($search || $filterStatus || $employeeFilter || $filterMode !== 'today')
+            <div class="self-end">
+                <button wire:click="$set('filterMode','today'); $set('search',''); $set('filterStatus',''); $set('employeeFilter','')"
+                        class="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors flex items-center gap-1 whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">restart_alt</span>
+                    Reset Filter
+                </button>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -252,7 +316,7 @@
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 mb-2" style="font-size: 48px;" translate="no">event_busy</span>
                                     <p class="text-base font-semibold text-slate-800 dark:text-slate-200">Tidak Ada Data Absensi</p>
-                                    <p class="text-xs text-slate-400 mt-1">Belum ada absensi teknisi yang tercatat pada tanggal {{ \Carbon\Carbon::parse($dateFilter)->translatedFormat('d F Y') }}.</p>
+                                    <p class="text-xs text-slate-400 mt-1">Belum ada data absensi yang sesuai dengan filter yang dipilih.</p>
                                 </div>
                             </td>
                         </tr>

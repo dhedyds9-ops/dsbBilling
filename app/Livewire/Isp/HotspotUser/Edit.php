@@ -74,6 +74,17 @@ class Edit extends AdminComponent
         ]);
 
         $cs = $this->hotspotUser->customerService;
+        $customerId = $cs?->customer_id;
+        $userId = $cs?->customer?->user_id;
+
+        try {
+            \App\Services\CRM\CustomerValidationService::validatePhone($this->phone, $customerId, $userId);
+        } catch (\InvalidArgumentException $e) {
+            $this->addError('phone', $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+            return;
+        }
+
         if ($cs && $cs->customer) {
             $cs->customer->update([
                 'name' => $this->name,
@@ -97,7 +108,7 @@ class Edit extends AdminComponent
     public function updateService()
     {
         $this->validate([
-            'username' => 'required|unique:hotspot_users,username,' . $this->hotspotUserId,
+            'username' => 'required|string',
             'password' => 'nullable|string',
             'service_profile_id' => 'required|exists:service_profiles,id',
             'billing_cycle' => 'required|in:monthly,prepaid,postpaid',
@@ -105,6 +116,14 @@ class Edit extends AdminComponent
             'status' => 'required|in:active,inactive,suspended,terminated',
             'activation_date' => 'nullable|date',
         ]);
+
+        try {
+            \App\Services\CRM\CustomerValidationService::validateUsername($this->username, null, $this->hotspotUserId, null);
+        } catch (\InvalidArgumentException $e) {
+            $this->addError('username', $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+            return;
+        }
 
         $this->hotspotUser->update([
             'username' => $this->username,

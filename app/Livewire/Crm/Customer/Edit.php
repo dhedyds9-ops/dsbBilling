@@ -61,6 +61,15 @@ class Edit extends AdminComponent
         ]);
 
         $customer = Customer::findOrFail($this->customerId);
+
+        try {
+            \App\Services\CRM\CustomerValidationService::validatePhone($this->phone, $customer->id, $customer->user_id);
+        } catch (\InvalidArgumentException $e) {
+            $this->addError('phone', $e->getMessage());
+            session()->flash('error', $e->getMessage());
+            return;
+        }
+
         $oldResellerId = $customer->reseller_id;
         $newResellerId = $this->reseller_id ?: null;
 

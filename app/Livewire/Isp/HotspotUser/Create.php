@@ -99,7 +99,7 @@ class Create extends AdminComponent
             'email' => 'nullable|email',
             'address' => 'nullable|string',
             'notes' => 'nullable|string',
-            'username' => 'required|unique:hotspot_users,username',
+            'username' => 'required|string',
             'password' => 'required|string',
             'service_profile_id' => 'required|exists:service_profiles,id',
             'status' => 'required|in:active,inactive',
@@ -113,6 +113,26 @@ class Create extends AdminComponent
             'billing_cycle' => 'required|in:monthly,prepaid,postpaid',
             'setup_fee' => 'nullable|numeric'
         ]);
+
+        try {
+            \App\Services\CRM\CustomerValidationService::validateBeforeCreate([
+                'phone' => $this->phone,
+                'email' => $this->email,
+                'username' => $this->username,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'Nomor HP')) {
+                $this->addError('phone', $msg);
+            } elseif (str_contains($msg, 'Username')) {
+                $this->addError('username', $msg);
+            } elseif (str_contains($msg, 'Email')) {
+                $this->addError('email', $msg);
+            } else {
+                session()->flash('error', $msg);
+            }
+            return;
+        }
 
         try {
             $result = $provisioningService->activateHotspotService([

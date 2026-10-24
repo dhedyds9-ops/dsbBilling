@@ -115,6 +115,13 @@
                         <th class="px-4 py-3.5 text-center w-28">Aksi</th>
                         <th class="px-4 py-3.5">Pegawai</th>
                         <th class="px-4 py-3.5">Periode</th>
+                        {{-- Rekap Absensi --}}
+                        <th class="px-4 py-3.5 text-center" title="Total hari kerja">Hari Kerja</th>
+                        <th class="px-4 py-3.5 text-center" title="Hari hadir (masuk)">Hadir</th>
+                        <th class="px-4 py-3.5 text-center" title="Hari terlambat">Terlambat</th>
+                        <th class="px-4 py-3.5 text-center" title="Sakit + Izin">Sakit/Izin</th>
+                        <th class="px-4 py-3.5 text-center" title="Alpa / Tidak Hadir">Alpa</th>
+                        {{-- Keuangan --}}
                         <th class="px-4 py-3.5">Gaji Pokok</th>
                         <th class="px-4 py-3.5">Tunjangan</th>
                         <th class="px-4 py-3.5">Potongan</th>
@@ -178,8 +185,61 @@
                             </td>
 
                             {{-- Periode --}}
-                            <td class="px-4 py-3.5 font-medium text-slate-800 dark:text-slate-200">
+                            <td class="px-4 py-3.5 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
                                 {{ $namaBulan }} {{ $payroll->period_year }}
+                                @if($payroll->period_start && $payroll->period_end)
+                                    <br><span class="text-[10px] text-slate-400 font-mono">
+                                        {{ $payroll->period_start->format('d/m') }} – {{ $payroll->period_end->format('d/m') }}
+                                    </span>
+                                @endif
+                            </td>
+
+                            {{-- Rekap Absensi: Hari Kerja --}}
+                            <td class="px-4 py-3.5 text-center">
+                                <span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold font-mono">
+                                    {{ $payroll->work_days ?? '-' }}
+                                </span>
+                            </td>
+
+                            {{-- Hadir --}}
+                            <td class="px-4 py-3.5 text-center">
+                                <span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold font-mono">
+                                    {{ $payroll->present_days ?? 0 }}
+                                </span>
+                            </td>
+
+                            {{-- Terlambat --}}
+                            <td class="px-4 py-3.5 text-center">
+                                @if(($payroll->late_days ?? 0) > 0)
+                                    <span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold font-mono">
+                                        {{ $payroll->late_days }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-300 dark:text-slate-600 text-xs">0</span>
+                                @endif
+                            </td>
+
+                            {{-- Sakit/Izin --}}
+                            <td class="px-4 py-3.5 text-center">
+                                @php $sickIzin = ($payroll->sick_days ?? 0) + ($payroll->permission_days ?? 0); @endphp
+                                @if($sickIzin > 0)
+                                    <span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold font-mono">
+                                        {{ $sickIzin }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-300 dark:text-slate-600 text-xs">0</span>
+                                @endif
+                            </td>
+
+                            {{-- Alpa --}}
+                            <td class="px-4 py-3.5 text-center">
+                                @if(($payroll->absent_days ?? 0) > 0)
+                                    <span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold font-mono">
+                                        {{ $payroll->absent_days }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-300 dark:text-slate-600 text-xs">0</span>
+                                @endif
                             </td>
 
                             {{-- Gaji Pokok --}}
@@ -222,7 +282,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="14" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="material-symbols-outlined notranslate text-slate-300 dark:text-slate-600 mb-2" style="font-size: 48px;" translate="no">receipt_long</span>
                                     <p class="text-base font-semibold text-slate-800 dark:text-slate-200">Belum Ada Slip Gaji</p>

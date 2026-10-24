@@ -55,6 +55,16 @@ class Edit extends AdminComponent
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
         })->findOrFail($this->customerId);
 
+        if ($this->phone) {
+            try {
+                \App\Services\CRM\CustomerValidationService::validatePhone($this->phone, $customer->id, $customer->user_id);
+            } catch (\InvalidArgumentException $e) {
+                $this->addError('phone', $e->getMessage());
+                session()->flash('error', $e->getMessage());
+                return;
+            }
+        }
+
         $customer->update([
             'name'      => $this->name,
             'phone'     => $this->phone,
