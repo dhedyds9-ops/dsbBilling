@@ -31,8 +31,8 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Potongan (Alpha, Telat, Kasbon)</label>
-                    <input type="number" step="0.01" wire:model.live.debounce.300ms="deductions" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Potongan Kasbon / Pinjaman</label>
+                    <input type="number" step="0.01" wire:model.live.debounce.300ms="deductions" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="0">
                     @error('deductions') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
 
@@ -52,8 +52,8 @@
             </div>
 
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Catatan Tambahan (misal: Rincian Alpha)</label>
-                <textarea wire:model="notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Alpha 2 hari = Potongan Rp100.000"></textarea>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Keterangan Kasbon / Catatan Tambahan</label>
+                <textarea wire:model="notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Kasbon tgl 12/10/2026 Rp 100.000"></textarea>
                 @error('notes') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
             </div>
 

@@ -58,20 +58,13 @@
         }
     }
 
-    // Keterlambatan TIDAK memotong gaji sama sekali (hanya sebagai rekap kehadiran)
-    $cutAbsent = $absentDays * $absentPenalty;
+    // Sesuai aturan perusahaan: POTONGAN HANYA JIKA ADA KASBON (Absensi tidak memotong gaji)
+    $hasOldPenaltyNotes = !empty($p->notes) && (str_contains($p->notes, 'Terlambat') || str_contains($p->notes, 'Alpa')) && !str_contains(strtolower($p->notes), 'kasbon');
+    $isOldLateDeduction = ($lateDays > 0 && ($lateDays * 25000 == (float)$p->deductions));
 
-    // Bersihkan potongan lama jika berasal dari denda terlambat (misal 3x Rp 25.000 = Rp 75.000)
-    $oldLateCut = 0;
-    if ($lateDays > 0 && ($lateDays * 25000 == (float)$p->deductions)) {
-        $oldLateCut = $lateDays * 25000;
-    } elseif (!empty($p->notes) && str_contains($p->notes, 'Terlambat') && !str_contains($p->notes, 'Alpa') && (float)$p->deductions == 75000) {
-        $oldLateCut = 75000;
-    }
-
-    $actualDeductions = max(0, $totalDeduct - $oldLateCut);
-    $cutOther         = max(0, $actualDeductions - $cutAbsent);
-    $netSalary        = max(0, $totalIncome - $actualDeductions);
+    // Jika potongan berasal dari denda absensi lama, abaikan (anggap 0)
+    $kasbonDeductions = ($hasOldPenaltyNotes || $isOldLateDeduction) ? 0 : (float)$p->deductions;
+    $netSalary        = max(0, $totalIncome - $kasbonDeductions);
 
     // Periode
     $periodLabel = ($p->period_start && $p->period_end)
@@ -303,36 +296,22 @@
                         B. Potongan
                     </h3>
                     <table class="w-full text-sm print:text-black">
-                        {{-- Potongan alpa (hanya alpa yang memotong gaji) --}}
-                        @if($absentDays > 0)
+                        {{-- Potongan HANYA untuk Kasbon / Pinjaman Karyawan --}}
+                        @if($kasbonDeductions > 0)
                         <tr>
                             <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">
-                                Alpa {{ $absentDays }}×
-                                <span class="text-xs text-slate-400 print:text-slate-600">(@ Rp {{ number_format($absentPenalty, 0, ',', '.') }})</span>
-                            </td>
-                            <td class="py-1.5 text-right font-semibold text-red-600 dark:text-red-400 print:text-black font-mono">
-                                – Rp {{ number_format($cutAbsent, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                        @endif
-                        {{-- Potongan lain-lain (pinjaman/kasbon dll) --}}
-                        @if($cutOther > 0)
-                        <tr>
-                            <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">
-                                Potongan Lainnya
-                                @if(!empty($p->notes) && !str_contains($p->notes, 'Terlambat') && !str_contains($p->notes, 'Alpa'))
+                                Kasbon / Pinjaman
+                                @if(!empty($p->notes))
                                     <span class="block text-xs text-slate-400 print:text-slate-600 italic">({{ $p->notes }})</span>
                                 @endif
                             </td>
-                            <td class="py-1.5 text-right font-semibold text-rose-600 dark:text-rose-400 print:text-black font-mono">
-                                – Rp {{ number_format($cutOther, 0, ',', '.') }}
+                            <td class="py-1.5 text-right font-semibold text-red-600 dark:text-red-400 print:text-black font-mono">
+                                – Rp {{ number_format($kasbonDeductions, 0, ',', '.') }}
                             </td>
                         </tr>
-                        @endif
-                        {{-- Jika tidak ada potongan sama sekali --}}
-                        @if($actualDeductions == 0)
+                        @else
                         <tr>
-                            <td colspan="2" class="py-1.5 text-slate-400 dark:text-slate-500 print:text-slate-600 italic text-sm">Tidak ada potongan</td>
+                            <td colspan="2" class="py-1.5 text-slate-400 dark:text-slate-500 print:text-slate-600 italic text-sm">Tidak ada potongan kasbon</td>
                         </tr>
                         @endif
                     </table>
@@ -341,7 +320,7 @@
                             <tr>
                                 <td class="py-1 font-bold text-slate-800 dark:text-slate-200 print:text-black">Total Potongan</td>
                                 <td class="py-1 text-right font-black text-red-600 dark:text-red-400 print:text-black font-mono">
-                                    – Rp {{ number_format($actualDeductions, 0, ',', '.') }}
+                                    – Rp {{ number_format($kasbonDeductions, 0, ',', '.') }}
                                 </td>
                             </tr>
                         </table>
@@ -358,7 +337,7 @@
                     </span>
                     <span class="text-slate-400 font-bold">−</span>
                     <span class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg font-bold">
-                        Rp {{ number_format($actualDeductions, 0, ',', '.') }}
+                        Rp {{ number_format($kasbonDeductions, 0, ',', '.') }}
                     </span>
                     <span class="text-slate-400 font-bold">=</span>
                     <span class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg font-black text-base">

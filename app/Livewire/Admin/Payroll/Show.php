@@ -71,16 +71,20 @@ class Show extends AdminComponent
             $message .= "   Gaji Pokok  : Rp {$base}\n";
             $message .= "   Tunjangan   : Rp {$allow}\n\n";
 
+            $hasOldPenaltyNotes = !empty($this->payroll->notes) && (str_contains($this->payroll->notes, 'Terlambat') || str_contains($this->payroll->notes, 'Alpa')) && !str_contains(strtolower($this->payroll->notes), 'kasbon');
+            $kasbonDeduct = $hasOldPenaltyNotes ? 0 : (float)$this->payroll->deductions;
+            $netVal = max(0, (float)$this->payroll->base_salary + (float)$this->payroll->allowances - $kasbonDeduct);
+            $net = number_format($netVal, 0, ',', '.');
+            $deduct = number_format($kasbonDeduct, 0, ',', '.');
+
             $message .= "B. *Potongan*\n";
-            if ($this->payroll->absent_days > 0) {
-                $cutAbsent = number_format($this->payroll->absent_days * $absentPenalty, 0, ',', '.');
-                $message .= "   Alpa {$this->payroll->absent_days}x : -Rp {$cutAbsent}\n";
-            }
-            if ($this->payroll->deductions > 0 && ($this->payroll->absent_days ?? 0) == 0) {
-                $message .= "   Potongan Lainnya : -Rp {$deduct}\n";
-            }
-            if ($this->payroll->deductions == 0) {
-                $message .= "   Tidak ada potongan (Rp 0)\n";
+            if ($kasbonDeduct > 0) {
+                $message .= "   Kasbon / Pinjaman : -Rp {$deduct}\n";
+                if ($this->payroll->notes) {
+                    $message .= "   Keterangan : {$this->payroll->notes}\n";
+                }
+            } else {
+                $message .= "   Tidak ada potongan kasbon (Rp 0)\n";
             }
             $message .= "   Total Potongan : -Rp {$deduct}\n\n";
 

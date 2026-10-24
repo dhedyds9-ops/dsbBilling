@@ -129,25 +129,12 @@ class Generate extends AdminComponent
                         $this->period_end
                     );
 
-                    // Catatan keterlambatan tetap direkam untuk rekap absensi, TETAPI TIDAK MEMOTONG GAJI
-                    if ($attSummary['late'] > 0) {
-                        $attNotes[] = "Terlambat {$attSummary['late']}x";
-                    }
-                    // Potongan gaji hanya untuk alpa (tidak hadir tanpa keterangan)
-                    if ($attSummary['absent'] > 0) {
-                        $cut = $attSummary['absent'] * $absentPenalty;
-                        $deductions += $cut;
-                        $attNotes[] = "Alpa {$attSummary['absent']}x (-Rp " . number_format($cut, 0, ',', '.') . ')';
-                    }
+                    // Rekap kehadiran dicatat untuk monitoring absensi
+                    // Sesuai kebijakan perusahaan: TIDAK ADA POTONGAN DARI ABSENSI (potongan hanya jika ada kasbon)
                 }
 
-                $fullNotes = trim(
-                    ($this->notes ?? '') .
-                    (empty($attNotes) ? '' : ' | ' . implode(', ', $attNotes)),
-                    ' |'
-                );
-
-                $netSalary = max(0, $employee->base_salary - $deductions);
+                $fullNotes = trim($this->notes ?? '');
+                $netSalary = $employee->base_salary;
 
                 $payloadBase = [
                     'period_start'    => $this->period_start ?: null,
