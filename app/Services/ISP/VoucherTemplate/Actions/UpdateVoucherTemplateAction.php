@@ -35,7 +35,15 @@ class UpdateVoucherTemplateAction
                 // Validate template syntax
                 $validation = $this->validator->validate($content);
                 if (!$validation['is_valid']) {
-                    throw new \Exception('Invalid template syntax: ' . implode(', ', $validation['errors']));
+                    $errorMessages = array_map(function ($err) {
+                        if (is_array($err)) {
+                            $msg = $err['message'] ?? json_encode($err);
+                            $line = !empty($err['line']) ? " (baris {$err['line']})" : '';
+                            return $msg . $line;
+                        }
+                        return (string) $err;
+                    }, $validation['errors']);
+                    throw new \Exception('Sintaks template tidak valid: ' . implode('; ', $errorMessages));
                 }
 
                 if ($createNewVersion) {

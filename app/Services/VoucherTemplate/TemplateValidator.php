@@ -809,21 +809,28 @@ class TemplateValidator
 
     private function checkFiltersAndHelpers(string $source, bool $strictMode): void
     {
-        preg_match_all('/\|\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\([^)]*\))?/', $source, $filterMatches, PREG_OFFSET_CAPTURE);
-        foreach ($filterMatches[1] as $idx => $fName) {
-            $name = strtolower(trim((string) $fName[0]));
-            $offset = (int) $filterMatches[0][$idx][1];
-            $line = $this->findLineByOffset($source, $offset);
-            $snippet = $this->getSnippet($source, $offset);
-            if (!in_array($name, self::ALLOWED_FILTERS, true)) {
-                $severityFn = $strictMode ? 'addError' : 'addWarning';
-                $codePrefix = $strictMode ? 'ERR' : 'WARN';
-                $this->{$severityFn}(
-                    $codePrefix . '_UNKNOWN_FILTER',
-                    sprintf('Filter "%s" tidak dikenal (bukan whitelist: %s).', $name, implode(', ', self::ALLOWED_FILTERS)),
-                    $line,
-                    $snippet
-                );
+        // Only inspect filter pipes inside {{ ... }} interpolation tags to avoid matching boolean '||' in {if ...}
+        preg_match_all('/\{\{\s*([^}]+)\s*\}\}/', $source, $braceMatches, PREG_OFFSET_CAPTURE);
+        foreach ($braceMatches[1] as $bIdx => $bContent) {
+            $inner = (string) $bContent[0];
+            $baseOffset = (int) $bContent[1];
+            if (preg_match_all('/(?<!\|)\|\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\([^)]*\))?(?!\|)/', $inner, $filterMatches, PREG_OFFSET_CAPTURE)) {
+                foreach ($filterMatches[1] as $idx => $fName) {
+                    $name = strtolower(trim((string) $fName[0]));
+                    $offset = $baseOffset + (int) $filterMatches[0][$idx][1];
+                    $line = $this->findLineByOffset($source, $offset);
+                    $snippet = $this->getSnippet($source, $offset);
+                    if (!in_array($name, self::ALLOWED_FILTERS, true)) {
+                        $severityFn = $strictMode ? 'addError' : 'addWarning';
+                        $codePrefix = $strictMode ? 'ERR' : 'WARN';
+                        $this->{$severityFn}(
+                            $codePrefix . '_UNKNOWN_FILTER',
+                            sprintf('Filter "%s" tidak dikenal (bukan whitelist: %s).', $name, implode(', ', self::ALLOWED_FILTERS)),
+                            $line,
+                            $snippet
+                        );
+                    }
+                }
             }
         }
 
