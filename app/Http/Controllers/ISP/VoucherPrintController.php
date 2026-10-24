@@ -23,27 +23,22 @@ class VoucherPrintController extends Controller
             ? \App\Models\Setting::getGroup('company') 
             : [];
             
-        $logoUrl = isset($companySettings['logo']) && $companySettings['logo'] 
-            ? (str_starts_with($companySettings['logo'], 'http') ? $companySettings['logo'] : asset('storage/' . $companySettings['logo'])) 
-            : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMzAiPjx0ZXh0IHk9IjIwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMzMzIj5MT0dPIERJU0lOSTwvdGV4dD48L3N2Zz4=';
+        $builder = new TemplateContextBuilder();
+        $sampleCtx = $builder->buildSampleContext();
+        if (!empty($companySettings['name'])) {
+            $sampleCtx['company']['name'] = $companySettings['name'];
+        }
+        if (!empty($companySettings['logo'])) {
+            $sampleCtx['company']['logo'] = str_starts_with($companySettings['logo'], 'http') 
+                ? $companySettings['logo'] 
+                : asset('storage/' . $companySettings['logo']);
+        }
+        if (!empty($companySettings['phone'])) {
+            $sampleCtx['company']['phone'] = $companySettings['phone'];
+        }
 
-        $dummyContext = [
-            'username' => 'WN-8F3K2A',
-            'password' => 'samasaja',
-            'price' => '5000',
-            'duration' => '30 Hari',
-            'quota' => 'Unlimited',
-            'company' => [
-                'name' => $companySettings['name'] ?? 'WINETS.ID',
-                'logo' => $logoUrl,
-            ]
-        ];
-
-        $globalContext = [
-            'company' => $dummyContext['company'],
-            'currency' => 'IDR',
-            'vouchers' => [$dummyContext]
-        ];
+        $globalContext = $sampleCtx;
+        $globalContext['vouchers'] = [$sampleCtx];
 
         try {
             $renderer = app(\App\Services\VoucherTemplate\TemplateRenderer::class);

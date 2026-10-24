@@ -76,7 +76,7 @@ class TemplateContextBuilder
 
         $sample = $this->buildSampleContext();
 
-        $sample['voucher'] = $this->extractVoucher($voucher, $serviceProfile, $sample['voucher']);
+        $sample['voucher'] = $this->extractVoucher($voucher, $serviceProfile, $sample['voucher'], $companySettings);
         $sample['package'] = $this->extractPackage($serviceProfile, $sample['package']);
         $sample['router'] = $this->extractRouter($router, $sample['router']);
         $sample['owner'] = $this->extractOwner($owner, $sample['owner'] ?? []);
@@ -183,7 +183,7 @@ class TemplateContextBuilder
      * @param array<string, mixed> $fallback
      * @return array<string, mixed>
      */
-    private function extractVoucher(?Voucher $voucher, ?ServiceProfile $profile, array $fallback): array
+    private function extractVoucher(?Voucher $voucher, ?ServiceProfile $profile, array $fallback, array $companySettings = []): array
     {
         if ($voucher === null) {
             return $fallback;
@@ -196,7 +196,6 @@ class TemplateContextBuilder
         // Fix: Use the voucher's code as the default username if available. E-Vouchers rely on code.
         $username = $voucher ? ($voucher->code ?? $fallback['username']) : $fallback['username'];
         $password = $fallback['password'];
-        $loginUrl = $fallback['login_url'];
 
         if ($profile === null && $voucher !== null) {
             $profile = $voucher->serviceProfile ?? $voucher->voucherPool?->serviceProfile;
@@ -226,10 +225,14 @@ class TemplateContextBuilder
             }
 
             if ($validity === null) {
-                if (!empty($profile->validity_hours) && (int) $profile->validity_hours > 0) {
+                if (!empty($profile->radius_session_timeout)) {
+                    $validity = $this->parseDurationString($profile->radius_session_timeout);
+                } elseif (!empty($profile->session_timeout)) {
+                    $validity = $this->parseDurationString($profile->session_timeout);
+                } elseif (!empty($profile->validity_hours) && (int) $profile->validity_hours > 0) {
                     $validity = sprintf('%d Jam', (int) $profile->validity_hours);
-                } elseif (!empty($profile->validity_days) && (int) $profile->validity_days > 0) {
-                    $validity = sprintf('%d Hari', (int) $profile->validity_days);
+                } elseif (!empty($profile->name) && preg_match('/(\d+\s*(?:jam|hari|bulan|menit|hour|day))/i', (string) $profile->name, $matches)) {
+                    $validity = ucwords(strtolower($matches[1]));
                 } elseif (!empty($profile->voucher_validity_after_activation)) {
                     $validity = $this->parseDurationString($profile->voucher_validity_after_activation);
                 } elseif (!empty($profile->validity_unit) && (!empty($profile->validity_days) || !empty($profile->validity_hours))) {
@@ -253,10 +256,8 @@ class TemplateContextBuilder
                         default => ucfirst($unit),
                     };
                     $validity = sprintf('%d %s', $val, $unitLabel);
-                } elseif (!empty($profile->radius_session_timeout)) {
-                    $validity = $this->parseDurationString($profile->radius_session_timeout);
-                } elseif (!empty($profile->session_timeout)) {
-                    $validity = $this->parseDurationString($profile->session_timeout);
+                } elseif (!empty($profile->validity_days) && (int) $profile->validity_days > 0) {
+                    $validity = sprintf('%d Hari', (int) $profile->validity_days);
                 }
             }
         }
@@ -293,12 +294,21 @@ class TemplateContextBuilder
             }
         }
 
-        if ($voucher->nasDevice !== null && isset($voucher->nasDevice->hostname)) {
+        $loginUrl = null;
+        if ($voucher->nasDevice !== null && !empty($voucher->nasDevice->hostname)) {
             $host = (string) $voucher->nasDevice->hostname;
             if ($host !== '') {
                 $scheme = parse_url($host, PHP_URL_SCHEME) === null ? 'http://' : '';
                 $loginUrl = rtrim($scheme . $host, '/') . '/login';
             }
+        } elseif (!empty($companySettings['website'])) {
+            $web = (string) $companySettings['website'];
+            $scheme = parse_url($web, PHP_URL_SCHEME) === null ? 'http://' : '';
+            $loginUrl = rtrim($scheme . $web, '/');
+        } elseif (!empty($fallback['login_url']) && !str_contains($fallback['login_url'], 'demo.id')) {
+            $loginUrl = $fallback['login_url'];
+        } else {
+            $loginUrl = 'http://winets.id';
         }
 
         return [
@@ -356,7 +366,28 @@ class TemplateContextBuilder
         }
 
         $duration = null;
-        if (!empty($profile->duration_value) && (int) $profile->duration_value > 0) {
+
+        // 1. Check radius_session_timeout or session_timeout first (Mikrotik session duration)
+        if (!empty($profile->radius_session_timeout)) {
+            $duration = $this->parseDurationString($profile->radius_session_timeout);
+        } elseif (!empty($profile->session_timeout)) {
+            $duration = $this->parseDurationString($profile->session_timeout);
+        }
+
+        // 2. Check if profile name contains explicit duration like "2 Jam", "3 Jam", "6 Jam", "12 Jam", "1 Hari"
+        if ($duration === null && !empty($profile->name)) {
+            if (preg_match('/(\d+\s*(?:jam|hari|bulan|menit|hour|day))/i', (string) $profile->name, $matches)) {
+                $duration = ucwords(strtolower($matches[1]));
+            }
+        }
+
+        // 3. Check validity_hours
+        if ($duration === null && !empty($profile->validity_hours) && (int) $profile->validity_hours > 0) {
+            $duration = sprintf('%d Jam', (int) $profile->validity_hours);
+        }
+
+        // 4. Check duration_value
+        if ($duration === null && !empty($profile->duration_value) && (int) $profile->duration_value > 0) {
             $val = (int) $profile->duration_value;
             $unit = strtolower((string) ($profile->duration_unit ?? 'hours'));
             $unitLabel = match ($unit) {
@@ -369,30 +400,14 @@ class TemplateContextBuilder
             $duration = sprintf('%d %s', $val, $unitLabel);
         }
 
-        if ($duration === null && !empty($profile->radius_session_timeout)) {
-            $duration = $this->parseDurationString($profile->radius_session_timeout);
-        }
-
-        if ($duration === null && !empty($profile->session_timeout)) {
-            $duration = $this->parseDurationString($profile->session_timeout);
-        }
-
-        if ($duration === null && !empty($profile->validity_hours) && (int) $profile->validity_hours > 0) {
-            $duration = sprintf('%d Jam', (int) $profile->validity_hours);
-        }
-
-        if ($duration === null && !empty($profile->validity_days) && (int) $profile->validity_days > 0) {
-            $duration = sprintf('%d Hari', (int) $profile->validity_days);
-        }
-
+        // 5. Check voucher_validity_after_activation
         if ($duration === null && !empty($profile->voucher_validity_after_activation)) {
             $duration = $this->parseDurationString($profile->voucher_validity_after_activation);
         }
 
-        if ($duration === null && !empty($profile->name)) {
-            if (preg_match('/(\d+\s*(?:jam|hari|bulan|menit|hour|day))/i', (string) $profile->name, $matches)) {
-                $duration = ucwords(strtolower($matches[1]));
-            }
+        // 6. Check validity_days
+        if ($duration === null && !empty($profile->validity_days) && (int) $profile->validity_days > 0) {
+            $duration = sprintf('%d Hari', (int) $profile->validity_days);
         }
 
         if ($duration === null) {
@@ -400,14 +415,19 @@ class TemplateContextBuilder
         }
 
         $quota = null;
-        $qVal = $profile->quota_value ?? $profile->quota ?? null;
-        if ($qVal !== null && (float) $qVal > 0) {
-            $unit = strtoupper((string) ($profile->quota_unit ?? 'MB'));
-            $quota = sprintf('%s %s', is_numeric($qVal) ? (int) $qVal : $qVal, $unit);
-        } elseif ($profile->package_type !== null && (strtolower((string) $profile->package_type) === 'unlimited' || strtolower((string) $profile->package_type) === 'time_based')) {
+        $pkgType = strtolower((string) ($profile->package_type ?? ''));
+        $acctType = strtolower((string) ($profile->account_type ?? ''));
+
+        if ($pkgType === 'unlimited' || $pkgType === 'time_based' || $acctType === 'unlimited') {
             $quota = 'Unlimited';
         } else {
-            $quota = 'Unlimited';
+            $qVal = $profile->quota_value ?? $profile->quota ?? null;
+            if ($qVal !== null && (float) $qVal > 0) {
+                $unit = strtoupper((string) ($profile->quota_unit ?? 'MB'));
+                $quota = sprintf('%s %s', is_numeric($qVal) ? (int) $qVal : $qVal, $unit);
+            } else {
+                $quota = 'Unlimited';
+            }
         }
 
         return [

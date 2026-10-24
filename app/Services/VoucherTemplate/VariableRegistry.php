@@ -93,12 +93,12 @@ class VariableRegistry
             ],
             'voucher.login_url' => [
                 'label' => 'URL Login Hotspot',
-                'sample' => 'http://wifi.demo.id/login',
+                'sample' => 'http://winets.id',
                 'category' => self::CATEGORY_VOUCHER,
             ],
             'package.name' => [
                 'label' => 'Nama Paket',
-                'sample' => 'Paket 3 Jam Harian',
+                'sample' => 'Paket 3 Jam',
                 'category' => self::CATEGORY_PACKAGE,
             ],
             'package.price' => [
@@ -133,7 +133,7 @@ class VariableRegistry
             ],
             'router.name' => [
                 'label' => 'Nama Router',
-                'sample' => 'Router-Lobi-01',
+                'sample' => 'Router-01',
                 'category' => self::CATEGORY_ROUTER,
             ],
             'router.ip' => [
@@ -143,42 +143,42 @@ class VariableRegistry
             ],
             'router.location' => [
                 'label' => 'Lokasi Router',
-                'sample' => 'Kantor Pusat Lantai 1',
+                'sample' => 'Kantor',
                 'category' => self::CATEGORY_ROUTER,
             ],
             'owner.name' => [
                 'label' => 'Nama Owner / Reseller',
-                'sample' => 'Owner Demo',
+                'sample' => '',
                 'category' => self::CATEGORY_OWNER,
             ],
             'company.name' => [
                 'label' => 'Nama Perusahaan / ISP',
-                'sample' => 'Demo ISP Nusantara',
+                'sample' => 'WINETS ID',
                 'category' => self::CATEGORY_COMPANY,
             ],
             'company.logo' => [
                 'label' => 'Logo Perusahaan (Path)',
-                'sample' => 'https://ui-avatars.com/api/?name=Winets&background=ffffff&color=000000&size=100&font-size=0.4',
+                'sample' => '',
                 'category' => self::CATEGORY_COMPANY,
             ],
             'company.phone' => [
                 'label' => 'Telepon Kantor',
-                'sample' => '021-5550123',
+                'sample' => '083139935920',
                 'category' => self::CATEGORY_COMPANY,
             ],
             'company.whatsapp' => [
                 'label' => 'Nomor WhatsApp',
-                'sample' => '6281234567890',
+                'sample' => '083139935920',
                 'category' => self::CATEGORY_COMPANY,
             ],
             'company.address' => [
                 'label' => 'Alamat Kantor',
-                'sample' => 'Jl. Raya Internet No. 42, Jakarta Selatan',
+                'sample' => '',
                 'category' => self::CATEGORY_COMPANY,
             ],
             'company.website' => [
                 'label' => 'Website Perusahaan',
-                'sample' => 'https://demo-isp.co.id',
+                'sample' => 'http://winets.id',
                 'category' => self::CATEGORY_COMPANY,
             ],
             'currency.code' => [
@@ -208,12 +208,12 @@ class VariableRegistry
             ],
             'hotspot.login_url' => [
                 'label' => 'URL Login Hotspot',
-                'sample' => 'http://wifi.demo.id/login',
+                'sample' => 'http://winets.id',
                 'category' => self::CATEGORY_HOTSPOT,
             ],
             'hotspot.domain' => [
                 'label' => 'Domain Hotspot',
-                'sample' => 'wifi.demo.id',
+                'sample' => 'winets.id',
                 'category' => self::CATEGORY_HOTSPOT,
             ],
             'system.generated_at' => [
