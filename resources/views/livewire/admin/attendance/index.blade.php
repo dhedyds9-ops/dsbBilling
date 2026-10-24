@@ -231,7 +231,15 @@
                                                 <span class="text-slate-300 dark:text-slate-600">•</span>
                                             @endif
                                             <span class="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">
-                                                {{ $tech?->job_function?->label() ?? $emp?->department ?? 'STAF' }}
+                                                @php
+                                                    $jf = $tech?->job_function;
+                                                    $jfLabel = $jf instanceof \App\Enums\JobFunction
+                                                        ? $jf->label()
+                                                        : (is_string($jf) && $jf
+                                                            ? (\App\Enums\JobFunction::tryFrom($jf)?->label() ?? $jf)
+                                                            : ($emp?->department ?? 'STAF'));
+                                                @endphp
+                                                {{ $jfLabel }}
                                             </span>
                                         </div>
                                     </div>
