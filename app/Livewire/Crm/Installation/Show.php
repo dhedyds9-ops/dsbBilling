@@ -16,13 +16,18 @@ class Show extends AdminComponent
         $this->activeModule = 'crm';
         $this->activePage = 'installations';
         $this->installationId = $id;
-        $this->installation = Installation::findOrFail($id);
+        $this->installation = Installation::with(['customer', 'survey.prospect', 'assignedTo', 'onu', 'createdBy'])->findOrFail($id);
+
+        $this->breadcrumbs = [
+            ['label' => 'Dashboard', 'url' => route('dashboard')],
+            ['label' => 'CRM', 'url' => '#'],
+            ['label' => 'Instalasi', 'url' => route('crm.installations.index')],
+            ['label' => 'Detail Instalasi #' . $this->installation->id, 'url' => '#'],
+        ];
     }
 
     public function render()
     {
-        $timeline = [['date' => now(), 'title' => 'Installation Dibuat', 'description' => 'Installation baru ditambahkan', 'type' => 'create']];
-        $activities = [['user' => 'Admin', 'action' => 'Membuat installation baru', 'module' => 'CRM', 'time' => '2 jam lalu']];
-        return view('livewire.crm.installation.show', compact('timeline', 'activities'));
+        return view('livewire.crm.installation.show');
     }
 }

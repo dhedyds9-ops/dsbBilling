@@ -2,122 +2,218 @@
     {{-- Header --}}
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Installation Management</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola semua instalasi pelanggan</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Manajemen Instalasi (CRM)</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola jadwal pemasangan, penugasan teknisi lapangan, dan pencatatan perangkat</p>
         </div>
-        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
-            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors whitespace-nowrap">
-                <svg class="w-4 h-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                </svg>
-                Export
+        <div class="flex items-center gap-2.5 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
+            <button wire:click="export" class="inline-flex items-center justify-center px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all shadow-xs gap-2 whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate text-lg" translate="no">download</span>
+                Ekspor Data
             </button>
-            <a href="{{ route('crm.installations.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors gap-2 whitespace-nowrap">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Tambah Installation
+            <a href="{{ route('crm.installations.create') }}" class="inline-flex items-center justify-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow gap-2 whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate text-lg" translate="no">add_circle</span>
+                Tambah Instalasi
             </a>
         </div>
     </div>
 
-    {{-- Search & Filters --}}
-    <x-base.card>
+    {{-- Search & Filters Card --}}
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
         <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
             <div class="relative w-full sm:flex-1 sm:max-w-md">
-                <input type="text" wire:model.live="search" placeholder="Cari nama pelanggan..." class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" translate="no" style="font-size:20px">search</span>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama pelanggan, SN perangkat, teknisi..." 
+                       class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
             <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button wire:click="$toggle('showFilters')" class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors whitespace-nowrap">
-                    <svg class="w-4 h-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                    </svg>
+                <button wire:click="$toggle('showFilters')" class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors whitespace-nowrap gap-1.5">
+                    <span class="material-symbols-outlined notranslate text-lg text-slate-500" translate="no">tune</span>
                     Filter
                 </button>
-                <button wire:click="resetFilters" class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors whitespace-nowrap">
-                    Reset
-                </button>
+                @if($search || !empty($filters['status']))
+                    <button wire:click="resetFilters" class="flex-1 sm:flex-none inline-flex items-center justify-center px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors whitespace-nowrap gap-1">
+                        <span class="material-symbols-outlined notranslate text-sm" translate="no">restart_alt</span>
+                        Reset
+                    </button>
+                @endif
             </div>
         </div>
+
         @if($showFilters)
-            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
-                        <select wire:model.live="filters.status" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
-                            <option value="">Semua Status</option>
-                            <option value="scheduled">Dijadwalkan</option>
-                            <option value="in_progress">Berlangsung</option>
-                            <option value="completed">Selesai</option>
-                            <option value="cancelled">Dibatalkan</option>
-                        </select>
-                    </div>
+            <div class="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Status Pengerjaan</label>
+                    <select wire:model.live="filters.status" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Semua Status</option>
+                        <option value="scheduled">Dijadwalkan (Scheduled)</option>
+                        <option value="in_progress">Sedang Berlangsung (In Progress)</option>
+                        <option value="completed">Selesai (Completed)</option>
+                        <option value="canceled">Dibatalkan (Canceled)</option>
+                    </select>
                 </div>
             </div>
         @endif
-    </x-base.card>
+    </div>
 
-    {{-- Data Table --}}
-    <x-base.card :padding="false">
-        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-            <table class="w-full">
+    {{-- Data Table (Aksi di sebelah KIRI) --}}
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm border-collapse">
                 <thead>
-                    <tr class="bg-slate-50 dark:bg-slate-900/50">
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Nama Pelanggan</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Tanggal Instalasi</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Teknisi</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
+                    <tr class="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                        {{-- Aksi Column on LEFT --}}
+                        <th class="px-4 py-3.5 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap w-28">
+                            Aksi
+                        </th>
+                        <th class="px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                            ID / Kode
+                        </th>
+                        <th class="px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                            Pelanggan
+                        </th>
+                        <th class="px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                            Jadwal & Waktu
+                        </th>
+                        <th class="px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                            Status
+                        </th>
+                        <th class="px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                            Prioritas
+                        </th>
+                        <th class="px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                            Teknisi
+                        </th>
+                        <th class="px-4 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                            Perangkat (ONU / Router)
+                        </th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
-                    @foreach($installations as $installation)
-                        <tr class="hover:bg-slate-50 dark:bg-slate-900/50">
-                            <td class="px-6 py-4">
-                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ $installation->customer_name ?? '-' }}</div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                    @if($installation->status === 'scheduled') bg-blue-100 dark:bg-blue-900/50 text-blue-600
-                                    @elseif($installation->status === 'in_progress') bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600
-                                    @elseif($installation->status === 'completed') bg-green-100 dark:bg-green-900/50 text-green-600
-                                    @else bg-red-100 dark:bg-red-900/50 text-red-600
-                                    @endif
-                                ">
-                                    {{ ucfirst(str_replace('_', ' ', $installation->status)) }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ $installation->installation_date?->format('d/m/Y') ?? '-' }}</td>
-                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ $installation->technician ?? '-' }}</td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-2">
-                                    <a href="{{ route('crm.installations.show', $installation->id) }}" class="p-2 text-slate-500 dark:text-slate-400 hover:text-primary-600 rounded-lg hover:bg-slate-100 dark:bg-slate-800">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80">
+                    @forelse($installations as $installation)
+                        <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                            {{-- Action buttons on LEFT --}}
+                            <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('crm.installations.show', $installation->id) }}" 
+                                       title="Lihat Rincian"
+                                       class="p-1.5 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">visibility</span>
                                     </a>
-                                    <a href="{{ route('crm.installations.edit', $installation->id) }}" class="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 dark:bg-slate-800">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                        </svg>
+                                    <a href="{{ route('crm.installations.edit', $installation->id) }}" 
+                                       title="Edit Instalasi"
+                                       class="p-1.5 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">edit</span>
                                     </a>
-                                    <button wire:click="delete({{ $installation->id }})" wire:confirm="Yakin ingin menghapus installation ini?" class="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 dark:bg-slate-800">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
+                                    <button wire:click="delete({{ $installation->id }})" 
+                                            wire:confirm="Yakin ingin menghapus data instalasi ini?" 
+                                            title="Hapus"
+                                            class="p-1.5 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">delete</span>
                                     </button>
                                 </div>
                             </td>
+
+                            {{-- ID / Kode --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap font-mono text-xs text-slate-500 dark:text-slate-400">
+                                #{{ $installation->id }}
+                            </td>
+
+                            {{-- Pelanggan --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="font-semibold text-slate-900 dark:text-slate-100">
+                                    {{ $installation->customer_display_name }}
+                                </div>
+                                @if($installation->customer?->code)
+                                    <div class="text-[11px] font-mono text-slate-400">{{ $installation->customer->code }}</div>
+                                @elseif($installation->survey_id)
+                                    <div class="text-[11px] text-indigo-500 dark:text-indigo-400">Via Survey #{{ $installation->survey_id }}</div>
+                                @endif
+                            </td>
+
+                            {{-- Jadwal & Waktu --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">
+                                <div class="font-medium text-slate-800 dark:text-slate-200">
+                                    {{ $installation->scheduled_date ? $installation->scheduled_date->translatedFormat('d M Y') : ($installation->scheduled_at ? $installation->scheduled_at->translatedFormat('d M Y') : '-') }}
+                                </div>
+                                <div class="text-[11px] text-slate-400 font-mono">
+                                    {{ $installation->scheduled_time ?? ($installation->scheduled_at ? $installation->scheduled_at->format('H:i') : '-') }} WIB
+                                </div>
+                            </td>
+
+                            {{-- Status --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @php
+                                    $st = $installation->status;
+                                    $badge = match($st) {
+                                        'completed'   => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+                                        'in_progress' => 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+                                        'canceled'    => 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800',
+                                        default       => 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+                                    };
+                                    $label = match($st) {
+                                        'completed'   => 'Selesai',
+                                        'in_progress' => 'Berlangsung',
+                                        'canceled'    => 'Dibatalkan',
+                                        default       => 'Dijadwalkan',
+                                    };
+                                @endphp
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ $badge }}">
+                                    {{ $label }}
+                                </span>
+                            </td>
+
+                            {{-- Prioritas --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @php
+                                    $pr = $installation->priority ?? 'medium';
+                                    $prBadge = match($pr) {
+                                        'critical' => 'text-rose-600 dark:text-rose-400 font-bold',
+                                        'high'     => 'text-amber-600 dark:text-amber-400 font-semibold',
+                                        'low'      => 'text-slate-400',
+                                        default    => 'text-slate-700 dark:text-slate-300',
+                                    };
+                                @endphp
+                                <span class="text-xs capitalize {{ $prBadge }}">
+                                    {{ $pr }}
+                                </span>
+                            </td>
+
+                            {{-- Teknisi --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap text-xs">
+                                <div class="font-medium text-slate-800 dark:text-slate-200">
+                                    {{ $installation->technician_display_name }}
+                                </div>
+                            </td>
+
+                            {{-- Perangkat --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap text-xs font-mono text-slate-600 dark:text-slate-400">
+                                @if($installation->onu_serial_number || $installation->router_model)
+                                    <div><span class="text-slate-400">ONU:</span> {{ $installation->onu_serial_number ?: '-' }}</div>
+                                    @if($installation->router_model)
+                                        <div class="text-[11px] text-slate-400"><span class="text-slate-400">RT:</span> {{ $installation->router_model }}</div>
+                                    @endif
+                                @else
+                                    <span class="text-slate-400 italic font-sans text-xs">Belum diinput</span>
+                                @endif
+                            </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="8" class="px-6 py-12 text-center text-slate-400 dark:text-slate-500">
+                                <span class="material-symbols-outlined notranslate text-4xl mb-2 text-slate-300 dark:text-slate-600" translate="no">engineering</span>
+                                <p class="text-sm font-medium">Belum ada data instalasi yang tercatat</p>
+                                <p class="text-xs text-slate-400 mt-1">Gunakan tombol "Tambah Instalasi" untuk membuat jadwal baru</p>
+                            </td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
+
         @if($installations->hasPages())
-            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+            <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
                 {{ $installations->links() }}
             </div>
         @endif
-    </x-base.card>
+    </div>
 </div>
