@@ -361,10 +361,18 @@
             </div>
 
             {{-- ── CATATAN ── --}}
-            @if($p->notes)
+            @php
+                $cleanNotes = $p->notes;
+                if (!empty($cleanNotes)) {
+                    $cleanNotes = preg_replace('/Terlambat\s+\d+x(\s*\(-Rp\s*[\d\.,]+\))?/i', '', $cleanNotes);
+                    $cleanNotes = preg_replace('/Alpa\s+\d+x(\s*\(-Rp\s*[\d\.,]+\))?/i', '', $cleanNotes);
+                    $cleanNotes = trim(trim($cleanNotes, " \t\n\r\0\x0B|,-"));
+                }
+            @endphp
+            @if(!empty($cleanNotes))
             <div class="mb-8 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 print:border print:border-slate-300 rounded-xl print:bg-transparent">
                 <p class="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 print:text-slate-700 mb-1">Catatan</p>
-                <p class="text-sm text-amber-800 dark:text-amber-300 print:text-slate-800">{{ $p->notes }}</p>
+                <p class="text-sm text-amber-800 dark:text-amber-300 print:text-slate-800">{{ $cleanNotes }}</p>
             </div>
             @endif
 

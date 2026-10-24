@@ -25,6 +25,23 @@ class Show extends AdminComponent
         ];
 
         $this->payroll = Payroll::with('employee')->findOrFail($id);
+
+        // Jika slip draft masih menyimpan catatan denda lama (seperti "Terlambat 3x (-Rp 75.000)"), bersihkan otomatis
+        if ($this->payroll->status === 'draft' && !empty($this->payroll->notes)) {
+            $notesLower = strtolower($this->payroll->notes);
+            if ((str_contains($notesLower, 'terlambat') || str_contains($notesLower, 'alpa')) && !str_contains($notesLower, 'kasbon')) {
+                $cleaned = preg_replace('/Terlambat\s+\d+x(\s*\(-Rp\s*[\d\.,]+\))?/i', '', $this->payroll->notes);
+                $cleaned = preg_replace('/Alpa\s+\d+x(\s*\(-Rp\s*[\d\.,]+\))?/i', '', $cleaned);
+                $cleaned = trim(trim($cleaned, " \t\n\r\0\x0B|,-"));
+
+                $this->payroll->notes = $cleaned ?: null;
+                if ((float)$this->payroll->deductions == 75000 || (float)$this->payroll->deductions == 100000) {
+                    $this->payroll->deductions = 0;
+                    $this->payroll->net_salary = max(0, (float)$this->payroll->base_salary + (float)$this->payroll->allowances);
+                }
+                $this->payroll->save();
+            }
+        }
     }
 
     public function sendWhatsApp()
