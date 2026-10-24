@@ -104,7 +104,7 @@ class Generate extends AdminComponent
         $employees     = Employee::where('status', 'active')->get();
         $generatedCount = 0;
 
-        $latePenalty   = (float) \App\Models\Setting::getValue('payroll.late_penalty', 25000);
+        $latePenalty   = 0; // Keterlambatan tidak memotong gaji
         $absentPenalty = (float) \App\Models\Setting::getValue('payroll.absent_penalty', 100000);
 
         $workDays = ($this->period_start && $this->period_end)
@@ -129,13 +129,11 @@ class Generate extends AdminComponent
                         $this->period_end
                     );
 
-                    // Potongan terlambat
+                    // Catatan keterlambatan tetap direkam untuk rekap absensi, TETAPI TIDAK MEMOTONG GAJI
                     if ($attSummary['late'] > 0) {
-                        $cut = $attSummary['late'] * $latePenalty;
-                        $deductions += $cut;
-                        $attNotes[] = "Terlambat {$attSummary['late']}x (-Rp " . number_format($cut, 0, ',', '.') . ')';
+                        $attNotes[] = "Terlambat {$attSummary['late']}x";
                     }
-                    // Potongan alpa
+                    // Potongan gaji hanya untuk alpa (tidak hadir tanpa keterangan)
                     if ($attSummary['absent'] > 0) {
                         $cut = $attSummary['absent'] * $absentPenalty;
                         $deductions += $cut;

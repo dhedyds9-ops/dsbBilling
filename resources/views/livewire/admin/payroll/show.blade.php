@@ -58,10 +58,20 @@
         }
     }
 
-    // Rincian potongan dari absensi
-    $cutLate   = $lateDays * $latePenalty;
+    // Keterlambatan TIDAK memotong gaji sama sekali (hanya sebagai rekap kehadiran)
     $cutAbsent = $absentDays * $absentPenalty;
-    $cutOther  = max(0, $totalDeduct - $cutLate - $cutAbsent);
+
+    // Bersihkan potongan lama jika berasal dari denda terlambat (misal 3x Rp 25.000 = Rp 75.000)
+    $oldLateCut = 0;
+    if ($lateDays > 0 && ($lateDays * 25000 == (float)$p->deductions)) {
+        $oldLateCut = $lateDays * 25000;
+    } elseif (!empty($p->notes) && str_contains($p->notes, 'Terlambat') && !str_contains($p->notes, 'Alpa') && (float)$p->deductions == 75000) {
+        $oldLateCut = 75000;
+    }
+
+    $actualDeductions = max(0, $totalDeduct - $oldLateCut);
+    $cutOther         = max(0, $actualDeductions - $cutAbsent);
+    $netSalary        = max(0, $totalIncome - $actualDeductions);
 
     // Periode
     $periodLabel = ($p->period_start && $p->period_end)
@@ -293,19 +303,7 @@
                         B. Potongan
                     </h3>
                     <table class="w-full text-sm print:text-black">
-                        {{-- Potongan terlambat (per item jelas) --}}
-                        @if($lateDays > 0)
-                        <tr>
-                            <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">
-                                Terlambat {{ $lateDays }}× 
-                                <span class="text-xs text-slate-400 print:text-slate-600">(@ Rp {{ number_format($latePenalty, 0, ',', '.') }})</span>
-                            </td>
-                            <td class="py-1.5 text-right font-semibold text-amber-600 dark:text-amber-400 print:text-black font-mono">
-                                – Rp {{ number_format($cutLate, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                        @endif
-                        {{-- Potongan alpa --}}
+                        {{-- Potongan alpa (hanya alpa yang memotong gaji) --}}
                         @if($absentDays > 0)
                         <tr>
                             <td class="py-1.5 text-slate-600 dark:text-slate-400 print:text-slate-800">
@@ -332,7 +330,7 @@
                         </tr>
                         @endif
                         {{-- Jika tidak ada potongan sama sekali --}}
-                        @if($totalDeduct == 0)
+                        @if($actualDeductions == 0)
                         <tr>
                             <td colspan="2" class="py-1.5 text-slate-400 dark:text-slate-500 print:text-slate-600 italic text-sm">Tidak ada potongan</td>
                         </tr>
@@ -343,7 +341,7 @@
                             <tr>
                                 <td class="py-1 font-bold text-slate-800 dark:text-slate-200 print:text-black">Total Potongan</td>
                                 <td class="py-1 text-right font-black text-red-600 dark:text-red-400 print:text-black font-mono">
-                                    – Rp {{ number_format($totalDeduct, 0, ',', '.') }}
+                                    – Rp {{ number_format($actualDeductions, 0, ',', '.') }}
                                 </td>
                             </tr>
                         </table>
@@ -360,7 +358,7 @@
                     </span>
                     <span class="text-slate-400 font-bold">−</span>
                     <span class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg font-bold">
-                        Rp {{ number_format($totalDeduct, 0, ',', '.') }}
+                        Rp {{ number_format($actualDeductions, 0, ',', '.') }}
                     </span>
                     <span class="text-slate-400 font-bold">=</span>
                     <span class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg font-black text-base">

@@ -72,13 +72,15 @@ class Show extends AdminComponent
             $message .= "   Tunjangan   : Rp {$allow}\n\n";
 
             $message .= "B. *Potongan*\n";
-            if ($this->payroll->late_days > 0) {
-                $cutLate = number_format($this->payroll->late_days * $latePenalty, 0, ',', '.');
-                $message .= "   Terlambat {$this->payroll->late_days}x : -Rp {$cutLate}\n";
-            }
             if ($this->payroll->absent_days > 0) {
                 $cutAbsent = number_format($this->payroll->absent_days * $absentPenalty, 0, ',', '.');
-                $message .= "   Alpa {$this->payroll->absent_days}x      : -Rp {$cutAbsent}\n";
+                $message .= "   Alpa {$this->payroll->absent_days}x : -Rp {$cutAbsent}\n";
+            }
+            if ($this->payroll->deductions > 0 && ($this->payroll->absent_days ?? 0) == 0) {
+                $message .= "   Potongan Lainnya : -Rp {$deduct}\n";
+            }
+            if ($this->payroll->deductions == 0) {
+                $message .= "   Tidak ada potongan (Rp 0)\n";
             }
             $message .= "   Total Potongan : -Rp {$deduct}\n\n";
 
