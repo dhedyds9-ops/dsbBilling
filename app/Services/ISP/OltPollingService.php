@@ -166,10 +166,9 @@ class OltPollingService
             $activePortCount = 0;
 
             foreach ($ponPorts as $port) {
-                if ($port['status'] !== 'up') {
-                    continue;
+                if (($port['status'] ?? '') === 'up') {
+                    $activePortCount++;
                 }
-                $activePortCount++;
                 $idx = (int)($port['port_index'] ?? 0);
                 if ($idx <= 0) {
                     continue;
