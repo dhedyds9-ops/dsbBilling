@@ -108,7 +108,7 @@
                         <th class="px-4 py-3.5 w-10 text-center">
                             <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 shadow-xs focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600">
                         </th>
-                        <th class="px-4 py-3.5 text-center w-24">Aksi</th>
+                        <th class="px-4 py-3.5 text-center w-32">Aksi</th>
                         <th class="px-4 py-3.5">
                             <button wire:click="sortBy('nik')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                                 NIK
@@ -143,14 +143,48 @@
 
                             {{-- Aksi di sisi KIRI --}}
                             <td class="px-4 py-3.5 text-center whitespace-nowrap">
-                                <div class="flex items-center justify-center gap-1">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    {{-- Tombol WhatsApp --}}
+                                    @php
+                                        $cleanPhone = preg_replace('/[^0-9]/', '', (string)($employee->phone ?? ''));
+                                        if (str_starts_with($cleanPhone, '08')) {
+                                            $cleanPhone = '628' . substr($cleanPhone, 2);
+                                        } elseif (str_starts_with($cleanPhone, '8')) {
+                                            $cleanPhone = '628' . substr($cleanPhone, 1);
+                                        } elseif (str_starts_with($cleanPhone, '6208')) {
+                                            $cleanPhone = '628' . substr($cleanPhone, 4);
+                                        }
+                                        $uName = $employee->user?->username ?? ($employee->user?->email ?? ($employee->email ?: '-'));
+                                        $manualWaText = rawurlencode("Halo *{$employee->name}*,\n\nBerikut informasi akun login sistem Anda:\n━━━━━━━━━━━━━━━━━━━━\n🏢 *Aplikasi:* dsBilling & MStore\n👤 *Nama:* {$employee->name}\n💼 *Jabatan:* " . ($employee->position ?: ($employee->department ?: 'Staff')) . "\n🌐 *Link Login:* " . url('/login') . "\n\n🔐 *Kredensial Login:*\n• Username: *{$uName}*\n• Password: *Password123!*\n━━━━━━━━━━━━━━━━━━━━\nSilakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan, segera ganti password Anda setelah login pertama kali.\n\nTerima kasih.");
+                                    @endphp
+                                    @if($cleanPhone)
+                                        <div class="relative inline-block text-left" x-data="{ open: false }">
+                                            <button type="button" @click="open = !open"
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors cursor-pointer"
+                                                    title="Kirim Akun via WhatsApp">
+                                                <i class="fa-brands fa-whatsapp text-base"></i>
+                                            </button>
+                                            <div x-show="open" @click.outside="open = false" x-cloak
+                                                 class="origin-top-left absolute left-0 mt-1 w-52 rounded-xl shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 z-50 py-1 text-xs">
+                                                <button type="button" wire:click="sendWhatsAppCredentials({{ $employee->id }})" @click="open = false"
+                                                        class="w-full text-left px-3 py-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 flex items-center gap-2 cursor-pointer font-medium">
+                                                    <i class="fa-solid fa-paper-plane text-xs"></i> Kirim Otomatis (Gateway)
+                                                </button>
+                                                <a href="https://wa.me/{{ $cleanPhone }}?text={{ $manualWaText }}" target="_blank" @click="open = false"
+                                                   class="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2">
+                                                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i> Buka WhatsApp Web
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+
                                     <a href="{{ route('admin.employee.edit', $employee->id) }}"
                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors"
                                        title="Edit Pegawai">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
                                     <button wire:click="confirmDelete({{ $employee->id }})"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
                                             title="Hapus Pegawai">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
