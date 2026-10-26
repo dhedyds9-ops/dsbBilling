@@ -150,3 +150,9 @@ Route::post('/v1/customer-services/{id}/provision', [\App\Http\Controllers\Api\P
     ->middleware(['auth:sanctum'])
     ->name('api.customer-services.provision');
 
+// ========================= MSTORE EMPLOYEE SYNC API ========================
+Route::post('/v1/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiController::class, 'sync'])
+    ->name('api.employees.sync');
+Route::post('/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiController::class, 'sync']);
+
+
