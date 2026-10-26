@@ -54,8 +54,35 @@ class Index extends Component
         }
 
         $now = Carbon::now();
+
+        // Validasi Geofencing jika koordinat kantor/cabang sudah ditentukan di sistem
+        $user = Auth::user();
+        $branch = $user->branch ?? \App\Models\Master\Branch::where('is_active', true)->whereNotNull('latitude')->whereNotNull('longitude')->first();
+        $distanceMeters = null;
+
+        if ($branch && !empty($branch->latitude) && !empty($branch->longitude)) {
+            $distanceMeters = $this->calculateDistanceInMeters(
+                (float) $this->latitude,
+                (float) $this->longitude,
+                (float) $branch->latitude,
+                (float) $branch->longitude
+            );
+
+            // Radius batas wajar: 150 meter dari kantor
+            $maxAllowedRadius = 150;
+            if ($distanceMeters > $maxAllowedRadius) {
+                $this->errorMessage = "Gagal Check-In: Anda berada di luar radius kantor {$branch->name} (Jarak terdeteksi: {$distanceMeters} meter, batas toleransi: {$maxAllowedRadius} meter).";
+                return;
+            }
+        }
+
         // Batas telat jam 09:00 pagi
         $status = $now->format('H:i') > '09:00' ? AttendanceStatus::LATE : AttendanceStatus::CHECKED_IN;
+
+        $notes = $this->notes;
+        if ($distanceMeters !== null) {
+            $notes = ($notes ? $notes . ' | ' : '') . "Jarak kantor: {$distanceMeters}m";
+        }
 
         Attendance::create([
             'id' => Str::uuid()->toString(),
@@ -65,7 +92,7 @@ class Index extends Component
             'check_in_latitude' => $this->latitude,
             'check_in_longitude' => $this->longitude,
             'checked_in_at' => $now,
-            'notes' => $this->notes,
+            'notes' => $notes,
         ]);
 
         $this->notes = '';
@@ -103,6 +130,21 @@ class Index extends Component
         $this->notes = '';
         $this->errorMessage = '';
         session()->flash('success', 'Berhasil Check-Out pada ' . Carbon::now()->format('H:i'));
+    }
+
+    /**
+     * Hitung jarak lurus (Haversine distance) antara 2 titik koordinat dalam meter.
+     */
+    private function calculateDistanceInMeters(float $lat1, float $lon1, float $lat2, float $lon2): int
+    {
+        $earthRadius = 6371000; // Radius bumi dalam satuan meter
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return (int) round($earthRadius * $c);
     }
 
     public function render()

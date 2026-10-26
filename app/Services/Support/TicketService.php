@@ -284,9 +284,9 @@ class TicketService
      * Assignee adalah administrator dan manager yang aktif.
      * DILARANG: supervisor/operator sebagai role — gunakan permission ticket.assign.
      */
-    public function getAssigneeOptions(): array
+    public function getAssigneeOptions(bool $attendedOnly = false): array
     {
-        return app(UserQueryService::class)->getEligibleAssigneesForDropdown();
+        return app(UserQueryService::class)->getEligibleAssigneesWithAttendance($attendedOnly);
     }
 
     /**

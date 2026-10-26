@@ -31,7 +31,13 @@ class Index extends BaseEnterpriseList
     public bool $showCreateForm = false;
     public array $newTicket = [];
     public string $customerSearch = '';
+    public bool $showAllStaff = false;
     public string $resolveNote = '';
+
+    public function getAssigneeOptionsProperty(): array
+    {
+        return $this->ticketService->getAssigneeOptions(!$this->showAllStaff);
+    }
 
     public function getFilteredCustomersProperty(): array
     {
@@ -259,6 +265,7 @@ class Index extends BaseEnterpriseList
     {
         $this->resetErrorBag();
         $this->customerSearch = '';
+        $this->showAllStaff = false;
         $this->newTicket = [
             'is_manual_customer' => false,
             'customer_id' => '',

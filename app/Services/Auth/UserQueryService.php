@@ -195,6 +195,78 @@ class UserQueryService
     {
         return $this->getEligibleAssignees($activeOnly)->pluck('name', 'id')->toArray();
     }
+
+    /**
+     * Dapatkan daftar assignee tiket dengan filter kehadiran hari ini & jumlah tiket aktif.
+     *
+     * @param bool $attendedOnly Jika true, teknisi yang belum absen hari ini tidak akan dimunculkan
+     *                           (Administrator tetap dimunculkan sebagai penanggung jawab pusat).
+     */
+    public function getEligibleAssigneesWithAttendance(bool $attendedOnly = false): array
+    {
+        $today = \Carbon\Carbon::today()->toDateString();
+        $attendances = \App\Models\Workforce\Attendance::whereDate('date', $today)
+            ->whereNotNull('checked_in_at')
+            ->whereIn('status', [
+                \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN->value,
+                \Src\Domain\Workforce\Enums\AttendanceStatus::LATE->value,
+                \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_OUT->value,
+                'checked_in', 'late', 'checked_out'
+            ])
+            ->get(['technician_id', 'checked_in_at', 'status'])
+            ->keyBy('technician_id');
+
+        $users = User::whereHas('roles', fn($q) => $q->whereIn('name', [
+                UserRole::Administrator->value,
+                UserRole::Manager->value,
+            ]))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Hitung tiket aktif per petugas
+        $activeTicketCounts = \App\Models\Support\Ticket::whereIn('status', ['open', 'in_progress', 'pending_customer'])
+            ->whereNotNull('assigned_to')
+            ->selectRaw('assigned_to, count(*) as count')
+            ->groupBy('assigned_to')
+            ->pluck('count', 'assigned_to')
+            ->toArray();
+
+        $result = [];
+        foreach ($users as $u) {
+            $isAdmin = $u->hasRole(UserRole::Administrator->value);
+            $attRecord = $attendances->get($u->id);
+            $hasAttended = !empty($attRecord);
+
+            // Jika filter attendedOnly aktif:
+            // Hanya lolos jika dia sudah absen masuk ATAU dia administrator
+            if ($attendedOnly && !$hasAttended && !$isAdmin) {
+                continue;
+            }
+
+            $checkInTime = $hasAttended ? \Carbon\Carbon::parse($attRecord->checked_in_at)->format('H:i') : null;
+            $ticketCount = $activeTicketCounts[$u->id] ?? 0;
+
+            $label = $u->name;
+            if ($hasAttended) {
+                $label .= " (Hadir: {$checkInTime})";
+            } elseif ($isAdmin) {
+                $label .= " (Admin / Pusat)";
+            } else {
+                $label .= " (Belum Absen)";
+            }
+
+            if ($ticketCount > 0) {
+                $label .= " [{$ticketCount} Tiket Aktif]";
+            } else {
+                $label .= " [Senggang]";
+            }
+
+            $result[$u->id] = $label;
+        }
+
+        return $result;
+    }
     public function getEligibleApproversForDropdown(bool $activeOnly = true): array
     {
         return $this->getEligibleApprovers($activeOnly)->pluck('name', 'id')->toArray();

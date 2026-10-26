@@ -544,16 +544,37 @@ $statusLabels = [
                     {{-- Petugas Assignee & Target Selesai --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                                Petugas / Teknisi Lapangan
-                            </label>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                    Petugas / Teknisi
+                                </label>
+                                <label class="flex items-center gap-1 cursor-pointer text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 select-none" title="Centang untuk menampilkan semua staff termasuk yang belum absen masuk">
+                                    <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                    <span>Semua Staff</span>
+                                </label>
+                            </div>
                             <select wire:model.live="newTicket.assigned_to"
                                     class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="">-- Belum Ditugaskan --</option>
-                                @foreach (($this->filterOptions['assignees'] ?? []) as $id => $name)
+                                @forelse ($this->assigneeOptions as $id => $name)
                                     <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
+                                @empty
+                                    <option value="" disabled>Belum ada teknisi yang absen hadir hari ini</option>
+                                @endforelse
                             </select>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                @if(!$showAllStaff)
+                                    <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Hanya menampilkan teknisi yang sudah absen hadir hari ini.
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                        Mode Darurat: Menampilkan semua staff termasuk yang belum absen.
+                                    </span>
+                                @endif
+                            </p>
                         </div>
 
                         <div>
