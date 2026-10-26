@@ -144,21 +144,26 @@
                         <div class="mt-2.5 pt-2 border-t border-emerald-200/70 dark:border-emerald-800/60 flex flex-wrap items-center gap-2">
                             <button type="button" wire:click="sendWhatsAppCredentials" wire:loading.attr="disabled"
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer">
-                                <i class="fa-brands fa-whatsapp text-sm"></i>
-                                <span wire:loading.remove wire:target="sendWhatsAppCredentials">Kirim Data Login via WhatsApp Gateway</span>
-                                <span wire:loading wire:target="sendWhatsAppCredentials">Sedang Mengirim via WA...</span>
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                                <span wire:loading.remove wire:target="sendWhatsAppCredentials">Kirim Otomatis via Gateway</span>
+                                <span wire:loading wire:target="sendWhatsAppCredentials">Mengirim via Gateway...</span>
                             </button>
                             @php
                                 $cleanPhone = preg_replace('/[^0-9]/', '', (string)($phone ?: ($employee->phone ?? '')));
                                 if (str_starts_with($cleanPhone, '08')) {
                                     $cleanPhone = '628' . substr($cleanPhone, 2);
+                                } elseif (str_starts_with($cleanPhone, '8')) {
+                                    $cleanPhone = '628' . substr($cleanPhone, 1);
+                                } elseif (str_starts_with($cleanPhone, '6208')) {
+                                    $cleanPhone = '628' . substr($cleanPhone, 4);
                                 }
-                                $manualWaText = rawurlencode("Halo *{$name}*,\n\nBerikut informasi akun login sistem Anda:\n━━━━━━━━━━━━━━━━━━━━\n👤 Nama: {$name}\n💼 Jabatan: " . ($position ?: 'Staff') . "\n🌐 Link Login: " . url('/login') . "\n\n🔐 Kredensial Login:\n• Username: *" . ($employee->user?->username ?? $employee->user?->email ?? $email) . "*\n• Password: *Password123!*\n━━━━━━━━━━━━━━━━━━━━\nSilakan gunakan informasi di atas untuk masuk ke sistem.");
+                                $manualWaText = rawurlencode("Halo *{$name}*,\n\nBerikut informasi akun login sistem Anda:\n━━━━━━━━━━━━━━━━━━━━\n🏢 Aplikasi: dsBilling & MStore\n👤 Nama: {$name}\n💼 Jabatan: " . ($position ?: 'Staff') . "\n🌐 Link Login: " . url('/login') . "\n\n🔐 Kredensial Login:\n• Username: *" . ($employee->user?->username ?? $employee->user?->email ?? $email) . "*\n• Password: *Password123!*\n━━━━━━━━━━━━━━━━━━━━\nSilakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan, segera ganti password Anda setelah login pertama kali.\n\nTerima kasih.");
                             @endphp
                             @if($cleanPhone)
                                 <a href="https://wa.me/{{ $cleanPhone }}?text={{ $manualWaText }}" target="_blank"
-                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs font-semibold transition-colors">
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Buka Chat WA
+                                   title="Buka WhatsApp Web secara manual jika Gateway server sedang offline"
+                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-medium transition-colors">
+                                    <i class="fa-brands fa-whatsapp text-emerald-600"></i> Buka WhatsApp Web Manual
                                 </a>
                             @endif
                         </div>
@@ -193,14 +198,3 @@
         </div>
     </form>
 </div>
-
-<script>
-    document.addEventListener('livewire:initialized', () => {
-        Livewire.on('open-wa-window', (event) => {
-            const url = (typeof event === 'string') ? event : (event.url || (event[0] && event[0].url));
-            if (url) {
-                window.open(url, '_blank');
-            }
-        });
-    });
-</script>

@@ -137,7 +137,7 @@ class Edit extends AdminComponent
     }
 
     /**
-     * Kirim data login (Nama, Jabatan, Username, Password) ke nomor WhatsApp karyawan.
+     * Kirim data login (Nama, Jabatan, Username, Password) langsung ke nomor WhatsApp karyawan via Gateway.
      */
     public function sendWhatsAppCredentials()
     {
@@ -145,10 +145,14 @@ class Edit extends AdminComponent
         $phone = preg_replace('/[^0-9]/', '', (string)$rawPhone);
         if (str_starts_with($phone, '08')) {
             $phone = '628' . substr($phone, 2);
+        } elseif (str_starts_with($phone, '8')) {
+            $phone = '628' . substr($phone, 1);
+        } elseif (str_starts_with($phone, '6208')) {
+            $phone = '628' . substr($phone, 4);
         }
 
-        if (empty($phone) || strlen($phone) < 9) {
-            session()->flash('error', 'Nomor WhatsApp karyawan belum diisi atau tidak valid.');
+        if (empty($phone) || !str_starts_with($phone, '628') || strlen($phone) < 10 || strlen($phone) > 16) {
+            session()->flash('error', "Nomor WhatsApp karyawan ('{$rawPhone}') tidak valid. WhatsApp memerlukan nomor ponsel Indonesia aktif (contoh: 08123456789 atau 628123456789). Silakan perbarui nomor telepon pegawai.");
             return;
         }
 
@@ -177,28 +181,95 @@ class Edit extends AdminComponent
             . "Silakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan, segera ganti password Anda setelah login pertama kali.\n\n"
             . "Terima kasih.";
 
-        $sentViaGateway = false;
-        try {
-            if (class_exists(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)) {
-                $waMsg = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
-                    toPhone: $phone,
-                    type: 'text',
-                    text: $msgText,
-                    category: 'info',
-                    priorityHigh: true,
-                );
-                $sentViaGateway = app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->sendImmediate($waMsg);
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WhatsApp Gateway send failed: ' . $e->getMessage());
+        // 1. Ambil pengaturan WhatsApp Gateway dari database dsBilling
+        $conn = \App\Models\Setting::getValue('whatsapp.connection', []);
+        $provider = $conn['provider'] ?? 'fonnte';
+        $apiToken = trim((string)($conn['api_token'] ?? ''));
+        $baseUrl = trim((string)($conn['base_url'] ?? ''));
+
+        if (empty($apiToken)) {
+            session()->flash('error', "WhatsApp Gateway belum dikonfigurasi (Token API masih kosong). Silakan atur di menu Pengaturan > WhatsApp agar pesan dapat terkirim otomatis.");
+            return;
         }
 
-        if ($sentViaGateway) {
-            session()->flash('success', "Data login (Nama, Jabatan, Username, Password) berhasil dikirim via WhatsApp Gateway ke {$phone}!");
-        } else {
-            $waUrl = "https://wa.me/{$phone}?text=" . rawurlencode($msgText);
-            $this->dispatch('open-wa-window', url: $waUrl);
-            session()->flash('success', "Pesan telah disiapkan! Mengarahkan ke WhatsApp ke nomor {$phone}...");
+        try {
+            $sent = false;
+            $errorMsg = null;
+
+            // Direct Gateway Post sesuai provider aktif
+            if ($provider === 'fonnte') {
+                $url = $baseUrl ?: 'https://api.fonnte.com/send';
+                $resp = \Illuminate\Support\Facades\Http::timeout(15)
+                    ->withHeaders(['Authorization' => $apiToken])
+                    ->asForm()
+                    ->post($url, [
+                        'target' => $phone,
+                        'message' => $msgText,
+                        'delay' => (string)($conn['delay_per_message'] ?? '0'),
+                    ]);
+
+                if ($resp->successful()) {
+                    $json = $resp->json();
+                    if (($json['status'] ?? true) === false) {
+                        $errorMsg = $json['reason'] ?? ($json['message'] ?? 'Fonnte mengembalikan status false.');
+                    } else {
+                        $sent = true;
+                    }
+                } else {
+                    $errorMsg = 'HTTP ' . $resp->status() . ': ' . $resp->body();
+                }
+            } elseif ($provider === 'wablas') {
+                $url = $baseUrl ?: 'https://jogja.wablas.com/api/send-message';
+                $resp = \Illuminate\Support\Facades\Http::timeout(15)
+                    ->withHeaders(['Wablas-Api-Key' => $apiToken])
+                    ->asForm()
+                    ->post($url, [
+                        'phone' => $phone,
+                        'message' => $msgText,
+                    ]);
+
+                if ($resp->successful()) {
+                    $sent = true;
+                } else {
+                    $errorMsg = 'HTTP ' . $resp->status() . ': ' . $resp->body();
+                }
+            } elseif ($provider === 'whacenter') {
+                $url = $baseUrl ?: 'https://app.whacenter.com/api/send';
+                $resp = \Illuminate\Support\Facades\Http::timeout(15)
+                    ->asForm()
+                    ->post($url, [
+                        'device_id' => $conn['device_id'] ?? '',
+                        'number' => $phone,
+                        'message' => $msgText,
+                    ]);
+
+                if ($resp->successful()) {
+                    $sent = true;
+                } else {
+                    $errorMsg = 'HTTP ' . $resp->status() . ': ' . $resp->body();
+                }
+            } else {
+                // Provider lainnya, coba lewat WhatsAppNotificationService jika ada
+                if (class_exists(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)) {
+                    $waMsg = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
+                        toPhone: $phone,
+                        type: 'text',
+                        text: $msgText,
+                        category: 'info',
+                        priorityHigh: true,
+                    );
+                    $sent = app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->sendImmediate($waMsg);
+                }
+            }
+
+            if ($sent) {
+                session()->flash('success', "✅ Kredensial login (Username & Password) berhasil dikirim otomatis via WhatsApp Gateway ke nomor {$phone}!");
+            } else {
+                session()->flash('error', "❌ Gagal mengirim via WhatsApp Gateway: " . ($errorMsg ?: 'Perangkat/Gateway tidak merespons.') . " Silakan cek status koneksi di menu Pengaturan > WhatsApp.");
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('WhatsApp Gateway Exception: ' . $e->getMessage());
+            session()->flash('error', "❌ Terjadi kendala saat menghubungi WhatsApp Gateway: " . $e->getMessage());
         }
     }
 
