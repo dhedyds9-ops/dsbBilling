@@ -19,6 +19,7 @@ class Edit extends AdminComponent
     public $avatar;
     public $name;
     public $job_title;
+    public $division;
     public $job_function;
     public $identity_number;
     public $whatsapp;
@@ -40,7 +41,16 @@ class Edit extends AdminComponent
     
     public $showReportSummary = false;
 
-            public function updatedJobFunction($value)
+    public function updatedJobTitle($value)
+    {
+        if ($value) {
+            $this->job_function = \App\Enums\JobFunction::resolveJobFunction($value)->value;
+            $this->division = \App\Enums\JobFunction::resolveDivision($value);
+            $this->updatedJobFunction($this->job_function);
+        }
+    }
+
+    public function updatedJobFunction($value)
     {
         if ($value === \App\Enums\JobFunction::TECHNICIAN->value) {
             $recommended = [
@@ -90,6 +100,7 @@ class Edit extends AdminComponent
 
         $this->name = $this->user->name;
         $this->job_title = $this->user->job_title;
+        $this->division = \App\Enums\JobFunction::resolveDivision($this->user->job_title);
         $this->job_function = $this->user->job_function;
         $this->identity_number = $this->user->identity_number;
         $this->whatsapp = $this->user->whatsapp;

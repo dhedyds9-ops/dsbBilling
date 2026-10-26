@@ -16,6 +16,7 @@ class Create extends AdminComponent
     public $avatar;
     public $name;
     public $job_title;
+    public $division;
     public $job_function;
     public $identity_number;
     public $whatsapp;
@@ -30,7 +31,25 @@ class Create extends AdminComponent
     
     public $selectedPermissions = [];
 
-            public function updatedJobFunction($value)
+    public function updatedJobTitle($value)
+    {
+        if ($value) {
+            $this->job_function = \App\Enums\JobFunction::resolveJobFunction($value)->value;
+            $this->division = \App\Enums\JobFunction::resolveDivision($value);
+            $this->updatedJobFunction($this->job_function);
+
+            // Jika role belum dipilih, otomatis arahkan ke role Manager (Staff Internal)
+            if (empty($this->selectedRoles)) {
+                $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
+                if ($managerRole) {
+                    $this->selectedRoles = (string)$managerRole->id;
+                    $this->updatedSelectedRoles($this->selectedRoles);
+                }
+            }
+        }
+    }
+
+    public function updatedJobFunction($value)
     {
         if ($value === \App\Enums\JobFunction::TECHNICIAN->value) {
             $recommended = [

@@ -32,6 +32,13 @@ class Create extends AdminComponent
     public $status = 'active';
     public $user_id;
 
+    public function updatedPosition($value)
+    {
+        if ($value) {
+            $this->department = \App\Enums\JobFunction::resolveJobFunction($value)->value;
+        }
+    }
+
     public function rules() { return [
         'nik' => 'required|unique:employees,nik',
         'name' => 'required|string|max:255',

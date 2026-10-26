@@ -21,7 +21,12 @@ class Edit extends AdminComponent
     public $status;
     public $user_id;
 
-
+    public function updatedPosition($value)
+    {
+        if ($value && empty($this->department)) {
+            $this->department = \App\Enums\JobFunction::resolveJobFunction($value)->value;
+        }
+    }
 
     public function rules()
     {

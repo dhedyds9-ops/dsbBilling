@@ -30,4 +30,12 @@ class Employee extends Model
     {
         return $this->hasMany(Payroll::class);
     }
+
+    /**
+     * Divisi bisnis yang diasosiasikan dengan posisi pegawai.
+     */
+    public function getDivisionAttribute(): string
+    {
+        return \App\Enums\JobFunction::resolveDivision($this->position);
+    }
 }

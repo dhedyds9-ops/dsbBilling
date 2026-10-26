@@ -214,6 +214,14 @@ class User extends Authenticatable
         }
         return null;
     }
+
+    /**
+     * Divisi bisnis yang diasosiasikan dengan posisi/job_title pengguna.
+     */
+    public function getDivisionAttribute(): string
+    {
+        return \App\Enums\JobFunction::resolveDivision($this->job_title);
+    }
 }
 
 
