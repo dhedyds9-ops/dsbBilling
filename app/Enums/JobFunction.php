@@ -21,46 +21,30 @@ enum JobFunction: string
 
     public function detailedLabel(): string
     {
-        return match($this) {
-            self::NOC           => 'NOC / Monitoring Jaringan',
-            self::TECHNICIAN    => 'Teknisi Lapangan & Instalasi',
-            self::PENGURUS      => 'Pengurus / CS / Kasir / Administrasi',
-            self::SALES         => 'Sales & Marketing',
-        };
+        return $this->label();
     }
 
     /**
-     * Pengelompokan posisi berdasarkan Divisi (diselaraskan dengan MStore SSOT).
+     * Daftar posisi standar khusus ISP (dsBilling).
+     * MStore GTWash hanya ada di aplikasi MStore dan TIDAK dimasukkan ke dsBilling.
      */
-    public static function groupedPositions(): array
+    public static function ispPositions(): array
     {
         return [
-            'Layanan Internet & Jaringan' => [
-                'Teknisi Lapangan',
-                'NOC / Monitoring',
-                'Customer Service',
-                'Kasir Billing',
-                'Marketing Internet',
-            ],
-            'MStore GTWash' => [
-                'Kasir Toko',
-                'Operator Cuci',
-                'Staff Gudang',
-                'Admin & Keuangan',
-            ],
+            'Teknisi Lapangan',
+            'NOC / Monitoring',
+            'Customer Service',
+            'Kasir Billing',
+            'Marketing Internet',
         ];
     }
 
     /**
-     * Daftar flat semua posisi standar.
+     * Backward-compatibility alias.
      */
     public static function allPositions(): array
     {
-        $all = [];
-        foreach (self::groupedPositions() as $positions) {
-            $all = array_merge($all, $positions);
-        }
-        return array_values(array_unique($all));
+        return self::ispPositions();
     }
 
     /**
@@ -70,7 +54,7 @@ enum JobFunction: string
     {
         $target = strtolower(trim((string) $position));
 
-        if (str_contains($target, 'noc') || str_contains($target, 'monitoring') || str_contains($target, 'network engineer')) {
+        if (str_contains($target, 'noc') || str_contains($target, 'monitoring') || str_contains($target, 'network')) {
             return self::NOC;
         }
 
@@ -86,28 +70,10 @@ enum JobFunction: string
     }
 
     /**
-     * Resolusi otomatis Divisi bisnis berdasarkan nama posisi.
+     * Divisi pada dsBilling selalu Layanan Internet & Jaringan.
      */
-    public static function resolveDivision(?string $position): string
+    public static function resolveDivision(?string $position = null): string
     {
-        $gtWashKeywords = [
-            'kasir toko',
-            'operator cuci',
-            'staff gudang',
-            'admin & keuangan',
-            'wash',
-            'atk',
-            'cuci',
-            'gudang'
-        ];
-
-        $target = strtolower(trim((string) $position));
-        foreach ($gtWashKeywords as $kw) {
-            if (str_contains($target, $kw)) {
-                return 'MStore GTWash';
-            }
-        }
-
         return 'Layanan Internet & Jaringan';
     }
 }

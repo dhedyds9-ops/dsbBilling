@@ -32,25 +32,13 @@
                 </div>
 
                 <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">Posisi / Jabatan</label>
-                        @if($division)
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                Divisi: {{ $division }}
-                            </span>
-                        @endif
-                    </div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Posisi / Jabatan</label>
                     <select wire:model.live="job_title" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                         <option value="">-- Pilih Posisi / Jabatan --</option>
-                        @foreach(\App\Enums\JobFunction::groupedPositions() as $divName => $posList)
-                            <optgroup label="{{ $divName }}">
-                                @foreach($posList as $p)
-                                    <option value="{{ $p }}">{{ $p }}</option>
-                                @endforeach
-                            </optgroup>
+                        @foreach(\App\Enums\JobFunction::ispPositions() as $p)
+                            <option value="{{ $p }}">{{ $p }}</option>
                         @endforeach
-                        @if($job_title && !in_array($job_title, \App\Enums\JobFunction::allPositions()))
+                        @if($job_title && !in_array($job_title, \App\Enums\JobFunction::ispPositions()))
                             <option value="{{ $job_title }}" selected>{{ $job_title }} (Kustom)</option>
                         @endif
                     </select>
@@ -62,7 +50,7 @@
                     <select wire:model.live="job_function" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                         <option value="">-- Tidak Ada / Akses Standar --</option>
                         @foreach(\App\Enums\JobFunction::cases() as $jobFunc)
-                            <option value="{{ $jobFunc->value }}">{{ $jobFunc->label() }} ({{ $jobFunc->detailedLabel() }})</option>
+                            <option value="{{ $jobFunc->value }}">{{ $jobFunc->label() }}</option>
                         @endforeach
                     </select>
                     <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Otomatis terisi sesuai posisi yang dipilih (menentukan portal landing & permission).</p>

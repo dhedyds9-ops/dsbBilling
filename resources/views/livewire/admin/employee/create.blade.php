@@ -40,28 +40,16 @@
                 @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
 
-            <!-- Jabatan & Divisi -->
+            <!-- Jabatan -->
             <div>
-                <div class="flex items-center justify-between mb-1.5">
-                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Posisi / Jabatan Pekerjaan</label>
-                    @if($position)
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                            Divisi: {{ \App\Enums\JobFunction::resolveDivision($position) }}
-                        </span>
-                    @endif
-                </div>
+                <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Posisi / Jabatan Pekerjaan</label>
                 <select wire:model.live="position"
                         class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="">-- Pilih Posisi / Jabatan --</option>
-                    @foreach(\App\Enums\JobFunction::groupedPositions() as $divName => $posList)
-                        <optgroup label="{{ $divName }}">
-                            @foreach($posList as $p)
-                                <option value="{{ $p }}">{{ $p }}</option>
-                            @endforeach
-                        </optgroup>
+                    @foreach(\App\Enums\JobFunction::ispPositions() as $p)
+                        <option value="{{ $p }}">{{ $p }}</option>
                     @endforeach
-                    @if($position && !in_array($position, \App\Enums\JobFunction::allPositions()))
+                    @if($position && !in_array($position, \App\Enums\JobFunction::ispPositions()))
                         <option value="{{ $position }}" selected>{{ $position }} (Kustom)</option>
                     @endif
                 </select>
@@ -75,7 +63,7 @@
                         class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="">-- Pilih Fungsi Tugas --</option>
                     @foreach(\App\Enums\JobFunction::cases() as $jobFunc)
-                        <option value="{{ $jobFunc->value }}">{{ $jobFunc->label() }} ({{ $jobFunc->detailedLabel() }})</option>
+                        <option value="{{ $jobFunc->value }}">{{ $jobFunc->label() }}</option>
                     @endforeach
                 </select>
                 <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Otomatis terisi sesuai posisi yang dipilih dan tersinkron ke akun login.</p>
