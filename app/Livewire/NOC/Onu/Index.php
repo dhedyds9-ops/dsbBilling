@@ -338,7 +338,15 @@ class Index extends AdminComponent
         if (empty($this->oltFilter) || $this->oltFilter === 'all') {
             return collect();
         }
-        return \App\Models\ISP\PonPort::where('olt_id', $this->oltFilter)->orderBy('port_index')->get();
+        $query = \App\Models\ISP\PonPort::where('olt_id', $this->oltFilter);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('pon_ports', 'port_number')) {
+            $query->orderBy('port_number', 'asc');
+        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('pon_ports', 'port_index')) {
+            $query->orderBy('port_index', 'asc');
+        } else {
+            $query->orderBy('id', 'asc');
+        }
+        return $query->get();
     }
 
     #[\Livewire\Attributes\Layout('layouts.noc')]

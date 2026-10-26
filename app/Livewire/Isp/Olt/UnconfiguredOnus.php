@@ -118,9 +118,10 @@ class UnconfiguredOnus extends AdminComponent
             $serialNumber = strtoupper(trim($this->provisionData['serial_number']));
             $vendorOui = strtoupper(trim($this->provisionData['vendor_oui']));
 
+            $portCol = \Illuminate\Support\Facades\Schema::hasColumn('pon_ports', 'port_number') ? 'port_number' : 'port_index';
             $ponPortModel = PonPort::where('olt_id', $this->olt->id)
-                ->where(function ($q) use ($ponPort) {
-                    $q->where('port_index', $ponPort)
+                ->where(function ($q) use ($ponPort, $portCol) {
+                    $q->where($portCol, $ponPort)
                         ->orWhere('name', 'like', '%/' . $ponPort);
                 })->first();
 

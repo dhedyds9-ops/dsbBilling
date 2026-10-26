@@ -15,6 +15,7 @@ class PonPort extends Model
         'code',
         'name',
         'port_number',
+        'port_index',
         'type',
         'status',
         'created_by',
@@ -23,7 +24,13 @@ class PonPort extends Model
 
     protected $casts = [
         'port_number' => 'integer',
+        'port_index' => 'integer',
     ];
+
+    public function getPortIndexAttribute($value)
+    {
+        return $value ?? $this->port_number;
+    }
 
     public function scopeActive($query)
     {
