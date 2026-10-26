@@ -16,7 +16,13 @@ class EmployeeSyncApiController extends Controller
      */
     public function sync(Request $request): JsonResponse
     {
-        // 1. Verifikasi Secret Token
+        // 1. Verifikasi Secret Token atau Jaringan Lokal Proxmox
+        $clientIp = $request->ip();
+        $isLocalPrivateIp = str_starts_with($clientIp, '192.168.') 
+            || str_starts_with($clientIp, '10.') 
+            || str_starts_with($clientIp, '172.')
+            || in_array($clientIp, ['127.0.0.1', '::1']);
+
         $providedToken = trim((string) (
             $request->header('X-DSBILLING-TOKEN') 
             ?: $request->header('x-dsbilling-token')
@@ -39,8 +45,8 @@ class EmployeeSyncApiController extends Controller
             'mstore',
         ])));
 
-        $isValid = false;
-        if ($providedToken !== '') {
+        $isValid = $isLocalPrivateIp;
+        if (! $isValid && $providedToken !== '') {
             foreach ($candidateTokens as $candidate) {
                 if ($candidate !== '' && hash_equals($candidate, $providedToken)) {
                     $isValid = true;
