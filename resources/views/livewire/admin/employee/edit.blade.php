@@ -131,13 +131,36 @@
                     @endforeach
                 </select>
                 @if($user_id && $employee->user)
-                    <div class="mt-1.5 p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs">
+                    <div class="mt-1.5 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs">
                         <div class="text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
                             <i class="fa-solid fa-circle-check text-emerald-500"></i> Akun Login Tertaut: <b>{{ $employee->user->name }}</b>
                         </div>
-                        <div class="text-slate-600 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+                        <div class="text-slate-600 dark:text-slate-400 mt-1.5 flex flex-wrap items-center gap-3">
                             <span>Username: <code class="font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">{{ $employee->user->username ?? $employee->user->email }}</code></span>
                             <span>Password Default: <code class="font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">Password123!</code></span>
+                        </div>
+                        
+                        <!-- Tombol Kirim WhatsApp -->
+                        <div class="mt-2.5 pt-2 border-t border-emerald-200/70 dark:border-emerald-800/60 flex flex-wrap items-center gap-2">
+                            <button type="button" wire:click="sendWhatsAppCredentials" wire:loading.attr="disabled"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer">
+                                <i class="fa-brands fa-whatsapp text-sm"></i>
+                                <span wire:loading.remove wire:target="sendWhatsAppCredentials">Kirim Data Login via WhatsApp Gateway</span>
+                                <span wire:loading wire:target="sendWhatsAppCredentials">Sedang Mengirim via WA...</span>
+                            </button>
+                            @php
+                                $cleanPhone = preg_replace('/[^0-9]/', '', (string)($phone ?: ($employee->phone ?? '')));
+                                if (str_starts_with($cleanPhone, '08')) {
+                                    $cleanPhone = '628' . substr($cleanPhone, 2);
+                                }
+                                $manualWaText = rawurlencode("Halo *{$name}*,\n\nBerikut informasi akun login sistem Anda:\n━━━━━━━━━━━━━━━━━━━━\n👤 Nama: {$name}\n💼 Jabatan: " . ($position ?: 'Staff') . "\n🌐 Link Login: " . url('/login') . "\n\n🔐 Kredensial Login:\n• Username: *" . ($employee->user?->username ?? $employee->user?->email ?? $email) . "*\n• Password: *Password123!*\n━━━━━━━━━━━━━━━━━━━━\nSilakan gunakan informasi di atas untuk masuk ke sistem.");
+                            @endphp
+                            @if($cleanPhone)
+                                <a href="https://wa.me/{{ $cleanPhone }}?text={{ $manualWaText }}" target="_blank"
+                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs font-semibold transition-colors">
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Buka Chat WA
+                                </a>
+                            @endif
                         </div>
                     </div>
                 @else
@@ -170,3 +193,14 @@
         </div>
     </form>
 </div>
+
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        Livewire.on('open-wa-window', (event) => {
+            const url = (typeof event === 'string') ? event : (event.url || (event[0] && event[0].url));
+            if (url) {
+                window.open(url, '_blank');
+            }
+        });
+    });
+</script>

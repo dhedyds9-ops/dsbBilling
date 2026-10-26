@@ -136,6 +136,72 @@ class Edit extends AdminComponent
         }
     }
 
+    /**
+     * Kirim data login (Nama, Jabatan, Username, Password) ke nomor WhatsApp karyawan.
+     */
+    public function sendWhatsAppCredentials()
+    {
+        $rawPhone = $this->phone ?: ($this->employee->phone ?? '');
+        $phone = preg_replace('/[^0-9]/', '', (string)$rawPhone);
+        if (str_starts_with($phone, '08')) {
+            $phone = '628' . substr($phone, 2);
+        }
+
+        if (empty($phone) || strlen($phone) < 9) {
+            session()->flash('error', 'Nomor WhatsApp karyawan belum diisi atau tidak valid.');
+            return;
+        }
+
+        // Pastikan akun user sudah dibuat
+        if (empty($this->user_id)) {
+            $this->createUserAccount();
+        }
+
+        $user = $this->employee->fresh()->user;
+        $username = $user?->username ?? ($user?->email ?? $this->email);
+        $password = 'Password123!';
+        $jabatan = $this->position ?: ($this->department ?: 'Staff');
+        $nama = $this->name;
+
+        $msgText = "Halo *{$nama}*,\n\n"
+            . "Berikut informasi akun login sistem Anda:\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "🏢 *Aplikasi:* dsBilling & MStore\n"
+            . "👤 *Nama:* {$nama}\n"
+            . "💼 *Jabatan:* {$jabatan}\n"
+            . "🌐 *Link Login:* " . url('/login') . "\n\n"
+            . "🔐 *Kredensial Login:*\n"
+            . "• Username: *{$username}*\n"
+            . "• Password: *{$password}*\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "Silakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan, segera ganti password Anda setelah login pertama kali.\n\n"
+            . "Terima kasih.";
+
+        $sentViaGateway = false;
+        try {
+            if (class_exists(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)) {
+                $waMsg = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
+                    toPhone: $phone,
+                    type: 'text',
+                    text: $msgText,
+                    category: 'info',
+                    priorityHigh: true,
+                );
+                $sentViaGateway = app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->sendImmediate($waMsg);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WhatsApp Gateway send failed: ' . $e->getMessage());
+        }
+
+        if ($sentViaGateway) {
+            session()->flash('success', "Data login (Nama, Jabatan, Username, Password) berhasil dikirim via WhatsApp Gateway ke {$phone}!");
+        } else {
+            $waUrl = "https://wa.me/{$phone}?text=" . rawurlencode($msgText);
+            $this->dispatch('open-wa-window', url: $waUrl);
+            session()->flash('success', "Pesan telah disiapkan! Mengarahkan ke WhatsApp ke nomor {$phone}...");
+        }
+    }
+
     public function render()
     {
         $users = \App\Models\User::whereHas('roles', function($query) {
