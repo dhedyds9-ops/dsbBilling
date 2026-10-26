@@ -111,17 +111,32 @@
 
             <!-- Tautkan Akun User Login -->
             <div>
-                <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Tautkan Akun Login (User Management)
-                </label>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Tautkan Akun Login (User Management)
+                    </label>
+                    @if(empty($user_id))
+                        <button type="button" wire:click="createUserAccount" wire:loading.attr="disabled"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-semibold transition-colors cursor-pointer">
+                            <span wire:loading.remove wire:target="createUserAccount">+ Buat Akun Login Langsung</span>
+                            <span wire:loading wire:target="createUserAccount">Membuat Akun...</span>
+                        </button>
+                    @endif
+                </div>
                 <select wire:model="user_id"
                         class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="">-- Belum Ditautkan --</option>
                     @foreach($users as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                        <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->username ?? $user->email }})</option>
                     @endforeach
                 </select>
-                <p class="text-[11px] text-slate-400 mt-1">Pilih akun user login untuk menghubungkan riwayat absensi teknisi ke profil pegawai ini.</p>
+                @if($user_id && $employee->user)
+                    <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                        ✓ Akun login tertaut: <b>{{ $employee->user->name }} ({{ $employee->user->username ?? $employee->user->email }})</b>
+                    </p>
+                @else
+                    <p class="text-[11px] text-slate-400 mt-1">Pilih user dari daftar atau klik tombol <b>"+ Buat Akun Login Langsung"</b> di atas.</p>
+                @endif
                 @error('user_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
 

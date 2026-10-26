@@ -97,6 +97,45 @@ class Edit extends AdminComponent
         return redirect()->route('admin.employee.index');
     }
 
+    public function createUserAccount()
+    {
+        try {
+            $baseName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', str_replace(' ', '', $this->name)));
+            $username = $baseName ?: 'user' . rand(100, 999);
+            $counter = 1;
+            while (\App\Models\User::where('username', $username)->exists()) {
+                $username = $baseName . $counter++;
+            }
+
+            $userEmail = ! empty($this->email) ? strtolower(trim($this->email)) : ($username . '@mstore.local');
+            $defaultPassword = 'Password123!';
+
+            $newUser = \App\Models\User::create([
+                'name' => $this->name,
+                'email' => $userEmail,
+                'username' => $username,
+                'password' => \Illuminate\Support\Facades\Hash::make($defaultPassword),
+                'job_title' => $this->position ?: 'Staff',
+                'job_function' => $this->department ?: \App\Enums\JobFunction::TECHNICIAN->value,
+                'whatsapp' => $this->phone,
+                'identity_number' => $this->nik ?: '-',
+                'is_active' => true,
+            ]);
+
+            $managerRole = \App\Models\Role::where('name', \App\Enums\UserRole::Manager->value ?? 'manager')->first();
+            if ($managerRole) {
+                $newUser->roles()->sync([$managerRole->id]);
+            }
+
+            $this->user_id = $newUser->id;
+            $this->employee->update(['user_id' => $newUser->id]);
+
+            session()->flash('success', "Akun login berhasil dibuat! Username: {$username} | Password: {$defaultPassword}");
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal membuat akun login: ' . $e->getMessage());
+        }
+    }
+
     public function render()
     {
         $users = \App\Models\User::whereHas('roles', function($query) {

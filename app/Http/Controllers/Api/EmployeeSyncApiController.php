@@ -115,11 +115,21 @@ class EmployeeSyncApiController extends Controller
 
         $employee->save();
 
+        // 5. Otomatis buat & tautkan akun login User jika belum ada
+        if (empty($employee->user_id)) {
+            $user = $this->resolveOrCreateUser($employee, $jobFunction);
+            if ($user) {
+                $employee->user_id = $user->id;
+                $employee->saveQuietly();
+            }
+        }
+
         Log::info('Employee successfully synced from MStore to dsBilling', [
             'employee_id' => $employee->id,
             'name' => $employee->name,
             'position' => $employee->position,
             'department' => $employee->department,
+            'user_id' => $employee->user_id,
         ]);
 
         return response()->json([
@@ -158,5 +168,65 @@ class EmployeeSyncApiController extends Controller
 
         // Koordinator, CS, Kasir Billing, Kolektor -> PENGURUS
         return JobFunction::PENGURUS;
+    }
+
+    /**
+     * Cari atau buatkan akun login User untuk pegawai.
+     */
+    private function resolveOrCreateUser(Employee $employee, ?JobFunction $jobFunction): ?\App\Models\User
+    {
+        try {
+            $email = ! empty($employee->email) ? strtolower(trim($employee->email)) : null;
+            $phone = ! empty($employee->phone) ? preg_replace('/[^0-9]/', '', $employee->phone) : null;
+
+            // 1. Cek apakah user dengan email atau whatsapp ini sudah ada
+            $existingUser = null;
+            if ($email) {
+                $existingUser = \App\Models\User::where('email', $email)->first();
+            }
+            if (! $existingUser && $phone) {
+                $existingUser = \App\Models\User::where('whatsapp', $phone)
+                    ->orWhere('username', $phone)
+                    ->first();
+            }
+
+            if ($existingUser) {
+                return $existingUser;
+            }
+
+            // 2. Buat username unik
+            $baseName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', str_replace(' ', '', $employee->name)));
+            $username = $baseName ?: 'user' . rand(100, 999);
+            $counter = 1;
+            while (\App\Models\User::where('username', $username)->exists()) {
+                $username = $baseName . $counter++;
+            }
+
+            $userEmail = $email ?: ($username . '@mstore.local');
+            $defaultPassword = 'Password123!';
+
+            $newUser = \App\Models\User::create([
+                'name' => $employee->name,
+                'email' => $userEmail,
+                'username' => $username,
+                'password' => \Illuminate\Support\Facades\Hash::make($defaultPassword),
+                'job_title' => $employee->position ?: 'Staff',
+                'job_function' => $jobFunction ? $jobFunction->value : ($employee->department ?: 'Technician'),
+                'whatsapp' => $employee->phone,
+                'identity_number' => $employee->nik ?: '-',
+                'is_active' => true,
+            ]);
+
+            // Assign role manager (internal staff)
+            $managerRole = \App\Models\Role::where('name', \App\Enums\UserRole::Manager->value ?? 'manager')->first();
+            if ($managerRole) {
+                $newUser->roles()->sync([$managerRole->id]);
+            }
+
+            return $newUser;
+        } catch (\Throwable $e) {
+            Log::warning('Failed to auto-create user for employee: ' . $e->getMessage());
+            return null;
+        }
     }
 }
