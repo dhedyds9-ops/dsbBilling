@@ -171,8 +171,7 @@ final class WhatsAppNotificationService
                     $bw = trim((string)($s[0]['bandwidth_text'] ?? ''));
                 }
             }
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         $txt = $this->template->serviceReactivated([
             'customer_name' => $customer->name ?? $customer->full_name ?? 'Pelanggan',
@@ -340,8 +339,7 @@ final class WhatsAppNotificationService
                 $lastSeen = is_object($sess->last_seen_at) ? $sess->last_seen_at->diffForHumans() : (string)$sess->last_seen_at;
                 if (strtolower((string)($sess->radius_state ?? 'online')) === 'online') $status = 'online';
             }
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         return $this->template->botResponseStatus([
             'customer_name' => $customer->name ?? ($customer->full_name ?? 'Pelanggan'),

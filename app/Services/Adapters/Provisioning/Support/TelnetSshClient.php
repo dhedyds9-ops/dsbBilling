@@ -115,8 +115,7 @@ class TelnetSshClient
         if ($this->connection !== null) {
             try {
                 $this->connection->disconnect();
-            } catch (Exception) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
             $this->connection = null;
         }

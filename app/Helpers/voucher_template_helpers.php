@@ -119,8 +119,7 @@ if (!function_exists('voucher_asset')) {
                 if (function_exists('asset')) {
                     return (string) asset('');
                 }
-            } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
             return '';
         }
@@ -133,24 +132,21 @@ if (!function_exists('voucher_asset')) {
             if (function_exists('asset')) {
                 return (string) asset($trimmed);
             }
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         try {
             if (function_exists('url')) {
                 return (string) url($trimmed);
             }
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         try {
             if (class_exists(\Illuminate\Support\Facades\URL::class)) {
                 return (string) \Illuminate\Support\Facades\URL::to('/' . $trimmed);
             }
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         return '/' . $trimmed;

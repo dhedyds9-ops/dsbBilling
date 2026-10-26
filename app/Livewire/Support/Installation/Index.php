@@ -460,8 +460,7 @@ class Index extends BaseEnterpriseList
             $this->confirmBtnText = 'Tutup';
             $this->confirmBtnClass = 'bg-slate-600 hover:bg-slate-700 text-white';
             $this->dispatch('open-modal', name: $this->confirmModal);
-        } catch (Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
     }
 

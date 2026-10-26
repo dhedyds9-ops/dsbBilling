@@ -102,8 +102,7 @@ class Index extends AdminComponent
             foreach ($defaults as $k => $v) {
                 if (empty($this->company[$k])) $this->company[$k] = (string)$v;
             }
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
     }
 

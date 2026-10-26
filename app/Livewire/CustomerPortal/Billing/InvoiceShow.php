@@ -352,8 +352,7 @@ class InvoiceShow extends Component
                     // Fallback 1: Livewire 4 component redirect (full page, non-navigate)
                     try {
                         $this->redirect($redirectUrl, navigate: false);
-                    } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+                    } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
                     // Fallback 2: Native Laravel RedirectResponse (Livewire official docs style)
                     return redirect()->away($redirectUrl);

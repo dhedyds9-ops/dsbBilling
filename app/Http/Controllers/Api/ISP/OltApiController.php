@@ -86,8 +86,7 @@ class OltApiController extends Controller
                 if ($idx > 0) {
                     try {
                         $all[] = $drv->getOnuRxPower($idx);
-                    } catch (Exception) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+                    } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
                 }
             }

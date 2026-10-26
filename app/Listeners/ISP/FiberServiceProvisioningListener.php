@@ -99,8 +99,7 @@ class FiberServiceProvisioningListener implements ShouldQueue
                 if ($onu->odp_id) {
                     try {
                         $this->odpOccupancy->recalculateOne($onu->odp);
-                    } catch (Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+                    } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
                 }
             });

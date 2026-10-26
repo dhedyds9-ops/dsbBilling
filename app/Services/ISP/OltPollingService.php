@@ -329,8 +329,7 @@ class OltPollingService
                                 'status' => $status,
                                 'measured_at' => now(),
                             ]);
-                        } catch (Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+                        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
                         $updatedOnu++;
                     }

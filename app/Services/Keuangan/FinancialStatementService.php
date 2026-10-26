@@ -157,8 +157,7 @@ class FinancialStatementService
                     ];
                     $expenseTotal += $amt;
                 }
-            } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         }
 
@@ -207,8 +206,7 @@ class FinancialStatementService
                     ->betweenDates($start->toDateString(), $end->toDateString())
                     ->whereIn('category', ['operasional', 'pegawai', 'marketing', 'lain'])
                     ->sum('amount');
-            } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         }
         if ($operatingExpense === 0) {
@@ -279,8 +277,7 @@ class FinancialStatementService
                     ];
                     $grandTotal += $amt;
                 }
-            } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         }
 
@@ -460,8 +457,7 @@ class FinancialStatementService
                 $customerTotals[$cid]['buckets'][$bucket] += $outstanding;
                 $customerTotals[$cid]['total'] += $outstanding;
             }
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         $arTotal = array_sum(array_column($buckets, 'total'));
@@ -498,8 +494,7 @@ class FinancialStatementService
                 $totalExpense = (float) Expense::approved()
                     ->betweenDates($start->toDateString(), $end->toDateString())
                     ->sum('amount');
-            } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
         }
         if ($totalExpense === 0) {
@@ -513,8 +508,7 @@ class FinancialStatementService
             $arTotal = (float) Invoice::whereIn('status', ['unpaid', 'partial', 'overdue'])
                 ->get()
                 ->sum(fn($i) => max(0, (float) ($i->total_amount - $i->paid_amount)));
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
         return [

@@ -87,8 +87,7 @@ final class WaAntiSpamService
             $dayKey = 'wa:daycap:' . now()->format('Ymd') . ':' . $phoneNorm;
             Redis::connection()->incr($dayKey);
             Redis::connection()->expire($dayKey, 86400);
-        } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
     }
 
