@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto p-3">
+<div class="space-y-6 pb-12 max-w-5xl">
     <!-- Success/Error Flash Message -->
     <div class="mb-3">
         @if(session()->has('success'))
@@ -105,9 +105,12 @@
                     <a href="{{ route('isp.towers.index') }}" class="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                         Batal
                     </a>
-                    <button type="submit" class="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
-                        Simpan
-                    </button>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="save" class=" px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm">
+        <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+        <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+        <span wire:loading.remove wire:target="save">Simpan</span>
+        <span wire:loading wire:target="save">Menyimpan...</span>
+    </button>
                 </div>
             </form>
         </x-base.card>

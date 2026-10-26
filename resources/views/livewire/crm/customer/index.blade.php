@@ -100,8 +100,6 @@
                     <option value="20">20 / hal</option>
                     <option value="50">50 / hal</option>
                     <option value="100">100 / hal</option>
-                    <option value="500">500 / hal</option>
-                    <option value="999999">Semua</option>
                 </select>
                 @if($search || $statusFilter)
                 <button wire:click="resetFilters"

@@ -1,5 +1,4 @@
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
+<div class="space-y-6 pb-12 max-w-3xl">
         <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
             <h1 class="text-2xl font-bold mb-6">Create Prospect</h1>
 
@@ -55,14 +54,16 @@
                 </div>
 
                 <div class="flex gap-4">
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded">
-                        Create
-                    </button>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="save" class=" px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm">
+        <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+        <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+        <span wire:loading.remove wire:target="save">Create Prospect</span>
+        <span wire:loading wire:target="save">Creating...</span>
+    </button>
                     <a href="{{ route('onboarding.prospects.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded">
                         Cancel
                     </a>
                 </div>
             </form>
         </div>
-    </div>
 </div>

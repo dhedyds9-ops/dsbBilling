@@ -234,9 +234,11 @@
                     <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">arrow_back</span>
                     Batal
                 </a>
-                <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-colors cursor-pointer">
-                    <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">save</span>
-                    Simpan Data
+                <button type="submit" wire:loading.attr="disabled" wire:target="save" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer">
+                    <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+                    <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+                    <span wire:loading.remove wire:target="save">Simpan Data</span>
+                    <span wire:loading wire:target="save">Menyimpan...</span>
                 </button>
             </div>
         </form>

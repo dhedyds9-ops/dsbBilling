@@ -201,11 +201,12 @@
 
                     {{-- Tombol Aksi --}}
                     <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2.5">
-                        <button type="submit" 
-                                class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined notranslate text-lg" translate="no">save</span>
-                            Simpan Instalasi
-                        </button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="save" class="w-full justify-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm">
+        <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+        <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+        <span wire:loading.remove wire:target="save">Simpan Instalasi</span>
+        <span wire:loading wire:target="save">Menyimpan...</span>
+    </button>
                         <a href="{{ route('crm.installations.index') }}" 
                            class="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-semibold text-center transition-all">
                             Batal

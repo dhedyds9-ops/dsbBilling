@@ -84,7 +84,12 @@
                                 <input type="number" wire:model="items.{{ $index }}.quantity" wire:change="calculateTotal" min="1" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                             </div>
                             <div class="col-span-2">
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Harga Satuan</label>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Harga Satuan</label>
+                                    <button type="button" wire:click="applyProrate({{ $index }})" title="Hitung otomatis harga prorate dari tgl invoice s/d akhir bulan" class="text-[11px] font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline cursor-pointer">
+                                        ⚡ Prorate
+                                    </button>
+                                </div>
                                 <input type="number" wire:model="items.{{ $index }}.unit_price" wire:change="calculateTotal" min="0" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                             </div>
                             <div class="col-span-1">
@@ -115,9 +120,12 @@
                 <a href="{{ route('billing.invoices.index') }}" class="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 transition-colors">
                     Batal
                 </a>
-                <button type="submit" class="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
-                    Simpan
-                </button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="save" class=" px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm">
+        <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+        <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+        <span wire:loading.remove wire:target="save">Simpan</span>
+        <span wire:loading wire:target="save">Menyimpan...</span>
+    </button>
             </div>
         </form>
     </x-base.card>

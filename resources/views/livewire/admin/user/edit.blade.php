@@ -10,7 +10,7 @@
     </div>
 @endsection
 
-<div class="max-w-4xl mx-auto space-y-6 pb-10">
+<div class="space-y-6 pb-12 max-w-4xl">
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20">
             <h2 class="text-base font-bold text-slate-900 dark:text-slate-100">Informasi User</h2>
@@ -161,7 +161,7 @@
                 <a href="{{ route('admin.users.index') }}" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors">
                     Batal
                 </a>
-                                <button type="submit" wire:loading.attr="disabled" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
+                                <button type="submit" wire:loading.attr="disabled" wire:target="save" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
                     <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
                     <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
                     <span wire:loading.remove wire:target="save">Simpan Perubahan</span>

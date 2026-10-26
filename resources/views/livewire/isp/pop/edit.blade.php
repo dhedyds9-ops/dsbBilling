@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto p-3">
+<div class="space-y-6 pb-12 max-w-5xl">
     <!-- Success/Error Flash Message -->
     <div class="mb-3">
         @if(session()->has('success'))

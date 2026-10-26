@@ -61,7 +61,12 @@
 
             <div class="flex justify-end gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                 <a href="{{ route('acs.devices.show', $deviceId) }}" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 transition-colors">Kembali</a>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Simpan</button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="save" class=" px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm">
+        <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+        <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+        <span wire:loading.remove wire:target="save">Simpan</span>
+        <span wire:loading wire:target="save">Menyimpan...</span>
+    </button>
             </div>
         </form>
     </x-base.card>

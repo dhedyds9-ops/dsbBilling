@@ -1,4 +1,4 @@
-<div class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+<div class="max-w-4xl space-y-6 pb-12 sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-4">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Edit Slip Gaji - {{ $payroll->employee?->name ?? 'Karyawan' }}</h2>
@@ -58,9 +58,12 @@
             </div>
 
             <div class="flex items-center justify-end">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-colors">
-                    Simpan Perubahan
-                </button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="save" class=" px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm">
+        <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+        <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+        <span wire:loading.remove wire:target="save">Simpan Perubahan</span>
+        <span wire:loading wire:target="save">Menyimpan...</span>
+    </button>
             </div>
         </form>
     </div>
