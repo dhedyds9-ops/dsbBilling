@@ -53,20 +53,23 @@ class TelnetSshClient
         return $this;
     }
 
+    protected bool $pagerDisabled = false;
+
     public function execute(string $command, bool $disablePager = true, string $endMarker = null): string
     {
         if ($this->connection === null) {
             throw new Exception('Connection not established');
         }
-        if ($disablePager) {
+        if ($disablePager && !$this->pagerDisabled) {
             $this->disablePager();
+            $this->pagerDisabled = true;
         }
         if ($this->mode === 'ssh') {
-            $output = $this->connection->exec($command);
+            $output = $this->connection->exec($command . "\n");
             return $output !== false ? (string)$output : '';
         }
         $output = '';
-        $this->connection->write($command . "\n");
+        $this->connection->write($command . "\r\n");
         if ($endMarker) {
             $output = $this->connection->read($endMarker);
         } else {
@@ -77,11 +80,16 @@ class TelnetSshClient
 
     protected function disablePager(): void
     {
-        if ($this->mode === 'ssh') {
-            $this->connection->exec("terminal length 0\n");
-        } else {
-            $this->connection->write("terminal length 0\n");
-            $this->connection->read('/[>#]/');
+        try {
+            if ($this->mode === 'ssh') {
+                $this->connection->exec("terminal length 0\n");
+            } else {
+                $this->connection->write("terminal length 0\r\n");
+                // Tolerate if OLT doesn't support terminal length 0
+                @$this->connection->read('/[>#]/');
+            }
+        } catch (\Throwable $e) {
+            // Ignore pager disable errors on OLTs that don't support it (e.g. C-Data / BDCOM)
         }
     }
 
@@ -89,12 +97,14 @@ class TelnetSshClient
     {
         if ($this->mode === 'ssh') {
             $this->connection->write("enable\n");
-            $this->connection->write($this->enableSecret . "\n");
-        } else {
-            $this->connection->write("enable\n");
-            $out = $this->connection->read('/(password|#)/i');
-            if (str_contains(strtolower($out), 'password')) {
+            if ($this->enableSecret !== '') {
                 $this->connection->write($this->enableSecret . "\n");
+            }
+        } else {
+            $this->connection->write("enable\r\n");
+            $out = $this->connection->read('/(password|#|>)/i');
+            if (str_contains(strtolower($out), 'password')) {
+                $this->connection->write($this->enableSecret . "\r\n");
                 $this->connection->read('/#/');
             }
         }

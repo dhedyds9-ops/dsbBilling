@@ -309,7 +309,10 @@ class Index extends BaseNetworkComponent
                 throw new \Exception($errMsg);
             }
             
-            $msg = 'Sinkronisasi OLT ' . $olt->name . ' berhasil diselesaikan.';
+            $online = (int)($res['onu_online'] ?? 0);
+            $offline = (int)($res['onu_offline'] ?? 0);
+            $total = $online + $offline;
+            $msg = "Sinkronisasi OLT {$olt->name} selesai: {$online} ONU Online, {$offline} Offline ({$total} Total).";
             session()->flash('success', $msg);
             $this->dispatch('toast', type: 'success', message: $msg);
         } catch (\Throwable $e) {

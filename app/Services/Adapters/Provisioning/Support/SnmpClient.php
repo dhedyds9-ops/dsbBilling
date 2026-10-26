@@ -103,13 +103,27 @@ class SnmpClient
             return [];
         }
         if (self::$extSnmpAvailable) {
+            if (defined('SNMP_OID_OUTPUT_NUMERIC')) {
+                @snmp_set_oid_output_format(SNMP_OID_OUTPUT_NUMERIC);
+            }
+            @snmp_set_oid_numeric_print(true);
+            @snmp_set_quick_print(true);
+            @snmp_set_valueretrieval(SNMP_VALUE_PLAIN);
+
             $result = @snmprealwalk($this->host, $this->community, $oid, $this->timeout, $this->retries);
             if ($result === false) {
-                return [];
+                return $this->fallbackSnmpWalk($oid);
             }
             $parsed = [];
+            $normBase = ltrim($oid, '.');
             foreach ($result as $key => $value) {
-                $parsed[str_replace($oid . '.', '', $key)] = $this->parseValue($value);
+                $cleanKey = (string)$key;
+                $cleanKey = preg_replace('/^SNMPv2-SMI::enterprises\./i', '1.3.6.1.4.1.', $cleanKey);
+                $cleanKey = preg_replace('/^iso\./i', '1.', $cleanKey);
+                $cleanKey = ltrim($cleanKey, '.');
+
+                $suffix = preg_replace('/^' . preg_quote($normBase, '/') . '\./', '', $cleanKey);
+                $parsed[$suffix] = $this->parseValue($value);
             }
             return $parsed;
         }

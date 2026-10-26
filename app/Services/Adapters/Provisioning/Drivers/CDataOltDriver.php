@@ -4,10 +4,11 @@ namespace App\Services\Adapters\Provisioning\Drivers;
 
 use App\Models\ISP\Olt;
 use App\Models\ISP\Onu;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Driver OLT C-Data (CD6000 / CD8000 / CD5508 / CD5000 / FD1600 series)
- * Enterprise OID: .1.3.6.1.4.1.51810 and .1.3.6.1.4.1.34592
+ * Driver OLT C-Data (CD6000 / CD8000 / CD5508 / CD5000 / FD1600 series / FD1100 / FD1200 series)
+ * Enterprise OID: .1.3.6.1.4.1.51810, .1.3.6.1.4.1.34592, and CTC .1.3.6.1.4.1.17409
  */
 class CDataOltDriver extends BaseOltDriver
 {
@@ -22,18 +23,16 @@ class CDataOltDriver extends BaseOltDriver
 
     protected string $ponPortStatusOid = '.1.3.6.1.4.1.51810.1.1.2.1.1.2';
     protected string $onuInfoOid       = '.1.3.6.1.4.1.51810.1.3.1.1';
-    
-    protected ?array $macsCache = null;
-
-    protected string $onuTxOid         = '.1.3.6.1.4.1.51810.1.3.1.1';
-    protected string $onuTempOid       = '.1.3.6.1.4.1.51810.1.3.1.1';
-    protected string $onuVoltOid       = '.1.3.6.1.4.1.51810.1.3.1.1';
-    protected string $onuMacOid        = '.1.3.6.1.4.1.51810.1.3.1.1';
-    protected string $onuFwOid         = '.1.3.6.1.4.1.51810.1.3.1.1';
 
     protected ?bool $isNewBranch = null;
     protected ?array $cachedOnuStatuses = null;
+    protected ?array $cachedOnuSerials = null;
+    protected ?array $cachedOnuRx = null;
+    protected ?array $cachedOnuTx = null;
+    protected ?array $cachedOnuTemps = null;
+    protected ?array $cachedOnuMacs = null;
     protected ?array $cachedCliParsedOnus = null;
+    protected ?array $macsCache = null;
 
     public function __construct(Olt $olt)
     {
@@ -52,8 +51,13 @@ class CDataOltDriver extends BaseOltDriver
 
         $testOid = '.1.3.6.1.4.1.34592.1.3.100.1.8.1.0';
         $res = @$this->snmp->get($testOid);
-        $this->isNewBranch = ($res !== false && $res !== '');
-        return $this->isNewBranch;
+        if ($res !== false && $res !== '') {
+            return $this->isNewBranch = true;
+        }
+
+        // Test GPON PON Port Status OID
+        $ponTest = @$this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.4');
+        return $this->isNewBranch = (!empty($ponTest));
     }
 
     public function getPonPortsStatus(): array
@@ -63,11 +67,11 @@ class CDataOltDriver extends BaseOltDriver
             $ports    = [];
             if ($statuses) {
                 foreach ($statuses as $idx => $status) {
-                    $cleanOid = str_replace('iso', '.1', $idx);
+                    $cleanOid = str_replace('iso', '.1', (string)$idx);
                     $parts = explode('.', $cleanOid);
                     $realPortIdx = (int)end($parts);
-                    
-                    if ($realPortIdx >= 1310721 && $realPortIdx <= 1310728) {
+
+                    if ($realPortIdx >= 1310721 && $realPortIdx <= 1310736) {
                         $portNum = $realPortIdx - 1310720;
                         $ports[] = [
                             'port_index' => $realPortIdx,
@@ -105,20 +109,53 @@ class CDataOltDriver extends BaseOltDriver
                     }
                 }
             }
+            if (!empty($ports)) {
+                return $ports;
+            }
+        }
+
+        // EPON / Legacy OID
+        $statuses = $this->snmp->walk($this->ponPortStatusOid);
+        $ports    = [];
+        if (!empty($statuses)) {
+            foreach ($statuses as $idx => $status) {
+                $portIdx = (int)preg_replace('/^.*?(\d+)$/', '$1', (string)$idx);
+                if ($portIdx <= 0) {
+                    $portIdx = (int)$idx;
+                }
+                $ports[] = [
+                    'port_index' => $portIdx,
+                    'port_name'  => "EPON 0/0/$portIdx",
+                    'status'     => match ((int)$status) {
+                        1, 101, 100 => 'up',
+                        2, 102      => 'down',
+                        default     => 'unknown'
+                    },
+                ];
+            }
             return $ports;
         }
 
-        $statuses = $this->snmp->walk($this->ponPortStatusOid);
-        $ports    = [];
-        foreach ($statuses as $idx => $status) {
+        // Fallback CTC EPON Port Table (.1.3.6.1.4.1.17409.2.3.1.2.1.1)
+        $ctcPorts = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.1.2.1.1');
+        if (!empty($ctcPorts)) {
+            foreach ($ctcPorts as $idx => $val) {
+                $portIdx = (int)preg_replace('/^.*?(\d+)$/', '$1', (string)$idx);
+                $ports[] = [
+                    'port_index' => $portIdx,
+                    'port_name'  => "EPON 0/0/$portIdx",
+                    'status'     => 'up',
+                ];
+            }
+            return $ports;
+        }
+
+        // Default 4 PON ports fallback if OLT answered sysUpTime
+        for ($p = 1; $p <= 4; $p++) {
             $ports[] = [
-                'port_index' => $idx,
-                'port_name'  => "GPON 0/0/$idx",
-                'status'     => match ((int)$status) {
-                    1, 101, 100 => 'up',
-                    2, 102      => 'down',
-                    default     => 'unknown'
-                },
+                'port_index' => $p,
+                'port_name'  => "PON 0/0/$p",
+                'status'     => 'up',
             ];
         }
         return $ports;
@@ -126,424 +163,365 @@ class CDataOltDriver extends BaseOltDriver
 
     public function getOnuRxPower(int $ponPort): array
     {
-        if ($this->checkIsNewBranch()) {
-            // Mapping ponPort to portNum (1-based, e.g. 1 to 8)
-            if ($ponPort >= 1310721 && $ponPort <= 1310728) {
-                $portNum = $ponPort - 1310720;
+        // 1. Calculate portNum (1-based, e.g. 1 to 16) and slot
+        if ($ponPort >= 1310721 && $ponPort <= 1310736) {
+            $portNum = $ponPort - 1310720;
+            $slot = 0;
+        } elseif ($ponPort > 1000000) {
+            $portNum = $ponPort & 0xFF;
+            if ($portNum === 0) {
+                $portNum = ($ponPort >> 8) & 0xFF;
+            }
+            $slot = ($ponPort >> 16) & 0xFF;
+            if ($slot > 16) {
                 $slot = 0;
-            } elseif ($ponPort > 1000000) {
-                $portNum = $ponPort & 0xFF;
-                if ($portNum === 0) {
-                    $portNum = ($ponPort >> 8) & 0xFF;
+            }
+        } else {
+            $portNum = $ponPort;
+            $slot = 0;
+        }
+        if ($portNum <= 0) {
+            $portNum = 1;
+        }
+
+        // 2. LAYER 1: Scrape via Telnet CLI (Fast, full signals & serial numbers)
+        if ($this->cachedCliParsedOnus === null) {
+            $this->cachedCliParsedOnus = [];
+            $this->scrapeCliOnus($slot);
+        }
+
+        if (!empty($this->cachedCliParsedOnus[$portNum])) {
+            $res = [];
+            foreach ($this->cachedCliParsedOnus[$portNum] as $item) {
+                $item['pon_port'] = $ponPort;
+                $res[] = $item;
+            }
+            return $res;
+        }
+
+        // 3. LAYER 2: Pure SNMP Auto-Discovery & Signal Extraction (Works on fresh installs when DB is empty!)
+        return $this->scrapeSnmpOnus($ponPort, $portNum);
+    }
+
+    protected function scrapeCliOnus(int $slot = 0): void
+    {
+        try {
+            $this->initializeCli();
+
+            $isBad = function ($s) {
+                $l = strtolower((string)$s);
+                return empty(trim($s)) || str_contains($l, 'incomplete') || str_contains($l, 'invalid') || str_contains($l, 'unknown') || str_contains($l, 'error') || str_contains($l, 'unrecognized');
+            };
+
+            // Attempt 1: Direct commands
+            $infoOut = $this->cli->execute("show ont info all\r\n", false);
+            if ($isBad($infoOut)) {
+                $infoOut = $this->cli->execute("show onu info all\r\n", false);
+            }
+
+            $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
+            if ($isBad($optOut)) {
+                $optOut = $this->cli->execute("show onu optical-info all\r\n", false);
+            }
+
+            // Attempt 2: Interface-level commands (standard C-Data requirement on older/modular firmware)
+            if ($isBad($infoOut)) {
+                $this->cli->execute("config\r\n", false);
+                $inGpon = $this->cli->execute("interface gpon 0/{$slot}\r\n", false);
+                if ($isBad($inGpon)) {
+                    $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
                 }
-                $slot = ($ponPort >> 16) & 0xFF;
-                if ($slot > 16) {
-                    $slot = 0;
+
+                if (!$isBad($inGpon)) {
+                    $infoOut = $this->cli->execute("show ont info all\r\n", false);
+                    if ($isBad($infoOut)) {
+                        $infoOut = $this->cli->execute("show ont info 1 all\r\n", false);
+                    }
+                    $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
+                    if ($isBad($optOut)) {
+                        $optOut = $this->cli->execute("show ont optical-info 1 all\r\n", false);
+                    }
+                } else {
+                    $inEpon = $this->cli->execute("interface epon 0/{$slot}\r\n", false);
+                    if ($isBad($inEpon)) {
+                        $inEpon = $this->cli->execute("interface epon 0/0\r\n", false);
+                    }
+                    if (!$isBad($inEpon)) {
+                        $infoOut = $this->cli->execute("show onu info all\r\n", false);
+                        if ($isBad($infoOut)) {
+                            $infoOut = $this->cli->execute("show onu info 1 all\r\n", false);
+                        }
+                        $optOut = $this->cli->execute("show onu optical-info all\r\n", false);
+                        if ($isBad($optOut)) {
+                            $optOut = $this->cli->execute("show onu optical-info 1 all\r\n", false);
+                        }
+                    }
+                }
+                $this->cli->execute("exit\r\n", false);
+            }
+
+            // Parse show ont info lines
+            $cleanInfo = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$infoOut);
+            foreach (explode("\n", $cleanInfo) as $line) {
+                $line = trim($line);
+                if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'No')) {
+                    continue;
+                }
+
+                // Match SN (4 letter vendor + 8-12 hex) OR MAC address
+                if (preg_match('/([A-Z0-9]{4}[A-Z0-9]{8,12}|(?:[A-F0-9]{2}[:-]){5}[A-F0-9]{2})/i', $line, $snMatch)) {
+                    $sn = strtoupper($snMatch[1]);
+                    $pos = strpos($line, $snMatch[1]);
+                    $before = trim(substr($line, 0, $pos));
+                    $after = trim(substr($line, $pos + strlen($snMatch[1])));
+
+                    $runState = preg_match('/\b(online|active|up)\b/i', $after) ? 'online' : 'offline';
+
+                    $lPort = null;
+                    $lOnuId = null;
+
+                    if (preg_match('/(?:GPON|EPON)?(?:\d+\/)*(\d+)[:\s]+(\d+)/i', $before, $m)) {
+                        $lPort = (int)$m[1];
+                        $lOnuId = (int)$m[2];
+                    } elseif (preg_match_all('/\d+/', $before, $m)) {
+                        $nums = $m[0];
+                        if (count($nums) >= 2) {
+                            $lOnuId = (int)array_pop($nums);
+                            $lPort = (int)array_pop($nums);
+                        } elseif (count($nums) === 1) {
+                            $lOnuId = (int)$nums[0];
+                            $lPort = 1;
+                        }
+                    }
+
+                    if ($lPort !== null && $lOnuId !== null) {
+                        $this->cachedCliParsedOnus[$lPort][$lOnuId] = [
+                            'onu_index'        => $lOnuId,
+                            'serial_number'    => $sn,
+                            'mac_address'      => (str_contains($sn, ':') || str_contains($sn, '-')) ? str_replace('-', ':', $sn) : null,
+                            'rx_power_dbm'     => null,
+                            'tx_power_dbm'     => null,
+                            'snr_db'           => null,
+                            'temperature'      => null,
+                            'firmware_version' => null,
+                            'model'            => null,
+                            'status'           => $runState,
+                        ];
+                    }
+                }
+            }
+
+            // Parse show ont optical-info lines
+            $cleanOpt = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$optOut);
+            foreach (explode("\n", $cleanOpt) as $line) {
+                $line = trim($line);
+                if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID')) {
+                    continue;
+                }
+
+                $cols = preg_split('/\s+/', $line);
+                $lPort = null;
+                $lOnuId = null;
+                $rx = null;
+                $tx = null;
+                $temp = null;
+
+                if (count($cols) >= 4 && str_contains($cols[0], '/')) {
+                    $parts = explode('/', $cols[0]);
+                    $lPort = (int)end($parts);
+                    $lOnuId = (int)$cols[1];
+                    $rx = $cols[2];
+                    $tx = $cols[3];
+                    $temp = $cols[5] ?? null;
+                } elseif (count($cols) >= 3 && is_numeric($cols[0])) {
+                    $lOnuId = (int)$cols[0];
+                    $rx = $cols[1];
+                    $tx = $cols[2];
+                    $temp = $cols[4] ?? ($cols[3] ?? null);
+                }
+
+                if ($lOnuId !== null) {
+                    foreach ($this->cachedCliParsedOnus as $p => &$onus) {
+                        if (($lPort === null || $p === $lPort) && isset($onus[$lOnuId])) {
+                            if (is_numeric($rx)) $onus[$lOnuId]['rx_power_dbm'] = (float)$rx;
+                            if (is_numeric($tx)) $onus[$lOnuId]['tx_power_dbm'] = (float)$tx;
+                            if (is_numeric($temp)) $onus[$lOnuId]['temperature'] = (float)$temp;
+                        }
+                    }
+                    unset($onus);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("CData OLT Telnet CLI sync failed: " . $e->getMessage() . ". Falling back to SNMP.");
+        }
+    }
+
+    protected function scrapeSnmpOnus(int $ponPort, int $portNum): array
+    {
+        // Cache all SNMP walk tables once per polling cycle
+        if ($this->cachedOnuSerials === null) {
+            // Check C-Data GPON (34592)
+            $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2') ?: []);
+            
+            $gponStatuses = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: []) : [];
+            $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8') ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.6') ?: [])) : [];
+            $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: []) : [];
+            $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.10') ?: []) : [];
+
+            // Check C-Data EPON (51810 / 17409 CTC)
+            $eponSerials = [];
+            $eponStatuses = [];
+            $eponRx = [];
+            $eponTx = [];
+            $eponTemps = [];
+            $eponMacs = [];
+
+            if (empty($gponSerials)) {
+                // Try 51810 across ports
+                $eponSerials = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.2')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.2') ?: []);
+                $eponStatuses = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.3') ?: [];
+                $eponRx = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.6') ?: [];
+                $eponTx = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.7') ?: ($this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.5') ?: []);
+                $eponTemps = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.8') ?: [];
+                $eponMacs = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.4') ?: [];
+
+                // If still empty, try CTC 17409 standard
+                if (empty($eponSerials)) {
+                    $ctcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.2') ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: []);
+                    $ctcStatuses = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.3') ?: [];
+                    $ctcRx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.8') ?: [];
+                    
+                    if (!empty($ctcMacs)) {
+                        $eponMacs = $ctcMacs;
+                        $eponSerials = $ctcMacs;
+                        $eponStatuses = $ctcStatuses;
+                        $eponRx = $ctcRx;
+                    }
+                }
+            }
+
+            $this->cachedOnuSerials = $gponSerials ?: $eponSerials;
+            $this->cachedOnuStatuses = $gponStatuses ?: $eponStatuses;
+            $this->cachedOnuRx = $gponRx ?: $eponRx;
+            $this->cachedOnuTx = $gponTx ?: $eponTx;
+            $this->cachedOnuTemps = $gponTemps ?: $eponTemps;
+            $this->cachedOnuMacs = $eponMacs;
+        }
+
+        $cleanSnString = function($raw) {
+            $raw = trim((string)$raw);
+            $raw = preg_replace('/^(STRING|Hex-STRING|OctetString)\s*:?\s*/i', '', $raw);
+            $raw = trim($raw, '" ');
+            if (preg_match('/^[0-9A-Fa-f\s]+$/', $raw) && str_contains($raw, ' ')) {
+                $hex = str_replace(' ', '', $raw);
+                $decoded = @hex2bin($hex);
+                if ($decoded !== false && preg_match('/[A-Za-z0-9]/', $decoded)) {
+                    return trim(preg_replace('/[^A-Za-z0-9]/', '', $decoded));
+                }
+                return strtoupper($hex);
+            }
+            return strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $raw));
+        };
+
+        $parsePower = function($val) {
+            $raw = (int)$val;
+            if ($raw === 0 || $raw <= -65535) return null;
+            if ($raw < 0 && $raw > -65536) return round($raw / 100, 2);
+            if ($raw > 65536) return round(10 * log10($raw / 10000), 2);
+            if ($raw > 0 && $raw < 2000) return round($raw / 10 - 50, 2);
+            if ($raw >= -4000 && $raw <= 1000) return round($raw / 100, 2);
+            return null;
+        };
+
+        $results = [];
+
+        foreach ($this->cachedOnuSerials as $oidKey => $rawVal) {
+            $sn = $cleanSnString($rawVal);
+            if (strlen($sn) < 6) continue;
+
+            $parts = explode('.', (string)$oidKey);
+            $p = null;
+            $onuId = 1;
+
+            if (count($parts) >= 2) {
+                $onuId = (int)end($parts);
+                $rawP = (int)$parts[count($parts) - 2];
+                if ($rawP >= 1310721 && $rawP <= 1310736) {
+                    $p = $rawP - 1310720;
+                } elseif ($rawP > 1000000) {
+                    $p = $rawP & 0xFF;
+                } else {
+                    $p = $rawP;
                 }
             } else {
-                $portNum = $ponPort;
-                $slot = 0;
-            }
-            if ($portNum <= 0) {
-                $portNum = 1;
+                $endIdx = (int)end($parts);
+                $p = (int)floor($endIdx / 256) + 1;
+                $onuId = $endIdx % 256;
             }
 
-            if ($this->cachedCliParsedOnus === null) {
-                $this->cachedCliParsedOnus = [];
-                try {
-                    $this->initializeCli();
+            // Check if this ONU belongs to the current port (or broad match if single PON)
+            if ($p === $portNum || $p === $ponPort || count($this->cachedOnuSerials) <= 16) {
+                $stVal = $this->cachedOnuStatuses[$oidKey] ?? 0;
+                $isOnline = match((int)$stVal) {
+                    1, 2, 10 => true,
+                    default => false
+                };
 
-                    $isBad = function ($s) {
-                        $l = strtolower((string)$s);
-                        return empty(trim($s)) || str_contains($l, 'incomplete') || str_contains($l, 'invalid') || str_contains($l, 'unknown') || str_contains($l, 'error') || str_contains($l, 'unrecognized');
-                    };
+                $rxVal = $parsePower($this->cachedOnuRx[$oidKey] ?? 0);
+                $txVal = $parsePower($this->cachedOnuTx[$oidKey] ?? 0);
 
-                    // Coba ambil ont info all dan optical-info all
-                    $infoOut = $this->cli->execute("show ont info all");
-                    if ($isBad($infoOut)) {
-                        $this->cli->execute('config');
-                        $infoOut = $this->cli->execute("show ont info all");
-                    }
-                    if ($isBad($infoOut)) {
-                        $infoOut = $this->cli->execute("show onu info all");
-                    }
-
-                    $optOut = $this->cli->execute("show ont optical-info all");
-                    if ($isBad($optOut)) {
-                        $optOut = $this->cli->execute("show onu optical-info all");
-                    }
-
-                    \Illuminate\Support\Facades\Log::info("CData CLI infoOut: " . trim(preg_replace('/\s+/', ' ', substr((string)$infoOut, 0, 500))));
-                    \Illuminate\Support\Facades\Log::info("CData CLI optOut: " . trim(preg_replace('/\s+/', ' ', substr((string)$optOut, 0, 500))));
-
-                    // Parse show ont info lines
-                    $cleanInfo = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$infoOut);
-                    foreach (explode("\n", $cleanInfo) as $line) {
-                        $line = trim($line);
-                        if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'No')) {
-                            continue;
-                        }
-
-                        // Cari Serial Number (4 huruf vendor + 8-12 digit hex/alfanumerik, atau MAC address)
-                        if (preg_match('/([A-Z0-9]{4}[A-Z0-9]{8,12}|(?:[A-F0-9]{2}[:-]){5}[A-F0-9]{2})/i', $line, $snMatch)) {
-                            $sn = strtoupper($snMatch[1]);
-                            $pos = strpos($line, $snMatch[1]);
-                            $before = trim(substr($line, 0, $pos));
-                            $after = trim(substr($line, $pos + strlen($snMatch[1])));
-
-                            $runState = preg_match('/\b(online|active|up)\b/i', $after) ? 'online' : 'offline';
-
-                            // Parse port dan onuId dari bagian sebelum SN
-                            // Mendukung: 0/0/1 1, 0/1 1, GPON0/0/1:1, 1:1, 1 1
-                            $lPort = null;
-                            $lOnuId = null;
-
-                            if (preg_match('/(?:GPON|EPON)?(?:\d+\/)*(\d+)[:\s]+(\d+)/i', $before, $m)) {
-                                $lPort = (int)$m[1];
-                                $lOnuId = (int)$m[2];
-                            } elseif (preg_match_all('/\d+/', $before, $m)) {
-                                $nums = $m[0];
-                                if (count($nums) >= 2) {
-                                    $lOnuId = (int)array_pop($nums);
-                                    $lPort = (int)array_pop($nums);
-                                } elseif (count($nums) === 1) {
-                                    $lOnuId = (int)$nums[0];
-                                    $lPort = 1;
-                                }
-                            }
-
-                            if ($lPort !== null && $lOnuId !== null) {
-                                $this->cachedCliParsedOnus[$lPort][$lOnuId] = [
-                                    'onu_index'        => $lOnuId,
-                                    'serial_number'    => $sn,
-                                    'mac_address'      => (str_contains($sn, ':') || str_contains($sn, '-')) ? str_replace('-', ':', $sn) : null,
-                                    'rx_power_dbm'     => null,
-                                    'tx_power_dbm'     => null,
-                                    'snr_db'           => null,
-                                    'temperature'      => null,
-                                    'firmware_version' => null,
-                                    'model'            => null,
-                                    'status'           => $runState,
-                                ];
-                            }
-                        }
-                    }
-
-                    // Parse show ont optical-info lines
-                    $cleanOpt = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$optOut);
-                    foreach (explode("\n", $cleanOpt) as $line) {
-                        $line = trim($line);
-                        if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID')) {
-                            continue;
-                        }
-
-                        $cols = preg_split('/\s+/', $line);
-                        $lPort = null;
-                        $lOnuId = null;
-                        $rx = null;
-                        $tx = null;
-                        $temp = null;
-
-                        if (count($cols) >= 4 && str_contains($cols[0], '/')) {
-                            $parts = explode('/', $cols[0]);
-                            $lPort = (int)end($parts);
-                            $lOnuId = (int)$cols[1];
-                            $rx = $cols[2];
-                            $tx = $cols[3];
-                            $temp = $cols[5] ?? null;
-                        } elseif (count($cols) >= 3 && is_numeric($cols[0])) {
-                            $lOnuId = (int)$cols[0];
-                            $rx = $cols[1];
-                            $tx = $cols[2];
-                            $temp = $cols[4] ?? ($cols[3] ?? null);
-                        }
-
-                        if ($lOnuId !== null) {
-                            foreach ($this->cachedCliParsedOnus as $p => &$onus) {
-                                if (($lPort === null || $p === $lPort) && isset($onus[$lOnuId])) {
-                                    if (is_numeric($rx)) $onus[$lOnuId]['rx_power_dbm'] = (float)$rx;
-                                    if (is_numeric($tx)) $onus[$lOnuId]['tx_power_dbm'] = (float)$tx;
-                                    if (is_numeric($temp)) $onus[$lOnuId]['temperature'] = (float)$temp;
-                                }
-                            }
-                            unset($onus);
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    \Log::warning("CData OLT Telnet CLI sync failed: " . $e->getMessage() . ". Falling back to SNMP.");
-                }
-            }
-
-            if (!empty($this->cachedCliParsedOnus[$portNum])) {
-                $res = [];
-                foreach ($this->cachedCliParsedOnus[$portNum] as $item) {
-                    $item['pon_port'] = $ponPort;
-                    $res[] = $item;
-                }
-                return $res;
-            }
-
-            // SNMP Fallback
-            if ($this->cachedOnuStatuses === null) {
-                $this->cachedOnuStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [];
-            }
-            $statuses = $this->cachedOnuStatuses;
-
-            $dbOnus = Onu::where('olt_id', $this->olt->id)
-                ->where('pon_port', $ponPort)
-                ->get()
-                ->keyBy('onu_id_on_olt');
-
-            $baseOld = $this->onuInfoOid . '.' . $ponPort;
-            $rxRaw   = $this->snmp->walk($baseOld . '.6') ?: [];
-            $txRaw   = $this->snmp->walk($baseOld . '.7') ?: [];
-            if (empty($txRaw)) $txRaw = $this->snmp->walk($baseOld . '.5') ?: [];
-            $tempRaw = $this->snmp->walk($baseOld . '.8') ?: [];
-
-            // Coba temukan ONU dari SNMP walk jika DB masih kosong
-            $snmpSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2')
-                ?: ($this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.2') ?: []));
-
-            $results = [];
-
-            if ($dbOnus->isEmpty() && !empty($snmpSerials)) {
-                foreach ($snmpSerials as $oidKey => $rawSn) {
-                    $cleanOid = str_replace('iso', '.1', $oidKey);
-                    $parts = explode('.', $cleanOid);
-                    $endIdx = (int)end($parts);
-                    $snmpP = (int)floor($endIdx / 256) + 1;
-                    $snmpOId = $endIdx % 256;
-                    if ($snmpP === $portNum || count($snmpSerials) <= 16) {
-                        $cleanSn = strtoupper(trim(preg_replace('/[^A-Za-z0-9]/', '', (string)$rawSn)));
-                        if (strlen($cleanSn) >= 8) {
-                            $isOnline = isset($statuses[$oidKey]) && (int)$statuses[$oidKey] === 1;
-                            $results[] = [
-                                'pon_port'         => $ponPort,
-                                'onu_index'        => $snmpOId > 0 ? $snmpOId : 1,
-                                'serial_number'    => $cleanSn,
-                                'mac_address'      => null,
-                                'rx_power_dbm'     => null,
-                                'tx_power_dbm'     => null,
-                                'snr_db'           => null,
-                                'temperature'      => null,
-                                'firmware_version' => null,
-                                'model'            => null,
-                                'status'           => $isOnline ? 'online' : 'offline',
-                            ];
-                        }
-                    }
-                }
-            }
-
-            foreach ($dbOnus as $onuId => $dbOnu) {
-                $rxVal = null;
-                $rxRawVal = (int)($rxRaw[$onuId] ?? 0);
-                if ($rxRawVal < 0 && $rxRawVal > -65536) {
-                    $rxVal = round($rxRawVal / 100, 2);
-                } elseif ($rxRawVal > 65536) {
-                    $rxVal = round(10 * log10($rxRawVal / 10000), 2);
-                } elseif ($rxRawVal > 0 && $rxRawVal < 2000) {
-                    $rxVal = round($rxRawVal / 10 - 50, 2);
+                if ($rxVal !== null && $rxVal > -40) {
+                    $isOnline = true;
                 }
 
-                $txVal = null;
-                $txRawVal = (int)($txRaw[$onuId] ?? 0);
-                if ($txRawVal !== 0) {
-                    if ($txRawVal < 0 && $txRawVal > -65536) {
-                        $txVal = round($txRawVal / 100, 2);
-                    } elseif ($txRawVal > 65536) {
-                        $txVal = round(10 * log10($txRawVal / 10000), 2);
-                    } elseif ($txRawVal > 0 && $txRawVal < 2000) {
-                        $txVal = round($txRawVal / 10 - 50, 2);
-                    }
-                }
-
-                $tempVal = null;
-                if (!empty($tempRaw[$onuId]) && is_numeric($tempRaw[$onuId])) {
-                    $t = (int)$tempRaw[$onuId];
-                    if ($t !== 0 && $t < 65535) {
-                        $tempVal = $t > 1000 ? round($t / 100, 1) : $t;
-                    }
-                }
-
-                $linearIndex = (($ponPort - 1) * 256) + $onuId;
-                $searchKey = "1.0." . $linearIndex;
-                $statusVal = $statuses[$searchKey] ?? null;
-
-                $isOnline = false;
-                if ($statusVal !== null) {
-                    $isOnline = ((int)$statusVal === 1);
-                } else {
-                    if ($rxVal !== null && $rxVal > -40) {
-                        $isOnline = true;
+                $mac = null;
+                if (!empty($this->cachedOnuMacs[$oidKey])) {
+                    $mClean = strtoupper(preg_replace('/[^A-F0-9]/i', '', $this->cachedOnuMacs[$oidKey]));
+                    if (strlen($mClean) === 12) {
+                        $mac = implode(':', str_split($mClean, 2));
                     }
                 }
 
                 $results[] = [
                     'pon_port'         => $ponPort,
-                    'onu_index'        => $onuId,
-                    'serial_number'    => $dbOnu->serial_number,
-                    'mac_address'      => $dbOnu->mac_address,
+                    'onu_index'        => $onuId > 0 ? $onuId : 1,
+                    'serial_number'    => $sn,
+                    'mac_address'      => $mac,
                     'rx_power_dbm'     => $rxVal,
                     'tx_power_dbm'     => $txVal,
                     'snr_db'           => null,
-                    'temperature'      => $tempVal,
-                    'firmware_version' => $dbOnu->firmware_version,
-                    'model'            => $dbOnu->model,
+                    'temperature'      => null,
+                    'firmware_version' => null,
+                    'model'            => null,
                     'status'           => $isOnline ? 'online' : 'offline',
                 ];
             }
-
-            return $results;
         }
 
-        $results   = [];
-        $base      = $this->onuInfoOid . '.' . $ponPort;
-        $serials   = $this->snmp->walk($base . '.2');
-        $rxRaw     = $this->snmp->walk($base . '.6');
-        $txRaw     = $this->snmp->walk($base . '.7');
-        $statuses  = $this->snmp->walk($base . '.3');
-        $tempRaw   = $this->snmp->walk($base . '.8');
-        $voltRaw   = $this->snmp->walk($base . '.9');
-        $biasRaw   = $this->snmp->walk($base . '.10');
-        $macs      = $this->snmp->walk($base . '.4');
-        
-        // Cache the entire CTC MAC table once per polling cycle
-        if ($this->macsCache === null) {
-            $this->macsCache = [];
-            try {
-                $allCtcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: [];
-                foreach ($allCtcMacs as $fullIndex => $val) {
-                    if (preg_match('/(\d+)\.\d+$/', $fullIndex, $m)) {
-                        $ifIndex = (int)$m[1];
-                        $pPort1 = (($ifIndex >> 12) & 0xFF) - 128;
-                        $pPort2 = ($ifIndex >> 8) & 0xFF;
-                        $pPort3 = $pPort1 + 1; // Zero-indexed offset
-                        $pPort4 = $pPort2 + 1; // Zero-indexed offset
-                        $oId = $ifIndex & 0xFFF;
-                        
-                        foreach ([$pPort1, $pPort2, $pPort3, $pPort4] as $p) {
-                            if ($p >= 0 && $p <= 64) {
-                                $this->macsCache[$p][$oId] = $val;
-                            }
-                        }
-                    }
-                }
-            } catch (\Throwable) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
-        }
-        $macsCTC = $this->macsCache[$ponPort] ?? [];
-        if (empty($macsCTC) && $ponPort > 1000000) {
-            $actualPort = $ponPort & 0xFF;
-            $macsCTC = $this->macsCache[$actualPort] ?? [];
-            if (empty($macsCTC)) {
-                $actualPort2 = ($ponPort >> 8) & 0xFF;
-                $macsCTC = $this->macsCache[$actualPort2] ?? [];
+        // If SNMP returned 0 ONUs but Database has existing records for this port, keep them as offline
+        if (empty($results)) {
+            $dbOnus = Onu::where('olt_id', $this->olt->id)
+                ->where('pon_port', $ponPort)
+                ->get();
+            foreach ($dbOnus as $dbOnu) {
+                $results[] = [
+                    'pon_port'         => $ponPort,
+                    'onu_index'        => $dbOnu->onu_id_on_olt ?? 1,
+                    'serial_number'    => $dbOnu->serial_number,
+                    'mac_address'      => $dbOnu->mac_address,
+                    'rx_power_dbm'     => null,
+                    'tx_power_dbm'     => null,
+                    'snr_db'           => null,
+                    'temperature'      => null,
+                    'firmware_version' => $dbOnu->firmware_version,
+                    'model'            => $dbOnu->model,
+                    'status'           => 'offline',
+                ];
             }
         }
-        
-        $firmwares = $this->snmp->walk($base . '.11');
-        $models    = $this->snmp->walk($base . '.12');
 
-        if (empty($txRaw)) {
-            $txRaw = $this->snmp->walk($base . '.5');
-        }
-        if (empty($firmwares)) {
-            $firmwares = $this->snmp->walk($base . '.13');
-        }
-
-        foreach ($serials as $idx => $serial) {
-            $rxRawVal = (int)($rxRaw[$idx] ?? 0);
-            $rx  = null;
-            if ($rxRawVal < 0 && $rxRawVal > -65536) {
-                $rx = round($rxRawVal / 100, 2);
-            } elseif ($rxRawVal > 65536) {
-                $rx = round(10 * log10($rxRawVal / 10000), 2);
-            } elseif ($rxRawVal > 0 && $rxRawVal < 2000) {
-                $rx = round($rxRawVal / 10 - 50, 2);
-            }
-
-            $txRawVal = (int)($txRaw[$idx] ?? 0);
-            $tx = null;
-            if ($txRawVal !== 0) {
-                if ($txRawVal < 0 && $txRawVal > -65536) {
-                    $tx = round($txRawVal / 100, 2);
-                } elseif ($txRawVal > 65536) {
-                    $tx = round(10 * log10($txRawVal / 10000), 2);
-                } elseif ($txRawVal > 0 && $txRawVal < 2000) {
-                    $tx = round($txRawVal / 10 - 50, 2);
-                }
-            }
-
-            $snrVal = null;
-            $bias = (int)($biasRaw[$idx] ?? 0);
-            if ($bias > 0) {
-                $snrVal = round(min(35.0, max(8.0, 10.0 + log10(max(1, $bias / 1000)) * 8)), 2);
-            }
-
-            $tempVal = null;
-            if (!empty($tempRaw[$idx]) && is_numeric($tempRaw[$idx])) {
-                $t = (int)$tempRaw[$idx];
-                if ($t !== 0 && $t < 65535) {
-                    $tempVal = $t > 1000 ? round($t / 100, 1) : $t;
-                }
-            }
-
-            $mac = null;
-            $rawMac = $macsCTC[$idx] ?? $macs[$idx] ?? null;
-            if (!empty($rawMac)) {
-                $macStr = is_string($rawMac) ? $rawMac : (string)$rawMac;
-                
-                $macStr = str_ireplace(['Hex-STRING:', 'STRING:', '"'], '', $macStr);
-                // Handle "Hex-STRING: xx xx" from snmpwalk
-                if (preg_match('/^[A-F0-9]{2}(\s[A-F0-9]{2}){5}$/i', trim($macStr)) || strpos((string)$rawMac, 'Hex-STRING') !== false) {
-                    $hexClean = preg_replace('/[^A-F0-9]/i', '', $macStr);
-                } else {
-                    $hexClean = strtoupper(bin2hex($macStr));
-                }
-                
-                $hexClean = substr(preg_replace('/[^A-F0-9]/i', '', $hexClean), 0, 12);
-                if (strlen($hexClean) === 12) {
-                    $mac = implode(':', str_split($hexClean, 2));
-                }
-            }
-
-            $fw = null;
-            if (!empty($firmwares[$idx]) && is_string($firmwares[$idx])) {
-                $fwClean = trim($firmwares[$idx]);
-                if (!empty($fwClean) && $fwClean !== 'N/A') {
-                    $fw = $fwClean;
-                }
-            }
-
-            $modelVal = null;
-            if (!empty($models[$idx]) && is_string($models[$idx])) {
-                $mClean = trim($models[$idx]);
-                if (!empty($mClean) && $mClean !== 'N/A') {
-                    $modelVal = $mClean;
-                }
-            }
-
-            $results[] = [
-                'pon_port'         => $ponPort,
-                'onu_index'        => $idx,
-                'serial_number'    => is_string($serial) ? strtoupper(trim($serial)) : (string)$serial,
-                'mac_address'      => $mac,
-                'rx_power_dbm'     => $rx,
-                'tx_power_dbm'     => $tx,
-                'snr_db'           => $snrVal,
-                'temperature'      => $tempVal,
-                'firmware_version' => $fw,
-                'model'            => $modelVal,
-                'status'           => match ((int)($statuses[$idx] ?? 0)) {
-                    1, 2, 10       => 'online',
-                    3, 0           => 'offline',
-                    default        => 'unknown'
-                },
-            ];
-        }
         return $results;
     }
 
@@ -552,18 +530,18 @@ class CDataOltDriver extends BaseOltDriver
         try {
             $this->initializeCli();
             
-            $output = $this->cli->execute('show ont autofind all');
+            $output = $this->cli->execute("show ont autofind all\r\n", false);
             if (str_contains($output, 'Unknown command')) {
-                $output = $this->cli->execute('show gpon onu uncfg');
+                $output = $this->cli->execute("show gpon onu uncfg\r\n", false);
             }
             if (str_contains($output, 'Unknown command') || empty(trim($output))) {
-                $output = $this->cli->execute('show onu uncfg');
+                $output = $this->cli->execute("show onu uncfg\r\n", false);
             }
             if (str_contains($output, 'Unknown command') || empty(trim($output))) {
-                $output = $this->cli->execute('show gpon onu unconfigured');
+                $output = $this->cli->execute("show gpon onu unconfigured\r\n", false);
             }
             if (str_contains($output, 'Unknown command') || empty(trim($output))) {
-                $output = $this->cli->execute('show onu unauthorized');
+                $output = $this->cli->execute("show onu unauthorized\r\n", false);
             }
             
             $onus = [];
@@ -594,12 +572,12 @@ class CDataOltDriver extends BaseOltDriver
             $this->initializeCli();
             $onuId = $onu->onu_id_on_olt ?? $onu->getKey();
             $name  = $onu->name ?? ('CUST-' . $onuId);
-            $this->cli->execute('configure terminal');
-            $this->cli->execute("interface gpon 0/0/$ponPort");
-            $this->cli->execute("onu add $onuId sn-auth $serialNumber line-profile-id 1 srv-profile-id 1 description \"$name\"");
-            $this->cli->execute("onu $onuId port uni 1 native-vlan 100");
-            $this->cli->execute('exit');
-            $this->cli->execute('write');
+            $this->cli->execute("configure terminal\r\n", false);
+            $this->cli->execute("interface gpon 0/0/$ponPort\r\n", false);
+            $this->cli->execute("onu add $onuId sn-auth $serialNumber line-profile-id 1 srv-profile-id 1 description \"$name\"\r\n", false);
+            $this->cli->execute("onu $onuId port uni 1 native-vlan 100\r\n", false);
+            $this->cli->execute("exit\r\n", false);
+            $this->cli->execute("write\r\n", false);
             return true;
         } catch (\Exception) {
             return false;
@@ -612,17 +590,17 @@ class CDataOltDriver extends BaseOltDriver
             $ponPort = $onu->pon_port ?? 0;
             $onuId   = $onu->onu_id_on_olt ?? $onu->getKey();
             $this->initializeCli();
-            $this->cli->execute('configure terminal');
-            $this->cli->execute("interface gpon 0/0");
+            $this->cli->execute("configure terminal\r\n", false);
+            $this->cli->execute("interface gpon 0/0\r\n", false);
             $cmd = match ($status) {
                 'enable'  => "ont modify $ponPort $onuId admin-state up",
                 'disable' => "ont modify $ponPort $onuId admin-state down",
                 'reset'   => "ont reset $ponPort $onuId",
                 default   => "ont modify $ponPort $onuId admin-state up"
             };
-            $this->cli->execute($cmd);
-            $this->cli->execute('exit');
-            $this->cli->execute('write');
+            $this->cli->execute($cmd . "\r\n", false);
+            $this->cli->execute("exit\r\n", false);
+            $this->cli->execute("write\r\n", false);
             return true;
         } catch (\Exception) {
             return false;
@@ -641,8 +619,8 @@ class CDataOltDriver extends BaseOltDriver
             $ipIndex = (int)($config['ip_index'] ?? 1);
 
             $this->initializeCli();
-            $this->cli->execute('configure terminal');
-            $this->cli->execute('interface gpon 0/0');
+            $this->cli->execute("configure terminal\r\n", false);
+            $this->cli->execute("interface gpon 0/0\r\n", false);
 
             if ($mode === 'pppoe') {
                 $user = $config['username'] ?? '';
@@ -654,9 +632,9 @@ class CDataOltDriver extends BaseOltDriver
                 throw new \Exception("Unsupported WAN mode: $mode");
             }
 
-            $this->cli->execute($cmd);
-            $this->cli->execute('exit');
-            $this->cli->execute('write');
+            $this->cli->execute($cmd . "\r\n", false);
+            $this->cli->execute("exit\r\n", false);
+            $this->cli->execute("write\r\n", false);
             return true;
         } catch (\Exception $e) {
             Log::error("Failed to push WAN config to C-Data ONU {$onu->id}: " . $e->getMessage());
@@ -674,27 +652,17 @@ class CDataOltDriver extends BaseOltDriver
             $upKbps       = $uploadMbps * 1000;
 
             $this->initializeCli();
-            $this->cli->execute('configure terminal');
-            $this->cli->execute("dba-profile add profile-name $profileName type 4 max $downKbps");
-            $this->cli->execute("interface gpon 0/0/$ponPort");
-            $this->cli->execute("onu $onuId tcont 1 dba-profile-name $profileName");
-            $this->cli->execute("onu $onuId gemport 1 unicast tcont 1 dir both");
-            $this->cli->execute("onu $onuId service-port 1 gemport 1 vlan 100 rx-cttr $downKbps tx-cttr $upKbps");
-            $this->cli->execute('exit');
-            $this->cli->execute('write');
+            $this->cli->execute("configure terminal\r\n", false);
+            $this->cli->execute("dba-profile add profile-name $profileName type 4 max $downKbps\r\n", false);
+            $this->cli->execute("interface gpon 0/0/$ponPort\r\n", false);
+            $this->cli->execute("onu $onuId tcont 1 dba-profile-name $profileName\r\n", false);
+            $this->cli->execute("onu $onuId gemport 1 unicast tcont 1 dir both\r\n", false);
+            $this->cli->execute("onu $onuId service-port 1 gemport 1 vlan 100 rx-cttr $downKbps tx-cttr $upKbps\r\n", false);
+            $this->cli->execute("exit\r\n", false);
+            $this->cli->execute("write\r\n", false);
             return true;
         } catch (\Exception) {
             return false;
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
