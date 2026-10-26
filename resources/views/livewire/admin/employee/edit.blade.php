@@ -131,11 +131,17 @@
                     @endforeach
                 </select>
                 @if($user_id && $employee->user)
-                    <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-                        ✓ Akun login tertaut: <b>{{ $employee->user->name }} ({{ $employee->user->username ?? $employee->user->email }})</b>
-                    </p>
+                    <div class="mt-1.5 p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs">
+                        <div class="text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-500"></i> Akun Login Tertaut: <b>{{ $employee->user->name }}</b>
+                        </div>
+                        <div class="text-slate-600 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+                            <span>Username: <code class="font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">{{ $employee->user->username ?? $employee->user->email }}</code></span>
+                            <span>Password Default: <code class="font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">Password123!</code></span>
+                        </div>
+                    </div>
                 @else
-                    <p class="text-[11px] text-slate-400 mt-1">Pilih user dari daftar atau klik tombol <b>"+ Buat Akun Login Langsung"</b> di atas.</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Pilih user dari daftar atau klik tombol <b>"+ Buat Akun Login Langsung"</b> di atas (Password default: <code>Password123!</code>).</p>
                 @endif
                 @error('user_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
