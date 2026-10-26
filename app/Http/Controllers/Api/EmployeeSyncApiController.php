@@ -17,18 +17,24 @@ class EmployeeSyncApiController extends Controller
     public function sync(Request $request): JsonResponse
     {
         // 1. Verifikasi Secret Token
-        $configuredToken = config('services.mstore.sync_token') 
-            ?: env('MSTORE_SYNC_TOKEN', env('DSBILLING_SYNC_TOKEN', 'mstore-sync-secret-2026'));
+        $configuredToken = trim((string) (config('services.mstore.sync_token') ?: 'mstore-sync-secret-2026'));
 
-        $providedToken = $request->header('X-DSBILLING-TOKEN') 
+        $providedToken = trim((string) (
+            $request->header('X-DSBILLING-TOKEN') 
+            ?: $request->header('x-dsbilling-token')
             ?: $request->header('X-MSTORE-TOKEN') 
+            ?: $request->header('x-mstore-token')
             ?: $request->bearerToken() 
-            ?: $request->input('token');
+            ?: $request->input('sync_token')
+            ?: $request->input('api_token')
+            ?: $request->input('token')
+        ));
 
-        if (empty($providedToken) || ! hash_equals((string) $configuredToken, (string) $providedToken)) {
+        if ($providedToken === '' || ! hash_equals($configuredToken, $providedToken)) {
             Log::warning('Unauthorized employee sync attempt from MStore', [
                 'ip' => $request->ip(),
-                'provided_token' => $providedToken ? substr($providedToken, 0, 4) . '***' : null,
+                'provided_token_length' => strlen($providedToken),
+                'configured_token_length' => strlen($configuredToken),
             ]);
 
             return response()->json([

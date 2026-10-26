@@ -41,4 +41,8 @@ return [
         ],
     ],
 
+    'mstore' => [
+        'sync_token' => env('MSTORE_SYNC_TOKEN', env('DSBILLING_SYNC_TOKEN', 'mstore-sync-secret-2026')),
+    ],
+
 ];
