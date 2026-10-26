@@ -377,72 +377,213 @@ $statusLabels = [
 
     @if ($this->showCreateForm)
         <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-            <div x-show="show" class="w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl max-h-[90vh] overflow-auto">
-                <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-800">
-                    <h3 class="font-semibold">Buat Ticket Baru</h3>
-                    <button @click="show = false; $wire.closeCreateForm()" class="text-slate-400 hover:text-slate-600 dark:text-slate-400">
+            <div x-show="show" class="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+                {{-- Header --}}
+                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                            <span class="material-symbols-outlined notranslate text-xl" translate="no">confirmation_number</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">Buat Tiket Baru</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Daftarkan keluhan teknis, billing, atau pemasangan pelanggan</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="show = false; $wire.closeCreateForm()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-                <div class="px-5 py-4 space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="col-span-2">
-                            <x-ds-searchable-select
-                                wire:model.live="newTicket.customer_id"
-                                strategy="local"
-                                :options="$this->filterOptions['customers'] ?? []"
-                                label="Customer *"
-                                placeholder="-- Pilih Customer --"
-                                search-placeholder="Cari customer..."
-                            />
+
+                {{-- Body Form --}}
+                <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                    @error('create_error')
+                        <div class="p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-medium flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-base shrink-0" translate="no">error</span>
+                            <span>{{ $message }}</span>
                         </div>
-                        <div class="col-span-2">
-                            <label class="block text-xs font-medium mb-1">Title *</label>
-                            <input wire:model.live="newTicket.title" type="text" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100">
+                    @enderror
+
+                    {{-- Customer Section with Tab Toggle --}}
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Pelanggan / Pelapor <span class="text-rose-500">*</span>
+                            </label>
+                            <span class="text-[11px] text-slate-400">
+                                {{ !empty($newTicket['is_manual_customer']) ? 'Mode Input Manual' : 'Mode Database Pelanggan' }}
+                            </span>
                         </div>
-                        <div class="col-span-2">
-                            <label class="block text-xs font-medium mb-1">Deskripsi</label>
-                            <textarea wire:model.live="newTicket.description" rows="3" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100"></textarea>
+
+                        {{-- Mode Selector --}}
+                        <div class="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl gap-1">
+                            <button type="button" 
+                                    wire:click="$set('newTicket.is_manual_customer', false)"
+                                    class="py-1.5 px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 {{ empty($newTicket['is_manual_customer']) ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' }}">
+                                <span class="material-symbols-outlined notranslate text-base" translate="no">person_search</span>
+                                Pelanggan Terdaftar
+                            </button>
+                            <button type="button" 
+                                    wire:click="$set('newTicket.is_manual_customer', true)"
+                                    class="py-1.5 px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 {{ !empty($newTicket['is_manual_customer']) ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' }}">
+                                <span class="material-symbols-outlined notranslate text-base" translate="no">person_add</span>
+                                Belum Terdaftar (Manual)
+                            </button>
                         </div>
+
+                        {{-- Option 1: Existing Customer --}}
+                        @if (empty($newTicket['is_manual_customer']))
+                            <div class="space-y-1.5 pt-1">
+                                <div class="relative">
+                                    <input type="text"
+                                           wire:model.live.debounce.250ms="customerSearch"
+                                           placeholder="Ketik untuk memfilter nama pelanggan..."
+                                           class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <span class="material-symbols-outlined notranslate absolute left-2.5 top-2 text-slate-400 text-base pointer-events-none" translate="no">search</span>
+                                </div>
+                                <select wire:model.live="newTicket.customer_id"
+                                        class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="">-- Pilih Pelanggan ({{ count($this->filteredCustomers) }} Pelanggan) --</option>
+                                    @foreach ($this->filteredCustomers as $id => $name)
+                                        <option value="{{ $id }}">{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('newTicket.customer_id') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
+                            </div>
+                        @else
+                        {{-- Option 2: Manual Customer Form --}}
+                            <div class="p-3.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl space-y-3 pt-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        Nama Pelanggan / Pelapor <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           wire:model.live="newTicket.manual_customer_name" 
+                                           placeholder="Contoh: Pak Joko / Warung Berkah"
+                                           class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    @error('newTicket.manual_customer_name') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            Nomor WhatsApp / HP
+                                        </label>
+                                        <input type="text" 
+                                               wire:model.live="newTicket.manual_customer_phone" 
+                                               placeholder="08xxxxxxxxxx"
+                                               class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            Alamat / Lokasi Gangguan
+                                        </label>
+                                        <input type="text" 
+                                               wire:model.live="newTicket.manual_customer_address" 
+                                               placeholder="Contoh: RT 02 / RW 04 No. 15"
+                                               class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    <span class="font-medium text-indigo-600 dark:text-indigo-400">Info:</span> Data ini akan otomatis dicatat sebagai data pelanggan pelapor di sistem.
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Judul Tiket --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Judul Tiket / Keluhan <span class="text-rose-500">*</span>
+                        </label>
+                        <input wire:model.live="newTicket.title" 
+                               type="text" 
+                               placeholder="Contoh: Lampu LOS Modem Merah, Koneksi Putus-Putus, dll."
+                               class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        @error('newTicket.title') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Deskripsi --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Deskripsi Masalah
+                        </label>
+                        <textarea wire:model.live="newTicket.description" 
+                                  rows="3" 
+                                  placeholder="Rincian kronologi, kendala yang dialami, atau catatan teknisi..."
+                                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+
+                    {{-- Kategori & Prioritas --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <x-ds-searchable-select
-                                wire:model.live="newTicket.category"
-                                strategy="local"
-                                :options="$this->filterOptions['categories'] ?? []"
-                                label="Kategori"
-                                placeholder="-- Kategori --"
-                                :searchable="false"
-                            />
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Kategori Gangguan
+                            </label>
+                            <select wire:model.live="newTicket.category"
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="internet">Internet / Jaringan</option>
+                                <option value="billing">Billing & Pembayaran</option>
+                                <option value="installation">Pasang Baru / Instalasi</option>
+                                <option value="other">Lainnya</option>
+                            </select>
                         </div>
+
                         <div>
-                            <x-ds-searchable-select
-                                wire:model.live="newTicket.priority"
-                                strategy="local"
-                                :options="$this->filterOptions['priorities'] ?? []"
-                                label="Priority"
-                                placeholder="-- Priority --"
-                                :searchable="false"
-                            />
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Tingkat Prioritas
+                            </label>
+                            <select wire:model.live="newTicket.priority"
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="low">Rendah (Low)</option>
+                                <option value="medium">Sedang (Medium)</option>
+                                <option value="high">Tinggi (High)</option>
+                                <option value="critical">Kritis (Critical)</option>
+                            </select>
                         </div>
-                        <div class="col-span-2">
-                            <x-ds-searchable-select
-                                wire:model.live="newTicket.assigned_to"
-                                strategy="local"
-                                :options="$this->filterOptions['assignees'] ?? []"
-                                label="Assignee"
-                                placeholder="-- Opsional (Pilih Petugas) --"
-                                search-placeholder="Cari petugas..."
-                            />
-                        </div>
+                    </div>
+
+                    {{-- Petugas Assignee & Target Selesai --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-medium mb-1">Due Date</label>
-                            <input wire:model.live="newTicket.due_date" type="date" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 py-2 px-3 dark:bg-slate-900 dark:text-slate-100">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Petugas / Teknisi Lapangan
+                            </label>
+                            <select wire:model.live="newTicket.assigned_to"
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- Belum Ditugaskan --</option>
+                                @foreach (($this->filterOptions['assignees'] ?? []) as $id => $name)
+                                    <option value="{{ $id }}">{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Target Selesai (Due Date)
+                            </label>
+                            <input wire:model.live="newTicket.due_date" 
+                                   type="date" 
+                                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                     </div>
                 </div>
-                <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/70 rounded-b-xl flex justify-end gap-2 sticky bottom-0">
-                    <button @click="show = false; $wire.closeCreateForm()" class="px-3 py-1.5 text-sm rounded-md border border-slate-200 dark:border-slate-700">Batal</button>
-                    <button wire:click="submitCreate" class="px-4 py-1.5 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white">Buat Ticket</button>
+
+                {{-- Footer --}}
+                <div class="px-6 py-4 bg-slate-50/80 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+                    <button type="button" 
+                            @click="show = false; $wire.closeCreateForm()" 
+                            class="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        Batal
+                    </button>
+                    <button type="button" 
+                            wire:click="submitCreate" 
+                            wire:loading.attr="disabled"
+                            class="px-5 py-2 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white shadow-sm hover:shadow-indigo-500/25 transition-all flex items-center gap-2 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="submitCreate">Buat Tiket</span>
+                        <span wire:loading wire:target="submitCreate" class="inline-flex items-center gap-1.5">
+                            <span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                            Menyimpan...
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>

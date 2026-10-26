@@ -30,7 +30,18 @@ class Index extends BaseEnterpriseList
     public bool $showBulkAssign = false;
     public bool $showCreateForm = false;
     public array $newTicket = [];
+    public string $customerSearch = '';
     public string $resolveNote = '';
+
+    public function getFilteredCustomersProperty(): array
+    {
+        $all = $this->filterOptions['customers'] ?? [];
+        if (empty(trim($this->customerSearch))) {
+            return $all;
+        }
+        $q = strtolower(trim($this->customerSearch));
+        return array_filter($all, fn($name) => str_contains(strtolower($name), $q));
+    }
 
     protected TicketService $ticketService;
 
@@ -54,7 +65,11 @@ class Index extends BaseEnterpriseList
             'ignored' => false,
         ];
         $this->newTicket = [
+            'is_manual_customer' => false,
             'customer_id' => '',
+            'manual_customer_name' => '',
+            'manual_customer_phone' => '',
+            'manual_customer_address' => '',
             'title' => '',
             'description' => '',
             'category' => 'internet',
@@ -242,8 +257,14 @@ class Index extends BaseEnterpriseList
 
     public function openCreateForm(): void
     {
+        $this->resetErrorBag();
+        $this->customerSearch = '';
         $this->newTicket = [
+            'is_manual_customer' => false,
             'customer_id' => '',
+            'manual_customer_name' => '',
+            'manual_customer_phone' => '',
+            'manual_customer_address' => '',
             'title' => '',
             'description' => '',
             'category' => 'internet',
@@ -257,23 +278,55 @@ class Index extends BaseEnterpriseList
     public function closeCreateForm(): void
     {
         $this->showCreateForm = false;
+        $this->resetErrorBag();
     }
 
     public function submitCreate(): void
     {
         $userId = Auth::id() ?? 0;
+        $this->resetErrorBag();
+
         try {
             $data = $this->newTicket;
-            if (empty($data['customer_id']) || empty($data['title'])) {
-                $this->errorMessage = 'Customer dan Title wajib.';
+
+            // Validasi Title
+            if (empty(trim($data['title'] ?? ''))) {
+                $this->addError('newTicket.title', 'Judul tiket / keluhan wajib diisi.');
                 return;
             }
+
+            // Validasi Customer
+            if (!empty($data['is_manual_customer'])) {
+                if (empty(trim($data['manual_customer_name'] ?? ''))) {
+                    $this->addError('newTicket.manual_customer_name', 'Nama pelanggan / pelapor wajib diisi.');
+                    return;
+                }
+
+                // Buat record Customer guest/non-pelanggan cepat
+                $cleanPhone = !empty($data['manual_customer_phone']) ? preg_replace('/[^0-9]/', '', $data['manual_customer_phone']) : null;
+                $guestCustomer = \App\Models\CRM\Customer::create([
+                    'name' => trim($data['manual_customer_name']),
+                    'code' => 'GST-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                    'phone' => $cleanPhone,
+                    'address' => !empty($data['manual_customer_address']) ? trim($data['manual_customer_address']) : null,
+                    'status' => 'active',
+                    'created_by' => $userId,
+                ]);
+
+                $data['customer_id'] = $guestCustomer->id;
+            } else {
+                if (empty($data['customer_id'])) {
+                    $this->addError('newTicket.customer_id', 'Silakan pilih pelanggan dari daftar, atau aktifkan opsi Belum Terdaftar (Input Manual).');
+                    return;
+                }
+            }
+
             $this->ticketService->create($data, $userId);
             session()->flash('success', 'Tiket berhasil dibuat.');
             $this->showCreateForm = false;
             $this->loadAll();
-        } catch (Throwable $e) {
-            $this->errorMessage = 'Gagal buat tiket: ' . $e->getMessage();
+        } catch (\Throwable $e) {
+            $this->addError('create_error', 'Gagal membuat tiket: ' . $e->getMessage());
         }
     }
 
