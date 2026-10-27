@@ -445,25 +445,15 @@ class CDataOltDriver extends BaseOltDriver
 
             $portsWithOnus = !empty($this->cachedCliParsedOnus) ? array_keys($this->cachedCliParsedOnus) : range(1, 8);
             foreach ($portsWithOnus as $pNum) {
-                // Check if any online ONU on this port is still missing optical rx power
-                $needsPower = false;
-                if (!empty($this->cachedCliParsedOnus[$pNum])) {
-                    foreach ($this->cachedCliParsedOnus[$pNum] as $onuItem) {
-                        if ($onuItem['status'] === 'online' && $onuItem['rx_power_dbm'] === null) {
-                            $needsPower = true;
-                            break;
-                        }
-                    }
+                $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
+                if ($isBad($pOpt)) {
+                    $pOpt = $this->cli->execute("show ont optical-info {$pNum}\r\n", false);
                 }
-
-                if ($needsPower) {
-                    $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
-                    if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show ont optical-info {$pNum}\r\n", false);
-                    }
-                    if (!$isBad($pOpt)) {
-                        $parseOptLines($pOpt, (int)$pNum);
-                    }
+                if ($isBad($pOpt)) {
+                    $pOpt = $this->cli->execute("show onu optical-info {$pNum} all\r\n", false);
+                }
+                if (!$isBad($pOpt)) {
+                    $parseOptLines($pOpt, (int)$pNum);
                 }
             }
 
