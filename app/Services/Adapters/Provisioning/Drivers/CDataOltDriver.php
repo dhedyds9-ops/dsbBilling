@@ -441,6 +441,28 @@ class CDataOltDriver extends BaseOltDriver
             $this->cachedOnuMacs = $eponMacs;
         }
 
+        // Helper to normalize and lookup OID suffixes across SNMP result arrays
+        $lookupVal = function(?array $arr, string $key) {
+            if (empty($arr)) return null;
+            if (array_key_exists($key, $arr)) return $arr[$key];
+            $trimmed = ltrim($key, '.');
+            if (array_key_exists($trimmed, $arr)) return $arr[$trimmed];
+            if (array_key_exists('.' . $trimmed, $arr)) return $arr['.' . $trimmed];
+            
+            // Extract suffix (e.g. 1310721.1 or 1.1)
+            $parts = explode('.', $trimmed);
+            if (count($parts) >= 2) {
+                $lastTwo = $parts[count($parts) - 2] . '.' . end($parts);
+                if (array_key_exists($lastTwo, $arr)) return $arr[$lastTwo];
+                foreach ($arr as $k => $v) {
+                    if (str_ends_with((string)$k, $lastTwo) || str_ends_with((string)$k, '.' . end($parts))) {
+                        return $v;
+                    }
+                }
+            }
+            return null;
+        };
+
         $cleanSnString = function($raw) {
             $raw = trim((string)$raw);
             $raw = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $raw);
@@ -526,11 +548,22 @@ class CDataOltDriver extends BaseOltDriver
                 $onuId = $endIdx % 256;
             }
 
-            // Check if this ONU belongs to the current port (or broad match if port can't be resolved)
-            if ($p === $portNum || $p === $ponPort || ($p !== null && $rawP === $ponPort) || count($this->cachedOnuSerials) <= 16) {
-                $activeVal = (int)($this->cachedOnuActiveStates[$oidKey] ?? 0);
-                $stVal = (int)($this->cachedOnuStatuses[$oidKey] ?? 0);
-                $stRaw = strtolower(trim((string)($this->cachedOnuStatuses[$oidKey] ?? '')));
+            // Check if this ONU belongs to the current port
+            $isPortMatch = false;
+            if ($p !== null && $p > 0) {
+                $isPortMatch = ($p === $portNum || $p === $ponPort || (isset($rawP) && $rawP === $ponPort));
+            } else {
+                // If port index could not be resolved from OID, assign to port 1 only (prevent duplicating to all 8 ports)
+                $isPortMatch = ($portNum === 1);
+            }
+
+            if ($isPortMatch) {
+                $rawAct = trim((string)($lookupVal($this->cachedOnuActiveStates, (string)$oidKey) ?? ''));
+                $rawSt  = trim((string)($lookupVal($this->cachedOnuStatuses, (string)$oidKey) ?? ''));
+                $stRaw  = strtolower($rawSt);
+                $actRaw = strtolower($rawAct);
+                $activeVal = is_numeric($rawAct) ? (int)$rawAct : 0;
+                $stVal     = is_numeric($rawSt) ? (int)$rawSt : 0;
 
                 // In GPON: activeVal 1 = active, stVal 5 = operation (O5 state)
                 // In EPON: activeVal / stVal 1 = online/authenticated, 3 = online
@@ -540,18 +573,23 @@ class CDataOltDriver extends BaseOltDriver
                     || str_contains($stRaw, 'up')
                     || str_contains($stRaw, 'active')
                     || str_contains($stRaw, 'oper')
-                    || str_contains($stRaw, 'o5');
+                    || str_contains($stRaw, 'o5')
+                    || str_contains($actRaw, 'active')
+                    || str_contains($actRaw, 'up')
+                    || str_contains($actRaw, 'online')
+                    || str_contains($actRaw, 'enable');
 
-                $rxVal = $parsePower($this->cachedOnuRx[$oidKey] ?? 0);
-                $txVal = $parsePower($this->cachedOnuTx[$oidKey] ?? 0);
+                $rxVal = $parsePower($lookupVal($this->cachedOnuRx, (string)$oidKey) ?? 0);
+                $txVal = $parsePower($lookupVal($this->cachedOnuTx, (string)$oidKey) ?? 0);
 
                 if ($rxVal !== null && $rxVal > -39.0 && $rxVal < 5.0) {
                     $isOnline = true;
                 }
 
                 $mac = $parsed['mac'] ?? null;
-                if (!$mac && !empty($this->cachedOnuMacs[$oidKey])) {
-                    $mParsed = $cleanSnString($this->cachedOnuMacs[$oidKey]);
+                $rawMac = $lookupVal($this->cachedOnuMacs, (string)$oidKey);
+                if (!$mac && !empty($rawMac)) {
+                    $mParsed = $cleanSnString($rawMac);
                     $mac = $mParsed['mac'] ?? null;
                 }
 
