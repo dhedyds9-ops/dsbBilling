@@ -58,7 +58,7 @@
           <div x-data="{ copied: false }">
     <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Webhook Callback URL</label>
     <div class="relative">
-        <input type="text" id="webhook_url_tg_input" wire:model="bot.webhook_url" autocomplete="off" class="w-full pl-3 pr-12 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs dark:bg-slate-900 dark:text-slate-100" placeholder="https://billing.domain.com/api/v1/telegram/webhook">
+        <input type="text" id="webhook_url_tg_input" wire:model="bot.webhook_url" autocomplete="off" class="w-full pl-3 pr-12 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs dark:bg-slate-900 dark:text-slate-100" placeholder="{{ url('/api/telegram/webhook') }}">
         <button type="button" @click="navigator.clipboard.writeText(document.getElementById('webhook_url_tg_input').value); copied = true; setTimeout(() => copied = false, 2000)" class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none" title="Copy URL">
             <span class="material-symbols-outlined notranslate" style="font-size:18px" x-text="copied ? 'check' : 'content_copy'">content_copy</span>
         </button>

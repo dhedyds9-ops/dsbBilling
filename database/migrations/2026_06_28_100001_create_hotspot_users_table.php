@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('password');
             $table->foreignId('customer_service_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('service_profile_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('voucher_pool_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('voucher_pool_id')->nullable()->index();
             $table->string('status')->default('active');
             $table->timestamp('activated_at')->nullable();
             $table->timestamp('suspended_at')->nullable();

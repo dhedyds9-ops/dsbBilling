@@ -75,6 +75,9 @@ class ISPProvisioningService
                 return $result;
             }
 
+            $suspendMode = \App\Models\Setting::getValue('billing.suspend_mode', 'hard'); // 'soft' (Walled Garden/Profile change) or 'hard' (Disable secret)
+            $isolirProfile = \App\Models\Setting::getValue('billing.isolir_profile', 'ISOLIR');
+
             foreach ($routers as $router) {
                 try {
                     $driver = $this->routerOSService->getDriver($router);
@@ -95,16 +98,32 @@ class ISPProvisioningService
                     foreach ($targets as $t) {
                         $username = $t['username'];
                         try {
-                            if ($t['kind'] === 'pppoe') {
-                                $disabled = $driver->disablePppSecret($username);
-                                if ($disabled) $result['disabled']++;
-                                $kicked = $driver->disconnectPppoeUser($username);
-                                if ($kicked) $result['kicked']++;
+                            if ($suspendMode === 'soft') {
+                                // SOFT ISOLIR: Ganti profile ke isolir (Walled Garden / Payment Portal) lalu kick session
+                                if ($t['kind'] === 'pppoe') {
+                                    $changed = $driver->setPppSecretProfile($username, $isolirProfile);
+                                    if ($changed) $result['disabled']++;
+                                    $kicked = $driver->disconnectPppoeUser($username);
+                                    if ($kicked) $result['kicked']++;
+                                } else {
+                                    $changed = $driver->setHotspotUserProfile($username, $isolirProfile);
+                                    if ($changed) $result['disabled']++;
+                                    $kicked = $driver->disconnectHotspotUser($username);
+                                    if ($kicked) $result['kicked']++;
+                                }
                             } else {
-                                $disabled = $driver->disableHotspotUser($username);
-                                if ($disabled) $result['disabled']++;
-                                $kicked = $driver->disconnectHotspotUser($username);
-                                if ($kicked) $result['kicked']++;
+                                // HARD ISOLIR: Disable secret & putus koneksi total
+                                if ($t['kind'] === 'pppoe') {
+                                    $disabled = $driver->disablePppSecret($username);
+                                    if ($disabled) $result['disabled']++;
+                                    $kicked = $driver->disconnectPppoeUser($username);
+                                    if ($kicked) $result['kicked']++;
+                                } else {
+                                    $disabled = $driver->disableHotspotUser($username);
+                                    if ($disabled) $result['disabled']++;
+                                    $kicked = $driver->disconnectHotspotUser($username);
+                                    if ($kicked) $result['kicked']++;
+                                }
                             }
                         } catch (Throwable $e) {
                             $result['errors'][] = sprintf('Router #%d (%s/%s): %s', $router->id, $t['kind'], $username, $e->getMessage());
@@ -210,6 +229,8 @@ class ISPProvisioningService
                 return $result;
             }
 
+            $activeProfile = $customerService->serviceProfile?->name ?? 'default';
+
             foreach ($routers as $router) {
                 try {
                     $driver = $this->routerOSService->getDriver($router);
@@ -232,11 +253,17 @@ class ISPProvisioningService
                         try {
                             if ($t['kind'] === 'pppoe') {
                                 $enabled = $driver->enablePppSecret($username);
+                                if ($customerService->serviceProfile) {
+                                    $driver->setPppSecretProfile($username, $activeProfile);
+                                }
                                 if ($enabled) $result['enabled']++;
                                 $kicked = $driver->disconnectPppoeUser($username);
                                 if ($kicked) $result['kicked']++;
                             } else {
                                 $enabled = $driver->enableHotspotUser($username);
+                                if ($customerService->serviceProfile) {
+                                    $driver->setHotspotUserProfile($username, $activeProfile);
+                                }
                                 if ($enabled) $result['enabled']++;
                                 $kicked = $driver->disconnectHotspotUser($username);
                                 if ($kicked) $result['kicked']++;

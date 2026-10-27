@@ -166,7 +166,7 @@ class TelegramSettingsService
 
         try {
             $apiUrl = "https://api.telegram.org/bot{$token}/sendMessage";
-            $response = Http::timeout(10)->post($apiUrl, [
+            $response = Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->post($apiUrl, [
                 'chat_id' => $chatId,
                 'text' => $text,
                 'parse_mode' => 'Markdown',

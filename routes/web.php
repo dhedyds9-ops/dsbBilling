@@ -352,6 +352,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
                     Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
                 });
                 Route::get('/alarms', \App\Livewire\NOC\Alarms\Index::class)->name('alarms.index');
+                Route::get('/alerts', fn() => redirect()->route('noc.alarms.index'))->name('alerts.index');
                 Route::get('/alarms/{alarm}', \App\Livewire\NOC\Alarms\Show::class)->name('alarms.show');
                 Route::get('/provisioning', \App\Livewire\NOC\Provisioning\Index::class)->name('provisioning.index');
                 Route::get('/provisioning/{id}', \App\Livewire\NOC\Provisioning\Show::class)->name('provisioning.show');
@@ -524,6 +525,10 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
 
         Route::get('/info', \App\Livewire\CustomerPortal\Info::class)->name('info');
+        Route::get('/services', \App\Livewire\CustomerPortal\Info::class)->name('services');
+        Route::get('/payments', fn() => redirect()->route('customer-portal.billing.invoice-list'))->name('payments');
+        Route::get('/wifi/ssid', \App\Livewire\CustomerPortal\ConnectionInfo::class)->name('wifi.ssid');
+        Route::get('/package/current', \App\Livewire\CustomerPortal\Info::class)->name('package.current');
         Route::get('/connection-info', \App\Livewire\CustomerPortal\ConnectionInfo::class)->name('self-service.connection-info');
         Route::get('/speed-test', \App\Livewire\CustomerPortal\SelfService\SpeedTest::class)->name('self-service.speed-test');
         Route::get('/profile', \App\Livewire\CustomerPortal\Profile\Profile::class)->name('profile');

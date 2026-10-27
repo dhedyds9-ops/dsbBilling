@@ -37,6 +37,7 @@ interface RouterOSDriverInterface
     public function removePPPoESecret(string $username): bool;
     public function disablePppSecret(string $username): bool;
     public function enablePppSecret(string $username): bool;
+    public function setPppSecretProfile(string $username, string $profile): bool;
     public function removePPPoEServerUser(string $username): bool;
 
     // Hotspot user CRUD + state
@@ -44,6 +45,7 @@ interface RouterOSDriverInterface
     public function addHotspotUser(string $username, string $password, string $profile = 'default', ?array $options = null): bool;
     public function disableHotspotUser(string $username): bool;
     public function enableHotspotUser(string $username): bool;
+    public function setHotspotUserProfile(string $username, string $profile): bool;
     public function removeHotspotUser(string $username): bool;
 
     public function addQueue(string $name, string $target, int $downloadLimit, int $uploadLimit): bool;

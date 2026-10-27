@@ -196,7 +196,9 @@ class Index extends BaseCrmComponent
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $serviceProfiles = \App\Models\ISP\ServiceProfile::where('is_active', true)
+        $serviceProfiles = \App\Models\ISP\ServiceProfile::where(function($q) {
+                $q->whereNull('status')->orWhere('status', 'active');
+            })
             ->orderBy('name')
             ->get(['id', 'name', 'service_type']);
 

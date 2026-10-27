@@ -8,6 +8,7 @@ use App\Services\Keuangan\ExpenseService;
 use App\Services\Keuangan\FinancialStatementService;
 use App\Services\Auth\UserQueryService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -102,137 +103,145 @@ class Index extends BaseEnterpriseList
     #[Computed]
     public function getIncomeStatementProperty(): array
     {
-        try {
-            $from = $this->filters['start_date'] ?: now()->startOfMonth()->toDateString();
-            $to = $this->filters['end_date'] ?: now()->toDateString();
-            $filters = array_merge($this->filters, ['start_period' => $from, 'end_period' => $to]);
-            
-            $fin = $this->financialSvc ? $this->financialSvc->incomeStatement($filters) : [];
-            
-            $rev = $fin['revenue'] ?? [];
-            $cogsFin = $fin['cogs'] ?? [];
-            
-            $totalIncome = (float)($rev['total'] ?? 0);
-            
+        $from = $this->filters['start_date'] ?: now()->startOfMonth()->toDateString();
+        $to = $this->filters['end_date'] ?: now()->toDateString();
+        $cacheKey = "laba_rugi_is_" . md5(json_encode($this->filters) . "_{$from}_{$to}");
+
+        return Cache::remember($cacheKey, 60, function() use ($from, $to) {
             try {
-                $expTotal = method_exists($this->expenseSvc, 'summary') ? ($this->expenseSvc->summary()['monthly_total'] ?? 0) : 0;
-            } catch (Throwable) {
-                $expTotal = 0;
+                $filters = array_merge($this->filters, ['start_period' => $from, 'end_period' => $to]);
+                
+                $fin = $this->financialSvc ? $this->financialSvc->incomeStatement($filters) : [];
+                
+                $rev = $fin['revenue'] ?? [];
+                $cogsFin = $fin['cogs'] ?? [];
+                
+                $totalIncome = (float)($rev['total'] ?? 0);
+                
+                try {
+                    $expTotal = method_exists($this->expenseSvc, 'summary') ? ($this->expenseSvc->summary()['monthly_total'] ?? 0) : 0;
+                } catch (Throwable) {
+                    $expTotal = 0;
+                }
+
+                $hppInternet = (float)($cogsFin['hpp_internet'] ?? 0);
+                $feeReseller = (float)($cogsFin['fee_reseller'] ?? 0);
+                $feeBranch = (float)($cogsFin['fee_branch'] ?? 0);
+                $totalCogs = $hppInternet + $feeReseller + $feeBranch;
+                
+                $gross = $totalIncome - $totalCogs;
+                $opex = $expTotal; // Treat external expenses as OPEX
+                $ebitda = $gross - $opex;
+                $depreciation = 0;
+                $ebit = $ebitda - $depreciation;
+                $tax = max(0, $ebit * 0.11);
+                $net_after_tax = $ebit - $tax;
+
+                return [
+                    'period_label' => date('M Y', strtotime($from)),
+                    'start_date' => $from,
+                    'end_date' => $to,
+                    'revenue' => [
+                        ['label' => 'PPPoE', 'amount' => $rev['pppoe'] ?? 0],
+                        ['label' => 'Hotspot', 'amount' => $rev['hotspot'] ?? 0],
+                        ['label' => 'Voucher', 'amount' => $rev['voucher'] ?? 0],
+                        ['label' => 'Lainnya', 'amount' => ($rev['evoucher'] ?? 0) + ($rev['other'] ?? 0)],
+                    ],
+                    'total_revenue' => $totalIncome,
+                    'cogs' => [
+                        ['label' => 'HPP Internet (Pusat/Provider)', 'amount' => $hppInternet],
+                        ['label' => 'Bagi Hasil Reseller', 'amount' => $feeReseller],
+                        ['label' => 'Bagi Hasil Branch', 'amount' => $feeBranch],
+                    ],
+                    'gross_profit' => $gross,
+                    'gross_margin_pct' => $totalIncome > 0 ? round(($gross / $totalIncome) * 100, 2) : 0,
+                    'opex' => [
+                        ['label' => 'Beban Operasional (OPEX)', 'amount' => $opex],
+                    ],
+                    'operating_expenses' => [
+                        'total' => $opex,
+                    ],
+                    'depreciation' => $depreciation,
+                    'ebitda' => $ebitda,
+                    'ebit' => $ebit,
+                    'tax' => $tax,
+                    'net_income' => $net_after_tax,
+                    'net_margin_pct' => $totalIncome > 0 ? round(($net_after_tax / $totalIncome) * 100, 2) : 0,
+                ];
+            } catch (Throwable $e) {
+                Log::error('LabaRugi income statement failed', ['e' => $e->getMessage()]);
+                return [
+                    'period_label' => now()->format('M Y'),
+                    'revenue' => [],
+                    'total_revenue' => 0,
+                    'cogs' => [], 'gross_profit' => 0, 'gross_margin_pct' => 0,
+                    'opex' => [],
+                    'operating_expenses' => ['total' => 0],
+                    'depreciation' => 0,
+                    'ebitda' => 0, 'ebit' => 0, 'tax' => 0, 'net_income' => 0, 'net_margin_pct' => 0,
+                ];
             }
-
-            $hppInternet = (float)($cogsFin['hpp_internet'] ?? 0);
-            $feeReseller = (float)($cogsFin['fee_reseller'] ?? 0);
-            $feeBranch = (float)($cogsFin['fee_branch'] ?? 0);
-            $totalCogs = $hppInternet + $feeReseller + $feeBranch;
-            
-            $gross = $totalIncome - $totalCogs;
-            $opex = $expTotal; // Treat external expenses as OPEX
-            $ebitda = $gross - $opex;
-            $depreciation = 0;
-            $ebit = $ebitda - $depreciation;
-            $tax = max(0, $ebit * 0.11);
-            $net_after_tax = $ebit - $tax;
-
-            return [
-                'period_label' => date('M Y', strtotime($from)),
-                'start_date' => $from,
-                'end_date' => $to,
-                'revenue' => [
-                    ['label' => 'PPPoE', 'amount' => $rev['pppoe'] ?? 0],
-                    ['label' => 'Hotspot', 'amount' => $rev['hotspot'] ?? 0],
-                    ['label' => 'Voucher', 'amount' => $rev['voucher'] ?? 0],
-                    ['label' => 'Lainnya', 'amount' => ($rev['evoucher'] ?? 0) + ($rev['other'] ?? 0)],
-                ],
-                'total_revenue' => $totalIncome,
-                'cogs' => [
-                    ['label' => 'HPP Internet (Pusat/Provider)', 'amount' => $hppInternet],
-                    ['label' => 'Bagi Hasil Reseller', 'amount' => $feeReseller],
-                    ['label' => 'Bagi Hasil Branch', 'amount' => $feeBranch],
-                ],
-                'gross_profit' => $gross,
-                'gross_margin_pct' => $totalIncome > 0 ? round(($gross / $totalIncome) * 100, 2) : 0,
-                'opex' => [
-                    ['label' => 'Beban Operasional (OPEX)', 'amount' => $opex],
-                ],
-                'operating_expenses' => [
-                    'total' => $opex,
-                ],
-                'depreciation' => $depreciation,
-                'ebitda' => $ebitda,
-                'ebit' => $ebit,
-                'tax' => $tax,
-                'net_income' => $net_after_tax,
-                'net_margin_pct' => $totalIncome > 0 ? round(($net_after_tax / $totalIncome) * 100, 2) : 0,
-            ];
-        } catch (Throwable $e) {
-            Log::error('LabaRugi income statement failed', ['e' => $e->getMessage()]);
-            return [
-                'period_label' => now()->format('M Y'),
-                'revenue' => [],
-                'total_revenue' => 0,
-                'cogs' => [], 'gross_profit' => 0, 'gross_margin_pct' => 0,
-                'opex' => [],
-                'operating_expenses' => ['total' => 0],
-                'depreciation' => 0,
-                'ebitda' => 0, 'ebit' => 0, 'tax' => 0, 'net_income' => 0, 'net_margin_pct' => 0,
-            ];
-        }
+        });
     }
 
     #[Computed]
     public function getCashFlowProperty(): array
     {
-        try {
-            $from = $this->filters['start_date'] ?: now()->startOfMonth()->toDateString();
-            $to = $this->filters['end_date'] ?: now()->toDateString();
-            
-            $is = $this->incomeStatement;
-            $operating_in = $is['total_revenue'] ?? 0;
-            
-            // Outflows
-            $cogsTotal = array_sum(array_column($is['cogs'] ?? [], 'amount'));
-            $opexTotal = array_sum(array_column($is['opex'] ?? [], 'amount'));
-            
-            $operating_out = $cogsTotal + $opexTotal;
-            $investing_out = 0;
-            $financing_in = 0;
-            $financing_out = 0;
-            $beginning = 0;
-            $net = ($operating_in - $operating_out) + (0 - $investing_out) + ($financing_in - $financing_out);
+        $from = $this->filters['start_date'] ?: now()->startOfMonth()->toDateString();
+        $to = $this->filters['end_date'] ?: now()->toDateString();
+        $year = (int) ($this->filters['year'] ?? now()->year);
+        $cacheKey = "laba_rugi_cf_{$from}_{$to}_{$year}";
 
-            return [
-                'from' => $from,
-                'to' => $to,
-                'operating' => [
-                    'in' => $operating_in,
-                    'out' => $operating_out,
-                    'net' => $operating_in - $operating_out,
-                ],
-                'investing' => [
-                    'in' => 0,
-                    'out' => $investing_out,
-                    'net' => 0 - $investing_out,
-                ],
-                'financing' => [
-                    'in' => $financing_in,
-                    'out' => $financing_out,
-                    'net' => $financing_in - $financing_out,
-                ],
-                'beginning_balance' => $beginning,
-                'net_change' => $net,
-                'ending_balance' => $beginning + $net,
-                'monthly' => $this->buildMonthlyCashflow(),
-            ];
-        } catch (Throwable $e) {
-            Log::error('LabaRugi cashflow failed', ['e' => $e->getMessage()]);
-            return [
-                'operating' => ['in' => 0, 'out' => 0, 'net' => 0],
-                'investing' => ['in' => 0, 'out' => 0, 'net' => 0],
-                'financing' => ['in' => 0, 'out' => 0, 'net' => 0],
-                'beginning_balance' => 0, 'net_change' => 0, 'ending_balance' => 0,
-                'monthly' => ['labels' => [], 'in' => [], 'out' => [], 'net' => []],
-            ];
-        }
+        return Cache::remember($cacheKey, 60, function() use ($from, $to) {
+            try {
+                $is = $this->incomeStatement;
+                $operating_in = $is['total_revenue'] ?? 0;
+                
+                // Outflows
+                $cogsTotal = array_sum(array_column($is['cogs'] ?? [], 'amount'));
+                $opexTotal = array_sum(array_column($is['opex'] ?? [], 'amount'));
+                
+                $operating_out = $cogsTotal + $opexTotal;
+                $investing_out = 0;
+                $financing_in = 0;
+                $financing_out = 0;
+                $beginning = 0;
+                $net = ($operating_in - $operating_out) + (0 - $investing_out) + ($financing_in - $financing_out);
+
+                return [
+                    'from' => $from,
+                    'to' => $to,
+                    'operating' => [
+                        'in' => $operating_in,
+                        'out' => $operating_out,
+                        'net' => $operating_in - $operating_out,
+                    ],
+                    'investing' => [
+                        'in' => 0,
+                        'out' => $investing_out,
+                        'net' => 0 - $investing_out,
+                    ],
+                    'financing' => [
+                        'in' => $financing_in,
+                        'out' => $financing_out,
+                        'net' => $financing_in - $financing_out,
+                    ],
+                    'beginning_balance' => $beginning,
+                    'net_change' => $net,
+                    'ending_balance' => $beginning + $net,
+                    'monthly' => $this->buildMonthlyCashflow(),
+                ];
+            } catch (Throwable $e) {
+                Log::error('LabaRugi cashflow failed', ['e' => $e->getMessage()]);
+                return [
+                    'operating' => ['in' => 0, 'out' => 0, 'net' => 0],
+                    'investing' => ['in' => 0, 'out' => 0, 'net' => 0],
+                    'financing' => ['in' => 0, 'out' => 0, 'net' => 0],
+                    'beginning_balance' => 0, 'net_change' => 0, 'ending_balance' => 0,
+                    'monthly' => ['labels' => [], 'in' => [], 'out' => [], 'net' => []],
+                ];
+            }
+        });
     }
 
     protected function buildMonthlyCashflow(): array

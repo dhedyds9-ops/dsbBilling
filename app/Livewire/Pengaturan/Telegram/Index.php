@@ -85,6 +85,10 @@ class Index extends AdminComponent
             $this->bot = array_merge($this->bot, $savedBot);
         }
 
+        if (empty($this->bot['webhook_url'])) {
+            $this->bot['webhook_url'] = url('/api/telegram/webhook');
+        }
+
         $savedChatIds = \App\Models\Setting::getValue('telegram.chatIds', []);
         if (!empty($savedChatIds)) {
             $this->chatIds = $savedChatIds;
@@ -140,7 +144,7 @@ class Index extends AdminComponent
                 $this->botInfo = 'Isi dulu Bot Token (dari @BotFather).';
                 return;
             }
-            $resp = Http::timeout(5)->get('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/getMe');
+            $resp = Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->get('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/getMe');
             if ($resp->successful() && ($resp->json('ok') ?? false)) {
                 $u = $resp->json('result') ?? [];
                 $this->botInfo = "Bot Aktif: @" . ($u['username'] ?? '?') . " (ID: " . ($u['id'] ?? '?') . ") - " . ($u['first_name'] ?? '');
@@ -160,7 +164,7 @@ class Index extends AdminComponent
                 $this->webhookInfo = 'Isi dulu Bot Token.';
                 return;
             }
-            $resp = Http::timeout(5)->get('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/getWebhookInfo');
+            $resp = Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->get('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/getWebhookInfo');
             if ($resp->successful()) {
                 $this->webhookInfo = 'Webhook Info: ' . substr($resp->body(), 0, 500);
             } else {
@@ -181,7 +185,7 @@ class Index extends AdminComponent
             $url = 'https://api.telegram.org/bot' . $this->bot['bot_token'] . '/setWebhook';
             $data = ['url' => $this->bot['webhook_url']];
             if (!empty($this->bot['webhook_secret'])) $data['secret_token'] = $this->bot['webhook_secret'];
-            $resp = Http::timeout(5)->post($url, $data);
+            $resp = Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->post($url, $data);
             if ($resp->successful()) {
                 $this->webhookInfo = 'Webhook SET: ' . substr($resp->body(), 0, 200);
             } else {
@@ -196,7 +200,7 @@ class Index extends AdminComponent
     {
         try {
             if (empty($this->bot['bot_token'])) return;
-            $resp = Http::timeout(5)->get('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/deleteWebhook');
+            $resp = Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->get('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/deleteWebhook');
             $this->webhookInfo = 'Webhook DELETE: ' . ($resp->body() ?? '');
         } catch (Throwable $e) {
             $this->webhookInfo = 'ERROR: ' . $e->getMessage();
@@ -210,7 +214,7 @@ class Index extends AdminComponent
                 $this->testResult = 'Isi Bot Token dan Chat ID terlebih dahulu.';
                 return;
             }
-            $resp = Http::timeout(5)->post('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/sendMessage', [
+            $resp = Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->post('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/sendMessage', [
                 'chat_id' => $this->testChatId,
                 'text' => $this->testMessage,
                 'parse_mode' => $this->bot['parse_mode'] ?: 'HTML',
@@ -281,7 +285,7 @@ class Index extends AdminComponent
             $message .= "Download: " . ($data['download'] ?? '-') . "\n";
             $message .= "Status Koneksi: " . ($data['connection_status'] ?? 'Online') . "\n";
 
-            $resp = \Illuminate\Support\Facades\Http::timeout(5)->post('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/sendMessage', [
+            $resp = \Illuminate\Support\Facades\Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->post('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/sendMessage', [
                 'chat_id' => $this->testChatId,
                 'text' => $message,
                 'parse_mode' => 'HTML',

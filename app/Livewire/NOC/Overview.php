@@ -140,7 +140,7 @@ class Overview extends AdminComponent
         if ($force || !$latest || $latest->created_at->lt(now()->subSeconds(90))) {
             \Illuminate\Support\Facades\Cache::put($lockKey, true, 45);
             try {
-                app(\App\Services\Monitoring\Collectors\RouterCollector::class)->collect();
+                \App\Jobs\Monitoring\RunCollectorJob::dispatch(\App\Services\Monitoring\Collectors\RouterCollector::class);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('NOC overview auto-poll error: ' . $e->getMessage());
             }

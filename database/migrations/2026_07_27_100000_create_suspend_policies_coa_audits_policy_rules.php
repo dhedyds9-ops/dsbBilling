@@ -123,7 +123,6 @@ return new class extends Migration
             Schema::table('service_profiles', function (Blueprint $table) {
                 $table->foreignId('suspend_policy_id')
                     ->nullable()
-                    ->after('package_id')
                     ->constrained('suspend_policies')
                     ->nullOnDelete();
             });
@@ -160,9 +159,9 @@ return new class extends Migration
             // Foreign keys untuk backreference
             $table->foreignId('radius_nas_id')->nullable()->constrained('radius_nas')->nullOnDelete();
             $table->foreignId('router_id')->nullable()->constrained('routers')->nullOnDelete();
-            $table->foreignId('pppoe_user_id')->nullable()->constrained('pppoe_users')->index()->cascadeOnDelete();
-            $table->foreignId('customer_service_id')->nullable()->constrained('customer_services')->index()->nullOnDelete();
-            $table->foreignId('hotspot_user_id')->nullable()->constrained('hotspot_users')->index()->nullOnDelete();
+            $table->foreignId('pppoe_user_id')->nullable()->constrained('pppoe_users')->cascadeOnDelete();
+            $table->foreignId('customer_service_id')->nullable()->constrained('customer_services')->nullOnDelete();
+            $table->foreignId('hotspot_user_id')->nullable()->constrained('hotspot_users')->nullOnDelete();
             $table->foreignId('operator_id')->nullable()->constrained('users')->nullOnDelete();
 
             // Timestamp state machine

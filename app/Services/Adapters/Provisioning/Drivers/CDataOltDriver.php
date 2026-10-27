@@ -63,7 +63,9 @@ class CDataOltDriver extends BaseOltDriver
     public function getPonPortsStatus(): array
     {
         if ($this->checkIsNewBranch()) {
-            $statuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.4');
+            $statuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.4')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.2')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.2.1.1.1') ?: []));
             $ports    = [];
             if ($statuses) {
                 foreach ($statuses as $idx => $status) {
@@ -362,14 +364,15 @@ class CDataOltDriver extends BaseOltDriver
         if ($this->cachedOnuSerials === null) {
             // Check C-Data GPON (34592)
             $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2') ?: []);
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2') ?: []));
             
-            $gponStatuses = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: []) : [];
+            $gponStatuses = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.12') ?: [])) : [];
             $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8') ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.6') ?: [])) : [];
             $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: []) : [];
             $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.10') ?: []) : [];
 
-            // Check C-Data EPON (51810 / 17409 CTC)
+            // Check C-Data EPON (34592 / 51810 / 17409 CTC)
             $eponSerials = [];
             $eponStatuses = [];
             $eponRx = [];
@@ -378,26 +381,40 @@ class CDataOltDriver extends BaseOltDriver
             $eponMacs = [];
 
             if (empty($gponSerials)) {
-                // Try 51810 across ports
-                $eponSerials = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.2')
-                    ?: ($this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.2') ?: []);
-                $eponStatuses = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.3') ?: [];
-                $eponRx = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.6') ?: [];
-                $eponTx = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.7') ?: ($this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.5') ?: []);
-                $eponTemps = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.8') ?: [];
-                $eponMacs = $this->snmp->walk($this->onuInfoOid . '.' . $ponPort . '.4') ?: [];
+                // 1. C-Data 34592 EPON ONU Table
+                $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.2') ?: [];
+                if (!empty($eponSerials)) {
+                    $eponStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.3') ?: [];
+                    $eponRx = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.6') ?: [];
+                    $eponMacs = $eponSerials;
+                }
 
-                // If still empty, try CTC 17409 standard
+                // 2. C-Data 51810 EPON ONU Table
                 if (empty($eponSerials)) {
-                    $ctcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.2') ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: []);
+                    $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.2')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.4') ?: []);
+                    $eponStatuses = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.3') ?: [];
+                    $eponRx = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.6') ?: [];
+                    $eponTx = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.7') ?: ($this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.5') ?: []);
+                    $eponTemps = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.8') ?: [];
+                    $eponMacs = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.4') ?: $eponSerials;
+                }
+
+                // 3. CTC 17409 Standard EPON (Universal on Chinese EPON OLTs)
+                if (empty($eponSerials)) {
+                    $ctcMacs = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.2')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.7')
+                        ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: []));
                     $ctcStatuses = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.3') ?: [];
                     $ctcRx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.8') ?: [];
+                    $ctcTx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.9') ?: [];
                     
                     if (!empty($ctcMacs)) {
                         $eponMacs = $ctcMacs;
                         $eponSerials = $ctcMacs;
                         $eponStatuses = $ctcStatuses;
                         $eponRx = $ctcRx;
+                        $eponTx = $ctcTx;
                     }
                 }
             }
@@ -412,17 +429,49 @@ class CDataOltDriver extends BaseOltDriver
 
         $cleanSnString = function($raw) {
             $raw = trim((string)$raw);
-            $raw = preg_replace('/^(STRING|Hex-STRING|OctetString)\s*:?\s*/i', '', $raw);
-            $raw = trim($raw, '" ');
-            if (preg_match('/^[0-9A-Fa-f\s]+$/', $raw) && str_contains($raw, ' ')) {
-                $hex = str_replace(' ', '', $raw);
-                $decoded = @hex2bin($hex);
-                if ($decoded !== false && preg_match('/[A-Za-z0-9]/', $decoded)) {
-                    return trim(preg_replace('/[^A-Za-z0-9]/', '', $decoded));
-                }
-                return strtoupper($hex);
+            $raw = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $raw);
+            $raw = trim($raw, '" \r\n\t');
+
+            // 1. Plain text string like "CDTE12345678" or "HWTC12345678"
+            if (preg_match('/^[A-Z0-9]{4}[A-Z0-9]{8,12}$/i', $raw)) {
+                return ['sn' => strtoupper($raw), 'mac' => null];
             }
-            return strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $raw));
+
+            // 2. Colon / hyphen formatted MAC address (EPON)
+            if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $raw)) {
+                $mac = strtoupper(str_replace('-', ':', $raw));
+                return ['sn' => $mac, 'mac' => $mac];
+            }
+
+            // Clean hex characters
+            $hex = strtoupper(preg_replace('/[^0-9A-Fa-f]/', '', $raw));
+
+            // 3. 16 hex chars -> GPON Serial Number (4 bytes ASCII vendor + 4 bytes Hex)
+            if (strlen($hex) === 16) {
+                $vendorAscii = @hex2bin(substr($hex, 0, 8));
+                $restHex = substr($hex, 8, 8);
+                if ($vendorAscii !== false && preg_match('/^[A-Za-z0-9]{4}$/', $vendorAscii)) {
+                    return ['sn' => strtoupper($vendorAscii) . $restHex, 'mac' => null];
+                }
+                return ['sn' => $hex, 'mac' => null];
+            }
+
+            // 4. 12 hex chars -> EPON MAC address (6 bytes)
+            if (strlen($hex) === 12) {
+                $mac = implode(':', str_split($hex, 2));
+                return ['sn' => $mac, 'mac' => $mac];
+            }
+
+            // 5. Binary to ASCII printable text fallback
+            if (strlen($hex) >= 8 && strlen($hex) <= 32) {
+                $bin = @hex2bin($hex);
+                if ($bin !== false && preg_match('/^[A-Za-z0-9\-_:]{4,16}$/', $bin)) {
+                    return ['sn' => strtoupper($bin), 'mac' => null];
+                }
+            }
+
+            $final = strtoupper(preg_replace('/[^A-Za-z0-9:\-]/', '', $raw));
+            return ['sn' => $final, 'mac' => str_contains($final, ':') ? $final : null];
         };
 
         $parsePower = function($val) {
@@ -438,8 +487,9 @@ class CDataOltDriver extends BaseOltDriver
         $results = [];
 
         foreach ($this->cachedOnuSerials as $oidKey => $rawVal) {
-            $sn = $cleanSnString($rawVal);
-            if (strlen($sn) < 6) continue;
+            $parsed = $cleanSnString($rawVal);
+            $sn = $parsed['sn'] ?? '';
+            if (strlen($sn) < 4) continue;
 
             $parts = explode('.', (string)$oidKey);
             $p = null;
@@ -461,11 +511,11 @@ class CDataOltDriver extends BaseOltDriver
                 $onuId = $endIdx % 256;
             }
 
-            // Check if this ONU belongs to the current port (or broad match if single PON)
-            if ($p === $portNum || $p === $ponPort || count($this->cachedOnuSerials) <= 16) {
+            // Check if this ONU belongs to the current port (or broad match if port can't be resolved)
+            if ($p === $portNum || $p === $ponPort || ($p !== null && $rawP === $ponPort) || count($this->cachedOnuSerials) <= 4) {
                 $stVal = $this->cachedOnuStatuses[$oidKey] ?? 0;
                 $isOnline = match((int)$stVal) {
-                    1, 2, 10 => true,
+                    1, 2, 10, 100, 101 => true,
                     default => false
                 };
 
@@ -476,12 +526,10 @@ class CDataOltDriver extends BaseOltDriver
                     $isOnline = true;
                 }
 
-                $mac = null;
-                if (!empty($this->cachedOnuMacs[$oidKey])) {
-                    $mClean = strtoupper(preg_replace('/[^A-F0-9]/i', '', $this->cachedOnuMacs[$oidKey]));
-                    if (strlen($mClean) === 12) {
-                        $mac = implode(':', str_split($mClean, 2));
-                    }
+                $mac = $parsed['mac'] ?? null;
+                if (!$mac && !empty($this->cachedOnuMacs[$oidKey])) {
+                    $mParsed = $cleanSnString($this->cachedOnuMacs[$oidKey]);
+                    $mac = $mParsed['mac'] ?? null;
                 }
 
                 $results[] = [

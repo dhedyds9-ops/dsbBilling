@@ -53,7 +53,7 @@ class InvoiceService
                 'contract_id' => $contractId,
                 'invoice_number' => $resolvedInvoiceNumber,
                 'issue_date' => $issueDate ?? now(),
-                'due_date' => $dueDate ?? now()->addDays(7),
+                'due_date' => $dueDate ?? now()->addDays((int) \App\Models\Setting::getValue('billing.due_days', 7)),
                 'total_amount' => $totalAmount,
                 'paid_amount' => 0,
                 'currency' => $currency,

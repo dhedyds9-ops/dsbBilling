@@ -97,12 +97,17 @@ class Index extends BaseBillingComponent
 
     protected function buildScopedQuery($forStats = false)
     {
-        $query = Invoice::withoutGlobalScopes()->with(['customer.customerServices.serviceProfile', 'items', 'customer.reseller', 'reseller'])
-            ->whereNotExists(function ($sub) {
-                $sub->select('id')
-                    ->from('voucher_orders')
-                    ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
-            });
+        $query = Invoice::withoutGlobalScopes();
+        
+        if (!$forStats) {
+            $query->with(['customer.customerServices.serviceProfile', 'items', 'customer.reseller', 'reseller']);
+        }
+
+        $query->whereNotExists(function ($sub) {
+            $sub->select('id')
+                ->from('voucher_orders')
+                ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
+        });
 
         if ($this->isReseller) {
             $effectiveId = $this->effectiveResellerId;
@@ -423,38 +428,27 @@ class Index extends BaseBillingComponent
 
         $today = Carbon::today()->toDateString();
         $statsQuery = $this->buildScopedQuery(true);
-        $overdueQuery = $this->buildScopedQuery(true);
 
-        $counts = (clone $statsQuery)
+        $agg = (clone $statsQuery)
             ->selectRaw("COUNT(*) as total")
-            ->selectRaw("SUM(total_amount) as total_amount")
+            ->selectRaw("COALESCE(SUM(total_amount), 0) as total_amount")
+            ->selectRaw("COALESCE(SUM(paid_amount), 0) as paid_amount")
             ->selectRaw("SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid")
             ->selectRaw("SUM(CASE WHEN status IN ('pending','unpaid','partial','draft') THEN 1 ELSE 0 END) as pending")
+            ->selectRaw("SUM(CASE WHEN date(due_date) < ? AND status IN ('pending','unpaid','partial','draft') THEN 1 ELSE 0 END) as overdue_count", [$today])
+            ->selectRaw("COALESCE(SUM(CASE WHEN status IN ('pending','unpaid','partial','draft','overdue') THEN (total_amount - paid_amount) ELSE 0 END), 0) as outstanding")
             ->first();
 
-        $overdueCount = (clone $overdueQuery)
-            ->whereDate('due_date', '<', $today)
-            ->whereIn('status', ['pending','unpaid','partial','draft'])
-            ->count();
-
-        $totalOutstanding = (clone $statsQuery)
-            ->whereIn('status', ['pending','unpaid','partial','draft','overdue'])
-            ->sum(DB::raw('total_amount - paid_amount'));
-
-        $paidAmount = (clone $statsQuery)
-            ->sum('paid_amount');
-
         $stats = [
-            'total' => (int) ($counts->total ?? 0),
-            'total_amount' => (float) ($counts->total_amount ?? 0),
-            'paid' => (int) ($counts->paid ?? 0),
-            'pending' => (int) ($counts->pending ?? 0),
-            'overdue' => (int) $overdueCount,
-            'outstanding' => (float) $totalOutstanding,
-            'paid_amount' => (float) $paidAmount,
-            'pokok' => (float) ($counts->total_amount ?? 0),
+            'total' => (int) ($agg->total ?? 0),
+            'total_amount' => (float) ($agg->total_amount ?? 0),
+            'paid' => (int) ($agg->paid ?? 0),
+            'pending' => (int) ($agg->pending ?? 0),
+            'overdue' => (int) ($agg->overdue_count ?? 0),
+            'outstanding' => (float) ($agg->outstanding ?? 0),
+            'paid_amount' => (float) ($agg->paid_amount ?? 0),
+            'pokok' => (float) ($agg->total_amount ?? 0),
             'fee' => 0,
-            'total' => (float) ($counts->total_amount ?? 0),
         ];
 
         $userQueryService = app(\App\Services\Auth\UserQueryService::class);

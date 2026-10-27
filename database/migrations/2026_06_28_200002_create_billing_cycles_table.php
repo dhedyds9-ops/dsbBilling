@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('cycle_type'); // monthly, quarterly, yearly
             $table->timestamp('cycle_start')->nullable();
             $table->timestamp('cycle_end')->nullable();
-            $table->timestamp('invoice_due_days')->default(7); // Jatuh tempo n hari setelah invoice dibuat
+            $table->integer('invoice_due_days')->default(7); // Jatuh tempo n hari setelah invoice dibuat
             $table->string('status')->default('active'); // active, closed
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();

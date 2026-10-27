@@ -12,13 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('members', function (Blueprint $table) {
-            $table->string('latitude')->nullable()->after('address');
-            $table->string('longitude')->nullable()->after('latitude');
+            if (!Schema::hasColumn('members', 'latitude')) {
+                $table->string('latitude')->nullable()->after('address');
+            }
+            if (!Schema::hasColumn('members', 'longitude')) {
+                $table->string('longitude')->nullable()->after('latitude');
+            }
         });
 
         Schema::table('onus', function (Blueprint $table) {
-            $table->string('latitude')->nullable()->after('password');
-            $table->string('longitude')->nullable()->after('latitude');
+            if (!Schema::hasColumn('onus', 'latitude')) {
+                $table->string('latitude')->nullable();
+            }
+            if (!Schema::hasColumn('onus', 'longitude')) {
+                $table->string('longitude')->nullable();
+            }
         });
     }
 

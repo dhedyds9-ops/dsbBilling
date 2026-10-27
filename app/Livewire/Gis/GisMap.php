@@ -890,8 +890,12 @@ class GisMap extends Component
 
     public function render()
     {
-        return view('livewire.gis.components.map', [
-            'customers' => Customer::with(['customerServices.onu'])
+        $cachedNodes = Cache::remember('gis_map_nodes', 30, function() {
+            $customers = Customer::select(['id', 'name', 'code', 'phone', 'address', 'latitude', 'longitude', 'status'])
+                ->with([
+                    'customerServices:id,customer_id,status,tr069_status,offline_reason,last_seen_at',
+                    'customerServices.onu:id,customer_service_id,odp_id,wifi_ssid,last_seen_at'
+                ])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->get()
@@ -909,20 +913,46 @@ class GisMap extends Component
                     $c->has_genie_status = (bool) $c->tr069_ip;
                     
                     return $c;
-                }),
-            'odps' => \App\Models\ISP\Odp::all(),
-            'htbs' => class_exists(\App\Models\ISP\DistributionBox::class) ? \App\Models\ISP\DistributionBox::all() : collect([]),
-            'closures' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::all() : collect([]),
-            'odcs' => \App\Models\ISP\Odc::all(),
-            'olts' => \App\Models\ISP\Olt::all(),
-            'regions' => (class_exists(\App\Models\GIS\GeoArea::class) && \Illuminate\Support\Facades\Schema::hasTable((new \App\Models\GIS\GeoArea)->getTable())) ? \App\Models\GIS\GeoArea::all() : collect([]),
-            'coordinators' => class_exists(\App\Models\User::class) ? \App\Models\User::all() : collect([]),
-            'parentOptions' => [
+                });
+
+            return [
+                'customers' => $customers,
+                'odps' => \App\Models\ISP\Odp::all(),
+                'htbs' => class_exists(\App\Models\ISP\DistributionBox::class) ? \App\Models\ISP\DistributionBox::all() : collect([]),
+                'closures' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::all() : collect([]),
+                'odcs' => \App\Models\ISP\Odc::all(),
+                'olts' => \App\Models\ISP\Olt::all(),
+                'assets' => class_exists(\App\Models\Inventory\Asset::class) ? \App\Models\Inventory\Asset::whereNotNull('latitude')->whereNotNull('longitude')->get() : collect([]),
+            ];
+        });
+
+        $regions = Cache::remember('gis_regions', 60, function() {
+            return (class_exists(\App\Models\GIS\GeoArea::class) && \Illuminate\Support\Facades\Schema::hasTable((new \App\Models\GIS\GeoArea)->getTable())) ? \App\Models\GIS\GeoArea::all() : collect([]);
+        });
+
+        $coordinators = Cache::remember('gis_coordinators', 60, function() {
+            return class_exists(\App\Models\User::class) ? \App\Models\User::orderBy('name')->get(['id', 'name']) : collect([]);
+        });
+
+        $parentOptions = Cache::remember('gis_parent_options', 60, function() {
+            return [
                 'olts' => \App\Models\ISP\Olt::orderBy('name')->get(['id', 'name', 'code']),
                 'odcs' => \App\Models\ISP\Odc::orderBy('name')->get(['id', 'name', 'code']),
                 'odps' => \App\Models\ISP\Odp::orderBy('name')->get(['id', 'name', 'code']),
-            ],
-            'assets' => class_exists(\App\Models\Inventory\Asset::class) ? \App\Models\Inventory\Asset::whereNotNull('latitude')->whereNotNull('longitude')->get() : collect([]),
+            ];
+        });
+
+        return view('livewire.gis.components.map', [
+            'customers' => $cachedNodes['customers'],
+            'odps' => $cachedNodes['odps'],
+            'htbs' => $cachedNodes['htbs'],
+            'closures' => $cachedNodes['closures'],
+            'odcs' => $cachedNodes['odcs'],
+            'olts' => $cachedNodes['olts'],
+            'assets' => $cachedNodes['assets'],
+            'regions' => $regions,
+            'coordinators' => $coordinators,
+            'parentOptions' => $parentOptions,
             'modemDataRecords' => collect([]),
             'coordinatorRegionId' => auth()->user()?->region_id ?? null,
             'canManageMap' => true,

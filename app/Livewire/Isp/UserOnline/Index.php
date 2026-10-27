@@ -33,30 +33,36 @@ class Index extends BaseNetworkComponent
         ];
 
         if (HotspotActiveSession::query()->count() === 0 && PppActiveSession::query()->count() === 0) {
-            $this->syncRouters();
+            $lockKey = 'user_online_auto_sync_lock';
+            if (!\Illuminate\Support\Facades\Cache::has($lockKey)) {
+                \Illuminate\Support\Facades\Cache::put($lockKey, true, 60);
+                $this->syncRouters(isAuto: true);
+            }
         }
     }
 
-    public function syncRouters()
+    public function syncRouters(bool $isAuto = false)
     {
         try {
             $routers = Router::query()->where('status', '!=', 'disabled')->get();
             $count = 0;
             foreach ($routers as $router) {
                 try {
-                    PollSingleRouterJob::dispatchSync($router);
+                    PollSingleRouterJob::dispatch($router);
                     $count++;
                 } catch (\Throwable $th) {
-                    Log::warning('syncRouters single router failed', ['id' => $router->id, 'err' => $th->getMessage()]);
+                    Log::warning('syncRouters single router dispatch failed', ['id' => $router->id, 'err' => $th->getMessage()]);
                 }
             }
-            if ($count > 0) {
-                session()->flash('success', "Sinkronisasi sesi dari {$count} router berhasil.");
+            if (!$isAuto && $count > 0) {
+                session()->flash('info', "Sinkronisasi sesi dari {$count} router sedang berjalan di antrean latar belakang.");
             }
             $this->dispatch('refresh-online');
         } catch (\Throwable $e) {
             Log::error('syncRouters failed: ' . $e->getMessage());
-            session()->flash('error', 'Gagal sinkronisasi router: ' . $e->getMessage());
+            if (!$isAuto) {
+                session()->flash('error', 'Gagal memicu sinkronisasi router: ' . $e->getMessage());
+            }
         }
     }
 

@@ -425,8 +425,8 @@ $statusLabels = [
                             <button type="button" 
                                     wire:click="$set('newTicket.is_manual_customer', true)"
                                     class="py-1.5 px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 {{ !empty($newTicket['is_manual_customer']) ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' }}">
-                                <span class="material-symbols-outlined notranslate text-base" translate="no">person_add</span>
-                                Belum Terdaftar (Manual)
+                                <span class="material-symbols-outlined notranslate text-base" translate="no">construction</span>
+                                Non-Pelanggan / Jalur / ODP
                             </button>
                         </div>
 
@@ -454,36 +454,36 @@ $statusLabels = [
                             <div class="p-3.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl space-y-3 pt-3">
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Nama Pelanggan / Pelapor <span class="text-rose-500">*</span>
+                                        Nama Pelapor / Objek Gangguan (ODP/Jalur/ODC) <span class="text-rose-500">*</span>
                                     </label>
                                     <input type="text" 
                                            wire:model.live="newTicket.manual_customer_name" 
-                                           placeholder="Contoh: Pak Joko / Warung Berkah"
+                                           placeholder="Contoh: [ODP-04] Jl. Merdeka / Jalur FO Sektor Timur"
                                            class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     @error('newTicket.manual_customer_name') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Nomor WhatsApp / HP
+                                            Nomor Kontak / PIC Lapangan
                                         </label>
                                         <input type="text" 
                                                wire:model.live="newTicket.manual_customer_phone" 
-                                               placeholder="08xxxxxxxxxx"
+                                               placeholder="08xxxxxxxxxx (opsional)"
                                                class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Alamat / Lokasi Gangguan
+                                            Alamat / Lokasi Titik Gangguan
                                         </label>
                                         <input type="text" 
                                                wire:model.live="newTicket.manual_customer_address" 
-                                               placeholder="Contoh: RT 02 / RW 04 No. 15"
+                                               placeholder="Contoh: Depan Tiang PLN No. 12 / Seberang Masjid"
                                                class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     </div>
                                 </div>
                                 <p class="text-[11px] text-slate-500 dark:text-slate-400">
-                                    <span class="font-medium text-indigo-600 dark:text-indigo-400">Info:</span> Data ini akan otomatis dicatat sebagai data pelanggan pelapor di sistem.
+                                    <span class="font-medium text-indigo-600 dark:text-indigo-400">Info:</span> Untuk perbaikan jalur kabel, ODP, ODC, atau gangguan massal, isi nama objek/segmen jaringan di atas agar tim teknisi lapangan langsung mengetahui titik sasaran perbaikan.
                                 </p>
                             </div>
                         @endif

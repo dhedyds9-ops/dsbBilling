@@ -49,7 +49,7 @@ class TelegramService
     {
         try {
             $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
-            $response = Http::timeout(10)->post($url, [
+            $response = Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->post($url, [
                 'chat_id' => $chatId,
                 'text' => $message,
                 'parse_mode' => $parseMode,

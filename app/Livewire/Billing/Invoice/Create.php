@@ -50,7 +50,8 @@ class Create extends AdminComponent
         $this->activeModule = 'billing';
         $this->activePage = 'invoices';
         $this->issue_date = now()->format('Y-m-d');
-        $this->due_date = now()->addDays(30)->format('Y-m-d');
+        $dueDays = (int) \App\Models\Setting::getValue('billing.due_days', 7);
+        $this->due_date = now()->addDays($dueDays)->format('Y-m-d');
 
         $this->invoice_number = 'INV-' . now()->format('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6));
 
@@ -148,6 +149,31 @@ class Create extends AdminComponent
             $price = (float) ($item['unit_price'] ?? 0);
             $this->items[$idx]['subtotal'] = $qty * $price;
         }
+    }
+
+    public function applyProrate(int $index, \App\Services\Billing\ProrateCalculatorService $prorateService): void
+    {
+        if (!isset($this->items[$index])) return;
+
+        $monthlyPrice = (float) ($this->items[$index]['unit_price'] ?? 0);
+        if ($monthlyPrice <= 0) {
+            session()->flash('error', 'Masukkan harga satuan bulanan terlebih dahulu sebelum menghitung prorate.');
+            return;
+        }
+
+        $calc = $prorateService->calculateDaily($monthlyPrice, $this->issue_date ?: now());
+        $currentDesc = trim($this->items[$index]['description'] ?? '');
+        $this->items[$index]['description'] = $currentDesc ? ($currentDesc . ' - ' . $calc['description']) : $calc['description'];
+        $this->items[$index]['unit_price'] = $calc['prorated_amount'];
+        $this->calculateTotal();
+
+        session()->flash('success', sprintf(
+            'Prorate berhasil dihitung: %d/%d hari aktif (Rp %s) = Rp %s',
+            $calc['active_days'],
+            $calc['days_in_month'],
+            number_format($calc['daily_rate'], 0, ',', '.'),
+            number_format($calc['prorated_amount'], 0, ',', '.')
+        ));
     }
 
     public function save(InvoiceService $invoiceService)

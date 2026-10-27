@@ -757,6 +757,28 @@ class RouterOSDriver implements RouterOSDriverInterface
         }
     }
 
+    public function setPppSecretProfile(string $username, string $profile): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username, $profile) {
+                $this->ensureConnected();
+                $find = new Query('/ppp/secret/print');
+                $find->where('name', $username);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $q = (new Query('/ppp/secret/set'))
+                        ->equal('.id', $rows[0]['.id'])
+                        ->equal('profile', $profile)
+                        ->equal('disabled', 'no');
+                    $this->connection->query($q)->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
     // ============================================================
     // HOTSPOT USER PROFILE (/ip/hotspot/user/profile)
     // ============================================================
@@ -882,6 +904,28 @@ class RouterOSDriver implements RouterOSDriverInterface
                 if (!empty($rows[0]['.id'])) {
                     $q = (new Query('/ip/hotspot/user/set'))
                         ->equal('.id', $rows[0]['.id'])
+                        ->equal('disabled', 'no');
+                    $this->connection->query($q)->read();
+                }
+                return true;
+            });
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function setHotspotUserProfile(string $username, string $profile): bool
+    {
+        try {
+            return $this->retryEngine->execute(function () use ($username, $profile) {
+                $this->ensureConnected();
+                $find = new Query('/ip/hotspot/user/print');
+                $find->where('name', $username);
+                $rows = $this->connection->query($find)->read();
+                if (!empty($rows[0]['.id'])) {
+                    $q = (new Query('/ip/hotspot/user/set'))
+                        ->equal('.id', $rows[0]['.id'])
+                        ->equal('profile', $profile)
                         ->equal('disabled', 'no');
                     $this->connection->query($q)->read();
                 }
