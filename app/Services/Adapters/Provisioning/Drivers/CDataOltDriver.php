@@ -267,7 +267,7 @@ class CDataOltDriver extends BaseOltDriver
             $cleanInfo = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$infoOut);
             foreach (explode("\n", $cleanInfo) as $line) {
                 $line = trim($line);
-                if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'No')) {
+                if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'No') || str_starts_with($line, 'Total:') || str_starts_with($line, 'show') || str_starts_with($line, 'FD1608S')) {
                     continue;
                 }
 
@@ -278,26 +278,31 @@ class CDataOltDriver extends BaseOltDriver
                     $before = trim(substr($line, 0, $pos));
                     $after = trim(substr($line, $pos + strlen($snMatch[1])));
 
-                    $runState = preg_match('/\b(online|active|up)\b/i', $after) ? 'online' : 'offline';
+                    // Explicitly match 'online' vs 'offline' (ignore 'Active' control flag)
+                    $runState = stripos($after, 'online') !== false ? 'online' : 'offline';
 
+                    $tokens = preg_split('/\s+/', $before);
                     $lPort = null;
                     $lOnuId = null;
 
-                    if (preg_match('/(?:GPON|EPON)?(?:\d+\/)*(\d+)[:\s]+(\d+)/i', $before, $m)) {
+                    // Standard C-Data GPON: "0/0 1 5" -> tokens: ["0/0", "1", "5"]
+                    if (count($tokens) >= 3 && str_contains($tokens[0], '/')) {
+                        $lPort = (int)$tokens[1];
+                        $lOnuId = (int)$tokens[2];
+                    } elseif (count($tokens) === 2) {
+                        if (str_contains($tokens[0], '/')) {
+                            $pParts = explode('/', $tokens[0]);
+                            $lPort = (int)end($pParts);
+                        } else {
+                            $lPort = (int)$tokens[0];
+                        }
+                        $lOnuId = (int)$tokens[1];
+                    } elseif (preg_match('/(\d+)[:\s]+(\d+)$/', $before, $m)) {
                         $lPort = (int)$m[1];
                         $lOnuId = (int)$m[2];
-                    } elseif (preg_match_all('/\d+/', $before, $m)) {
-                        $nums = $m[0];
-                        if (count($nums) >= 2) {
-                            $lOnuId = (int)array_pop($nums);
-                            $lPort = (int)array_pop($nums);
-                        } elseif (count($nums) === 1) {
-                            $lOnuId = (int)$nums[0];
-                            $lPort = 1;
-                        }
                     }
 
-                    if ($lPort !== null && $lOnuId !== null) {
+                    if ($lPort !== null && $lPort > 0 && $lOnuId !== null && $lOnuId > 0) {
                         $this->cachedCliParsedOnus[$lPort][$lOnuId] = [
                             'onu_index'        => $lOnuId,
                             'serial_number'    => $sn,
@@ -318,7 +323,7 @@ class CDataOltDriver extends BaseOltDriver
             $cleanOpt = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$optOut);
             foreach (explode("\n", $cleanOpt) as $line) {
                 $line = trim($line);
-                if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID')) {
+                if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID') || str_starts_with($line, 'Total:') || str_starts_with($line, 'show') || str_starts_with($line, 'FD1608S')) {
                     continue;
                 }
 
@@ -329,29 +334,38 @@ class CDataOltDriver extends BaseOltDriver
                 $tx = null;
                 $temp = null;
 
-                if (count($cols) >= 4 && str_contains($cols[0], '/')) {
+                // Format 1: "0/0 2 1 -21.40 2.35 45.0"
+                if (count($cols) >= 5 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
+                    $lPort = (int)$cols[1];
+                    $lOnuId = (int)$cols[2];
+                    $rx = $cols[3];
+                    $tx = $cols[4];
+                    $temp = $cols[5] ?? null;
+                }
+                // Format 2: "0/2 1 -21.40 2.35"
+                elseif (count($cols) >= 4 && str_contains($cols[0], '/')) {
                     $parts = explode('/', $cols[0]);
                     $lPort = (int)end($parts);
                     $lOnuId = (int)$cols[1];
                     $rx = $cols[2];
                     $tx = $cols[3];
                     $temp = $cols[5] ?? null;
-                } elseif (count($cols) >= 3 && is_numeric($cols[0])) {
-                    $lOnuId = (int)$cols[0];
-                    $rx = $cols[1];
-                    $tx = $cols[2];
-                    $temp = $cols[4] ?? ($cols[3] ?? null);
+                }
+                // Format 3: "1 5 -21.40 2.35"
+                elseif (count($cols) >= 4 && is_numeric($cols[0]) && is_numeric($cols[1])) {
+                    $lPort = (int)$cols[0];
+                    $lOnuId = (int)$cols[1];
+                    $rx = $cols[2];
+                    $tx = $cols[3];
+                    $temp = $cols[4] ?? null;
                 }
 
-                if ($lOnuId !== null) {
-                    foreach ($this->cachedCliParsedOnus as $p => &$onus) {
-                        if (($lPort === null || $p === $lPort) && isset($onus[$lOnuId])) {
-                            if (is_numeric($rx)) $onus[$lOnuId]['rx_power_dbm'] = (float)$rx;
-                            if (is_numeric($tx)) $onus[$lOnuId]['tx_power_dbm'] = (float)$tx;
-                            if (is_numeric($temp)) $onus[$lOnuId]['temperature'] = (float)$temp;
-                        }
+                if ($lPort !== null && $lOnuId !== null) {
+                    if (isset($this->cachedCliParsedOnus[$lPort][$lOnuId])) {
+                        if (is_numeric($rx)) $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = (float)$rx;
+                        if (is_numeric($tx)) $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = (float)$tx;
+                        if (is_numeric($temp)) $this->cachedCliParsedOnus[$lPort][$lOnuId]['temperature'] = (float)$temp;
                     }
-                    unset($onus);
                 }
             }
         } catch (\Throwable $e) {
