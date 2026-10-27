@@ -22,6 +22,8 @@ class Edit extends AdminComponent
     public $serial_number;
     public $mac_address;
     public $pon_port;
+    public $latitude;
+    public $longitude;
     public $status;
     public $customer_service_id;
 
@@ -42,6 +44,8 @@ class Edit extends AdminComponent
         $this->serial_number = $this->onu->serial_number;
         $this->mac_address = $this->onu->mac_address;
         $this->pon_port = $this->onu->pon_port;
+        $this->latitude = $this->onu->latitude;
+        $this->longitude = $this->onu->longitude;
         $this->status = $this->onu->status;
         $this->customer_service_id = $this->onu->customerService->id ?? null;
         $this->breadcrumbs = [
@@ -72,6 +76,8 @@ class Edit extends AdminComponent
             'serial_number' => $this->serial_number,
             'mac_address' => $this->mac_address,
             'pon_port' => $this->pon_port,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
             'status' => $this->status,
         ], Auth::user());
 

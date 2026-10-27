@@ -19,6 +19,8 @@ class Create extends AdminComponent
     public $serial_number;
     public $mac_address;
     public $pon_port;
+    public $latitude;
+    public $longitude;
     public $status = 'active';
 
     public function mount()
@@ -53,6 +55,8 @@ class Create extends AdminComponent
             'serial_number' => $this->serial_number,
             'mac_address' => $this->mac_address,
             'pon_port' => $this->pon_port,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
             'status' => $this->status,
         ], Auth::user());
 

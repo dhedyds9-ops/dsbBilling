@@ -111,6 +111,11 @@
                         </select>
                     </div>
 
+                    {{-- Koordinat Lokasi OLT --}}
+                    <div class="md:col-span-2">
+                        <x-forms.coordinate-picker latModel="latitude" lngModel="longitude" />
+                    </div>
+
                     {{-- Status --}}
                     <div class="md:col-span-2 flex items-center gap-4 pt-1">
                         <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Status OLT:</label>

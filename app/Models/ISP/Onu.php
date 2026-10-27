@@ -43,6 +43,8 @@ class Onu extends Model
         'provisioned_at',
         'status',
         'provision_status',
+        'latitude',
+        'longitude',
         'attributes',
         'created_by',
         'updated_by',

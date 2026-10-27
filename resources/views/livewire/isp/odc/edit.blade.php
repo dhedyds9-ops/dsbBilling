@@ -64,13 +64,8 @@
                     </select>
                     @error('status') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Latitude</label>
-                    <input type="text" wire:model="latitude" placeholder="Masukkan latitude" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Longitude</label>
-                    <input type="text" wire:model="longitude" placeholder="Masukkan longitude" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                <div class="md:col-span-2">
+                    <x-forms.coordinate-picker latModel="latitude" lngModel="longitude" />
                 </div>
             </div>
             <div>

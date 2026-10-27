@@ -104,6 +104,10 @@
                             @endforeach
                         </select>
                     </div>
+
+                    <div class="md:col-span-2">
+                        <x-forms.coordinate-picker latModel="latitude" lngModel="longitude" />
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi</label>
