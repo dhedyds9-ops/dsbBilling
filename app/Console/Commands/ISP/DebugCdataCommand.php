@@ -153,7 +153,7 @@ class DebugCdataCommand extends Command
                 $macCount = 0;
                 foreach (explode("\n", (string)$macOut) as $mLine) {
                     $mLine = trim($mLine);
-                    if (preg_match('/^([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2})\s+\d+\s+\S+\s+\S+\s+gpon0\/0\/(\d+)\s+(\d+)/', $mLine, $matches)) {
+                    if (preg_match('/([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}).*?(?:gpon|epon)(?:0\/0\/|\/)?(\d+)[\s:]+(\d+)/i', $mLine, $matches)) {
                         $macCount++;
                         if ($macCount <= 5) {
                             $this->line("    Port {$matches[2]} | ONU {$matches[3]} => MAC {$matches[1]}");

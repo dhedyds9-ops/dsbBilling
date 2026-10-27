@@ -360,12 +360,12 @@ class CDataOltDriver extends BaseOltDriver
                         $tx = $cols[3];
                         $temp = $cols[4] ?? null;
                     }
-                    // Format 4: "5 -21.40 2.35" (per-port query output: ONT_ID, Rx, Tx)
+                    // Format 4: "1 -22.21 2.16 -28.86 55.41" (per-port query output: ONT_ID, Rx, Tx, OLT-Rx, Temp)
                     elseif (count($cols) >= 3 && is_numeric($cols[0]) && $defaultPort !== null) {
                         $lOnuId = (int)$cols[0];
                         $rx = $cols[1];
                         $tx = $cols[2];
-                        $temp = $cols[3] ?? null;
+                        $temp = count($cols) >= 5 ? $cols[4] : ($cols[3] ?? null);
                     }
 
                     if ($lPort !== null && $lOnuId !== null) {
@@ -416,19 +416,42 @@ class CDataOltDriver extends BaseOltDriver
                 }
             };
 
-            // 1. Parse MAC Address Dynamic globally (Maps Port and ONU ID directly to MAC)
+            // 1. Parse MAC Address Dynamic globally (Supports both FD1608S and FD1602S formats)
             $macOut = $this->cli->execute("show mac-address dynamic\r\n", false);
             if (!$isBad($macOut)) {
                 $cleanMac = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$macOut);
                 foreach (explode("\n", $cleanMac) as $mLine) {
                     $mLine = trim($mLine);
-                    // Format: 28:6D:DA:7C:1B:D9 99 - 113 gpon0/0/3 36 1 dynamic
-                    if (preg_match('/^([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2})\s+\S+\s+\S+\s+\S+\s+(?:gpon|epon)?(?:[\d\/]+)?(\d+)\s+(\d+)/i', $mLine, $mM)) {
+                    // Matches both:
+                    // Format A: 28:6D:DA:7C:1B:D9 99 - 113 gpon0/0/3 36 1 dynamic
+                    // Format B: 6C:D7:19:75:9F:02 99 gpon0/0/1 35 1 dynamic
+                    if (preg_match('/([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}).*?(?:gpon|epon)(?:0\/0\/|\/)?(\d+)[\s:]+(\d+)/i', $mLine, $mM)) {
                         $mMac = strtoupper(str_replace('-', ':', $mM[1]));
                         $mPort = (int)$mM[2];
                         $mOnu = (int)$mM[3];
                         if ($mPort > 0 && $mOnu > 0 && isset($this->cachedCliParsedOnus[$mPort][$mOnu])) {
                             $this->cachedCliParsedOnus[$mPort][$mOnu]['mac_address'] = $mMac;
+                        }
+                    }
+                }
+            }
+
+            // 1b. Parse ARP Dynamic globally (Extracts IP and MAC mapped to PON port and ONU ID)
+            $arpOut = $this->cli->execute("show arp dynamic\r\n", false);
+            if (!$isBad($arpOut)) {
+                $cleanArp = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$arpOut);
+                foreach (explode("\n", $cleanArp) as $aLine) {
+                    $aLine = trim($aLine);
+                    // Example: 192.168.155.56 84:06:FA:22:D9:42 99 gpon 0/0/1:50 Dynamic 594
+                    if (preg_match('/^(\d{1,3}(?:\.\d{1,3}){3})\s+([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}).*?(?:gpon|epon)\s*(?:0\/0\/|\/)?(\d+)[:\s]+(\d+)/i', $aLine, $aM)) {
+                        $aIp = $aM[1];
+                        $aMac = strtoupper(str_replace('-', ':', $aM[2]));
+                        $aPort = (int)$aM[3];
+                        $aOnu = (int)$aM[4];
+
+                        if ($aPort > 0 && $aOnu > 0 && isset($this->cachedCliParsedOnus[$aPort][$aOnu])) {
+                            $this->cachedCliParsedOnus[$aPort][$aOnu]['mac_address'] = $aMac;
+                            $this->cachedCliParsedOnus[$aPort][$aOnu]['ip_address'] = $aIp;
                         }
                     }
                 }
