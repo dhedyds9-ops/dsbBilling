@@ -363,23 +363,38 @@ class CDataOltDriver extends BaseOltDriver
     {
         // Cache all SNMP walk tables once per polling cycle
         if ($this->cachedOnuSerials === null) {
-            // Check C-Data GPON (34592)
-            $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3')
+            // Check C-Data GPON (FD1608S / FD1616 series 34592.1.5.1 / 34592.1.3.100)
+            $gponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.3')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2') ?: []));
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.1')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.1.1.2') ?: [])))));
             
             // GPON Active State (1 = active/online, 2 = inactive/offline)
-            $gponActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: []) : [];
+            $gponActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.7')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: [])) : [];
+
             // GPON Run Status (1=init, 2=standby, 3=sn, 4=ranging, 5=operation/ONLINE, 6=popup)
-            $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8') ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [])) : [];
+            $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: []))) : [];
             
-            // Optical Rx Power (Table 9.4.1.3 or 9.3.1.3 or 4.1.1.8)
-            $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.3')
+            // Optical Rx Power (Table 19.1.1.3 or 9.4.1.3 or 9.3.1.3 or 4.1.1.8)
+            $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.9')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.3')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.8') ?: []))) : [];
-            $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.4')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.4') ?: [])) : [];
-            $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.6') ?: []) : [];
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.8') ?: [])))))) : [];
+
+            $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.4')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.4')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.4')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.4') ?: [])))) : [];
+
+            $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.6')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.6') ?: [])) : [];
 
             // Check C-Data EPON (34592 / 51810 / 17409 CTC)
             $eponSerials = [];
