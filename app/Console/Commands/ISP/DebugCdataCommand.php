@@ -74,19 +74,16 @@ class DebugCdataCommand extends Command
             $this->line("    Port {$k} => Status: {$v}");
         }
 
-        // 3. Scan ONU Tables
-        $this->info("[3/5] Memindai Tabel ONU (SNMP Walk)...");
+        // 3. Scan ONU Tables & Standard MIBs
+        $this->info("[3/5] Memindai Tabel SNMP (Walk)...");
         $candidates = [
             'FD1608S GPON Config SN (.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4)' => '.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.4',
-            'FD1608S GPON Config Table (.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1)' => '.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1',
-            'FD1608S GPON Autofind (.1.3.6.1.4.1.34592.1.5.1.1.2.11.1.1)'     => '.1.3.6.1.4.1.34592.1.5.1.1.2.11.1.1',
-            'Standard GPON SN (.1.3.6.1.4.1.34592.1.3.100.9.2.1.3)'             => '.1.3.6.1.4.1.34592.1.3.100.9.2.1.3',
-            'Standard GPON Name (.1.3.6.1.4.1.34592.1.3.100.9.2.1.2)'           => '.1.3.6.1.4.1.34592.1.3.100.9.2.1.2',
-            'GPON Autofind (.1.3.6.1.4.1.34592.1.3.100.11.1.1.2)'               => '.1.3.6.1.4.1.34592.1.3.100.11.1.1.2',
-            'Older GPON SN (.1.3.6.1.4.1.34592.1.3.4.1.1.2)'                   => '.1.3.6.1.4.1.34592.1.3.4.1.1.2',
-            'EPON 34592 (.1.3.6.1.4.1.34592.1.3.3.1.1.2)'                       => '.1.3.6.1.4.1.34592.1.3.3.1.1.2',
-            'EPON 51810 (.1.3.6.1.4.1.51810.1.3.1.1.1.2)'                      => '.1.3.6.1.4.1.51810.1.3.1.1.1.2',
-            'CTC EPON MAC (.1.3.6.1.4.1.17409.2.3.4.1.1.2)'                    => '.1.3.6.1.4.1.17409.2.3.4.1.1.2',
+            'FD-ONU-MIB Base Entry (.1.3.6.1.4.1.34592.1.3.4.1.1)'              => '.1.3.6.1.4.1.34592.1.3.4.1.1',
+            'Standard Bridge MAC dot1dTpFdb (.1.3.6.1.2.1.17.4.3.1.1)'         => '.1.3.6.1.2.1.17.4.3.1.1',
+            'Standard ARP / IP NetToMedia (.1.3.6.1.2.1.4.22.1.2)'             => '.1.3.6.1.2.1.4.22.1.2',
+            'IP NetToMedia NetAddress (.1.3.6.1.2.1.4.22.1.3)'                 => '.1.3.6.1.2.1.4.22.1.3',
+            'FD1608S GPON Optical Rx (.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.3)' => '.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.3',
+            'FD1608S GPON Optical Rx Alt (.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.3)' => '.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.3',
         ];
 
         $foundAny = false;
@@ -103,14 +100,9 @@ class DebugCdataCommand extends Command
             }
         }
 
-        if (!$foundAny) {
-            $this->warn("  Peringatan: Seluruh OID SNMP di atas menghasilkan KOSONG.");
-            $this->warn("  Kemungkinan: Belum ada modem yang terdaftar (O5), atau modem masih berada di status Autofind.");
-        }
-
         // 4. Test Telnet CLI
         $this->newLine();
-        $this->info("[4/5] Menguji Koneksi Telnet CLI...");
+        $this->info("[4/5] Menguji Koneksi Telnet CLI & Perintah Detil...");
         if (empty($olt->username) || empty($olt->password)) {
             $this->warn("  Username/Password Telnet di database KOSONG. Lewati pengujian Telnet.");
             $this->warn("  Saran: Masukkan Username & Password Telnet di Web billing menu Edit OLT (default biasanya admin/admin).");
@@ -120,13 +112,32 @@ class DebugCdataCommand extends Command
                 $cli->connect($olt->ip_address, $olt->username, $olt->password, 'telnet', (int)($olt->cli_port ?? 23));
                 $this->info("  ✓ Berhasil login Telnet!");
 
-                $this->line("  Menjalankan perintah 'show ont info all'...");
-                $outInfo = $cli->execute("show ont info all\r\n", false);
-                $this->line($outInfo ?: '  (Tidak ada output)');
+                // Test berbagai variasi perintah optical-info
+                $testCmds = [
+                    'show ont optical-info 1 all',
+                    'show ont optical-info 1',
+                    'show mac-address port gpon 0/0/1',
+                    'show mac-address dynamic',
+                    'show arp dynamic',
+                ];
 
-                $this->line("  Menjalankan perintah 'show ont autofind all'...");
-                $outAuto = $cli->execute("show ont autofind all\r\n", false);
-                $this->line($outAuto ?: '  (Tidak ada output)');
+                foreach ($testCmds as $cmd) {
+                    $this->line("  --- TEST CMD: '{$cmd}' ---");
+                    $out = $cli->execute("{$cmd}\r\n", false);
+                    $lines = array_slice(explode("\n", trim((string)$out)), 0, 8);
+                    $this->line(implode("\n", $lines) ?: '  (kosong)');
+                }
+
+                // Test masuk ke interface gpon 0/0
+                $this->line("  --- TEST CMD DALAM INTERFACE: 'interface gpon 0/0' -> 'show ont optical-info 1' ---");
+                $cli->execute("config\r\n", false);
+                $cli->execute("interface gpon 0/0\r\n", false);
+                $inOpt = $cli->execute("show ont optical-info 1\r\n", false);
+                $lines = array_slice(explode("\n", trim((string)$inOpt)), 0, 8);
+                $this->line(implode("\n", $lines) ?: '  (kosong)');
+                $cli->execute("exit\r\n", false);
+                $cli->execute("exit\r\n", false);
+
             } catch (\Throwable $e) {
                 $this->error("  ✗ Telnet CLI Gagal: " . $e->getMessage());
             }
