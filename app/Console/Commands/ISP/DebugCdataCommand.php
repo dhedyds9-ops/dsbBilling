@@ -6,25 +6,42 @@ use App\Models\ISP\Olt;
 use App\Services\Adapters\Provisioning\Support\SnmpClient;
 use App\Services\Adapters\Provisioning\Support\TelnetSshClient;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class DebugCdataCommand extends Command
 {
-    protected $signature = 'olt:debug-cdata {id=1}';
+    protected $signature = 'olt:debug-cdata {id=1} {--tenant=mstore}';
     protected $description = 'Diagnosa mendalam koneksi SNMP & CLI OLT C-Data';
 
     public function handle(): int
     {
+        $tenantName = $this->option('tenant') ?: 'mstore';
+        $this->switchTenantDatabase($tenantName);
+
         $id = $this->argument('id');
-        $olt = Olt::find($id) ?? Olt::where('ip_address', '192.168.100.2')->first() ?? Olt::first();
+        $olt = Olt::find($id) 
+            ?? Olt::where('name', 'like', '%CDATA%')->first() 
+            ?? Olt::where('ip_address', '192.168.100.2')->first() 
+            ?? Olt::first();
+
+        // Jika di tenant mstore belum ketemu, coba scan database tenant lain
+        if (!$olt) {
+            $foundTenant = $this->autoDiscoverTenantWithOlt();
+            if ($foundTenant) {
+                $olt = Olt::find($id) ?? Olt::where('name', 'like', '%CDATA%')->first() ?? Olt::first();
+            }
+        }
 
         if (!$olt) {
-            $this->error("Tidak ditemukan data OLT di database!");
+            $this->error("Tidak ditemukan data OLT di database (sudah memeriksa tenant: {$tenantName})!");
+            $this->warn("Gunakan: php artisan olt:debug-cdata 1 --tenant=NAMA_TENANT");
             return 1;
         }
 
         $this->info("==================================================");
         $this->info("DIAGNOSA OLT CDATA: [ID: {$olt->id}] {$olt->name}");
         $this->info("==================================================");
+        $this->line("Tenant Database    : " . config('database.connections.' . config('database.default') . '.database'));
         $this->line("IP Address         : " . ($olt->ip_address ?? '-'));
         $this->line("SNMP Community     : " . ($olt->snmp_community_read ?: 'public'));
         $this->line("SNMP Port          : " . ($olt->snmp_port ?? 161));
@@ -118,5 +135,67 @@ class DebugCdataCommand extends Command
         $this->newLine();
         $this->info("[5/5] Diagnosa Selesai.");
         return 0;
+    }
+
+    protected function switchTenantDatabase(string $tenantName): void
+    {
+        $dbConnection = config('database.default');
+
+        if ($dbConnection === 'sqlite') {
+            $dbPath = database_path("tenants/{$tenantName}.sqlite");
+            if (file_exists($dbPath)) {
+                config(['database.connections.sqlite.database' => $dbPath]);
+                DB::purge('sqlite');
+                DB::reconnect('sqlite');
+            }
+        } elseif ($dbConnection === 'mysql') {
+            $prefix = env('DB_TENANT_PREFIX', 'dsbilling_');
+            $candidates = [$prefix . $tenantName, $tenantName, $prefix . 'mstore', 'mstore'];
+            foreach ($candidates as $cand) {
+                try {
+                    $exists = DB::select("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? LIMIT 1", [$cand]);
+                    if (!empty($exists)) {
+                        config(['database.connections.mysql.database' => $cand]);
+                        DB::purge('mysql');
+                        DB::reconnect('mysql');
+                        break;
+                    }
+                } catch (\Throwable) {}
+            }
+        }
+    }
+
+    protected function autoDiscoverTenantWithOlt(): bool
+    {
+        $dbConnection = config('database.default');
+
+        if ($dbConnection === 'sqlite') {
+            $files = glob(database_path('tenants/*.sqlite'));
+            foreach ($files as $file) {
+                config(['database.connections.sqlite.database' => $file]);
+                DB::purge('sqlite');
+                DB::reconnect('sqlite');
+                if (Olt::count() > 0) {
+                    return true;
+                }
+            }
+        } elseif ($dbConnection === 'mysql') {
+            try {
+                $databases = DB::select("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE '%dsbilling%' OR SCHEMA_NAME LIKE '%mstore%'");
+                foreach ($databases as $dbRow) {
+                    $dbName = $dbRow->SCHEMA_NAME;
+                    config(['database.connections.mysql.database' => $dbName]);
+                    DB::purge('mysql');
+                    DB::reconnect('mysql');
+                    try {
+                        if (Olt::count() > 0) {
+                            return true;
+                        }
+                    } catch (\Throwable) {}
+                }
+            } catch (\Throwable) {}
+        }
+
+        return false;
     }
 }
