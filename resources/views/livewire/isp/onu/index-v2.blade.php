@@ -207,12 +207,12 @@
                         'LOS'    => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
                         default  => 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-400',
                     };
-                    $rxClass = $onu->rx_power_dbm < -30 ? 'text-red-500' : ($onu->rx_power_dbm < -27 ? 'text-yellow-500' : 'text-emerald-500');
+                    $rxClass = $onu->rx_power_dbm !== null ? ($onu->rx_power_dbm < -30 ? 'text-red-500' : ($onu->rx_power_dbm < -27 ? 'text-yellow-500' : 'text-emerald-500')) : 'text-slate-400';
                 @endphp
                 <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors ">
                     <td class="p-3 font-mono text-slate-800 dark:text-slate-200 font-medium">{{ $onu->serial_number }}</td>
                     <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
-                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
+                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->ip_address ?? $onu->acsDevice?->ip_address ?? '-' }}</td>
                     <td class="p-3 text-slate-500 dark:text-slate-400">
                         <span class="text-slate-500 dark:text-slate-400">{{ $onu->olt->name ?? '-' }}</span>
                         <span class="text-slate-500 dark:text-slate-400 opacity-60">/</span>
@@ -241,8 +241,8 @@
                             </div>
                         @endif
                     </td>
-                    <td class="p-3 font-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm-1) . ' dBm' : '-' }}</td>
-                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm-1) . ' dBm' : '-' }}</td>
+                    <td class="p-3 font-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm, 2) . ' dBm' : '-' }}</td>
+                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm, 2) . ' dBm' : '-' }}</td>
                     <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->temperature ?? '-' }}</td>
                     <td class="p-3">
                         <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ $st }}</span>

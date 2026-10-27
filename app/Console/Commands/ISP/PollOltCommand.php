@@ -60,6 +60,13 @@ class PollOltCommand extends Command
                     $withMac = \App\Models\ISP\Onu::where('olt_id', $olt->id)->whereNotNull('mac_address')->count();
                     $this->line("  - ONU dengan RX Power : {$withRx}");
                     $this->line("  - ONU dengan MAC      : {$withMac}");
+
+                    // Cek sample 5 ONU pertama
+                    $samples = \App\Models\ISP\Onu::where('olt_id', $olt->id)->orderBy('serial_number')->take(5)->get();
+                    $this->line("  --- SAMPLE 5 ONU PERTAMA DI DATABASE ---");
+                    foreach ($samples as $s) {
+                        $this->line("    SN: {$s->serial_number} | Port: {$s->pon_port} | RX: " . var_export($s->rx_power_dbm, true) . " | TX: " . var_export($s->tx_power_dbm, true) . " | Status: {$s->status}");
+                    }
                 } else {
                     $err = $res['error'] ?? $res['message'] ?? 'Unknown error';
                     $this->error("✗ Gagal sinkronisasi: {$err}");

@@ -17,7 +17,7 @@
         <span class="noc-muted">OLT: <span class="noc-text-secondary">{{ $onu->olt?->name ?? '-' }}</span></span>
         <span class="noc-muted">PON: <span class="noc-mono noc-text-secondary">{{ $onu->ponPort?->name ?? '-' }}</span></span>
         <span class="noc-muted">ODP: <span class="noc-text-secondary">{{ $onu->odp?->code ?? '-' }}</span></span>
-        <span class="noc-muted">RX: <span class="noc-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm-1) . ' dBm' : '-' }}</span></span>
+        <span class="noc-muted">RX: <span class="noc-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm, 2) . ' dBm' : '-' }}</span></span>
         
         @if($canManage)
         <button wire:click="syncTR069" wire:loading.attr="disabled" class="btn btn-sm btn-outline-secondary ml-2 py-0.5 px-2 text-xs">
@@ -69,11 +69,11 @@
         <div class="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3 content-start">
             <x-noc.card>
                 <div class="noc-summary-label">RX Power</div>
-                <div class="noc-summary-value noc-mono {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm-1) : '-' }}<span class="text-sm"> dBm</span></div>
+                <div class="noc-summary-value noc-mono {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm, 2) : '-' }}<span class="text-sm"> dBm</span></div>
             </x-noc.card>
             <x-noc.card>
                 <div class="noc-summary-label">TX Power</div>
-                <div class="noc-summary-value noc-mono">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm-1) : '-' }}<span class="text-sm"> dBm</span></div>
+                <div class="noc-summary-value noc-mono">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm, 2) : '-' }}<span class="text-sm"> dBm</span></div>
             </x-noc.card>
             <x-noc.card>
                 <div class="noc-summary-label">SNR</div>
