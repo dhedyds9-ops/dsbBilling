@@ -117,13 +117,17 @@ class SnmpClient
             $parsed = [];
             $normBase = ltrim($oid, '.');
             foreach ($result as $key => $value) {
+                $valParsed = $this->parseValue($value);
+                if ($this->isCliErrorMessage($valParsed) || $valParsed === '') {
+                    continue;
+                }
                 $cleanKey = (string)$key;
                 $cleanKey = preg_replace('/^SNMPv2-SMI::enterprises\./i', '1.3.6.1.4.1.', $cleanKey);
                 $cleanKey = preg_replace('/^iso\./i', '1.', $cleanKey);
                 $cleanKey = ltrim($cleanKey, '.');
 
                 $suffix = preg_replace('/^' . preg_quote($normBase, '/') . '\./', '', $cleanKey);
-                $parsed[$suffix] = $this->parseValue($value);
+                $parsed[$suffix] = $valParsed;
             }
             return $parsed;
         }
@@ -186,7 +190,11 @@ class SnmpClient
         return str_contains($lower, 'is not recognized')
             || str_contains($lower, 'not found')
             || str_contains($lower, 'no such file or directory')
-            /* || str_contains($lower, 'cannot find') */
+            || str_contains($lower, 'no such object')
+            || str_contains($lower, 'no such instance')
+            || str_contains($lower, 'end of mib view')
+            || str_contains($lower, 'nosuchobject')
+            || str_contains($lower, 'nosuchinstance')
             || str_contains($lower, 'the term \'')
             || str_contains($lower, 'is not an internal or external command')
             || str_contains($lower, 'timeout:')
@@ -251,11 +259,12 @@ class SnmpClient
                 if (count($parts) === 2) {
                     $key = trim($parts[0]);
                     $value = trim($parts[1]);
-                    if ($this->isCliErrorMessage($value)) {
+                    $parsedVal = $this->parseValue($value);
+                    if ($this->isCliErrorMessage($value) || $this->isCliErrorMessage($parsedVal) || $parsedVal === '') {
                         continue;
                     }
                     $oidSuffix = str_replace($oid . '.', '', $key);
-                    $parsed[$oidSuffix] = $this->parseValue($value);
+                    $parsed[$oidSuffix] = $parsedVal;
                 }
             }
             return $parsed;

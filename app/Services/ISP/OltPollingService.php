@@ -165,6 +165,9 @@ class OltPollingService
             $portErrors = [];
             $activePortCount = 0;
 
+            // Hapus ONU dummy akibat respon error SNMP
+            Onu::where("olt_id", $olt->id)->where(function($q) { $q->where("serial_number", "like", "%NOSUCH%")->orWhere("serial_number", "like", "%ERROR%")->orWhereRaw("LENGTH(serial_number) > 25"); })->delete();
+
             foreach ($ponPorts as $port) {
                 if (($port['status'] ?? '') === 'up') {
                     $activePortCount++;

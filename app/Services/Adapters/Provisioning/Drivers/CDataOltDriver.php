@@ -465,6 +465,18 @@ class CDataOltDriver extends BaseOltDriver
 
         $cleanSnString = function($raw) {
             $raw = trim((string)$raw);
+            $lower = strtolower($raw);
+            if ($raw === '' 
+                || str_contains($lower, 'no such')
+                || str_contains($lower, 'nosuch')
+                || str_contains($lower, 'error')
+                || str_contains($lower, 'not found')
+                || str_contains($lower, 'end of mib')
+                || str_contains($lower, 'null')
+                || str_contains($lower, 'undefined')) {
+                return ['sn' => null, 'mac' => null];
+            }
+
             $raw = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $raw);
             $raw = trim($raw, '" \r\n\t');
 
@@ -507,6 +519,9 @@ class CDataOltDriver extends BaseOltDriver
             }
 
             $final = strtoupper(preg_replace('/[^A-Za-z0-9:\-]/', '', $raw));
+            if (strlen($final) < 4 || strlen($final) > 20) {
+                return ['sn' => null, 'mac' => null];
+            }
             return ['sn' => $final, 'mac' => str_contains($final, ':') ? $final : null];
         };
 
