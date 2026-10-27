@@ -335,15 +335,23 @@ class CDataOltDriver extends BaseOltDriver
                     $tx = null;
                     $temp = null;
 
-                    // Format 1: "0/0 2 1 -21.40 2.35 45.0" (F/S, Port, ONT_ID, Rx, Tx, Temp)
-                    if (count($cols) >= 5 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
+                    // Priority 1: Per-port query: "1 -22.21 2.16 -28.86 55.41 3.26 14.82" (ONT_ID, Rx, Tx, OLT-Rx, Temp)
+                    if ($defaultPort !== null && count($cols) >= 3 && is_numeric($cols[0]) && (int)$cols[0] > 0 && !str_contains($cols[0], '/')) {
+                        $lPort = $defaultPort;
+                        $lOnuId = (int)$cols[0];
+                        $rx = $cols[1];
+                        $tx = $cols[2];
+                        $temp = count($cols) >= 5 ? $cols[4] : ($cols[3] ?? null);
+                    }
+                    // Priority 2: "0/0 2 1 -21.40 2.35 45.0" (F/S, Port, ONT_ID, Rx, Tx, Temp)
+                    elseif (count($cols) >= 5 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
                         $lPort = (int)$cols[1];
                         $lOnuId = (int)$cols[2];
                         $rx = $cols[3];
                         $tx = $cols[4];
                         $temp = $cols[5] ?? null;
                     }
-                    // Format 2: "0/2 1 -21.40 2.35" (Slot/Port, ONT_ID, Rx, Tx)
+                    // Priority 3: "0/2 1 -21.40 2.35" (Slot/Port, ONT_ID, Rx, Tx)
                     elseif (count($cols) >= 4 && str_contains($cols[0], '/')) {
                         $parts = explode('/', $cols[0]);
                         $lPort = (int)end($parts);
@@ -352,20 +360,13 @@ class CDataOltDriver extends BaseOltDriver
                         $tx = $cols[3];
                         $temp = $cols[5] ?? null;
                     }
-                    // Format 3: "1 5 -21.40 2.35" (Port, ONT_ID, Rx, Tx)
-                    elseif (count($cols) >= 4 && is_numeric($cols[0]) && is_numeric($cols[1])) {
+                    // Priority 4: "1 5 -21.40 2.35" (Port, ONT_ID, Rx, Tx)
+                    elseif (count($cols) >= 4 && is_numeric($cols[0]) && is_numeric($cols[1]) && !str_contains($cols[1], '.') && (int)$cols[1] > 0) {
                         $lPort = (int)$cols[0];
                         $lOnuId = (int)$cols[1];
                         $rx = $cols[2];
                         $tx = $cols[3];
                         $temp = $cols[4] ?? null;
-                    }
-                    // Format 4: "1 -22.21 2.16 -28.86 55.41" (per-port query output: ONT_ID, Rx, Tx, OLT-Rx, Temp)
-                    elseif (count($cols) >= 3 && is_numeric($cols[0]) && $defaultPort !== null) {
-                        $lOnuId = (int)$cols[0];
-                        $rx = $cols[1];
-                        $tx = $cols[2];
-                        $temp = count($cols) >= 5 ? $cols[4] : ($cols[3] ?? null);
                     }
 
                     if ($lPort !== null && $lOnuId !== null) {
