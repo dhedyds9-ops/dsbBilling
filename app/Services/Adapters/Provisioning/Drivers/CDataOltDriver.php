@@ -319,52 +319,111 @@ class CDataOltDriver extends BaseOltDriver
                 }
             }
 
-            // Parse show ont optical-info lines
-            $cleanOpt = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$optOut);
-            foreach (explode("\n", $cleanOpt) as $line) {
-                $line = trim($line);
-                if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID') || str_starts_with($line, 'Total:') || str_starts_with($line, 'show') || str_starts_with($line, 'FD1608S')) {
-                    continue;
+            // Parse show ont optical-info lines helper
+            $parseOptLines = function(string $rawOpt, ?int $defaultPort = null) {
+                $cleanOpt = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $rawOpt);
+                foreach (explode("\n", $cleanOpt) as $line) {
+                    $line = trim($line);
+                    if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID') || str_starts_with($line, 'Total:') || str_starts_with($line, 'show') || str_starts_with($line, 'FD1608S') || str_starts_with($line, 'No')) {
+                        continue;
+                    }
+
+                    $cols = preg_split('/\s+/', $line);
+                    $lPort = $defaultPort;
+                    $lOnuId = null;
+                    $rx = null;
+                    $tx = null;
+                    $temp = null;
+
+                    // Format 1: "0/0 2 1 -21.40 2.35 45.0" (F/S, Port, ONT_ID, Rx, Tx, Temp)
+                    if (count($cols) >= 5 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
+                        $lPort = (int)$cols[1];
+                        $lOnuId = (int)$cols[2];
+                        $rx = $cols[3];
+                        $tx = $cols[4];
+                        $temp = $cols[5] ?? null;
+                    }
+                    // Format 2: "0/2 1 -21.40 2.35" (Slot/Port, ONT_ID, Rx, Tx)
+                    elseif (count($cols) >= 4 && str_contains($cols[0], '/')) {
+                        $parts = explode('/', $cols[0]);
+                        $lPort = (int)end($parts);
+                        $lOnuId = (int)$cols[1];
+                        $rx = $cols[2];
+                        $tx = $cols[3];
+                        $temp = $cols[5] ?? null;
+                    }
+                    // Format 3: "1 5 -21.40 2.35" (Port, ONT_ID, Rx, Tx)
+                    elseif (count($cols) >= 4 && is_numeric($cols[0]) && is_numeric($cols[1])) {
+                        $lPort = (int)$cols[0];
+                        $lOnuId = (int)$cols[1];
+                        $rx = $cols[2];
+                        $tx = $cols[3];
+                        $temp = $cols[4] ?? null;
+                    }
+                    // Format 4: "5 -21.40 2.35" (per-port query output: ONT_ID, Rx, Tx)
+                    elseif (count($cols) >= 3 && is_numeric($cols[0]) && $defaultPort !== null) {
+                        $lOnuId = (int)$cols[0];
+                        $rx = $cols[1];
+                        $tx = $cols[2];
+                        $temp = $cols[3] ?? null;
+                    }
+
+                    if ($lPort !== null && $lOnuId !== null) {
+                        if (isset($this->cachedCliParsedOnus[$lPort][$lOnuId])) {
+                            // Extract numeric float value, discarding dBm / C units (e.g. "-21.40(dBm)")
+                            $cleanNum = function($v) {
+                                if ($v === null || $v === '--' || $v === 'N/A' || $v === '') return null;
+                                if (preg_match('/[-+]?[0-9]*\.?[0-9]+/', (string)$v, $nm)) {
+                                    return (float)$nm[0];
+                                }
+                                return null;
+                            };
+
+                            $rxVal = $cleanNum($rx);
+                            $txVal = $cleanNum($tx);
+                            $tempVal = $cleanNum($temp);
+
+                            if ($rxVal !== null && $rxVal > -50.0 && $rxVal < 10.0 && $rxVal !== 0.0) {
+                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = $rxVal;
+                            }
+                            if ($txVal !== null && $txVal > -10.0 && $txVal < 25.0 && $txVal !== 0.0) {
+                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = $txVal;
+                            }
+                            if ($tempVal !== null && $tempVal > 0 && $tempVal < 120) {
+                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['temperature'] = $tempVal;
+                            }
+                        }
+                    }
+                }
+            };
+
+            // 1. Try global command
+            $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
+            if (!$isBad($optOut)) {
+                $parseOptLines($optOut);
+            }
+
+            // 2. Query per port for all ports detected with ONUs (FD1608S standard command: show ont optical-info <port> all)
+            $portsWithOnus = !empty($this->cachedCliParsedOnus) ? array_keys($this->cachedCliParsedOnus) : range(1, 8);
+            foreach ($portsWithOnus as $pNum) {
+                // Check if any online ONU on this port is still missing optical rx power
+                $needsPower = false;
+                if (!empty($this->cachedCliParsedOnus[$pNum])) {
+                    foreach ($this->cachedCliParsedOnus[$pNum] as $onuItem) {
+                        if ($onuItem['status'] === 'online' && $onuItem['rx_power_dbm'] === null) {
+                            $needsPower = true;
+                            break;
+                        }
+                    }
                 }
 
-                $cols = preg_split('/\s+/', $line);
-                $lPort = null;
-                $lOnuId = null;
-                $rx = null;
-                $tx = null;
-                $temp = null;
-
-                // Format 1: "0/0 2 1 -21.40 2.35 45.0"
-                if (count($cols) >= 5 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
-                    $lPort = (int)$cols[1];
-                    $lOnuId = (int)$cols[2];
-                    $rx = $cols[3];
-                    $tx = $cols[4];
-                    $temp = $cols[5] ?? null;
-                }
-                // Format 2: "0/2 1 -21.40 2.35"
-                elseif (count($cols) >= 4 && str_contains($cols[0], '/')) {
-                    $parts = explode('/', $cols[0]);
-                    $lPort = (int)end($parts);
-                    $lOnuId = (int)$cols[1];
-                    $rx = $cols[2];
-                    $tx = $cols[3];
-                    $temp = $cols[5] ?? null;
-                }
-                // Format 3: "1 5 -21.40 2.35"
-                elseif (count($cols) >= 4 && is_numeric($cols[0]) && is_numeric($cols[1])) {
-                    $lPort = (int)$cols[0];
-                    $lOnuId = (int)$cols[1];
-                    $rx = $cols[2];
-                    $tx = $cols[3];
-                    $temp = $cols[4] ?? null;
-                }
-
-                if ($lPort !== null && $lOnuId !== null) {
-                    if (isset($this->cachedCliParsedOnus[$lPort][$lOnuId])) {
-                        if (is_numeric($rx)) $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = (float)$rx;
-                        if (is_numeric($tx)) $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = (float)$tx;
-                        if (is_numeric($temp)) $this->cachedCliParsedOnus[$lPort][$lOnuId]['temperature'] = (float)$temp;
+                if ($needsPower) {
+                    $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show ont optical-info 0/0/{$pNum} all\r\n", false);
+                    }
+                    if (!$isBad($pOpt)) {
+                        $parseOptLines($pOpt, (int)$pNum);
                     }
                 }
             }

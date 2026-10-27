@@ -293,23 +293,19 @@ class Index extends AdminComponent
     #[Computed]
     public function summary(): array
     {
-        $staleAt = now()->subMinutes(15);
-        $total = Onu::withoutTrashed()->count();
-        $online = Onu::withoutTrashed()
-            ->where('status', 'active')
-            ->where(function ($q) use ($staleAt) {
-                $q->whereNotNull('rx_power_dbm')
-                  ->orWhere(function ($sq) use ($staleAt) {
-                      $sq->whereNotNull('pon_port')->where('last_seen_at', '>=', $staleAt);
-                  });
-            })->count();
+        $baseQuery = Onu::withoutTrashed()
+            ->when($this->oltFilter, fn ($q) => $q->where('olt_id', $this->oltFilter))
+            ->when($this->ponFilter, fn ($q) => $q->where('pon_port_id', $this->ponFilter));
 
-        $los = Onu::withoutTrashed()->where(function ($q) {
+        $total = (clone $baseQuery)->count();
+        $online = (clone $baseQuery)->where('status', 'active')->count();
+
+        $los = (clone $baseQuery)->where(function ($q) {
             $q->where('status', 'los')->orWhere('rx_power_dbm', '<', -30.0);
         })->count();
 
-        $lowRx = Onu::withoutTrashed()->whereBetween('rx_power_dbm', [-30.0, -27.0])->count();
-        $offline = max(0, $total - $online - $los);
+        $lowRx = (clone $baseQuery)->whereBetween('rx_power_dbm', [-30.0, -27.0])->count();
+        $offline = max(0, $total - $online);
 
         return [
             'total'   => $total,
