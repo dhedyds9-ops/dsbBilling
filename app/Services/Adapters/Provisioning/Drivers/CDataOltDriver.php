@@ -26,6 +26,7 @@ class CDataOltDriver extends BaseOltDriver
 
     protected ?bool $isNewBranch = null;
     protected ?array $cachedOnuStatuses = null;
+    protected ?array $cachedOnuActiveStates = null;
     protected ?array $cachedOnuSerials = null;
     protected ?array $cachedOnuRx = null;
     protected ?array $cachedOnuTx = null;
@@ -367,14 +368,23 @@ class CDataOltDriver extends BaseOltDriver
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.2')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.2') ?: []));
             
-            $gponStatuses = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.12') ?: [])) : [];
-            $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8') ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.6') ?: [])) : [];
-            $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: []) : [];
-            $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.10') ?: []) : [];
+            // GPON Active State (1 = active/online, 2 = inactive/offline)
+            $gponActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: []) : [];
+            // GPON Run Status (1=init, 2=standby, 3=sn, 4=ranging, 5=operation/ONLINE, 6=popup)
+            $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8') ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [])) : [];
+            
+            // Optical Rx Power (Table 9.4.1.3 or 9.3.1.3 or 4.1.1.8)
+            $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.3')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.8') ?: []))) : [];
+            $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.4')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.4') ?: [])) : [];
+            $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.6') ?: []) : [];
 
             // Check C-Data EPON (34592 / 51810 / 17409 CTC)
             $eponSerials = [];
             $eponStatuses = [];
+            $eponActive = [];
             $eponRx = [];
             $eponTx = [];
             $eponTemps = [];
@@ -385,6 +395,7 @@ class CDataOltDriver extends BaseOltDriver
                 $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.2') ?: [];
                 if (!empty($eponSerials)) {
                     $eponStatuses = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.3') ?: [];
+                    $eponActive = $eponStatuses;
                     $eponRx = $this->snmp->walk('.1.3.6.1.4.1.34592.1.3.3.1.1.6') ?: [];
                     $eponMacs = $eponSerials;
                 }
@@ -394,6 +405,7 @@ class CDataOltDriver extends BaseOltDriver
                     $eponSerials = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.2')
                         ?: ($this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.4') ?: []);
                     $eponStatuses = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.3') ?: [];
+                    $eponActive = $eponStatuses;
                     $eponRx = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.6') ?: [];
                     $eponTx = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.7') ?: ($this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.5') ?: []);
                     $eponTemps = $this->snmp->walk('.1.3.6.1.4.1.51810.1.3.1.1.1.8') ?: [];
@@ -406,6 +418,7 @@ class CDataOltDriver extends BaseOltDriver
                         ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.7')
                         ?: ($this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.11') ?: []));
                     $ctcStatuses = $this->snmp->walk('.1.3.6.1.4.1.17409.2.3.4.1.1.3') ?: [];
+                    $ctcActive = $ctcStatuses;
                     $ctcRx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.8') ?: [];
                     $ctcTx = $this->snmp->walk('.1.3.6.1.4.1.17409.2.8.4.3.1.9') ?: [];
                     
@@ -420,7 +433,8 @@ class CDataOltDriver extends BaseOltDriver
             }
 
             $this->cachedOnuSerials = $gponSerials ?: $eponSerials;
-            $this->cachedOnuStatuses = $gponStatuses ?: $eponStatuses;
+            $this->cachedOnuActiveStates = !empty($gponSerials) ? $gponActive : $eponActive;
+            $this->cachedOnuStatuses = !empty($gponSerials) ? $gponRunStatus : $eponStatuses;
             $this->cachedOnuRx = $gponRx ?: $eponRx;
             $this->cachedOnuTx = $gponTx ?: $eponTx;
             $this->cachedOnuTemps = $gponTemps ?: $eponTemps;
@@ -475,12 +489,13 @@ class CDataOltDriver extends BaseOltDriver
         };
 
         $parsePower = function($val) {
-            $raw = (int)$val;
-            if ($raw === 0 || $raw <= -65535) return null;
-            if ($raw < 0 && $raw > -65536) return round($raw / 100, 2);
-            if ($raw > 65536) return round(10 * log10($raw / 10000), 2);
-            if ($raw > 0 && $raw < 2000) return round($raw / 10 - 50, 2);
-            if ($raw >= -4000 && $raw <= 1000) return round($raw / 100, 2);
+            $raw = (float)$val;
+            if ($raw == 0 || $raw <= -65535 || $raw >= 65535) return null;
+            if ($raw < 0 && $raw >= -4500) return round($raw / 100, 2);
+            if ($raw >= 1000 && $raw <= 4500) return round(-($raw / 100), 2);
+            if ($raw >= -45 && $raw <= 10) return round($raw, 2);
+            if ($raw >= -450 && $raw <= -100) return round($raw / 10, 2);
+            if ($raw > 0 && $raw < 100000) return round(10 * log10($raw / 10000), 2);
             return null;
         };
 
@@ -512,17 +527,25 @@ class CDataOltDriver extends BaseOltDriver
             }
 
             // Check if this ONU belongs to the current port (or broad match if port can't be resolved)
-            if ($p === $portNum || $p === $ponPort || ($p !== null && $rawP === $ponPort) || count($this->cachedOnuSerials) <= 4) {
-                $stVal = $this->cachedOnuStatuses[$oidKey] ?? 0;
-                $isOnline = match((int)$stVal) {
-                    1, 2, 10, 100, 101 => true,
-                    default => false
-                };
+            if ($p === $portNum || $p === $ponPort || ($p !== null && $rawP === $ponPort) || count($this->cachedOnuSerials) <= 16) {
+                $activeVal = (int)($this->cachedOnuActiveStates[$oidKey] ?? 0);
+                $stVal = (int)($this->cachedOnuStatuses[$oidKey] ?? 0);
+                $stRaw = strtolower(trim((string)($this->cachedOnuStatuses[$oidKey] ?? '')));
+
+                // In GPON: activeVal 1 = active, stVal 5 = operation (O5 state)
+                // In EPON: activeVal / stVal 1 = online/authenticated, 3 = online
+                $isOnline = ($activeVal === 1)
+                    || in_array($stVal, [1, 2, 3, 4, 5, 6, 10, 100, 101], true)
+                    || str_contains($stRaw, 'online')
+                    || str_contains($stRaw, 'up')
+                    || str_contains($stRaw, 'active')
+                    || str_contains($stRaw, 'oper')
+                    || str_contains($stRaw, 'o5');
 
                 $rxVal = $parsePower($this->cachedOnuRx[$oidKey] ?? 0);
                 $txVal = $parsePower($this->cachedOnuTx[$oidKey] ?? 0);
 
-                if ($rxVal !== null && $rxVal > -40) {
+                if ($rxVal !== null && $rxVal > -39.0 && $rxVal < 5.0) {
                     $isOnline = true;
                 }
 
