@@ -156,15 +156,15 @@
                     </td>
                     <td class="p-3 noc-mono noc-text font-medium">{{ $onu->serial_number }}</td>
                     <td class="p-3 noc-mono noc-text-secondary">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
-                    <td class="p-3 noc-mono noc-text-secondary">{{ $onu->acsDevice?->ip_address ?? '-' }}</td>
+                    <td class="p-3 noc-mono noc-text-secondary">{{ $onu->ip_address ?? $onu->acsDevice?->ip_address ?? '-' }}</td>
                     <td class="p-3 noc-muted">
                         <span class="noc-muted">{{ $onu->olt?->name ?? '-' }}</span>
                         <span class="noc-muted opacity-60">/</span>
                         <span class="noc-mono noc-muted">{{ $onu->ponPort?->name ?? '-' }}</span>
                     </td>
                     <td class="p-3 noc-muted">{{ $onu->customerService?->customer?->name ?? '-' }}</td>
-                    <td class="p-3 noc-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm-1) . ' dBm' : '-' }}</td>
-                    <td class="p-3 noc-mono noc-muted">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm-1) . ' dBm' : '-' }}</td>
+                    <td class="p-3 noc-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm, 2) . ' dBm' : '-' }}</td>
+                    <td class="p-3 noc-mono noc-muted">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm, 2) . ' dBm' : '-' }}</td>
                     <td class="p-3 noc-mono noc-muted">{{ $onu->temperature ?? '-' }}</td>
                     <td class="p-3">
                         <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ $st }}</span>

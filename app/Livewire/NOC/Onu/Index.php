@@ -238,6 +238,8 @@ class Index extends AdminComponent
                 'ponPort:id,name,port_number',
                 'customerService:id,onu_id,customer_id',
                 'customerService.customer:id,name,code',
+                'customerService.pppoeUser:id,customer_service_id,static_ip,ip_allocation_id',
+                'customerService.pppoeUser.ipAllocation:id,ip_address',
                 'acsDevice:id,serial_number,ip_address,mac_address'
             ])
             ->select([

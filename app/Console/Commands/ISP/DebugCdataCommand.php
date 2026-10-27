@@ -128,15 +128,39 @@ class DebugCdataCommand extends Command
                     $this->line(implode("\n", $lines) ?: '  (kosong)');
                 }
 
-                // Test masuk ke interface gpon 0/0
-                $this->line("  --- TEST CMD DALAM INTERFACE: 'interface gpon 0/0' -> 'show ont optical-info 1' ---");
+                // Test masuk ke interface gpon 0/0 dan jalankan show ont optical-info <port> all
+                $this->line("  --- TEST OPTICAL INFO DALAM INTERFACE: 'interface gpon 0/0' ---");
                 $cli->execute("config\r\n", false);
                 $cli->execute("interface gpon 0/0\r\n", false);
-                $inOpt = $cli->execute("show ont optical-info 1\r\n", false);
-                $lines = array_slice(explode("\n", trim((string)$inOpt)), 0, 8);
-                $this->line(implode("\n", $lines) ?: '  (kosong)');
+                
+                $inOpt1 = $cli->execute("show ont optical-info 1 all\r\n", false);
+                $this->line("  Output 'show ont optical-info 1 all':");
+                $lines1 = array_slice(explode("\n", trim((string)$inOpt1)), 0, 10);
+                $this->line(implode("\n", $lines1) ?: '  (kosong)');
+
+                $inOpt3 = $cli->execute("show ont optical-info 3 all\r\n", false);
+                $this->line("  Output 'show ont optical-info 3 all':");
+                $lines3 = array_slice(explode("\n", trim((string)$inOpt3)), 0, 10);
+                $this->line(implode("\n", $lines3) ?: '  (kosong)');
+
                 $cli->execute("exit\r\n", false);
                 $cli->execute("exit\r\n", false);
+
+                // Test parse MAC Address
+                $this->newLine();
+                $this->line("  --- TEST PARSE 'show mac-address dynamic' ---");
+                $macOut = $cli->execute("show mac-address dynamic\r\n", false);
+                $macCount = 0;
+                foreach (explode("\n", (string)$macOut) as $mLine) {
+                    $mLine = trim($mLine);
+                    if (preg_match('/^([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2})\s+\d+\s+\S+\s+\S+\s+gpon0\/0\/(\d+)\s+(\d+)/', $mLine, $matches)) {
+                        $macCount++;
+                        if ($macCount <= 5) {
+                            $this->line("    Port {$matches[2]} | ONU {$matches[3]} => MAC {$matches[1]}");
+                        }
+                    }
+                }
+                $this->info("  Total MAC berhasil diparsing: {$macCount} MAC.");
 
             } catch (\Throwable $e) {
                 $this->error("  ✗ Telnet CLI Gagal: " . $e->getMessage());

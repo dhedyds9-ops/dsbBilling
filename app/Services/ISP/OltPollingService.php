@@ -293,7 +293,7 @@ class OltPollingService
                             'last_seen_at' => $status === 'online' ? now() : $onu->last_seen_at,
                             'status' => $newStatusEnum,
                         ];
-                        if (!empty($macAddress) && empty($onu->mac_address)) {
+                        if (!empty($macAddress)) {
                             $onuUpdate['mac_address'] = $macAddress;
                         }
                         if (!empty($firmware)) {

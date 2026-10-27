@@ -244,6 +244,18 @@ class Onu extends Model
         return $this->belongsTo(\App\Models\User::class, 'updated_by');
     }
 
+    public function ipAddress(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?string {
+                return $this->acsDevice?->ip_address
+                    ?? $this->customerService?->pppoeUser?->static_ip
+                    ?? $this->customerService?->pppoeUser?->ipAllocation?->ip_address
+                    ?? ($this->attributes['ip_address'] ?? null);
+            }
+        );
+    }
+
     public function isOnline(): Attribute
     {
         return Attribute::make(

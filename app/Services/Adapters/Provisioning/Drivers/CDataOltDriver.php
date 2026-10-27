@@ -379,15 +379,34 @@ class CDataOltDriver extends BaseOltDriver
                                 return null;
                             };
 
-                            $rxVal = $cleanNum($rx);
-                            $txVal = $cleanNum($tx);
+                            $valA = $cleanNum($rx);
+                            $valB = $cleanNum($tx);
                             $tempVal = $cleanNum($temp);
 
-                            if ($rxVal !== null && $rxVal > -50.0 && $rxVal < 10.0 && $rxVal !== 0.0) {
-                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = $rxVal;
+                            $detectedRx = null;
+                            $detectedTx = null;
+
+                            if ($valA !== null && $valB !== null) {
+                                if ($valA < 0 && $valB >= 0) {
+                                    $detectedRx = $valA;
+                                    $detectedTx = $valB;
+                                } elseif ($valB < 0 && $valA >= 0) {
+                                    $detectedRx = $valB;
+                                    $detectedTx = $valA;
+                                } else {
+                                    $detectedRx = $valA;
+                                    $detectedTx = $valB;
+                                }
+                            } elseif ($valA !== null) {
+                                if ($valA < 0) $detectedRx = $valA;
+                                else $detectedTx = $valA;
                             }
-                            if ($txVal !== null && $txVal > -10.0 && $txVal < 25.0 && $txVal !== 0.0) {
-                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = $txVal;
+
+                            if ($detectedRx !== null && $detectedRx > -50.0 && $detectedRx < 10.0 && $detectedRx !== 0.0) {
+                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = $detectedRx;
+                            }
+                            if ($detectedTx !== null && $detectedTx > -10.0 && $detectedTx < 25.0 && $detectedTx !== 0.0) {
+                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = $detectedTx;
                             }
                             if ($tempVal !== null && $tempVal > 0 && $tempVal < 120) {
                                 $this->cachedCliParsedOnus[$lPort][$lOnuId]['temperature'] = $tempVal;
@@ -397,13 +416,33 @@ class CDataOltDriver extends BaseOltDriver
                 }
             };
 
-            // 1. Try global command
-            $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
-            if (!$isBad($optOut)) {
-                $parseOptLines($optOut);
+            // 1. Parse MAC Address Dynamic globally (Maps Port and ONU ID directly to MAC)
+            $macOut = $this->cli->execute("show mac-address dynamic\r\n", false);
+            if (!$isBad($macOut)) {
+                $cleanMac = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', (string)$macOut);
+                foreach (explode("\n", $cleanMac) as $mLine) {
+                    $mLine = trim($mLine);
+                    // Format: 28:6D:DA:7C:1B:D9 99 - 113 gpon0/0/3 36 1 dynamic
+                    if (preg_match('/^([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2})\s+\S+\s+\S+\s+\S+\s+(?:gpon|epon)?(?:[\d\/]+)?(\d+)\s+(\d+)/i', $mLine, $mM)) {
+                        $mMac = strtoupper(str_replace('-', ':', $mM[1]));
+                        $mPort = (int)$mM[2];
+                        $mOnu = (int)$mM[3];
+                        if ($mPort > 0 && $mOnu > 0 && isset($this->cachedCliParsedOnus[$mPort][$mOnu])) {
+                            $this->cachedCliParsedOnus[$mPort][$mOnu]['mac_address'] = $mMac;
+                        }
+                    }
+                }
             }
 
-            // 2. Query per port for all ports detected with ONUs (FD1608S standard command: show ont optical-info <port> all)
+            // 2. Query per port optical info INSIDE interface mode (Required by C-Data FD1608S firmware)
+            $this->cli->execute("config\r\n", false);
+            $inGpon = $this->cli->execute("interface gpon 0/{$slot}\r\n", false);
+            if ($isBad($inGpon)) {
+                $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
+            }
+
+            $inInterface = !$isBad($inGpon);
+
             $portsWithOnus = !empty($this->cachedCliParsedOnus) ? array_keys($this->cachedCliParsedOnus) : range(1, 8);
             foreach ($portsWithOnus as $pNum) {
                 // Check if any online ONU on this port is still missing optical rx power
@@ -420,12 +459,17 @@ class CDataOltDriver extends BaseOltDriver
                 if ($needsPower) {
                     $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
                     if ($isBad($pOpt)) {
-                        $pOpt = $this->cli->execute("show ont optical-info 0/0/{$pNum} all\r\n", false);
+                        $pOpt = $this->cli->execute("show ont optical-info {$pNum}\r\n", false);
                     }
                     if (!$isBad($pOpt)) {
                         $parseOptLines($pOpt, (int)$pNum);
                     }
                 }
+            }
+
+            if ($inInterface) {
+                $this->cli->execute("exit\r\n", false);
+                $this->cli->execute("exit\r\n", false);
             }
         } catch (\Throwable $e) {
             Log::warning("CData OLT Telnet CLI sync failed: " . $e->getMessage() . ". Falling back to SNMP.");
