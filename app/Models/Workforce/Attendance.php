@@ -42,4 +42,14 @@ class Attendance extends Model
     {
         return $this->belongsTo(User::class, 'technician_id');
     }
+
+    /**
+     * Otomatis sinkronkan absensi ke MStore setiap kali data disimpan/diperbarui.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function ($attendance) {
+            \App\Services\Workforce\MstoreAttendanceSyncService::sync($attendance);
+        });
+    }
 }
