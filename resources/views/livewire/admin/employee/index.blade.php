@@ -76,9 +76,9 @@
         </div>
 
         <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-            <select wire:model.live="filterDepartment"
+            <select wire:model.live="filterJobFunction"
                     class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">Semua Departemen</option>
+                <option value="">Semua Job Function</option>
                 @foreach(\App\Enums\JobFunction::cases() as $jobFunc)
                     <option value="{{ $jobFunc->value }}">{{ $jobFunc->label() }}</option>
                 @endforeach
@@ -91,7 +91,7 @@
                 <option value="inactive">Nonaktif</option>
             </select>
 
-            @if($search || $filterStatus !== '' || $filterDepartment !== '')
+            @if($search || $filterStatus !== '' || $filterJobFunction !== '' || $filterDepartment !== '')
                 <button wire:click="resetFilters" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Reset Filter">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">restart_alt</span>
                 </button>

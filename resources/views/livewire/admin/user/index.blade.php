@@ -21,6 +21,14 @@
             </div>
 
             <div class="flex items-center gap-2 w-full sm:w-auto">
+                {{-- Job Function Filter --}}
+                <select wire:model.live="filterJobFunction" class="w-full sm:w-auto py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100">
+                    <option value="">Semua Job Function</option>
+                    @foreach(\App\Enums\JobFunction::cases() as $jf)
+                        <option value="{{ $jf->value }}">{{ $jf->label() }}</option>
+                    @endforeach
+                </select>
+
                 {{-- Per Page Selector --}}
                 <select wire:model.live="perPage" class="w-full sm:w-auto py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100">
                     <option value="10">10 / hal</option>
@@ -30,7 +38,7 @@
                     <option value="all">Semua</option>
                 </select>
 
-                @if($search)
+                @if($search || $filterJobFunction !== '')
                 <button wire:click="resetFilters" class="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100 font-medium whitespace-nowrap">
                     Reset
                 </button>

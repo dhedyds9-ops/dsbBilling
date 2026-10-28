@@ -14,6 +14,7 @@ class Index extends BaseAdminComponent
 {
     public $filterStatus = '';
     public $filterDepartment = '';
+    public $filterJobFunction = '';
     public array $selectedIds = [];
     public bool $selectAll = false;
     public bool $showDeleteModal = false;
@@ -47,6 +48,7 @@ class Index extends BaseAdminComponent
         $this->search = '';
         $this->filterStatus = '';
         $this->filterDepartment = '';
+        $this->filterJobFunction = '';
         $this->selectedIds = [];
         $this->selectAll = false;
         $this->resetPage();
@@ -261,7 +263,24 @@ class Index extends BaseAdminComponent
                 });
             })
             ->when($this->filterStatus !== '', fn($q) => $q->where('status', $this->filterStatus))
-            ->when($this->filterDepartment !== '', fn($q) => $q->where('department', $this->filterDepartment));
+            ->when($this->filterDepartment !== '', fn($q) => $q->where('department', $this->filterDepartment))
+            ->when($this->filterJobFunction !== '', function ($query) {
+                $jf = $this->filterJobFunction;
+                $query->where(function ($q) use ($jf) {
+                    $q->where('department', $jf)
+                      ->orWhereHas('user', fn($u) => $u->where('job_function', $jf));
+
+                    if ($jf === 'NOC') {
+                        $q->orWhere('position', 'like', '%noc%')->orWhere('position', 'like', '%monitoring%');
+                    } elseif ($jf === 'TECHNICIAN') {
+                        $q->orWhere('position', 'like', '%teknisi%')->orWhere('position', 'like', '%technician%')->orWhere('position', 'like', '%lapangan%');
+                    } elseif ($jf === 'SALES') {
+                        $q->orWhere('position', 'like', '%sales%')->orWhere('position', 'like', '%marketing%');
+                    } elseif ($jf === 'PENGURUS') {
+                        $q->orWhere('position', 'like', '%cs%')->orWhere('position', 'like', '%kasir%')->orWhere('position', 'like', '%pengurus%')->orWhere('position', 'like', '%admin%');
+                    }
+                });
+            });
     }
 
     public function render()

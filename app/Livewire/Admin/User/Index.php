@@ -17,6 +17,7 @@ class Index extends AdminComponent
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
     public $perPage = 10;
+    public $filterJobFunction = '';
     public $filters = [];
     public $showFilters = false;
     
@@ -55,6 +56,7 @@ class Index extends AdminComponent
     public function resetFilters()
     {
         $this->filters = ['status' => ''];
+        $this->filterJobFunction = '';
         $this->search = '';
         $this->resetPage();
     }
@@ -153,6 +155,10 @@ class Index extends AdminComponent
                 $q->where('name', 'like', '%' . $this->search . '%')
                   ->orWhere('email', 'like', '%' . $this->search . '%');
             });
+        }
+
+        if ($this->filterJobFunction !== '') {
+            $query->where('job_function', $this->filterJobFunction);
         }
 
         $users = $query->orderBy($this->sortField, $this->sortDirection)
