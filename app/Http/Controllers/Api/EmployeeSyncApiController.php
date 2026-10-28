@@ -141,7 +141,39 @@ class EmployeeSyncApiController extends Controller
         $employee->bank_account = $validated['bank_account'] ?? $employee->bank_account;
         $employee->status = $validated['status'] ?? 'active';
 
-        $employee->save();
+        try {
+            $employee->save();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Jika terjadi tabrakan NIK (Error 23000 / 1062), tangani dengan force update ke record yang ada
+            if ($e->getCode() === '23000' && $cleanNik) {
+                $existing = Employee::withTrashed()->where('nik', $cleanNik)->first();
+                if (! $existing) {
+                    $existing = Employee::withTrashed()->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($cleanName)])->first();
+                }
+
+                if ($existing) {
+                    if ($existing->trashed()) {
+                        $existing->restore();
+                    }
+                    $existing->name = $validated['name'];
+                    $existing->position = $validated['position'] ?? $existing->position;
+                    $existing->department = $jobFunction ? $jobFunction->value : ($existing->department ?? JobFunction::PENGURUS->value);
+                    $existing->phone = $validated['phone'] ?? $existing->phone;
+                    $existing->email = $validated['email'] ?? $existing->email;
+                    $existing->join_date = $validated['join_date'] ?? $existing->join_date;
+                    $existing->base_salary = $validated['base_salary'] ?? $existing->base_salary;
+                    $existing->bank_name = $validated['bank_name'] ?? $existing->bank_name;
+                    $existing->bank_account = $validated['bank_account'] ?? $existing->bank_account;
+                    $existing->status = $validated['status'] ?? 'active';
+                    $existing->save();
+                    $employee = $existing;
+                } else {
+                    throw $e;
+                }
+            } else {
+                throw $e;
+            }
+        }
 
         // 5. Otomatis buat & tautkan akun login User jika belum ada
         if (empty($employee->user_id)) {
