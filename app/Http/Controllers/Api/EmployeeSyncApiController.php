@@ -89,17 +89,45 @@ class EmployeeSyncApiController extends Controller
             $validated['position'] ?? null
         );
 
-        // 4. Upsert data ke tabel employees dsBilling
-        $query = Employee::query();
-        if (! empty($validated['nik']) && ! str_starts_with($validated['nik'], 'AUTO-')) {
-            $employee = $query->where('nik', $validated['nik'])->first();
-        } else {
-            $employee = $query->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($validated['name']))])->first();
+        // 4. Upsert data ke tabel employees dsBilling (Mencegah Duplicate NIK & Tangani Soft Deletes)
+        $cleanNik = ! empty($validated['nik']) ? trim((string) $validated['nik']) : null;
+        $cleanName = trim((string) $validated['name']);
+        $employee = null;
+
+        // 1. Prioritaskan pencarian berdasarkan NIK (termasuk record yang di-soft-delete)
+        if ($cleanNik && ! str_starts_with($cleanNik, 'AUTO-')) {
+            $employee = Employee::withTrashed()->where('nik', $cleanNik)->first();
         }
 
+        // 2. Jika tidak ditemukan berdasarkan NIK, cari berdasarkan Nama
+        if (! $employee) {
+            $employee = Employee::withTrashed()
+                ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($cleanName)])
+                ->first();
+        }
+
+        // 3. Jika belum ada, buat instance baru; jika soft-deleted, restore
         if (! $employee) {
             $employee = new Employee();
-            $employee->nik = ! empty($validated['nik']) ? $validated['nik'] : null;
+        } elseif ($employee->trashed()) {
+            $employee->restore();
+        }
+
+        // 4. Pastikan NIK terisi tanpa melanggar unique constraint
+        if ($cleanNik && ! str_starts_with($cleanNik, 'AUTO-')) {
+            $conflict = Employee::withTrashed()
+                ->where('nik', $cleanNik)
+                ->where('id', '!=', $employee->id ?? 0)
+                ->first();
+
+            if ($conflict) {
+                $employee = $conflict;
+                if ($employee->trashed()) {
+                    $employee->restore();
+                }
+            } else {
+                $employee->nik = $cleanNik;
+            }
         }
 
         $employee->name = $validated['name'];
