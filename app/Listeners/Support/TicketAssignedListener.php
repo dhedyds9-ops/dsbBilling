@@ -69,27 +69,33 @@ class TicketAssignedListener
             }
 
             // ── 2. WhatsApp Notification ke Grup WA Tiket / NOC ───────
-            try {
-                $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
-                $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
-                if ($ticketGroupId !== '') {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $groupText = $this->template->ticketAssigned([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'category'         => $ticket->category ?? 'internet',
-                        'priority'         => $ticket->priority ?? 'medium',
-                        'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $customer?->address ?? '-',
-                        'technician_name'  => $technician->name,
-                    ]);
+            // Cegah duplikasi 2x pesan jika tiket baru saja dibuat (<15 detik),
+            // karena TicketCreatedListener sudah menyiarkan "TIKET BARU" lengkap dengan nama teknisinya.
+            $isNewlyCreated = $ticket->created_at && $ticket->created_at->diffInSeconds(now()) <= 15;
 
-                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
-                    Log::info('[TicketAssignedListener] Notifikasi tiket assigned dikirim ke Grup WA', [
-                        'ticket_id' => $ticket->id,
-                        'group_id'  => $ticketGroupId,
-                    ]);
+            try {
+                if (!$isNewlyCreated) {
+                    $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+                    $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+                    if ($ticketGroupId !== '') {
+                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                        $groupText = $this->template->ticketAssigned([
+                            'ticket_code'      => $code,
+                            'ticket_id'        => $ticket->id,
+                            'title'            => $ticket->title,
+                            'category'         => $ticket->category ?? 'internet',
+                            'priority'         => $ticket->priority ?? 'medium',
+                            'customer_name'    => $customer?->name ?? 'Pelanggan',
+                            'customer_address' => $customer?->address ?? '-',
+                            'technician_name'  => $technician->name,
+                        ]);
+
+                        \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
+                        Log::info('[TicketAssignedListener] Notifikasi tiket assigned dikirim ke Grup WA', [
+                            'ticket_id' => $ticket->id,
+                            'group_id'  => $ticketGroupId,
+                        ]);
+                    }
                 }
             } catch (\Throwable $ge) {
                 Log::error('[TicketAssignedListener] Gagal kirim ke Grup WA: ' . $ge->getMessage(), [
@@ -99,22 +105,24 @@ class TicketAssignedListener
 
             // ── 3. Telegram Bot Notification ─────────────────────────
             try {
-                $telegram = app(\App\Services\Telegram\TelegramService::class);
-                if ($telegram->isEnabled()) {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $telegram->sendTicketNotification([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $customer?->address ?? '-',
-                        'category'         => $ticket->category ?? 'internet',
-                        'priority'         => $ticket->priority ?? 'medium',
-                        'status'           => $ticket->status ?? 'in_progress',
-                        'technician_name'  => $technician->name,
-                        'updated_by'       => 'Sistem Penugasan',
-                        'note'             => "Tiket ditugaskan ke {$technician->name}",
-                    ], 'updated');
+                if (!$isNewlyCreated) {
+                    $telegram = app(\App\Services\Telegram\TelegramService::class);
+                    if ($telegram->isEnabled()) {
+                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                        $telegram->sendTicketNotification([
+                            'ticket_code'      => $code,
+                            'ticket_id'        => $ticket->id,
+                            'title'            => $ticket->title,
+                            'customer_name'    => $customer?->name ?? 'Pelanggan',
+                            'customer_address' => $customer?->address ?? '-',
+                            'category'         => $ticket->category ?? 'internet',
+                            'priority'         => $ticket->priority ?? 'medium',
+                            'status'           => $ticket->status ?? 'in_progress',
+                            'technician_name'  => $technician->name,
+                            'updated_by'       => 'Sistem Penugasan',
+                            'note'             => "Tiket ditugaskan ke {$technician->name}",
+                        ], 'updated');
+                    }
                 }
             } catch (\Throwable $tge) {
                 Log::warning('[TicketAssignedListener] Gagal notif Telegram: ' . $tge->getMessage());

@@ -419,72 +419,74 @@ class Index extends BaseEnterpriseList
                 'resolved_at' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? now() : $ticket->resolved_at,
             ]);
 
-            // Dispatch event jika petugas / teknisi ditugaskan atau diganti
-            if ($newAssignee && $newAssignee != $oldAssignee) {
-                \Illuminate\Support\Facades\Event::dispatch(\Src\Domain\Support\Events\TicketAssignedEvent::create(
-                    (string) $ticket->id,
-                    (string) $newAssignee,
-                    (string) $userId,
-                ));
-            }
+            $isAssigneeChanged = ($newAssignee && $newAssignee != $oldAssignee);
+            $isResolvedChanged = ($newStatus === 'resolved' && $oldStatus !== 'resolved');
 
-            // Dispatch event jika status berubah menjadi resolved
-            if ($newStatus === 'resolved' && $oldStatus !== 'resolved') {
+            // Dispatch event jika status berubah menjadi resolved (akan dikirimkan notif TIKET SELESAI)
+            if ($isResolvedChanged) {
                 \Illuminate\Support\Facades\Event::dispatch(\Src\Domain\Support\Events\TicketResolvedEvent::create(
                     (string) $ticket->id,
                     (string) $userId,
                     $this->editingTicket['note'] ?? null,
                 ));
-            }
+            } elseif ($isAssigneeChanged) {
+                // Dispatch event jika petugas / teknisi ditugaskan atau diganti
+                \Illuminate\Support\Facades\Event::dispatch(\Src\Domain\Support\Events\TicketAssignedEvent::create(
+                    (string) $ticket->id,
+                    (string) $newAssignee,
+                    (string) $userId,
+                ));
+            } else {
+                // Hanya kirim notifikasi edit umum jika BUKAN resolve dan BUKAN ganti assignee
+                // (Mencegah pesan terkirim ganda 2x ke grup WhatsApp & Telegram)
+                try {
+                    $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+                    $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+                    if ($ticketGroupId !== '') {
+                        $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
+                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                        $groupText = $template->ticketUpdated([
+                            'ticket_code'      => $code,
+                            'ticket_id'        => $ticket->id,
+                            'title'            => $ticket->title,
+                            'category'         => $ticket->category ?? 'internet',
+                            'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
+                            'customer_address' => $ticket->customer?->address ?? '-',
+                            'status'           => $ticket->status,
+                            'priority'         => $ticket->priority,
+                            'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
+                            'updated_by'       => Auth::user()?->name ?? 'Staff',
+                            'note'             => $this->editingTicket['note'] ?? '',
+                        ]);
 
-            // Kirim Notifikasi Edit ke Grup WhatsApp
-            try {
-                $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
-                $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
-                if ($ticketGroupId !== '') {
-                    $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $groupText = $template->ticketUpdated([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'category'         => $ticket->category ?? 'internet',
-                        'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
-                        'customer_address' => $ticket->customer?->address ?? '-',
-                        'status'           => $ticket->status,
-                        'priority'         => $ticket->priority,
-                        'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
-                        'updated_by'       => Auth::user()?->name ?? 'Staff',
-                        'note'             => $this->editingTicket['note'] ?? '',
-                    ]);
-
-                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
+                        \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
+                    }
+                } catch (\Throwable $we) {
+                    \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim WA grup: ' . $we->getMessage());
                 }
-            } catch (\Throwable $we) {
-                \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim WA grup: ' . $we->getMessage());
-            }
 
-            // Kirim Notifikasi Edit ke Telegram Bot
-            try {
-                $telegram = app(\App\Services\Telegram\TelegramService::class);
-                if ($telegram->isEnabled()) {
-                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                    $telegram->sendTicketNotification([
-                        'ticket_code'      => $code,
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
-                        'customer_address' => $ticket->customer?->address ?? '-',
-                        'category'         => $ticket->category ?? 'internet',
-                        'priority'         => $ticket->priority ?? 'medium',
-                        'status'           => $ticket->status,
-                        'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
-                        'updated_by'       => Auth::user()?->name ?? 'Staff',
-                        'note'             => $this->editingTicket['note'] ?? '',
-                    ], 'updated');
+                // Kirim Notifikasi Edit ke Telegram Bot
+                try {
+                    $telegram = app(\App\Services\Telegram\TelegramService::class);
+                    if ($telegram->isEnabled()) {
+                        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                        $telegram->sendTicketNotification([
+                            'ticket_code'      => $code,
+                            'ticket_id'        => $ticket->id,
+                            'title'            => $ticket->title,
+                            'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
+                            'customer_address' => $ticket->customer?->address ?? '-',
+                            'category'         => $ticket->category ?? 'internet',
+                            'priority'         => $ticket->priority ?? 'medium',
+                            'status'           => $ticket->status,
+                            'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
+                            'updated_by'       => Auth::user()?->name ?? 'Staff',
+                            'note'             => $this->editingTicket['note'] ?? '',
+                        ], 'updated');
+                    }
+                } catch (\Throwable $te) {
+                    \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim Telegram: ' . $te->getMessage());
                 }
-            } catch (\Throwable $te) {
-                \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim Telegram: ' . $te->getMessage());
             }
 
             session()->flash('success', "Tiket #{$ticket->id} berhasil diperbarui.");
