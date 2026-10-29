@@ -113,33 +113,25 @@ class TicketCreatedListener
                 $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                 $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                 if ($ticketGroupId !== '') {
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
                     $groupText = $this->template->ticketCreated([
-                        'ticket_id'     => $ticket->id,
-                        'title'         => $ticket->title,
-                        'category'      => $ticket->category ?? '-',
-                        'priority'      => $ticket->priority ?? 'medium',
-                        'customer_name' => $customer?->name ?? 'Pelanggan',
-                        'created_by'    => $creatorLabel,
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'category'         => $ticket->category ?? 'internet',
+                        'priority'         => $ticket->priority ?? 'medium',
+                        'customer_name'    => $customer?->name ?? 'Pelanggan',
+                        'customer_address' => $customer?->address ?? '-',
+                        'technician_name'  => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',
                     ]);
-                    $msg = new WaOutgoingMessage(
-                        toPhone: $ticketGroupId,
-                        text: $groupText,
-                        category: 'support',
-                        priorityHigh: true,
-                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_created_group'],
-                    );
 
-                    // Kirim langsung sinkron (agar tidak bergantung pada queue worker background)
-                    try {
-                        SendWaMessageJob::dispatchSync($msg);
-                    } catch (\Throwable $se) {
-                        Log::warning('[TicketCreatedListener] dispatchSync gagal, fallback queue: ' . $se->getMessage());
-                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
-                    }
-
-                    Log::info('[TicketCreatedListener] Notifikasi tiket baru terkirim ke Grup WA', [
+                    // Kirim langsung via HTTP Gateway tanpa dependensi queue
+                    $waRes = \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
+                    Log::info('[TicketCreatedListener] Notifikasi tiket baru dikirim ke Grup WA', [
                         'ticket_id' => $ticket->id,
                         'group_id'  => $ticketGroupId,
+                        'success'   => $waRes['success'] ?? false,
+                        'error'     => $waRes['error'] ?? null,
                     ]);
                 }
             } catch (\Throwable $ge) {
@@ -152,14 +144,17 @@ class TicketCreatedListener
             try {
                 $telegram = app(\App\Services\Telegram\TelegramService::class);
                 if ($telegram->isEnabled()) {
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
                     $telegram->sendTicketNotification([
-                        'ticket_id'       => $ticket->id,
-                        'title'           => $ticket->title,
-                        'customer_name'   => $customer?->name ?? 'Pelanggan',
-                        'category'        => $ticket->category ?? '-',
-                        'priority'        => $ticket->priority ?? 'medium',
-                        'technician_name' => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',
-                        'created_by'      => $creatorLabel,
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'customer_name'    => $customer?->name ?? 'Pelanggan',
+                        'customer_address' => $customer?->address ?? '-',
+                        'category'         => $ticket->category ?? 'internet',
+                        'priority'         => $ticket->priority ?? 'medium',
+                        'technician_name'  => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',
+                        'created_by'       => $creatorLabel,
                     ], 'created');
                 }
             } catch (\Throwable $tge) {

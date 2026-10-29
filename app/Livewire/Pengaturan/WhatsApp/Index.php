@@ -222,6 +222,48 @@ class Index extends AdminComponent
         }
     }
 
+    public function syncGroups(): void
+    {
+        $this->testResult = null;
+        try {
+            $token = trim((string)($this->connection['api_token'] ?? ''));
+            if (empty($token)) {
+                $this->testResult = 'API Token wajib diisi terlebih dahulu.';
+                return;
+            }
+
+            if (($this->connection['provider'] ?? '') === 'fonnte') {
+                // 1. Trigger fetch group pada Fonnte
+                Http::timeout(12)->withHeaders(['Authorization' => $token])->post('https://api.fonnte.com/fetch-group');
+                
+                // 2. Ambil list grup dari Fonnte
+                $resp = Http::timeout(12)->withHeaders(['Authorization' => $token])->post('https://api.fonnte.com/get-whatsapp-group');
+                if ($resp->successful()) {
+                    $json = $resp->json();
+                    $data = $json['data'] ?? [];
+                    if (is_array($data) && count($data) > 0) {
+                        $list = [];
+                        foreach ($data as $g) {
+                            $id = $g['id'] ?? '';
+                            $name = $g['name'] ?? 'Group';
+                            $list[] = "• {$name}: {$id}";
+                        }
+                        $this->testResult = "✅ Sinkronisasi Berhasil!\n\nDaftar Grup WhatsApp dari Fonnte:\n" . implode("\n", $list);
+                        session()->flash('success', 'Berhasil menyinkronkan ' . count($data) . ' grup dari WhatsApp via Fonnte.');
+                    } else {
+                        $this->testResult = "Fonnte merespon tetapi belum ada data grup ditemukan. Pastikan nomor WhatsApp bot Anda sudah bergabung ke dalam grup tujuan.";
+                    }
+                } else {
+                    $this->testResult = "Gagal mengambil grup dari Fonnte (HTTP " . $resp->status() . "): " . $resp->body();
+                }
+            } else {
+                $this->testResult = 'Fitur sinkronisasi grup otomatis saat ini dioptimalkan untuk provider Fonnte.';
+            }
+        } catch (\Throwable $e) {
+            $this->testResult = 'Error sinkronisasi: ' . $e->getMessage();
+        }
+    }
+
     public function sendTest(): void
     {
         $this->validate([

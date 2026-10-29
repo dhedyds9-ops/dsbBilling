@@ -55,9 +55,14 @@
           <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Sender Number</label><input type="text" wire:model="connection.sender_number" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="628xx-xxxx-xxxx"></div>
           <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Admin / CS Number</label><input type="text" wire:model="connection.admin_number" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="628xx (untuk notifikasi internal)"></div>
           <div>
-            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Grup WhatsApp Tiket (NOC / Support)</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Grup WhatsApp Tiket (NOC / Support)</label>
+              <button type="button" wire:click="syncGroups" wire:loading.attr="disabled" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium" title="Kirim fetch-group ke Fonnte dan tampilkan daftar ID grup">
+                <span class="material-symbols-outlined notranslate" style="font-size:14px">sync</span> Sinkronkan Grup Fonnte
+              </button>
+            </div>
             <input type="text" wire:model="connection.ticket_group_id" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs dark:bg-slate-900 dark:text-slate-100" placeholder="120363xxxxxx@g.us (ID Grup WhatsApp)">
-            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Notifikasi setiap tiket baru & penugasan teknisi otomatis dikirim ke grup ini.</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Notifikasi setiap tiket baru, update, dan penyelesaian dikirim ke grup ini. Klik <i>Sinkronkan Grup Fonnte</i> untuk mendaftarkan grup baru ke Fonnte.</p>
           </div>
           <div class="md:col-span-2" x-data="{ copied: false }">
     <div class="flex items-center justify-between mb-1">

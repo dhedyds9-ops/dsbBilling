@@ -443,29 +443,22 @@ class Index extends BaseEnterpriseList
                 $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                 if ($ticketGroupId !== '') {
                     $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
                     $groupText = $template->ticketUpdated([
-                        'ticket_id'       => $ticket->id,
-                        'title'           => $ticket->title,
-                        'customer_name'   => $ticket->customer?->name ?? 'Pelanggan',
-                        'status'          => $ticket->status,
-                        'priority'        => $ticket->priority,
-                        'technician_name' => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
-                        'updated_by'      => Auth::user()?->name ?? 'Staff',
-                        'note'            => $this->editingTicket['note'] ?? '',
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'category'         => $ticket->category ?? 'internet',
+                        'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
+                        'customer_address' => $ticket->customer?->address ?? '-',
+                        'status'           => $ticket->status,
+                        'priority'         => $ticket->priority,
+                        'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
+                        'updated_by'       => Auth::user()?->name ?? 'Staff',
+                        'note'             => $this->editingTicket['note'] ?? '',
                     ]);
 
-                    $msg = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
-                        toPhone: $ticketGroupId,
-                        text: $groupText,
-                        category: 'support',
-                        priorityHigh: true,
-                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_updated_group'],
-                    );
-                    try {
-                        \App\Jobs\Notifications\SendWaMessageJob::dispatchSync($msg);
-                    } catch (\Throwable) {
-                        \App\Jobs\Notifications\SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
-                    }
+                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
                 }
             } catch (\Throwable $we) {
                 \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim WA grup: ' . $we->getMessage());
@@ -475,16 +468,19 @@ class Index extends BaseEnterpriseList
             try {
                 $telegram = app(\App\Services\Telegram\TelegramService::class);
                 if ($telegram->isEnabled()) {
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
                     $telegram->sendTicketNotification([
-                        'ticket_id'       => $ticket->id,
-                        'title'           => $ticket->title,
-                        'customer_name'   => $ticket->customer?->name ?? 'Pelanggan',
-                        'category'        => $ticket->category ?? '-',
-                        'priority'        => $ticket->priority ?? 'medium',
-                        'status'          => $ticket->status,
-                        'technician_name' => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
-                        'updated_by'      => Auth::user()?->name ?? 'Staff',
-                        'note'            => $this->editingTicket['note'] ?? '',
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'customer_name'    => $ticket->customer?->name ?? 'Pelanggan',
+                        'customer_address' => $ticket->customer?->address ?? '-',
+                        'category'         => $ticket->category ?? 'internet',
+                        'priority'         => $ticket->priority ?? 'medium',
+                        'status'           => $ticket->status,
+                        'technician_name'  => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
+                        'updated_by'       => Auth::user()?->name ?? 'Staff',
+                        'note'             => $this->editingTicket['note'] ?? '',
                     ], 'updated');
                 }
             } catch (\Throwable $te) {

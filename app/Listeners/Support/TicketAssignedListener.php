@@ -30,31 +30,22 @@ class TicketAssignedListener
             // ── 1. WhatsApp Notification ke Teknisi ──────────────────
             try {
                 $techPhone = $this->normalizePhone($technician->phone ?? $technician->whatsapp ?? null);
-                if ($techPhone) {
-                    $text = $this->template->ticketAssigned([
-                        'ticket_id'        => $ticket->id,
-                        'title'            => $ticket->title,
-                        'category'         => $ticket->category ?? '-',
-                        'priority'         => $ticket->priority ?? 'medium',
-                        'description'      => $ticket->description ?? '',
-                        'customer_name'    => $customer?->name ?? 'Pelanggan',
-                        'customer_address' => $customer?->address ?? '',
-                        'customer_phone'   => $this->normalizePhone($customer?->phone ?? '') ?: '',
-                        'technician_name'  => $technician->name,
-                    ]);
+                $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                $text = $this->template->ticketAssigned([
+                    'ticket_code'      => $code,
+                    'ticket_id'        => $ticket->id,
+                    'title'            => $ticket->title,
+                    'category'         => $ticket->category ?? 'internet',
+                    'priority'         => $ticket->priority ?? 'medium',
+                    'description'      => $ticket->description ?? '',
+                    'customer_name'    => $customer?->name ?? 'Pelanggan',
+                    'customer_address' => $customer?->address ?? '-',
+                    'customer_phone'   => $this->normalizePhone($customer?->phone ?? '') ?: '',
+                    'technician_name'  => $technician->name,
+                ]);
 
-                    $msg = new WaOutgoingMessage(
-                        toPhone: $techPhone,
-                        text: $text,
-                        category: 'support',
-                        priorityHigh: true,
-                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_assigned'],
-                    );
-                    try {
-                        SendWaMessageJob::dispatchSync($msg);
-                    } catch (\Throwable) {
-                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
-                    }
+                if ($techPhone) {
+                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $text);
                 }
 
                 // In-App Database Notification ke Teknisi
@@ -73,12 +64,6 @@ class TicketAssignedListener
                         'color' => 'yellow'
                     ]
                 ]);
-
-                Log::info('[TicketAssignedListener] Notifikasi terkirim ke teknisi', [
-                    'ticket_id'    => $ticket->id,
-                    'technician'   => $technician->name,
-                    'tech_phone'   => $techPhone ?? 'tidak ada',
-                ]);
             } catch (\Throwable $te) {
                 Log::warning('[TicketAssignedListener] Gagal notif teknisi: ' . $te->getMessage());
             }
@@ -88,28 +73,20 @@ class TicketAssignedListener
                 $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                 $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                 if ($ticketGroupId !== '') {
-                    $groupText = "🔧 *TIKET DITUGASKAN*\n\n"
-                        . "No. Tiket : *#{$ticket->id}*\n"
-                        . "Judul     : {$ticket->title}\n"
-                        . "Pelanggan : " . ($customer?->name ?? 'Pelanggan') . "\n"
-                        . "👨‍🔧 Teknisi  : *{$technician->name}*\n"
-                        . "Prioritas : " . strtoupper($ticket->priority ?? 'medium') . "\n\n"
-                        . "Teknisi telah ditugaskan untuk menangani tiket ini.";
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                    $groupText = $this->template->ticketAssigned([
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'category'         => $ticket->category ?? 'internet',
+                        'priority'         => $ticket->priority ?? 'medium',
+                        'customer_name'    => $customer?->name ?? 'Pelanggan',
+                        'customer_address' => $customer?->address ?? '-',
+                        'technician_name'  => $technician->name,
+                    ]);
 
-                    $msg = new WaOutgoingMessage(
-                        toPhone: $ticketGroupId,
-                        text: $groupText,
-                        category: 'support',
-                        priorityHigh: true,
-                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_assigned_group'],
-                    );
-                    try {
-                        SendWaMessageJob::dispatchSync($msg);
-                    } catch (\Throwable) {
-                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
-                    }
-
-                    Log::info('[TicketAssignedListener] Notifikasi tiket assigned ke Grup WA', [
+                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
+                    Log::info('[TicketAssignedListener] Notifikasi tiket assigned dikirim ke Grup WA', [
                         'ticket_id' => $ticket->id,
                         'group_id'  => $ticketGroupId,
                     ]);
@@ -124,16 +101,19 @@ class TicketAssignedListener
             try {
                 $telegram = app(\App\Services\Telegram\TelegramService::class);
                 if ($telegram->isEnabled()) {
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
                     $telegram->sendTicketNotification([
-                        'ticket_id'       => $ticket->id,
-                        'title'           => $ticket->title,
-                        'customer_name'   => $customer?->name ?? 'Pelanggan',
-                        'category'        => $ticket->category ?? '-',
-                        'priority'        => $ticket->priority ?? 'medium',
-                        'status'          => $ticket->status ?? 'in_progress',
-                        'technician_name' => $technician->name,
-                        'updated_by'      => 'Sistem Penugasan',
-                        'note'            => "Tiket ditugaskan ke {$technician->name}",
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'customer_name'    => $customer?->name ?? 'Pelanggan',
+                        'customer_address' => $customer?->address ?? '-',
+                        'category'         => $ticket->category ?? 'internet',
+                        'priority'         => $ticket->priority ?? 'medium',
+                        'status'           => $ticket->status ?? 'in_progress',
+                        'technician_name'  => $technician->name,
+                        'updated_by'       => 'Sistem Penugasan',
+                        'note'             => "Tiket ditugaskan ke {$technician->name}",
                     ], 'updated');
                 }
             } catch (\Throwable $tge) {

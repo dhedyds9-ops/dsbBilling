@@ -268,6 +268,11 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/maintenance', \App\Livewire\Support\Maintenance\Index::class)->name('maintenance');
         });
 
+        // Direct link handler dari notifikasi WhatsApp / Telegram (e.g. /tickets/859)
+        Route::get('/tickets/{id}', function ($id) {
+            return redirect('/support/ticket?activeTab=table&search=' . urlencode((string)$id));
+        })->name('tickets.direct');
+
         // ==================== 8. LAPORAN ====================
         Route::prefix('laporan')->name('laporan.')->group(function () use ($cs) {
             // Pendapatan: Chart | Comparison | Top Package

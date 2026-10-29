@@ -80,25 +80,18 @@ class TicketResolvedListener
                 $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
                 $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
                 if ($ticketGroupId !== '') {
-                    $groupText = "✅ *TIKET SELESAI (RESOLVED)*\n\n"
-                        . "No. Tiket : *#{$ticket->id}*\n"
-                        . "Judul     : {$ticket->title}\n"
-                        . "Pelanggan : " . ($customer?->name ?? 'Pelanggan') . "\n"
-                        . "👨‍🔧 Teknisi  : " . ($technician?->name ?? 'Tim Teknis') . "\n\n"
-                        . "Tiket telah diselesaikan dengan sukses.";
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                    $groupText = $this->template->ticketResolved([
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'customer_name'    => $customer?->name ?? 'Pelanggan',
+                        'customer_address' => $customer?->address ?? '-',
+                        'technician_name'  => $technician?->name ?? 'Tim Teknis',
+                        'note'             => $event->note ?? ($ticket->resolution_note ?? ''),
+                    ]);
 
-                    $msg = new WaOutgoingMessage(
-                        toPhone: $ticketGroupId,
-                        text: $groupText,
-                        category: 'support',
-                        priorityHigh: true,
-                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_resolved_group'],
-                    );
-                    try {
-                        SendWaMessageJob::dispatchSync($msg);
-                    } catch (\Throwable) {
-                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
-                    }
+                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
                 }
             } catch (\Throwable $ge) {
                 Log::error('[TicketResolvedListener] Gagal kirim ke Grup WA: ' . $ge->getMessage());
@@ -108,12 +101,15 @@ class TicketResolvedListener
             try {
                 $telegram = app(\App\Services\Telegram\TelegramService::class);
                 if ($telegram->isEnabled()) {
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
                     $telegram->sendTicketNotification([
-                        'ticket_id'       => $ticket->id,
-                        'title'           => $ticket->title,
-                        'customer_name'   => $customer?->name ?? 'Pelanggan',
-                        'technician_name' => $technician?->name ?? 'Tim Teknis',
-                        'note'            => $event->note ?? ($ticket->resolution_note ?? ''),
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'customer_name'    => $customer?->name ?? 'Pelanggan',
+                        'customer_address' => $customer?->address ?? '-',
+                        'technician_name'  => $technician?->name ?? 'Tim Teknis',
+                        'note'             => $event->note ?? ($ticket->resolution_note ?? ''),
                     ], 'resolved');
                 }
             } catch (\Throwable $tge) {

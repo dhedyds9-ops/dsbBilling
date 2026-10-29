@@ -629,18 +629,7 @@ class Index extends BaseEnterpriseList
             $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
             $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
             if ($ticketGroupId !== '') {
-                $msgGroup = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
-                    toPhone: $ticketGroupId,
-                    text: $groupText,
-                    category: 'support',
-                    priorityHigh: true,
-                    context: ['wo_id' => $wo->id, 'type' => 'installation_created_group'],
-                );
-                try {
-                    \App\Jobs\Notifications\SendWaMessageJob::dispatchSync($msgGroup);
-                } catch (\Throwable) {
-                    \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgGroup)->onQueue('notifications-wa');
-                }
+                \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
             }
 
             // 2. Kirim ke nomor WhatsApp teknisi jika ada teknisi ditugaskan
@@ -652,18 +641,7 @@ class Index extends BaseEnterpriseList
                     if (!str_starts_with($techPhone, '62')) $techPhone = '62' . $techPhone;
 
                     if (strlen($techPhone) >= 10) {
-                        $msgTech = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
-                            toPhone: $techPhone,
-                            text: $groupText,
-                            category: 'support',
-                            priorityHigh: true,
-                            context: ['wo_id' => $wo->id, 'type' => 'installation_assigned_tech'],
-                        );
-                        try {
-                            \App\Jobs\Notifications\SendWaMessageJob::dispatchSync($msgTech);
-                        } catch (\Throwable) {
-                            \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgTech)->onQueue('notifications-wa');
-                        }
+                        \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $groupText);
                     }
                 }
             }

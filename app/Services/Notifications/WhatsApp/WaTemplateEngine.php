@@ -341,104 +341,146 @@ final class WaTemplateEngine
     //  TICKET NOTIFICATIONS (Support → Teknisi)
     // ================================================================
 
-    /** Notifikasi tiket BARU MASUK ke NOC / Admin */
+    /** Notifikasi tiket BARU MASUK ke NOC / Grup WhatsApp */
     public function ticketCreated(array $d): string
     {
-        $no     = $this->e($d['ticket_id'] ?? '-');
-        $title  = $this->e($d['title'] ?? '-');
-        $cat    = $this->e($d['category'] ?? '-');
-        $prio   = strtoupper($this->e($d['priority'] ?? 'medium'));
-        $cust   = $this->e($d['customer_name'] ?? 'Pelanggan');
-        $by     = $this->e($d['created_by'] ?? 'System');
-        $prioEmoji = match(strtolower($d['priority'] ?? 'medium')) {
-            'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
+        $code  = $this->e($d['ticket_code'] ?? ($d['ticket_id'] ? ('TKT-' . $d['ticket_id']) : 'TKT-BARU'));
+        $tech  = $this->e($d['technician_name'] ?? 'Belum Ditugaskan');
+        $catRaw = strtolower((string)($d['category'] ?? 'internet'));
+        $tipe  = match($catRaw) {
+            'internet' => 'PERBAIKAN',
+            'installation' => 'PEMASANGAN',
+            'billing' => 'BILLING',
+            default => strtoupper((string)($d['category'] ?? 'PERBAIKAN'))
         };
-        return "🎫 *TIKET SUPPORT BARU*\n\n"
-            . "No. Tiket : *#{$no}*\n"
-            . "Pelanggan : *{$cust}*\n"
-            . "Judul     : {$title}\n"
-            . "Kategori  : {$cat}\n"
-            . "Prioritas : {$prioEmoji} *{$prio}*\n"
-            . "Dibuat oleh: {$by}\n\n"
-            . "Segera assign tiket ini ke teknisi yang bertugas.\n"
-            . "— " . $this->brand();
+        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $subj  = $this->e($d['title'] ?? '-');
+        $prioRaw = strtolower((string)($d['priority'] ?? 'medium'));
+        $prio  = match($prioRaw) {
+            'low' => '🟢 RENDAH',
+            'medium' => '🟡 SEDANG',
+            'high' => '🟠 TINGGI',
+            'critical' => '🔴 KRITIS',
+            default => '🟢 ' . strtoupper($prioRaw),
+        };
+        $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
+        if (trim($addr) === '') $addr = '-';
+        $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
+        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+
+        return "🎫 *TIKET BARU: {$code}*\n\n"
+            . "Yang ditugaskan :\n"
+            . "👷 Teknisi: {$tech}\n"
+            . "📌 Tipe: {$tipe}\n"
+            . "👤 Pelanggan: {$cust}\n"
+            . "📝 Subjek: {$subj}\n"
+            . "⚡ Prioritas: {$prio}\n"
+            . "📍 Alamat: {$addr}\n\n"
+            . "🔗 Detail: {$url}\n\n"
+            . "🚀 Sistem";
     }
 
-    /** Notifikasi tiket DIASSIGN ke teknisi */
+    /** Notifikasi tiket DIASSIGN ke teknisi / Grup */
     public function ticketAssigned(array $d): string
     {
-        $no      = $this->e($d['ticket_id'] ?? '-');
-        $title   = $this->e($d['title'] ?? '-');
-        $cat     = $this->e($d['category'] ?? '-');
-        $prio    = strtoupper($this->e($d['priority'] ?? 'medium'));
-        $cust    = $this->e($d['customer_name'] ?? 'Pelanggan');
-        $addr    = $this->e($d['customer_address'] ?? '');
-        $phone   = $this->e($d['customer_phone'] ?? '');
-        $desc    = $this->e($d['description'] ?? '');
-        $tech    = $this->e($d['technician_name'] ?? 'Teknisi');
-        $prioEmoji = match(strtolower($d['priority'] ?? 'medium')) {
-            'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
+        $code  = $this->e($d['ticket_code'] ?? ($d['ticket_id'] ? ('TKT-' . $d['ticket_id']) : 'TKT-ASSIGN'));
+        $tech  = $this->e($d['technician_name'] ?? 'Teknisi');
+        $catRaw = strtolower((string)($d['category'] ?? 'internet'));
+        $tipe  = match($catRaw) {
+            'internet' => 'PERBAIKAN',
+            'installation' => 'PEMASANGAN',
+            'billing' => 'BILLING',
+            default => strtoupper((string)($d['category'] ?? 'PERBAIKAN'))
         };
-        return "🔧 *TIKET DITUGASKAN KEPADA ANDA*\n\n"
-            . "Halo *{$tech}*,\n\n"
-            . "Anda mendapat tugas tiket support baru:\n\n"
-            . "🎫 No. Tiket : *#{$no}*\n"
-            . "📋 Judul     : *{$title}*\n"
-            . "🏷️ Kategori  : {$cat}\n"
-            . "⚡ Prioritas : {$prioEmoji} *{$prio}*\n\n"
-            . "👤 *DATA PELANGGAN*\n"
-            . "Nama    : {$cust}\n"
-            . ($addr  ? "Alamat  : {$addr}\n" : "")
-            . ($phone ? "No. HP  : {$phone}\n" : "")
-            . ($desc  ? "\n📝 *Keluhan:*\n{$desc}\n" : "")
-            . "\nSilakan segera hubungi pelanggan dan tangani gangguan ini.\n\n"
-            . "— " . $this->brand();
+        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $subj  = $this->e($d['title'] ?? '-');
+        $prioRaw = strtolower((string)($d['priority'] ?? 'medium'));
+        $prio  = match($prioRaw) {
+            'low' => '🟢 RENDAH',
+            'medium' => '🟡 SEDANG',
+            'high' => '🟠 TINGGI',
+            'critical' => '🔴 KRITIS',
+            default => '🟢 ' . strtoupper($prioRaw),
+        };
+        $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
+        if (trim($addr) === '') $addr = '-';
+        $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
+        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+
+        return "🎫 *TIKET DITUGASKAN: {$code}*\n\n"
+            . "Yang ditugaskan :\n"
+            . "👷 Teknisi: {$tech}\n"
+            . "📌 Tipe: {$tipe}\n"
+            . "👤 Pelanggan: {$cust}\n"
+            . "📝 Subjek: {$subj}\n"
+            . "⚡ Prioritas: {$prio}\n"
+            . "📍 Alamat: {$addr}\n\n"
+            . "🔗 Detail: {$url}\n\n"
+            . "🚀 Sistem";
     }
 
-    /** Notifikasi tiket SELESAI (resolved) ke pelanggan */
+    /** Notifikasi tiket SELESAI (resolved) */
     public function ticketResolved(array $d): string
     {
-        $no   = $this->e($d['ticket_id'] ?? '-');
-        $title = $this->e($d['title'] ?? '-');
-        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $code  = $this->e($d['ticket_code'] ?? ($d['ticket_id'] ? ('TKT-' . $d['ticket_id']) : 'TKT-RESOLVED'));
         $tech  = $this->e($d['technician_name'] ?? 'Tim Teknis');
-        return "✅ *TIKET SUPPORT SELESAI*\n\n"
-            . "Yth. *{$cust}*,\n\n"
-            . "Tiket Anda telah diselesaikan:\n\n"
-            . "🎫 No. Tiket : *#{$no}*\n"
-            . "📋 Judul     : {$title}\n"
-            . "👨‍🔧 Teknisi  : {$tech}\n\n"
-            . "Kami harap masalah Anda telah terselesaikan.\n"
-            . "Jika masih ada kendala, silakan buat tiket baru.\n\n"
-            . "Terima kasih 🙏\n— " . $this->brand();
+        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $subj  = $this->e($d['title'] ?? '-');
+        $note  = !empty($d['note']) ? $this->e($d['note']) : '';
+        $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
+        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+
+        return "✅ *TIKET SELESAI: {$code}*\n\n"
+            . "Yang ditugaskan :\n"
+            . "👷 Teknisi: {$tech}\n"
+            . "👤 Pelanggan: {$cust}\n"
+            . "📝 Subjek: {$subj}\n"
+            . ($note ? "💬 Penyelesaian: {$note}\n\n" : "\n")
+            . "🔗 Detail: {$url}\n\n"
+            . "🚀 Sistem";
     }
 
     /** Notifikasi tiket DIPERBARUI ke Grup WhatsApp */
     public function ticketUpdated(array $d): string
     {
-        $no        = $this->e($d['ticket_id'] ?? '-');
-        $title     = $this->e($d['title'] ?? '-');
-        $cust      = $this->e($d['customer_name'] ?? 'Pelanggan');
-        $status    = strtoupper($this->e($d['status'] ?? '-'));
-        $prio      = strtoupper($this->e($d['priority'] ?? 'medium'));
-        $tech      = $this->e($d['technician_name'] ?? '-');
-        $by        = $this->e($d['updated_by'] ?? 'Petugas');
-        $note      = !empty($d['note']) ? $this->e($d['note']) : '';
-
-        $prioEmoji = match(strtolower($d['priority'] ?? 'medium')) {
-            'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
+        $code  = $this->e($d['ticket_code'] ?? ($d['ticket_id'] ? ('TKT-' . $d['ticket_id']) : 'TKT-UPDATE'));
+        $tech  = $this->e($d['technician_name'] ?? 'Belum Ditugaskan');
+        $catRaw = strtolower((string)($d['category'] ?? 'internet'));
+        $tipe  = match($catRaw) {
+            'internet' => 'PERBAIKAN',
+            'installation' => 'PEMASANGAN',
+            'billing' => 'BILLING',
+            default => strtoupper((string)($d['category'] ?? 'PERBAIKAN'))
         };
+        $cust  = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $subj  = $this->e($d['title'] ?? '-');
+        $statusRaw = strtoupper((string)($d['status'] ?? 'IN_PROGRESS'));
+        $prioRaw = strtolower((string)($d['priority'] ?? 'medium'));
+        $prio  = match($prioRaw) {
+            'low' => '🟢 RENDAH',
+            'medium' => '🟡 SEDANG',
+            'high' => '🟠 TINGGI',
+            'critical' => '🔴 KRITIS',
+            default => '🟢 ' . strtoupper($prioRaw),
+        };
+        $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
+        if (trim($addr) === '') $addr = '-';
+        $note  = !empty($d['note']) ? $this->e($d['note']) : '';
+        $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
+        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
 
-        return "✏️ *TIKET SUPPORT DIPERBARUI*\n\n"
-            . "No. Tiket : *#{$no}*\n"
-            . "Pelanggan : *{$cust}*\n"
-            . "Judul     : {$title}\n"
-            . "Status    : *{$status}*\n"
-            . "Prioritas : {$prioEmoji} *{$prio}*\n"
-            . "Petugas   : *{$tech}*\n"
-            . "Diedit    : {$by}\n"
-            . ($note ? "\nCatatan:\n{$note}\n" : "\n")
-            . "\n— " . $this->brand();
+        return "✏️ *TIKET DIPERBARUI: {$code}*\n\n"
+            . "Yang ditugaskan :\n"
+            . "👷 Teknisi: {$tech}\n"
+            . "📌 Tipe: {$tipe}\n"
+            . "📊 Status: *{$statusRaw}*\n"
+            . "👤 Pelanggan: {$cust}\n"
+            . "📝 Subjek: {$subj}\n"
+            . "⚡ Prioritas: {$prio}\n"
+            . "📍 Alamat: {$addr}\n"
+            . ($note ? "💬 Catatan: {$note}\n\n" : "\n")
+            . "🔗 Detail: {$url}\n\n"
+            . "🚀 Sistem";
     }
 
     /** Notifikasi WORK ORDER INSTALASI BARU ke Grup WhatsApp & Teknisi */
