@@ -44,8 +44,23 @@ class Permissions extends AdminComponent
             ['label' => 'Matriks Hak Akses'],
         ];
 
+        $rolePermissions = $this->role->permissions;
+        if ($this->role->name === 'reseller') {
+            $categories = PermissionRegistry::getCategorizedPermissions('reseller');
+            $allowedNames = [];
+            foreach ($categories as $cat) {
+                foreach ($cat['modules'] as $modPrefix => $modConfig) {
+                    $actions = $modConfig['actions'] ?? ['view'];
+                    foreach ($actions as $act) {
+                        $allowedNames[] = "{$modPrefix}.{$act}";
+                    }
+                }
+            }
+            $rolePermissions = $rolePermissions->filter(fn($p) => in_array($p->name, $allowedNames, true));
+        }
+
         // Ambil permission saat ini (konversi ke string untuk konsistensi Livewire checkbox)
-        $this->selectedPermissions = $this->role->permissions
+        $this->selectedPermissions = $rolePermissions
             ->pluck('id')
             ->map(fn($id) => (string)$id)
             ->toArray();
@@ -54,7 +69,22 @@ class Permissions extends AdminComponent
     public function selectAll(): void
     {
         Gate::authorize('role.manage');
-        $this->selectedPermissions = Permission::pluck('id')->map(fn($id) => (string)$id)->toArray();
+        if ($this->role->name === 'reseller') {
+            $categories = PermissionRegistry::getCategorizedPermissions('reseller');
+            $allowedNames = [];
+            foreach ($categories as $cat) {
+                foreach ($cat['modules'] as $modPrefix => $modConfig) {
+                    $actions = $modConfig['actions'] ?? ['view'];
+                    foreach ($actions as $act) {
+                        $allowedNames[] = "{$modPrefix}.{$act}";
+                    }
+                }
+            }
+            $this->selectedPermissions = Permission::whereIn('name', $allowedNames)
+                ->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } else {
+            $this->selectedPermissions = Permission::pluck('id')->map(fn($id) => (string)$id)->toArray();
+        }
     }
 
     public function deselectAll(): void
@@ -129,7 +159,7 @@ class Permissions extends AdminComponent
     public function render()
     {
         $allPermissions = Permission::all();
-        $categories = PermissionRegistry::getCategorizedPermissions();
+        $categories = PermissionRegistry::getCategorizedPermissions($this->role->name);
 
         // Siapkan struktur data hierarkis: Kategori -> Modul -> List Permission
         $structured = [];
@@ -139,10 +169,20 @@ class Permissions extends AdminComponent
             $catPermissions = [];
             $modulesData = [];
 
-            foreach ($catData['modules'] as $modulePrefix => $moduleTitle) {
+            foreach ($catData['modules'] as $modulePrefix => $moduleConfig) {
+                $moduleTitle = is_array($moduleConfig) ? ($moduleConfig['title'] ?? $modulePrefix) : $moduleConfig;
+                $allowedActions = is_array($moduleConfig) ? ($moduleConfig['actions'] ?? null) : null;
+
                 // Filter permissions yang cocok dengan prefix modul ini
-                $perms = $allPermissions->filter(function ($p) use ($modulePrefix) {
-                    return str_starts_with($p->name, $modulePrefix . '.') || $p->name === $modulePrefix;
+                $perms = $allPermissions->filter(function ($p) use ($modulePrefix, $allowedActions) {
+                    $matches = str_starts_with($p->name, $modulePrefix . '.') || $p->name === $modulePrefix;
+                    if (!$matches) return false;
+                    if ($allowedActions !== null) {
+                        $parts = explode('.', $p->name);
+                        $act = $parts[1] ?? 'view';
+                        return in_array($act, $allowedActions, true);
+                    }
+                    return true;
                 });
 
                 if (!empty($searchLower)) {
@@ -175,9 +215,11 @@ class Permissions extends AdminComponent
             }
         }
 
+        $totalApplicablePermissions = array_sum(array_map(fn($c) => count($c['permission_ids']), $structured));
+
         return view('livewire.admin.role.permissions', [
             'structuredCategories' => $structured,
-            'totalSystemPermissions' => $allPermissions->count(),
+            'totalSystemPermissions' => ($this->role->name === 'reseller' ? $totalApplicablePermissions : $allPermissions->count()),
             'totalSelected' => count($this->selectedPermissions),
         ]);
     }

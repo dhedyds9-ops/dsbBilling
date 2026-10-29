@@ -152,6 +152,11 @@
                                         <span class="material-symbols-outlined notranslate text-[14px]" translate="no">all_inclusive</span>
                                         Semua Hak Akses
                                     </span>
+                                @elseif($role->name === 'reseller')
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                        <span class="material-symbols-outlined notranslate text-[14px]" translate="no">verified</span>
+                                        {{ $role->permissions_count }} izin (Portal Reseller)
+                                    </span>
                                 @else
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                                         <span class="material-symbols-outlined notranslate text-[14px]" translate="no">verified</span>

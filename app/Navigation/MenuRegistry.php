@@ -352,11 +352,11 @@ class MenuRegistry
                         'label' => 'Data Keuangan',
                         'icon' => 'account_balance_wallet',
                         'items' => [
-                            ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => ['reseller-portal.reports.revenue*', 'keuangan.income-harian*'], 'permission' => 'finance.view'],
+                            ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => ['reseller-portal.reports.revenue*', 'keuangan.income-harian*'], 'permission' => 'report.view'],
                             ['label' => 'Pemasukan Bulanan', 'route' => 'reseller-portal.reports.sales', 'active' => ['reseller-portal.reports.sales*', 'keuangan.income-periode*'], 'permission' => 'finance.report'],
                             ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*', 'permission' => 'finance.view'],
                             ['label' => 'Saldo Deposit', 'route' => 'reseller-portal.finance.balance', 'active' => 'reseller-portal.finance.balance', 'permission' => 'finance.view'],
-                            ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup', 'permission' => 'finance.view'],
+                            ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup', 'permission' => 'finance.settlement'],
                             ['label' => 'Mutasi Saldo', 'route' => 'reseller-portal.finance.mutations', 'active' => 'reseller-portal.finance.mutations', 'permission' => 'finance.view'],
                         ]
                     ]

@@ -11,8 +11,121 @@ class PermissionRegistry
 {
     /**
      * Definisi modul sistem dan pengelompokannya untuk UI Matriks Hak Akses.
+     * Jika $roleName === 'reseller', hanya mengembalikan modul & izin yang berlaku di Portal Reseller.
      */
-    public static function getCategorizedPermissions(): array
+    public static function getCategorizedPermissions(?string $roleName = null): array
+    {
+        if ($roleName === 'reseller') {
+            return self::getResellerCategorizedPermissions();
+        }
+
+        return self::getAllCategorizedPermissions();
+    }
+
+    /**
+     * Definisi matriks izin khusus role Reseller (Portal Reseller).
+     * Membatasi izin hanya pada fitur yang nyata ada di Portal Reseller (27 izin).
+     */
+    public static function getResellerCategorizedPermissions(): array
+    {
+        return [
+            'crm_customer' => [
+                'title' => 'Pelanggan & CRM Mitra',
+                'icon' => 'people',
+                'description' => 'Akses pengelolaan data pelanggan milik reseller.',
+                'modules' => [
+                    'customer' => [
+                        'title' => 'Data Pelanggan (Customer)',
+                        'actions' => ['view', 'create', 'update', 'delete', 'export'],
+                    ],
+                ],
+            ],
+            'services_aaa' => [
+                'title' => 'Layanan Internet & Voucher',
+                'icon' => 'wifi',
+                'description' => 'Akses layanan PPPoE, Hotspot, dan pencetakan voucher internet.',
+                'modules' => [
+                    'pppoe-user' => [
+                        'title' => 'Pelanggan PPPoE',
+                        'actions' => ['view', 'create', 'update'],
+                    ],
+                    'hotspot-user' => [
+                        'title' => 'Pelanggan Hotspot',
+                        'actions' => ['view', 'create', 'update'],
+                    ],
+                    'voucher' => [
+                        'title' => 'Voucher Hotspot & Cetak',
+                        'actions' => ['view', 'create', 'print'],
+                    ],
+                ],
+            ],
+            'billing_finance' => [
+                'title' => 'Tagihan & Pembayaran Mitra',
+                'icon' => 'receipt_long',
+                'description' => 'Akses penagihan invoice pelanggan dan input pembayaran tagihan.',
+                'modules' => [
+                    'invoice' => [
+                        'title' => 'Tagihan (Invoice)',
+                        'actions' => ['view', 'payment', 'export'],
+                    ],
+                    'payment' => [
+                        'title' => 'Riwayat Pembayaran',
+                        'actions' => ['view'],
+                    ],
+                ],
+            ],
+            'network_infra' => [
+                'title' => 'Jaringan & Perangkat Fiber',
+                'icon' => 'hub',
+                'description' => 'Monitoring status perangkat OLT, ODC, dan ODP yang ditugaskan ke reseller.',
+                'modules' => [
+                    'olt' => [
+                        'title' => 'Data OLT Fiber',
+                        'actions' => ['view'],
+                    ],
+                    'odc' => [
+                        'title' => 'Data ODC Fiber',
+                        'actions' => ['view'],
+                    ],
+                    'odp' => [
+                        'title' => 'Data ODP Fiber',
+                        'actions' => ['view'],
+                    ],
+                ],
+            ],
+            'spatial_gis' => [
+                'title' => 'Peta Satelit & Wilayah (GIS)',
+                'icon' => 'public',
+                'description' => 'Peta persebaran jaringan fiber dan lokasi ODP di wilayah reseller.',
+                'modules' => [
+                    'gis' => [
+                        'title' => 'Peta Satelit GIS',
+                        'actions' => ['view'],
+                    ],
+                ],
+            ],
+            'deposit_finance' => [
+                'title' => 'Saldo Deposit & Keuangan Mitra',
+                'icon' => 'account_balance_wallet',
+                'description' => 'Akses saldo deposit, mutasi dompet, top up saldo, dan rekapitulasi penjualan.',
+                'modules' => [
+                    'finance' => [
+                        'title' => 'Saldo & Mutasi Dompet Mitra',
+                        'actions' => ['view', 'settlement', 'report'],
+                    ],
+                    'report' => [
+                        'title' => 'Laporan Penjualan & Pendapatan',
+                        'actions' => ['view', 'export'],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Semua modul & izin sistem lengkap (193 izin untuk Admin & Manager).
+     */
+    public static function getAllCategorizedPermissions(): array
     {
         return [
             'crm_customer' => [

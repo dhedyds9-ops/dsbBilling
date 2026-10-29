@@ -25,6 +25,16 @@
     @endif
 
     {{-- Role Overview & Action Toolbar --}}
+    @if($role->name === 'reseller')
+        <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-sm flex items-start gap-3 shadow-sm">
+            <span class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400 mt-0.5" translate="no" style="font-size:22px">storefront</span>
+            <div>
+                <strong class="font-bold block">Matriks Hak Akses Khusus Portal Reseller</strong>
+                <span>Menampilkan <strong>27 Hak Akses Terpilih</strong> yang berlaku langsung pada menu dan aksi <strong>Portal Reseller</strong> (Pelanggan, Layanan PPPoE & Hotspot, Cetak Voucher, Data Tagihan, Perangkat OLT/ODC/ODP, Peta Satelit GIS, dan Saldo Deposit). Izin internal ISP kantor pusat disaring demi keamanan sistem.</span>
+            </div>
+        </div>
+    @endif
+
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
