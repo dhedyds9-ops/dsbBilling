@@ -93,6 +93,8 @@ class ProvisioningService
                 ]);
             }
 
+            $actualOnuId = $this->resolveOnuId($data['onu_id'] ?? null, $data, $userId);
+
             // Step 4: Create CustomerService
             $customerService = CustomerService::create([
                 'uuid' => (string) Str::uuid(),
@@ -101,7 +103,7 @@ class ProvisioningService
                 'service_id' => $service?->id,
                 'service_profile_id' => $serviceProfile?->id,
                 'network_profile_id' => $data['network_profile_id'] ?? null,
-                'onu_id' => $data['onu_id'] ?? null,
+                'onu_id' => $actualOnuId,
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
@@ -270,6 +272,8 @@ class ProvisioningService
                 ]);
             }
 
+            $actualOnuId = $this->resolveOnuId($data['onu_id'] ?? null, $data, $userId);
+
             // Step 4: Create CustomerService
             $customerService = CustomerService::create([
                 'uuid' => (string) Str::uuid(),
@@ -278,7 +282,7 @@ class ProvisioningService
                 'service_id' => $service?->id,
                 'service_profile_id' => $serviceProfile?->id,
                 'network_profile_id' => $data['network_profile_id'] ?? null,
-                'onu_id' => $data['onu_id'] ?? null,
+                'onu_id' => $actualOnuId,
                 'username' => $data['username'],
                 'password' => $data['password'],
                 'status' => $data['status'] ?? 'active',
@@ -724,6 +728,51 @@ class ProvisioningService
         $pipeline = $serviceInstance->provisionPipeline;
         if ($pipeline && $pipeline->status != 'completed') {
             $this->triggerRollback($pipeline, $serviceInstance->id);
+        }
+    }
+
+    /**
+     * Resolusi nilai onu_id dari input (bisa berupa integer ID atau string Serial Number ONU/modem).
+     * Jika berupa string SN, cari record ONU atau buat otomatis agar tidak memicu error integer mismatch.
+     */
+    private function resolveOnuId(mixed $onuInput, array $data, int $userId): ?int
+    {
+        if (empty($onuInput)) {
+            return null;
+        }
+
+        if (is_numeric($onuInput)) {
+            return (int) $onuInput;
+        }
+
+        $sn = trim((string) $onuInput);
+        if ($sn === '') {
+            return null;
+        }
+
+        // Cari berdasarkan serial_number, mac_address, atau code di tabel onus
+        $onu = \App\Models\ISP\Onu::where('serial_number', $sn)
+            ->orWhere('mac_address', $sn)
+            ->orWhere('code', $sn)
+            ->first();
+
+        if ($onu) {
+            return (int) $onu->id;
+        }
+
+        // Jika belum terdaftar, otomatis daftarkan ONU baru dengan serial_number tersebut
+        try {
+            $createdOnu = \App\Models\ISP\Onu::create([
+                'code' => 'ONU-' . strtoupper(substr(md5($sn . time()), 0, 6)),
+                'name' => 'ONU ' . ($data['name'] ?? $sn),
+                'serial_number' => $sn,
+                'status' => 'active',
+                'created_by' => $userId,
+            ]);
+            return (int) $createdOnu->id;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[ProvisioningService] Gagal auto-create ONU: ' . $e->getMessage());
+            return null;
         }
     }
 }

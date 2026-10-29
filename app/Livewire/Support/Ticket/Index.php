@@ -310,12 +310,20 @@ class Index extends BaseEnterpriseList
                 }
 
                 // Buat record Customer guest/non-pelanggan cepat
-                $cleanPhone = !empty($data['manual_customer_phone']) ? preg_replace('/[^0-9]/', '', $data['manual_customer_phone']) : null;
+                $rawPhone = trim((string)($data['manual_customer_phone'] ?? ''));
+                $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
+                if (empty($cleanPhone)) {
+                    $cleanPhone = $rawPhone !== '' ? $rawPhone : '-';
+                }
+
+                $rawAddress = trim((string)($data['manual_customer_address'] ?? ''));
+                $cleanAddress = $rawAddress !== '' ? $rawAddress : '-';
+
                 $guestCustomer = \App\Models\CRM\Customer::create([
                     'name' => trim($data['manual_customer_name']),
                     'code' => 'GST-' . strtoupper(\Illuminate\Support\Str::random(6)),
                     'phone' => $cleanPhone,
-                    'address' => !empty($data['manual_customer_address']) ? trim($data['manual_customer_address']) : null,
+                    'address' => $cleanAddress,
                     'status' => 'active',
                     'created_by' => $userId,
                 ]);

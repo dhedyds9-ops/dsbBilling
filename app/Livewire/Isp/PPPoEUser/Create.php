@@ -123,14 +123,30 @@ class Create extends AdminComponent
         try {
             $actualOnuId = null;
             if ($this->onu_id) {
-                $onu = \App\Models\ISP\Onu::where('serial_number', $this->onu_id)->first();
-                if ($onu) {
-                    $actualOnuId = $onu->id;
-                } elseif (is_numeric($this->onu_id)) {
-                    $actualOnuId = $this->onu_id;
+                if (is_numeric($this->onu_id)) {
+                    $actualOnuId = (int) $this->onu_id;
                 } else {
-                    $this->addError('onu_id', 'Serial Number tidak ditemukan di database ONU.');
-                    return;
+                    $onu = \App\Models\ISP\Onu::where('serial_number', $this->onu_id)
+                        ->orWhere('mac_address', $this->onu_id)
+                        ->orWhere('code', $this->onu_id)
+                        ->first();
+                    if ($onu) {
+                        $actualOnuId = $onu->id;
+                    } else {
+                        // Daftarkan ONU baru secara otomatis
+                        try {
+                            $createdOnu = \App\Models\ISP\Onu::create([
+                                'code' => 'ONU-' . strtoupper(substr(md5($this->onu_id . time()), 0, 6)),
+                                'name' => 'ONU ' . $this->name,
+                                'serial_number' => $this->onu_id,
+                                'status' => 'active',
+                                'created_by' => auth()->id(),
+                            ]);
+                            $actualOnuId = $createdOnu->id;
+                        } catch (\Throwable $e) {
+                            $actualOnuId = null;
+                        }
+                    }
                 }
             }
 
