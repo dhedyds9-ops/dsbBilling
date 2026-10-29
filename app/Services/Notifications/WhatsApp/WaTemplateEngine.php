@@ -413,6 +413,34 @@ final class WaTemplateEngine
             . "Terima kasih 🙏\n— " . $this->brand();
     }
 
+    /** Notifikasi tiket DIPERBARUI ke Grup WhatsApp */
+    public function ticketUpdated(array $d): string
+    {
+        $no        = $this->e($d['ticket_id'] ?? '-');
+        $title     = $this->e($d['title'] ?? '-');
+        $cust      = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $status    = strtoupper($this->e($d['status'] ?? '-'));
+        $prio      = strtoupper($this->e($d['priority'] ?? 'medium'));
+        $tech      = $this->e($d['technician_name'] ?? '-');
+        $by        = $this->e($d['updated_by'] ?? 'Petugas');
+        $note      = !empty($d['note']) ? $this->e($d['note']) : '';
+
+        $prioEmoji = match(strtolower($d['priority'] ?? 'medium')) {
+            'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
+        };
+
+        return "✏️ *TIKET SUPPORT DIPERBARUI*\n\n"
+            . "No. Tiket : *#{$no}*\n"
+            . "Pelanggan : *{$cust}*\n"
+            . "Judul     : {$title}\n"
+            . "Status    : *{$status}*\n"
+            . "Prioritas : {$prioEmoji} *{$prio}*\n"
+            . "Petugas   : *{$tech}*\n"
+            . "Diedit    : {$by}\n"
+            . ($note ? "\nCatatan:\n{$note}\n" : "\n")
+            . "\n— " . $this->brand();
+    }
+
     /** Notifikasi WORK ORDER INSTALASI BARU ke Grup WhatsApp & Teknisi */
     public function installationCreated(array $d): string
     {

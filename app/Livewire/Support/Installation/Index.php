@@ -667,6 +667,26 @@ class Index extends BaseEnterpriseList
                     }
                 }
             }
+
+            // 3. Kirim ke Telegram Bot
+            try {
+                $telegram = app(\App\Services\Telegram\TelegramService::class);
+                if ($telegram->isEnabled()) {
+                    $telegram->sendInstallationNotification([
+                        'wo_id'            => $wo->id,
+                        'customer_name'    => $customer?->name ?? ($wo->customer_name ?? 'Pelanggan'),
+                        'customer_phone'   => $customer?->phone ?? '-',
+                        'customer_address' => $customer?->address ?? '-',
+                        'scheduled_date'   => $wo->scheduled_date ? (is_string($wo->scheduled_date) ? $wo->scheduled_date : $wo->scheduled_date->format('Y-m-d')) : '-',
+                        'scheduled_time'   => $wo->scheduled_time ?? '09:00',
+                        'technician_name'  => $technician?->name ?? 'Belum Ditugaskan',
+                        'notes'            => $wo->notes ?? '',
+                        'priority'         => $wo->priority ?? 'medium',
+                    ], 'created');
+                }
+            } catch (\Throwable $te) {
+                \Illuminate\Support\Facades\Log::warning('[Installation] Gagal notif Telegram: ' . $te->getMessage());
+            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[Installation] Gagal kirim notifikasi WA: ' . $e->getMessage());
         }

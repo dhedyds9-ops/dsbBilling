@@ -609,4 +609,167 @@ $statusLabels = [
             </div>
         </div>
     @endif
+
+    {{-- Modal Edit Tiket Support --}}
+    @if ($this->showEditModal)
+        <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div x-show="show" class="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+                {{-- Header --}}
+                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                            <span class="material-symbols-outlined notranslate text-xl" translate="no">edit_note</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">
+                                Edit Tiket #{{ $editingTicket['id'] ?? '' }}
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Pelanggan: <span class="font-semibold text-slate-700 dark:text-slate-200">{{ $editingTicket['customer_name'] ?? '-' }}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" @click="show = false; $wire.closeEditModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                {{-- Body Form --}}
+                <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                    @error('edit_error')
+                        <div class="p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-medium flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-base shrink-0" translate="no">error</span>
+                            <span>{{ $message }}</span>
+                        </div>
+                    @enderror
+
+                    {{-- Judul Tiket --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Judul Tiket / Kendala <span class="text-rose-500">*</span>
+                        </label>
+                        <input wire:model.live="editingTicket.title" 
+                               type="text" 
+                               class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        @error('editingTicket.title') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Status & Prioritas --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Status Tiket
+                            </label>
+                            <select wire:model.live="editingTicket.status"
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <option value="open">Open (Baru)</option>
+                                <option value="in_progress">In Progress (Sedang Dikerjakan)</option>
+                                <option value="pending_customer">Pending Customer</option>
+                                <option value="resolved">Resolved (Selesai)</option>
+                                <option value="closed">Closed (Ditutup)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Tingkat Prioritas
+                            </label>
+                            <select wire:model.live="editingTicket.priority"
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <option value="low">Rendah (Low)</option>
+                                <option value="medium">Sedang (Medium)</option>
+                                <option value="high">Tinggi (High)</option>
+                                <option value="critical">Kritis (Critical)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Kategori & Target Selesai --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Kategori
+                            </label>
+                            <select wire:model.live="editingTicket.category"
+                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <option value="internet">Internet / Jaringan</option>
+                                <option value="billing">Billing & Pembayaran</option>
+                                <option value="installation">Pasang Baru / Instalasi</option>
+                                <option value="other">Lainnya</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Target Selesai (Due Date)
+                            </label>
+                            <input wire:model.live="editingTicket.due_date" 
+                                   type="date" 
+                                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        </div>
+                    </div>
+
+                    {{-- Petugas Assignee --}}
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Petugas / Teknisi Lapangan
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 select-none">
+                                <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                <span>Semua Staff</span>
+                            </label>
+                        </div>
+                        <select wire:model.live="editingTicket.assigned_to"
+                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="">-- Belum Ditugaskan --</option>
+                            @foreach ($this->assigneeOptions as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Deskripsi Keluhan --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Deskripsi Keluhan / Kronologi
+                        </label>
+                        <textarea wire:model.live="editingTicket.description" 
+                                  rows="3" 
+                                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                    </div>
+
+                    {{-- Catatan Perubahan / Tindak Lanjut --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                            Catatan Pembaruan / Hasil Pengerjaan
+                        </label>
+                        <textarea wire:model.live="editingTicket.note" 
+                                  rows="2" 
+                                  placeholder="Catatan update status atau penyebab gangguan (akan dikirim ke grup WhatsApp & Telegram)..."
+                                  class="w-full px-4 py-2.5 bg-amber-50/40 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="px-6 py-4 bg-slate-50/80 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+                    <button type="button" 
+                            @click="show = false; $wire.closeEditModal()" 
+                            class="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        Batal
+                    </button>
+                    <button type="button" 
+                            wire:click="submitEdit" 
+                            wire:loading.attr="disabled"
+                            class="px-5 py-2 text-sm font-semibold rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white shadow-sm hover:shadow-amber-500/25 transition-all flex items-center gap-2 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="submitEdit">Simpan Perubahan</span>
+                        <span wire:loading wire:target="submitEdit" class="inline-flex items-center gap-1.5">
+                            <span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                            Menyimpan...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

@@ -120,6 +120,26 @@ class TicketAssignedListener
                 ]);
             }
 
+            // ── 3. Telegram Bot Notification ─────────────────────────
+            try {
+                $telegram = app(\App\Services\Telegram\TelegramService::class);
+                if ($telegram->isEnabled()) {
+                    $telegram->sendTicketNotification([
+                        'ticket_id'       => $ticket->id,
+                        'title'           => $ticket->title,
+                        'customer_name'   => $customer?->name ?? 'Pelanggan',
+                        'category'        => $ticket->category ?? '-',
+                        'priority'        => $ticket->priority ?? 'medium',
+                        'status'          => $ticket->status ?? 'in_progress',
+                        'technician_name' => $technician->name,
+                        'updated_by'      => 'Sistem Penugasan',
+                        'note'            => "Tiket ditugaskan ke {$technician->name}",
+                    ], 'updated');
+                }
+            } catch (\Throwable $tge) {
+                Log::warning('[TicketAssignedListener] Gagal notif Telegram: ' . $tge->getMessage());
+            }
+
         } catch (\Throwable $e) {
             Log::error('[TicketAssignedListener] Gagal: ' . $e->getMessage(), [
                 'ticket_id' => $event->ticketId,

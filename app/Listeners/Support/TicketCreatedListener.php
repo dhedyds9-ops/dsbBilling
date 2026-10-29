@@ -148,6 +148,24 @@ class TicketCreatedListener
                 ]);
             }
 
+            // ── 4. Telegram Bot Notification ─────────────────────────
+            try {
+                $telegram = app(\App\Services\Telegram\TelegramService::class);
+                if ($telegram->isEnabled()) {
+                    $telegram->sendTicketNotification([
+                        'ticket_id'       => $ticket->id,
+                        'title'           => $ticket->title,
+                        'customer_name'   => $customer?->name ?? 'Pelanggan',
+                        'category'        => $ticket->category ?? '-',
+                        'priority'        => $ticket->priority ?? 'medium',
+                        'technician_name' => $ticket->assignedTo?->name ?? 'Belum Ditugaskan',
+                        'created_by'      => $creatorLabel,
+                    ], 'created');
+                }
+            } catch (\Throwable $tge) {
+                Log::warning('[TicketCreatedListener] Gagal notif Telegram: ' . $tge->getMessage());
+            }
+
             Log::info('[TicketCreatedListener] Notifikasi tiket baru diproses', ['ticket_id' => $ticket->id]);
 
         } catch (\Throwable $e) {

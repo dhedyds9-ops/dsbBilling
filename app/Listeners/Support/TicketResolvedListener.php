@@ -104,6 +104,22 @@ class TicketResolvedListener
                 Log::error('[TicketResolvedListener] Gagal kirim ke Grup WA: ' . $ge->getMessage());
             }
 
+            // ── 4. Telegram Bot Notification ─────────────────────────
+            try {
+                $telegram = app(\App\Services\Telegram\TelegramService::class);
+                if ($telegram->isEnabled()) {
+                    $telegram->sendTicketNotification([
+                        'ticket_id'       => $ticket->id,
+                        'title'           => $ticket->title,
+                        'customer_name'   => $customer?->name ?? 'Pelanggan',
+                        'technician_name' => $technician?->name ?? 'Tim Teknis',
+                        'note'            => $event->note ?? ($ticket->resolution_note ?? ''),
+                    ], 'resolved');
+                }
+            } catch (\Throwable $tge) {
+                Log::warning('[TicketResolvedListener] Gagal notif Telegram: ' . $tge->getMessage());
+            }
+
             Log::info('[TicketResolvedListener] Notifikasi tiket selesai terkirim', ['ticket_id' => $ticket->id]);
 
         } catch (\Throwable $e) {

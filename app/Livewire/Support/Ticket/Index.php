@@ -29,7 +29,9 @@ class Index extends BaseEnterpriseList
     public ?int $bulkAssigneeId = null;
     public bool $showBulkAssign = false;
     public bool $showCreateForm = false;
+    public bool $showEditModal = false;
     public array $newTicket = [];
+    public array $editingTicket = [];
     public string $customerSearch = '';
     public bool $showAllStaff = false;
     public string $resolveNote = '';
@@ -354,7 +356,148 @@ class Index extends BaseEnterpriseList
 
     public function rowEdit(int $id): void
     {
-        session()->flash('info', 'Edit Ticket ID ' . $id);
+        $this->resetErrorBag();
+        $ticket = \App\Models\Support\Ticket::with(['customer', 'assignedTo'])->find($id);
+        if (!$ticket) {
+            $this->errorMessage = 'Tiket tidak ditemukan.';
+            return;
+        }
+
+        $this->editingTicket = [
+            'id' => $ticket->id,
+            'customer_name' => $ticket->customer?->name ?? 'Pelanggan',
+            'title' => $ticket->title,
+            'description' => $ticket->description ?? '',
+            'category' => $ticket->category ?? 'internet',
+            'priority' => $ticket->priority ?? 'medium',
+            'status' => $ticket->status ?? 'open',
+            'assigned_to' => $ticket->assigned_to ? (string) $ticket->assigned_to : '',
+            'due_date' => $ticket->due_date ? (is_string($ticket->due_date) ? substr($ticket->due_date, 0, 10) : $ticket->due_date->format('Y-m-d')) : '',
+            'note' => '',
+        ];
+        $this->showEditModal = true;
+    }
+
+    public function closeEditModal(): void
+    {
+        $this->showEditModal = false;
+        $this->editingTicket = [];
+        $this->resetErrorBag();
+    }
+
+    public function submitEdit(): void
+    {
+        $this->resetErrorBag();
+        if (empty(trim($this->editingTicket['title'] ?? ''))) {
+            $this->addError('editingTicket.title', 'Judul tiket wajib diisi.');
+            return;
+        }
+
+        $ticketId = (int) ($this->editingTicket['id'] ?? 0);
+        $ticket = \App\Models\Support\Ticket::with(['customer', 'assignedTo'])->find($ticketId);
+        if (!$ticket) {
+            $this->addError('edit_error', 'Tiket tidak ditemukan.');
+            return;
+        }
+
+        $userId = Auth::id() ?? 0;
+        $oldStatus = $ticket->status;
+        $oldAssignee = $ticket->assigned_to;
+
+        try {
+            $newAssignee = !empty($this->editingTicket['assigned_to']) ? (int) $this->editingTicket['assigned_to'] : null;
+            $newStatus = $this->editingTicket['status'] ?? $ticket->status;
+
+            $ticket->update([
+                'title' => trim($this->editingTicket['title']),
+                'description' => $this->editingTicket['description'] ?? '',
+                'category' => $this->editingTicket['category'] ?? 'internet',
+                'priority' => $this->editingTicket['priority'] ?? 'medium',
+                'status' => $newStatus,
+                'assigned_to' => $newAssignee,
+                'due_date' => !empty($this->editingTicket['due_date']) ? $this->editingTicket['due_date'] : null,
+                'resolved_at' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? now() : $ticket->resolved_at,
+            ]);
+
+            // Dispatch event jika petugas / teknisi ditugaskan atau diganti
+            if ($newAssignee && $newAssignee != $oldAssignee) {
+                \Illuminate\Support\Facades\Event::dispatch(\Src\Domain\Support\Events\TicketAssignedEvent::create(
+                    (string) $ticket->id,
+                    (string) $newAssignee,
+                    (string) $userId,
+                ));
+            }
+
+            // Dispatch event jika status berubah menjadi resolved
+            if ($newStatus === 'resolved' && $oldStatus !== 'resolved') {
+                \Illuminate\Support\Facades\Event::dispatch(\Src\Domain\Support\Events\TicketResolvedEvent::create(
+                    (string) $ticket->id,
+                    (string) $userId,
+                    $this->editingTicket['note'] ?? null,
+                ));
+            }
+
+            // Kirim Notifikasi Edit ke Grup WhatsApp
+            try {
+                $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+                $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+                if ($ticketGroupId !== '') {
+                    $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
+                    $groupText = $template->ticketUpdated([
+                        'ticket_id'       => $ticket->id,
+                        'title'           => $ticket->title,
+                        'customer_name'   => $ticket->customer?->name ?? 'Pelanggan',
+                        'status'          => $ticket->status,
+                        'priority'        => $ticket->priority,
+                        'technician_name' => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
+                        'updated_by'      => Auth::user()?->name ?? 'Staff',
+                        'note'            => $this->editingTicket['note'] ?? '',
+                    ]);
+
+                    $msg = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
+                        toPhone: $ticketGroupId,
+                        text: $groupText,
+                        category: 'support',
+                        priorityHigh: true,
+                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_updated_group'],
+                    );
+                    try {
+                        \App\Jobs\Notifications\SendWaMessageJob::dispatchSync($msg);
+                    } catch (\Throwable) {
+                        \App\Jobs\Notifications\SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    }
+                }
+            } catch (\Throwable $we) {
+                \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim WA grup: ' . $we->getMessage());
+            }
+
+            // Kirim Notifikasi Edit ke Telegram Bot
+            try {
+                $telegram = app(\App\Services\Telegram\TelegramService::class);
+                if ($telegram->isEnabled()) {
+                    $telegram->sendTicketNotification([
+                        'ticket_id'       => $ticket->id,
+                        'title'           => $ticket->title,
+                        'customer_name'   => $ticket->customer?->name ?? 'Pelanggan',
+                        'category'        => $ticket->category ?? '-',
+                        'priority'        => $ticket->priority ?? 'medium',
+                        'status'          => $ticket->status,
+                        'technician_name' => $ticket->fresh()->assignedTo?->name ?? 'Belum Ditugaskan',
+                        'updated_by'      => Auth::user()?->name ?? 'Staff',
+                        'note'            => $this->editingTicket['note'] ?? '',
+                    ], 'updated');
+                }
+            } catch (\Throwable $te) {
+                \Illuminate\Support\Facades\Log::warning('[TicketEdit] Gagal kirim Telegram: ' . $te->getMessage());
+            }
+
+            session()->flash('success', "Tiket #{$ticket->id} berhasil diperbarui.");
+            $this->showEditModal = false;
+            $this->editingTicket = [];
+            $this->loadAll();
+        } catch (\Throwable $e) {
+            $this->addError('edit_error', 'Gagal memperbarui tiket: ' . $e->getMessage());
+        }
     }
 
     public function rowAssign(int $id): void
