@@ -90,8 +90,12 @@ class TenancyServiceProvider extends ServiceProvider
 
             // === 2. ISOLASI FILE UPLOAD (FOTO/LOGO) ===
             // Agar logo ISP A tidak tertimpa Logo ISP B
+            $tenantStorage = storage_path("app/public/tenants/{$tenantName}");
+            if (!is_dir($tenantStorage)) {
+                @mkdir($tenantStorage, 0775, true);
+            }
             config([
-                'filesystems.disks.public.root' => storage_path("app/public/tenants/{$tenantName}"),
+                'filesystems.disks.public.root' => $tenantStorage,
                 'filesystems.disks.public.url' => "/storage/tenants/{$tenantName}",
             ]);
         }

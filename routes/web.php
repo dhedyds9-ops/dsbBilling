@@ -573,7 +573,32 @@ Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Req
         if ($type === 'partner') { $key = 'partner_logo_url'; $prefix = 'company/partner'; }
         if ($type === 'stamp') { $key = 'stamp_url'; $prefix = 'company/stamp'; }
         
-        $path = $request->file('logo')->storePublicly($prefix, 'public');
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        $targetDir = $disk->path($prefix);
+
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0775, true);
+        }
+
+        try {
+            $path = $request->file('logo')->storePublicly($prefix, 'public');
+        } catch (\Throwable $e) {
+            // Fallback manual copy jika Flysystem gagal auto-create folder
+            $file = $request->file('logo');
+            $filename = \Illuminate\Support\Str::random(40) . '.' . ($file->getClientOriginalExtension() ?: 'png');
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0775, true);
+            }
+            $targetPath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+            if (@copy($file->getRealPath(), $targetPath) || @move_uploaded_file($file->getPathname(), $targetPath)) {
+                @chmod($targetPath, 0664);
+                $path = $prefix . '/' . $filename;
+            } else {
+                \Illuminate\Support\Facades\Log::error('[UploadLogo] Gagal membuat direktori logo: ' . $e->getMessage());
+                return back()->with('error', 'Gagal menyimpan gambar di server. Izin tulis folder storage ditolak. Jalankan perintah izin storage di server.');
+            }
+        }
+
         $url = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
         if (preg_match('#^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?(/.*)$#i', $url, $m)) {
             $url = $m[1];
