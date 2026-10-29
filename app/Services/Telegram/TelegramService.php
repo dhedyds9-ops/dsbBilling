@@ -151,7 +151,7 @@ class TelegramService
         $addr  = htmlspecialchars((string)($data['customer_address'] ?? ($data['address'] ?? '-')));
         if (trim($addr) === '') $addr = '-';
         $note  = !empty($data['note']) ? htmlspecialchars((string)$data['note']) : '';
-        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+        $url   = $this->ticketUrl($id);
 
         if ($action === 'created') {
             $msg = "🎫 <b>TIKET BARU: {$code}</b>\n\n"
@@ -279,5 +279,21 @@ class TelegramService
                 $this->sendMessage($message, $chat['id'], 'HTML');
             }
         }
+    }
+
+    private function ticketUrl(mixed $id): string
+    {
+        $base = 'https://mstore.mstore.id';
+        try {
+            if (request()) {
+                $host = request()->getHost();
+                if (!empty($host) && !in_array($host, ['localhost', '127.0.0.1'])) {
+                    $scheme = request()->getScheme();
+                    $base = "{$scheme}://{$host}";
+                }
+            }
+        } catch (\Throwable) {}
+
+        return $id ? "{$base}/tickets/{$id}" : "{$base}/support/ticket";
     }
 }

@@ -366,7 +366,7 @@ final class WaTemplateEngine
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
-        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+        $url   = $this->ticketUrl($id);
 
         return "🎫 *TIKET BARU: {$code}*\n\n"
             . "Yang ditugaskan :\n"
@@ -405,7 +405,7 @@ final class WaTemplateEngine
         $addr  = $this->e($d['customer_address'] ?? ($d['address'] ?? '-'));
         if (trim($addr) === '') $addr = '-';
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
-        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+        $url   = $this->ticketUrl($id);
 
         return "🎫 *TIKET DITUGASKAN: {$code}*\n\n"
             . "Yang ditugaskan :\n"
@@ -428,7 +428,7 @@ final class WaTemplateEngine
         $subj  = $this->e($d['title'] ?? '-');
         $note  = !empty($d['note']) ? $this->e($d['note']) : '';
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
-        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+        $url   = $this->ticketUrl($id);
 
         return "✅ *TIKET SELESAI: {$code}*\n\n"
             . "Yang ditugaskan :\n"
@@ -467,7 +467,7 @@ final class WaTemplateEngine
         if (trim($addr) === '') $addr = '-';
         $note  = !empty($d['note']) ? $this->e($d['note']) : '';
         $id    = $d['ticket_id'] ?? ($d['id'] ?? '');
-        $url   = $id ? "https://ms.mstore.id/tickets/{$id}" : 'https://ms.mstore.id/support/ticket';
+        $url   = $this->ticketUrl($id);
 
         return "✏️ *TIKET DIPERBARUI: {$code}*\n\n"
             . "Yang ditugaskan :\n"
@@ -510,6 +510,22 @@ final class WaTemplateEngine
             . ($notes ? "\n📝 *Catatan:*\n{$notes}\n" : "\n")
             . "\nMohon tim teknisi mempersiapkan perangkat & material instalasi.\n"
             . "— " . $this->brand();
+    }
+
+    private function ticketUrl(mixed $id): string
+    {
+        $base = 'https://mstore.mstore.id';
+        try {
+            if (request()) {
+                $host = request()->getHost();
+                if (!empty($host) && !in_array($host, ['localhost', '127.0.0.1'])) {
+                    $scheme = request()->getScheme();
+                    $base = "{$scheme}://{$host}";
+                }
+            }
+        } catch (\Throwable) {}
+
+        return $id ? "{$base}/tickets/{$id}" : "{$base}/support/ticket";
     }
 
     private function rp(float $amount): string
