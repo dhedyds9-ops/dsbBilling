@@ -7,10 +7,13 @@ use Livewire\Attributes\Layout;
 use App\Models\CRM\Survey;
 use App\Models\CRM\Installation;
 use App\Models\Customer\CustomerService;
+use App\Models\Support\Ticket;
 use App\Models\ISP\Odp;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Src\Domain\Support\Events\TicketResolvedEvent;
 
 #[Layout('layouts.technician-app')]
 class Index extends Component
@@ -51,8 +54,33 @@ class Index extends Component
 
     public function filterJobType($type)
     {
-        $this->jobType = in_array($type, ['all', 'installation', 'survey']) ? $type : 'all';
+        $this->jobType = in_array($type, ['all', 'installation', 'ticket', 'survey']) ? $type : 'all';
         $this->resetPage();
+    }
+
+    public function markTicketResolved($id)
+    {
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($id);
+
+        if ($ticket->assigned_to && $ticket->assigned_to !== Auth::id() && !Auth::user()->hasRole(['administrator', 'superadmin', 'manager'])) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $ticket->update([
+            'status' => 'resolved',
+            'resolved_at' => now(),
+        ]);
+
+        Event::dispatch(
+            TicketResolvedEvent::create(
+                (string)$ticket->id,
+                (string)Auth::id(),
+                'Diselesaikan oleh teknisi melalui portal tugas'
+            )
+        );
+
+        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
+        session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
     }
 
     public function openInputResultModal($surveyId)
@@ -169,6 +197,10 @@ class Index extends Component
                     'type_badge' => 'Instalasi ' . $serviceType,
                     'service_type' => $serviceType,
                     'title' => $cs->customer?->name ?? 'Pelanggan #' . $cs->customer_id,
+                    'subject' => $serviceName,
+                    'description' => null,
+                    'priority' => 'normal',
+                    'category' => 'installation',
                     'code' => $cs->customer?->code ?? '-',
                     'phone' => $cs->customer?->phone ?? '-',
                     'address' => $cs->customer?->address ?? 'Alamat tidak tersedia',
@@ -183,11 +215,155 @@ class Index extends Component
                     'latitude' => $cs->customer?->latitude,
                     'longitude' => $cs->customer?->longitude,
                     'survey_id' => null,
+                    'ticket_id' => null,
+                ]);
+            }
+
+            // 1b. Fetch CRM Work Order Installations (assigned_to or technician_id)
+            $instQuery = Installation::withoutGlobalScopes()
+                ->with(['customer', 'survey.prospect', 'onu'])
+                ->where(function($q) use ($userId, $isAdmin) {
+                    $q->where('technician_id', $userId)
+                      ->orWhere('assigned_to', $userId);
+                    if ($isAdmin) {
+                        $q->orWhereNull('technician_id')->orWhereNull('assigned_to');
+                    }
+                });
+
+            if ($isAdmin && (clone $instQuery)->count() === 0) {
+                $instQuery = Installation::withoutGlobalScopes()->with(['customer', 'survey.prospect', 'onu']);
+            }
+
+            if ($this->activeTab === 'active') {
+                $instQuery->whereIn('status', ['pending', 'scheduled', 'in_progress']);
+            } else {
+                $instQuery->whereIn('status', ['completed', 'cancelled']);
+            }
+
+            if ($search) {
+                $instQuery->where(function($q) use ($search) {
+                    $q->where('customer_name', 'like', "%{$search}%")
+                      ->orWhere('onu_serial_number', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function($cq) use ($search) {
+                          $cq->where('name', 'like', "%{$search}%")
+                             ->orWhere('phone', 'like', "%{$search}%")
+                             ->orWhere('address', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $installations = $instQuery->latest('scheduled_at')->latest('created_at')->get();
+
+            foreach ($installations as $inst) {
+                $isCompleted = in_array($inst->status, ['completed']);
+                $custName = !empty($inst->customer_name) ? $inst->customer_name : ($inst->customer?->name ?? ($inst->survey?->prospect?->name ?? 'Pelanggan #' . $inst->customer_id));
+                $custPhone = $inst->customer?->phone ?? ($inst->survey?->prospect?->phone ?? '-');
+                $custAddr = $inst->customer?->address ?? ($inst->survey?->prospect?->address ?? 'Alamat tidak tersedia');
+
+                $items->push((object)[
+                    'id' => 'inst_' . $inst->id,
+                    'raw_id' => $inst->id,
+                    'source' => 'installation',
+                    'job_type' => 'installation',
+                    'type_badge' => 'Instalasi WO',
+                    'service_type' => 'INSTALASI',
+                    'title' => $custName,
+                    'subject' => 'Instalasi Pasang Baru',
+                    'description' => $inst->notes,
+                    'priority' => $inst->priority ?? 'normal',
+                    'category' => 'installation',
+                    'code' => $inst->customer?->code ?? ('WO-' . $inst->id),
+                    'phone' => $custPhone,
+                    'address' => $custAddr,
+                    'username' => null,
+                    'package_name' => 'Instalasi Pasang Baru',
+                    'onu_sn' => $inst->onu_serial_number ?? ($inst->onu?->serial_number ?? null),
+                    'onu_name' => $inst->onu?->name ?? null,
+                    'date' => $inst->scheduled_at ?? $inst->created_at,
+                    'status' => $inst->status,
+                    'status_label' => $isCompleted ? 'Selesai' : (in_array($inst->status, ['in_progress']) ? 'Dalam Pengerjaan' : 'Dijadwalkan'),
+                    'is_completed' => $isCompleted,
+                    'latitude' => $inst->customer?->latitude ?? $inst->survey?->latitude,
+                    'longitude' => $inst->customer?->longitude ?? $inst->survey?->longitude,
+                    'survey_id' => null,
+                    'ticket_id' => null,
                 ]);
             }
         }
 
-        // 2. Fetch Surveys
+        // 2. Fetch Support Tickets (assigned to technician)
+        if ($this->jobType === 'all' || $this->jobType === 'ticket') {
+            $ticketQuery = Ticket::withoutGlobalScopes()
+                ->with(['customer', 'assignedTo'])
+                ->where(function($q) use ($userId, $isAdmin) {
+                    $q->where('assigned_to', $userId);
+                    if ($isAdmin) {
+                        $q->orWhereNull('assigned_to');
+                    }
+                });
+
+            if ($isAdmin && (clone $ticketQuery)->count() === 0) {
+                $ticketQuery = Ticket::withoutGlobalScopes()->with(['customer', 'assignedTo']);
+            }
+
+            if ($this->activeTab === 'active') {
+                $ticketQuery->whereIn('status', ['open', 'in_progress', 'pending_customer']);
+            } else {
+                $ticketQuery->whereIn('status', ['resolved', 'closed']);
+            }
+
+            if ($search) {
+                $ticketQuery->where(function($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhere('category', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function($cq) use ($search) {
+                          $cq->where('name', 'like', "%{$search}%")
+                             ->orWhere('phone', 'like', "%{$search}%")
+                             ->orWhere('address', 'like', "%{$search}%")
+                             ->orWhere('code', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $tickets = $ticketQuery->latest('created_at')->get();
+
+            foreach ($tickets as $ticket) {
+                $isResolved = in_array($ticket->status, ['resolved', 'closed']);
+                $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+
+                $items->push((object)[
+                    'id' => 'ticket_' . $ticket->id,
+                    'raw_id' => $ticket->id,
+                    'source' => 'ticket',
+                    'job_type' => 'ticket',
+                    'type_badge' => 'Tiket ' . strtoupper($ticket->category ?? 'Gangguan'),
+                    'service_type' => 'TIKET',
+                    'title' => $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-'),
+                    'subject' => $ticket->title,
+                    'description' => $ticket->description,
+                    'priority' => $ticket->priority ?? 'medium',
+                    'category' => $ticket->category ?? 'gangguan',
+                    'code' => $code,
+                    'phone' => $ticket->customer?->phone ?? '-',
+                    'address' => $ticket->customer?->address ?? 'Alamat tidak tersedia',
+                    'username' => null,
+                    'package_name' => $ticket->title,
+                    'onu_sn' => null,
+                    'onu_name' => null,
+                    'date' => $ticket->created_at,
+                    'status' => $ticket->status,
+                    'status_label' => $isResolved ? 'Selesai' : (in_array($ticket->status, ['in_progress']) ? 'Dalam Pengerjaan' : 'Tiket Aktif'),
+                    'is_completed' => $isResolved,
+                    'latitude' => $ticket->customer?->latitude,
+                    'longitude' => $ticket->customer?->longitude,
+                    'survey_id' => null,
+                    'ticket_id' => $ticket->id,
+                ]);
+            }
+        }
+
+        // 3. Fetch Surveys
         if ($this->jobType === 'all' || $this->jobType === 'survey') {
             $surveyQuery = Survey::withoutGlobalScopes()
                 ->with(['prospect', 'odp'])
@@ -229,6 +405,10 @@ class Index extends Component
                     'type_badge' => 'Survey Lapangan',
                     'service_type' => 'SURVEY',
                     'title' => $survey->prospect?->name ?? 'Calon Pelanggan',
+                    'subject' => 'Survey Jalur & ODP',
+                    'description' => $survey->notes,
+                    'priority' => 'normal',
+                    'category' => 'survey',
                     'code' => $survey->odp ? 'ODP: ' . $survey->odp->name : '-',
                     'phone' => $survey->prospect?->phone ?? '-',
                     'address' => $survey->prospect?->address ?? 'Alamat tidak tersedia',
@@ -243,6 +423,7 @@ class Index extends Component
                     'latitude' => $survey->prospect?->latitude ?? $survey->latitude,
                     'longitude' => $survey->prospect?->longitude ?? $survey->longitude,
                     'survey_id' => $survey->id,
+                    'ticket_id' => null,
                 ]);
             }
         }
@@ -265,15 +446,6 @@ class Index extends Component
             ->whereIn('status', ['pending', 'provisioning', 'in_progress']);
         $activeCs = (clone $activeCsQ)->count();
 
-        // Active Surveys
-        $activeSurveysQ = Survey::withoutGlobalScopes()
-            ->where(function($q) use ($userId, $isAdmin) {
-                $q->where('assigned_to', $userId);
-                if ($isAdmin) $q->orWhereNull('assigned_to');
-            })
-            ->whereIn('status', ['scheduled', 'in_progress', 'pending']);
-        $activeSurveys = (clone $activeSurveysQ)->count();
-
         // History CS
         $historyCsQ = CustomerService::withoutGlobalScopes()
             ->where(function($q) use ($userId, $isAdmin) {
@@ -282,6 +454,33 @@ class Index extends Component
             })
             ->whereIn('status', ['active', 'completed', 'suspended', 'approved']);
         $historyCs = (clone $historyCsQ)->count();
+
+        // Active Installations (CRM)
+        $activeInstQ = Installation::withoutGlobalScopes()
+            ->where(function($q) use ($userId, $isAdmin) {
+                $q->where('technician_id', $userId)->orWhere('assigned_to', $userId);
+                if ($isAdmin) $q->orWhereNull('technician_id')->orWhereNull('assigned_to');
+            })
+            ->whereIn('status', ['pending', 'scheduled', 'in_progress']);
+        $activeInst = (clone $activeInstQ)->count();
+
+        // History Installations (CRM)
+        $historyInstQ = Installation::withoutGlobalScopes()
+            ->where(function($q) use ($userId, $isAdmin) {
+                $q->where('technician_id', $userId)->orWhere('assigned_to', $userId);
+                if ($isAdmin) $q->orWhereNull('technician_id')->orWhereNull('assigned_to');
+            })
+            ->whereIn('status', ['completed', 'cancelled']);
+        $historyInst = (clone $historyInstQ)->count();
+
+        // Active Surveys
+        $activeSurveysQ = Survey::withoutGlobalScopes()
+            ->where(function($q) use ($userId, $isAdmin) {
+                $q->where('assigned_to', $userId);
+                if ($isAdmin) $q->orWhereNull('assigned_to');
+            })
+            ->whereIn('status', ['scheduled', 'in_progress', 'pending']);
+        $activeSurveys = (clone $activeSurveysQ)->count();
 
         // History Surveys
         $historySurveysQ = Survey::withoutGlobalScopes()
@@ -292,17 +491,42 @@ class Index extends Component
             ->whereIn('status', ['completed', 'activated']);
         $historySurveys = (clone $historySurveysQ)->count();
 
+        // Active Tickets
+        $activeTicketsQ = Ticket::withoutGlobalScopes()
+            ->where(function($q) use ($userId, $isAdmin) {
+                $q->where('assigned_to', $userId);
+                if ($isAdmin) $q->orWhereNull('assigned_to');
+            })
+            ->whereIn('status', ['open', 'in_progress', 'pending_customer']);
+        $activeTickets = (clone $activeTicketsQ)->count();
+
+        // History Tickets
+        $historyTicketsQ = Ticket::withoutGlobalScopes()
+            ->where(function($q) use ($userId, $isAdmin) {
+                $q->where('assigned_to', $userId);
+                if ($isAdmin) $q->orWhereNull('assigned_to');
+            })
+            ->whereIn('status', ['resolved', 'closed']);
+        $historyTickets = (clone $historyTicketsQ)->count();
+
         // Fallback for admin if 0 of own
-        if ($isAdmin && ($activeCs + $historyCs === 0)) {
+        if ($isAdmin && ($activeCs + $historyCs + $activeInst + $historyInst + $activeSurveys + $historySurveys + $activeTickets + $historyTickets === 0)) {
             $activeCs = CustomerService::withoutGlobalScopes()->whereIn('status', ['pending', 'provisioning', 'in_progress'])->count();
             $historyCs = CustomerService::withoutGlobalScopes()->whereIn('status', ['active', 'completed', 'suspended', 'approved'])->count();
+            $activeInst = Installation::withoutGlobalScopes()->whereIn('status', ['pending', 'scheduled', 'in_progress'])->count();
+            $historyInst = Installation::withoutGlobalScopes()->whereIn('status', ['completed', 'cancelled'])->count();
+            $activeSurveys = Survey::withoutGlobalScopes()->whereIn('status', ['scheduled', 'in_progress', 'pending'])->count();
+            $historySurveys = Survey::withoutGlobalScopes()->whereIn('status', ['completed', 'activated'])->count();
+            $activeTickets = Ticket::withoutGlobalScopes()->whereIn('status', ['open', 'in_progress', 'pending_customer'])->count();
+            $historyTickets = Ticket::withoutGlobalScopes()->whereIn('status', ['resolved', 'closed'])->count();
         }
 
         return [
-            'active' => $activeCs + $activeSurveys,
-            'history' => $historyCs + $historySurveys,
-            'total_installations' => $activeCs + $historyCs,
+            'active' => $activeCs + $activeInst + $activeSurveys + $activeTickets,
+            'history' => $historyCs + $historyInst + $historySurveys + $historyTickets,
+            'total_installations' => $activeCs + $historyCs + $activeInst + $historyInst,
             'total_surveys' => $activeSurveys + $historySurveys,
+            'total_tickets' => $activeTickets + $historyTickets,
         ];
     }
 

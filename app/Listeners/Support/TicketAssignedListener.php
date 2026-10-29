@@ -59,7 +59,7 @@ class TicketAssignedListener
                     'data' => [
                         'type' => 'ticket_assigned',
                         'ticket_id' => $ticket->id,
-                        'url' => route('technician.my-jobs.troubleshooting'),
+                        'url' => route('technician.my-jobs.index'),
                         'icon' => 'build',
                         'color' => 'yellow'
                     ]

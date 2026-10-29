@@ -2,13 +2,21 @@
 
 <div class="space-y-4 p-4 pb-24">
 
+    {{-- Flash Message --}}
+    @if(session()->has('success'))
+        <div class="p-3 bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm">
+            <span class="material-symbols-outlined text-sm">check_circle</span>
+            <span>{{ session('success') }}</span>
+        </div>
+    @endif
+
     {{-- Hero Banner --}}
     <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
         <div class="absolute top-0 right-0 opacity-10 pointer-events-none">
             <span class="material-symbols-outlined" style="font-size:130px">engineering</span>
         </div>
         <div class="relative z-10">
-            <p class="text-indigo-200 text-xs font-semibold mb-1">Daftar instalasi (PSB) & survey lapangan</p>
+            <p class="text-indigo-200 text-xs font-semibold mb-1">Daftar tiket gangguan, instalasi (PSB) & survey lapangan</p>
             <div class="grid grid-cols-2 gap-3 mt-3">
                 <button wire:click="switchTab('active')" type="button" class="bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 rounded-xl p-3 flex items-center justify-between text-left transition-all {{ $activeTab === 'active' ? 'ring-2 ring-white' : '' }}">
                     <div>
@@ -55,13 +63,19 @@
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
                        {{ $jobType === 'installation' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">build_circle</span>
-            Instalasi / PSB
+            Instalasi ({{ $stats['total_installations'] ?? 0 }})
+        </button>
+        <button wire:click="filterJobType('ticket')" type="button"
+                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
+                       {{ $jobType === 'ticket' ? 'bg-amber-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
+            <span class="material-symbols-outlined text-sm">build</span>
+            Tiket Gangguan ({{ $stats['total_tickets'] ?? 0 }})
         </button>
         <button wire:click="filterJobType('survey')" type="button"
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
                        {{ $jobType === 'survey' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">radar</span>
-            Survey
+            Survey ({{ $stats['total_surveys'] ?? 0 }})
         </button>
     </div>
 
@@ -90,9 +104,22 @@
                     {{ $job->date ? \Carbon\Carbon::parse($job->date)->format('d M Y, H:i') : '-' }}
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <span class="px-2 py-0.5 {{ $job->job_type === 'installation' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800' }} rounded-lg text-[10px] font-bold uppercase">
+                    <span class="px-2 py-0.5 {{ $job->job_type === 'ticket' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : ($job->job_type === 'installation' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800') }} rounded-lg text-[10px] font-bold uppercase">
                         {{ $job->type_badge }}
                     </span>
+                    @if(!empty($job->priority) && $job->priority !== 'normal')
+                        @php
+                            $prioClass = match(strtolower($job->priority)) {
+                                'high', 'tinggi' => 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800',
+                                'critical', 'urgent', 'kritis' => 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800',
+                                'low', 'rendah' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+                                default => 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+                            };
+                        @endphp
+                        <span class="px-2 py-0.5 {{ $prioClass }} rounded-lg text-[10px] font-bold uppercase border">
+                            {{ strtoupper($job->priority) }}
+                        </span>
+                    @endif
                     @if($job->is_completed)
                         <span class="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold uppercase">
                             {{ $job->status_label }}
@@ -143,6 +170,21 @@
                 <span class="leading-snug">{{ $job->address }}</span>
             </div>
 
+            {{-- Ticket Complaint & Subject Details --}}
+            @if($job->job_type === 'ticket')
+                <div class="mt-2.5 bg-amber-50/70 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/50 text-[11px] space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
+                        <span class="material-symbols-outlined text-amber-600 text-sm">build</span>
+                        <span>Subjek: {{ $job->subject }}</span>
+                    </div>
+                    @if($job->description)
+                        <p class="text-slate-600 dark:text-slate-300 text-xs pl-5 leading-relaxed">
+                            {{ $job->description }}
+                        </p>
+                    @endif
+                </div>
+            @endif
+
             {{-- Installation Technical Details (if any) --}}
             @if($job->job_type === 'installation')
                 <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50/80 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px]">
@@ -177,6 +219,15 @@
                     </a>
                 @endif
 
+                @if($job->job_type === 'ticket' && !$job->is_completed)
+                    <button wire:click="markTicketResolved({{ $job->ticket_id }})"
+                            wire:confirm="Tandai tiket gangguan ini telah selesai dikerjakan?"
+                            class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                        <span class="material-symbols-outlined text-base">check_circle</span>
+                        Selesaikan Tiket
+                    </button>
+                @endif
+
                 @if($job->job_type === 'survey' && !$job->is_completed)
                     <button wire:click="openInputResultModal({{ $job->survey_id }})"
                             class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
@@ -198,9 +249,9 @@
             </h3>
             <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
                 @if($activeTab === 'active')
-                    Semua instalasi dan survey telah selesai, atau belum ada penugasan baru.
+                    Semua tiket gangguan, instalasi, dan survey telah selesai, atau belum ada penugasan baru.
                 @else
-                    Instalasi dan survey yang selesai dikerjakan akan tersimpan di sini.
+                    Tiket gangguan, instalasi, dan survey yang selesai dikerjakan akan tersimpan di sini.
                 @endif
             </p>
             <div class="mt-4">

@@ -43,7 +43,9 @@
         <div class="max-h-80 overflow-y-auto">
             @if(count($notifications) > 0)
                 @foreach($notifications as $notification)
-                    <div wire:key="{{ $notification['id'] }}" class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 transition-colors cursor-pointer {{ !$notification['read'] ? 'bg-primary-50' : '' }}">
+                    <div wire:key="{{ $notification['id'] }}"
+                         @if(!empty($notification['url']) && $notification['url'] !== '#') onclick="window.location.href='{{ $notification['url'] }}'" @endif
+                         class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 transition-colors cursor-pointer {{ !$notification['read'] ? 'bg-primary-50' : '' }}">
                         <div class="flex items-start gap-3">
                             <div class="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center {{ $notification['type'] === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600' : ($notification['type'] === 'success' ? 'bg-green-100 dark:bg-green-900/50 text-green-600' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600') }}">
                                 @if($notification['type'] === 'warning')
