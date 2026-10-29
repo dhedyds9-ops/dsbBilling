@@ -220,8 +220,7 @@
                 @endif
 
                 @if($job->job_type === 'ticket' && !$job->is_completed)
-                    <button wire:click="markTicketResolved({{ $job->ticket_id }})"
-                            wire:confirm="Tandai tiket gangguan ini telah selesai dikerjakan?"
+                    <button wire:click="openResolveTicketModal({{ $job->ticket_id }})" type="button"
                             class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                         <span class="material-symbols-outlined text-base">check_circle</span>
                         Selesaikan Tiket
@@ -377,6 +376,71 @@
             <span class="material-symbols-outlined shrink-0" style="font-size:20px">save</span>
             SIMPAN HASIL PEKERJAAN
         </button>
+    </div>
+</div>
+@endif
+
+{{-- Modal Konfirmasi Selesaikan Tiket (Popup Bawaan Aplikasi) --}}
+@if($showResolveTicketModal)
+<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+     x-data
+     @keydown.escape.window="$wire.set('showResolveTicketModal', false)">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-150">
+        {{-- Top Accent Bar --}}
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+
+        {{-- Icon --}}
+        <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <span class="material-symbols-outlined" style="font-size:32px">task_alt</span>
+        </div>
+
+        {{-- Title --}}
+        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">
+            Selesaikan Tiket?
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Konfirmasi bahwa perbaikan gangguan telah selesai ditangani.
+        </p>
+
+        {{-- Ticket Summary Box --}}
+        <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
+                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Subjek</span>
+                <span class="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[180px]">{{ $selectedTicketTitle }}</span>
+            </div>
+        </div>
+
+        {{-- Optional Resolution Notes --}}
+        <div class="mt-3 text-left">
+            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                Catatan Perbaikan <span class="text-slate-400 font-normal lowercase">(opsional)</span>
+            </label>
+            <textarea wire:model="ticket_resolution_notes" rows="2" placeholder="Contoh: Kabel fiber optik disambung, sinyal normal..."
+                      class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
+        </div>
+
+        {{-- Action Buttons --}}
+        <div class="mt-4 flex items-center gap-2">
+            <button wire:click="$set('showResolveTicketModal', false)" type="button"
+                    class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
+                Batal
+            </button>
+            <button wire:click="confirmResolveTicket" type="button"
+                    wire:loading.attr="disabled"
+                    class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                <span wire:loading.remove wire:target="confirmResolveTicket" class="material-symbols-outlined text-sm">check</span>
+                <span wire:loading wire:target="confirmResolveTicket" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                <span>Ya, Selesaikan</span>
+            </button>
+        </div>
     </div>
 </div>
 @endif

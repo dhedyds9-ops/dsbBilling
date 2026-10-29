@@ -37,6 +37,14 @@ class Index extends Component
     public $input_recommendation = 'feasible';
     public $input_notes = '';
 
+    // Modal Selesaikan Tiket
+    public bool $showResolveTicketModal = false;
+    public ?int $selectedTicketId = null;
+    public ?string $selectedTicketCode = null;
+    public ?string $selectedTicketTitle = null;
+    public ?string $selectedTicketCustomer = null;
+    public string $ticket_resolution_notes = '';
+
     public function mount()
     {
     }
@@ -58,9 +66,27 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function markTicketResolved($id)
+    public function openResolveTicketModal($ticketId)
     {
-        $ticket = Ticket::withoutGlobalScopes()->findOrFail($id);
+        $ticket = Ticket::withoutGlobalScopes()->with('customer')->findOrFail($ticketId);
+
+        if ($ticket->assigned_to && $ticket->assigned_to !== Auth::id() && !Auth::user()->hasRole(['administrator', 'superadmin', 'manager'])) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $this->selectedTicketId = $ticket->id;
+        $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
+        $this->selectedTicketTitle = $ticket->title;
+        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
+        $this->ticket_resolution_notes = '';
+        $this->showResolveTicketModal = true;
+    }
+
+    public function confirmResolveTicket()
+    {
+        if (!$this->selectedTicketId) return;
+
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
 
         if ($ticket->assigned_to && $ticket->assigned_to !== Auth::id() && !Auth::user()->hasRole(['administrator', 'superadmin', 'manager'])) {
             abort(403, 'Unauthorized.');
@@ -71,16 +97,29 @@ class Index extends Component
             'resolved_at' => now(),
         ]);
 
+        $note = trim($this->ticket_resolution_notes) !== '' 
+            ? trim($this->ticket_resolution_notes) 
+            : 'Diselesaikan oleh teknisi melalui portal tugas';
+
         Event::dispatch(
             TicketResolvedEvent::create(
                 (string)$ticket->id,
                 (string)Auth::id(),
-                'Diselesaikan oleh teknisi melalui portal tugas'
+                $note
             )
         );
 
-        $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
+        $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
+        $this->showResolveTicketModal = false;
+        $this->selectedTicketId = null;
+        $this->ticket_resolution_notes = '';
+
         session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
+    }
+
+    public function markTicketResolved($id)
+    {
+        $this->openResolveTicketModal($id);
     }
 
     public function openInputResultModal($surveyId)
