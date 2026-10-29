@@ -32,9 +32,21 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
         return $this;
     }
 
-    private function apiUrl(): string
+    private function baseHost(): string
     {
-        return (string)($this->config['api_base_url'] ?? 'https://api.fonnte.com');
+        $base = (string)($this->config['api_base_url'] ?? 'https://api.fonnte.com');
+        $base = preg_replace('/\/send\/?$/', '', trim($base));
+        return rtrim($base, '/');
+    }
+
+    private function sendUrl(): string
+    {
+        return $this->baseHost() . '/send';
+    }
+
+    private function deviceUrl(): string
+    {
+        return $this->baseHost() . '/device';
     }
 
     private function token(): string
@@ -50,6 +62,7 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
         }
         $t0 = microtime(true);
         try {
+            $url = $this->sendUrl();
             if ($msg->type === 'text') {
                 $payload = [
                     'target' => $msg->toPhone,
@@ -60,7 +73,7 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
                 $resp = Http::withToken($this->token())
                     ->timeout(15)
                     ->asForm()
-                    ->post($this->apiUrl() . '/send-message', $payload);
+                    ->post($url, $payload);
             } elseif ($msg->type === 'image') {
                 $payload = [
                     'target' => $msg->toPhone,
@@ -70,7 +83,7 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
                 $resp = Http::withToken($this->token())
                     ->timeout(20)
                     ->asForm()
-                    ->post($this->apiUrl() . '/send-image', $payload);
+                    ->post($url, $payload);
             } elseif ($msg->type === 'document') {
                 $payload = [
                     'target' => $msg->toPhone,
@@ -81,20 +94,20 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
                 $resp = Http::withToken($this->token())
                     ->timeout(30)
                     ->asForm()
-                    ->post($this->apiUrl() . '/send-document', $payload);
+                    ->post($url, $payload);
             } else {
                 // Default fallback to text
                 $payload = ['target' => $msg->toPhone, 'message' => $msg->text];
                 $resp = Http::withToken($this->token())
                     ->timeout(15)
                     ->asForm()
-                    ->post($this->apiUrl() . '/send-message', $payload);
+                    ->post($url, $payload);
             }
             $raw = $resp->body();
             $lat = (microtime(true) - $t0) * 1000;
             $data = json_decode($raw, true) ?: [];
             $status = (bool)($data['status'] ?? false);
-            $errMsg = (string)($data['message'] ?? '');
+            $errMsg = (string)($data['message'] ?? ($data['reason'] ?? ''));
 
             if (!$resp->successful() || !$status) {
                 return new WaSendResult(
@@ -168,10 +181,9 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
         $t0 = microtime(true);
         try {
             // Fonnte endpoint: POST /device (device token) returns device_status = "connect" | "disconnect"
-            // GET /devices does NOT exist on Fonnte; it returns HTML/404, causing false "unreachable".
             $resp = Http::withToken($this->token())
                 ->timeout(10)
-                ->post($this->apiUrl() . '/device');
+                ->post($this->deviceUrl());
 
             $ok = $resp->successful();
             $lat = (microtime(true) - $t0) * 1000;

@@ -274,6 +274,7 @@ class Index extends BaseEnterpriseList
                             $wo->technician_id = $this->assignTechId;
                             if ($wo->status === 'pending') $wo->status = 'scheduled';
                             $wo->save();
+                            $this->sendInstallationWhatsAppNotification($wo);
                             $n++;
                         }
                     }
@@ -418,6 +419,7 @@ class Index extends BaseEnterpriseList
             $wo->status = !empty($this->newWo['technician_id']) ? 'scheduled' : 'pending';
             $wo->created_by = Auth::id() ?? 0;
             $wo->save();
+            $this->sendInstallationWhatsAppNotification($wo);
             session()->flash('success', 'Work Order #' . $wo->id . ' berhasil dibuat.');
             $this->showCreateWo = false;
             $this->loadAll();
@@ -601,5 +603,64 @@ class Index extends BaseEnterpriseList
     {
         $rows = $this->getRows();
         return view('livewire.support.installation.index', compact('rows'));
+    }
+
+    protected function sendInstallationWhatsAppNotification(CrmInstallation $wo): void
+    {
+        try {
+            $wo->loadMissing(['customer', 'technician']);
+            $customer = $wo->customer;
+            $technician = $wo->technician;
+
+            $template = app(\App\Services\Notifications\WhatsApp\WaTemplateEngine::class);
+            $groupText = $template->installationCreated([
+                'wo_id'            => $wo->id,
+                'customer_name'    => $customer?->name ?? ($wo->customer_name ?? 'Pelanggan'),
+                'customer_phone'   => $customer?->phone ?? '-',
+                'customer_address' => $customer?->address ?? '-',
+                'scheduled_date'   => $wo->scheduled_date ? (is_string($wo->scheduled_date) ? $wo->scheduled_date : $wo->scheduled_date->format('Y-m-d')) : '-',
+                'scheduled_time'   => $wo->scheduled_time ?? '09:00',
+                'technician_name'  => $technician?->name ?? 'Belum Ditugaskan',
+                'notes'            => $wo->notes ?? '',
+                'priority'         => $wo->priority ?? 'medium',
+            ]);
+
+            // 1. Kirim ke Grup WhatsApp (ticket_group_id)
+            $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+            $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+            if ($ticketGroupId !== '') {
+                $msgGroup = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
+                    toPhone: $ticketGroupId,
+                    text: $groupText,
+                    category: 'support',
+                    priorityHigh: true,
+                    context: ['wo_id' => $wo->id, 'type' => 'installation_created_group'],
+                );
+                \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgGroup)->onQueue('notifications-wa');
+            }
+
+            // 2. Kirim ke nomor WhatsApp teknisi jika ada teknisi ditugaskan
+            if ($technician) {
+                $rawPhone = $technician->phone ?? $technician->whatsapp ?? null;
+                if ($rawPhone) {
+                    $techPhone = preg_replace('/\D/', '', (string)$rawPhone);
+                    if (str_starts_with($techPhone, '0')) $techPhone = '62' . substr($techPhone, 1);
+                    if (!str_starts_with($techPhone, '62')) $techPhone = '62' . $techPhone;
+
+                    if (strlen($techPhone) >= 10) {
+                        $msgTech = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
+                            toPhone: $techPhone,
+                            text: $groupText,
+                            category: 'support',
+                            priorityHigh: true,
+                            context: ['wo_id' => $wo->id, 'type' => 'installation_assigned_tech'],
+                        );
+                        \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgTech)->onQueue('notifications-wa');
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Installation] Gagal kirim notifikasi WA: ' . $e->getMessage());
+        }
     }
 }

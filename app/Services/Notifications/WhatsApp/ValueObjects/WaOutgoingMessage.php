@@ -14,7 +14,7 @@ final readonly class WaOutgoingMessage
     public string $toPhone;
 
     public function __construct(
-        string $toPhone,               // format: 628123456789 (tanpa 0 / +)
+        string $toPhone = '',                  // format: 628123456789 atau ID grup
         public string  $type = 'text',         // text | image | document | audio | video | template | button | list
         public string  $text = '',             // message content / caption for media
         public string  $mediaUrl = '',         // image/video/document/audio url (public)
@@ -26,8 +26,11 @@ final readonly class WaOutgoingMessage
         public string  $category = 'general',  // billing | reminder | info | marketing | support | otp
         public bool    $priorityHigh = false,  // true = bypass rate limit (otp / critical)
         public ?string $idempotencyKey = null, // prevent double-send, hash(to+type+category+message)
+        ?string $to = null,                    // alias untuk toPhone agar backwards-compatible
+        public ?array  $context = null,        // metadata konteks (misal ticket_id, wo_id, tipe)
     ) {
-        $this->toPhone = self::normalizePhone($toPhone);
+        $target = $toPhone !== '' ? $toPhone : ($to ?? '');
+        $this->toPhone = self::normalizePhone($target);
     }
 
     public static function normalizePhone(string $phone): string

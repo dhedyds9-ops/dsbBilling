@@ -44,7 +44,7 @@ final class SendWaMessageJob implements ShouldQueue
     {
         return [
             (new WithoutOverlapping('wa-send-' . ($this->message->idempotencyKey ?? 'phone-' . $this->message->toPhone)))->releaseAfter(5)->expireAfter(300),
-            new RateLimited('wa-outbound', 180, 60),
+            new RateLimited('wa-outbound'),
         ];
     }
 

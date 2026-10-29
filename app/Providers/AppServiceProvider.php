@@ -133,5 +133,9 @@ class AppServiceProvider extends ServiceProvider
                 \Illuminate\Cache\RateLimiting\Limit::perMinute(300)->by((string)$nasIp),
             ];
         });
+
+        \Illuminate\Support\Facades\RateLimiter::for('wa-outbound', function () {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(180);
+        });
     }
 }

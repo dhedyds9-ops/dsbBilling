@@ -413,6 +413,35 @@ final class WaTemplateEngine
             . "Terima kasih 🙏\n— " . $this->brand();
     }
 
+    /** Notifikasi WORK ORDER INSTALASI BARU ke Grup WhatsApp & Teknisi */
+    public function installationCreated(array $d): string
+    {
+        $no        = $this->e($d['wo_id'] ?? ($d['id'] ?? '-'));
+        $cust      = $this->e($d['customer_name'] ?? 'Pelanggan');
+        $phone     = $this->e($d['customer_phone'] ?? '-');
+        $addr      = $this->e($d['customer_address'] ?? '-');
+        $date      = $this->e($d['scheduled_date'] ?? '-');
+        $time      = $this->e($d['scheduled_time'] ?? '09:00');
+        $tech      = $this->e($d['technician_name'] ?? 'Belum Ditugaskan');
+        $notes     = $this->e($d['notes'] ?? '');
+        $prio      = strtoupper($this->e($d['priority'] ?? 'medium'));
+        $prioEmoji = match(strtolower($d['priority'] ?? 'medium')) {
+            'critical' => '🔴', 'high' => '🟠', 'medium' => '🟡', default => '🟢'
+        };
+
+        return "📦 *WORK ORDER INSTALASI BARU*\n\n"
+            . "No. WO    : *#{$no}*\n"
+            . "Pelanggan : *{$cust}*\n"
+            . "No. HP    : {$phone}\n"
+            . "Alamat    : {$addr}\n"
+            . "Jadwal    : 🗓️ *{$date}* pk *{$time}*\n"
+            . "Prioritas : {$prioEmoji} *{$prio}*\n"
+            . "Teknisi   : 👨‍🔧 *{$tech}*\n"
+            . ($notes ? "\n📝 *Catatan:*\n{$notes}\n" : "\n")
+            . "\nMohon tim teknisi mempersiapkan perangkat & material instalasi.\n"
+            . "— " . $this->brand();
+    }
+
     private function rp(float $amount): string
     {
         return 'Rp ' . number_format((float)$amount, 0, ',', '.');

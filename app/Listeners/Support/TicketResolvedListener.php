@@ -25,40 +25,75 @@ class TicketResolvedListener
             $customer   = $ticket->customer;
             $technician = $ticket->assignedTo;
 
-            // ── WA Konfirmasi ke Pelanggan ─────────────────────────────
-            $custPhone = $this->normalizePhone($customer?->phone ?? null);
-            if ($custPhone && $customer) {
-                $text = $this->template->ticketResolved([
-                    'ticket_id'       => $ticket->id,
-                    'title'           => $ticket->title,
-                    'customer_name'   => $customer->name,
-                    'technician_name' => $technician?->name ?? 'Tim Teknis',
-                ]);
-                $msg = new WaOutgoingMessage(
-                    to: $custPhone,
-                    text: $text,
-                    context: ['ticket_id' => $ticket->id, 'type' => 'ticket_resolved'],
-                );
-                SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+            // ── 1. WA Konfirmasi ke Pelanggan ─────────────────────────────
+            try {
+                $custPhone = $this->normalizePhone($customer?->phone ?? null);
+                if ($custPhone && $customer) {
+                    $text = $this->template->ticketResolved([
+                        'ticket_id'       => $ticket->id,
+                        'title'           => $ticket->title,
+                        'customer_name'   => $customer->name,
+                        'technician_name' => $technician?->name ?? 'Tim Teknis',
+                    ]);
+                    $msg = new WaOutgoingMessage(
+                        toPhone: $custPhone,
+                        text: $text,
+                        category: 'support',
+                        priorityHigh: true,
+                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_resolved'],
+                    );
+                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                }
+            } catch (\Throwable $ce) {
+                Log::warning('[TicketResolvedListener] Gagal notif pelanggan: ' . $ce->getMessage());
             }
 
-            // ── In-App Notif ke teknisi (konfirmasi selesai) ───────────
+            // ── 2. In-App Notif ke teknisi (konfirmasi selesai) ───────────
             if ($technician) {
-                \App\Models\Notification\Notification::create([
-                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
-                    'recipient_id' => $technician->id,
-                    'title' => 'Tiket Selesai',
-                    'message' => "Tiket #{$ticket->id} yang ditugaskan kepada Anda telah berhasil diselesaikan.",
-                    'type' => 'in_app',
-                    'status' => 'pending',
-                    'data' => [
-                        'type' => 'ticket_resolved',
-                        'ticket_id' => $ticket->id,
-                        'url' => route('technician.my-jobs.troubleshooting'),
-                        'icon' => 'check_circle',
-                        'color' => 'green'
-                    ]
-                ]);
+                try {
+                    \App\Models\Notification\Notification::create([
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'recipient_id' => $technician->id,
+                        'title' => 'Tiket Selesai',
+                        'message' => "Tiket #{$ticket->id} yang ditugaskan kepada Anda telah berhasil diselesaikan.",
+                        'type' => 'in_app',
+                        'status' => 'pending',
+                        'data' => [
+                            'type' => 'ticket_resolved',
+                            'ticket_id' => $ticket->id,
+                            'url' => route('technician.my-jobs.troubleshooting'),
+                            'icon' => 'check_circle',
+                            'color' => 'green'
+                        ]
+                    ]);
+                } catch (\Throwable $ne) {
+                    Log::warning('[TicketResolvedListener] Gagal in-app notif: ' . $ne->getMessage());
+                }
+            }
+
+            // ── 3. WhatsApp Notification ke Grup WA Tiket / NOC ───────
+            try {
+                $waConn = \App\Models\Setting::getValue('whatsapp.connection', []);
+                $ticketGroupId = trim((string)($waConn['ticket_group_id'] ?? ''));
+                if ($ticketGroupId !== '') {
+                    $groupText = "✅ *TIKET SELESAI (RESOLVED)*\n\n"
+                        . "No. Tiket : *#{$ticket->id}*\n"
+                        . "Judul     : {$ticket->title}\n"
+                        . "Pelanggan : " . ($customer?->name ?? 'Pelanggan') . "\n"
+                        . "👨‍🔧 Teknisi  : " . ($technician?->name ?? 'Tim Teknis') . "\n\n"
+                        . "Tiket telah diselesaikan dengan sukses.";
+
+                    $msg = new WaOutgoingMessage(
+                        toPhone: $ticketGroupId,
+                        text: $groupText,
+                        category: 'support',
+                        priorityHigh: true,
+                        context: ['ticket_id' => $ticket->id, 'type' => 'ticket_resolved_group'],
+                    );
+                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                }
+            } catch (\Throwable $ge) {
+                Log::error('[TicketResolvedListener] Gagal kirim ke Grup WA: ' . $ge->getMessage());
             }
 
             Log::info('[TicketResolvedListener] Notifikasi tiket selesai terkirim', ['ticket_id' => $ticket->id]);
