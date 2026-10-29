@@ -447,6 +447,9 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
     // ==================== RESELLER PORTAL ====================
     Route::middleware(['role:reseller,administrator,manager'])->prefix('reseller-portal')->name('reseller-portal.')->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('reseller-portal.dashboard');
+        });
         Route::get('/dashboard', \App\Livewire\ResellerPortal\Dashboard::class)->name('dashboard');
         
         // Placeholder routes for missing modules
@@ -518,6 +521,9 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
     // ==================== CUSTOMER PORTAL ====================
     Route::middleware(['role:customer'])->prefix('customer-portal')->name('customer-portal.')->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('customer-portal.dashboard');
+        });
         Route::get('/dashboard', \App\Livewire\CustomerPortal\Dashboard::class)->name('dashboard');
 
         Route::prefix('billing')->name('billing.')->group(function () {

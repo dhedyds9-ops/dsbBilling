@@ -28,6 +28,12 @@ class Permissions extends AdminComponent
         $this->activePage = 'roles';
 
         $this->roleId = (int) $id;
+
+        // Auto-heal: Jika jumlah permission di DB belum lengkap (misal di production), sinkronkan otomatis
+        if (Permission::count() < 190) {
+            PermissionRegistry::syncAllPermissionsToDatabase();
+        }
+
         $this->role = Role::with('permissions')->findOrFail($this->roleId);
 
         $this->breadcrumbs = [

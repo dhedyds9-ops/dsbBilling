@@ -45,20 +45,20 @@ class MenuRegistry
                       [
                         'label' => '',
                         'items' => [
-                          ['label' => 'Router / NAS', 'route' => 'isp.routers.index', 'icon' => 'router', 'active' => 'isp.routers.*'],
-                          ['label' => 'Data OLT', 'route' => 'isp.olts.index', 'icon' => 'developer_board', 'active' => 'isp.olts.*'],
+                          ['label' => 'Router / NAS', 'route' => 'isp.routers.index', 'icon' => 'router', 'active' => 'isp.routers.*', 'permission' => 'router.view'],
+                          ['label' => 'Data OLT', 'route' => 'isp.olts.index', 'icon' => 'developer_board', 'active' => 'isp.olts.*', 'permission' => 'olt.view'],
                         ]
                     ],
                      [
                         'label' => '',
                         'items' => [
-                            ['label' => 'GenieACS', 'route' => 'acs.dashboard', 'icon' => 'router', 'active' => 'acs.*'],
+                            ['label' => 'GenieACS', 'route' => 'acs.dashboard', 'icon' => 'router', 'active' => 'acs.*', 'permission' => 'onu.view'],
                         ]
                     ],
                       [
                         'label' => '',
                         'items' => [
-                            ['label' => 'Profil Paket', 'route' => 'isp.service-profiles.index', 'icon' => 'inventory_2', 'active' => 'isp.service-profiles.*'],
+                            ['label' => 'Profil Paket', 'route' => 'isp.service-profiles.index', 'icon' => 'inventory_2', 'active' => 'isp.service-profiles.*', 'permission' => 'service-profile.view'],
                            
                         ]
                     ],
@@ -66,94 +66,92 @@ class MenuRegistry
                         'label' => 'List Pelanggan',
                         'icon' => 'people',
                         'items' => [
-                            ['label' => 'Customer', 'route' => 'crm.customers.index', 'active' => 'crm.customers.*'],
-                            ['label' => 'PPPoE', 'route' => 'isp.pppoe-users.index', 'active' => 'isp.pppoe-users.*'],
-                            ['label' => 'Hotspot', 'route' => 'isp.hotspot-users.index', 'active' => 'isp.hotspot-users.*'],
-                            ['label' => 'Cookies', 'route' => 'isp.hotspot-cookies.index', 'active' => 'isp.hotspot-cookies.*'],
-                            ['label' => 'Voucher', 'route' => 'isp.vouchers.index', 'active' => 'isp.vouchers.*'],
-                            ['label' => 'E-Voucher', 'route' => 'isp.evouchers.index', 'active' => 'isp.evouchers.*'],
-                            ['label' => 'Online', 'route' => 'isp.user-online.index', 'active' => 'isp.user-online.*'],
-                            ['label' => 'Isolir', 'route' => 'pelanggan.isolir', 'active' => 'pelanggan.isolir'],
-                            
+                            ['label' => 'Customer', 'route' => 'crm.customers.index', 'active' => 'crm.customers.*', 'permission' => 'customer.view'],
+                            ['label' => 'PPPoE', 'route' => 'isp.pppoe-users.index', 'active' => 'isp.pppoe-users.*', 'permission' => 'pppoe-user.view'],
+                            ['label' => 'Hotspot', 'route' => 'isp.hotspot-users.index', 'active' => 'isp.hotspot-users.*', 'permission' => 'hotspot-user.view'],
+                            ['label' => 'Cookies', 'route' => 'isp.hotspot-cookies.index', 'active' => 'isp.hotspot-cookies.*', 'permission' => 'hotspot-user.view'],
+                            ['label' => 'Voucher', 'route' => 'isp.vouchers.index', 'active' => 'isp.vouchers.*', 'permission' => 'voucher.view'],
+                            ['label' => 'E-Voucher', 'route' => 'isp.evouchers.index', 'active' => 'isp.evouchers.*', 'permission' => 'voucher.view'],
+                            ['label' => 'Online', 'route' => 'isp.user-online.index', 'active' => 'isp.user-online.*', 'permission' => 'customer.view'],
+                            ['label' => 'Isolir', 'route' => 'pelanggan.isolir', 'active' => 'pelanggan.isolir', 'permission' => 'customer.view'],
                         ]
                     ],
-                                        [
+                    [
                         'label' => 'Data Tagihan',
                         'icon' => 'receipt_long',
                         'items' => [
-                            ['label' => 'Semua Tagihan', 'route' => 'billing.invoices.index', 'active' => 'billing.invoices.*'],
-                            ['label' => 'Pembayaran', 'route' => 'billing.payments.index', 'active' => 'billing.payments.*'],
-                            ['label' => 'Periode Tagihan', 'route' => 'billing.periode.index', 'active' => 'billing.periode.*'],
+                            ['label' => 'Semua Tagihan', 'route' => 'billing.invoices.index', 'active' => 'billing.invoices.*', 'permission' => 'invoice.view'],
+                            ['label' => 'Pembayaran', 'route' => 'billing.payments.index', 'active' => 'billing.payments.*', 'permission' => 'payment.view'],
+                            ['label' => 'Periode Tagihan', 'route' => 'billing.periode.index', 'active' => 'billing.periode.*', 'permission' => 'invoice.view'],
                         ]
                     ],
-                                        [
+                    [
                         'label' => 'Data Keuangan',
                         'icon' => 'account_balance_wallet',
                         'items' => [
-                            ['label' => 'Laba Rugi', 'route' => 'keuangan.laba-rugi', 'active' => 'keuangan.laba-rugi'],
-                            ['label' => 'Pemasukan Harian', 'route' => 'keuangan.income-harian', 'active' => 'keuangan.income-harian'],
-                            ['label' => 'Pemasukan Bulanan', 'route' => 'keuangan.income-periode', 'active' => 'keuangan.income-periode'],
-                            ['label' => 'Pengeluaran', 'route' => 'keuangan.pengeluaran', 'active' => 'keuangan.pengeluaran'],
-                            ['label' => 'Deposit Reseller', 'route' => 'keuangan.topup-reseller', 'active' => 'keuangan.topup-reseller'],
-                            ['label' => 'Laporan BHP & USO', 'route' => 'keuangan.bhp-uso', 'active' => 'keuangan.bhp-uso'],
+                            ['label' => 'Laba Rugi', 'route' => 'keuangan.laba-rugi', 'active' => 'keuangan.laba-rugi', 'permission' => 'finance.view'],
+                            ['label' => 'Pemasukan Harian', 'route' => 'keuangan.income-harian', 'active' => 'keuangan.income-harian', 'permission' => 'finance.view'],
+                            ['label' => 'Pemasukan Bulanan', 'route' => 'keuangan.income-periode', 'active' => 'keuangan.income-periode', 'permission' => 'finance.report'],
+                            ['label' => 'Pengeluaran', 'route' => 'keuangan.pengeluaran', 'active' => 'keuangan.pengeluaran', 'permission' => 'finance.view'],
+                            ['label' => 'Deposit Reseller', 'route' => 'keuangan.topup-reseller', 'active' => 'keuangan.topup-reseller', 'permission' => 'finance.settlement'],
+                            ['label' => 'Laporan BHP & USO', 'route' => 'keuangan.bhp-uso', 'active' => 'keuangan.bhp-uso', 'permission' => 'finance.report'],
                         ]
                     ],
                     [
                         'label' => 'Infrastruktur Fiber',
                         'icon' => 'hub',
                         'items' => [
-                            ['label' => 'Data ODC', 'route' => 'isp.odcs.index', 'active' => 'isp.odcs.*'],
-                            ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*'],
-                            ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*'],
-                            ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*'],
-                            ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
+                            ['label' => 'Data ODC', 'route' => 'isp.odcs.index', 'active' => 'isp.odcs.*', 'permission' => 'odc.view'],
+                            ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*', 'permission' => 'odp.view'],
+                            ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*', 'permission' => 'pop.view'],
+                            ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*', 'permission' => 'vendor.view'],
+                            ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*', 'permission' => 'network.view'],
                         ]
                     ],
-                      [
-                          'label' => 'Kepegawaian',
-                          'icon' => 'badge',
-                          'items' => [
-                              ['label' => 'Pegawai', 'route' => 'admin.employee.index', 'active' => 'admin.employee.*'],
-                              ['label' => 'Absensi', 'route' => 'admin.attendance.index', 'active' => 'admin.attendance.*'],
-                              ['label' => 'Gaji / Payroll', 'route' => 'admin.payroll.index', 'active' => 'admin.payroll.*'],
-                          ]
-                      ],
-
+                    [
+                        'label' => 'Kepegawaian',
+                        'icon' => 'badge',
+                        'items' => [
+                            ['label' => 'Pegawai', 'route' => 'admin.employee.index', 'active' => 'admin.employee.*', 'permission' => 'user.view'],
+                            ['label' => 'Absensi', 'route' => 'admin.attendance.index', 'active' => 'admin.attendance.*', 'permission' => 'workforce.attendance.execute'],
+                            ['label' => 'Gaji / Payroll', 'route' => 'admin.payroll.index', 'active' => 'admin.payroll.*', 'permission' => 'finance.view'],
+                        ]
+                    ],
                     [
                         'label' => 'CRM',
                         'icon' => 'handshake',
                         'items' => [
-                            ['label' => 'Prospek', 'route' => 'crm.leads.index', 'active' => 'crm.leads.*'],
-                            ['label' => 'Survey', 'route' => 'crm.surveys.index', 'active' => 'crm.surveys.*'],
-                            ['label' => 'Penawaran', 'route' => 'crm.quotations.index', 'active' => 'crm.quotations.*'],
-                            ['label' => 'Kontrak', 'route' => 'crm.contracts.index', 'active' => 'crm.contracts.*'],
+                            ['label' => 'Prospek', 'route' => 'crm.leads.index', 'active' => 'crm.leads.*', 'permission' => 'customer.view'],
+                            ['label' => 'Survey', 'route' => 'crm.surveys.index', 'active' => 'crm.surveys.*', 'permission' => 'customer.view'],
+                            ['label' => 'Penawaran', 'route' => 'crm.quotations.index', 'active' => 'crm.quotations.*', 'permission' => 'customer.view'],
+                            ['label' => 'Kontrak', 'route' => 'crm.contracts.index', 'active' => 'crm.contracts.*', 'permission' => 'customer.view'],
                         ]
                     ],
                     [
                         'label' => 'Support',
                         'icon' => 'support_agent',
                         'items' => [
-                            ['label' => 'Tiket', 'route' => 'support.ticket', 'active' => 'support.ticket'],
-                            ['label' => 'Instalasi', 'route' => 'crm.installations.index', 'active' => 'crm.installations.*'],
-                            ['label' => 'Aktivasi', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*'],
-                            ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance'],
-                            ['label' => 'Riwayat WO', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*'],
+                            ['label' => 'Tiket', 'route' => 'support.ticket', 'active' => 'support.ticket', 'permission' => 'ticket.view'],
+                            ['label' => 'Instalasi', 'route' => 'crm.installations.index', 'active' => 'crm.installations.*', 'permission' => 'workforce.jobs.view'],
+                            ['label' => 'Aktivasi', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*', 'permission' => 'customer.view'],
+                            ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance', 'permission' => 'workforce.jobs.view'],
+                            ['label' => 'Riwayat WO', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*', 'permission' => 'workforce.jobs.view'],
                         ]
                     ],
                     [
                         'label' => 'Pengaturan',
                         'icon' => 'settings',
                         'items' => [
-                            ['label' => 'Identitas Perusahaan', 'route' => 'pengaturan.perusahaan', 'active' => 'pengaturan.perusahaan'],
-                            ['label' => 'Payment Gateway', 'route' => 'pengaturan.payment-gateway', 'active' => 'pengaturan.payment-gateway'],
-                            ['label' => 'WhatsApp API', 'route' => 'pengaturan.whatsapp', 'active' => 'pengaturan.whatsapp'],
-                            ['label' => 'Telegram Bot', 'route' => 'pengaturan.telegram', 'active' => 'pengaturan.telegram'],
-                            ['label' => 'Pengaturan Sistem', 'route' => 'admin.settings.index', 'active' => 'admin.settings.*'],
-                            ['label' => 'User Management', 'route' => 'admin.users.index', 'active' => 'admin.users.*'],
-                            ['label' => 'Role & Hak Akses', 'route' => 'admin.roles.index', 'active' => 'admin.roles.*'],
-                            ['label' => 'Template Voucher', 'route' => 'isp.voucher-templates.index', 'active' => 'isp.voucher-templates.*'],
-                            ['label' => 'Download LoginPage', 'route' => 'pengaturan.loginpage', 'active' => 'pengaturan.loginpage*', 'icon' => 'cloud_download'],
-                            ['label' => 'Audit Log', 'route' => 'admin.audit-trail.index', 'active' => 'admin.audit-trail.*'],
+                            ['label' => 'Identitas Perusahaan', 'route' => 'pengaturan.perusahaan', 'active' => 'pengaturan.perusahaan', 'permission' => 'pengaturan.perusahaan'],
+                            ['label' => 'Payment Gateway', 'route' => 'pengaturan.payment-gateway', 'active' => 'pengaturan.payment-gateway', 'permission' => 'settings.view'],
+                            ['label' => 'WhatsApp API', 'route' => 'pengaturan.whatsapp', 'active' => 'pengaturan.whatsapp', 'permission' => 'settings.view'],
+                            ['label' => 'Telegram Bot', 'route' => 'pengaturan.telegram', 'active' => 'pengaturan.telegram', 'permission' => 'settings.view'],
+                            ['label' => 'Pengaturan Sistem', 'route' => 'admin.settings.index', 'active' => 'admin.settings.*', 'permission' => 'settings.view'],
+                            ['label' => 'User Management', 'route' => 'admin.users.index', 'active' => 'admin.users.*', 'permission' => 'user.view'],
+                            ['label' => 'Role & Hak Akses', 'route' => 'admin.roles.index', 'active' => 'admin.roles.*', 'permission' => 'role.view'],
+                            ['label' => 'Template Voucher', 'route' => 'isp.voucher-templates.index', 'active' => 'isp.voucher-templates.*', 'permission' => 'voucher-template.view'],
+                            ['label' => 'Download LoginPage', 'route' => 'pengaturan.loginpage', 'active' => 'pengaturan.loginpage*', 'icon' => 'cloud_download', 'permission' => 'voucher.view'],
+                            ['label' => 'Audit Log', 'route' => 'admin.audit-trail.index', 'active' => 'admin.audit-trail.*', 'permission' => 'role.view'],
                         ]
                     ]
                 ]
@@ -305,7 +303,7 @@ class MenuRegistry
         return self::filterNavigationByPermissions($navigation);
     }
 
-        private static function buildResellerNavigation(): array
+    private static function buildResellerNavigation(): array
     {
         $navigation = [
             [
@@ -323,43 +321,43 @@ class MenuRegistry
                         'label' => 'List Pelanggan',
                         'icon' => 'people',
                         'items' => [
-                            ['label' => 'Customer', 'route' => 'reseller-portal.customers.index', 'active' => 'reseller-portal.customers.index'],
-                            ['label' => 'PPPoE', 'route' => 'reseller-portal.customers.pppoe', 'active' => 'reseller-portal.customers.pppoe'],
-                            ['label' => 'Hotspot', 'route' => 'reseller-portal.customers.hotspot', 'active' => 'reseller-portal.customers.hotspot'],
-                            ['label' => 'Voucher', 'route' => 'reseller-portal.sales.voucher', 'active' => 'reseller-portal.sales.voucher'],
-                            ['label' => 'Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online'],
-                            ['label' => 'Riwayat Instalasi', 'route' => 'reseller-portal.customers.installation-history', 'active' => 'reseller-portal.customers.installation-history'],
-                            ['label' => 'Terisolir', 'route' => 'reseller-portal.customers.isolated', 'active' => 'reseller-portal.customers.isolated'],
+                            ['label' => 'Customer', 'route' => 'reseller-portal.customers.index', 'active' => 'reseller-portal.customers.index', 'permission' => 'customer.view'],
+                            ['label' => 'PPPoE', 'route' => 'reseller-portal.customers.pppoe', 'active' => 'reseller-portal.customers.pppoe', 'permission' => 'pppoe-user.view'],
+                            ['label' => 'Hotspot', 'route' => 'reseller-portal.customers.hotspot', 'active' => 'reseller-portal.customers.hotspot', 'permission' => 'hotspot-user.view'],
+                            ['label' => 'Voucher', 'route' => 'reseller-portal.sales.voucher', 'active' => 'reseller-portal.sales.voucher', 'permission' => 'voucher.view'],
+                            ['label' => 'Online', 'route' => 'reseller-portal.customers.user-online', 'active' => 'reseller-portal.customers.user-online', 'permission' => 'customer.view'],
+                            ['label' => 'Riwayat Instalasi', 'route' => 'reseller-portal.customers.installation-history', 'active' => 'reseller-portal.customers.installation-history', 'permission' => 'customer.view'],
+                            ['label' => 'Terisolir', 'route' => 'reseller-portal.customers.isolated', 'active' => 'reseller-portal.customers.isolated', 'permission' => 'customer.view'],
                         ]
                     ],
                     [
                         'label' => 'Data Tagihan',
                         'icon' => 'receipt_long',
                         'items' => [
-                            ['label' => 'Semua Tagihan', 'route' => 'reseller-portal.billing.invoices', 'active' => 'reseller-portal.billing.invoices*'],
-                            ['label' => 'Pembayaran', 'route' => 'reseller-portal.billing.payments', 'active' => 'reseller-portal.billing.payments*'],
+                            ['label' => 'Semua Tagihan', 'route' => 'reseller-portal.billing.invoices', 'active' => 'reseller-portal.billing.invoices*', 'permission' => 'invoice.view'],
+                            ['label' => 'Pembayaran', 'route' => 'reseller-portal.billing.payments', 'active' => 'reseller-portal.billing.payments*', 'permission' => 'payment.view'],
                         ]
                     ],
                     [
                         'label' => 'Network & GIS',
                         'icon' => 'public',
                         'items' => [
-                            ['label' => 'Peta Satelit', 'route' => 'reseller-portal.network.map', 'active' => 'reseller-portal.network.map'],
-                            ['label' => 'Data OLT', 'route' => 'reseller-portal.network.olts.index', 'active' => 'reseller-portal.network.olts.*'],
-                            ['label' => 'Data ODC', 'route' => 'reseller-portal.network.odcs.index', 'active' => 'reseller-portal.network.odcs.*'],
-                            ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*'],
+                            ['label' => 'Peta Satelit', 'route' => 'reseller-portal.network.map', 'active' => 'reseller-portal.network.map', 'permission' => 'gis.view'],
+                            ['label' => 'Data OLT', 'route' => 'reseller-portal.network.olts.index', 'active' => 'reseller-portal.network.olts.*', 'permission' => 'olt.view'],
+                            ['label' => 'Data ODC', 'route' => 'reseller-portal.network.odcs.index', 'active' => 'reseller-portal.network.odcs.*', 'permission' => 'odc.view'],
+                            ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*', 'permission' => 'odp.view'],
                         ]
                     ],
                     [
                         'label' => 'Data Keuangan',
                         'icon' => 'account_balance_wallet',
                         'items' => [
-                            ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => ['reseller-portal.reports.revenue*', 'keuangan.income-harian*']],
-                            ['label' => 'Pemasukan Bulanan', 'route' => 'reseller-portal.reports.sales', 'active' => ['reseller-portal.reports.sales*', 'keuangan.income-periode*']],
-                            ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*'],
-                            ['label' => 'Saldo Deposit', 'route' => 'reseller-portal.finance.balance', 'active' => 'reseller-portal.finance.balance'],
-                            ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup'],
-                            ['label' => 'Mutasi Saldo', 'route' => 'reseller-portal.finance.mutations', 'active' => 'reseller-portal.finance.mutations'],
+                            ['label' => 'Pemasukan Harian', 'route' => 'reseller-portal.reports.revenue', 'active' => ['reseller-portal.reports.revenue*', 'keuangan.income-harian*'], 'permission' => 'finance.view'],
+                            ['label' => 'Pemasukan Bulanan', 'route' => 'reseller-portal.reports.sales', 'active' => ['reseller-portal.reports.sales*', 'keuangan.income-periode*'], 'permission' => 'finance.report'],
+                            ['label' => 'Pengeluaran', 'route' => 'reseller-portal.finance.expenses', 'active' => 'reseller-portal.finance.expenses*', 'permission' => 'finance.view'],
+                            ['label' => 'Saldo Deposit', 'route' => 'reseller-portal.finance.balance', 'active' => 'reseller-portal.finance.balance', 'permission' => 'finance.view'],
+                            ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup', 'permission' => 'finance.view'],
+                            ['label' => 'Mutasi Saldo', 'route' => 'reseller-portal.finance.mutations', 'active' => 'reseller-portal.finance.mutations', 'permission' => 'finance.view'],
                         ]
                     ]
                 ]
@@ -426,9 +424,11 @@ class MenuRegistry
 
     private static function filterNavigationByPermissions(array $navigation): array
     {
-        // Simple graceful filter: if the route name is not registered, or user has no permission, handle it smoothly.
-        // We assume all items are visible unless locked down later.
         $filtered = [];
+        $user = auth()->user();
+
+        // Administrator memiliki full bypass (semua menu tampil)
+        $isAdmin = $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
 
         foreach ($navigation as $menu) {
             if (isset($menu['groups']) && is_array($menu['groups'])) {
@@ -437,10 +437,13 @@ class MenuRegistry
                     $filteredItems = [];
                     if (isset($group['items']) && is_array($group['items'])) {
                         foreach ($group['items'] as $item) {
-                            $route = $item['route'] ?? '';
-                            // To prevent breaking UI while routes are being developed, 
-                            // we just allow all items through. 
-                            // Real permission check would go here later.
+                            $perm = $item['permission'] ?? null;
+                            // Jika menu memiliki kebutuhan permission dan user bukan Administrator
+                            if ($perm && $user && !$isAdmin) {
+                                if (!$user->hasPermission($perm)) {
+                                    continue; // Sembunyikan menu karena izin tidak ada / tidak dicentang
+                                }
+                            }
                             $filteredItems[] = $item;
                         }
                     }
