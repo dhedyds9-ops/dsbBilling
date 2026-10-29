@@ -376,6 +376,18 @@ class Index extends Component
         });
 
         // 11. Top Traffic Users (Cached 30s)
+        $formatBytes = function ($bytes) {
+            $bytes = (float) ($bytes ?? 0);
+            if ($bytes >= 1073741824) {
+                return number_format($bytes / 1073741824, 2) . ' GB';
+            } elseif ($bytes >= 1048576) {
+                return number_format($bytes / 1048576, 1) . ' MB';
+            } elseif ($bytes >= 1024) {
+                return number_format($bytes / 1024, 0) . ' KB';
+            }
+            return number_format($bytes, 0) . ' B';
+        };
+
         $this->topTraffic = Cache::remember('dashboard_top_traffic', 30, function() use ($formatBytes) {
             $top = [];
             try {
