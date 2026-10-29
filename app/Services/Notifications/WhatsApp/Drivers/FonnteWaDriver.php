@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Http;
 /**
  * Fonnte API Driver (Paid, Anti-banned populer di Indonesia ISP billing).
  *
- * Endpoint: https://api.fonnte.com
- * Authentikasi: Header Authorization = TOKEN_FONNTE
+ * Endpoint: https://api.fonnte.com/send
+ * Authentikasi: Header Authorization = TOKEN_FONNTE (tanpa kata "Bearer")
  *
  * Docs: https://docs.fonnte.com
  */
@@ -54,6 +54,13 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
         return (string)($this->config['api_token'] ?? '');
     }
 
+    private function client(): \Illuminate\Http\Client\PendingRequest
+    {
+        return Http::withHeaders([
+            'Authorization' => $this->token(),
+        ]);
+    }
+
     public function sendMessage(WaOutgoingMessage $msg): WaSendResult
     {
         if ($this->token() === '') throw WaGatewayException::create(self::driverKey(), 'api_token kosong');
@@ -70,7 +77,7 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
                     'delay' => (string)($this->config['delay_ms'] ?? '1'),
                 ];
                 if ($msg->priorityHigh) $payload['delay'] = '0';
-                $resp = Http::withToken($this->token())
+                $resp = $this->client()
                     ->timeout(15)
                     ->asForm()
                     ->post($url, $payload);
@@ -80,7 +87,7 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
                     'url' => $msg->mediaUrl,
                     'message' => $msg->text,
                 ];
-                $resp = Http::withToken($this->token())
+                $resp = $this->client()
                     ->timeout(20)
                     ->asForm()
                     ->post($url, $payload);
@@ -91,14 +98,14 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
                     'filename' => $msg->fileName ?: 'document.pdf',
                     'message' => $msg->text,
                 ];
-                $resp = Http::withToken($this->token())
+                $resp = $this->client()
                     ->timeout(30)
                     ->asForm()
                     ->post($url, $payload);
             } else {
                 // Default fallback to text
                 $payload = ['target' => $msg->toPhone, 'message' => $msg->text];
-                $resp = Http::withToken($this->token())
+                $resp = $this->client()
                     ->timeout(15)
                     ->asForm()
                     ->post($url, $payload);
@@ -181,7 +188,7 @@ final class FonnteWaDriver implements WaGatewayDriverInterface
         $t0 = microtime(true);
         try {
             // Fonnte endpoint: POST /device (device token) returns device_status = "connect" | "disconnect"
-            $resp = Http::withToken($this->token())
+            $resp = $this->client()
                 ->timeout(10)
                 ->post($this->deviceUrl());
 

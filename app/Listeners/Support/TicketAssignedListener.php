@@ -50,7 +50,11 @@ class TicketAssignedListener
                         priorityHigh: true,
                         context: ['ticket_id' => $ticket->id, 'type' => 'ticket_assigned'],
                     );
-                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    try {
+                        SendWaMessageJob::dispatchSync($msg);
+                    } catch (\Throwable) {
+                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    }
                 }
 
                 // In-App Database Notification ke Teknisi
@@ -99,7 +103,11 @@ class TicketAssignedListener
                         priorityHigh: true,
                         context: ['ticket_id' => $ticket->id, 'type' => 'ticket_assigned_group'],
                     );
-                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    try {
+                        SendWaMessageJob::dispatchSync($msg);
+                    } catch (\Throwable) {
+                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    }
 
                     Log::info('[TicketAssignedListener] Notifikasi tiket assigned ke Grup WA', [
                         'ticket_id' => $ticket->id,

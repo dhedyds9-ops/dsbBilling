@@ -225,18 +225,22 @@ class Index extends AdminComponent
     public function sendTest(): void
     {
         $this->validate([
-            'testPhone' => ['required', 'string', 'max:20'],
+            'testPhone' => ['required', 'string', 'max:50'],
             'testMessage' => ['required', 'string', 'max:1000'],
         ]);
 
         $this->testResult = null;
         try {
-            $phone = preg_replace('/[^0-9]/', '', $this->testPhone);
-            if (str_starts_with($phone, '0')) $phone = '62' . substr($phone, 1);
+            $target = trim($this->testPhone);
+            if (!str_contains($target, '@g.us') && !str_contains($target, '-')) {
+                $phone = preg_replace('/[^0-9]/', '', $target);
+                if (str_starts_with($phone, '0')) $phone = '62' . substr($phone, 1);
+                $target = $phone;
+            }
 
             $payload = match ($this->connection['provider']) {
                 'fonnte' => [
-                    'target' => $phone,
+                    'target' => $target,
                     'message' => $this->testMessage,
                     'url' => '',
                     'delay' => $this->connection['delay_per_message'],

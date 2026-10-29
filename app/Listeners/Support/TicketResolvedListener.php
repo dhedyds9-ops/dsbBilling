@@ -42,7 +42,11 @@ class TicketResolvedListener
                         priorityHigh: true,
                         context: ['ticket_id' => $ticket->id, 'type' => 'ticket_resolved'],
                     );
-                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    try {
+                        SendWaMessageJob::dispatchSync($msg);
+                    } catch (\Throwable) {
+                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    }
                 }
             } catch (\Throwable $ce) {
                 Log::warning('[TicketResolvedListener] Gagal notif pelanggan: ' . $ce->getMessage());
@@ -90,7 +94,11 @@ class TicketResolvedListener
                         priorityHigh: true,
                         context: ['ticket_id' => $ticket->id, 'type' => 'ticket_resolved_group'],
                     );
-                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    try {
+                        SendWaMessageJob::dispatchSync($msg);
+                    } catch (\Throwable) {
+                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    }
                 }
             } catch (\Throwable $ge) {
                 Log::error('[TicketResolvedListener] Gagal kirim ke Grup WA: ' . $ge->getMessage());

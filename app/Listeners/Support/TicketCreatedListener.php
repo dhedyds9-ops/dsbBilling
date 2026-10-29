@@ -69,7 +69,11 @@ class TicketCreatedListener
                             priorityHigh: true,
                             context: ['ticket_id' => $ticket->id, 'type' => 'ticket_created_admin'],
                         );
-                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                        try {
+                            SendWaMessageJob::dispatchSync($msg);
+                        } catch (\Throwable) {
+                            SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                        }
                     }
                 }
             } catch (\Throwable $ae) {
@@ -94,7 +98,11 @@ class TicketCreatedListener
                         priorityHigh: true,
                         context: ['ticket_id' => $ticket->id, 'type' => 'ticket_ack'],
                     );
-                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    try {
+                        SendWaMessageJob::dispatchSync($msg);
+                    } catch (\Throwable) {
+                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    }
                 }
             } catch (\Throwable $ce) {
                 Log::warning('[TicketCreatedListener] Gagal notif pelanggan: ' . $ce->getMessage());
@@ -120,7 +128,14 @@ class TicketCreatedListener
                         priorityHigh: true,
                         context: ['ticket_id' => $ticket->id, 'type' => 'ticket_created_group'],
                     );
-                    SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+
+                    // Kirim langsung sinkron (agar tidak bergantung pada queue worker background)
+                    try {
+                        SendWaMessageJob::dispatchSync($msg);
+                    } catch (\Throwable $se) {
+                        Log::warning('[TicketCreatedListener] dispatchSync gagal, fallback queue: ' . $se->getMessage());
+                        SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    }
 
                     Log::info('[TicketCreatedListener] Notifikasi tiket baru terkirim ke Grup WA', [
                         'ticket_id' => $ticket->id,

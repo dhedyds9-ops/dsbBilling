@@ -636,7 +636,11 @@ class Index extends BaseEnterpriseList
                     priorityHigh: true,
                     context: ['wo_id' => $wo->id, 'type' => 'installation_created_group'],
                 );
-                \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgGroup)->onQueue('notifications-wa');
+                try {
+                    \App\Jobs\Notifications\SendWaMessageJob::dispatchSync($msgGroup);
+                } catch (\Throwable) {
+                    \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgGroup)->onQueue('notifications-wa');
+                }
             }
 
             // 2. Kirim ke nomor WhatsApp teknisi jika ada teknisi ditugaskan
@@ -655,7 +659,11 @@ class Index extends BaseEnterpriseList
                             priorityHigh: true,
                             context: ['wo_id' => $wo->id, 'type' => 'installation_assigned_tech'],
                         );
-                        \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgTech)->onQueue('notifications-wa');
+                        try {
+                            \App\Jobs\Notifications\SendWaMessageJob::dispatchSync($msgTech);
+                        } catch (\Throwable) {
+                            \App\Jobs\Notifications\SendWaMessageJob::dispatch($msgTech)->onQueue('notifications-wa');
+                        }
                     }
                 }
             }
