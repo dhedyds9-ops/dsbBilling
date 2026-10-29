@@ -133,12 +133,12 @@
                             <label class="relative flex cursor-pointer p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors {{ $selectedRoles == $role->id ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500 dark:border-indigo-500 ring-1 ring-indigo-500' : 'bg-white dark:bg-slate-800' }}">
                                 <input type="radio" wire:model.live="selectedRoles" value="{{ $role->id }}" class="sr-only">
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-sm font-bold text-slate-900 dark:text-white">{{ ucfirst($role->name) }}</span>
+                                    <span class="text-sm font-bold text-slate-900 dark:text-white">{{ $role->display_name ?? ucfirst($role->name) }}</span>
                                     <span class="text-xs text-slate-500 dark:text-slate-400">
                                         @if($role->name == 'administrator') Akses penuh
                                         @elseif($role->name == 'manager') Staff internal
                                         @elseif($role->name == 'reseller') Partner bisnis
-                                        @else Akses standar
+                                        @else {{ $role->description ?: 'Akses khusus' }}
                                         @endif
                                     </span>
                                 </div>

@@ -96,6 +96,11 @@
         </div>
 
         <div class="flex items-center gap-2 w-full lg:w-auto">
+            <a href="{{ route('admin.roles.index') }}" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:18px">shield_person</span>
+                Kelola Role
+            </a>
+
             <button wire:click="export" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span>
                 Export

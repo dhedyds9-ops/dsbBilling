@@ -150,6 +150,7 @@ class MenuRegistry
                             ['label' => 'Telegram Bot', 'route' => 'pengaturan.telegram', 'active' => 'pengaturan.telegram'],
                             ['label' => 'Pengaturan Sistem', 'route' => 'admin.settings.index', 'active' => 'admin.settings.*'],
                             ['label' => 'User Management', 'route' => 'admin.users.index', 'active' => 'admin.users.*'],
+                            ['label' => 'Role & Hak Akses', 'route' => 'admin.roles.index', 'active' => 'admin.roles.*'],
                             ['label' => 'Template Voucher', 'route' => 'isp.voucher-templates.index', 'active' => 'isp.voucher-templates.*'],
                             ['label' => 'Download LoginPage', 'route' => 'pengaturan.loginpage', 'active' => 'pengaturan.loginpage*', 'icon' => 'cloud_download'],
                             ['label' => 'Audit Log', 'route' => 'admin.audit-trail.index', 'active' => 'admin.audit-trail.*'],

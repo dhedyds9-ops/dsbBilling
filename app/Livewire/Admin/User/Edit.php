@@ -317,11 +317,7 @@ class Edit extends AdminComponent
 
     public function render()
     {
-        $roles = Role::whereIn('name', [
-            \App\Enums\UserRole::Administrator->value,
-            \App\Enums\UserRole::Manager->value,
-            \App\Enums\UserRole::Reseller->value,
-        ])->get();
+        $roles = Role::whereNotIn('name', Role::hiddenInUserManagement())->get();
         
         $permissionsGrouped = Permission::all()->groupBy(function($p) {
             $name = $p->display_name ?? $p->name;
