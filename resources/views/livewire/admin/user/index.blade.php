@@ -7,7 +7,56 @@
     </div>
 @endsection
 
-<div class="space-y-6 pb-10">
+<div class="space-y-4 pb-10">
+    {{-- Role Tabs Navigation --}}
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 overflow-x-auto">
+        <div class="flex items-center gap-1.5 min-w-max">
+            {{-- All Roles --}}
+            <button wire:click="setActiveRole('all')" 
+                class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all {{ $activeRole === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
+                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">groups</span>
+                <span>Semua Role</span>
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold {{ $activeRole === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300' }}">
+                    {{ $totalUsersCount }}
+                </span>
+            </button>
+
+            {{-- Per Role Tab --}}
+            @foreach($roleList as $r)
+                @php
+                    $roleIcon = match(strtolower($r['name'])) {
+                        'administrator', 'super_admin', 'admin' => 'admin_panel_settings',
+                        'manager' => 'badge',
+                        'reseller' => 'storefront',
+                        'technician' => 'engineering',
+                        'noc', 'noc_operator' => 'terminal',
+                        default => 'manage_accounts',
+                    };
+                @endphp
+                <button wire:click="setActiveRole('{{ $r['name'] }}')" 
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all {{ $activeRole === $r['name'] ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60' }}">
+                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">{{ $roleIcon }}</span>
+                    <span>{{ $r['display_name'] }}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold {{ $activeRole === $r['name'] ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300' }}">
+                        {{ $r['count'] }}
+                    </span>
+                </button>
+            @endforeach
+
+            {{-- Tab: Tanpa Role (jika ada) --}}
+            @if($unassignedCount > 0)
+                <button wire:click="setActiveRole('unassigned')" 
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all {{ $activeRole === 'unassigned' ? 'bg-amber-600 text-white shadow-sm' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30' }}">
+                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">person_alert</span>
+                    <span>Tanpa Role</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold {{ $activeRole === 'unassigned' ? 'bg-white/20 text-white' : 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300' }}">
+                        {{ $unassignedCount }}
+                    </span>
+                </button>
+            @endif
+        </div>
+    </div>
+
     {{-- Toolbar --}}
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
@@ -16,7 +65,7 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:18px">search</span>
                 </div>
-                <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari nama atau email..." 
+                <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari nama, email, username..." 
                     class="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 placeholder-slate-400 dark:bg-slate-900 dark:text-slate-100">
             </div>
 
@@ -38,7 +87,7 @@
                     <option value="all">Semua</option>
                 </select>
 
-                @if($search || $filterJobFunction !== '')
+                @if($search || $filterJobFunction !== '' || $activeRole !== 'all')
                 <button wire:click="resetFilters" class="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100 font-medium whitespace-nowrap">
                     Reset
                 </button>
@@ -149,8 +198,22 @@
                         <tr>
                             <td colspan="8" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <span class="material-symbols-outlined notranslate block mx-auto text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3" translate="no" style="font-size:48px">group_off</span>
-                                <p class="text-lg font-medium text-slate-900 dark:text-slate-100">Tidak ada User</p>
-                                <p class="text-slate-500 dark:text-slate-400 mt-1">Belum ada data staf atau user yang terdaftar.</p>
+                                <p class="text-lg font-medium text-slate-900 dark:text-slate-100">
+                                    @if($activeRole === 'all')
+                                        Tidak ada User
+                                    @elseif($activeRole === 'unassigned')
+                                        Tidak ada User Tanpa Role
+                                    @else
+                                        Tidak ada User dengan Role {{ ucfirst($activeRole) }}
+                                    @endif
+                                </p>
+                                <p class="text-slate-500 dark:text-slate-400 mt-1">
+                                    @if($search || $filterJobFunction)
+                                        Tidak ditemukan data yang sesuai dengan filter pencarian.
+                                    @else
+                                        Belum ada data staf atau user pada kategori ini.
+                                    @endif
+                                </p>
                             </td>
                         </tr>
                     @endforelse

@@ -18,8 +18,15 @@ class Index extends AdminComponent
     public $sortDirection = 'desc';
     public $perPage = 10;
     public $filterJobFunction = '';
+    public string $activeRole = 'all';
     public $filters = [];
     public $showFilters = false;
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'filterJobFunction' => ['except' => ''],
+        'activeRole' => ['except' => 'all'],
+    ];
     
     public $showMappingModal = false;
     public $mappingUserId = null;
@@ -53,11 +60,18 @@ class Index extends AdminComponent
         $this->sortField = $field;
     }
 
+    public function setActiveRole(string $role): void
+    {
+        $this->activeRole = $role;
+        $this->resetPage();
+    }
+
     public function resetFilters()
     {
         $this->filters = ['status' => ''];
         $this->filterJobFunction = '';
         $this->search = '';
+        $this->activeRole = 'all';
         $this->resetPage();
     }
 
@@ -144,16 +158,44 @@ class Index extends AdminComponent
 
     public function render()
     {
-        $query = UserModel::query()
-            ->with(['roles', 'employee'])
+        $baseQuery = UserModel::query()
             ->whereDoesntHave('roles', function ($q) {
                 $q->whereIn('name', ['customer', 'pppoe', 'hotspot']);
             });
 
+        // Hitung total dan count per role untuk tab badges
+        $totalUsersCount = (clone $baseQuery)->count();
+        $unassignedCount = (clone $baseQuery)->whereDoesntHave('roles')->count();
+
+        $roleList = Role::whereNotIn('name', ['customer', 'pppoe', 'hotspot'])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($role) use ($baseQuery) {
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'display_name' => $role->display_name ?: ucfirst($role->name),
+                    'count' => (clone $baseQuery)->whereHas('roles', fn($q) => $q->where('id', $role->id))->count(),
+                ];
+            });
+
+        // Filter tabel utama
+        $query = (clone $baseQuery)->with(['roles', 'employee']);
+
+        // Filter berdasarkan tab role aktif
+        if ($this->activeRole === 'unassigned') {
+            $query->whereDoesntHave('roles');
+        } elseif ($this->activeRole !== 'all') {
+            $query->whereHas('roles', function ($q) {
+                $q->where('name', $this->activeRole);
+            });
+        }
+
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%');
+                  ->orWhere('email', 'like', '%' . $this->search . '%')
+                  ->orWhere('username', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -164,6 +206,11 @@ class Index extends AdminComponent
         $users = $query->orderBy($this->sortField, $this->sortDirection)
                       ->paginate($this->perPage === 'all' ? 999999 : $this->perPage);
 
-        return view('livewire.admin.user.index', compact('users'));
+        return view('livewire.admin.user.index', [
+            'users' => $users,
+            'roleList' => $roleList,
+            'totalUsersCount' => $totalUsersCount,
+            'unassignedCount' => $unassignedCount,
+        ]);
     }
 }
