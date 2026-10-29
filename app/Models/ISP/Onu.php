@@ -137,13 +137,16 @@ class Onu extends Model
             $resellerId = $user->getEffectiveResellerId();
             return $query->where(function($q) use ($user, $resellerId) {
                 if (!empty($user->branch_id)) {
-                    $q->where('branch_id', $user->branch_id);
+                    $q->whereHas('olt', fn($oltQ) => $oltQ->where('branch_id', $user->branch_id));
+                } else {
+                    $q->whereHas('olt', fn($oltQ) => $oltQ->whereNull('branch_id'));
                 }
-                // Also match ONUs assigned to customer services belonging to this reseller
-                $q->orWhere('reseller_id', $resellerId)
+
+                // Also match ONUs created by reseller or assigned to customer services belonging to this reseller
+                $q->orWhere('created_by', $resellerId)
                   ->orWhereHas('customerService', function($csQ) use ($resellerId) {
                       $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
-                          $sub->where('reseller_id', $resellerId)
+                          $sub->where('created_by', $resellerId)
                               ->orWhereHas('customer', fn($cQ) => $cQ->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
                       });
                   });

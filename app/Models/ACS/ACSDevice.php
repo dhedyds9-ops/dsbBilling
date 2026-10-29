@@ -91,13 +91,17 @@ class ACSDevice extends Model
                 }
                 // Sesuai customer service milik reseller ini
                 $q->orWhereHas('customerService', function($csQ) use ($resellerId) {
-                    $csQ->withoutGlobalScopes()->where('reseller_id', $resellerId)
-                        ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
+                    $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                        $sub->where('created_by', $resellerId)
+                            ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
+                    });
                 });
                 // Sesuai ONU yang berelasi dengan customer reseller
                 $q->orWhereHas('onu.customerService', function($onuCsQ) use ($resellerId) {
-                    $onuCsQ->withoutGlobalScopes()->where('reseller_id', $resellerId)
-                        ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
+                    $onuCsQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                        $sub->where('created_by', $resellerId)
+                            ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
+                    });
                 });
             });
         }
