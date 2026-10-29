@@ -35,7 +35,7 @@
             <!-- Nama Pegawai -->
             <div>
                 <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Nama Lengkap <span class="text-red-500">*</span></label>
-                <input type="text" wire:model="name" placeholder="Nama lengkap pegawai"
+                <input type="text" wire:model.live.debounce.400ms="name" placeholder="Nama lengkap pegawai"
                        class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
@@ -118,24 +118,8 @@
                 @error('bank_account') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
 
-            <!-- Tautkan Akun User Login -->
-            <div>
-                <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Tautkan Akun Login (User Management)
-                </label>
-                <select wire:model="user_id"
-                        class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="">-- Belum Ditautkan --</option>
-                    @foreach($users as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
-                    @endforeach
-                </select>
-                <p class="text-[11px] text-slate-400 mt-1">Pilih akun user login untuk menghubungkan riwayat absensi teknisi ke profil pegawai ini.</p>
-                @error('user_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-            </div>
-
             <!-- Status -->
-            <div>
+            <div class="col-span-1 md:col-span-2">
                 <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Status Kepegawaian <span class="text-red-500">*</span></label>
                 <select wire:model="status"
                         class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -143,6 +127,90 @@
                     <option value="inactive">Nonaktif / Resign</option>
                 </select>
                 @error('status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            </div>
+
+            <!-- Integrasi Akun Login User -->
+            <div class="col-span-1 md:col-span-2 p-5 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">manage_accounts</span>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Akun Login & Hak Akses Pengguna</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Otomatis buatkan user login baru untuk pegawai ini atau hubungkan ke akun terdaftar.</p>
+                        </div>
+                    </div>
+                    <label class="inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" wire:model.live="create_user_account" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                        <span class="ms-3 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            {{ $create_user_account ? 'Buat Akun Baru' : 'Pilih Akun Terdaftar' }}
+                        </span>
+                    </label>
+                </div>
+
+                @if($create_user_account)
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                        <!-- Username -->
+                        <div>
+                            <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Username <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" wire:model="username" placeholder="Username login"
+                                   class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                            <p class="text-[11px] text-slate-400 mt-1">Otomatis terisi dari nama pegawai.</p>
+                            @error('username') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+
+                        <!-- Password Default -->
+                        <div x-data="{ show: false }">
+                            <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Password Default <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input :type="show ? 'text' : 'password'" wire:model="password"
+                                       class="w-full px-4 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                                <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <span class="material-symbols-outlined notranslate text-[18px]" x-text="show ? 'visibility_off' : 'visibility'"></span>
+                                </button>
+                            </div>
+                            <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">Default: Password123!</p>
+                            @error('password') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+
+                        <!-- Role -->
+                        <div>
+                            <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Role / Hak Akses <span class="text-red-500">*</span>
+                            </label>
+                            <select wire:model="role_id"
+                                    class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- Pilih Role --</option>
+                                @foreach($roles as $r)
+                                    <option value="{{ $r->id }}">{{ ucfirst($r->name) }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">Default staf internal: Manager.</p>
+                            @error('role_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                @else
+                    <div class="pt-1">
+                        <label class="block mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                            Pilih Akun Login Terdaftar
+                        </label>
+                        <select wire:model="user_id"
+                                class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Belum Ditautkan --</option>
+                            @foreach($users as $user)
+                                <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                            @endforeach
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1">Pilih akun pengguna yang sudah ada untuk ditautkan dengan profil pegawai ini.</p>
+                        @error('user_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -152,11 +220,11 @@
                 Batal
             </a>
             <button type="submit" wire:loading.attr="disabled" wire:target="save" class=" px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm">
-        <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
-        <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
-        <span wire:loading.remove wire:target="save">Simpan Data Pegawai</span>
-        <span wire:loading wire:target="save">Menyimpan...</span>
-    </button>
+                <span wire:loading.remove wire:target="save" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">save</span>
+                <span wire:loading wire:target="save" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">autorenew</span>
+                <span wire:loading.remove wire:target="save">Simpan Data Pegawai</span>
+                <span wire:loading wire:target="save">Menyimpan...</span>
+            </button>
         </div>
     </form>
 </div>
