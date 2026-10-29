@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\User;
 
 use App\Livewire\AdminComponent;
 use App\Models\User as UserModel;
+use App\Models\Role;
 use App\Models\ISP\Voucher;
 use App\Models\ISP\HotspotUser;
 use App\Models\ISP\PPPoEUser;

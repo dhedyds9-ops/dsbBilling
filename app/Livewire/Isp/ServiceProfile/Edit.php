@@ -281,7 +281,14 @@ class Edit extends AdminComponent
         $isAdministrator = auth()->user()->hasRole(\App\Enums\UserRole::Administrator->value) ?? false;
         $users = $isAdministrator
             ? \App\Models\User::select('id', 'name')
-                ->whereHas('roles', fn($q) => $q->whereIn('name', \App\Enums\UserRole::backofficeRoles()))
+                ->whereHas('roles', fn($q) => $q->whereIn('name', [
+                    \App\Enums\UserRole::Reseller->value,
+                    \App\Enums\UserRole::Administrator->value,
+                ]))
+                ->where(function ($q) {
+                    $q->whereNull('job_function')
+                      ->orWhere('job_function', '!=', \App\Enums\JobFunction::TECHNICIAN->value);
+                })
                 ->orderBy('name')
                 ->limit(100)
                 ->get()
