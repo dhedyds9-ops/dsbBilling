@@ -287,7 +287,18 @@ class Edit extends AdminComponent
                 ]))
                 ->where(function ($q) {
                     $q->whereNull('job_function')
-                      ->orWhere('job_function', '!=', \App\Enums\JobFunction::TECHNICIAN->value);
+                      ->orWhereNotIn('job_function', [
+                          \App\Enums\JobFunction::TECHNICIAN->value,
+                          \App\Enums\JobFunction::NOC->value,
+                      ]);
+                })
+                ->where(function ($q) {
+                    $q->whereNull('job_title')
+                      ->orWhere(function ($sq) {
+                          $sq->where('job_title', 'not like', '%teknisi%')
+                             ->where('job_title', 'not like', '%technician%')
+                             ->where('job_title', 'not like', '%noc%');
+                      });
                 })
                 ->orderBy('name')
                 ->limit(100)

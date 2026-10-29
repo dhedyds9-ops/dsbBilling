@@ -78,7 +78,7 @@
             @if($isAdministrator)
                 <select wire:model.live="filters.owner_id" class="w-full sm:w-auto bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-3 pr-8 py-2 dark:bg-slate-900 dark:text-slate-100">
                     <option value="">Semua Owner</option>
-                    @foreach(\App\Models\User::select('id', 'name')->whereHas('roles', fn($q) => $q->whereIn('name', \App\Enums\UserRole::backofficeRoles()))->orderBy('name')->limit(100)->get() as $user)
+                    @foreach($owners ?? [] as $user)
                         <option value="{{ $user->id }}">{{ $user->name }}</option>
                     @endforeach
                 </select>
@@ -303,7 +303,7 @@
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Owner</label>
                                 <select wire:model="bulkEditData.owner_id" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm dark:bg-slate-900 dark:text-slate-100">
                                     <option value="">-- Pilih Owner --</option>
-                                    @foreach(\App\Models\User::select('id', 'name')->limit(100)->get() as $user)
+                                    @foreach($owners ?? [] as $user)
                                         <option value="{{ $user->id }}">{{ $user->name }}</option>
                                     @endforeach
                                 </select>

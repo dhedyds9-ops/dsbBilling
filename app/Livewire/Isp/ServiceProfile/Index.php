@@ -5,6 +5,7 @@ namespace App\Livewire\Isp\ServiceProfile;
 use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\ServiceProfile as ServiceProfileModel;
 use App\Models\ISP\ServiceProfileType;
+use App\Models\User;
 use App\Exports\ServiceProfileExport;
 use App\Imports\ServiceProfileImport;
 use App\Services\ISP\ServiceProfileService;
@@ -679,6 +680,29 @@ class Index extends BaseNetworkComponent
         $query = $query->orderBy($this->sortField, $this->sortDirection);
         $profiles = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);
 
-        return view('livewire.isp.service-profile.index', compact('profiles', 'types'));
+        $owners = User::select('id', 'name')
+            ->whereHas('roles', fn($q) => $q->whereIn('name', [
+                \App\Enums\UserRole::Reseller->value,
+                \App\Enums\UserRole::Administrator->value,
+            ]))
+            ->where(function ($q) {
+                $q->whereNull('job_function')
+                  ->orWhereNotIn('job_function', [
+                      \App\Enums\JobFunction::TECHNICIAN->value,
+                      \App\Enums\JobFunction::NOC->value,
+                  ]);
+            })
+            ->where(function ($q) {
+                $q->whereNull('job_title')
+                  ->orWhere(function ($sq) {
+                      $sq->where('job_title', 'not like', '%teknisi%')
+                         ->where('job_title', 'not like', '%technician%')
+                         ->where('job_title', 'not like', '%noc%');
+                  });
+            })
+            ->orderBy('name')
+            ->get();
+
+        return view('livewire.isp.service-profile.index', compact('profiles', 'types', 'owners'));
     }
 }
