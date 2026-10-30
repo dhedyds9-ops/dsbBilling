@@ -234,6 +234,7 @@ class Index extends AdminComponent
         return Onu::withoutTrashed()
             ->with([
                 'olt:id,name',
+                'branch:id,name,code',
                 'odp:id,name,code',
                 'ponPort:id,name,port_number',
                 'customerService:id,onu_id,customer_id',
@@ -243,9 +244,9 @@ class Index extends AdminComponent
                 'acsDevice:id,serial_number,ip_address,mac_address'
             ])
             ->select([
-                'id', 'name', 'serial_number', 'mac_address', 'status',
+                'id', 'code', 'name', 'serial_number', 'mac_address', 'status',
                 'rx_power_dbm', 'tx_power_dbm', 'temperature',
-                'last_seen_at', 'olt_id', 'pon_port_id', 'odp_id',
+                'last_seen_at', 'olt_id', 'branch_id', 'pon_port_id', 'odp_id',
                 'pon_port',
             ])
             ->when($this->oltFilter, fn ($q) => $q->where('olt_id', $this->oltFilter))

@@ -376,7 +376,7 @@ class Index extends BaseNetworkComponent
 
     public function render()
     {
-        $query = OltModel::with(['pop', 'vendor'])
+        $query = OltModel::with(['pop', 'vendor', 'branch'])
             ->withCount(['onus', 'onus as onus_online_count' => function ($q) {
                 $q->where('status', 'active');
             }, 'onus as onus_offline_count' => function ($q) {
@@ -391,7 +391,7 @@ class Index extends BaseNetworkComponent
                       ->orWhere('ip_address', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+            ->when($this->filters['status'] ?? null, fn($q, $status) => $q->where('status', $status));
 
         $query = $query->orderBy($this->sortField, $this->sortDirection);
         $olts = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);

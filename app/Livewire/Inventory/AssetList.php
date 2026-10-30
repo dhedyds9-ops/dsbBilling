@@ -98,9 +98,20 @@ class AssetList extends AdminComponent
         }
     }
 
+    public function resetFilters(): void
+    {
+        $this->filters = [
+            'search' => '',
+            'category' => 'all',
+            'status' => 'all',
+            'warehouse' => 'all',
+        ];
+        $this->resetPage();
+    }
+
     public function getAssets()
     {
-        $query = Asset::query();
+        $query = Asset::with('vendor');
         
         if (!empty($this->filters['search'])) {
             $query->where(function($q) {

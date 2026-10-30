@@ -1,5 +1,5 @@
 @section('page_title')
-    <a href="{{ route('isp.olts.show', $olt->id) }}" class="p-1.5 mr-2 text-indigo-100 hover:text-white rounded-lg hover:bg-indigo-700/50 transition-colors" title="Kembali">
+    <a href="{{ route('isp.olts.index') }}" class="inline-flex items-center justify-center p-1.5 mr-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Kembali">
         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">arrow_back</span>
     </a>
     <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">edit</span>

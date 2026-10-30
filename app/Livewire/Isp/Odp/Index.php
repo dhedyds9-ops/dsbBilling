@@ -298,15 +298,17 @@ class Index extends BaseNetworkComponent
 
     public function render()
     {
-        $query = OdpModel::with(['odc'])
+        $query = OdpModel::with(['odc', 'branch'])
             ->when($this->showTrashed, fn($q) => $q->withTrashed())
             ->when($this->search, function($q) {
                 $q->where(function($sq) {
                     $sq->where('code', 'like', '%' . $this->search . '%')
-                      ->orWhere('name', 'like', '%' . $this->search . '%');
+                      ->orWhere('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('district', 'like', '%' . $this->search . '%')
+                      ->orWhere('address', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+            ->when($this->filters['status'] ?? null, fn($q, $status) => $q->where('status', $status));
 
         $odps = $query->orderBy($this->sortField, $this->sortDirection)
                      ->paginate($this->perPage);

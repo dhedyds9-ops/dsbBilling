@@ -1,158 +1,141 @@
-{{--
- NOC: ONU Monitoring Index
---}}
-<div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900">
-    {{-- Top Bar: Title, Summary Badges, and Action --}}
-    <div class="flex-none px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700/80">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {{-- Title & Summary Badges --}}
-            <div class="flex flex-wrap items-center gap-2">
-                <div class="flex items-center gap-2 mr-1">
-                    <span class="material-symbols-outlined notranslate text-indigo-600 dark:text-indigo-400 text-xl" translate="no">router</span>
-                    <h1 class="text-base font-bold text-slate-800 dark:text-slate-100">ONU Monitoring</h1>
-                </div>
+@section('page_title')
+    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">router</span>
+    <span class="text-lg">Data ONU</span>
+@endsection
 
-                {{-- Status Pills (clickable quick filters) --}}
-                <div class="flex flex-wrap items-center gap-1.5">
-                    <button type="button" wire:click="$set('statusFilter', 'all')"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'all' ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 border-transparent shadow-xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600' }}">
-                        <span>{{ number_format($summary['total']) }}</span>
-                        <span class="text-[11px] opacity-80">Total</span>
-                    </button>
+<div class="space-y-5 pb-10">
 
-                    <button type="button" wire:click="$set('statusFilter', 'online')"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'online' ? 'bg-emerald-600 text-white border-transparent shadow-xs' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60' }}">
-                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'online' ? 'bg-white' : 'bg-emerald-500' }}"></span>
-                        <span>{{ number_format($summary['online']) }}</span>
-                        <span class="text-[11px] opacity-80">Online</span>
-                    </button>
-
-                    <button type="button" wire:click="$set('statusFilter', 'offline')"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'offline' ? 'bg-slate-600 text-white border-transparent shadow-xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600' }}">
-                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'offline' ? 'bg-white' : 'bg-slate-400' }}"></span>
-                        <span>{{ number_format($summary['offline']) }}</span>
-                        <span class="text-[11px] opacity-80">Offline</span>
-                    </button>
-
-                    <button type="button" wire:click="$set('statusFilter', 'los')"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'los' ? 'bg-rose-600 text-white border-transparent shadow-xs' : 'bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 border-rose-200 dark:border-rose-800/60' }}">
-                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'los' ? 'bg-white' : 'bg-rose-500' }}"></span>
-                        <span>{{ number_format($summary['los']) }}</span>
-                        <span class="text-[11px] opacity-80">LOS</span>
-                    </button>
-
-                    <button type="button" wire:click="$set('statusFilter', 'low_rx')"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border {{ $statusFilter === 'low_rx' ? 'bg-amber-600 text-white border-transparent shadow-xs' : 'bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 dark:text-amber-400 border-amber-200 dark:border-amber-800/60' }}">
-                        <span class="w-1.5 h-1.5 rounded-full {{ $statusFilter === 'low_rx' ? 'bg-white' : 'bg-amber-500' }}"></span>
-                        <span>{{ number_format($summary['low_rx']) }}</span>
-                        <span class="text-[11px] opacity-80">Low RX</span>
-                    </button>
-                </div>
-            </div>
-
-            {{-- Top Actions --}}
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto">
-                <button wire:click="syncFromOlt" wire:loading.attr="disabled" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer whitespace-nowrap" title="Sinkronkan data ONU & Redaman (RX Power) dari OLT">
-                    <span wire:loading.remove wire:target="syncFromOlt,syncAll,syncOlt" class="material-symbols-outlined notranslate" style="font-size:16px" translate="no">sync</span>
-                    <span wire:loading wire:target="syncFromOlt,syncAll,syncOlt" class="animate-spin material-symbols-outlined notranslate" style="font-size:16px" translate="no">sync</span>
-                    <span>Sinkronisasi OLT</span>
-                </button>
-                <button wire:click="cleanupDuplicates" wire:confirm="Sistem akan otomatis membersihkan baris ONU duplikat dan mempertahankan data ONU yang valid. Lanjutkan?" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-2xs transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate" style="font-size:16px" translate="no">cleaning_services</span>
-                    Bersihkan Duplikat
-                </button>
-                <button wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline / Orphan ({{ $summary['offline'] }} ONU) dari database lokal? (Ini tidak menghapus dari OLT fisik)" type="button" class="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 rounded-lg text-xs font-semibold shadow-2xs transition-colors whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate" style="font-size:16px" translate="no">delete_sweep</span>
-                    Hapus Offline
-                </button>
-            </div>
+    {{-- SESSION FLASH --}}
+    @if(session('success'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+            {{ session('success') }}
         </div>
-    </div>
-
-    {{-- Flash Notifications --}}
-    @if (session()->has('success') || session()->has('error') || session()->has('warning') || session()->has('info'))
-        <div class="flex-none px-4 pt-2.5">
-            @if (session()->has('success'))
-                <div class="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">check_circle</span>
-                        <span>{{ session('success') }}</span>
-                    </div>
-                    <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 cursor-pointer font-bold">&times;</button>
-                </div>
-            @endif
-            @if (session()->has('error'))
-                <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-lg text-xs flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">error</span>
-                        <span>{{ session('error') }}</span>
-                    </div>
-                    <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 cursor-pointer font-bold">&times;</button>
-                </div>
-            @endif
-            @if (session()->has('warning'))
-                <div class="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 rounded-lg text-xs flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">warning</span>
-                        <span>{{ session('warning') }}</span>
-                    </div>
-                    <button type="button" onclick="this.parentElement.remove()" class="text-amber-500 hover:text-amber-700 cursor-pointer font-bold">&times;</button>
-                </div>
-            @endif
-            @if (session()->has('info'))
-                <div class="p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg text-xs flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">info</span>
-                        <span>{{ session('info') }}</span>
-                    </div>
-                    <button type="button" onclick="this.parentElement.remove()" class="text-blue-500 hover:text-blue-700 cursor-pointer font-bold">&times;</button>
-                </div>
-            @endif
+    @endif
+    @if(session('error'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+            {{ session('error') }}
+        </div>
+    @endif
+    @if(session('warning'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">warning</span>
+            {{ session('warning') }}
+        </div>
+    @endif
+    @if(session('info'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl text-blue-700 dark:text-blue-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
+            {{ session('info') }}
         </div>
     @endif
 
-    {{-- Filter Toolbar: Search & Select Filters --}}
-    <div class="flex-none p-3 sm:px-4 sm:py-2.5 bg-slate-50/90 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/80">
-        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
-            {{-- Search Bar --}}
-            <div class="relative w-full lg:w-72">
-                <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-                    <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">search</span>
-                </div>
-                <input type="text"
-                    wire:model.live.debounce.400ms="search"
-                    placeholder="Cari SN, MAC, atau Pelanggan..."
-                    class="w-full pl-8 pr-7 py-2 text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors placeholder:text-slate-400"
-                />
-                @if(!empty($search))
-                <button wire:click="$set('search', '')" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <span class="material-symbols-outlined notranslate text-sm" translate="no">close</span>
-                </button>
-                @endif
+    {{-- STATISTIK & FILTER CEPAT ONU --}}
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <button type="button" wire:click="$set('statusFilter', 'all')" class="text-left bg-white dark:bg-slate-800 p-4 rounded-xl border {{ $statusFilter === 'all' ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600' }} shadow-sm transition-all flex items-center justify-between cursor-pointer">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total ONU</p>
+                <div class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{{ number_format($summary['total'] ?? 0) }}</div>
             </div>
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">router</span>
+            </div>
+        </button>
 
-            {{-- Dropdown Filters Group --}}
-            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
-                {{-- OLT Filter --}}
-                <select wire:model.live="oltFilter" class="w-full sm:w-auto h-9 px-2.5 pr-7 text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer">
+        <button type="button" wire:click="$set('statusFilter', 'online')" class="text-left bg-white dark:bg-slate-800 p-4 rounded-xl border {{ $statusFilter === 'online' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600' }} shadow-sm transition-all flex items-center justify-between cursor-pointer">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Online</p>
+                <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{{ number_format($summary['online'] ?? 0) }}</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">wifi</span>
+            </div>
+        </button>
+
+        <button type="button" wire:click="$set('statusFilter', 'offline')" class="text-left bg-white dark:bg-slate-800 p-4 rounded-xl border {{ $statusFilter === 'offline' ? 'border-slate-500 ring-2 ring-slate-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600' }} shadow-sm transition-all flex items-center justify-between cursor-pointer">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Offline</p>
+                <div class="text-2xl font-black text-slate-700 dark:text-slate-200 mt-1">{{ number_format($summary['offline'] ?? 0) }}</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">wifi_off</span>
+            </div>
+        </button>
+
+        <button type="button" wire:click="$set('statusFilter', 'los')" class="text-left bg-white dark:bg-slate-800 p-4 rounded-xl border {{ $statusFilter === 'los' ? 'border-red-500 ring-2 ring-red-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-600' }} shadow-sm transition-all flex items-center justify-between cursor-pointer">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">LOS / Crit</p>
+                <div class="text-2xl font-black text-red-600 dark:text-red-400 mt-1">{{ number_format($summary['los'] ?? 0) }}</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">signal_disconnected</span>
+            </div>
+        </button>
+
+        <button type="button" wire:click="$set('statusFilter', 'low_rx')" class="col-span-2 sm:col-span-1 text-left bg-white dark:bg-slate-800 p-4 rounded-xl border {{ $statusFilter === 'low_rx' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600' }} shadow-sm transition-all flex items-center justify-between cursor-pointer">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Low RX</p>
+                <div class="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{{ number_format($summary['low_rx'] ?? 0) }}</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">warning</span>
+            </div>
+        </button>
+    </div>
+
+    {{-- TOOLBAR & FILTER --}}
+    <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto shrink-0">
+            <a href="{{ route('isp.onus.create') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                <span>Tambah ONU</span>
+            </a>
+            <button type="button" wire:click="syncFromOlt" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap" title="Sinkronkan data ONU & Redaman dari OLT">
+                <span class="material-symbols-outlined notranslate text-indigo-500" wire:loading.class="animate-spin" wire:target="syncFromOlt,syncAll,syncOlt" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading.remove wire:target="syncFromOlt,syncAll,syncOlt">Sinkronisasi OLT</span>
+                <span wire:loading wire:target="syncFromOlt,syncAll,syncOlt">Sinkronisasi...</span>
+            </button>
+            <button type="button" wire:click="cleanupDuplicates" wire:confirm="Sistem akan otomatis membersihkan baris ONU duplikat dan mempertahankan data ONU yang valid. Lanjutkan?" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">cleaning_services</span>
+                <span>Bersihkan Duplikat</span>
+            </button>
+            <button type="button" wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline / Orphan ({{ $summary['offline'] ?? 0 }} ONU) dari database lokal?" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete_sweep</span>
+                <span>Hapus Offline</span>
+            </button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full xl:w-auto">
+            <div class="relative w-full sm:w-60">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.400ms="search"
+                       placeholder="Cari SN, MAC, Pelanggan..."
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+            </div>
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="oltFilter"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="">Semua OLT</option>
                     @foreach($olts as $olt)
-                    <option value="{{ $olt->id }}">{{ $olt->name }}</option>
+                        <option value="{{ $olt->id }}">{{ $olt->name }}</option>
                     @endforeach
                 </select>
 
-                {{-- PON Filter (if OLT is selected) --}}
                 @if(!empty($oltFilter) && $oltFilter !== 'all')
-                <select wire:model.live="ponFilter" class="w-full sm:w-auto h-9 px-2.5 pr-7 text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer">
-                    <option value="">Semua PON</option>
-                    @foreach($ponPorts as $pon)
-                    <option value="{{ $pon->id }}">{{ $pon->name }}</option>
-                    @endforeach
-                </select>
+                    <select wire:model.live="ponFilter"
+                            class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="">Semua PON</option>
+                        @foreach($ponPorts as $pon)
+                            <option value="{{ $pon->id }}">{{ $pon->name }}</option>
+                        @endforeach
+                    </select>
                 @endif
 
-                {{-- Status Filter --}}
-                <select wire:model.live="statusFilter" class="w-full sm:w-auto h-9 px-2.5 pr-7 text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer">
+                <select wire:model.live="statusFilter"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="all">Semua Status</option>
                     <option value="online">Online</option>
                     <option value="offline">Offline</option>
@@ -160,123 +143,184 @@
                     <option value="low_rx">Low RX (-30 s/d -27)</option>
                 </select>
 
-                {{-- Rows Per Page --}}
-                <select wire:model.live="perPage" class="w-full sm:w-auto h-9 px-2.5 pr-7 text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer">
-                    <option value="25">25 Baris</option>
-                    <option value="50">50 Baris</option>
-                    <option value="100">100 Baris</option>
+                <select wire:model.live="perPage"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    <option value="25">25 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
                     <option value="0">Semua</option>
                 </select>
 
-                {{-- Reset Filter Button --}}
                 @if($search !== '' || $statusFilter !== 'all' || $oltFilter !== '' || $ponFilter !== '')
-                <button type="button" wire:click="resetFilters" class="col-span-2 sm:col-auto h-9 px-2.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-1" title="Reset Semua Filter">
-                    <span class="material-symbols-outlined notranslate text-sm" translate="no">restart_alt</span>
-                    Reset
-                </button>
+                    <button type="button" wire:click="resetFilters"
+                            title="Reset Filter"
+                            class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                        <span>Reset</span>
+                    </button>
                 @endif
             </div>
         </div>
     </div>
 
-    {{-- Table --}}
-    <div class="flex-1 overflow-auto ">
-        <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
-            <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="p-3 font-semibold" wire:click="sort('serial_number')">Serial {!! $sortField === 'serial_number' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
-                    <th class="p-3 font-semibold" wire:click="sort('mac_address')">MAC {!! $sortField === 'mac_address' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
-                    <th class="p-3 font-semibold">IP Host</th>
-                    <th class="p-3 font-semibold">OLT / PON</th>
-                    <th class="p-3 font-semibold">Pelanggan</th>
-                    <th class="p-3 font-semibold" wire:click="sort('rx_power_dbm')">RX Power {!! $sortField === 'rx_power_dbm' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
-                    <th class="p-3 font-semibold">TX Power</th>
-                    <th class="p-3 font-semibold">Temp</th>
-                    <th class="p-3 font-semibold" wire:click="sort('status')">Status {!! $sortField === 'status' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
-                    <th class="p-3 font-semibold" wire:click="sort('last_seen_at')">Last Seen {!! $sortField === 'last_seen_at' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}</th>
-                    <th class="p-3 font-semibold">Action</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
-                @forelse($onus as $onu)
-                @php
-                    $st = $this->getOnuStatus($onu);
-                    $badge = match($st) {
-                        'ONLINE' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-                        'LOW_RX' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-                        'LOS'    => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-                        default  => 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-400',
-                    };
-                    $rxClass = $onu->rx_power_dbm !== null ? ($onu->rx_power_dbm < -30 ? 'text-red-500' : ($onu->rx_power_dbm < -27 ? 'text-yellow-500' : 'text-emerald-500')) : 'text-slate-400';
-                @endphp
-                <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors ">
-                    <td class="p-3 font-mono text-slate-800 dark:text-slate-200 font-medium">{{ $onu->serial_number }}</td>
-                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</td>
-                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->ip_address ?? $onu->acsDevice?->ip_address ?? '-' }}</td>
-                    <td class="p-3 text-slate-500 dark:text-slate-400">
-                        <span class="text-slate-500 dark:text-slate-400">{{ $onu->olt->name ?? '-' }}</span>
-                        <span class="text-slate-500 dark:text-slate-400 opacity-60">/</span>
-                        <span class="font-mono text-slate-500 dark:text-slate-400">{{ $onu->ponPort->name ?? '-' }}</span>
-                    </td>
-                    <td class="p-3 text-slate-500 dark:text-slate-400">
-                        @if($editingOnuId === $onu->id)
-                            <div class="flex items-center gap-1">
-                                <select wire:model="selectedCustomerId" class="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 px-2 py-1 pr-6 text-xs rounded border focus:outline-none w-40">
-                                    <option value="">- Kosongkan -</option>
-                                    @foreach($this->allCustomers as $c)
-                                        <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }})</option>
-                                    @endforeach
-                                </select>
-                                <button wire:click="assignCustomer({{ $onu->id }})" class="p-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded" title="Simpan">
-                                    <span class="material-symbols-outlined notranslate" style="font-size:14px">check</span>
-                                </button>
-                                <button wire:click="cancelEditCustomer" class="p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded" title="Batal">
-                                    <span class="material-symbols-outlined notranslate" style="font-size:14px">close</span>
-                                </button>
-                            </div>
-                        @else
-                            <div class="flex items-center gap-2 group cursor-pointer" wire:click="editCustomer({{ $onu->id }}, '{{ $onu->customerService->customer_id ?? '' }}')">
-                                <span>{{ $onu->customerService->customer->name ?? '-' }}</span>
-                                <span class="material-symbols-outlined notranslate opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-500 transition-opacity" style="font-size:14px">edit</span>
-                            </div>
-                        @endif
-                    </td>
-                    <td class="p-3 font-mono font-medium {{ $rxClass }}">{{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm, 2) . ' dBm' : '-' }}</td>
-                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm, 2) . ' dBm' : '-' }}</td>
-                    <td class="p-3 font-mono text-slate-500 dark:text-slate-400">{{ $onu->temperature ?? '-' }}</td>
-                    <td class="p-3">
-                        <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ $st }}</span>
-                    </td>
-                    <td class="p-3 text-slate-500 dark:text-slate-400">{{ $onu->last_seen_at ? $onu->last_seen_at->diffForHumans() : '-' }}</td>
-                    <td class="p-3 flex items-center gap-3">
-                        <button type="button" wire:click="syncSingleOnu({{ $onu->id }})" wire:loading.attr="disabled" class="text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 text-xs font-semibold inline-flex items-center gap-0.5 cursor-pointer" title="Sinkronkan ONU ini dari OLT">
-                            <span wire:loading.remove wire:target="syncSingleOnu({{ $onu->id }})" class="material-symbols-outlined notranslate text-sm" translate="no">sync</span>
-                            <span wire:loading wire:target="syncSingleOnu({{ $onu->id }})" class="animate-spin material-symbols-outlined notranslate text-sm" translate="no">sync</span>
-                            <span>Sync</span>
-                        </button>
-                        <a href="{{ route('isp.onus.show', $onu->id) }}" class="text-blue-500 hover:text-blue-400 text-sm font-medium">View</a>
-                        <button type="button" wire:click="deleteOnu({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU {{ $onu->serial_number ?: ('#' . $onu->id) }} dari database lokal?" class="text-red-500 hover:text-red-400 text-sm font-medium">
-                            Hapus
-                        </button>
-                    </td>
-                </tr>
-                @empty
-                <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors"><td colspan="10" class="p-3 text-center text-slate-500 dark:text-slate-400 opacity-70">No ONUs found</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    {{-- DATA TABLE --}}
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead class="bg-slate-50/80 dark:bg-slate-800/80">
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <th scope="col" class="px-4 py-3 text-center whitespace-nowrap">Aksi</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap cursor-pointer" wire:click="sort('status')">
+                            Status {!! $sortField === 'status' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}
+                        </th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap cursor-pointer" wire:click="sort('serial_number')">
+                            SN & Nama ONU {!! $sortField === 'serial_number' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}
+                        </th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">MAC / IP Host</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">OLT / PON</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Cabang</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Pelanggan</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap cursor-pointer" wire:click="sort('rx_power_dbm')">
+                            Redaman (RX / TX) {!! $sortField === 'rx_power_dbm' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}
+                        </th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap cursor-pointer" wire:click="sort('last_seen_at')">
+                            Terakhir Aktif {!! $sortField === 'last_seen_at' ? ($sortDirection === 'asc' ? '&uarr;' : '&darr;') : '' !!}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                    @forelse($onus as $onu)
+                        @php
+                            $st = $this->getOnuStatus($onu);
+                            $badgeClass = match($st) {
+                                'ONLINE' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+                                'LOW_RX' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
+                                'LOS'    => 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+                                default  => 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400',
+                            };
+                            $dotClass = match($st) {
+                                'ONLINE' => 'bg-emerald-500',
+                                'LOW_RX' => 'bg-amber-500',
+                                'LOS'    => 'bg-red-500',
+                                default  => 'bg-slate-400',
+                            };
+                            $rxClass = $onu->rx_power_dbm !== null
+                                ? ($onu->rx_power_dbm < -30 ? 'text-red-600 dark:text-red-400' : ($onu->rx_power_dbm < -27 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'))
+                                : 'text-slate-400';
+                        @endphp
+                        <tr wire:key="onu-{{ $onu->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <td class="px-4 py-3.5 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <button type="button" wire:click="syncSingleOnu({{ $onu->id }})" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 transition-colors cursor-pointer" title="Sinkronkan ONU dari OLT">
+                                        <span class="material-symbols-outlined notranslate" wire:loading.class="animate-spin" wire:target="syncSingleOnu({{ $onu->id }})" translate="no" style="font-size:18px">sync</span>
+                                    </button>
+                                    <a href="{{ route('isp.onus.show', $onu->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                    </a>
+                                    <a href="{{ route('isp.onus.edit', $onu->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    <button type="button" wire:click="deleteOnu({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU {{ $onu->serial_number ?: ('#' . $onu->id) }} dari database lokal?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <span class="px-2.5 py-1 inline-flex items-center gap-1.5 text-xs font-semibold rounded-full {{ $badgeClass }}">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ $dotClass }}"></span>
+                                    {{ str_replace('_', ' ', $st) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-sm font-mono font-semibold text-slate-800 dark:text-slate-100">
+                                    <a href="{{ route('isp.onus.show', $onu->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                        {{ $onu->serial_number ?: ($onu->code ?: '-') }}
+                                    </a>
+                                </div>
+                                @if($onu->name)
+                                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ $onu->name }}</div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-xs font-mono text-slate-700 dark:text-slate-200">{{ $onu->mac_address ?? $onu->acsDevice?->mac_address ?? '-' }}</div>
+                                <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{{ $onu->ip_address ?? $onu->acsDevice?->ip_address ?? '-' }}</div>
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ $onu->olt?->name ?? '-' }}</div>
+                                <div class="text-xs font-mono text-slate-500 dark:text-slate-400">PON: {{ $onu->ponPort?->name ?? ($onu->pon_port ?? '-') }}</div>
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @if($onu->branch)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                        {{ $onu->branch->name }}
+                                    </span>
+                                @else
+                                    <span class="text-xs text-slate-400">Global</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @if($editingOnuId === $onu->id)
+                                    <div class="flex items-center gap-1">
+                                        <select wire:model="selectedCustomerId" class="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-2 py-1 pr-6 text-xs rounded-lg focus:outline-none w-44">
+                                            <option value="">- Kosongkan -</option>
+                                            @foreach($this->allCustomers as $c)
+                                                <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }})</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" wire:click="assignCustomer({{ $onu->id }})" class="inline-flex items-center justify-center w-7 h-7 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-md cursor-pointer" title="Simpan">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">check</span>
+                                        </button>
+                                        <button type="button" wire:click="cancelEditCustomer" class="inline-flex items-center justify-center w-7 h-7 bg-red-50 hover:bg-red-100 text-red-600 rounded-md cursor-pointer" title="Batal">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">close</span>
+                                        </button>
+                                    </div>
+                                @else
+                                    <div class="inline-flex items-center gap-1.5 group cursor-pointer text-sm text-slate-700 dark:text-slate-200" wire:click="editCustomer({{ $onu->id }}, '{{ $onu->customerService->customer_id ?? '' }}')" title="Klik untuk ubah pelanggan">
+                                        <span>{{ $onu->customerService?->customer?->name ?? '-' }}</span>
+                                        <span class="material-symbols-outlined notranslate opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-500 transition-opacity" translate="no" style="font-size:14px">edit</span>
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-sm font-mono font-semibold {{ $rxClass }}">
+                                    RX: {{ $onu->rx_power_dbm !== null ? number_format($onu->rx_power_dbm, 2) . ' dBm' : '-' }}
+                                </div>
+                                <div class="text-xs font-mono text-slate-500 dark:text-slate-400">
+                                    TX: {{ $onu->tx_power_dbm !== null ? number_format($onu->tx_power_dbm, 2) . ' dBm' : '-' }}
+                                    @if($onu->temperature)
+                                        &bull; {{ $onu->temperature }}
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
+                                {{ $onu->last_seen_at ? $onu->last_seen_at->diffForHumans() : '-' }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="px-6 py-14 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <div class="w-14 h-14 bg-slate-100 dark:bg-slate-700/60 rounded-full flex items-center justify-center mb-3">
+                                        <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:28px">router</span>
+                                    </div>
+                                    <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">Belum ada data ONU</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Tambahkan ONU baru secara manual atau jalankan Sinkronisasi OLT.</p>
+                                    <a href="{{ route('isp.onus.create') }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                                        <span>Tambah ONU</span>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
-    @if($onus->hasPages())
-    <div class="flex-none px-3 py-2 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        {{ $onus->links(data: ['scrollTo' => false]) }}
+        @if(method_exists($onus, 'hasPages') && $onus->hasPages())
+            <div class="bg-white dark:bg-slate-800 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+                {{ $onus->links(data: ['scrollTo' => false]) }}
+            </div>
+        @endif
     </div>
-    @endif
 </div>
-
-
-
-
-
-
-

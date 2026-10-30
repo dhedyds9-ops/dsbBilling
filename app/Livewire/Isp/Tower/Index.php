@@ -48,7 +48,7 @@ class Index extends BaseNetworkComponent
                           ->orWhere('address', 'like', '%' . $this->search . '%');
                     });
                 })
-                ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+                ->when($this->filters['status'] ?? null, fn($q, $status) => $q->where('status', $status));
 
             $this->selectedTowers = $query->pluck('id')->toArray();
         } else {
@@ -308,7 +308,7 @@ class Index extends BaseNetworkComponent
                       ->orWhere('address', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+            ->when($this->filters['status'] ?? null, fn($q, $status) => $q->where('status', $status));
 
         $towers = $query->orderBy($this->sortField, $this->sortDirection)
                      ->paginate($this->perPage);

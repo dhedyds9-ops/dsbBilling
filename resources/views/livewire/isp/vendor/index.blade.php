@@ -1,172 +1,188 @@
+@section('page_title')
+    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">business</span>
+    <span class="text-lg">Data Vendor</span>
+@endsection
+
 <div class="space-y-5 pb-10">
-    <!-- Success/Error Flash Message -->
-    <div class="mb-3">
-        @if(session()->has('success'))
-            <x-feedback.alert variant="success">
-                {{ session('success') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('error'))
-            <x-feedback.alert variant="danger">
-                {{ session('error') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('warning'))
-            <x-feedback.alert variant="warning">
-                {{ session('warning') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('info'))
-            <x-feedback.alert variant="info">
-                {{ session('info') }}
-            </x-feedback.alert>
-        @endif
-    </div>
 
-        {{-- TOOLBAR & FILTER --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div class="flex items-center gap-2">
-            <a href="{{ route('isp.vendors.create') }}" class="inline-flex items-center justify-center p-2 sm:px-5 sm:py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm shadow-indigo-500/20" title="Tambah Vendor">
-                <span class="material-symbols-outlined notranslate sm:mr-1.5" style="font-size:20px" translate="no">add</span>
-                <span class="hidden sm:inline">Tambah Vendor</span>
+    {{-- SESSION FLASH --}}
+    @if(session('success'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+            {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+            {{ session('error') }}
+        </div>
+    @endif
+    @if(session('warning'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">warning</span>
+            {{ session('warning') }}
+        </div>
+    @endif
+    @if(session('info'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl text-blue-700 dark:text-blue-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
+            {{ session('info') }}
+        </div>
+    @endif
+
+    {{-- TOOLBAR & FILTER --}}
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
+            <a href="{{ route('isp.vendors.create') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                <span>Tambah Vendor</span>
             </a>
-
-            <div x-data="{ open: false }" class="relative inline-block text-left">
-                <div>
-                    <button @click="open = !open" type="button" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium shadow-sm" title="Aksi Lainnya">
-                        <span class="material-symbols-outlined notranslate sm:mr-1.5" style="font-size:20px" translate="no">more_vert</span>
-                        <span class="hidden sm:inline">Aksi Lainnya</span>
-                    </button>
-                </div>
-                <div x-show="open" @click.away="open = false" x-transition class="origin-top-left absolute left-0 mt-2 w-64 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
-                <div class="py-1">
-                    <button
-                        type="button"
-                        wire:click="confirmBulkDelete"
-                        wire:loading.attr="disabled"
-                        @if(empty($selectedVendors)) disabled @endif
-                        class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedVendors)) text-gray-300 cursor-not-allowed @else text-red-600 hover:bg-red-50 dark:bg-red-900/30 @endif">
-                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">delete</span>
-                        Hapus Yang Dipilih
-                        <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                    </button>
-                </div>
-                <div class="py-1">
-                    <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
-                    <button type="button" wire:click="export" class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
-                        <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">download</span>
-                        Export Vendor
-                    </button>
-                </div>
-                </div>
-            </div>
+            <button type="button" wire:click="export" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap cursor-pointer">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span>
+                <span>Export</span>
+            </button>
         </div>
 
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
             <div class="relative w-full sm:w-60">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.300ms="search"
-                       placeholder="Cari nama vendor..."
-                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                       placeholder="Cari kode, nama vendor..."
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
             </div>
             <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-                <select wire:model.live="filters.status" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <select wire:model.live="filters.status"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="">Semua Status</option>
                     <option value="active">Aktif</option>
                     <option value="inactive">Nonaktif</option>
                 </select>
-                <select wire:model.live="perPage" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                    <option value="10">10 Baris</option>
-                    <option value="25">25 Baris</option>
-                    <option value="50">50 Baris</option>
-                    <option value="100">100 Baris</option>
+                <select wire:model.live="perPage"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    <option value="10">10 / hal</option>
+                    <option value="25">25 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
                 </select>
-                <label class="col-span-2 sm:col-auto flex items-center justify-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer bg-slate-50 dark:bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 whitespace-nowrap">
-                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+                <label class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 cursor-pointer whitespace-nowrap">
+                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 dark:bg-slate-800" />
                     <span>Sampah</span>
                 </label>
+                @if($search || ($filters['status'] ?? '') || $showTrashed)
+                    <button type="button" wire:click="resetFilters"
+                            title="Reset Filter"
+                            class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                        <span>Reset</span>
+                    </button>
+                @endif
             </div>
         </div>
     </div>
 
-    <!-- Data Table -->
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+    {{-- BULK ACTION BANNER --}}
+    @if(!empty($selectedVendors))
+        <div class="flex flex-wrap items-center justify-between gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl">
+            <span class="text-sm text-indigo-800 dark:text-indigo-300 font-semibold">{{ count($selectedVendors) }} Vendor dipilih</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="bulkActivate" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm cursor-pointer">Aktifkan</button>
+                <button type="button" wire:click="bulkDeactivate" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm cursor-pointer">Nonaktifkan</button>
+                <button type="button" wire:click="bulkDelete" wire:confirm="Yakin ingin menghapus Vendor terpilih?" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm cursor-pointer">Hapus Terpilih</button>
+            </div>
+        </div>
+    @endif
+
+    {{-- DATA TABLE --}}
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-900/50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left">
-                            <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead class="bg-slate-50/80 dark:bg-slate-800/80">
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <th scope="col" class="px-4 py-3 text-left w-10">
+                            <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 dark:bg-slate-900" />
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Vendor</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kode</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                        <th scope="col" class="px-4 py-3 text-center whitespace-nowrap">Aksi</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Status</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Kode & Nama Vendor</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Kontak</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Deskripsi</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
                     @forelse($vendors as $vendor)
-                        <tr wire:key="{{ $vendor->id }}" class="hover:bg-gray-50 dark:bg-gray-900/50 transition-colors @if($vendor->trashed()) bg-red-50 dark:bg-red-900/30 @endif">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <input type="checkbox" wire:model.live="selectedVendors" value="{{ $vendor->id }}" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500" @if($vendor->trashed()) disabled @endif />
+                        <tr wire:key="vendor-{{ $vendor->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors @if($vendor->trashed()) bg-red-50/60 dark:bg-red-900/20 @endif">
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <input type="checkbox" wire:model.live="selectedVendors" value="{{ $vendor->id }}" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 dark:bg-slate-900" @if($vendor->trashed()) disabled @endif />
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-3.5 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    @if(!$vendor->trashed())
+                                        <a href="{{ route('isp.vendors.show', $vendor->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                        </a>
+                                        <a href="{{ route('isp.vendors.edit', $vendor->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                        </a>
+                                        <button type="button" wire:click="delete({{ $vendor->id }})" wire:confirm="Yakin ingin menghapus Vendor ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                        </button>
+                                    @else
+                                        <button type="button" wire:click="restore({{ $vendor->id }})" wire:confirm="Pulihkan Vendor ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Pulihkan">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">restore</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
                                 @if($vendor->trashed())
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900/50 text-red-800">Dihapus</span>
+                                    <span class="px-2.5 py-1 inline-flex items-center gap-1.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                        Dihapus
+                                    </span>
                                 @else
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $vendor->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200' }}">
+                                    <span class="px-2.5 py-1 inline-flex items-center gap-1.5 text-xs font-semibold rounded-full {{ $vendor->status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $vendor->status === 'active' ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                                         {{ $vendor->status === 'active' ? 'Aktif' : 'Nonaktif' }}
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    <a href="{{ route('isp.vendors.show', $vendor->id) }}" class="hover:text-primary-600 transition-colors">
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                    <a href="{{ route('isp.vendors.show', $vendor->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                         {{ $vendor->name }}
                                     </a>
                                 </div>
+                                <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{{ $vendor->code }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="font-mono text-sm text-gray-900 dark:text-gray-100">{{ $vendor->code }}</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('isp.vendors.show', $vendor->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-gray-50 hover:bg-blue-50 dark:bg-gray-800 dark:hover:bg-blue-900/30 rounded-md transition-colors" title="Detail">
-                                        <span class="material-symbols-outlined notranslate" style="font-size: 18px;" translate="no">visibility</span>
-                                    </a>
-                                    @if(!$vendor->trashed())
-                                    <a href="{{ route('isp.vendors.edit', $vendor->id) }}" class="p-1.5 text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-orange-400 bg-gray-50 hover:bg-orange-50 dark:bg-gray-800 dark:hover:bg-orange-900/30 rounded-md transition-colors" title="Edit">
-                                        <span class="material-symbols-outlined notranslate" style="font-size: 18px;" translate="no">edit</span>
-                                    </a>
-                                    <button wire:click="delete({{ $vendor->id }})" wire:confirm="Apakah Anda yakin ingin menghapus vendor ini?" class="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 bg-gray-50 hover:bg-red-50 dark:bg-gray-800 dark:hover:bg-red-900/30 rounded-md transition-colors" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" style="font-size: 18px;" translate="no">delete</span>
-                                    </button>
-                                    @else
-                                    <button wire:click="restore({{ $vendor->id }})" wire:confirm="Apakah Anda yakin ingin memulihkan vendor ini?" class="p-1.5 text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 bg-gray-50 hover:bg-green-50 dark:bg-gray-800 dark:hover:bg-green-900/30 rounded-md transition-colors" title="Restore">
-                                        <span class="material-symbols-outlined notranslate" style="font-size: 18px;" translate="no">restore</span>
-                                    </button>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @if($vendor->contact_person || $vendor->phone || $vendor->email)
+                                    <div class="text-sm text-slate-700 dark:text-slate-200">{{ $vendor->contact_person ?: ($vendor->email ?: '-') }}</div>
+                                    @if($vendor->phone)
+                                        <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $vendor->phone }}</div>
                                     @endif
-                                </div>
+                                @else
+                                    <span class="text-sm text-slate-400">-</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3.5">
+                                <div class="text-sm text-slate-600 dark:text-slate-400 truncate max-w-[280px]" title="{{ $vendor->description }}">{{ $vendor->description ?: '-' }}</div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-6 py-16 text-center">
+                            <td colspan="6" class="px-6 py-14 text-center">
                                 <div class="flex flex-col items-center justify-center">
-                                    <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
+                                    <div class="w-14 h-14 bg-slate-100 dark:bg-slate-700/60 rounded-full flex items-center justify-center mb-3">
+                                        <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:28px">business</span>
                                     </div>
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Belum ada Vendor</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 mb-6">Silakan tambahkan Vendor pertama.</p>
-                                    <a href="{{ route('isp.vendors.create') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        Tambah Vendor
+                                    <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">Belum ada data Vendor</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Silakan tambahkan vendor perangkat jaringan pertama Anda.</p>
+                                    <a href="{{ route('isp.vendors.create') }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                                        <span>Tambah Vendor</span>
                                     </a>
                                 </div>
                             </td>
@@ -176,51 +192,10 @@
             </table>
         </div>
 
-        @if($vendors->hasPages())
-            <div class="bg-white dark:bg-slate-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        @if(method_exists($vendors, 'hasPages') && $vendors->hasPages())
+            <div class="bg-white dark:bg-slate-800 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
                 {{ $vendors->links() }}
             </div>
         @endif
     </div>
-
-    <!-- Delete Confirmation Modal -->
-    @if($showDeleteModal)
-        <div x-data="{ open: @entangle('showDeleteModal') }" x-show="open" class="fixed inset-0 z-50 overflow-y-auto">
-            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                <!-- Background overlay -->
-                <div x-show="open" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"></div>
-
-                <!-- Modal panel -->
-                <div class="inline-block w-full max-w-md p-4 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-slate-800 rounded-xl shadow-xl sm:align-middle">
-                    <div class="mb-4">
-                        <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/50 rounded-full">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 text-center">Hapus {{ count($selectedVendors) }} Vendor?</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 text-center">Data yang masih digunakan tidak akan dapat dihapus.</p>
-                    </div>
-                    <div class="flex justify-end gap-3">
-                        <button
-                            wire:click="closeDeleteModal"
-                            type="button"
-                            class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:bg-gray-900/50 transition-colors font-medium">
-                            Batal
-                        </button>
-                        <button
-                            wire:click="bulkDelete"
-                            wire:loading.attr="disabled"
-                            type="button"
-                            class="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors font-medium">
-                            <span wire:loading.remove>Ya, Hapus</span>
-                            <span wire:loading>Menghapus...</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
 </div>
-
-

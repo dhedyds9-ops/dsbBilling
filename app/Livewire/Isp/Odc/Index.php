@@ -277,15 +277,16 @@ class Index extends BaseNetworkComponent
 
     public function render()
     {
-        $query = OdcModel::with(['olt', 'pop'])
+        $query = OdcModel::with(['olt', 'pop', 'branch'])
             ->when($this->showTrashed, fn($q) => $q->withTrashed())
             ->when($this->search, function($q) {
                 $q->where(function($sq) {
                     $sq->where('code', 'like', '%' . $this->search . '%')
-                      ->orWhere('name', 'like', '%' . $this->search . '%');
+                      ->orWhere('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('address', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->filters['status'], fn($q) => $q->where('status', $this->filters['status']));
+            ->when($this->filters['status'] ?? null, fn($q, $status) => $q->where('status', $status));
 
         $query = $query->orderBy($this->sortField, $this->sortDirection);
         $odcs = $this->perPage === 'All' ? $query->get() : $query->paginate($this->perPage);

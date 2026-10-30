@@ -13,6 +13,10 @@ class Edit extends AdminComponent
     public $vendor;
     public $code;
     public $name;
+    public $contact_person;
+    public $phone;
+    public $email;
+    public $address;
     public $description;
     public $status;
 
@@ -46,6 +50,9 @@ class Edit extends AdminComponent
         $this->validate([
             'code' => 'required|unique:vendors,code,' . $this->vendorId,
             'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'contact_person' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);
 
@@ -53,6 +60,10 @@ class Edit extends AdminComponent
         $service->update($this->vendor, [
             'code' => $this->code,
             'name' => $this->name,
+            'contact_person' => $this->contact_person,
+            'phone' => $this->phone,
+            'email' => $this->email,
+            'address' => $this->address,
             'description' => $this->description,
             'status' => $this->status,
         ], Auth::user());

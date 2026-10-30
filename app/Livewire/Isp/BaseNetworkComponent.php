@@ -28,8 +28,11 @@ abstract class BaseNetworkComponent extends AdminComponent
 
     public function resetFilters()
     {
-        $this->filters = [];
+        $this->filters = ['status' => ''];
         $this->search = '';
+        if (property_exists($this, 'showTrashed')) {
+            $this->showTrashed = false;
+        }
         $this->resetPage();
     }
 

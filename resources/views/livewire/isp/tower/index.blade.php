@@ -1,307 +1,188 @@
-<div class="max-w-7xl mx-auto p-3">
-    <!-- Breadcrumb -->
-    <x-admin.breadcrumbs :breadcrumbs="$this->breadcrumbs" />
+@section('page_title')
+    <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">cell_tower</span>
+    <span class="text-lg">Data Tower</span>
+@endsection
 
-    <!-- Success/Error Flash Message -->
-    <div class="mb-3">
-        @if(session()->has('success'))
-            <x-feedback.alert variant="success">
-                {{ session('success') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('error'))
-            <x-feedback.alert variant="danger">
-                {{ session('error') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('warning'))
-            <x-feedback.alert variant="warning">
-                {{ session('warning') }}
-            </x-feedback.alert>
-        @endif
-        @if(session()->has('info'))
-            <x-feedback.alert variant="info">
-                {{ session('info') }}
-            </x-feedback.alert>
-        @endif
-    </div>
+<div class="space-y-5 pb-10">
 
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-3">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Towers</h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-1">Kelola semua tower jaringan</p>
+    {{-- SESSION FLASH --}}
+    @if(session('success'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+            {{ session('success') }}
         </div>
-        <div x-data="{ open: false }" class="relative inline-block text-left">
-            <div>
-                <button @click="open = !open" type="button" class="inline-flex items-center justify-center p-2 sm:px-5 sm:py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm shadow-primary-500/20" title="Manajemen Tower">
-                    <svg class="w-5 h-5 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                    <span class="hidden sm:inline">Manajemen Tower</span>
-                    <svg class="w-4 h-4 ml-1 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-            </div>
-            <div x-show="open" @click.away="open = false" x-transition class="origin-top-right absolute right-0 mt-2 w-64 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
-                <div class="py-1">
-                    <a href="{{ route('isp.towers.create') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Tambah Tower
-                    </a>
-                </div>
-                <div class="py-1">
-                    <button
-                        type="button"
-                        wire:click="confirmBulkDelete"
-                        wire:loading.attr="disabled"
-                        @if(empty($selectedTowers)) disabled @endif
-                        class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedTowers)) text-gray-300 cursor-not-allowed @else text-red-600 hover:bg-red-50 dark:bg-red-900/30 @endif">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Hapus Yang Dipilih
-                        <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                    </button>
-                </div>
-                <div class="py-1">
-                    <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
-                    <button type="button" wire:click="export" class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Export Tower
-                    </button>
-                </div>
-                <div class="py-1">
-                    <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
-                    <button
-                        type="button"
-                        wire:click="bulkActivate"
-                        wire:loading.attr="disabled"
-                        @if(empty($selectedTowers)) disabled @endif
-                        class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedTowers)) text-gray-300 cursor-not-allowed @else text-green-600 hover:bg-green-50 dark:bg-green-900/30 @endif">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Aktifkan Yang Dipilih
-                        <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                    </button>
-                    <button
-                        type="button"
-                        wire:click="bulkDeactivate"
-                        wire:loading.attr="disabled"
-                        @if(empty($selectedTowers)) disabled @endif
-                        class="flex items-center gap-2 px-4 py-2 text-sm w-full text-left @if(empty($selectedTowers)) text-gray-300 cursor-not-allowed @else text-orange-600 hover:bg-orange-50 @endif">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
-                        Nonaktifkan Yang Dipilih
-                        <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                    </button>
-                </div>
-            </div>
+    @endif
+    @if(session('error'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+            {{ session('error') }}
         </div>
-    </div>
-
-    <!-- Selected Counter -->
-    @if(!empty($selectedTowers))
-        <div class="mb-3 flex items-center gap-2">
-            <span class="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-medium">
-                {{ count($selectedTowers) }} Tower Dipilih
-            </span>
-            <button wire:click="selectedTowers = []; selectAll = false" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-300">
-                Batal Pilih
-            </button>
+    @endif
+    @if(session('warning'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">warning</span>
+            {{ session('warning') }}
+        </div>
+    @endif
+    @if(session('info'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl text-blue-700 dark:text-blue-400 text-sm font-medium">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
+            {{ session('info') }}
         </div>
     @endif
 
-    <!-- Toolbar -->
-    <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-3">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <!-- Search -->
-            <div class="relative w-full sm:flex-1 sm:max-w-md">
-                <label for="search" class="sr-only">Search</label>
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </div>
-                <input wire:model.live.debounce.300ms="search" type="text" class="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg leading-5 bg-white dark:bg-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm transition-all dark:bg-slate-900 dark:text-slate-100" placeholder="Cari kode, nama, atau alamat..." />
-            </div>
+    {{-- TOOLBAR & FILTER --}}
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
+            <a href="{{ route('isp.towers.create') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                <span>Tambah Tower</span>
+            </a>
+            <button type="button" wire:click="export" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap cursor-pointer">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span>
+                <span>Export</span>
+            </button>
+        </div>
 
-            <!-- Filters -->
-            <div class="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
-                <select wire:model.live="filters.status" class="w-full sm:w-auto pl-3 pr-8 py-2 text-sm border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-lg transition-all dark:bg-slate-900 dark:text-slate-100">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
+            <div class="relative w-full sm:w-60">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="search"
+                       placeholder="Cari kode, nama, alamat..."
+                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+            </div>
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="filters.status"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="">Semua Status</option>
                     <option value="active">Aktif</option>
                     <option value="inactive">Nonaktif</option>
                 </select>
-                <!-- Show Trashed Toggle -->
-                <label class="flex items-center gap-1.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 cursor-pointer whitespace-nowrap bg-slate-50 dark:bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-primary-600 border-slate-300 dark:border-slate-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+                <select wire:model.live="perPage"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    <option value="10">10 / hal</option>
+                    <option value="25">25 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
+                </select>
+                <label class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 cursor-pointer whitespace-nowrap">
+                    <input type="checkbox" wire:model.live="showTrashed" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 dark:bg-slate-800" />
                     <span>Sampah</span>
                 </label>
-                <button wire:click="resetFilters" title="Reset Filter" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-700 rounded-lg transition-colors shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                </button>
+                @if($search || ($filters['status'] ?? '') || $showTrashed)
+                    <button type="button" wire:click="resetFilters"
+                            title="Reset Filter"
+                            class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                        <span>Reset</span>
+                    </button>
+                @endif
             </div>
         </div>
     </div>
 
-    <!-- Table -->
-    <x-base.card class="overflow-hidden">
+    {{-- BULK ACTION BANNER --}}
+    @if(!empty($selectedTowers))
+        <div class="flex flex-wrap items-center justify-between gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl">
+            <span class="text-sm text-indigo-800 dark:text-indigo-300 font-semibold">{{ count($selectedTowers) }} Tower dipilih</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="bulkActivate" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm cursor-pointer">Aktifkan</button>
+                <button type="button" wire:click="bulkDeactivate" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm cursor-pointer">Nonaktifkan</button>
+                <button type="button" wire:click="bulkDelete" wire:confirm="Yakin ingin menghapus Tower terpilih?" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm cursor-pointer">Hapus Terpilih</button>
+            </div>
+        </div>
+    @endif
+
+    {{-- DATA TABLE --}}
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-900/50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left">
-                            <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100" />
+            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead class="bg-slate-50/80 dark:bg-slate-800/80">
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <th scope="col" class="px-4 py-3 text-left w-10">
+                            <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 dark:bg-slate-900" />
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Tower</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kode</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lokasi</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tinggi</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
+                        <th scope="col" class="px-4 py-3 text-center whitespace-nowrap">Aksi</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Status</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Kode & Nama Tower</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Tipe & Tinggi</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Wilayah</th>
+                        <th scope="col" class="px-4 py-3 text-left whitespace-nowrap">Alamat</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
                     @forelse($towers as $tower)
-                        <tr wire:key="{{ $tower->id }}" class="hover:bg-gray-50 dark:bg-gray-900/50 transition-colors @if($tower->trashed()) bg-red-50 dark:bg-red-900/30 @endif">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <input type="checkbox" wire:model.live="selectedTowers" value="{{ $tower->id }}" class="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500" @if($tower->trashed()) disabled @endif />
+                        <tr wire:key="tower-{{ $tower->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors @if($tower->trashed()) bg-red-50/60 dark:bg-red-900/20 @endif">
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <input type="checkbox" wire:model.live="selectedTowers" value="{{ $tower->id }}" class="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 dark:bg-slate-900" @if($tower->trashed()) disabled @endif />
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-3.5 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    @if(!$tower->trashed())
+                                        <a href="{{ route('isp.towers.show', $tower->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors" title="Detail">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
+                                        </a>
+                                        <a href="{{ route('isp.towers.edit', $tower->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                        </a>
+                                        <button type="button" wire:click="delete({{ $tower->id }})" wire:confirm="Yakin ingin menghapus Tower ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                        </button>
+                                    @else
+                                        <button type="button" wire:click="restore({{ $tower->id }})" wire:confirm="Pulihkan Tower ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Pulihkan">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">restore</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
                                 @if($tower->trashed())
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900/50 text-red-800">Dihapus</span>
+                                    <span class="px-2.5 py-1 inline-flex items-center gap-1.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                        Dihapus
+                                    </span>
                                 @else
-                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $tower->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200' }}">
+                                    <span class="px-2.5 py-1 inline-flex items-center gap-1.5 text-xs font-semibold rounded-full {{ $tower->status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $tower->status === 'active' ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                                         {{ $tower->status === 'active' ? 'Aktif' : 'Nonaktif' }}
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    <a href="{{ route('isp.towers.show', $tower->id) }}" class="hover:text-primary-600 transition-colors">
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                    <a href="{{ route('isp.towers.show', $tower->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                         {{ $tower->name }}
                                     </a>
                                 </div>
+                                <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{{ $tower->code }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="font-mono text-sm text-gray-900 dark:text-gray-100">{{ $tower->code }}</span>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-sm text-slate-700 dark:text-slate-200">{{ $tower->type ?: '-' }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $tower->height ? $tower->height . ' m' : '-' }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ $tower->district }}, {{ $tower->city }}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ $tower->height }}m</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div x-data="{ open: false }" class="relative inline-block text-left">
-                                    <div>
-                                        <button @click="open = !open" type="button" class="inline-flex items-center gap-1 p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-800 rounded-lg transition-colors">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2a1 1 0 010 2zm0 7a1 1 0 110-2a1 1 0 010 2zm0 7a1 1 0 110-2a1 1 0 010 2z" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                    <div x-show="open" @click.away="open = false" x-transition class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
-                                        @if(!$tower->trashed())
-                                            <div class="py-1">
-                                                <a href="{{ route('isp.towers.show', $tower->id) }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0a3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                    Lihat Detail
-                                                </a>
-                                                <a href="{{ route('isp.towers.edit', $tower->id) }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                    Edit
-                                                </a>
-                                                <button
-                                                    type="button"
-                                                    wire:click="duplicate({{ $tower->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v8a2 2 0 012 2z" />
-                                                    </svg>
-                                                    Duplicate
-                                                    <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                            <div class="py-1">
-                                                <button
-                                                    type="button"
-                                                    wire:click="toggleStatus({{ $tower->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-900/50 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
-                                                    {{ $tower->status === 'active' ? 'Nonaktifkan' : 'Aktifkan' }}
-                                                    <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                            <div class="py-1">
-                                                <button
-                                                    type="button"
-                                                    wire:click="delete({{ $tower->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:confirm="Apakah Anda yakin ingin menghapus tower ini?"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:bg-red-900/30 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                    Hapus
-                                                    <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                        @else
-                                            <div class="py-1">
-                                                <button
-                                                    type="button"
-                                                    wire:click="restore({{ $tower->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:confirm="Apakah Anda yakin ingin memulihkan tower ini?"
-                                                    class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50 dark:bg-green-900/30 w-full text-left">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                    </svg>
-                                                    Pulihkan
-                                                    <span wire:loading class="ml-2 text-gray-400 text-xs">...</span>
-                                                </button>
-                                            </div>
-                                        @endif
-                                    </div>
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="text-sm text-slate-600 dark:text-slate-300">
+                                    {{ collect([$tower->district, $tower->city])->filter()->implode(', ') ?: '-' }}
                                 </div>
+                            </td>
+                            <td class="px-4 py-3.5">
+                                <div class="text-sm text-slate-600 dark:text-slate-400 truncate max-w-[220px]" title="{{ $tower->address }}">{{ $tower->address ?: '-' }}</div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-6 py-16 text-center">
+                            <td colspan="7" class="px-6 py-14 text-center">
                                 <div class="flex flex-col items-center justify-center">
-                                    <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
+                                    <div class="w-14 h-14 bg-slate-100 dark:bg-slate-700/60 rounded-full flex items-center justify-center mb-3">
+                                        <span class="material-symbols-outlined notranslate text-slate-400" translate="no" style="font-size:28px">cell_tower</span>
                                     </div>
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Belum ada Tower</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 mb-6">Silakan tambahkan Tower pertama.</p>
-                                    <a href="{{ route('isp.towers.create') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        Tambah Tower
+                                    <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">Belum ada data Tower</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Silakan tambahkan tower jaringan pertama Anda.</p>
+                                    <a href="{{ route('isp.towers.create') }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                                        <span>Tambah Tower</span>
                                     </a>
                                 </div>
                             </td>
@@ -311,49 +192,10 @@
             </table>
         </div>
 
-        @if($towers->hasPages())
-            <div class="bg-white dark:bg-slate-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        @if(method_exists($towers, 'hasPages') && $towers->hasPages())
+            <div class="bg-white dark:bg-slate-800 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
                 {{ $towers->links() }}
             </div>
         @endif
-    </x-base.card>
-
-    <!-- Delete Confirmation Modal -->
-    @if($showDeleteModal)
-        <div x-data="{ open: @entangle('showDeleteModal') }" x-show="open" class="fixed inset-0 z-50 overflow-y-auto">
-            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                <!-- Background overlay -->
-                <div x-show="open" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"></div>
-
-                <!-- Modal panel -->
-                <div class="inline-block w-full max-w-md p-4 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-slate-800 rounded-xl shadow-xl sm:align-middle">
-                    <div class="mb-4">
-                        <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/50 rounded-full">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 text-center">Hapus {{ count($selectedTowers) }} Tower?</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 text-center">Data yang masih digunakan tidak akan dapat dihapus.</p>
-                    </div>
-                    <div class="flex justify-end gap-3">
-                        <button
-                            wire:click="closeDeleteModal"
-                            type="button"
-                            class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:bg-gray-900/50 transition-colors font-medium">
-                            Batal
-                        </button>
-                        <button
-                            wire:click="bulkDelete"
-                            wire:loading.attr="disabled"
-                            type="button"
-                            class="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors font-medium">
-                            <span wire:loading.remove>Ya, Hapus</span>
-                            <span wire:loading>Menghapus...</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
+    </div>
 </div>
