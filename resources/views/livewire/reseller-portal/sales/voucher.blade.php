@@ -72,7 +72,7 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
                 @if(count($selectedIds) > 0)
-                    <button onclick="confirm('Yakin ingin menghapus {{ count($selectedIds) }} voucher?') || event.stopImmediatePropagation()" wire:click="confirmBulkDelete" class="inline-flex items-center px-3.5 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
+                    <button wire:confirm="Yakin ingin menghapus {{ count($selectedIds) }} voucher?" wire:click="confirmBulkDelete" class="inline-flex items-center px-3.5 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
                         <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">delete</span>
                         Hapus ({{ count($selectedIds) }})
                     </button>
@@ -232,7 +232,7 @@
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
                                         </button>
 
-                                        <button wire:click="delete({{ $voucher->id }})" onclick="confirm('Yakin ingin menghapus voucher ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                        <button wire:click="delete({{ $voucher->id }})" wire:confirm="Yakin ingin menghapus voucher ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                         </button>
                                     </div>

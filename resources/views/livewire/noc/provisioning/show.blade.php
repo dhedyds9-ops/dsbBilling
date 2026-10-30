@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.60s>
+<div class="min-h-screen noc-bg noc-text noc-mono" wire:poll.60s>
     <div class="max-w-[1400px] mx-auto px-4 py-4">
         <div class="flex items-center justify-between mb-4">
             <div>
@@ -36,8 +36,8 @@
                             <span class="text-xs noc-muted">Pipeline</span>
                         </div>
                         @if($pipeline->status === 'failed')
-                            <button wire:click="retry" onclick="return confirm('Retry failed steps via PipelineOrchestrator ?? ')"
-                                    class="px-3 py-1.5 text-xs font-semibold bg-yellow-900 hover:bg-yellow-800 border border-yellow-700 rounded text-yellow-200 transition">â†» Retry Pipeline</button>
+                            <button wire:click="retry" wire:confirm="Retry failed steps via PipelineOrchestrator?"
+                                    class="px-3 py-1.5 text-xs font-semibold bg-yellow-900 hover:bg-yellow-800 border border-yellow-700 rounded text-yellow-200 transition">↻ Retry Pipeline</button>
                         @endif
                     </div>
 

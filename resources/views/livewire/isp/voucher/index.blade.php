@@ -92,7 +92,7 @@
                     <span>Voucher kedaluwarsa dipisahkan di tab arsip ini agar <strong>tidak menumpuk</strong> di daftar aktif. Penghapusan dari UI menggunakan <strong>Soft Delete</strong> sehingga data di database & pembukuan keuangan tetap 100% aman.</span>
                 </div>
                 @if(($stats['expired'] ?? 0) > 0)
-                    <button wire:click="clearExpiredFromUi" onclick="confirm('Bersihkan semua voucher kedaluwarsa dari tampilan UI? Data fisik di database & laporan keuangan tetap tersimpan aman.') || event.stopImmediatePropagation()" type="button" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-colors">
+                    <button wire:click="clearExpiredFromUi" wire:confirm="Bersihkan semua voucher kedaluwarsa dari tampilan UI? Data fisik di database & laporan keuangan tetap tersimpan aman." type="button" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-colors">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 16px">delete_sweep</span>
                         Bersihkan Expired dari UI
                     </button>
@@ -141,11 +141,11 @@
             </div>
             <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
                 @if(count($selectedIds) > 0)
-                    <button wire:click="bulkMarkAsExpired" onclick="confirm('Tandai {{ count($selectedIds) }} voucher sebagai Expired?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-lg border border-amber-200 dark:border-amber-700 transition-colors whitespace-nowrap" title="Tandai Expired ({{ count($selectedIds) }})">
+                    <button wire:click="bulkMarkAsExpired" wire:confirm="Tandai {{ count($selectedIds) }} voucher sebagai Expired?" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-lg border border-amber-200 dark:border-amber-700 transition-colors whitespace-nowrap" title="Tandai Expired ({{ count($selectedIds) }})">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">timer_off</span>
                         <span class="hidden sm:inline">Tandai Expired ({{ count($selectedIds) }})</span>
                     </button>
-                    <button onclick="confirm('Yakin ingin menghapus {{ count($selectedIds) }} voucher?') || event.stopImmediatePropagation()" wire:click="confirmBulkDelete" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap" title="Hapus ({{ count($selectedIds) }})">
+                    <button wire:confirm="Yakin ingin menghapus {{ count($selectedIds) }} voucher?" wire:click="confirmBulkDelete" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap" title="Hapus ({{ count($selectedIds) }})">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">delete</span>
                         <span class="hidden sm:inline">Hapus ({{ count($selectedIds) }})</span>
                     </button>
@@ -239,11 +239,11 @@
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
                                         </button>
                                         @if(!$isExpired)
-                                            <button wire:click="markAsExpired({{ $voucher->id }})" onclick="confirm('Tandai voucher ini sebagai Expired?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Tandai Expired">
+                                            <button wire:click="markAsExpired({{ $voucher->id }})" wire:confirm="Tandai voucher ini sebagai Expired?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Tandai Expired">
                                                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">timer_off</span>
                                             </button>
                                         @endif
-                                        <button wire:click="delete({{ $voucher->id }})" onclick="confirm('Yakin ingin menghapus voucher ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                        <button wire:click="delete({{ $voucher->id }})" wire:confirm="Yakin ingin menghapus voucher ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                         </button>
                                     </div>

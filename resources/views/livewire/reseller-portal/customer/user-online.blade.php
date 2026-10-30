@@ -117,7 +117,7 @@
                                     @else
                                         wire:click="kickHotspot({{ $session->id }})" 
                                     @endif
-                                    onclick="confirm('Yakin ingin memutuskan koneksi sesi ini?') || event.stopImmediatePropagation()"
+                                    wire:confirm="Yakin ingin memutuskan koneksi sesi ini?"
                                     class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors" title="Kick / Putuskan Koneksi">
                                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">power_settings_new</span>
                                 </button>

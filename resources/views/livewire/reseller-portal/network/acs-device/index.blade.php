@@ -136,7 +136,9 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                                {{ $device->serial_number }}
+                                <a href="{{ route('reseller-portal.network.acs-devices.show', $device->id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1.5" title="Lihat Detail Device">
+                                    {{ $device->serial_number }}
+                                </a>
                             </td>
                             <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">
                                 {{ $device->mac_address ?? '-' }}
@@ -187,11 +189,16 @@
                                         <span wire:loading.remove wire:target="summon({{ $device->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sensors</span>
                                         <span wire:loading wire:target="summon({{ $device->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
                                     </button>
+                                    <a href="{{ route('reseller-portal.network.acs-devices.show', $device->id) }}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                                       title="Detail Perangkat">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
+                                    </a>
                                     <button type="button"
                                             wire:click="rebootDevice({{ $device->id }})"
                                             wire:confirm="Yakin ingin me-reboot modem {{ $device->serial_number }} via TR-069?"
                                             wire:loading.attr="disabled"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
                                             title="Reboot Modem (TR-069)">
                                         <span wire:loading.remove wire:target="rebootDevice({{ $device->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">restart_alt</span>
                                         <span wire:loading wire:target="rebootDevice({{ $device->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>

@@ -97,7 +97,7 @@
                                                     </a>
                                                 @endif
                                                 @if($p->status === 'failed')
-                                                    <button wire:click="retryPipeline({{ $p->id }})" onclick="return confirm('Retry pipeline #{{ $p->id }}?')"
+                                                    <button wire:click="retryPipeline({{ $p->id }})" wire:confirm="Retry pipeline #{{ $p->id }}?"
                                                             class="px-2 py-0.5 text-[10px] border border-yellow-700 rounded text-yellow-400 hover:bg-yellow-950 transition">RETRY</button>
                                                 @endif
                                             </div>

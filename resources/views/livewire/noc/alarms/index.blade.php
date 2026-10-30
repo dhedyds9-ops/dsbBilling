@@ -118,8 +118,8 @@
                                 <td class="p-3 text-center">
                                     <div class="inline-flex gap-1">
                                         @if($alarm->status !== 'resolved')
-                                            <button wire:click="acknowledgeAlarm({{ $alarm->id }})" class="px-2 py-0.5 text-[10px] border border-blue-700 rounded text-blue-400 hover:bg-blue-950 transition" onclick="return confirm('Acknowledge alarm #{{ $alarm->id }}?')">ACK</button>
-                                            <button wire:click="resolveAlarm({{ $alarm->id }})" class="px-2 py-0.5 text-[10px] border border-green-700 rounded text-emerald-400 hover:bg-green-950 transition" onclick="return confirm('Resolve alarm #{{ $alarm->id }}?')">RESOLVE</button>
+                                            <button wire:click="acknowledgeAlarm({{ $alarm->id }})" wire:confirm="Acknowledge alarm #{{ $alarm->id }}?" class="px-2 py-0.5 text-[10px] border border-blue-700 rounded text-blue-400 hover:bg-blue-950 transition">ACK</button>
+                                            <button wire:click="resolveAlarm({{ $alarm->id }})" wire:confirm="Resolve alarm #{{ $alarm->id }}?" class="px-2 py-0.5 text-[10px] border border-green-700 rounded text-emerald-400 hover:bg-green-950 transition">RESOLVE</button>
                                         @endif
                                         @if(Route::has('noc.alarms.show'))
                                             <a href="{{ route('noc.alarms.show', $alarm->id) }}" class="px-2 py-0.5 text-[10px] border rounded noc-btn-outline transition">VIEW</a>

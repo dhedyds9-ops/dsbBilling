@@ -45,6 +45,7 @@
     {{ $scripts ?? '' }}
     
     @stack('scripts')
+    @include('components.global-sweetalert')
 </body>
 </html>
 

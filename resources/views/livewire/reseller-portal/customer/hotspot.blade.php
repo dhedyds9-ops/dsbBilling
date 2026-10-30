@@ -212,7 +212,7 @@
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">account_circle</span>
                                         </a>
                                     @endif
-                                    <button wire:click="delete({{ $user->id }}, null)" onclick="confirm('Yakin ingin menghapus user ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                    <button wire:click="delete({{ $user->id }}, null)" wire:confirm="Yakin ingin menghapus user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>

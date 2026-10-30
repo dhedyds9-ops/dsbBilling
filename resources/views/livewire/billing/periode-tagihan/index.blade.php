@@ -240,7 +240,7 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
-                                <button wire:click="kirimWaPeriode('{{ $row->tahun }}', '{{ $row->bulan }}')" onclick="confirm('Kirim pesan tagihan (WA) untuk periode ini?') || event.stopImmediatePropagation()" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors" title="Kirim WA Tagihan">
+                                <button wire:click="kirimWaPeriode('{{ $row->tahun }}', '{{ $row->bulan }}')" wire:confirm="Kirim pesan tagihan (WA) untuk periode ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors" title="Kirim WA Tagihan">
                                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span>
                                 </button>
                                 <a href="{{ route('billing.invoices.index') }}?filters[tahun]={{ $row->tahun }}&filters[bulan]={{ $row->bulan }}{{ !empty($filters['reseller_id']) ? '&filters[reseller_id]=' . $filters['reseller_id'] : '' }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="Lihat Invoice">

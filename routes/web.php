@@ -514,6 +514,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/olts/{id}', \App\Livewire\ResellerPortal\Network\Olt\Show::class)->name('olts.show');
             Route::get('/onus', \App\Livewire\ResellerPortal\Network\Onu\Index::class)->name('onus.index');
             Route::get('/acs-devices', \App\Livewire\ResellerPortal\Network\AcsDevice\Index::class)->name('acs-devices.index');
+            Route::get('/acs-devices/{id}', \App\Livewire\ResellerPortal\Network\AcsDevice\Show::class)->name('acs-devices.show');
             Route::get('/odcs', \App\Livewire\ResellerPortal\Network\Odc\Index::class)->name('odcs.index');
             Route::get('/odps', \App\Livewire\ResellerPortal\Network\Odp\Index::class)->name('odps.index');
         });
