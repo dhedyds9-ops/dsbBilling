@@ -149,6 +149,7 @@ class MenuRegistry
                             ['label' => 'Pengaturan Sistem', 'route' => 'admin.settings.index', 'active' => 'admin.settings.*', 'permission' => 'settings.view'],
                             ['label' => 'User Management', 'route' => 'admin.users.index', 'active' => 'admin.users.*', 'permission' => 'user.view'],
                             ['label' => 'Role & Hak Akses', 'route' => 'admin.roles.index', 'active' => 'admin.roles.*', 'permission' => 'role.view'],
+                            ['label' => 'Cabang & Wilayah', 'route' => 'admin.branches.index', 'active' => 'admin.branches.*', 'permission' => 'settings.view'],
                             ['label' => 'Template Voucher', 'route' => 'isp.voucher-templates.index', 'active' => 'isp.voucher-templates.*', 'permission' => 'voucher-template.view'],
                             ['label' => 'Download LoginPage', 'route' => 'pengaturan.loginpage', 'active' => 'pengaturan.loginpage*', 'icon' => 'cloud_download', 'permission' => 'voucher.view'],
                             ['label' => 'Audit Log', 'route' => 'admin.audit-trail.index', 'active' => 'admin.audit-trail.*', 'permission' => 'role.view'],

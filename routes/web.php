@@ -430,6 +430,9 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/roles', \App\Livewire\Admin\Role\Index::class)->name('roles.index');
             Route::get('/roles/{id}/permissions', \App\Livewire\Admin\Role\Permissions::class)->name('roles.permissions');
 
+            // Cabang & Wilayah Kantor
+            Route::get('/branches', \App\Livewire\Admin\Branch\Index::class)->name('branches.index');
+
             Route::get('/audit-trail', \App\Livewire\Admin\AuditTrail\Index::class)->name('audit-trail.index');
             Route::get('/settings', \App\Livewire\Admin\Settings\Index::class)->name('settings.index');
             Route::get('/attendance', \App\Livewire\Admin\Attendance\Index::class)->name('attendance.index');
