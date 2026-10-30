@@ -1,284 +1,290 @@
-<div>
-    <x-admin.page-header title="Manajemen Cabang / Area" subtitle="Kelola cabang dan area operasional ISP Anda">
-        <x-slot name="actions">
-            <x-base.button wire:click="openCreate" variant="primary" class="flex items-center gap-2 shadow-sm">
-                <x-icon name="plus" class="w-4 h-4" />
-                Tambah Cabang
-            </button>
-        </x-slot>
-    </x-admin.page-header>
-
-    <div class="max-w-7xl mx-auto mt-6 space-y-6">
-
-        {{-- Flash Messages --}}
-        @if(session('success'))
-            <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 rounded-lg text-emerald-700 text-sm">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                {{ session('success') }}
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 rounded-lg text-red-700 text-sm">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                {{ session('error') }}
-            </div>
-        @endif
-
-        {{-- Stats Cards --}}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 flex items-center gap-4 shadow-sm">
-                <div class="p-3 rounded-full bg-primary-100">
-                    <svg class="w-6 h-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Total Cabang</p>
-                    <p class="text-xl font-bold text-slate-800 dark:text-slate-200">{{ $stats['total'] }}</p>
-                </div>
-            </div>
-            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 flex items-center gap-4 shadow-sm">
-                <div class="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                    <svg class="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Aktif</p>
-                    <p class="text-xl font-bold text-emerald-600">{{ $stats['active'] }}</p>
-                </div>
-            </div>
-            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 flex items-center gap-4 shadow-sm">
-                <div class="p-3 rounded-full bg-slate-100 dark:bg-slate-700">
-                    <svg class="w-6 h-6 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Nonaktif</p>
-                    <p class="text-xl font-bold text-slate-500 dark:text-slate-400">{{ $stats['inactive'] }}</p>
-                </div>
-            </div>
+@section('page_title')
+    <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
+            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">store</span>
         </div>
+        <span class="text-lg">Manajemen Cabang / Wilayah Kantor</span>
+    </div>
+@endsection
 
-        {{-- Table Card --}}
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            {{-- Search --}}
-            <div class="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h2 class="font-bold text-slate-800 dark:text-slate-200">Daftar Cabang</h2>
-                <div class="relative w-full sm:w-64">
-                    <x-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama, kode, kota..." 
-                        class="pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full dark:bg-slate-900 dark:text-slate-100">
-                </div>
-            </div>
+<div class="space-y-6 pb-10">
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                    <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:bg-slate-800/50 dark:border-slate-700">
-                        <tr class="text-slate-500 dark:text-slate-400">
-                            <th class="p-3 font-semibold">Kode</th>
-                            <th class="p-3 font-semibold">Nama Cabang</th>
-                            <th class="p-3 font-semibold">Kota / Provinsi</th>
-                            <th class="p-3 font-semibold">Kontak</th>
-                            <th class="p-3 font-semibold text-center">Pelanggan</th>
-                            <th class="p-3 font-semibold text-center">Status</th>
-                            <th class="p-3 font-semibold text-right">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
-                        @forelse($branches as $branch)
-                            <tr class="hover:bg-slate-50 dark:bg-slate-800/50 transition-colors">
-                                <td class="p-3">
-                                    <x-ui.badge variant="neutral">{{ $branch->code }}</x-ui.badge>
-                                </td>
-                                <td class="p-3">
-                                    <div class="font-semibold text-slate-800 dark:text-slate-200">{{ $branch->name }}</div>
-                                    @if($branch->address)
-                                        <div class="text-xs text-slate-400 mt-0.5 truncate max-w-[200px]">{{ $branch->address }}</div>
-                                    @endif
-                                </td>
-                                <td class="p-3  text-slate-600 dark:text-slate-400">
-                                    {{ $branch->city ?? '-' }}
-                                    @if($branch->province)
-                                        <span class="text-slate-400">- {{ $branch->province }}</span>
-                                    @endif
-                                </td>
-                                <td class="p-3  text-slate-600 dark:text-slate-400">
-                                    @if($branch->phone)
-                                        <div class="flex items-center gap-1 text-xs">
-                                            <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                                            {{ $branch->phone }}
-                                        </div>
-                                    @endif
-                                    @if($branch->email)
-                                        <div class="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                            {{ $branch->email }}
-                                        </div>
-                                    @endif
-                                    @if(!$branch->phone && !$branch->email) <span class="text-slate-300">—</span> @endif
-                                </td>
-                                <td class="p-3  text-center">
-                                    <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ $branch->customers_count }}</span>
-                                    <span class="text-slate-400 text-xs"> pelanggan</span>
-                                </td>
-                                <td class="p-3  text-center">
-                                    <button wire:click="toggleActive({{ $branch->id }})" class="cursor-pointer">
-                                        @if($branch->is_active)
-                                            <x-ui.badge variant="success">AKTIF</x-ui.badge>
-                                        @else
-                                            <x-ui.badge variant="neutral">NONAKTIF</x-ui.badge>
-                                        @endif
-                                    </button>
-                                </td>
-                                <td class="p-3">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <button wire:click="openEdit({{ $branch->id }})" 
-                                            class="p-1.5 text-primary-500 hover:bg-primary-50 rounded-md transition-colors" title="Edit">
-                                            <x-icon name="pencil" class="w-4 h-4" />
-                                        </button>
-                                        <button wire:click="delete({{ $branch->id }})"
-                                            wire:confirm="Yakin ingin menghapus cabang '{{ $branch->name }}'-"
-                                            class="p-1.5 text-red-400 hover:bg-red-50 dark:bg-red-900/30 rounded-md transition-colors" title="Hapus">
-                                            <x-icon name="trash" class="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td colspan="7" class="p-3  text-center">
-                                    <div class="flex flex-col items-center gap-3 text-slate-400">
-                                        <svg class="w-12 h-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                        <p class="font-medium">Belum ada data cabang</p>
-                                        <p class="text-sm">Klik tombol <strong>Tambah Cabang</strong> untuk memulai</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            @if($branches->hasPages())
-                <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-700 flex justify-center sm:justify-start overflow-x-auto">
-                    {{ $branches->links() }}
-                </div>
-            @endif
+    {{-- Header Actions & Stats --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Daftar Cabang & Wilayah Operasional</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Kelola cabang kantor dan area operasional jaringan ISP dsBilling.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button wire:click="openCreate" class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors">
+                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">add</span>
+                <span>Tambah Cabang</span>
+            </button>
         </div>
     </div>
 
-    {{-- ============ MODAL TAMBAH / EDIT ============ --}}
-    @if($showModal)
-    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-xl flex flex-col max-h-[92vh]">
-            {{-- Header --}}
-            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">
-                    {{ $isEditing ?'Edit Cabang' : 'Tambah Cabang Baru' }}
-                </h3>
-                <button wire:click="$set('showModal'- false)" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 transition-colors">
-                    <x-icon name="x" class="w-5 h-5" />
-                </button>
+    {{-- Flash Messages --}}
+    @if(session('success'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-700 dark:text-emerald-300 text-sm shadow-sm">
+            <span class="material-symbols-outlined text-[20px] text-emerald-600 shrink-0">check_circle</span>
+            <div>{{ session('success') }}</div>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="flex items-center gap-3 px-4 py-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-sm shadow-sm">
+            <span class="material-symbols-outlined text-[20px] text-rose-600 shrink-0">error</span>
+            <div>{{ session('error') }}</div>
+        </div>
+    @endif
+
+    {{-- Stats Cards --}}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 flex items-center gap-4 shadow-sm">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[26px]">store</span>
             </div>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Cabang</p>
+                <p class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ $stats['total'] }}</p>
+            </div>
+        </div>
 
-            {{-- Body --}}
-            <div class="p-4 overflow-y-auto">
-                <form wire:submit.prevent="save" id="branchForm">
-                    <div class="space-y-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 flex items-center gap-4 shadow-sm">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[26px]">verified</span>
+            </div>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Cabang Aktif</p>
+                <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ $stats['active'] }}</p>
+            </div>
+        </div>
 
-                        {{-- Kode & Nama --}}
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 flex items-center gap-4 shadow-sm">
+            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[26px]">block</span>
+            </div>
+            <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Nonaktif</p>
+                <p class="text-2xl font-black text-slate-600 dark:text-slate-300">{{ $stats['inactive'] }}</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- Main Table Card --}}
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {{-- Search Toolbar --}}
+        <div class="p-4 border-b border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/30">
+            <div class="relative w-full sm:w-72">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] pointer-events-none">search</span>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama, kode, kota..."
+                    class="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-100">
+            </div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+                Total: <span class="font-bold text-slate-800 dark:text-slate-200">{{ $branches->total() }}</span> cabang
+            </div>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <tr>
+                        <th class="px-5 py-3.5">Kode</th>
+                        <th class="px-5 py-3.5">Nama Cabang</th>
+                        <th class="px-5 py-3.5">Kota / Provinsi</th>
+                        <th class="px-5 py-3.5">Kontak</th>
+                        <th class="px-5 py-3.5 text-center">Pelanggan</th>
+                        <th class="px-5 py-3.5 text-center">Status</th>
+                        <th class="px-5 py-3.5 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    @forelse($branches as $branch)
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
+                            <td class="px-5 py-3.5 font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                                <span class="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800">
+                                    {{ $branch->code }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-3.5">
+                                <div class="font-bold text-slate-900 dark:text-slate-100">{{ $branch->name }}</div>
+                                @if($branch->address)
+                                    <div class="text-xs text-slate-400 mt-0.5 truncate max-w-[240px]">{{ $branch->address }}</div>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3.5 text-slate-600 dark:text-slate-400">
+                                <div>{{ $branch->city ?: '-' }}</div>
+                                @if($branch->province)
+                                    <div class="text-xs text-slate-400">{{ $branch->province }}</div>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3.5 text-slate-600 dark:text-slate-400">
+                                @if($branch->phone)
+                                    <div class="flex items-center gap-1 text-xs">
+                                        <span class="material-symbols-outlined text-[14px] text-slate-400">call</span>
+                                        <span>{{ $branch->phone }}</span>
+                                    </div>
+                                @endif
+                                @if($branch->email)
+                                    <div class="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
+                                        <span class="material-symbols-outlined text-[14px] text-slate-400">mail</span>
+                                        <span>{{ $branch->email }}</span>
+                                    </div>
+                                @endif
+                                @if(!$branch->phone && !$branch->email)
+                                    <span class="text-slate-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3.5 text-center">
+                                <span class="text-slate-900 dark:text-slate-100 font-bold">{{ $branch->customers_count }}</span>
+                                <span class="text-slate-400 text-xs"> pelanggan</span>
+                            </td>
+                            <td class="px-5 py-3.5 text-center">
+                                <button type="button" wire:click="toggleActive({{ $branch->id }})" class="cursor-pointer transition-transform hover:scale-105">
+                                    @if($branch->is_active)
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">AKTIF</span>
+                                    @else
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">NONAKTIF</span>
+                                    @endif
+                                </button>
+                            </td>
+                            <td class="px-5 py-3.5 text-right">
+                                <div class="flex items-center justify-end gap-1.5">
+                                    <button type="button" wire:click="openEdit({{ $branch->id }})"
+                                        class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors" title="Edit Cabang">
+                                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    </button>
+                                    <button type="button" wire:click="delete({{ $branch->id }})"
+                                        wire:confirm="Yakin ingin menghapus cabang '{{ $branch->name }}'?"
+                                        class="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors" title="Hapus Cabang">
+                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="material-symbols-outlined text-[48px] text-slate-300 dark:text-slate-600">store_mall_directory</span>
+                                    <p class="font-bold text-slate-700 dark:text-slate-300 text-base">Belum ada data cabang</p>
+                                    <p class="text-xs text-slate-400">Klik tombol <strong>Tambah Cabang</strong> di atas untuk membuat cabang baru.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if($branches->hasPages())
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+                {{ $branches->links() }}
+            </div>
+        @endif
+    </div>
+
+    {{-- Modal Tambah / Edit Cabang --}}
+    @if($showModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-700" @click.away="$wire.set('showModal', false)">
+                {{-- Header --}}
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-blue-600 text-[22px]">store</span>
+                        <span>{{ $isEditing ? 'Edit Cabang' : 'Tambah Cabang Baru' }}</span>
+                    </h3>
+                    <button type="button" wire:click="$set('showModal', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                {{-- Form Body --}}
+                <form wire:submit.prevent="save">
+                    <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    Kode <span class="text-red-500">*</span>
-                                    <span class="text-xs text-slate-400 font-normal">(unik)</span>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                    Kode <span class="text-rose-500">*</span>
                                 </label>
-                                <input type="text" wire:model="form_code" placeholder="CBG-01"
-                                    class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 uppercase @error('form_code') border-red-400 @enderror dark:bg-slate-900 dark:text-slate-100">
-                                @error('form_code') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                                <input type="text" wire:model="form_code" placeholder="CBG-01" required
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 uppercase bg-slate-50 dark:bg-slate-900 dark:text-slate-100 font-mono">
+                                @error('form_code') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                             </div>
                             <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Cabang <span class="text-red-500">*</span></label>
-                                <input type="text" wire:model="form_name" placeholder="Cabang Sukabumi"
-                                    class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 @error('form_name') border-red-400 @enderror dark:bg-slate-900 dark:text-slate-100">
-                                @error('form_name') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                    Nama Cabang <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" wire:model="form_name" placeholder="Contoh: Cabang Ciamis Kota" required
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
+                                @error('form_name') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                             </div>
                         </div>
 
-                        {{-- Kota & Provinsi --}}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kota</label>
-                                <input type="text" wire:model="form_city" placeholder="Sukabumi"
-                                    class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Kota / Kabupaten</label>
+                                <input type="text" wire:model="form_city" placeholder="Ciamis"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Provinsi</label>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Provinsi</label>
                                 <input type="text" wire:model="form_province" placeholder="Jawa Barat"
-                                    class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
                             </div>
                         </div>
 
-                        {{-- Alamat --}}
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Alamat Lengkap</label>
-                            <textarea wire:model="form_address" rows="2" placeholder="Jl. Raya Sukabumi No. 10..."
-                                class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 resize-none dark:bg-slate-900 dark:text-slate-100"></textarea>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Alamat Lengkap Kantor</label>
+                            <textarea wire:model="form_address" rows="2" placeholder="Jl. Raya No. 123..."
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-100 resize-none"></textarea>
                         </div>
 
-                        {{-- Telepon & Email --}}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">No. Telepon</label>
-                                <input type="text" wire:model="form_phone" placeholder="0266xxxxxx"
-                                    class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">No. Telepon / WA</label>
+                                <input type="text" wire:model="form_phone" placeholder="08xxxxxxxxxx"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
-                                <input type="email" wire:model="form_email" placeholder="cabang@isp.id"
-                                    class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 @error('form_email') border-red-400 @enderror dark:bg-slate-900 dark:text-slate-100">
-                                @error('form_email') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Email Cabang</label>
+                                <input type="email" wire:model="form_email" placeholder="cabang@mstore.id"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-100">
+                                @error('form_email') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                             </div>
                         </div>
 
-                        {{-- Status & Catatan --}}
-                        <div class="flex items-center gap-3 pt-1">
+                        <div class="flex items-center gap-3 pt-2">
                             <button type="button" wire:click="$toggle('form_is_active')"
-                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $form_is_active ?'bg-emerald-500' : 'bg-slate-300' }}">
-                                <span class="inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-800 shadow transition-transform {{ $form_is_active ?'translate-x-6' : 'translate-x-1' }}"></span>
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $form_is_active ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600' }}">
+                                <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {{ $form_is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
                             </button>
-                            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                {{ $form_is_active ?'Cabang Aktif' : 'Cabang Nonaktif' }}
+                            <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                {{ $form_is_active ? 'Cabang Aktif' : 'Cabang Nonaktif' }}
                             </label>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Catatan</label>
-                            <textarea wire:model="form_notes" rows="2" placeholder="Catatan internal tentang cabang ini..."
-                                class="w-full rounded-lg border-slate-300 dark:border-slate-600 shadow-sm text-sm focus:border-primary-500 focus:ring-primary-500 resize-none dark:bg-slate-900 dark:text-slate-100"></textarea>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Catatan / Keterangan</label>
+                            <textarea wire:model="form_notes" rows="2" placeholder="Catatan internal cabang..."
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 dark:text-slate-100 resize-none"></textarea>
                         </div>
+                    </div>
+
+                    {{-- Footer --}}
+                    <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
+                        <button type="button" wire:click="$set('showModal', false)"
+                            class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            Batal
+                        </button>
+                        <button type="submit" wire:loading.attr="disabled"
+                            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50">
+                            <span wire:loading wire:target="save" class="material-symbols-outlined text-[18px] animate-spin">autorenew</span>
+                            <span>{{ $isEditing ? 'Simpan Perubahan' : 'Tambah Cabang' }}</span>
+                        </button>
                     </div>
                 </form>
             </div>
-
-            {{-- Footer --}}
-            <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
-                <button type="button" wire:click="$set('showModal'- false)"
-                    class="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors">
-                    Batal
-                </button>
-                <button type="submit" form="branchForm" wire:loading.attr="disabled"
-                    class="px-5 py-2 bg-primary-600 text-white rounded-lg text-sm font-bold hover:bg-primary-700 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-60">
-                    <svg wire:loading wire:target="save" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {{ $isEditing ?'Simpan Perubahan' : 'Tambah Cabang' }}
-                </button>
-            </div>
         </div>
-    </div>
     @endif
 </div>
-
-
-
-
-
-
