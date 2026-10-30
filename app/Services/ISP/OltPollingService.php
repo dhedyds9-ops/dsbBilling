@@ -303,7 +303,7 @@ class OltPollingService
                             $onuUpdate['hardware_version'] = $hardware;
                         }
                         if (!empty($model) && empty($onu->model)) {
-                            $onuUpdate['model'] = $model;
+                            $onuUpdate['model'] = $model; } if (!empty($item['name']) && trim((string) $item['name']) !== $snNormalized) { $currentName = trim((string) ($onu->name ?? '')); if ($currentName === '' || strtoupper($currentName) === $snNormalized || str_starts_with($currentName, 'ONU-')) { $onuUpdate['name'] = trim((string) $item['name']); }
                         }
                         if (empty($onu->serial_number) || str_starts_with($onu->serial_number, 'CDATA-GPON-')) {
                             $onuUpdate['serial_number'] = $snNormalized;

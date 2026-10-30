@@ -163,25 +163,56 @@ class ACSDevice extends Model
 
     public function getResolvedCustomerAttribute()
     {
-        if ($this->customerService && $this->customerService->customer) {
-            return $this->customerService->customer;
-        }
+        $user = auth()->user();
+        $isReseller = $user && $user->hasRole('reseller');
+        $resellerId = $isReseller ? ($user->getEffectiveResellerId() ?: $user->id) : null;
 
-        if ($this->onu && $this->onu->customer) {
-            return $this->onu->customer;
-        }
-
-        if ($this->onu && $this->onu->customerService && $this->onu->customerService->customer) {
-            return $this->onu->customerService->customer;
-        }
-
-        if (!empty($this->serial_number)) {
-            $onu = \App\Models\ISP\Onu::where('serial_number', $this->serial_number)->first();
-            if ($onu && $onu->customer) {
-                return $onu->customer;
+        $canShowCustomer = function ($customer) use ($isReseller, $resellerId): bool {
+            if (!$customer) {
+                return false;
             }
-            if ($onu && $onu->customerService && $onu->customerService->customer) {
-                return $onu->customerService->customer;
+            if (!$isReseller) {
+                return true;
+            }
+            return empty($customer->reseller_id)
+                || (int) $customer->reseller_id === (int) $resellerId
+                || (int) ($customer->created_by ?? 0) === (int) $resellerId;
+        };
+
+        if ($this->customer_service_id) {
+            $cs = $this->relationLoaded('customerService') && $this->customerService
+                ? $this->customerService
+                : CustomerService::withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])->find($this->customer_service_id);
+            if ($cs && $cs->customer_id) {
+                $cust = $cs->relationLoaded('customer') && $cs->customer
+                    ? $cs->customer
+                    : \App\Models\CRM\Customer::withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])->find($cs->customer_id);
+                if ($canShowCustomer($cust)) {
+                    return $cust;
+                }
+            }
+        }
+
+        $onu = null;
+        if ($this->onu_id) {
+            $onu = $this->relationLoaded('onu') && $this->onu
+                ? $this->onu
+                : Onu::withoutGlobalScopes(['branch_isolation'])->find($this->onu_id);
+        } elseif (!empty($this->serial_number)) {
+            $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $this->serial_number)->first();
+        }
+
+        if ($onu) {
+            $cs = $onu->relationLoaded('customerService') && $onu->customerService
+                ? $onu->customerService
+                : CustomerService::withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])->where('onu_id', $onu->id)->first();
+            if ($cs && $cs->customer_id) {
+                $cust = $cs->relationLoaded('customer') && $cs->customer
+                    ? $cs->customer
+                    : \App\Models\CRM\Customer::withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])->find($cs->customer_id);
+                if ($canShowCustomer($cust)) {
+                    return $cust;
+                }
             }
         }
 

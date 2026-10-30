@@ -5,13 +5,21 @@ namespace App\Livewire\ResellerPortal\Network\Odc;
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Odc;
 use App\Services\Auth\ResellerScopeHelper;
+use Livewire\Attributes\Url;
 use Livewire\WithPagination;
 
 class Index extends AdminComponent
 {
     use WithPagination;
 
-    public $search = '';
+    #[Url]
+    public string $search = '';
+
+    #[Url]
+    public string $statusFilter = '';
+
+    #[Url]
+    public int $perPage = 10;
 
     public function mount()
     {
@@ -23,8 +31,25 @@ class Index extends AdminComponent
         ];
     }
 
-    public function updatingSearch()
+    public function updatingSearch(): void
     {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage(): void
+    {
+        $this->resetPage();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->search = '';
+        $this->statusFilter = '';
         $this->resetPage();
     }
 
@@ -32,7 +57,7 @@ class Index extends AdminComponent
     {
         $odcs = Odc::forReseller()
             ->with(['olt', 'branch', 'pop'])
-            ->when(trim((string) $this->search) !== '', function ($q) {
+            ->when(trim($this->search) !== '', function ($q) {
                 $like = '%' . trim($this->search) . '%';
                 $q->where(function ($sub) use ($like) {
                     $sub->where('name', 'like', $like)
@@ -40,13 +65,13 @@ class Index extends AdminComponent
                         ->orWhere('address', 'like', $like);
                 });
             })
+            ->when($this->statusFilter !== '', fn ($q) => $q->where('status', $this->statusFilter))
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate($this->perPage);
 
         return view('livewire.reseller-portal.network.odc.index', [
-            'odcs' => $odcs,
+            'odcs'      => $odcs,
             'territory' => ResellerScopeHelper::describeTerritory(),
         ]);
     }
 }
-
