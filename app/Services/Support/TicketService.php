@@ -17,9 +17,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketService
 {
+    private function scopedQuery()
+    {
+        $user = auth()->user();
+        $query = Ticket::forUserArea($user);
+
+        if ($user && strtoupper((string) $user->job_function) === 'TECHNICIAN' && !$user->hasRole(['administrator', 'superadmin'])) {
+            $query->where('assigned_to', $user->id);
+        }
+
+        return $query;
+    }
+
     public function list(array $filters, string $search, string $sortField, string $sortDirection, int $perPage)
     {
-        $query = Ticket::forUserArea(auth()->user())->with(['customer', 'assignedTo']);
+        $query = $this->scopedQuery()->with(['customer', 'assignedTo']);
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -68,7 +80,7 @@ class TicketService
 
     public function summary(): array
     {
-        $dailyChart = Ticket::forUserArea(auth()->user())->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
+        $dailyChart = $this->scopedQuery()->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
             ->where('created_at', '>=', now()->subDays(7))
             ->groupBy('date')
             ->orderBy('date')
@@ -77,11 +89,11 @@ class TicketService
             ->toArray();
 
         return [
-            'open' => Ticket::forUserArea(auth()->user())->where('status', 'open')->count(),
-            'in_progress' => Ticket::forUserArea(auth()->user())->where('status', 'in_progress')->count(),
-            'pending_customer' => Ticket::forUserArea(auth()->user())->where('status', 'pending_customer')->count(),
-            'resolved' => Ticket::forUserArea(auth()->user())->where('status', 'resolved')->count(),
-            'closed' => Ticket::forUserArea(auth()->user())->where('status', 'closed')->count(),
+            'open' => $this->scopedQuery()->where('status', 'open')->count(),
+            'in_progress' => $this->scopedQuery()->where('status', 'in_progress')->count(),
+            'pending_customer' => $this->scopedQuery()->where('status', 'pending_customer')->count(),
+            'resolved' => $this->scopedQuery()->where('status', 'resolved')->count(),
+            'closed' => $this->scopedQuery()->where('status', 'closed')->count(),
             'daily_chart' => $dailyChart,
         ];
     }
@@ -91,7 +103,7 @@ class TicketService
         $statuses = ['open', 'in_progress', 'pending_customer', 'resolved', 'closed'];
         $out = [];
         foreach ($statuses as $s) {
-            $out[$s] = Ticket::forUserArea(auth()->user())->with(['customer', 'assignedTo'])
+            $out[$s] = $this->scopedQuery()->with(['customer', 'assignedTo'])
                 ->where('status', $s)
                 ->orderByDesc('priority')
                 ->orderBy('created_at')
@@ -250,7 +262,7 @@ class TicketService
 
     public function bulkDelete(array $ids): int
     {
-        return Ticket::forUserArea(auth()->user())->whereIn('id', $ids)->delete();
+        return $this->scopedQuery()->whereIn('id', $ids)->delete();
     }
 
     public function exportCsv($rows): StreamedResponse
@@ -304,7 +316,7 @@ class TicketService
 
     public function timeline(int $ticketId): array
     {
-        $ticket = Ticket::forUserArea(auth()->user())->with(['customer', 'assignedTo'])->findOrFail($ticketId);
+        $ticket = $this->scopedQuery()->with(['customer', 'assignedTo'])->findOrFail($ticketId);
         $events = [
             ['time' => $ticket->created_at, 'type' => 'create', 'title' => 'Tiket dibuat', 'by' => $ticket->customer?->name ?? 'Sistem', 'detail' => $ticket->description],
         ];

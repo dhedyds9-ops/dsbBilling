@@ -60,6 +60,13 @@ class Index extends BaseEnterpriseList
 
     public function mount(): void
     {
+        $user = Auth::user();
+        if ($user && strtoupper((string) $user->job_function) === 'TECHNICIAN' && !$user->hasRole(['administrator', 'superadmin'])) {
+            $search = request()->query('search');
+            $this->redirectRoute('technician.my-jobs.troubleshooting', $search ? ['search' => $search] : []);
+            return;
+        }
+
         parent::mount();
         $this->activeTab = 'kanban';
         $this->filters = [

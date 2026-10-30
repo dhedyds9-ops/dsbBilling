@@ -14,7 +14,8 @@ class Maintenance extends Component
 
     public function render()
     {
-        $jobs = Ticket::with('customer')
+        $jobs = Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
             ->where('category', 'maintenance')
             ->where('assigned_to', auth()->id())
             ->whereIn('status', ['open', 'in_progress'])
@@ -24,4 +25,3 @@ class Maintenance extends Component
         return view('livewire.isp.technician.my-jobs.maintenance', ['jobs' => $jobs]);
     }
 }
-

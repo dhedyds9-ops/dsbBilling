@@ -14,8 +14,9 @@ class Psb extends Component
 
     public function render()
     {
-        $jobs = Ticket::with('customer')
-            ->where('category', 'psb') // Atau kategori instalasi baru
+        $jobs = Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+            ->whereIn('category', ['psb', 'installation'])
             ->where('assigned_to', auth()->id())
             ->whereIn('status', ['open', 'in_progress'])
             ->latest()
@@ -24,4 +25,3 @@ class Psb extends Component
         return view('livewire.isp.technician.my-jobs.psb', ['jobs' => $jobs]);
     }
 }
-

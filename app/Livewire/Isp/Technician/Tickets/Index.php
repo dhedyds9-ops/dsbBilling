@@ -4,46 +4,136 @@ namespace App\Livewire\Isp\Technician\Tickets;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use App\Models\Support\Ticket;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
+use Src\Domain\Support\Events\TicketResolvedEvent;
 
 #[Layout('layouts.technician-app')]
 class Index extends Component
 {
     use WithPagination;
 
+    #[Url]
     public string $activeTab = 'open'; // open, resolved
 
-    public function switchTab($tab)
+    #[Url]
+    public string $search = '';
+
+    public bool $showResolveModal = false;
+    public ?int $selectedTicketId = null;
+    public ?string $selectedTicketCode = null;
+    public ?string $selectedTicketTitle = null;
+    public ?string $selectedTicketCustomer = null;
+    public string $resolution_notes = '';
+
+    private function isAdminOversight(): bool
     {
-        $this->activeTab = $tab;
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        return $user->hasRole(['administrator', 'superadmin'])
+            && strtoupper((string) $user->job_function) !== 'TECHNICIAN';
+    }
+
+    public function updatingSearch(): void
+    {
         $this->resetPage();
     }
 
-    public function markResolved($id)
+    public function switchTab($tab): void
     {
-        $ticket = Ticket::where('assigned_to', Auth::id())->findOrFail($id);
+        $this->activeTab = in_array($tab, ['open', 'resolved'], true) ? $tab : 'open';
+        $this->resetPage();
+    }
+
+    public function openResolveModal(int $id): void
+    {
+        $ticket = Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+            ->findOrFail($id);
+
+        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        $this->selectedTicketId = $ticket->id;
+        $this->selectedTicketCode = !empty($ticket->uuid)
+            ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6)))
+            : ('#' . $ticket->id);
+        $this->selectedTicketTitle = $ticket->title;
+        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-');
+        $this->resolution_notes = '';
+        $this->showResolveModal = true;
+    }
+
+    public function confirmResolve(): void
+    {
+        if (!$this->selectedTicketId) {
+            return;
+        }
+
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
+
+        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
         $ticket->update([
             'status' => 'resolved',
             'resolved_at' => now(),
         ]);
-        
-        \Illuminate\Support\Facades\Event::dispatch(
-            \Src\Domain\Support\Events\TicketResolvedEvent::create(
-                (string)$ticket->id,
-                (string)Auth::id(),
-                'Diselesaikan oleh teknisi'
+
+        $note = trim($this->resolution_notes) !== ''
+            ? trim($this->resolution_notes)
+            : 'Diselesaikan oleh teknisi melalui portal gangguan';
+
+        Event::dispatch(
+            TicketResolvedEvent::create(
+                (string) $ticket->id,
+                (string) Auth::id(),
+                $note
             )
         );
 
-        session()->flash('success', 'Tiket berhasil diselesaikan.');
+        $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
+        $this->showResolveModal = false;
+        $this->selectedTicketId = null;
+        $this->resolution_notes = '';
+
+        session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
+    }
+
+    public function markResolved($id): void
+    {
+        $this->openResolveModal((int) $id);
     }
 
     public function render()
     {
-        $query = Ticket::with(['customer'])
-            ->where('assigned_to', Auth::id());
+        $userId = Auth::id();
+        $isAdmin = $this->isAdminOversight();
+        $search = trim($this->search);
+
+        $baseScope = fn ($q) => $q->when(!$isAdmin, fn ($sq) => $sq->where('assigned_to', $userId));
+
+        $openCount = Ticket::withoutGlobalScopes()
+            ->tap($baseScope)
+            ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
+            ->count();
+
+        $resolvedCount = Ticket::withoutGlobalScopes()
+            ->tap($baseScope)
+            ->whereIn('status', ['resolved', 'closed'])
+            ->count();
+
+        $query = Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+            ->tap($baseScope);
 
         if ($this->activeTab === 'open') {
             $query->whereIn('status', ['open', 'in_progress', 'pending_customer']);
@@ -51,8 +141,29 @@ class Index extends Component
             $query->whereIn('status', ['resolved', 'closed']);
         }
 
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%")
+                  ->orWhere('id', $search)
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->withoutGlobalScopes()->where(function ($sub) use ($search) {
+                          $sub->where('name', 'like', "%{$search}%")
+                              ->orWhere('phone', 'like', "%{$search}%")
+                              ->orWhere('address', 'like', "%{$search}%")
+                              ->orWhere('code', 'like', "%{$search}%");
+                      });
+                  });
+            });
+        }
+
         $tickets = $query->latest('created_at')->paginate(10);
 
-        return view('livewire.isp.technician.tickets.index', compact('tickets'));
+        return view('livewire.isp.technician.tickets.index', compact(
+            'tickets',
+            'openCount',
+            'resolvedCount'
+        ));
     }
 }

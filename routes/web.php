@@ -270,6 +270,11 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
         // Direct link handler dari notifikasi WhatsApp / Telegram (e.g. /tickets/859)
         Route::get('/tickets/{id}', function ($id) {
+            if (auth()->check()
+                && strtoupper((string) auth()->user()->job_function) === 'TECHNICIAN'
+                && !auth()->user()->hasRole(['administrator', 'superadmin'])) {
+                return redirect()->route('technician.my-jobs.troubleshooting', ['search' => (string) $id]);
+            }
             return redirect('/support/ticket?activeTab=table&search=' . urlencode((string)$id));
         })->name('tickets.direct');
 

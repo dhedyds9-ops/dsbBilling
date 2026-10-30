@@ -57,7 +57,12 @@
                 </button>
             @else
                 <a href="{{ route('technician.my-jobs.index') }}"
-                   class="flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
+                   class="relative flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
+                    @if(($activeTicketsCount ?? 0) > 0)
+                        <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow">
+                            {{ $activeTicketsCount }}
+                        </span>
+                    @endif
                     <span class="material-symbols-outlined" style="font-size:20px">assignment</span>
                     Tugas
                 </a>
