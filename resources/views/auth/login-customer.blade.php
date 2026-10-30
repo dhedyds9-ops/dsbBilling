@@ -134,7 +134,7 @@
                     @enderror
                 </div>
 
-                <!-- Remember Me -->
+                <!-- Remember Me & Forgot Password -->
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <input id="remember_me" type="checkbox" name="remember" class="w-5 h-5 rounded border-slate-700 bg-slate-900/50 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-950 transition-colors cursor-pointer">
@@ -142,6 +142,12 @@
                             Ingat sesi saya
                         </label>
                     </div>
+                    @if (Route::has('password.request'))
+                        <a href="{{ route('password.request') }}" class="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">chat</span>
+                            <span>Lupa Kata Sandi?</span>
+                        </a>
+                    @endif
                 </div>
 
                 <button type="submit" class="w-full flex justify-center items-center gap-2 py-4 px-4 border border-transparent rounded-2xl shadow-lg shadow-emerald-500/20 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-emerald-500 transition-all transform hover:-translate-y-0.5">

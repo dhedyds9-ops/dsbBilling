@@ -32,10 +32,11 @@
             </label>
         </div>
 
-        <div class="flex items-center justify-end mt-4">
+        <div class="flex items-center justify-between mt-4">
             @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
+                <a class="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline" href="{{ route('password.request') }}">
+                    <span class="material-symbols-outlined text-[16px]">chat</span>
+                    <span>Lupa Password? (via WA)</span>
                 </a>
             @endif
 
