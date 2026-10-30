@@ -129,7 +129,38 @@ class Olt extends Model
     {
         $user = $user ?? auth()->user();
         if ($user && $user->hasRole('reseller')) {
-            return $query->where('branch_id', $user->branch_id);
+            $resellerId = $user->getEffectiveResellerId();
+            $wilayah = trim((string)($user->wilayah ?? ''));
+            $branchId = $user->branch_id;
+
+            return $query->where(function ($q) use ($user, $resellerId, $wilayah, $branchId) {
+                // 1. OLT yang mensuplai ONU atau pelanggan milik reseller ini
+                $q->whereHas('onus', function ($onuQ) use ($user) {
+                    $onuQ->forReseller($user);
+                });
+
+                // 2. OLT yang mensuplai ODC milik wilayah / pelanggan reseller ini
+                $q->orWhereHas('odcs', function ($odcQ) use ($user) {
+                    $odcQ->forReseller($user);
+                });
+
+                // 3. OLT yang dibuat oleh reseller ini
+                $q->orWhere('created_by', $resellerId);
+
+                // 4. OLT berdasarkan kecocokan wilayah / alamat reseller
+                if (!empty($wilayah)) {
+                    $q->orWhere(function ($wq) use ($wilayah) {
+                        $wq->where('address', 'like', '%' . $wilayah . '%')
+                           ->orWhere('name', 'like', '%' . $wilayah . '%')
+                           ->orWhere('description', 'like', '%' . $wilayah . '%');
+                    });
+                }
+
+                // 5. Jika ada branch_id dan belum ada filter wilayah khusus
+                if (!empty($branchId) && empty($wilayah)) {
+                    $q->orWhere('branch_id', $branchId);
+                }
+            });
         }
         return $query;
     }

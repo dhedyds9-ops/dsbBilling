@@ -76,7 +76,35 @@ class Odp extends Model
     {
         $user = $user ?? auth()->user();
         if ($user && $user->hasRole('reseller')) {
-            return $query->where('branch_id', $user->branch_id);
+            $resellerId = $user->getEffectiveResellerId();
+            $wilayah = trim((string)($user->wilayah ?? ''));
+            $branchId = $user->branch_id;
+
+            return $query->where(function ($q) use ($user, $resellerId, $wilayah, $branchId) {
+                // 1. ODP yang melayani pelanggan / ONU milik reseller ini
+                $q->whereHas('onus', function ($onuQ) use ($user) {
+                    $onuQ->forReseller($user);
+                });
+
+                // 2. ODP yang dibuat oleh reseller ini
+                $q->orWhere('created_by', $resellerId);
+
+                // 3. ODP berdasarkan kecocokan wilayah / kecamatan / desa / alamat reseller
+                if (!empty($wilayah)) {
+                    $q->orWhere(function ($wq) use ($wilayah) {
+                        $wq->where('district', 'like', '%' . $wilayah . '%')
+                           ->orWhere('village', 'like', '%' . $wilayah . '%')
+                           ->orWhere('regency', 'like', '%' . $wilayah . '%')
+                           ->orWhere('address', 'like', '%' . $wilayah . '%')
+                           ->orWhere('name', 'like', '%' . $wilayah . '%');
+                    });
+                }
+
+                // 4. Jika ada branch_id dan belum ada filter wilayah khusus
+                if (!empty($branchId) && empty($wilayah)) {
+                    $q->orWhere('branch_id', $branchId);
+                }
+            });
         }
         return $query;
     }

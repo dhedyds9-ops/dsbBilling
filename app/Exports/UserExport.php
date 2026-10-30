@@ -40,6 +40,8 @@ class UserExport implements FromCollection, WithHeadings, WithMapping, WithStyle
             'NIK Pegawai',
             'Job Function',
             'Jabatan (Job Title)',
+            'Cabang',
+            'Wilayah Operasional',
             'Role Akses',
             'Tanggal Terdaftar',
         ];
@@ -64,6 +66,8 @@ class UserExport implements FromCollection, WithHeadings, WithMapping, WithStyle
             $empNik,
             $user->job_function ?? '-',
             $user->job_title ?? '-',
+            $user->branch?->name ?? '-',
+            $user->wilayah ?? '-',
             $roleNames,
             $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : '-',
         ];

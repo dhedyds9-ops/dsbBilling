@@ -75,6 +75,25 @@
                 <textarea wire:model="address" rows="3" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 placeholder-slate-400 dark:bg-slate-900 dark:text-slate-100"></textarea>
                 @error('address') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
             </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Cabang / Wilayah Kantor</label>
+                    <select wire:model="branch_id" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">-- Semua / Kantor Pusat (Tanpa Cabang) --</option>
+                        @foreach($branches as $b)
+                            <option value="{{ $b->id }}">{{ $b->name }} ({{ $b->code }})</option>
+                        @endforeach
+                    </select>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Mengisolasi perangkat jaringan OLT/ODC/ODP per cabang kantor.</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Wilayah Operasional / Area (Reseller/Teknisi)</label>
+                    <input type="text" wire:model="wilayah" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 placeholder-slate-400" placeholder="Contoh: Kawali, Panjalu, atau Ciamis Kota">
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Menentukan ODP, ODC, dan pelanggan yang tampil di portal reseller.</p>
+                </div>
+            </div>
             
             <div class="border-t border-slate-200 dark:border-slate-700 pt-6 mt-6">
                 <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">

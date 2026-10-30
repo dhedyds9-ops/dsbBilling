@@ -136,20 +136,16 @@ class Onu extends Model
         if ($user && $user->hasRole('reseller')) {
             $resellerId = $user->getEffectiveResellerId();
             return $query->where(function($q) use ($user, $resellerId) {
-                if (!empty($user->branch_id)) {
-                    $q->whereHas('olt', fn($oltQ) => $oltQ->where('branch_id', $user->branch_id));
-                } else {
-                    $q->whereHas('olt', fn($oltQ) => $oltQ->whereNull('branch_id'));
-                }
+                // 1. Sesuai customer service milik pelanggan reseller ini
+                $q->whereHas('customerService', function($csQ) use ($resellerId) {
+                    $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
+                        $sub->where('created_by', $resellerId)
+                            ->orWhereHas('customer', fn($cQ) => $cQ->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
+                    });
+                });
 
-                // Also match ONUs created by reseller or assigned to customer services belonging to this reseller
-                $q->orWhere('created_by', $resellerId)
-                  ->orWhereHas('customerService', function($csQ) use ($resellerId) {
-                      $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
-                          $sub->where('created_by', $resellerId)
-                              ->orWhereHas('customer', fn($cQ) => $cQ->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
-                      });
-                  });
+                // 2. ONU yang didaftarkan langsung oleh reseller ini
+                $q->orWhere('created_by', $resellerId);
             });
         }
         return $query;

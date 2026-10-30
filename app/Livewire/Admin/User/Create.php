@@ -27,6 +27,8 @@ class Create extends AdminComponent
     public $password;
     public $password_confirmation;
     public $notes;
+    public $branch_id = null;
+    public $wilayah = '';
     public $selectedRoles = '';
     
     public $selectedPermissions = [];
@@ -211,6 +213,8 @@ class Create extends AdminComponent
             'address' => $this->address,
             'is_active' => $this->is_active,
             'notes' => $this->notes,
+            'branch_id' => $this->branch_id ?: null,
+            'wilayah' => $this->wilayah ? trim($this->wilayah) : null,
             'avatar' => $avatarPath,
             'balance' => 0,
             'is_balance_active' => 1,
@@ -248,13 +252,14 @@ class Create extends AdminComponent
     public function render()
     {
         $roles = Role::whereNotIn('name', Role::hiddenInUserManagement())->get();
+        $branches = \App\Models\Master\Branch::where('is_active', true)->get();
         $permissionsGrouped = Permission::all()->groupBy(function($p) {
             $name = $p->display_name ?? $p->name;
             $parts = explode(' ', $name, 2);
             return count($parts) > 1 ? $parts[1] : 'Lainnya';
         });
         
-        return view('livewire.admin.user.create', compact('roles', 'permissionsGrouped'));
+        return view('livewire.admin.user.create', compact('roles', 'branches', 'permissionsGrouped'));
     }
 }
 

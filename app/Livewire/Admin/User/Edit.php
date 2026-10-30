@@ -30,6 +30,8 @@ class Edit extends AdminComponent
     public $password;
     public $password_confirmation;
     public $notes;
+    public $branch_id;
+    public $wilayah;
     public $selectedRoles = '';
     
     public $balance;
@@ -109,6 +111,8 @@ class Edit extends AdminComponent
         $this->username = $this->user->username ?? $this->user->name;
         $this->is_active = $this->user->is_active;
         $this->notes = $this->user->notes;
+        $this->branch_id = $this->user->branch_id;
+        $this->wilayah = $this->user->wilayah;
         
         $this->balance = $this->user->balance;
         $this->is_balance_active = $this->user->is_balance_active;
@@ -261,6 +265,8 @@ class Edit extends AdminComponent
             'username' => $this->username,
             'is_active' => $this->is_active,
             'notes' => $this->notes,
+            'branch_id' => $this->branch_id ?: null,
+            'wilayah' => $this->wilayah ? trim($this->wilayah) : null,
             'is_balance_active' => $this->is_balance_active,
             'is_topup_enabled' => $this->is_topup_enabled,
         ];
@@ -318,6 +324,7 @@ class Edit extends AdminComponent
     public function render()
     {
         $roles = Role::whereNotIn('name', Role::hiddenInUserManagement())->get();
+        $branches = \App\Models\Master\Branch::where('is_active', true)->orWhere('id', $this->branch_id)->get();
         
         $permissionsGrouped = Permission::all()->groupBy(function($p) {
             $name = $p->display_name ?? $p->name;
@@ -325,7 +332,7 @@ class Edit extends AdminComponent
             return count($parts) > 1 ? $parts[1] : 'Lainnya';
         });
 
-        return view('livewire.admin.user.edit', compact('roles', 'permissionsGrouped'));
+        return view('livewire.admin.user.edit', compact('roles', 'branches', 'permissionsGrouped'));
     }
 }
 

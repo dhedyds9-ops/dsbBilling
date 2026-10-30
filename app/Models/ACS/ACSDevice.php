@@ -81,28 +81,24 @@ class ACSDevice extends Model
         if ($user && $user->hasRole('reseller')) {
             $resellerId = $user->getEffectiveResellerId();
             return $query->where(function($q) use ($user, $resellerId) {
-                // Sesuai cabang jika user punya branch_id
-                if (!empty($user->branch_id)) {
-                    $q->whereHas('pop', function($popQ) use ($user) {
-                        $popQ->where('branch_id', $user->branch_id);
-                    })->orWhereHas('olt', function($oltQ) use ($user) {
-                        $oltQ->where('branch_id', $user->branch_id);
-                    });
-                }
-                // Sesuai customer service milik reseller ini
-                $q->orWhereHas('customerService', function($csQ) use ($resellerId) {
+                // 1. Sesuai customer service milik pelanggan reseller ini
+                $q->whereHas('customerService', function($csQ) use ($resellerId) {
                     $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
                         $sub->where('created_by', $resellerId)
                             ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
                     });
                 });
-                // Sesuai ONU yang berelasi dengan customer reseller
+
+                // 2. Sesuai ONU yang berelasi dengan customer reseller
                 $q->orWhereHas('onu.customerService', function($onuCsQ) use ($resellerId) {
                     $onuCsQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
                         $sub->where('created_by', $resellerId)
                             ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
                     });
                 });
+
+                // 3. Sesuai device yang didaftarkan langsung oleh reseller ini
+                $q->orWhere('created_by', $resellerId);
             });
         }
         return $query;

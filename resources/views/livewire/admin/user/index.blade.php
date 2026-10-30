@@ -205,6 +205,22 @@
                                     <div>
                                         <div class="font-bold text-slate-900 dark:text-slate-100">{{ $user->name ?? '-' }}</div>
                                         <div class="text-xs text-slate-500 dark:text-slate-400">{{ $user->email ?? '-' }}</div>
+                                        @if($user->wilayah || $user->branch)
+                                            <div class="flex items-center gap-1.5 mt-1">
+                                                @if($user->branch)
+                                                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
+                                                        <span class="material-symbols-outlined notranslate text-[11px]" translate="no">store</span>
+                                                        <span>{{ $user->branch->name }}</span>
+                                                    </span>
+                                                @endif
+                                                @if($user->wilayah)
+                                                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50">
+                                                        <span class="material-symbols-outlined notranslate text-[11px]" translate="no">location_on</span>
+                                                        <span>{{ $user->wilayah }}</span>
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </td>

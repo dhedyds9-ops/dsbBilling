@@ -318,7 +318,7 @@ class Index extends AdminComponent
             ->whereDoesntHave('roles', function ($q) {
                 $q->whereIn('name', ['customer', 'pppoe', 'hotspot']);
             })
-            ->with(['roles', 'employee']);
+            ->with(['roles', 'employee', 'branch']);
 
         // Filter berdasarkan tab role aktif
         if ($this->activeRole === 'unassigned') {
