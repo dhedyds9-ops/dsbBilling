@@ -9,6 +9,8 @@ use App\Models\Setting;
 use App\Models\ISP\Voucher;
 use App\Models\ISP\HotspotUser;
 use App\Models\ISP\PPPoEUser;
+use App\Exports\UserExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Livewire\WithPagination;
@@ -123,60 +125,17 @@ class Index extends AdminComponent
 
     public function export()
     {
-        $filename = 'data-user-' . date('Ymd_His') . '.csv';
+        $filename = 'data-user-' . date('Ymd_His') . '.xlsx';
 
         return response()->streamDownload(function () {
-            $handle = fopen('php://output', 'w');
-
-            // UTF-8 BOM agar terbaca sempurna di Microsoft Excel (kolom dan karakter tidak berantakan)
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-            // Header Kolom
-            fputcsv($handle, [
-                'ID User',
-                'Nama Lengkap',
-                'Email',
-                'Username',
-                'No. WhatsApp / HP',
-                'Status Akun',
-                'Status Kepegawaian',
-                'NIK Pegawai',
-                'Job Function',
-                'Jabatan (Job Title)',
-                'Role Akses',
-                'Tanggal Terdaftar',
-            ]);
-
-            $this->buildFilteredQuery()
-                ->orderBy($this->sortField, $this->sortDirection)
-                ->chunk(500, function ($users) use ($handle) {
-                    foreach ($users as $user) {
-                        $phone = $user->whatsapp ?: ($user->employee?->phone ?: ($user->phone ?? '-'));
-                        $empStatus = $user->employee ? 'Pegawai' : 'Non-Pegawai';
-                        $empNik = $user->employee?->nik ?? '-';
-                        $roleNames = $user->roles->pluck('display_name')->filter()->implode(', ')
-                            ?: ($user->roles->pluck('name')->implode(', ') ?: '-');
-
-                        fputcsv($handle, [
-                            $user->id,
-                            $user->name,
-                            $user->email,
-                            $user->username ?? '-',
-                            $phone,
-                            $user->is_active ? 'Aktif' : 'Nonaktif',
-                            $empStatus,
-                            $empNik,
-                            $user->job_function ?? '-',
-                            $user->job_title ?? '-',
-                            $roleNames,
-                            $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : '-',
-                        ]);
-                    }
-                });
-
-            fclose($handle);
+            echo Excel::raw(
+                new UserExport(
+                    $this->buildFilteredQuery()->orderBy($this->sortField, $this->sortDirection)
+                ),
+                \Maatwebsite\Excel\Excel::XLSX
+            );
         }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
