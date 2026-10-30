@@ -5,9 +5,12 @@ namespace App\Livewire\Admin\User;
 use App\Livewire\AdminComponent;
 use App\Models\User as UserModel;
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\ISP\Voucher;
 use App\Models\ISP\HotspotUser;
 use App\Models\ISP\PPPoEUser;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Livewire\WithPagination;
 
 class Index extends AdminComponent
@@ -155,6 +158,141 @@ class Index extends AdminComponent
         $this->showSummaryModal = false;
         $this->summaryUser = null;
         $this->summaryData = [];
+    }
+
+    /**
+     * Kirim data login akun user langsung via WhatsApp Gateway / API.
+     */
+    public function sendWhatsAppCredentials($userId)
+    {
+        $user = UserModel::with(['roles', 'employee'])->find($userId);
+        if (!$user) {
+            $this->dispatch('toast', type: 'error', message: 'User tidak ditemukan.');
+            return;
+        }
+
+        $rawPhone = $user->whatsapp ?: ($user->employee?->phone ?: ($user->phone ?? ''));
+        $phone = preg_replace('/[^0-9]/', '', (string)$rawPhone);
+        if (str_starts_with($phone, '08')) {
+            $phone = '628' . substr($phone, 2);
+        } elseif (str_starts_with($phone, '8')) {
+            $phone = '628' . substr($phone, 1);
+        } elseif (str_starts_with($phone, '6208')) {
+            $phone = '628' . substr($phone, 4);
+        }
+
+        if (empty($phone) || !str_starts_with($phone, '628') || strlen($phone) < 10 || strlen($phone) > 16) {
+            $this->dispatch('toast', type: 'error', message: "Nomor WhatsApp user ('{$rawPhone}') tidak valid. Harap lengkapi nomor seluler Indonesia (08... atau 628...).");
+            return;
+        }
+
+        $roleNames = $user->roles->pluck('display_name')->implode(', ') ?: ($user->roles->pluck('name')->implode(', ') ?: 'User');
+        $jabatan = $user->job_title ?: ($user->job_function ?: $roleNames);
+        $username = $user->username ?: $user->email;
+        $nama = $user->name;
+
+        $msgText = "Halo *{$nama}*,\n\n"
+            . "Berikut informasi akun login sistem Anda:\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "🏢 *Aplikasi:* dsBilling & MStore\n"
+            . "👤 *Nama:* {$nama}\n"
+            . "💼 *Peran/Jabatan:* {$jabatan}\n"
+            . "🌐 *Link Login:* " . url('/login') . "\n\n"
+            . "🔐 *Kredensial Login:*\n"
+            . "• Username / Email: *{$username}*\n"
+            . "• Password: *Password123!*\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "Silakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan akun, segera ganti password Anda setelah login pertama kali.\n\n"
+            . "Terima kasih.";
+
+        // Ambil konfigurasi WhatsApp Gateway dari database dsBilling
+        $conn = Setting::getValue('whatsapp.connection', []);
+        $provider = $conn['provider'] ?? 'fonnte';
+        $apiToken = trim((string)($conn['api_token'] ?? ''));
+        $baseUrl = trim((string)($conn['base_url'] ?? ''));
+
+        if (empty($apiToken)) {
+            $this->dispatch('toast', type: 'error', message: "WhatsApp Gateway belum dikonfigurasi (Token API masih kosong). Silakan atur di menu Pengaturan > WhatsApp.");
+            return;
+        }
+
+        try {
+            $sent = false;
+            $errorMsg = null;
+
+            if ($provider === 'fonnte') {
+                $url = $baseUrl ?: 'https://api.fonnte.com/send';
+                $resp = Http::timeout(15)
+                    ->withHeaders(['Authorization' => $apiToken])
+                    ->asForm()
+                    ->post($url, [
+                        'target' => $phone,
+                        'message' => $msgText,
+                        'delay' => (string)($conn['delay_per_message'] ?? '0'),
+                    ]);
+
+                if ($resp->successful()) {
+                    $json = $resp->json();
+                    if (($json['status'] ?? true) === false) {
+                        $errorMsg = $json['reason'] ?? ($json['message'] ?? 'Fonnte mengembalikan status false.');
+                    } else {
+                        $sent = true;
+                    }
+                } else {
+                    $errorMsg = 'HTTP ' . $resp->status() . ': ' . $resp->body();
+                }
+            } elseif ($provider === 'wablas') {
+                $url = $baseUrl ?: 'https://jogja.wablas.com/api/send-message';
+                $resp = Http::timeout(15)
+                    ->withHeaders(['Wablas-Api-Key' => $apiToken])
+                    ->asForm()
+                    ->post($url, [
+                        'phone' => $phone,
+                        'message' => $msgText,
+                    ]);
+
+                if ($resp->successful()) {
+                    $sent = true;
+                } else {
+                    $errorMsg = 'HTTP ' . $resp->status() . ': ' . $resp->body();
+                }
+            } elseif ($provider === 'whacenter') {
+                $url = $baseUrl ?: 'https://app.whacenter.com/api/send';
+                $resp = Http::timeout(15)
+                    ->asForm()
+                    ->post($url, [
+                        'device_id' => $conn['device_id'] ?? '',
+                        'number' => $phone,
+                        'message' => $msgText,
+                    ]);
+
+                if ($resp->successful()) {
+                    $sent = true;
+                } else {
+                    $errorMsg = 'HTTP ' . $resp->status() . ': ' . $resp->body();
+                }
+            } else {
+                if (class_exists(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)) {
+                    $waMsg = new \App\Services\Notifications\WhatsApp\ValueObjects\WaOutgoingMessage(
+                        toPhone: $phone,
+                        type: 'text',
+                        text: $msgText,
+                        category: 'info',
+                        priorityHigh: true,
+                    );
+                    $sent = app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->sendImmediate($waMsg);
+                }
+            }
+
+            if ($sent) {
+                $this->dispatch('toast', type: 'success', message: "✅ Data login berhasil dikirim otomatis via WhatsApp Gateway ke {$phone}!");
+            } else {
+                $this->dispatch('toast', type: 'error', message: "❌ Gagal kirim via WhatsApp Gateway: " . ($errorMsg ?: 'Perangkat/Gateway tidak merespons.'));
+            }
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp Gateway Error on User Index: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: "❌ Terjadi kendala: " . $e->getMessage());
+        }
     }
 
     public function render()

@@ -119,7 +119,7 @@
             <table class="w-full text-sm text-left whitespace-nowrap">
                 <thead class="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th class="px-4 py-3.5 whitespace-nowrap w-24">Aksi</th>
+                        <th class="px-4 py-3.5 whitespace-nowrap w-32">Aksi</th>
                         <th class="px-4 py-3.5 whitespace-nowrap">Nama & Email</th>
                         <th class="px-4 py-3.5 whitespace-nowrap">Status Kepegawaian</th>
                         <th class="px-4 py-3.5 whitespace-nowrap">Username</th>
@@ -134,6 +134,54 @@
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 group transition-colors">
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center gap-1.5">
+                                    {{-- Tombol WhatsApp --}}
+                                    @php
+                                        $rawPhone = $user->whatsapp ?: ($user->employee?->phone ?: ($user->phone ?? ''));
+                                        $cleanPhone = preg_replace('/[^0-9]/', '', (string)$rawPhone);
+                                        if (str_starts_with($cleanPhone, '08')) {
+                                            $cleanPhone = '628' . substr($cleanPhone, 2);
+                                        } elseif (str_starts_with($cleanPhone, '8')) {
+                                            $cleanPhone = '628' . substr($cleanPhone, 1);
+                                        } elseif (str_starts_with($cleanPhone, '6208')) {
+                                            $cleanPhone = '628' . substr($cleanPhone, 4);
+                                        }
+                                        $roleLabel = $user->roles->pluck('display_name')->implode(', ') ?: ($user->roles->pluck('name')->implode(', ') ?: 'User');
+                                        $jabatanLabel = $user->job_title ?: ($user->job_function ?: $roleLabel);
+                                        $uName = $user->username ?: $user->email;
+                                        $manualWaText = rawurlencode("Halo *{$user->name}*,\n\nBerikut informasi akun login sistem Anda:\n━━━━━━━━━━━━━━━━━━━━\n🏢 *Aplikasi:* dsBilling & MStore\n👤 *Nama:* {$user->name}\n💼 *Peran/Jabatan:* {$jabatanLabel}\n🌐 *Link Login:* " . url('/login') . "\n\n🔐 *Kredensial Login:*\n• Username / Email: *{$uName}*\n• Password: *Password123!*\n━━━━━━━━━━━━━━━━━━━━\nSilakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan akun, segera ganti password Anda setelah login pertama kali.\n\nTerima kasih.");
+                                    @endphp
+
+                                    @if($cleanPhone)
+                                        <div class="relative inline-block text-left" x-data="{ open: false }">
+                                            <button type="button" @click="open = !open"
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors cursor-pointer"
+                                                    title="Kirim Akun via WhatsApp ({{ $cleanPhone }})">
+                                                <svg class="w-4 h-4 fill-current text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24">
+                                                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                                                </svg>
+                                            </button>
+                                            <div x-show="open" @click.outside="open = false" x-cloak
+                                                 class="origin-top-left absolute left-0 mt-1 w-52 rounded-xl shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 z-50 py-1 text-xs">
+                                                <button type="button" wire:click="sendWhatsAppCredentials({{ $user->id }})" @click="open = false"
+                                                        class="w-full text-left px-3 py-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 flex items-center gap-2 cursor-pointer font-medium">
+                                                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">send</span> Kirim Otomatis (Gateway)
+                                                </button>
+                                                <a href="https://wa.me/{{ $cleanPhone }}?text={{ $manualWaText }}" target="_blank" @click="open = false"
+                                                   class="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2">
+                                                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">open_in_new</span> Buka WhatsApp Web
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <button type="button" disabled
+                                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                                                title="Nomor WhatsApp tidak tersedia">
+                                            <svg class="w-4 h-4 fill-current opacity-40" viewBox="0 0 24 24">
+                                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                                            </svg>
+                                        </button>
+                                    @endif
+
                                     <button wire:click="showSummary({{ $user->id }})" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center transition-colors" title="Lihat Detail / Ringkasan">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </button>
