@@ -9,6 +9,7 @@ use App\Models\Support\Ticket;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Schema;
 use Src\Domain\Support\Events\TicketResolvedEvent;
 
 #[Layout('layouts.technician-app')]
@@ -23,11 +24,13 @@ class Index extends Component
     public string $search = '';
 
     public bool $showResolveModal = false;
+    public bool $showEditResolutionModal = false;
     public ?int $selectedTicketId = null;
     public ?string $selectedTicketCode = null;
     public ?string $selectedTicketTitle = null;
     public ?string $selectedTicketCustomer = null;
     public string $resolution_notes = '';
+    public string $edit_resolution_status = 'resolved';
 
     private function isAdminOversight(): bool
     {
@@ -51,6 +54,20 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function startTicket(int $id): void
+    {
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($id);
+
+        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        if ($ticket->status === 'open') {
+            $ticket->update(['status' => 'in_progress']);
+            session()->flash('success', 'Status tiket diperbarui menjadi Sedang Diproses.');
+        }
+    }
+
     public function openResolveModal(int $id): void
     {
         $ticket = Ticket::withoutGlobalScopes()
@@ -67,7 +84,7 @@ class Index extends Component
             : ('#' . $ticket->id);
         $this->selectedTicketTitle = $ticket->title;
         $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-');
-        $this->resolution_notes = '';
+        $this->resolution_notes = (string) ($ticket->resolution_notes ?? '');
         $this->showResolveModal = true;
     }
 
@@ -83,14 +100,19 @@ class Index extends Component
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
-        $ticket->update([
-            'status' => 'resolved',
-            'resolved_at' => now(),
-        ]);
-
         $note = trim($this->resolution_notes) !== ''
             ? trim($this->resolution_notes)
             : 'Diselesaikan oleh teknisi melalui portal gangguan';
+
+        $payload = [
+            'status' => 'resolved',
+            'resolved_at' => now(),
+        ];
+        if (Schema::hasColumn('tickets', 'resolution_notes')) {
+            $payload['resolution_notes'] = $note;
+        }
+
+        $ticket->update($payload);
 
         Event::dispatch(
             TicketResolvedEvent::create(
@@ -106,6 +128,88 @@ class Index extends Component
         $this->resolution_notes = '';
 
         session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
+    }
+
+    public function openEditResolutionModal(int $id): void
+    {
+        $ticket = Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+            ->findOrFail($id);
+
+        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        if ($ticket->status === 'closed') {
+            session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin dan tidak dapat diubah kembali.');
+            return;
+        }
+
+        $this->selectedTicketId = $ticket->id;
+        $this->selectedTicketCode = !empty($ticket->uuid)
+            ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6)))
+            : ('#' . $ticket->id);
+        $this->selectedTicketTitle = $ticket->title;
+        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-');
+        $this->resolution_notes = (string) ($ticket->resolution_notes ?? '');
+        $this->edit_resolution_status = 'resolved';
+        $this->showEditResolutionModal = true;
+    }
+
+    public function saveResolutionUpdate(): void
+    {
+        if (!$this->selectedTicketId) {
+            return;
+        }
+
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
+
+        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        if ($ticket->status === 'closed') {
+            $this->showEditResolutionModal = false;
+            session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin.');
+            return;
+        }
+
+        $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
+        $hasNotesCol = Schema::hasColumn('tickets', 'resolution_notes');
+
+        if ($this->edit_resolution_status === 'in_progress') {
+            $payload = [
+                'status' => 'in_progress',
+                'resolved_at' => null,
+            ];
+            if ($hasNotesCol) {
+                $payload['resolution_notes'] = trim($this->resolution_notes) !== '' ? trim($this->resolution_notes) : null;
+            }
+            $ticket->update($payload);
+
+            $this->showEditResolutionModal = false;
+            $this->selectedTicketId = null;
+            $this->activeTab = 'open';
+            session()->flash('success', "Tiket {$code} dibuka kembali ke Tugas Aktif.");
+            return;
+        }
+
+        $note = trim($this->resolution_notes) !== ''
+            ? trim($this->resolution_notes)
+            : 'Diselesaikan oleh teknisi melalui portal gangguan';
+
+        $payload = [
+            'status' => 'resolved',
+            'resolved_at' => $ticket->resolved_at ?? now(),
+        ];
+        if ($hasNotesCol) {
+            $payload['resolution_notes'] = $note;
+        }
+        $ticket->update($payload);
+
+        $this->showEditResolutionModal = false;
+        $this->selectedTicketId = null;
+        session()->flash('success', "Catatan penyelesaian tiket {$code} berhasil diperbarui.");
     }
 
     public function markResolved($id): void

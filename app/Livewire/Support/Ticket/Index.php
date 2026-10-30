@@ -380,7 +380,7 @@ class Index extends BaseEnterpriseList
             'status' => $ticket->status ?? 'open',
             'assigned_to' => $ticket->assigned_to ? (string) $ticket->assigned_to : '',
             'due_date' => $ticket->due_date ? (is_string($ticket->due_date) ? substr($ticket->due_date, 0, 10) : $ticket->due_date->format('Y-m-d')) : '',
-            'note' => '',
+            'note' => $ticket->resolution_notes ?? '',
         ];
         $this->showEditModal = true;
     }
@@ -415,7 +415,7 @@ class Index extends BaseEnterpriseList
             $newAssignee = !empty($this->editingTicket['assigned_to']) ? (int) $this->editingTicket['assigned_to'] : null;
             $newStatus = $this->editingTicket['status'] ?? $ticket->status;
 
-            $ticket->update([
+            $updatePayload = [
                 'title' => trim($this->editingTicket['title']),
                 'description' => $this->editingTicket['description'] ?? '',
                 'category' => $this->editingTicket['category'] ?? 'internet',
@@ -424,7 +424,11 @@ class Index extends BaseEnterpriseList
                 'assigned_to' => $newAssignee,
                 'due_date' => !empty($this->editingTicket['due_date']) ? $this->editingTicket['due_date'] : null,
                 'resolved_at' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? now() : $ticket->resolved_at,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'resolution_notes') && isset($this->editingTicket['note']) && trim((string) $this->editingTicket['note']) !== '') {
+                $updatePayload['resolution_notes'] = trim((string) $this->editingTicket['note']);
+            }
+            $ticket->update($updatePayload);
 
             $isAssigneeChanged = ($newAssignee && $newAssignee != $oldAssignee);
             $isResolvedChanged = ($newStatus === 'resolved' && $oldStatus !== 'resolved');

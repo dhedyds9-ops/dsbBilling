@@ -10,6 +10,13 @@
         </div>
     @endif
 
+    @if(session()->has('error'))
+        <div class="p-3 bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm">
+            <span class="material-symbols-outlined text-sm">error</span>
+            <span>{{ session('error') }}</span>
+        </div>
+    @endif
+
     {{-- Hero Banner --}}
     <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
         <div class="absolute top-0 right-0 opacity-10 pointer-events-none">
@@ -71,6 +78,12 @@
             <span class="material-symbols-outlined text-sm">build</span>
             Tiket Gangguan ({{ $stats['total_tickets'] ?? 0 }})
         </button>
+        <button wire:click="filterJobType('maintenance')" type="button"
+                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
+                       {{ $jobType === 'maintenance' ? 'bg-sky-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
+            <span class="material-symbols-outlined text-sm">engineering</span>
+            Maintenance ({{ $stats['total_maintenances'] ?? 0 }})
+        </button>
         <button wire:click="filterJobType('survey')" type="button"
                 class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
                        {{ $jobType === 'survey' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
@@ -104,7 +117,7 @@
                     {{ $job->date ? \Carbon\Carbon::parse($job->date)->format('d M Y, H:i') : '-' }}
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <span class="px-2 py-0.5 {{ $job->job_type === 'ticket' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : ($job->job_type === 'installation' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800') }} rounded-lg text-[10px] font-bold uppercase">
+                    <span class="px-2 py-0.5 {{ $job->job_type === 'ticket' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : ($job->job_type === 'maintenance' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800' : ($job->job_type === 'installation' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800')) }} rounded-lg text-[10px] font-bold uppercase">
                         {{ $job->type_badge }}
                     </span>
                     @if(!empty($job->priority) && $job->priority !== 'normal')
@@ -170,18 +183,30 @@
                 <span class="leading-snug">{{ $job->address }}</span>
             </div>
 
-            {{-- Ticket Complaint & Subject Details --}}
-            @if($job->job_type === 'ticket')
-                <div class="mt-2.5 bg-amber-50/70 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/50 text-[11px] space-y-1">
-                    <div class="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
-                        <span class="material-symbols-outlined text-amber-600 text-sm">build</span>
-                        <span>Subjek: {{ $job->subject }}</span>
+            {{-- Ticket / Maintenance Details --}}
+            @if(in_array($job->job_type, ['ticket', 'maintenance']))
+                <div class="mt-2.5 {{ $job->job_type === 'maintenance' ? 'bg-sky-50/70 dark:bg-sky-950/30 border-sky-200/70 dark:border-sky-800/50' : 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-800/50' }} p-2.5 rounded-xl border text-[11px] space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold {{ $job->job_type === 'maintenance' ? 'text-sky-900 dark:text-sky-200' : 'text-amber-900 dark:text-amber-200' }}">
+                        <span class="material-symbols-outlined {{ $job->job_type === 'maintenance' ? 'text-sky-600' : 'text-amber-600' }} text-sm">{{ $job->job_type === 'maintenance' ? 'engineering' : 'build' }}</span>
+                        <span>{{ $job->job_type === 'maintenance' ? 'Pekerjaan' : 'Subjek' }}: {{ $job->subject }}</span>
                     </div>
                     @if($job->description)
                         <p class="text-slate-600 dark:text-slate-300 text-xs pl-5 leading-relaxed">
                             {{ $job->description }}
                         </p>
                     @endif
+                </div>
+            @endif
+
+            @if(!empty($job->resolution_notes))
+                <div class="mt-2 bg-emerald-50/80 dark:bg-emerald-950/30 p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-800/50 text-[11px] space-y-0.5">
+                    <div class="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300">
+                        <span class="material-symbols-outlined text-emerald-600 text-sm">task_alt</span>
+                        <span>Catatan Penyelesaian:</span>
+                    </div>
+                    <p class="text-slate-700 dark:text-slate-300 text-xs pl-5 leading-relaxed">
+                        {{ $job->resolution_notes }}
+                    </p>
                 </div>
             @endif
 
@@ -210,10 +235,10 @@
             @endif
 
             {{-- Actions --}}
-            <div class="mt-3 flex items-center gap-2">
+            <div class="mt-3 flex flex-wrap items-center gap-2">
                 @if($job->latitude && $job->longitude)
                     <a href="https://maps.google.com/?q={{ $job->latitude }},{{ $job->longitude }}" target="_blank"
-                       class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors">
+                       class="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors">
                         <span class="material-symbols-outlined text-blue-500 text-base">near_me</span>
                         Buka Peta
                     </a>
@@ -221,15 +246,47 @@
 
                 @if($job->job_type === 'ticket' && !$job->is_completed)
                     <button wire:click="openResolveTicketModal({{ $job->ticket_id }})" type="button"
-                            class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                            class="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                         <span class="material-symbols-outlined text-base">check_circle</span>
                         Selesaikan Tiket
+                    </button>
+                @elseif($job->job_type === 'ticket' && $job->status === 'resolved')
+                    <button wire:click="openEditTicketResolutionModal({{ $job->ticket_id }})" type="button"
+                            class="ml-auto py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl font-bold text-xs inline-flex items-center gap-1 transition-colors">
+                        <span class="material-symbols-outlined text-sm">edit_note</span>
+                        Edit Penyelesaian
+                    </button>
+                @elseif($job->job_type === 'ticket' && $job->status === 'closed')
+                    <span class="ml-auto py-1 px-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg text-[10px] font-bold inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">lock</span>
+                        Terkunci (Closed)
+                    </span>
+                @endif
+
+                @if($job->job_type === 'maintenance' && !$job->is_completed)
+                    @if($job->status === 'scheduled')
+                        <button wire:click="startMaintenance({{ $job->maint_id }})" type="button"
+                                class="py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-base">play_arrow</span>
+                            Mulai
+                        </button>
+                    @endif
+                    <button wire:click="openResolveMaintenanceModal({{ $job->maint_id }}, false)" type="button"
+                            class="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                        <span class="material-symbols-outlined text-base">check_circle</span>
+                        Selesaikan Maintenance
+                    </button>
+                @elseif($job->job_type === 'maintenance' && $job->status === 'completed')
+                    <button wire:click="openResolveMaintenanceModal({{ $job->maint_id }}, true)" type="button"
+                            class="ml-auto py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl font-bold text-xs inline-flex items-center gap-1 transition-colors">
+                        <span class="material-symbols-outlined text-sm">edit_note</span>
+                        Edit Penyelesaian
                     </button>
                 @endif
 
                 @if($job->job_type === 'survey' && !$job->is_completed)
                     <button wire:click="openInputResultModal({{ $job->survey_id }})"
-                            class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                            class="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                         <span class="material-symbols-outlined text-base">edit_document</span>
                         Input Hasil
                     </button>
@@ -439,6 +496,125 @@
                 <span wire:loading.remove wire:target="confirmResolveTicket" class="material-symbols-outlined text-sm">check</span>
                 <span wire:loading wire:target="confirmResolveTicket" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
                 <span>Ya, Selesaikan</span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Modal Edit Penyelesaian Tiket --}}
+@if($showEditTicketResolutionModal)
+<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+     x-data
+     @keydown.escape.window="$wire.set('showEditTicketResolutionModal', false)">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
+
+        <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <span class="material-symbols-outlined" style="font-size:30px">edit_note</span>
+        </div>
+
+        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">Edit Penyelesaian Tiket</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Perbarui catatan perbaikan atau buka kembali ke Tugas Aktif.</p>
+
+        <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
+                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
+            </div>
+        </div>
+
+        <div class="mt-3 text-left space-y-3">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Status Tiket</label>
+                <select wire:model="ticket_edit_status"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-slate-100">
+                    <option value="resolved">Tetap Selesai (Perbarui Catatan)</option>
+                    <option value="in_progress">Buka Kembali ke Tugas Aktif</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Catatan Perbaikan</label>
+                <textarea wire:model="ticket_resolution_notes" rows="3" placeholder="Tuliskan detail tindakan perbaikan..."
+                          class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
+            </div>
+        </div>
+
+        <div class="mt-4 flex items-center gap-2">
+            <button wire:click="$set('showEditTicketResolutionModal', false)" type="button"
+                    class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
+                Batal
+            </button>
+            <button wire:click="saveTicketResolutionUpdate" type="button"
+                    wire:loading.attr="disabled"
+                    class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                <span wire:loading.remove wire:target="saveTicketResolutionUpdate" class="material-symbols-outlined text-sm">save</span>
+                <span wire:loading wire:target="saveTicketResolutionUpdate" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                <span>Simpan</span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Modal Selesaikan / Edit Maintenance Jaringan --}}
+@if($showResolveMaintModal)
+<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+     x-data
+     @keydown.escape.window="$wire.set('showResolveMaintModal', false)">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 to-emerald-500"></div>
+
+        <div class="w-14 h-14 bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <span class="material-symbols-outlined" style="font-size:30px">engineering</span>
+        </div>
+
+        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">
+            {{ $isEditingMaintResolution ? 'Edit Penyelesaian Maintenance' : 'Selesaikan Maintenance?' }}
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {{ $selectedMaintTitle }}
+        </p>
+
+        @if($selectedMaintDevice)
+            <div class="mt-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
+                {{ $selectedMaintDevice }}
+            </div>
+        @endif
+
+        <div class="mt-3 text-left space-y-3">
+            @if($isEditingMaintResolution)
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Status Maintenance</label>
+                    <select wire:model="maint_edit_status"
+                            class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 bg-white dark:bg-slate-800 dark:text-slate-100">
+                        <option value="completed">Tetap Selesai (Perbarui Laporan)</option>
+                        <option value="in_progress">Buka Kembali ke Tugas Aktif</option>
+                    </select>
+                </div>
+            @endif
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Laporan / Catatan Penyelesaian</label>
+                <textarea wire:model="maint_resolution_notes" rows="3" placeholder="Contoh: Pembersihan konektor OLT selesai, redaman optik stabil..."
+                          class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
+            </div>
+        </div>
+
+        <div class="mt-4 flex items-center gap-2">
+            <button wire:click="$set('showResolveMaintModal', false)" type="button"
+                    class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
+                Batal
+            </button>
+            <button wire:click="confirmResolveMaintenance" type="button"
+                    wire:loading.attr="disabled"
+                    class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                <span wire:loading.remove wire:target="confirmResolveMaintenance" class="material-symbols-outlined text-sm">check</span>
+                <span wire:loading wire:target="confirmResolveMaintenance" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                <span>{{ $isEditingMaintResolution ? 'Simpan' : 'Ya, Selesaikan' }}</span>
             </button>
         </div>
     </div>

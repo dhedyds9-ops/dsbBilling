@@ -8,6 +8,13 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="p-3 bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm">
+            <span class="material-symbols-outlined text-sm">error</span>
+            <span>{{ session('error') }}</span>
+        </div>
+    @endif
+
     {{-- Tabs --}}
     <div class="bg-slate-200/70 dark:bg-slate-800 p-1 rounded-xl flex items-center shadow-inner">
         <button wire:click="switchTab('open')" type="button"
@@ -109,25 +116,56 @@
                     @endif
                 </div>
 
-                <div class="mt-3 flex items-center gap-2">
+                @if(!empty($ticket->resolution_notes))
+                    <div class="mt-2 bg-emerald-50/80 dark:bg-emerald-950/30 p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-800/50 text-[11px] space-y-0.5">
+                        <div class="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300">
+                            <span class="material-symbols-outlined text-emerald-600 text-sm">task_alt</span>
+                            <span>Catatan Penyelesaian:</span>
+                        </div>
+                        <p class="text-slate-700 dark:text-slate-300 text-xs pl-5 leading-relaxed">
+                            {{ $ticket->resolution_notes }}
+                        </p>
+                    </div>
+                @endif
+
+                <div class="mt-3 flex flex-wrap items-center gap-2">
                     @if($lat && $lng)
                         <a href="https://maps.google.com/?q={{ $lat }},{{ $lng }}" target="_blank"
-                           class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors">
+                           class="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors">
                             <span class="material-symbols-outlined text-blue-500 text-base">near_me</span>
                             Buka Peta
                         </a>
                     @endif
 
                     @if(!$isResolved)
+                        @if($ticket->status === 'open')
+                            <button wire:click="startTicket({{ $ticket->id }})" type="button"
+                                    class="py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
+                                <span class="material-symbols-outlined text-base">play_arrow</span>
+                                Kerjakan
+                            </button>
+                        @endif
                         <button wire:click="openResolveModal({{ $ticket->id }})" type="button"
-                                class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                                class="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-base">check_circle</span>
                             Selesaikan Tiket
                         </button>
                     @else
-                        <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold ml-auto">
+                        <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
                             Selesai: {{ $ticket->resolved_at ? $ticket->resolved_at->format('d M Y, H:i') : '-' }}
                         </div>
+                        @if($ticket->status === 'resolved')
+                            <button wire:click="openEditResolutionModal({{ $ticket->id }})" type="button"
+                                    class="ml-auto py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl font-bold text-xs inline-flex items-center gap-1 transition-colors">
+                                <span class="material-symbols-outlined text-sm">edit_note</span>
+                                Edit Penyelesaian
+                            </button>
+                        @else
+                            <span class="ml-auto py-1 px-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg text-[10px] font-bold inline-flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">lock</span>
+                                Terkunci (Closed)
+                            </span>
+                        @endif
                     @endif
                 </div>
             </div>
@@ -202,6 +240,70 @@
                 <span wire:loading.remove wire:target="confirmResolve" class="material-symbols-outlined text-sm">check</span>
                 <span wire:loading wire:target="confirmResolve" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
                 <span>Ya, Selesaikan</span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Modal Edit Penyelesaian Tiket --}}
+@if($showEditResolutionModal)
+<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+     x-data
+     @keydown.escape.window="$wire.set('showEditResolutionModal', false)">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
+
+        <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <span class="material-symbols-outlined" style="font-size:30px">edit_note</span>
+        </div>
+
+        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">Edit Penyelesaian Tiket</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Perbarui catatan hasil perbaikan atau buka kembali tiket jika masih perlu tindak lanjut.</p>
+
+        <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
+                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Subjek</span>
+                <span class="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[180px]">{{ $selectedTicketTitle }}</span>
+            </div>
+        </div>
+
+        <div class="mt-3 text-left space-y-3">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Status Tiket</label>
+                <select wire:model="edit_resolution_status"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-slate-100">
+                    <option value="resolved">Tetap Selesai (Perbarui Catatan)</option>
+                    <option value="in_progress">Buka Kembali ke Tugas Aktif (Diproses)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Catatan Perbaikan / Penyelesaian</label>
+                <textarea wire:model="resolution_notes" rows="3" placeholder="Tuliskan detail tindakan perbaikan, pergantian konektor/kabel, redaman akhir..."
+                          class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
+            </div>
+        </div>
+
+        <div class="mt-4 flex items-center gap-2">
+            <button wire:click="$set('showEditResolutionModal', false)" type="button"
+                    class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
+                Batal
+            </button>
+            <button wire:click="saveResolutionUpdate" type="button"
+                    wire:loading.attr="disabled"
+                    class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                <span wire:loading.remove wire:target="saveResolutionUpdate" class="material-symbols-outlined text-sm">save</span>
+                <span wire:loading wire:target="saveResolutionUpdate" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                <span>Simpan Perubahan</span>
             </button>
         </div>
     </div>

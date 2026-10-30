@@ -12,7 +12,9 @@ use App\Models\Support\Ticket;
 use App\Models\ISP\Odp;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Src\Domain\Support\Events\TicketResolvedEvent;
 
@@ -25,7 +27,7 @@ class Index extends Component
     public string $activeTab = 'active'; // active, history
 
     #[Url]
-    public string $jobType = 'all'; // all, installation, ticket, survey
+    public string $jobType = 'all'; // all, installation, ticket, maintenance, survey
 
     #[Url]
     public string $search = '';
@@ -43,13 +45,24 @@ class Index extends Component
     public $input_recommendation = 'feasible';
     public $input_notes = '';
 
-    // Modal Selesaikan Tiket
+    // Modal Selesaikan / Edit Tiket
     public bool $showResolveTicketModal = false;
+    public bool $showEditTicketResolutionModal = false;
     public ?int $selectedTicketId = null;
     public ?string $selectedTicketCode = null;
     public ?string $selectedTicketTitle = null;
     public ?string $selectedTicketCustomer = null;
     public string $ticket_resolution_notes = '';
+    public string $ticket_edit_status = 'resolved';
+
+    // Modal Selesaikan / Edit Maintenance Jaringan
+    public bool $showResolveMaintModal = false;
+    public bool $isEditingMaintResolution = false;
+    public ?int $selectedMaintId = null;
+    public ?string $selectedMaintTitle = null;
+    public ?string $selectedMaintDevice = null;
+    public string $maint_resolution_notes = '';
+    public string $maint_edit_status = 'completed';
 
     /**
      * Hanya Super Admin murni (bukan akun Teknisi ber-role Manager) yang memiliki mode pantau semua tugas.
@@ -70,7 +83,7 @@ class Index extends Component
         if (!in_array($this->activeTab, ['active', 'history'], true)) {
             $this->activeTab = 'active';
         }
-        if (!in_array($this->jobType, ['all', 'installation', 'ticket', 'survey'], true)) {
+        if (!in_array($this->jobType, ['all', 'installation', 'ticket', 'maintenance', 'survey'], true)) {
             $this->jobType = 'all';
         }
     }
@@ -88,7 +101,7 @@ class Index extends Component
 
     public function filterJobType($type)
     {
-        $this->jobType = in_array($type, ['all', 'installation', 'ticket', 'survey'], true) ? $type : 'all';
+        $this->jobType = in_array($type, ['all', 'installation', 'ticket', 'maintenance', 'survey'], true) ? $type : 'all';
         $this->resetPage();
     }
 
@@ -106,7 +119,7 @@ class Index extends Component
         $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
         $this->selectedTicketTitle = $ticket->title;
         $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
-        $this->ticket_resolution_notes = '';
+        $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
         $this->showResolveTicketModal = true;
     }
 
@@ -122,14 +135,19 @@ class Index extends Component
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
-        $ticket->update([
-            'status' => 'resolved',
-            'resolved_at' => now(),
-        ]);
-
         $note = trim($this->ticket_resolution_notes) !== ''
             ? trim($this->ticket_resolution_notes)
             : 'Diselesaikan oleh teknisi melalui portal tugas';
+
+        $payload = [
+            'status' => 'resolved',
+            'resolved_at' => now(),
+        ];
+        if (Schema::hasColumn('tickets', 'resolution_notes')) {
+            $payload['resolution_notes'] = $note;
+        }
+
+        $ticket->update($payload);
 
         Event::dispatch(
             TicketResolvedEvent::create(
@@ -145,6 +163,192 @@ class Index extends Component
         $this->ticket_resolution_notes = '';
 
         session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
+    }
+
+    public function openEditTicketResolutionModal($ticketId)
+    {
+        $ticket = Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+            ->findOrFail($ticketId);
+
+        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        if ($ticket->status === 'closed') {
+            session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin dan tidak dapat diubah kembali.');
+            return;
+        }
+
+        $this->selectedTicketId = $ticket->id;
+        $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
+        $this->selectedTicketTitle = $ticket->title;
+        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
+        $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
+        $this->ticket_edit_status = 'resolved';
+        $this->showEditTicketResolutionModal = true;
+    }
+
+    public function saveTicketResolutionUpdate()
+    {
+        if (!$this->selectedTicketId) {
+            return;
+        }
+
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
+
+        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        if ($ticket->status === 'closed') {
+            $this->showEditTicketResolutionModal = false;
+            session()->flash('error', 'Tiket sudah ditutup permanen (Closed) oleh Admin.');
+            return;
+        }
+
+        $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
+        $hasNotesCol = Schema::hasColumn('tickets', 'resolution_notes');
+
+        if ($this->ticket_edit_status === 'in_progress') {
+            $payload = [
+                'status' => 'in_progress',
+                'resolved_at' => null,
+            ];
+            if ($hasNotesCol) {
+                $payload['resolution_notes'] = trim($this->ticket_resolution_notes) !== '' ? trim($this->ticket_resolution_notes) : null;
+            }
+            $ticket->update($payload);
+
+            $this->showEditTicketResolutionModal = false;
+            $this->selectedTicketId = null;
+            $this->activeTab = 'active';
+            session()->flash('success', "Tiket {$code} dibuka kembali ke Tugas Aktif.");
+            return;
+        }
+
+        $note = trim($this->ticket_resolution_notes) !== ''
+            ? trim($this->ticket_resolution_notes)
+            : 'Diselesaikan oleh teknisi melalui portal tugas';
+
+        $payload = [
+            'status' => 'resolved',
+            'resolved_at' => $ticket->resolved_at ?? now(),
+        ];
+        if ($hasNotesCol) {
+            $payload['resolution_notes'] = $note;
+        }
+        $ticket->update($payload);
+
+        $this->showEditTicketResolutionModal = false;
+        $this->selectedTicketId = null;
+        session()->flash('success', "Catatan penyelesaian tiket {$code} berhasil diperbarui.");
+    }
+
+    public function startMaintenance(int $maintId): void
+    {
+        if (!Schema::hasTable('support_maintenances')) {
+            return;
+        }
+
+        $row = DB::table('support_maintenances')->where('id', $maintId)->first();
+        if (!$row) {
+            return;
+        }
+
+        if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
+            abort(403, 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
+        }
+
+        DB::table('support_maintenances')->where('id', $maintId)->update([
+            'status' => 'in_progress',
+            'updated_by' => Auth::id(),
+            'updated_at' => now(),
+        ]);
+
+        session()->flash('success', "Maintenance #MT-{$maintId} mulai dikerjakan.");
+    }
+
+    public function openResolveMaintenanceModal(int $maintId, bool $isEdit = false): void
+    {
+        if (!Schema::hasTable('support_maintenances')) {
+            return;
+        }
+
+        $row = DB::table('support_maintenances')->where('id', $maintId)->first();
+        if (!$row) {
+            return;
+        }
+
+        if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
+            abort(403, 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
+        }
+
+        $this->selectedMaintId = (int) $row->id;
+        $this->selectedMaintTitle = (string) ($row->title ?? ('Maintenance #' . $row->id));
+        $this->selectedMaintDevice = trim(($row->device_name ?? '') . ' ' . ($row->location_name ? '(' . $row->location_name . ')' : ''));
+        $this->maint_resolution_notes = (string) ($row->resolution_notes ?? '');
+        $this->isEditingMaintResolution = $isEdit;
+        $this->maint_edit_status = 'completed';
+        $this->showResolveMaintModal = true;
+    }
+
+    public function confirmResolveMaintenance(): void
+    {
+        if (!$this->selectedMaintId || !Schema::hasTable('support_maintenances')) {
+            return;
+        }
+
+        $row = DB::table('support_maintenances')->where('id', $this->selectedMaintId)->first();
+        if (!$row) {
+            return;
+        }
+
+        if (!$this->isAdminOversight() && (int) ($row->assigned_to ?? 0) !== (int) Auth::id()) {
+            abort(403, 'Jadwal maintenance ini tidak ditugaskan kepada Anda.');
+        }
+
+        $id = (int) $row->id;
+
+        if ($this->isEditingMaintResolution && $this->maint_edit_status === 'in_progress') {
+            DB::table('support_maintenances')->where('id', $id)->update([
+                'status' => 'in_progress',
+                'completed_at' => null,
+                'resolution_notes' => trim($this->maint_resolution_notes) !== '' ? trim($this->maint_resolution_notes) : null,
+                'updated_by' => Auth::id(),
+                'updated_at' => now(),
+            ]);
+
+            $this->showResolveMaintModal = false;
+            $this->selectedMaintId = null;
+            $this->activeTab = 'active';
+            session()->flash('success', "Maintenance #MT-{$id} dibuka kembali ke Tugas Aktif.");
+            return;
+        }
+
+        $note = trim($this->maint_resolution_notes) !== ''
+            ? trim($this->maint_resolution_notes)
+            : 'Pemeliharaan jaringan selesai dikerjakan oleh teknisi';
+
+        DB::table('support_maintenances')->where('id', $id)->update([
+            'status' => 'completed',
+            'completed_at' => $row->completed_at ?? now(),
+            'resolution_notes' => $note,
+            'updated_by' => Auth::id(),
+            'updated_at' => now(),
+        ]);
+
+        $wasEdit = $this->isEditingMaintResolution;
+        $this->showResolveMaintModal = false;
+        $this->selectedMaintId = null;
+        $this->maint_resolution_notes = '';
+
+        session()->flash(
+            'success',
+            $wasEdit
+                ? "Catatan penyelesaian Maintenance #MT-{$id} berhasil diperbarui."
+                : "Maintenance #MT-{$id} berhasil diselesaikan."
+        );
     }
 
     public function markTicketResolved($id)
@@ -426,10 +630,74 @@ class Index extends Component
                     'status' => $ticket->status,
                     'status_label' => $isResolved ? 'Selesai' : (in_array($ticket->status, ['in_progress']) ? 'Dalam Pengerjaan' : 'Tiket Aktif'),
                     'is_completed' => $isResolved,
+                    'resolution_notes' => $ticket->resolution_notes ?? null,
                     'latitude' => $ticket->customer?->latitude,
                     'longitude' => $ticket->customer?->longitude,
                     'survey_id' => null,
                     'ticket_id' => $ticket->id,
+                    'maint_id' => null,
+                ]);
+            }
+        }
+
+        // 2b. Fetch Network Maintenance Schedules (support_maintenances assigned to this technician)
+        if (($this->jobType === 'all' || $this->jobType === 'maintenance') && Schema::hasTable('support_maintenances')) {
+            $maintQuery = DB::table('support_maintenances');
+
+            if (!$isAdmin) {
+                $maintQuery->where('assigned_to', $userId);
+            }
+
+            if ($this->activeTab === 'active') {
+                $maintQuery->whereIn('status', ['scheduled', 'in_progress']);
+            } else {
+                $maintQuery->whereIn('status', ['completed', 'cancelled']);
+            }
+
+            if ($search) {
+                $maintQuery->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                      ->orWhere('device_name', 'like', "%{$search}%")
+                      ->orWhere('location_name', 'like', "%{$search}%")
+                      ->orWhere('notes', 'like', "%{$search}%");
+                });
+            }
+
+            $maintenances = $maintQuery->orderByDesc('scheduled_date')->orderByDesc('id')->get();
+
+            foreach ($maintenances as $mt) {
+                $isCompleted = in_array($mt->status, ['completed', 'cancelled']);
+                $schedStr = trim(($mt->scheduled_date ?? '') . ' ' . ($mt->scheduled_time ?? '09:00'));
+
+                $items->push((object) [
+                    'id' => 'maint_' . $mt->id,
+                    'raw_id' => $mt->id,
+                    'source' => 'maintenance',
+                    'job_type' => 'maintenance',
+                    'type_badge' => 'Maintenance ' . strtoupper($mt->type ?? 'Preventive'),
+                    'service_type' => 'MAINTENANCE',
+                    'title' => $mt->device_name ?: ('Perangkat ' . strtoupper($mt->device_type ?? 'Jaringan')),
+                    'subject' => $mt->title,
+                    'description' => $mt->notes,
+                    'priority' => $mt->priority ?? 'medium',
+                    'category' => $mt->type ?? 'preventive',
+                    'code' => 'MT-' . $mt->id,
+                    'phone' => '-',
+                    'address' => $mt->location_name ?: 'Lokasi Infrastruktur Jaringan',
+                    'username' => null,
+                    'package_name' => $mt->device_name,
+                    'onu_sn' => null,
+                    'onu_name' => null,
+                    'date' => $schedStr ?: $mt->created_at,
+                    'status' => $mt->status,
+                    'status_label' => $mt->status === 'completed' ? 'Selesai' : ($mt->status === 'in_progress' ? 'Sedang Dikerjakan' : ($mt->status === 'cancelled' ? 'Dibatalkan' : 'Dijadwalkan')),
+                    'is_completed' => $isCompleted,
+                    'resolution_notes' => $mt->resolution_notes ?? null,
+                    'latitude' => null,
+                    'longitude' => null,
+                    'survey_id' => null,
+                    'ticket_id' => null,
+                    'maint_id' => $mt->id,
                 ]);
             }
         }
@@ -549,12 +817,28 @@ class Index extends Component
             ->whereIn('status', ['resolved', 'closed'])
             ->count();
 
+        // Active & History Network Maintenances
+        $activeMaint = 0;
+        $historyMaint = 0;
+        if (Schema::hasTable('support_maintenances')) {
+            $activeMaint = DB::table('support_maintenances')
+                ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+                ->whereIn('status', ['scheduled', 'in_progress'])
+                ->count();
+
+            $historyMaint = DB::table('support_maintenances')
+                ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+                ->whereIn('status', ['completed', 'cancelled'])
+                ->count();
+        }
+
         return [
-            'active' => $activeCs + $activeInst + $activeSurveys + $activeTickets,
-            'history' => $historyCs + $historyInst + $historySurveys + $historyTickets,
+            'active' => $activeCs + $activeInst + $activeSurveys + $activeTickets + $activeMaint,
+            'history' => $historyCs + $historyInst + $historySurveys + $historyTickets + $historyMaint,
             'total_installations' => $activeCs + $historyCs + $activeInst + $historyInst,
             'total_surveys' => $activeSurveys + $historySurveys,
             'total_tickets' => $activeTickets + $historyTickets,
+            'total_maintenances' => $activeMaint + $historyMaint,
         ];
     }
 

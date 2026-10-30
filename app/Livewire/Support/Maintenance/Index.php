@@ -3,11 +3,21 @@
 namespace App\Livewire\Support\Maintenance;
 
 use App\Livewire\BaseEnterpriseList;
+use App\Models\ISP\Odc;
+use App\Models\ISP\Odp;
+use App\Models\ISP\Olt;
+use App\Models\ISP\Onu;
+use App\Models\ISP\Pop;
+use App\Models\ISP\Router as RouterModel;
+use App\Models\ISP\Tower;
+use App\Models\Notification\Notification;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -35,46 +45,71 @@ class Index extends BaseEnterpriseList
     public ?array $materialUsage = null;
     public ?array $stock = null;
     public ?array $usage = null;
+    public array $inventoryAssetSummary = ['total' => 0, 'available' => 0];
+    public array $warehouseOptions = [];
+    public array $maintenanceScheduleOptions = [];
 
+    // Schedule Modals
     public bool $showCreateModal = false;
     public array $newMaint = [];
+    public string $newMaintDeviceSelect = '';
+
+    public bool $showEditModal = false;
+    public array $editMaint = [];
+    public string $editMaintDeviceSelect = '';
+
+    public bool $showCompleteModal = false;
+    public ?int $completeMaintId = null;
+    public string $completeMaintTitle = '';
+    public string $completeResolutionNotes = '';
+
+    public bool $showDetailModal = false;
+    public ?array $detailRow = null;
+    public array $detailUsages = [];
+
+    // Material Stock & Usage Modals
+    public bool $showMaterialModal = false;
+    public ?int $editingMaterialId = null;
+    public array $materialForm = [];
+
     public bool $showUsageModal = false;
     public array $usageForm = [];
+
     public string $calendarMonth = '';
 
     public function mount(): void
     {
+        $user = Auth::user();
+        if (
+            $user
+            && !$user->hasRole(['administrator', 'superadmin'])
+            && strtoupper((string) $user->job_function) === 'TECHNICIAN'
+        ) {
+            $this->redirect(route('technician.my-jobs.maintenance'));
+            return;
+        }
+
+        $requestedTab = (string) request()->query('activeTab', $this->activeTab);
+
         parent::mount();
-        $this->activeTab = 'history';
+
+        $this->activeTab = ($requestedTab !== '' && isset($this->tabs[$requestedTab]))
+            ? $requestedTab
+            : 'history';
+
         $this->calendarMonth = now()->format('Y-m');
-        $this->filters = [
+        $this->filters = array_merge([
             'status' => '',
             'type' => '',
             'technician_id' => '',
             'device_type' => '',
             'scheduled_from' => '',
             'scheduled_to' => '',
-        ];
-        $this->newMaint = [
-            'type' => 'preventive',
-            'title' => '',
-            'device_type' => 'router',
-            'device_name' => '',
-            'location_name' => '',
-            'scheduled_date' => now()->addDays(2)->toDateString(),
-            'scheduled_time' => '09:00',
-            'technician_id' => '',
-            'notes' => '',
-            'priority' => 'medium',
-        ];
-        $this->usageForm = [
-            'maintenance_id' => '',
-            'material_name' => '',
-            'quantity' => 1,
-            'unit' => 'pcs',
-            'technician_name' => '',
-            'notes' => '',
-        ];
+        ], $this->filters ?: []);
+
+        $this->resetNewMaintForm();
+        $this->resetMaterialForm();
+        $this->resetUsageForm();
 
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
@@ -87,7 +122,9 @@ class Index extends BaseEnterpriseList
 
     public function authorizeAccess(): void
     {
-        if (!Auth::check()) abort(403);
+        if (!Auth::check()) {
+            abort(403);
+        }
     }
 
     public function boot(): void
@@ -98,6 +135,245 @@ class Index extends BaseEnterpriseList
     protected function tableName(): string
     {
         return 'support_maintenances';
+    }
+
+    protected function resetNewMaintForm(): void
+    {
+        $this->newMaintDeviceSelect = '';
+        $this->newMaint = [
+            'type' => 'preventive',
+            'title' => '',
+            'device_type' => 'router',
+            'device_name' => '',
+            'location_name' => '',
+            'scheduled_date' => now()->addDays(1)->toDateString(),
+            'scheduled_time' => '09:00',
+            'technician_id' => '',
+            'notes' => '',
+            'priority' => 'medium',
+        ];
+    }
+
+    protected function resetMaterialForm(): void
+    {
+        $this->editingMaterialId = null;
+        $this->materialForm = [
+            'sku' => '',
+            'name' => '',
+            'category' => 'Fiber Optic',
+            'stock' => 0,
+            'min_stock' => 5,
+            'unit' => 'pcs',
+            'location' => 'Gudang Utama',
+            'notes' => '',
+        ];
+    }
+
+    protected function resetUsageForm(): void
+    {
+        $this->usageForm = [
+            'maintenance_id' => '',
+            'material_id' => '',
+            'material_name' => '',
+            'quantity' => 1,
+            'unit' => 'pcs',
+            'technician_id' => '',
+            'technician_name' => '',
+            'used_date' => now()->toDateString(),
+            'notes' => '',
+        ];
+    }
+
+    /**
+     * Ambil daftar staf teknis internal aktif (bukan akun Pelanggan / Reseller).
+     */
+    protected function fetchTechnicalStaff(): array
+    {
+        try {
+            $users = User::query()
+                ->with('roles')
+                ->where('is_active', true)
+                ->whereNull('reseller_id')
+                ->whereHas('roles', function ($q) {
+                    $q->whereIn('name', ['administrator', 'superadmin', 'manager']);
+                })
+                ->whereDoesntHave('roles', function ($q) {
+                    $q->whereIn('name', ['customer', 'reseller']);
+                })
+                ->orderByRaw("CASE WHEN UPPER(COALESCE(job_function, '')) = 'TECHNICIAN' THEN 0 WHEN UPPER(COALESCE(job_function, '')) = 'NOC' THEN 1 ELSE 2 END")
+                ->orderBy('name')
+                ->get(['id', 'name', 'job_function', 'job_title']);
+
+            $result = [];
+            foreach ($users as $u) {
+                $jf = strtoupper((string) ($u->job_function ?? ''));
+                $roleTag = match ($jf) {
+                    'TECHNICIAN' => 'Teknisi',
+                    'NOC' => 'NOC',
+                    default => $u->job_title ?: ($u->hasRole('administrator') ? 'Admin' : 'Staf'),
+                };
+                $result[$u->id] = $u->name . ' (' . $roleTag . ')';
+            }
+
+            return $result;
+        } catch (Throwable $e) {
+            Log::warning('Maintenance fetchTechnicalStaff fallback', ['e' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Ambil daftar perangkat riil berdasarkan device_type untuk memudahkan pemilihan perangkat & auto-lokasi.
+     */
+    public function getDeviceOptionsProperty(): array
+    {
+        $type = $this->showEditModal
+            ? ($this->editMaint['device_type'] ?? 'router')
+            : ($this->newMaint['device_type'] ?? 'router');
+
+        return $this->loadDevicesByType((string) $type);
+    }
+
+    protected function loadDevicesByType(string $type): array
+    {
+        try {
+            return match ($type) {
+                'router' => RouterModel::withoutGlobalScopes()
+                    ->with('pop')
+                    ->orderBy('name')
+                    ->limit(150)
+                    ->get()
+                    ->map(fn ($r) => [
+                        'key' => (string) $r->id,
+                        'name' => $r->name . ($r->ip_address ? ' (' . $r->ip_address . ')' : ''),
+                        'location' => $r->pop?->name ?? '',
+                    ])->all(),
+                'olt' => Olt::withoutGlobalScopes()
+                    ->with('pop')
+                    ->orderBy('name')
+                    ->limit(150)
+                    ->get()
+                    ->map(fn ($o) => [
+                        'key' => (string) $o->id,
+                        'name' => $o->name . ($o->ip_address ? ' (' . $o->ip_address . ')' : ''),
+                        'location' => $o->pop?->name ?: ($o->address ?? ''),
+                    ])->all(),
+                'onu' => Onu::withoutGlobalScopes()
+                    ->with('olt')
+                    ->orderBy('name')
+                    ->limit(150)
+                    ->get()
+                    ->map(fn ($n) => [
+                        'key' => (string) $n->id,
+                        'name' => ($n->name ?: 'ONU') . ($n->serial_number ? ' - ' . $n->serial_number : ''),
+                        'location' => $n->olt?->name ?? '',
+                    ])->all(),
+                'odp' => Odp::withoutGlobalScopes()
+                    ->orderBy('name')
+                    ->limit(200)
+                    ->get()
+                    ->map(fn ($d) => [
+                        'key' => (string) $d->id,
+                        'name' => $d->name . ($d->code ? ' [' . $d->code . ']' : ''),
+                        'location' => $d->address ?? '',
+                    ])->all(),
+                'odc' => Odc::withoutGlobalScopes()
+                    ->orderBy('name')
+                    ->limit(150)
+                    ->get()
+                    ->map(fn ($c) => [
+                        'key' => (string) $c->id,
+                        'name' => $c->name . ($c->code ? ' [' . $c->code . ']' : ''),
+                        'location' => $c->address ?? '',
+                    ])->all(),
+                'pop' => Pop::query()
+                    ->orderBy('name')
+                    ->limit(150)
+                    ->get()
+                    ->map(fn ($p) => [
+                        'key' => (string) $p->id,
+                        'name' => $p->name . ($p->code ? ' [' . $p->code . ']' : ''),
+                        'location' => $p->address ?: ($p->city ?? ''),
+                    ])->all(),
+                'tower' => Tower::query()
+                    ->orderBy('name')
+                    ->limit(150)
+                    ->get()
+                    ->map(fn ($t) => [
+                        'key' => (string) $t->id,
+                        'name' => $t->name,
+                        'location' => $t->address ?? '',
+                    ])->all(),
+                default => [],
+            };
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    public function updatedNewMaintDeviceType(): void
+    {
+        $this->newMaintDeviceSelect = '';
+    }
+
+    public function updatedNewMaintDeviceSelect($val): void
+    {
+        if (!$val) {
+            return;
+        }
+        foreach ($this->loadDevicesByType((string) ($this->newMaint['device_type'] ?? 'router')) as $item) {
+            if ((string) $item['key'] === (string) $val) {
+                $this->newMaint['device_name'] = $item['name'];
+                if (!empty($item['location'])) {
+                    $this->newMaint['location_name'] = $item['location'];
+                }
+                break;
+            }
+        }
+    }
+
+    public function updatedEditMaintDeviceType(): void
+    {
+        $this->editMaintDeviceSelect = '';
+    }
+
+    public function updatedEditMaintDeviceSelect($val): void
+    {
+        if (!$val) {
+            return;
+        }
+        foreach ($this->loadDevicesByType((string) ($this->editMaint['device_type'] ?? 'router')) as $item) {
+            if ((string) $item['key'] === (string) $val) {
+                $this->editMaint['device_name'] = $item['name'];
+                if (!empty($item['location'])) {
+                    $this->editMaint['location_name'] = $item['location'];
+                }
+                break;
+            }
+        }
+    }
+
+    public function updatedUsageFormMaterialId($val): void
+    {
+        if (!$val || !Schema::hasTable('support_maintenance_materials')) {
+            return;
+        }
+        $mat = DB::table('support_maintenance_materials')->where('id', (int) $val)->first();
+        if ($mat) {
+            $this->usageForm['material_name'] = $mat->name;
+            $this->usageForm['unit'] = $mat->unit ?: 'pcs';
+        }
+    }
+
+    public function updatedUsageFormTechnicianId($val): void
+    {
+        if (!$val) {
+            return;
+        }
+        $u = User::find((int) $val);
+        if ($u) {
+            $this->usageForm['technician_name'] = $u->name;
+        }
     }
 
     public function loadAll(): void
@@ -122,11 +398,7 @@ class Index extends BaseEnterpriseList
             ];
         }
 
-        try {
-            $techs = User::orderBy('name')->pluck('name', 'id')->all();
-        } catch (Throwable) {
-            $techs = [];
-        }
+        $techs = $this->fetchTechnicalStaff();
 
         $this->filterOptions = [
             'statuses' => [
@@ -161,6 +433,19 @@ class Index extends BaseEnterpriseList
             ],
         ];
 
+        try {
+            $this->maintenanceScheduleOptions = DB::table('support_maintenances')
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get(['id', 'title', 'scheduled_date', 'status'])
+                ->map(fn ($r) => [
+                    'id' => $r->id,
+                    'label' => '#MT-' . $r->id . ' - ' . Str::limit((string) $r->title, 42) . ' (' . ($r->scheduled_date ?: '-') . ')',
+                ])->all();
+        } catch (Throwable) {
+            $this->maintenanceScheduleOptions = [];
+        }
+
         $this->loadCalendar();
         $this->loadTechnicianStats();
         $this->loadMaterial();
@@ -188,23 +473,26 @@ class Index extends BaseEnterpriseList
             $endOfMonth = $startOfMonth->copy()->endOfMonth();
 
             $rows = DB::table('support_maintenances')
-                ->whereBetween('scheduled_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+                ->leftJoin('users', 'support_maintenances.assigned_to', '=', 'users.id')
+                ->select(['support_maintenances.*', 'users.name as technician_name'])
+                ->whereBetween('support_maintenances.scheduled_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+                ->orderBy('support_maintenances.scheduled_time')
                 ->get();
 
             $eventsByDate = [];
             foreach ($rows as $r) {
-                $d = $r->scheduled_date ?: substr((string)$r->created_at, 0, 10);
+                $d = $r->scheduled_date ?: substr((string) $r->created_at, 0, 10);
                 $eventsByDate[$d][] = [
                     'id' => $r->id,
                     'title' => $r->title ?? ('Maintenance #' . $r->id),
+                    'time' => $r->scheduled_time ?? '09:00',
                     'type' => $r->type ?? 'preventive',
                     'status' => $r->status ?? 'scheduled',
                     'priority' => $r->priority ?? 'medium',
-                    'technician' => $r->assigned_to ?? null,
+                    'technician' => $r->technician_name ?? null,
                 ];
             }
 
-            // Generate full calendar grid (from Sunday of first week to Saturday of last week)
             $calendar = [];
             $startGrid = $startOfMonth->copy()->startOfWeek(Carbon::SUNDAY);
             $endGrid = $endOfMonth->copy()->endOfWeek(Carbon::SATURDAY);
@@ -231,32 +519,126 @@ class Index extends BaseEnterpriseList
         }
     }
 
+    /**
+     * Beban Teknisi: Hanya menampilkan staf teknis (TECHNICIAN / NOC) atau yang ditugaskan di support_maintenances,
+     * menggunakan single aggregated query (tanpa N+1 loop ke seluruh tabel users).
+     */
     protected function loadTechnicianStats(): void
     {
         try {
-            $techs = User::all(['id', 'name']);
+            $assignedIds = DB::table('support_maintenances')
+                ->whereNotNull('assigned_to')
+                ->distinct()
+                ->pluck('assigned_to')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $techUsers = User::query()
+                ->with('roles')
+                ->whereDoesntHave('roles', function ($q) {
+                    $q->whereIn('name', ['customer', 'reseller']);
+                })
+                ->whereNull('reseller_id')
+                ->where(function ($q) use ($assignedIds) {
+                    $q->where(function ($sub) {
+                        $sub->where('is_active', true)
+                            ->whereHas('roles', fn ($rq) => $rq->where('name', 'manager'))
+                            ->whereNotIn(DB::raw("UPPER(COALESCE(job_function, ''))"), ['CASHIER', 'FINANCE', 'ACCOUNTING', 'HR']);
+                    })->orWhere(function ($sub) {
+                        $sub->where('is_active', true)
+                            ->whereIn(DB::raw("UPPER(COALESCE(job_function, ''))"), ['TECHNICIAN', 'NOC']);
+                    });
+                    if (!empty($assignedIds)) {
+                        $q->orWhereIn('id', $assignedIds);
+                    }
+                })
+                ->orderByRaw("CASE WHEN UPPER(COALESCE(job_function, '')) = 'TECHNICIAN' THEN 0 WHEN UPPER(COALESCE(job_function, '')) = 'NOC' THEN 1 ELSE 2 END")
+                ->orderBy('name')
+                ->get(['id', 'uuid', 'name', 'job_function', 'job_title', 'wilayah']);
+
+            if ($techUsers->isEmpty()) {
+                $this->technicianStats = [];
+                $this->technicianLoad = [];
+                return;
+            }
+
+            $userIds = $techUsers->pluck('id')->all();
+            $today = now()->toDateString();
+
+            // Aggregated Maintenance Counts (1 query)
+            $maintAgg = DB::table('support_maintenances')
+                ->whereIn('assigned_to', $userIds)
+                ->selectRaw("
+                    assigned_to,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled,
+                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN scheduled_date < ? AND status IN ('scheduled', 'in_progress') THEN 1 ELSE 0 END) as overdue
+                ", [$today])
+                ->groupBy('assigned_to')
+                ->get()
+                ->keyBy('assigned_to');
+
+            // Aggregated Active Support Tickets (1 query)
+            $ticketAgg = [];
+            if (Schema::hasTable('tickets')) {
+                $ticketAgg = DB::table('tickets')
+                    ->whereIn('assigned_to', $userIds)
+                    ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
+                    ->whereNull('deleted_at')
+                    ->selectRaw('assigned_to, COUNT(*) as active_tickets')
+                    ->groupBy('assigned_to')
+                    ->pluck('active_tickets', 'assigned_to')
+                    ->all();
+            }
+
+            // Today's Attendance Status (1 query)
+            $presentKeys = [];
+            if (Schema::hasTable('attendances')) {
+                $attRows = DB::table('attendances')
+                    ->whereDate('date', $today)
+                    ->whereNotNull('checked_in_at')
+                    ->pluck('technician_id')
+                    ->map(fn ($v) => (string) $v)
+                    ->all();
+                $presentKeys = array_flip($attRows);
+            }
+
             $stats = [];
-            foreach ($techs as $t) {
-                $q = DB::table('support_maintenances')->where('assigned_to', $t->id);
-                $all = (clone $q)->count();
-                $scheduled = (clone $q)->where('status', 'scheduled')->count();
-                $inProgress = (clone $q)->where('status', 'in_progress')->count();
-                $completed = (clone $q)->where('status', 'completed')->count();
-                $overdue = (clone $q)->whereDate('scheduled_date', '<', now()->toDateString())
-                    ->whereIn('status', ['scheduled', 'in_progress'])->count();
+            foreach ($techUsers as $t) {
+                $agg = $maintAgg->get($t->id);
+                $all = (int) ($agg->total ?? 0);
+                $scheduled = (int) ($agg->scheduled ?? 0);
+                $inProgress = (int) ($agg->in_progress ?? 0);
+                $completed = (int) ($agg->completed ?? 0);
+                $overdue = (int) ($agg->overdue ?? 0);
+                $activeTickets = (int) ($ticketAgg[$t->id] ?? 0);
+
+                $jf = strtoupper((string) ($t->job_function ?? ''));
+                $spec = match ($jf) {
+                    'TECHNICIAN' => 'Teknisi Lapangan' . ($t->wilayah ? ' · ' . $t->wilayah : ''),
+                    'NOC' => 'NOC & Infrastruktur' . ($t->wilayah ? ' · ' . $t->wilayah : ''),
+                    default => $t->job_title ?: 'Staf Teknis Jaringan',
+                };
+
+                $isOnDuty = isset($presentKeys[(string) $t->id]) || (!empty($t->uuid) && isset($presentKeys[(string) $t->uuid]));
 
                 $stats[] = [
                     'id' => $t->id,
                     'name' => $t->name,
-                    'specialization' => 'Teknisi Pemeliharaan Jaringan',
+                    'specialization' => $spec,
+                    'on_duty' => $isOnDuty,
                     'total' => $all,
                     'scheduled' => $scheduled,
                     'in_progress' => $inProgress,
                     'completed' => $completed,
                     'overdue' => $overdue,
+                    'active_tickets' => $activeTickets,
                     'rate' => $all > 0 ? round(($completed / $all) * 100, 1) : 0,
                 ];
             }
+
             $this->technicianStats = $stats;
             $this->technicianLoad = $stats;
         } catch (Throwable $e) {
@@ -266,33 +648,137 @@ class Index extends BaseEnterpriseList
         }
     }
 
+    public function filterByTechnician(int $techId): void
+    {
+        $this->filters['technician_id'] = (string) $techId;
+        $this->showFilters = true;
+        $this->activeTab = 'history';
+        $this->resetPage();
+    }
+
+    /**
+     * Material & Stok: 100% terhubung ke database support_maintenance_materials & support_maintenance_usages,
+     * ditambah ringkasan aset gudang (assets & warehouses).
+     */
     protected function loadMaterial(): void
     {
-        $this->materialStock = [
-            ['id' => 1, 'name' => 'Patch Cord SC/UPC 3m', 'sku' => 'PC-SC-3M', 'stock' => 150, 'qty' => 150, 'unit' => 'pcs', 'min_stock' => 20, 'location' => 'Gudang Utama'],
-            ['id' => 2, 'name' => 'ONU GPON 1GE', 'sku' => 'ONU-GPON-1GE', 'stock' => 45, 'qty' => 45, 'unit' => 'pcs', 'min_stock' => 10, 'location' => 'Gudang Utama'],
-            ['id' => 3, 'name' => 'Drop Core 1 Core 50m', 'sku' => 'DC-1C-50M', 'stock' => 28, 'qty' => 28, 'unit' => 'roll', 'min_stock' => 5, 'location' => 'Gudang Lapangan'],
-            ['id' => 4, 'name' => 'Connector SC/UPC', 'sku' => 'CON-SC-UPC', 'stock' => 320, 'qty' => 320, 'unit' => 'pcs', 'min_stock' => 50, 'location' => 'Gudang Utama'],
-            ['id' => 5, 'name' => 'ODP 8 Port', 'sku' => 'ODP-8P', 'stock' => 12, 'qty' => 12, 'unit' => 'pcs', 'min_stock' => 3, 'location' => 'Gudang Jaringan'],
-            ['id' => 6, 'name' => 'Mikrotik Router hAP ac2', 'sku' => 'MK-hAP', 'stock' => 8, 'qty' => 8, 'unit' => 'pcs', 'min_stock' => 2, 'location' => 'Gudang Utama'],
-        ];
+        try {
+            if (Schema::hasTable('warehouses')) {
+                $this->warehouseOptions = DB::table('warehouses')
+                    ->orderBy('name')
+                    ->pluck('name')
+                    ->all();
+            }
+        } catch (Throwable) {
+            $this->warehouseOptions = [];
+        }
 
-        $this->materialUsage = [
-            ['date' => now()->subDays(5)->toDateString(), 'wo_ref' => 'MT-1021', 'material' => 'ONU GPON 1GE', 'qty' => 1, 'unit' => 'pcs', 'technician' => 'Budi Santoso'],
-            ['date' => now()->subDays(5)->toDateString(), 'wo_ref' => 'MT-1021', 'material' => 'Patch Cord SC/UPC 3m', 'qty' => 2, 'unit' => 'pcs', 'technician' => 'Budi Santoso'],
-            ['date' => now()->subDays(4)->toDateString(), 'wo_ref' => 'MT-502', 'material' => 'Connector SC/UPC', 'qty' => 8, 'unit' => 'pcs', 'technician' => 'Ahmad Fauzi'],
-            ['date' => now()->subDays(3)->toDateString(), 'wo_ref' => 'MT-1022', 'material' => 'Drop Core 1 Core 50m', 'qty' => 1, 'unit' => 'roll', 'technician' => 'Dedi Wijaya'],
-            ['date' => now()->subDays(2)->toDateString(), 'wo_ref' => 'MT-503', 'material' => 'ODP 8 Port', 'qty' => 1, 'unit' => 'pcs', 'technician' => 'Budi Santoso'],
-            ['date' => now()->subDay()->toDateString(), 'wo_ref' => 'MT-1025', 'material' => 'Mikrotik Router hAP', 'qty' => 1, 'unit' => 'pcs', 'technician' => 'Ahmad Fauzi'],
-        ];
+        try {
+            if (Schema::hasTable('assets')) {
+                $aq = DB::table('assets');
+                if (Schema::hasColumn('assets', 'deleted_at')) {
+                    $aq->whereNull('deleted_at');
+                }
+                $this->inventoryAssetSummary = [
+                    'total' => (clone $aq)->count(),
+                    'available' => Schema::hasColumn('assets', 'status')
+                        ? (clone $aq)->whereIn('status', ['available', 'in_stock', 'ready'])->count()
+                        : (clone $aq)->count(),
+                ];
+            }
+        } catch (Throwable) {
+            $this->inventoryAssetSummary = ['total' => 0, 'available' => 0];
+        }
 
-        $this->stock = $this->materialStock;
-        $this->usage = $this->materialUsage;
+        $stockRows = [];
+        if (Schema::hasTable('support_maintenance_materials')) {
+            try {
+                $q = DB::table('support_maintenance_materials')->orderBy('name');
+                if ($this->search && $this->activeTab === 'material') {
+                    $s = '%' . $this->search . '%';
+                    $q->where(function ($sub) use ($s) {
+                        $sub->where('name', 'like', $s)
+                            ->orWhere('sku', 'like', $s)
+                            ->orWhere('location', 'like', $s)
+                            ->orWhere('category', 'like', $s);
+                    });
+                }
+                foreach ($q->get() as $m) {
+                    $qty = (int) ($m->stock ?? 0);
+                    $min = (int) ($m->min_stock ?? 0);
+                    $stockRows[] = [
+                        'id' => (int) $m->id,
+                        'name' => $m->name,
+                        'sku' => $m->sku ?: ('MAT-' . str_pad((string) $m->id, 3, '0', STR_PAD_LEFT)),
+                        'category' => $m->category ?: 'Umum',
+                        'stock' => $qty,
+                        'qty' => $qty,
+                        'unit' => $m->unit ?: 'pcs',
+                        'min_stock' => $min,
+                        'is_low' => $qty <= $min,
+                        'location' => $m->location ?: 'Gudang Utama',
+                        'notes' => $m->notes,
+                    ];
+                }
+            } catch (Throwable $e) {
+                Log::error('Maintenance loadMaterial stock failed', ['e' => $e->getMessage()]);
+            }
+        }
+
+        $usageRows = [];
+        if (Schema::hasTable('support_maintenance_usages')) {
+            try {
+                $uq = DB::table('support_maintenance_usages')
+                    ->leftJoin('support_maintenances', 'support_maintenance_usages.maintenance_id', '=', 'support_maintenances.id')
+                    ->select([
+                        'support_maintenance_usages.*',
+                        'support_maintenances.title as maintenance_title',
+                    ])
+                    ->orderByDesc('support_maintenance_usages.used_date')
+                    ->orderByDesc('support_maintenance_usages.id')
+                    ->limit(50);
+
+                if ($this->search && $this->activeTab === 'material') {
+                    $s = '%' . $this->search . '%';
+                    $uq->where(function ($sub) use ($s) {
+                        $sub->where('support_maintenance_usages.material_name', 'like', $s)
+                            ->orWhere('support_maintenance_usages.technician_name', 'like', $s)
+                            ->orWhere('support_maintenances.title', 'like', $s);
+                    });
+                }
+
+                foreach ($uq->get() as $u) {
+                    $usageRows[] = [
+                        'id' => (int) $u->id,
+                        'date' => $u->used_date
+                            ? Carbon::parse($u->used_date)->format('d M Y')
+                            : Carbon::parse($u->created_at)->format('d M Y'),
+                        'wo_ref' => $u->maintenance_id
+                            ? ('#MT-' . $u->maintenance_id . ($u->maintenance_title ? ' (' . Str::limit($u->maintenance_title, 26) . ')' : ''))
+                            : 'Umum / Langsung',
+                        'material' => $u->material_name,
+                        'qty' => (int) $u->quantity,
+                        'unit' => $u->unit ?: 'pcs',
+                        'technician' => $u->technician_name ?: '-',
+                        'notes' => $u->notes,
+                    ];
+                }
+            } catch (Throwable $e) {
+                Log::error('Maintenance loadMaterial usage failed', ['e' => $e->getMessage()]);
+            }
+        }
+
+        $this->materialStock = $stockRows;
+        $this->materialUsage = $usageRows;
+        $this->stock = $stockRows;
+        $this->usage = $usageRows;
     }
 
     public function updatedCalendarMonth(): void
     {
-        if ($this->activeTab === 'calendar') $this->loadCalendar();
+        if ($this->activeTab === 'calendar') {
+            $this->loadCalendar();
+        }
     }
 
     public function getRowsQuery()
@@ -334,13 +820,15 @@ class Index extends BaseEnterpriseList
                     ->orWhere('support_maintenances.device_name', 'like', $s)
                     ->orWhere('support_maintenances.location_name', 'like', $s)
                     ->orWhere('support_maintenances.notes', 'like', $s)
+                    ->orWhere('support_maintenances.resolution_notes', 'like', $s)
                     ->orWhere('users.name', 'like', $s);
             });
         }
 
         $dir = $this->sortDirection === 'asc' ? 'asc' : 'desc';
         $field = in_array($this->sortField, ['id', 'status', 'priority', 'scheduled_date', 'created_at', 'completed_at'], true)
-            ? 'support_maintenances.' . $this->sortField : 'support_maintenances.id';
+            ? 'support_maintenances.' . $this->sortField
+            : 'support_maintenances.id';
         $q->orderBy($field, $dir);
 
         return $q;
@@ -361,6 +849,7 @@ class Index extends BaseEnterpriseList
                     $n = DB::table('support_maintenances')->whereIn('id', $ids)->update([
                         'status' => 'completed',
                         'completed_at' => now(),
+                        'updated_by' => Auth::id(),
                         'updated_at' => now(),
                     ]);
                     $this->loadAll();
@@ -405,12 +894,12 @@ class Index extends BaseEnterpriseList
 
     protected function buildCsv(array $rows, string $filename): StreamedResponse
     {
-        $headers = ['ID', 'Judul Maintenance', 'Jenis', 'Perangkat', 'Lokasi', 'Tgl Jadwal', 'Jam', 'Teknisi', 'Prioritas', 'Status'];
+        $headers = ['ID', 'Judul Maintenance', 'Jenis', 'Perangkat', 'Lokasi', 'Tgl Jadwal', 'Jam', 'Teknisi', 'Prioritas', 'Status', 'Catatan Penyelesaian'];
         return response()->stream(function () use ($rows, $headers) {
             $fh = fopen('php://output', 'wb');
             fputcsv($fh, $headers);
             foreach ($rows as $r) {
-                $data = (array)$r;
+                $data = (array) $r;
                 fputcsv($fh, [
                     $data['id'] ?? '',
                     $data['title'] ?? '',
@@ -422,6 +911,7 @@ class Index extends BaseEnterpriseList
                     $data['technician_name'] ?? '',
                     $data['priority'] ?? '',
                     $data['status'] ?? '',
+                    $data['resolution_notes'] ?? '',
                 ]);
             }
             fclose($fh);
@@ -431,20 +921,36 @@ class Index extends BaseEnterpriseList
         ]);
     }
 
+    protected function notifyAssignedTechnician(?int $techId, int $maintId, string $title, ?string $schedDate, ?string $schedTime): void
+    {
+        if (!$techId || !Schema::hasTable('notifications')) {
+            return;
+        }
+
+        try {
+            Notification::create([
+                'uuid' => (string) Str::uuid(),
+                'recipient_id' => $techId,
+                'title' => 'Penugasan Maintenance #MT-' . $maintId,
+                'message' => "Anda ditugaskan untuk pekerjaan maintenance: {$title} (Jadwal: " . ($schedDate ?: '-') . ' ' . ($schedTime ?: '09:00') . ').',
+                'type' => 'maintenance_assigned',
+                'status' => 'unread',
+                'sent_at' => now(),
+                'data' => [
+                    'maintenance_id' => $maintId,
+                    'url' => route('technician.my-jobs.maintenance'),
+                ],
+                'created_by' => Auth::id(),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Failed sending maintenance notification', ['e' => $e->getMessage()]);
+        }
+    }
+
     public function openCreate(): void
     {
-        $this->newMaint = [
-            'type' => 'preventive',
-            'title' => '',
-            'device_type' => 'router',
-            'device_name' => '',
-            'location_name' => '',
-            'scheduled_date' => now()->addDays(2)->toDateString(),
-            'scheduled_time' => '09:00',
-            'technician_id' => '',
-            'notes' => '',
-            'priority' => 'medium',
-        ];
+        $this->errorMessage = null;
+        $this->resetNewMaintForm();
         $this->showCreateModal = true;
     }
 
@@ -455,31 +961,43 @@ class Index extends BaseEnterpriseList
 
     public function submitCreate(): void
     {
-        if (empty($this->newMaint['title'])) {
+        if (empty(trim((string) ($this->newMaint['title'] ?? '')))) {
             $this->errorMessage = 'Judul pekerjaan maintenance wajib diisi.';
             return;
         }
 
         try {
             $uid = Auth::id() ?? 1;
-            $id = DB::table('support_maintenances')->insertGetId([
-                'title' => $this->newMaint['title'],
+            $assignedTo = !empty($this->newMaint['technician_id']) ? (int) $this->newMaint['technician_id'] : null;
+            $schedDate = $this->newMaint['scheduled_date'] ?: now()->toDateString();
+            $schedTime = $this->newMaint['scheduled_time'] ?: '09:00';
+
+            $insertData = [
+                'title' => trim((string) $this->newMaint['title']),
                 'type' => $this->newMaint['type'] ?? 'preventive',
                 'status' => 'scheduled',
                 'priority' => $this->newMaint['priority'] ?? 'medium',
                 'device_type' => $this->newMaint['device_type'] ?? 'router',
-                'device_name' => $this->newMaint['device_name'] ?? null,
-                'location_name' => $this->newMaint['location_name'] ?? null,
-                'scheduled_date' => $this->newMaint['scheduled_date'] ?? now()->toDateString(),
-                'scheduled_time' => $this->newMaint['scheduled_time'] ?? '09:00',
-                'assigned_to' => $this->newMaint['technician_id'] ?: null,
-                'notes' => $this->newMaint['notes'] ?? '',
+                'device_name' => trim((string) ($this->newMaint['device_name'] ?? '')) ?: null,
+                'location_name' => trim((string) ($this->newMaint['location_name'] ?? '')) ?: null,
+                'scheduled_date' => $schedDate,
+                'scheduled_time' => $schedTime,
+                'assigned_to' => $assignedTo,
+                'notes' => trim((string) ($this->newMaint['notes'] ?? '')),
                 'created_by' => $uid,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
 
-            session()->flash('success', 'Jadwal Pemeliharaan #' . $id . ' berhasil dibuat.');
+            if (Schema::hasColumn('support_maintenances', 'branch_id') && Auth::user()?->branch_id) {
+                $insertData['branch_id'] = Auth::user()->branch_id;
+            }
+
+            $id = DB::table('support_maintenances')->insertGetId($insertData);
+
+            $this->notifyAssignedTechnician($assignedTo, (int) $id, $insertData['title'], $schedDate, $schedTime);
+
+            session()->flash('success', 'Jadwal Pemeliharaan #MT-' . $id . ' berhasil dibuat.');
             $this->showCreateModal = false;
             $this->loadAll();
             $this->resetPage();
@@ -488,16 +1006,204 @@ class Index extends BaseEnterpriseList
         }
     }
 
+    public function openEdit(int $id): void
+    {
+        $row = DB::table('support_maintenances')->where('id', $id)->first();
+        if (!$row) {
+            return;
+        }
+
+        $this->errorMessage = null;
+        $this->editMaintDeviceSelect = '';
+        $this->editMaint = [
+            'id' => (int) $row->id,
+            'title' => (string) ($row->title ?? ''),
+            'type' => (string) ($row->type ?? 'preventive'),
+            'status' => (string) ($row->status ?? 'scheduled'),
+            'priority' => (string) ($row->priority ?? 'medium'),
+            'device_type' => (string) ($row->device_type ?? 'router'),
+            'device_name' => (string) ($row->device_name ?? ''),
+            'location_name' => (string) ($row->location_name ?? ''),
+            'scheduled_date' => (string) ($row->scheduled_date ?? now()->toDateString()),
+            'scheduled_time' => (string) ($row->scheduled_time ?? '09:00'),
+            'technician_id' => $row->assigned_to ? (string) $row->assigned_to : '',
+            'notes' => (string) ($row->notes ?? ''),
+            'resolution_notes' => (string) ($row->resolution_notes ?? ''),
+        ];
+        $this->showEditModal = true;
+    }
+
+    public function closeEdit(): void
+    {
+        $this->showEditModal = false;
+    }
+
+    public function submitEdit(): void
+    {
+        $id = (int) ($this->editMaint['id'] ?? 0);
+        if (!$id) {
+            return;
+        }
+
+        if (empty(trim((string) ($this->editMaint['title'] ?? '')))) {
+            $this->errorMessage = 'Judul pekerjaan maintenance wajib diisi.';
+            return;
+        }
+
+        try {
+            $existing = DB::table('support_maintenances')->where('id', $id)->first();
+            if (!$existing) {
+                return;
+            }
+
+            $newTechId = !empty($this->editMaint['technician_id']) ? (int) $this->editMaint['technician_id'] : null;
+            $newStatus = $this->editMaint['status'] ?? 'scheduled';
+
+            $completedAt = $existing->completed_at;
+            if ($newStatus === 'completed' && empty($completedAt)) {
+                $completedAt = now();
+            } elseif ($newStatus !== 'completed') {
+                $completedAt = null;
+            }
+
+            $updateData = [
+                'title' => trim((string) $this->editMaint['title']),
+                'type' => $this->editMaint['type'] ?? 'preventive',
+                'status' => $newStatus,
+                'priority' => $this->editMaint['priority'] ?? 'medium',
+                'device_type' => $this->editMaint['device_type'] ?? 'router',
+                'device_name' => trim((string) ($this->editMaint['device_name'] ?? '')) ?: null,
+                'location_name' => trim((string) ($this->editMaint['location_name'] ?? '')) ?: null,
+                'scheduled_date' => $this->editMaint['scheduled_date'] ?: now()->toDateString(),
+                'scheduled_time' => $this->editMaint['scheduled_time'] ?: '09:00',
+                'assigned_to' => $newTechId,
+                'notes' => trim((string) ($this->editMaint['notes'] ?? '')),
+                'resolution_notes' => trim((string) ($this->editMaint['resolution_notes'] ?? '')) ?: null,
+                'completed_at' => $completedAt,
+                'updated_by' => Auth::id(),
+                'updated_at' => now(),
+            ];
+
+            DB::table('support_maintenances')->where('id', $id)->update($updateData);
+
+            if ($newTechId && (int) ($existing->assigned_to ?? 0) !== $newTechId) {
+                $this->notifyAssignedTechnician(
+                    $newTechId,
+                    $id,
+                    $updateData['title'],
+                    $updateData['scheduled_date'],
+                    $updateData['scheduled_time']
+                );
+            }
+
+            session()->flash('success', "Jadwal Maintenance #MT-{$id} berhasil diperbarui.");
+            $this->showEditModal = false;
+            $this->loadAll();
+        } catch (Throwable $e) {
+            $this->errorMessage = 'Gagal memperbarui jadwal: ' . $e->getMessage();
+        }
+    }
+
+    // --- Material Stock CRUD ---
+    public function openMaterialModal(): void
+    {
+        $this->errorMessage = null;
+        $this->resetMaterialForm();
+        $this->showMaterialModal = true;
+    }
+
+    public function editMaterial(int $id): void
+    {
+        if (!Schema::hasTable('support_maintenance_materials')) {
+            return;
+        }
+        $row = DB::table('support_maintenance_materials')->where('id', $id)->first();
+        if (!$row) {
+            return;
+        }
+
+        $this->errorMessage = null;
+        $this->editingMaterialId = (int) $row->id;
+        $this->materialForm = [
+            'sku' => (string) ($row->sku ?? ''),
+            'name' => (string) ($row->name ?? ''),
+            'category' => (string) ($row->category ?? 'Fiber Optic'),
+            'stock' => (int) ($row->stock ?? 0),
+            'min_stock' => (int) ($row->min_stock ?? 5),
+            'unit' => (string) ($row->unit ?? 'pcs'),
+            'location' => (string) ($row->location ?? 'Gudang Utama'),
+            'notes' => (string) ($row->notes ?? ''),
+        ];
+        $this->showMaterialModal = true;
+    }
+
+    public function closeMaterialModal(): void
+    {
+        $this->showMaterialModal = false;
+    }
+
+    public function saveMaterial(): void
+    {
+        if (!Schema::hasTable('support_maintenance_materials')) {
+            $this->errorMessage = 'Tabel stok material belum tersedia. Jalankan migrasi terlebih dahulu.';
+            return;
+        }
+
+        $name = trim((string) ($this->materialForm['name'] ?? ''));
+        if ($name === '') {
+            $this->errorMessage = 'Nama material wajib diisi.';
+            return;
+        }
+
+        try {
+            $payload = [
+                'sku' => trim((string) ($this->materialForm['sku'] ?? '')) ?: null,
+                'name' => $name,
+                'category' => trim((string) ($this->materialForm['category'] ?? 'Fiber Optic')) ?: 'Umum',
+                'stock' => max(0, (int) ($this->materialForm['stock'] ?? 0)),
+                'min_stock' => max(0, (int) ($this->materialForm['min_stock'] ?? 0)),
+                'unit' => trim((string) ($this->materialForm['unit'] ?? 'pcs')) ?: 'pcs',
+                'location' => trim((string) ($this->materialForm['location'] ?? 'Gudang Utama')) ?: 'Gudang Utama',
+                'notes' => trim((string) ($this->materialForm['notes'] ?? '')) ?: null,
+                'updated_at' => now(),
+            ];
+
+            if ($this->editingMaterialId) {
+                DB::table('support_maintenance_materials')
+                    ->where('id', $this->editingMaterialId)
+                    ->update($payload);
+                session()->flash('success', "Data stok material \"{$name}\" berhasil diperbarui.");
+            } else {
+                $payload['branch_id'] = Auth::user()?->branch_id;
+                $payload['created_at'] = now();
+                DB::table('support_maintenance_materials')->insert($payload);
+                session()->flash('success', "Material baru \"{$name}\" berhasil ditambahkan ke stok.");
+            }
+
+            $this->showMaterialModal = false;
+            $this->loadMaterial();
+        } catch (Throwable $e) {
+            $this->errorMessage = 'Gagal menyimpan material: ' . $e->getMessage();
+        }
+    }
+
+    public function deleteMaterial(int $id): void
+    {
+        $this->confirmTitle = 'Hapus Item Stok Material';
+        $this->confirmMessage = 'Yakin ingin menghapus item stok material ini dari daftar?';
+        $this->confirmAction = 'delete-material';
+        $this->confirmParams = ['id' => $id];
+        $this->confirmBtnText = 'Hapus';
+        $this->confirmBtnClass = 'bg-rose-600 hover:bg-rose-700 text-white';
+        $this->dispatch('open-modal', name: $this->confirmModal);
+    }
+
+    // --- Material Usage Logging (with Atomic Stock Deduction) ---
     public function openUsageModal(): void
     {
-        $this->usageForm = [
-            'maintenance_id' => '',
-            'material_name' => '',
-            'quantity' => 1,
-            'unit' => 'pcs',
-            'technician_name' => Auth::user()?->name ?? 'Teknisi',
-            'notes' => '',
-        ];
+        $this->errorMessage = null;
+        $this->resetUsageForm();
+        $this->usageForm['technician_name'] = Auth::user()?->name ?? '';
         $this->showUsageModal = true;
     }
 
@@ -508,23 +1214,106 @@ class Index extends BaseEnterpriseList
 
     public function submitUsage(): void
     {
-        if (empty($this->usageForm['material_name']) || (int)($this->usageForm['quantity'] ?? 0) <= 0) {
-            $this->errorMessage = 'Nama material dan jumlah kuantiti wajib diisi.';
+        if (!Schema::hasTable('support_maintenance_usages')) {
+            $this->errorMessage = 'Tabel riwayat pemakaian material belum tersedia. Jalankan migrasi terlebih dahulu.';
             return;
         }
 
-        session()->flash('success', 'Pemakaian material berhasil dicatat.');
-        $this->closeUsageModal();
+        $matId = !empty($this->usageForm['material_id']) ? (int) $this->usageForm['material_id'] : null;
+        $matName = trim((string) ($this->usageForm['material_name'] ?? ''));
+        $qty = (int) ($this->usageForm['quantity'] ?? 0);
+
+        if ($matId && $matName === '' && Schema::hasTable('support_maintenance_materials')) {
+            $m = DB::table('support_maintenance_materials')->where('id', $matId)->first();
+            if ($m) {
+                $matName = (string) $m->name;
+                $this->usageForm['unit'] = $m->unit ?: 'pcs';
+            }
+        }
+
+        if ($matName === '' || $qty <= 0) {
+            $this->errorMessage = 'Pilih atau isi nama material dan jumlah kuantitas minimal 1.';
+            return;
+        }
+
+        $techId = !empty($this->usageForm['technician_id']) ? (int) $this->usageForm['technician_id'] : null;
+        $techName = trim((string) ($this->usageForm['technician_name'] ?? ''));
+        if ($techId && $techName === '') {
+            $techName = User::find($techId)?->name ?? '';
+        }
+        if ($techName === '') {
+            $techName = Auth::user()?->name ?? 'Teknisi';
+        }
+
+        try {
+            DB::transaction(function () use ($matId, $matName, $qty, $techId, $techName) {
+                if ($matId && Schema::hasTable('support_maintenance_materials')) {
+                    $matRow = DB::table('support_maintenance_materials')
+                        ->where('id', $matId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$matRow) {
+                        throw new \RuntimeException('Material stok tidak ditemukan.');
+                    }
+
+                    if ((int) $matRow->stock < $qty) {
+                        throw new \RuntimeException("Stok \"{$matRow->name}\" tidak mencukupi (tersisa {$matRow->stock} {$matRow->unit}).");
+                    }
+
+                    DB::table('support_maintenance_materials')
+                        ->where('id', $matId)
+                        ->update([
+                            'stock' => (int) $matRow->stock - $qty,
+                            'updated_at' => now(),
+                        ]);
+                }
+
+                DB::table('support_maintenance_usages')->insert([
+                    'maintenance_id' => !empty($this->usageForm['maintenance_id']) ? (int) $this->usageForm['maintenance_id'] : null,
+                    'material_id' => $matId,
+                    'material_name' => $matName,
+                    'quantity' => $qty,
+                    'unit' => trim((string) ($this->usageForm['unit'] ?? 'pcs')) ?: 'pcs',
+                    'technician_id' => $techId,
+                    'technician_name' => $techName,
+                    'used_date' => $this->usageForm['used_date'] ?: now()->toDateString(),
+                    'notes' => trim((string) ($this->usageForm['notes'] ?? '')) ?: null,
+                    'created_by' => Auth::id(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            });
+
+            session()->flash('success', "Pemakaian {$qty} {$this->usageForm['unit']} {$matName} berhasil dicatat" . ($matId ? ' & stok otomatis dikurangi.' : '.'));
+            $this->closeUsageModal();
+            $this->loadMaterial();
+        } catch (Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
     }
 
+    public function deleteUsage(int $id): void
+    {
+        $this->confirmTitle = 'Batalkan Catatan Pemakaian';
+        $this->confirmMessage = 'Membatalkan catatan ini akan mengembalikan jumlah stok ke gudang material (jika terhubung ke item stok). Lanjutkan?';
+        $this->confirmAction = 'delete-usage';
+        $this->confirmParams = ['id' => $id];
+        $this->confirmBtnText = 'Batalkan & Kembalikan Stok';
+        $this->confirmBtnClass = 'bg-amber-600 hover:bg-amber-700 text-white';
+        $this->dispatch('open-modal', name: $this->confirmModal);
+    }
+
+    // --- Row Actions ---
     public function rowStart(int $id): void
     {
         try {
             DB::table('support_maintenances')->where('id', $id)->update([
                 'status' => 'in_progress',
+                'updated_by' => Auth::id(),
                 'updated_at' => now(),
             ]);
-            session()->flash('success', 'Maintenance #' . $id . ' sedang dikerjakan.');
+            session()->flash('success', 'Maintenance #MT-' . $id . ' sedang dikerjakan.');
             $this->loadAll();
         } catch (Throwable $e) {
             $this->errorMessage = 'Gagal memulai: ' . $e->getMessage();
@@ -533,18 +1322,49 @@ class Index extends BaseEnterpriseList
 
     public function rowComplete(int $id): void
     {
-        $this->confirmTitle = 'Selesaikan Maintenance #' . $id;
-        $this->confirmMessage = 'Pastikan pekerjaan dan laporan teknisi sudah lengkap. Selesaikan maintenance ini?';
-        $this->confirmAction = 'complete-maint';
-        $this->confirmParams = ['id' => $id];
-        $this->confirmBtnText = 'Selesaikan';
-        $this->confirmBtnClass = 'bg-emerald-600 hover:bg-emerald-700 text-white';
-        $this->dispatch('open-modal', name: $this->confirmModal);
+        $row = DB::table('support_maintenances')->where('id', $id)->first();
+        if (!$row) {
+            return;
+        }
+        $this->completeMaintId = (int) $row->id;
+        $this->completeMaintTitle = (string) ($row->title ?? ('Maintenance #' . $row->id));
+        $this->completeResolutionNotes = (string) ($row->resolution_notes ?? '');
+        $this->showCompleteModal = true;
+    }
+
+    public function submitComplete(): void
+    {
+        if (!$this->completeMaintId) {
+            return;
+        }
+
+        try {
+            $id = $this->completeMaintId;
+            $note = trim($this->completeResolutionNotes) !== ''
+                ? trim($this->completeResolutionNotes)
+                : 'Pekerjaan pemeliharaan selesai diverifikasi.';
+
+            DB::table('support_maintenances')->where('id', $id)->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'resolution_notes' => $note,
+                'updated_by' => Auth::id(),
+                'updated_at' => now(),
+            ]);
+
+            $this->showCompleteModal = false;
+            $this->completeMaintId = null;
+            $this->completeResolutionNotes = '';
+            session()->flash('success', "Maintenance #MT-{$id} telah diselesaikan.");
+            $this->loadAll();
+        } catch (Throwable $e) {
+            $this->errorMessage = 'Gagal menyelesaikan: ' . $e->getMessage();
+        }
     }
 
     public function rowDelete(int $id): void
     {
-        $this->confirmTitle = 'Hapus Jadwal #' . $id;
+        $this->confirmTitle = 'Hapus Jadwal #MT-' . $id;
         $this->confirmMessage = 'Yakin ingin menghapus jadwal pemeliharaan ini? Tindakan ini tidak dapat dibatalkan.';
         $this->confirmAction = 'delete-maint';
         $this->confirmParams = ['id' => $id];
@@ -562,54 +1382,80 @@ class Index extends BaseEnterpriseList
                 ->where('support_maintenances.id', $id)
                 ->first();
 
-            if (!$row) return;
+            if (!$row) {
+                return;
+            }
 
-            $this->confirmTitle = 'Detail Maintenance #' . $id . ' - ' . ($row->title ?? '-');
-            $this->confirmMessage = 'Jenis: ' . strtoupper((string)($row->type ?? '-')) .
-                ' | Status: ' . strtoupper((string)($row->status ?? '')) .
-                ' | Teknisi: ' . ($row->technician_name ?? 'Belum Ditugaskan') .
-                ' | Jadwal: ' . ($row->scheduled_date ?? '-') . ' ' . ($row->scheduled_time ?? '') .
-                ' | Perangkat: ' . ($row->device_name ?: ($row->device_type ?: '-')) .
-                ' | Lokasi: ' . ($row->location_name ?: '-') .
-                ($row->notes ? ' | Catatan: ' . $row->notes : '');
+            $this->detailRow = (array) $row;
+            $this->detailUsages = [];
 
-            $this->confirmAction = '';
-            $this->confirmBtnText = 'Tutup';
-            $this->confirmBtnClass = 'bg-slate-600 hover:bg-slate-700 text-white';
-            $this->dispatch('open-modal', name: $this->confirmModal);
+            if (Schema::hasTable('support_maintenance_usages')) {
+                $this->detailUsages = DB::table('support_maintenance_usages')
+                    ->where('maintenance_id', $id)
+                    ->orderByDesc('id')
+                    ->get()
+                    ->map(fn ($u) => (array) $u)
+                    ->all();
+            }
+
+            $this->showDetailModal = true;
         } catch (Throwable) {
-            // Silently handle
+            // Silently ignore
         }
     }
 
     public function handleConfirm(): void
     {
-        if ($this->confirmAction === 'complete-maint') {
+        if ($this->confirmAction === 'delete-maint') {
             try {
-                $id = (int)($this->confirmParams['id'] ?? 0);
-                DB::table('support_maintenances')->where('id', $id)->update([
-                    'status' => 'completed',
-                    'completed_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                session()->flash('success', 'Maintenance #' . $id . ' telah diselesaikan.');
+                $id = (int) ($this->confirmParams['id'] ?? 0);
+                DB::table('support_maintenances')->where('id', $id)->delete();
+                session()->flash('success', 'Jadwal Maintenance #MT-' . $id . ' telah dihapus.');
                 $this->loadAll();
             } catch (Throwable $e) {
-                $this->errorMessage = 'Gagal menyelesaikan: ' . $e->getMessage();
+                $this->errorMessage = 'Gagal menghapus: ' . $e->getMessage();
             }
             $this->dispatch('close-modal', name: $this->confirmModal);
             $this->confirmAction = '';
             return;
         }
 
-        if ($this->confirmAction === 'delete-maint') {
+        if ($this->confirmAction === 'delete-material') {
             try {
-                $id = (int)($this->confirmParams['id'] ?? 0);
-                DB::table('support_maintenances')->where('id', $id)->delete();
-                session()->flash('success', 'Jadwal Maintenance #' . $id . ' telah dihapus.');
-                $this->loadAll();
+                $id = (int) ($this->confirmParams['id'] ?? 0);
+                if (Schema::hasTable('support_maintenance_materials')) {
+                    DB::table('support_maintenance_materials')->where('id', $id)->delete();
+                    session()->flash('success', 'Item stok material berhasil dihapus.');
+                    $this->loadMaterial();
+                }
             } catch (Throwable $e) {
-                $this->errorMessage = 'Gagal menghapus: ' . $e->getMessage();
+                $this->errorMessage = 'Gagal menghapus material: ' . $e->getMessage();
+            }
+            $this->dispatch('close-modal', name: $this->confirmModal);
+            $this->confirmAction = '';
+            return;
+        }
+
+        if ($this->confirmAction === 'delete-usage') {
+            try {
+                $id = (int) ($this->confirmParams['id'] ?? 0);
+                if (Schema::hasTable('support_maintenance_usages')) {
+                    DB::transaction(function () use ($id) {
+                        $u = DB::table('support_maintenance_usages')->where('id', $id)->lockForUpdate()->first();
+                        if ($u) {
+                            if ($u->material_id && Schema::hasTable('support_maintenance_materials')) {
+                                DB::table('support_maintenance_materials')
+                                    ->where('id', $u->material_id)
+                                    ->increment('stock', (int) $u->quantity, ['updated_at' => now()]);
+                            }
+                            DB::table('support_maintenance_usages')->where('id', $id)->delete();
+                        }
+                    });
+                    session()->flash('success', 'Catatan pemakaian dibatalkan & stok telah dikembalikan.');
+                    $this->loadMaterial();
+                }
+            } catch (Throwable $e) {
+                $this->errorMessage = 'Gagal membatalkan pemakaian: ' . $e->getMessage();
             }
             $this->dispatch('close-modal', name: $this->confirmModal);
             $this->confirmAction = '';
@@ -623,9 +1469,23 @@ class Index extends BaseEnterpriseList
     {
         if (isset($this->tabs[$tab])) {
             $this->activeTab = $tab;
-            if ($tab === 'calendar') $this->loadCalendar();
-            if ($tab === 'technician') $this->loadTechnicianStats();
-            if ($tab === 'material') $this->loadMaterial();
+            if ($tab === 'calendar') {
+                $this->loadCalendar();
+            }
+            if ($tab === 'technician') {
+                $this->loadTechnicianStats();
+            }
+            if ($tab === 'material') {
+                $this->loadMaterial();
+            }
+        }
+    }
+
+    public function updatedSearch(string $value = ''): void
+    {
+        parent::updatedSearch($value);
+        if ($this->activeTab === 'material') {
+            $this->loadMaterial();
         }
     }
 
@@ -681,6 +1541,7 @@ class Index extends BaseEnterpriseList
             'technicianLoad' => $this->technicianLoad,
             'stock' => $this->stock,
             'usage' => $this->usage,
+            'deviceOptions' => $this->deviceOptions,
         ]);
     }
 }

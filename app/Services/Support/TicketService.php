@@ -206,14 +206,18 @@ class TicketService
     {
         return DB::transaction(function () use ($ticketId, $note, $userId) {
             $ticket = Ticket::findOrFail($ticketId);
-            $ticket->update([
+            $payload = [
                 'status' => 'resolved',
                 'resolved_at' => now(),
-            ]);
+            ];
+            if ($note !== null && trim($note) !== '' && \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'resolution_notes')) {
+                $payload['resolution_notes'] = trim($note);
+            }
+            $ticket->update($payload);
             Event::dispatch(TicketResolvedEvent::create(
                 (string) $ticketId,
                 (string) $userId,
-                $note,
+                $note ?: $ticket->resolution_notes,
             ));
             return $ticket;
         });
@@ -324,7 +328,7 @@ class TicketService
             $events[] = ['time' => $ticket->created_at->addMinutes(30), 'type' => 'assign', 'title' => 'Ditetapkan petugas', 'by' => 'Admin', 'detail' => 'Petugas: ' . $ticket->assignedTo->name];
         }
         if ($ticket->resolved_at) {
-            $events[] = ['time' => $ticket->resolved_at, 'type' => 'resolve', 'title' => 'Tiket diselesaikan', 'by' => $ticket->assignedTo?->name ?? 'Petugas', 'detail' => 'Masalah telah diperbaiki'];
+            $events[] = ['time' => $ticket->resolved_at, 'type' => 'resolve', 'title' => 'Tiket diselesaikan', 'by' => $ticket->assignedTo?->name ?? 'Petugas', 'detail' => $ticket->resolution_notes ?: 'Masalah telah diperbaiki'];
         }
         if ($ticket->status === 'closed') {
             $events[] = ['time' => $ticket->updated_at, 'type' => 'close', 'title' => 'Tiket ditutup', 'by' => 'Admin', 'detail' => 'Tiket selesai dan ditutup'];

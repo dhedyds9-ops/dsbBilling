@@ -88,7 +88,7 @@ class TicketResolvedListener
                         'customer_name'    => $customer?->name ?? 'Pelanggan',
                         'customer_address' => $customer?->address ?? '-',
                         'technician_name'  => $technician?->name ?? 'Tim Teknis',
-                        'note'             => $event->note ?? ($ticket->resolution_note ?? ''),
+                        'note'             => $event->note ?? ($ticket->resolution_notes ?? ''),
                     ]);
 
                     \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
@@ -109,7 +109,7 @@ class TicketResolvedListener
                         'customer_name'    => $customer?->name ?? 'Pelanggan',
                         'customer_address' => $customer?->address ?? '-',
                         'technician_name'  => $technician?->name ?? 'Tim Teknis',
-                        'note'             => $event->note ?? ($ticket->resolution_note ?? ''),
+                        'note'             => $event->note ?? ($ticket->resolution_notes ?? ''),
                     ], 'resolved');
                 }
             } catch (\Throwable $tge) {
