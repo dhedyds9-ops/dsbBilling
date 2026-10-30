@@ -15,6 +15,17 @@ class Odp extends Model
 
     protected static function booted()
     {
+        static::saving(function ($model) {
+            if (empty($model->branch_id)) {
+                if (!empty($model->odc_id)) {
+                    $model->branch_id = Odc::withoutGlobalScopes()->where('id', $model->odc_id)->value('branch_id');
+                }
+                if (empty($model->branch_id) && !empty($model->olt_id)) {
+                    $model->branch_id = Olt::withoutGlobalScopes()->where('id', $model->olt_id)->value('branch_id');
+                }
+            }
+        });
+
         static::saved(function () {
             GisMap::flushCache();
         });
@@ -77,33 +88,46 @@ class Odp extends Model
     {
         $user = $user ?? auth()->user();
         if ($user && $user->hasRole('reseller')) {
-            $resellerId = $user->getEffectiveResellerId();
-            $wilayah = trim((string)($user->wilayah ?? ''));
-            $branchId = $user->branch_id;
+            $ctx = \App\Services\Auth\ResellerScopeHelper::resolveContext($user);
+            $resellerId = $ctx['reseller_id'];
+            $branchId = $ctx['branch_id'];
 
-            return $query->where(function ($q) use ($user, $resellerId, $wilayah, $branchId) {
-                // 1. ODP yang melayani pelanggan / ONU milik reseller ini
-                $q->whereHas('onus', function ($onuQ) use ($user) {
-                    $onuQ->forReseller($user);
-                });
+            return $query->where(function ($q) use ($ctx, $resellerId, $branchId) {
+                // 1. ODP berdasarkan Cabang Kantor (branch_id) & kata kunci wilayah
+                \App\Services\Auth\ResellerScopeHelper::applyOdpTerritory($q, $ctx, 'odps');
 
                 // 2. ODP yang dibuat oleh reseller ini
-                $q->orWhere('created_by', $resellerId);
-
-                // 3. ODP berdasarkan kecocokan wilayah / kecamatan / desa / alamat reseller
-                if (!empty($wilayah)) {
-                    $q->orWhere(function ($wq) use ($wilayah) {
-                        $wq->where('district', 'like', '%' . $wilayah . '%')
-                           ->orWhere('village', 'like', '%' . $wilayah . '%')
-                           ->orWhere('regency', 'like', '%' . $wilayah . '%')
-                           ->orWhere('address', 'like', '%' . $wilayah . '%')
-                           ->orWhere('name', 'like', '%' . $wilayah . '%');
-                    });
+                if ($resellerId) {
+                    $q->orWhere('odps.created_by', $resellerId);
                 }
 
-                // 4. Jika ada branch_id dan belum ada filter wilayah khusus
-                if (!empty($branchId) && empty($wilayah)) {
-                    $q->orWhere('branch_id', $branchId);
+                // 3. ODP di bawah ODC / OLT wilayah reseller (selama tidak dikunci ke cabang lain)
+                $q->orWhere(function ($inherit) use ($ctx, $branchId) {
+                    if ($branchId) {
+                        $inherit->where(function ($b) use ($branchId) {
+                            $b->whereNull('odps.branch_id')->orWhere('odps.branch_id', $branchId);
+                        });
+                    }
+                    $inherit->where(function ($parentQ) use ($ctx) {
+                        $parentQ->whereHas('odc', function ($odcQ) use ($ctx) {
+                            $odcQ->where(function ($cSub) use ($ctx) {
+                                \App\Services\Auth\ResellerScopeHelper::applyOdcTerritory($cSub, $ctx, 'odcs');
+                            });
+                        })->orWhereHas('olt', function ($oltQ) use ($ctx) {
+                            $oltQ->where(function ($lSub) use ($ctx) {
+                                \App\Services\Auth\ResellerScopeHelper::applyOltTerritory($lSub, $ctx, 'olts');
+                            });
+                        });
+                    });
+                });
+
+                // 4. ODP yang melayani pelanggan / ONU milik reseller ini
+                if ($resellerId) {
+                    $q->orWhereHas('onus', function ($onuQ) use ($resellerId) {
+                        $onuQ->withoutGlobalScopes()->where(function ($uSub) use ($resellerId) {
+                            \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($uSub, $resellerId, 'onus');
+                        });
+                    });
                 }
             });
         }

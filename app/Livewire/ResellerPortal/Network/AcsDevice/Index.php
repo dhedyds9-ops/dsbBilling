@@ -4,7 +4,8 @@ namespace App\Livewire\ResellerPortal\Network\AcsDevice;
 
 use App\Livewire\AdminComponent;
 use App\Models\ACS\ACSDevice;
-use App\Services\GenieAcsService;
+use App\Services\Adapters\Monitoring\GenieACSDriver;
+use App\Services\Auth\ResellerScopeHelper;
 use Livewire\WithPagination;
 
 class Index extends AdminComponent
@@ -42,13 +43,24 @@ class Index extends AdminComponent
 
     public function rebootDevice($deviceId)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasPermission('onu.reboot') && !$user->hasPermission('olt.view') && !$user->hasPermission('onu.view')) {
+            session()->flash('error', 'Anda tidak memiliki izin untuk melakukan reboot perangkat.');
+            return;
+        }
+
         $device = ACSDevice::forReseller()->findOrFail($deviceId);
 
         try {
-            $genie = app(GenieAcsService::class);
-            $genie->rebootDevice($device->serial_number);
-            session()->flash('success', "Perintah Reboot untuk modem {$device->serial_number} berhasil dikirim via TR-069!");
-        } catch (\Exception $e) {
+            $genie = app(GenieACSDriver::class);
+            $targetId = $device->uuid ?: $device->serial_number;
+            $ok = $genie->rebootDevice((string) $targetId);
+            if ($ok) {
+                session()->flash('success', "Perintah Reboot untuk modem {$device->serial_number} berhasil dikirim via TR-069!");
+            } else {
+                session()->flash('error', "GenieACS menolak atau menunda perintah reboot untuk modem {$device->serial_number}.");
+            }
+        } catch (\Throwable $e) {
             session()->flash('error', "Gagal mengirim perintah reboot: " . $e->getMessage());
         }
     }
@@ -56,7 +68,7 @@ class Index extends AdminComponent
     public function render()
     {
         $query = ACSDevice::forReseller()
-            ->with(['onu', 'customerService.customer'])
+            ->with(['onu', 'olt', 'odp', 'customerService.customer'])
             ->when($this->search, function ($q) {
                 $q->where(function ($sub) {
                     $sub->where('serial_number', 'like', '%' . $this->search . '%')
@@ -65,7 +77,7 @@ class Index extends AdminComponent
                         ->orWhere('model', 'like', '%' . $this->search . '%')
                         ->orWhere('manufacturer', 'like', '%' . $this->search . '%')
                         ->orWhereHas('customerService.customer', function ($c) {
-                            $c->withoutGlobalScopes()->where(function($sq) {
+                            $c->withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])->where(function($sq) {
                                 $sq->where('name', 'like', '%' . $this->search . '%')
                                    ->orWhere('code', 'like', '%' . $this->search . '%');
                             });
@@ -80,6 +92,7 @@ class Index extends AdminComponent
 
         return view('livewire.reseller-portal.network.acs-device.index', [
             'devices' => $devices,
+            'territory' => ResellerScopeHelper::describeTerritory(),
         ]);
     }
 }

@@ -50,8 +50,18 @@ class Olt extends Model
             }
         });
 
-        static::saved(function () {
+        static::saved(function ($model) {
             GisMap::flushCache();
+            if ($model->wasChanged('branch_id') && !empty($model->branch_id)) {
+                Onu::withoutGlobalScopes()
+                    ->where('olt_id', $model->id)
+                    ->whereNull('branch_id')
+                    ->update(['branch_id' => $model->branch_id]);
+                Odc::withoutGlobalScopes()
+                    ->where('olt_id', $model->id)
+                    ->whereNull('branch_id')
+                    ->update(['branch_id' => $model->branch_id]);
+            }
         });
 
         static::deleted(function () {
@@ -130,37 +140,48 @@ class Olt extends Model
     {
         $user = $user ?? auth()->user();
         if ($user && $user->hasRole('reseller')) {
-            $resellerId = $user->getEffectiveResellerId();
-            $wilayah = trim((string)($user->wilayah ?? ''));
-            $branchId = $user->branch_id;
+            $ctx = \App\Services\Auth\ResellerScopeHelper::resolveContext($user);
+            $resellerId = $ctx['reseller_id'];
+            $branchId = $ctx['branch_id'];
 
-            return $query->where(function ($q) use ($user, $resellerId, $wilayah, $branchId) {
-                // 1. OLT yang mensuplai ONU atau pelanggan milik reseller ini
-                $q->whereHas('onus', function ($onuQ) use ($user) {
-                    $onuQ->forReseller($user);
-                });
+            return $query->where(function ($q) use ($ctx, $resellerId, $branchId) {
+                // 1. OLT berdasarkan Cabang Kantor (branch_id) & kata kunci wilayah (selalu aktif berdampingan)
+                \App\Services\Auth\ResellerScopeHelper::applyOltTerritory($q, $ctx, 'olts');
 
-                // 2. OLT yang mensuplai ODC milik wilayah / pelanggan reseller ini
-                $q->orWhereHas('odcs', function ($odcQ) use ($user) {
-                    $odcQ->forReseller($user);
-                });
+                // 2. OLT yang dibuat langsung oleh reseller
+                if ($resellerId) {
+                    $q->orWhere('olts.created_by', $resellerId);
+                }
 
-                // 3. OLT yang dibuat oleh reseller ini
-                $q->orWhere('created_by', $resellerId);
-
-                // 4. OLT berdasarkan kecocokan wilayah / alamat reseller
-                if (!empty($wilayah)) {
-                    $q->orWhere(function ($wq) use ($wilayah) {
-                        $wq->where('address', 'like', '%' . $wilayah . '%')
-                           ->orWhere('name', 'like', '%' . $wilayah . '%')
-                           ->orWhere('description', 'like', '%' . $wilayah . '%');
+                // 3. OLT yang membawahi ODC atau ODP di wilayah reseller
+                $q->orWhereHas('odcs', function ($odcQ) use ($ctx, $resellerId) {
+                    $odcQ->where(function ($sub) use ($ctx, $resellerId) {
+                        \App\Services\Auth\ResellerScopeHelper::applyOdcTerritory($sub, $ctx, 'odcs');
+                        if ($resellerId) {
+                            $sub->orWhere('odcs.created_by', $resellerId);
+                        }
+                        $sub->orWhereHas('odps', function ($odpQ) use ($ctx, $resellerId) {
+                            $odpQ->where(function ($oSub) use ($ctx, $resellerId) {
+                                \App\Services\Auth\ResellerScopeHelper::applyOdpTerritory($oSub, $ctx, 'odps');
+                                if ($resellerId) {
+                                    $oSub->orWhere('odps.created_by', $resellerId);
+                                }
+                            });
+                        });
                     });
-                }
+                });
 
-                // 5. Jika ada branch_id dan belum ada filter wilayah khusus
-                if (!empty($branchId) && empty($wilayah)) {
-                    $q->orWhere('branch_id', $branchId);
-                }
+                // 4. OLT yang mensuplai ONU milik pelanggan reseller atau cabang reseller
+                $q->orWhereHas('onus', function ($onuQ) use ($resellerId, $branchId) {
+                    $onuQ->withoutGlobalScopes()->where(function ($sub) use ($resellerId, $branchId) {
+                        if ($resellerId) {
+                            \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($sub, $resellerId, 'onus');
+                        }
+                        if ($branchId) {
+                            $sub->orWhere('onus.branch_id', $branchId);
+                        }
+                    });
+                });
             });
         }
         return $query;

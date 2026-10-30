@@ -216,6 +216,60 @@ class User extends Authenticatable
     }
 
     /**
+     * Resolve effective branch_id (inherits from parent reseller if sub-staff has none).
+     */
+    public function getEffectiveBranchId(): ?int
+    {
+        if (!empty($this->branch_id)) {
+            return (int) $this->branch_id;
+        }
+        if (!empty($this->reseller_id) && $this->parentReseller && !empty($this->parentReseller->branch_id)) {
+            return (int) $this->parentReseller->branch_id;
+        }
+        return null;
+    }
+
+    /**
+     * Resolve effective wilayah text (inherits from parent reseller if sub-staff has none).
+     */
+    public function getEffectiveWilayah(): string
+    {
+        $raw = $this->wilayah;
+        if ((empty($raw) || trim((string) $raw) === '') && !empty($this->reseller_id) && $this->parentReseller) {
+            $raw = $this->parentReseller->wilayah;
+        }
+        return trim((string) ($raw ?? ''));
+    }
+
+    /**
+     * Extract normalized territory keywords from wilayah string (supports comma/slash/semicolon lists).
+     *
+     * @return array<int, string>
+     */
+    public function getEffectiveTerritoryKeywords(): array
+    {
+        $wilayah = $this->getEffectiveWilayah();
+        if ($wilayah === '') {
+            return [];
+        }
+
+        $keywords = [$wilayah];
+        $parts = preg_split('/[,;\/|]+/', $wilayah) ?: [];
+        foreach ($parts as $part) {
+            $cleaned = trim((string) preg_replace('/^(kec\.?|kecamatan|kel\.?|kelurahan|desa|ds\.?|kab\.?|kabupaten|kota|wilayah|area|cabang)\s+/i', '', trim($part)));
+            if (mb_strlen($cleaned) >= 2) {
+                $keywords[] = $cleaned;
+            }
+            $rawPart = trim($part);
+            if (mb_strlen($rawPart) >= 2) {
+                $keywords[] = $rawPart;
+            }
+        }
+
+        return array_values(array_unique($keywords));
+    }
+
+    /**
      * Divisi bisnis yang diasosiasikan dengan posisi/job_title pengguna.
      */
     public function getDivisionAttribute(): string

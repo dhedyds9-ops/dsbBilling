@@ -63,12 +63,20 @@ class Show extends AdminComponent
     public function render()
     {
         $onus = Onu::forReseller()
+            ->with(['odp', 'customerService.customer'])
             ->where('olt_id', $this->olt->id)
-            ->where(function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('mac_address', 'like', '%' . $this->search . '%')
-                  ->orWhere('pon_port', 'like', '%' . $this->search . '%');
+            ->when(trim((string) $this->search) !== '', function ($q) {
+                $like = '%' . trim($this->search) . '%';
+                $q->where(function ($sub) use ($like) {
+                    $sub->where('name', 'like', $like)
+                        ->orWhere('serial_number', 'like', $like)
+                        ->orWhere('mac_address', 'like', $like)
+                        ->orWhere('code', 'like', $like)
+                        ->orWhere('pon_port', 'like', $like);
+                });
             })
+            ->orderBy('pon_port')
+            ->orderBy('onu_id_on_olt')
             ->paginate(15);
 
         return view('livewire.reseller-portal.network.olt.show', [

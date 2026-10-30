@@ -79,26 +79,66 @@ class ACSDevice extends Model
     {
         $user = $user ?? auth()->user();
         if ($user && $user->hasRole('reseller')) {
-            $resellerId = $user->getEffectiveResellerId();
-            return $query->where(function($q) use ($user, $resellerId) {
-                // 1. Sesuai customer service milik pelanggan reseller ini
-                $q->whereHas('customerService', function($csQ) use ($resellerId) {
-                    $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
-                        $sub->where('created_by', $resellerId)
-                            ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
+            $ctx = \App\Services\Auth\ResellerScopeHelper::resolveContext($user);
+            $resellerId = $ctx['reseller_id'];
+
+            return $query->where(function ($q) use ($user, $ctx, $resellerId) {
+                // 1. Kepemilikan langsung via CustomerService, ONU pelanggan, atau created_by
+                if ($resellerId) {
+                    $q->orWhere('acs_devices.created_by', $resellerId)
+                      ->orWhereHas('customerService', function ($csQ) use ($resellerId) {
+                          $csQ->withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])
+                              ->where(function ($sub) use ($resellerId) {
+                                  $sub->where('customer_services.reseller_id', $resellerId)
+                                      ->orWhere('customer_services.created_by', $resellerId)
+                                      ->orWhereHas('customer', function ($cq) use ($resellerId) {
+                                          $cq->withoutGlobalScopes(['reseller_isolation', 'branch_isolation'])
+                                             ->where(function ($cSub) use ($resellerId) {
+                                                 $cSub->where('customers.reseller_id', $resellerId)
+                                                      ->orWhere('customers.created_by', $resellerId);
+                                             });
+                                      });
+                              });
+                      })
+                      ->orWhereHas('onu', function ($onuQ) use ($resellerId) {
+                          $onuQ->withoutGlobalScopes(['branch_isolation'])
+                               ->where(function ($uSub) use ($resellerId) {
+                                   \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($uSub, $resellerId, 'onus');
+                               });
+                      });
+                }
+
+                // 2. Relasi ke ONU / Serial Number / OLT / ODP di wilayah reseller
+                //    (mengecualikan device yang sudah terikat ke pelanggan reseller lain)
+                $q->orWhere(function ($terrQ) use ($user, $ctx, $resellerId) {
+                    if ($resellerId) {
+                        \App\Services\Auth\ResellerScopeHelper::excludeOtherResellersCustomers($terrQ, $resellerId);
+                    }
+
+                    $terrQ->where(function ($linkQ) use ($user, $ctx) {
+                        $linkQ->whereHas('onu', function ($onuQ) use ($user) {
+                            $onuQ->forReseller($user);
+                        })->orWhereIn(
+                            'acs_devices.serial_number',
+                            Onu::forReseller($user)
+                                ->whereNotNull('onus.serial_number')
+                                ->where('onus.serial_number', '!=', '')
+                                ->select('onus.serial_number')
+                        );
+
+                        if (\App\Services\Auth\ResellerScopeHelper::hasTerritory($ctx)) {
+                            $linkQ->orWhereHas('olt', function ($oltQ) use ($ctx) {
+                                $oltQ->where(function ($oSub) use ($ctx) {
+                                    \App\Services\Auth\ResellerScopeHelper::applyOltTerritory($oSub, $ctx, 'olts');
+                                });
+                            })->orWhereHas('odp', function ($odpQ) use ($ctx) {
+                                $odpQ->where(function ($pSub) use ($ctx) {
+                                    \App\Services\Auth\ResellerScopeHelper::applyOdpTerritory($pSub, $ctx, 'odps');
+                                });
+                            });
+                        }
                     });
                 });
-
-                // 2. Sesuai ONU yang berelasi dengan customer reseller
-                $q->orWhereHas('onu.customerService', function($onuCsQ) use ($resellerId) {
-                    $onuCsQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
-                        $sub->where('created_by', $resellerId)
-                            ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
-                    });
-                });
-
-                // 3. Sesuai device yang didaftarkan langsung oleh reseller ini
-                $q->orWhere('created_by', $resellerId);
             });
         }
         return $query;

@@ -347,6 +347,8 @@ class MenuRegistry
                             ['label' => 'Data OLT', 'route' => 'reseller-portal.network.olts.index', 'active' => 'reseller-portal.network.olts.*', 'permission' => 'olt.view'],
                             ['label' => 'Data ODC', 'route' => 'reseller-portal.network.odcs.index', 'active' => 'reseller-portal.network.odcs.*', 'permission' => 'odc.view'],
                             ['label' => 'Data ODP', 'route' => 'reseller-portal.network.odps.index', 'active' => 'reseller-portal.network.odps.*', 'permission' => 'odp.view'],
+                            ['label' => 'Data ONU', 'route' => 'reseller-portal.network.onus.index', 'active' => 'reseller-portal.network.onus.*', 'permission' => ['onu.view', 'olt.view']],
+                            ['label' => 'Devices GenieACS', 'route' => 'reseller-portal.network.acs-devices.index', 'active' => 'reseller-portal.network.acs-devices.*', 'permission' => ['onu.view', 'olt.view']],
                         ]
                     ],
                     [
@@ -441,7 +443,15 @@ class MenuRegistry
                             $perm = $item['permission'] ?? null;
                             // Jika menu memiliki kebutuhan permission dan user bukan Administrator
                             if ($perm && $user && !$isAdmin) {
-                                if (!$user->hasPermission($perm)) {
+                                $perms = is_array($perm) ? $perm : [$perm];
+                                $allowed = false;
+                                foreach ($perms as $p) {
+                                    if (is_string($p) && $user->hasPermission($p)) {
+                                        $allowed = true;
+                                        break;
+                                    }
+                                }
+                                if (!$allowed) {
                                     continue; // Sembunyikan menu karena izin tidak ada / tidak dicentang
                                 }
                             }

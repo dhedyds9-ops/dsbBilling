@@ -201,9 +201,9 @@ class Index extends BaseACSComponent
                         $acsDeviceParams['customer_service_id'] = $customerService->id;
                         
                         // Cari Onu
-                        $onu = \App\Models\ISP\Onu::where('serial_number', $serialNumber)->first();
+                        $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
                         if ($onu) {
-                            $acsDeviceParams['onu_id'] = $onu->id;
+                            $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
                             
                             // Bind Onu ke CustomerService jika berbeda (Modem Baru)
                             if ($customerService->onu_id !== $onu->id) {
@@ -219,9 +219,9 @@ class Index extends BaseACSComponent
 
                 // Fallback Binding jika pppoeUsername tidak terbaca TR-069
                 if (empty($acsDeviceParams['customer_service_id'])) {
-                    $onu = \App\Models\ISP\Onu::where('serial_number', $serialNumber)->first();
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
                     if ($onu) {
-                        $acsDeviceParams['onu_id'] = $onu->id;
+                        $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
                         $cs = \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->first();
                         if ($cs) {
                             $acsDeviceParams['customer_service_id'] = $cs->id;

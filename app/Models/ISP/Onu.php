@@ -54,6 +54,14 @@ class Onu extends Model
     protected static function booted()
     {
         static::saving(function ($model) {
+            if (empty($model->branch_id)) {
+                if (!empty($model->olt_id)) {
+                    $model->branch_id = Olt::withoutGlobalScopes()->where('id', $model->olt_id)->value('branch_id');
+                }
+                if (empty($model->branch_id) && !empty($model->odp_id)) {
+                    $model->branch_id = Odp::withoutGlobalScopes()->where('id', $model->odp_id)->value('branch_id');
+                }
+            }
             if (empty($model->code)) {
                 $prefix = 'ONU-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $model->serial_number ?? Str::random(6)), -6));
                 $base = $prefix;
@@ -135,18 +143,54 @@ class Onu extends Model
     {
         $user = $user ?? auth()->user();
         if ($user && $user->hasRole('reseller')) {
-            $resellerId = $user->getEffectiveResellerId();
-            return $query->where(function($q) use ($user, $resellerId) {
-                // 1. Sesuai customer service milik pelanggan reseller ini
-                $q->whereHas('customerService', function($csQ) use ($resellerId) {
-                    $csQ->withoutGlobalScopes()->where(function($sub) use ($resellerId) {
-                        $sub->where('created_by', $resellerId)
-                            ->orWhereHas('customer', fn($cQ) => $cQ->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId));
-                    });
-                });
+            $ctx = \App\Services\Auth\ResellerScopeHelper::resolveContext($user);
+            $resellerId = $ctx['reseller_id'];
+            $branchId = $ctx['branch_id'];
 
-                // 2. ONU yang didaftarkan langsung oleh reseller ini
-                $q->orWhere('created_by', $resellerId);
+            return $query->where(function ($q) use ($ctx, $resellerId, $branchId) {
+                // 1. Kepemilikan langsung (ONU pelanggan reseller ini / didaftarkan oleh reseller ini)
+                if ($resellerId) {
+                    \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $resellerId, 'onus');
+                }
+
+                // 2. ONU di wilayah Cabang / OLT / ODP reseller (kecuali yang sudah terikat ke pelanggan reseller lain)
+                if (\App\Services\Auth\ResellerScopeHelper::hasTerritory($ctx)) {
+                    $q->orWhere(function ($terrQ) use ($ctx, $resellerId, $branchId) {
+                        if ($resellerId) {
+                            \App\Services\Auth\ResellerScopeHelper::excludeOtherResellersCustomers($terrQ, $resellerId);
+                        }
+
+                        $terrQ->where(function ($matchQ) use ($ctx, $branchId) {
+                            if ($branchId) {
+                                $matchQ->orWhere('onus.branch_id', $branchId);
+                            }
+
+                            $matchQ->orWhere(function ($parentQ) use ($ctx, $branchId) {
+                                if ($branchId) {
+                                    $parentQ->where(function ($b) use ($branchId) {
+                                        $b->whereNull('onus.branch_id')->orWhere('onus.branch_id', $branchId);
+                                    });
+                                }
+
+                                $parentQ->where(function ($relQ) use ($ctx) {
+                                    $relQ->whereHas('olt', function ($oltQ) use ($ctx) {
+                                        $oltQ->where(function ($oSub) use ($ctx) {
+                                            \App\Services\Auth\ResellerScopeHelper::applyOltTerritory($oSub, $ctx, 'olts');
+                                        });
+                                    })->orWhereHas('odp', function ($odpQ) use ($ctx) {
+                                        $odpQ->where(function ($pSub) use ($ctx) {
+                                            \App\Services\Auth\ResellerScopeHelper::applyOdpTerritory($pSub, $ctx, 'odps');
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                }
+
+                if (!$resellerId && !\App\Services\Auth\ResellerScopeHelper::hasTerritory($ctx)) {
+                    $q->whereRaw('1 = 0');
+                }
             });
         }
         return $query;

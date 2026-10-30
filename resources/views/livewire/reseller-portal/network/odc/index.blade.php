@@ -6,21 +6,29 @@
 <div class="space-y-5 pb-10">
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div class="p-3 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-100 dark:border-slate-700/50">
-            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-base sm:text-lg flex items-center gap-2">
-                Daftar ODC di Wilayah Anda
-            </h2>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <h2 class="font-bold text-slate-800 dark:text-slate-100 text-base sm:text-lg flex items-center gap-2">
+                    Daftar ODC di Wilayah Anda
+                </h2>
+                @if(!empty($territory['label']))
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium {{ ($territory['has_territory'] ?? false) ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' }}">
+                        <span class="material-symbols-outlined notranslate" style="font-size: 14px" translate="no">location_on</span>
+                        {{ $territory['label'] }}
+                    </span>
+                @endif
+            </div>
             <div class="relative w-full sm:w-64">
                 <span class="material-symbols-outlined notranslate absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none" translate="no">search</span>
-                <input type="text" wire:model.live.debounce.500ms="search" placeholder="Cari ODC..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="text" wire:model.live.debounce.500ms="search" placeholder="Cari ODC..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
         </div>
-        
+
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                         <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Kode / Nama</th>
-                        <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">OLT</th>
+                        <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Cabang / OLT</th>
                         <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Port (Aktif/Total)</th>
                         <th class="px-5 py-4 font-semibold border-b border-slate-200 dark:border-slate-700">Status</th>
                     </tr>
@@ -29,16 +37,19 @@
                     @forelse($odcs as $odc)
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-5 py-4 text-slate-800 dark:text-slate-200 font-medium">
-                                {{ $odc->code }}<br>
+                                <span class="font-mono text-xs font-bold">{{ $odc->code }}</span><br>
                                 <span class="text-xs text-slate-500">{{ $odc->name }}</span>
                             </td>
-                            <td class="px-5 py-4 text-slate-600 dark:text-slate-400">{{ $odc->olt->name ?? '-' }}</td>
-                            <td class="px-5 py-4 text-slate-600 dark:text-slate-400">{{ $odc->active_port_count }} / {{ $odc->port_count }}</td>
+                            <td class="px-5 py-4 text-slate-600 dark:text-slate-400">
+                                <div class="font-medium text-slate-700 dark:text-slate-300 text-xs">{{ $odc->olt?->name ?? '-' }}</div>
+                                <div class="text-[11px] text-slate-400">{{ $odc->branch?->name ?? ($odc->address ?: '-') }}</div>
+                            </td>
+                            <td class="px-5 py-4 text-slate-600 dark:text-slate-400">{{ $odc->active_port_count ?? 0 }} / {{ $odc->port_count ?? 0 }}</td>
                             <td class="px-5 py-4">
-                                @if($odc->status == 'active')
+                                @if($odc->status === 'active')
                                     <span class="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-lg">Aktif</span>
                                 @else
-                                    <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg">{{ ucfirst($odc->status) }}</span>
+                                    <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg">{{ ucfirst($odc->status ?: 'Nonaktif') }}</span>
                                 @endif
                             </td>
                         </tr>
@@ -50,7 +61,7 @@
                 </tbody>
             </table>
         </div>
-        
+
         @if($odcs->hasPages())
             <div class="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-700/50 overflow-x-auto">
                 {{ $odcs->links() }}

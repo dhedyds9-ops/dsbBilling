@@ -61,6 +61,7 @@ class Index extends AdminComponent
 
         return view('livewire.reseller-portal.network.onu.index', [
             'onus' => $onus,
+            'territory' => \App\Services\Auth\ResellerScopeHelper::describeTerritory(),
         ]);
     }
 }

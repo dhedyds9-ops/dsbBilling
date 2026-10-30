@@ -75,9 +75,9 @@ class PermissionRegistry
                 ],
             ],
             'network_infra' => [
-                'title' => 'Jaringan & Perangkat Fiber',
+                'title' => 'Jaringan, Fiber & GenieACS',
                 'icon' => 'hub',
-                'description' => 'Monitoring status perangkat OLT, ODC, dan ODP yang ditugaskan ke reseller.',
+                'description' => 'Monitoring status perangkat OLT, ODC, ODP, ONU, dan perangkat TR-069 (GenieACS) di wilayah reseller.',
                 'modules' => [
                     'olt' => [
                         'title' => 'Data OLT Fiber',
@@ -90,6 +90,10 @@ class PermissionRegistry
                     'odp' => [
                         'title' => 'Data ODP Fiber',
                         'actions' => ['view'],
+                    ],
+                    'onu' => [
+                        'title' => 'Data ONU & Devices GenieACS (TR-069)',
+                        'actions' => ['view', 'reboot'],
                     ],
                 ],
             ],
