@@ -123,7 +123,62 @@ class Index extends AdminComponent
 
     public function export()
     {
-        session()->flash('info', 'Export feature will be implemented later!');
+        $filename = 'data-user-' . date('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+
+            // UTF-8 BOM agar terbaca sempurna di Microsoft Excel (kolom dan karakter tidak berantakan)
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            // Header Kolom
+            fputcsv($handle, [
+                'ID User',
+                'Nama Lengkap',
+                'Email',
+                'Username',
+                'No. WhatsApp / HP',
+                'Status Akun',
+                'Status Kepegawaian',
+                'NIK Pegawai',
+                'Job Function',
+                'Jabatan (Job Title)',
+                'Role Akses',
+                'Tanggal Terdaftar',
+            ]);
+
+            $this->buildFilteredQuery()
+                ->orderBy($this->sortField, $this->sortDirection)
+                ->chunk(500, function ($users) use ($handle) {
+                    foreach ($users as $user) {
+                        $phone = $user->whatsapp ?: ($user->employee?->phone ?: ($user->phone ?? '-'));
+                        $empStatus = $user->employee ? 'Pegawai' : 'Non-Pegawai';
+                        $empNik = $user->employee?->nik ?? '-';
+                        $roleNames = $user->roles->pluck('display_name')->filter()->implode(', ')
+                            ?: ($user->roles->pluck('name')->implode(', ') ?: '-');
+
+                        fputcsv($handle, [
+                            $user->id,
+                            $user->name,
+                            $user->email,
+                            $user->username ?? '-',
+                            $phone,
+                            $user->is_active ? 'Aktif' : 'Nonaktif',
+                            $empStatus,
+                            $empNik,
+                            $user->job_function ?? '-',
+                            $user->job_title ?? '-',
+                            $roleNames,
+                            $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : '-',
+                        ]);
+                    }
+                });
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
     }
 
     public function showSummary($userId)
@@ -295,6 +350,41 @@ class Index extends AdminComponent
         }
     }
 
+    /**
+     * Membangun query user terfilter yang digunakan bersama oleh tabel render dan fungsi export.
+     */
+    protected function buildFilteredQuery()
+    {
+        $query = UserModel::query()
+            ->whereDoesntHave('roles', function ($q) {
+                $q->whereIn('name', ['customer', 'pppoe', 'hotspot']);
+            })
+            ->with(['roles', 'employee']);
+
+        // Filter berdasarkan tab role aktif
+        if ($this->activeRole === 'unassigned') {
+            $query->whereDoesntHave('roles');
+        } elseif ($this->activeRole !== 'all') {
+            $query->whereHas('roles', function ($q) {
+                $q->where('name', $this->activeRole);
+            });
+        }
+
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('email', 'like', '%' . $this->search . '%')
+                    ->orWhere('username', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        if ($this->filterJobFunction !== '') {
+            $query->where('job_function', $this->filterJobFunction);
+        }
+
+        return $query;
+    }
+
     public function render()
     {
         $baseQuery = UserModel::query()
@@ -318,32 +408,10 @@ class Index extends AdminComponent
                 ];
             });
 
-        // Filter tabel utama
-        $query = (clone $baseQuery)->with(['roles', 'employee']);
-
-        // Filter berdasarkan tab role aktif
-        if ($this->activeRole === 'unassigned') {
-            $query->whereDoesntHave('roles');
-        } elseif ($this->activeRole !== 'all') {
-            $query->whereHas('roles', function ($q) {
-                $q->where('name', $this->activeRole);
-            });
-        }
-
-        if ($this->search) {
-            $query->where(function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%')
-                  ->orWhere('username', 'like', '%' . $this->search . '%');
-            });
-        }
-
-        if ($this->filterJobFunction !== '') {
-            $query->where('job_function', $this->filterJobFunction);
-        }
-
-        $users = $query->orderBy($this->sortField, $this->sortDirection)
-                      ->paginate($this->perPage === 'all' ? 999999 : $this->perPage);
+        // Query tabel utama dengan filter & sorting
+        $users = $this->buildFilteredQuery()
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->paginate($this->perPage === 'all' ? 999999 : $this->perPage);
 
         return view('livewire.admin.user.index', [
             'users' => $users,

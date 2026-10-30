@@ -101,9 +101,11 @@
                 Kelola Role
             </a>
 
-            <button wire:click="export" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">download</span>
-                Export
+            <button wire:click="export" wire:loading.attr="disabled" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap disabled:opacity-50">
+                <span wire:loading.remove wire:target="export" class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400" translate="no" style="font-size:18px">download</span>
+                <span wire:loading wire:target="export" class="material-symbols-outlined notranslate animate-spin text-indigo-600" translate="no" style="font-size:18px">autorenew</span>
+                <span wire:loading.remove wire:target="export">Export</span>
+                <span wire:loading wire:target="export">Mengekspor...</span>
             </button>
 
             <a href="{{ route('admin.users.create') }}" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors whitespace-nowrap">
