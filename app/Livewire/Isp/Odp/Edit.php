@@ -5,6 +5,7 @@ namespace App\Livewire\Isp\Odp;
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Odp as OdpModel;
 use App\Models\ISP\Odc;
+use App\Models\Master\Branch;
 use App\Services\ISP\OdpService;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,11 +13,17 @@ class Edit extends AdminComponent
 {
     public $odpId;
     public $odp;
+    public $branch_id;
     public $odc_id;
     public $code;
     public $name;
     public $description;
     public $address;
+    public $province;
+    public $regency;
+    public $district;
+    public $village;
+    public $postal_code;
     public $latitude;
     public $longitude;
     public $port_count;
@@ -30,11 +37,17 @@ class Edit extends AdminComponent
         $this->odpId = $id;
         $this->odp = OdpModel::findOrFail($id);
 
+        $this->branch_id = $this->odp->branch_id;
         $this->odc_id = $this->odp->odc_id;
         $this->code = $this->odp->code;
         $this->name = $this->odp->name;
         $this->description = $this->odp->description;
         $this->address = $this->odp->address;
+        $this->province = $this->odp->province;
+        $this->regency = $this->odp->regency;
+        $this->district = $this->odp->district;
+        $this->village = $this->odp->village;
+        $this->postal_code = $this->odp->postal_code;
         $this->latitude = $this->odp->latitude;
         $this->longitude = $this->odp->longitude;
         $this->port_count = $this->odp->port_count;
@@ -51,18 +64,30 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
+            'branch_id' => 'nullable|exists:branches,id',
             'code' => 'required|unique:odps,code,' . $this->odpId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
+            'district' => 'nullable|string|max:100',
+            'village' => 'nullable|string|max:100',
+            'regency' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
         ]);
 
         $service = app(OdpService::class);
         $service->update($this->odp, [
+            'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'odc_id' => $this->odc_id,
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,
             'address' => $this->address,
+            'province' => $this->province,
+            'regency' => $this->regency,
+            'district' => $this->district,
+            'village' => $this->village,
+            'postal_code' => $this->postal_code,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'port_count' => $this->port_count,
@@ -75,7 +100,8 @@ class Edit extends AdminComponent
 
     public function render()
     {
+        $branches = Branch::where('is_active', true)->orderBy('name')->get();
         $odcs = Odc::active()->get();
-        return view('livewire.isp.odp.edit', compact('odcs'));
+        return view('livewire.isp.odp.edit', compact('branches', 'odcs'));
     }
 }

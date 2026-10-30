@@ -95,15 +95,27 @@
                         <span class="text-xs text-slate-400 mt-1 block">Default umum: <code>public</code></span>
                     </div>
 
-                    {{-- POP / Wilayah --}}
+                    {{-- POP / Shelter --}}
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POP / Wilayah <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POP / Shelter <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
                         <select wire:model="pop_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
                             <option value="">-- Tanpa POP / Belum Ditentukan --</option>
                             @foreach($pops as $pop)
                                 <option value="{{ $pop->id }}">{{ $pop->name }} ({{ $pop->code }})</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    {{-- Cabang / Wilayah Kantor --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cabang / Wilayah Kantor <span class="text-slate-400 font-normal text-xs ml-1">(Opsional)</span></label>
+                        <select wire:model="branch_id" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 cursor-pointer">
+                            <option value="">-- Tanpa Cabang Khusus / Global --</option>
+                            @foreach($branches as $b)
+                                <option value="{{ $b->id }}">{{ $b->name }} ({{ $b->code }})</option>
+                            @endforeach
+                        </select>
+                        @error('branch_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
                     {{-- Koordinat Lokasi OLT --}}

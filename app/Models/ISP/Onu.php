@@ -16,6 +16,7 @@ class Onu extends Model
 
     protected $hidden = ['wifi_password', 'admin_password'];
     protected $fillable = [
+        'branch_id',
         'olt_id',
         'pon_port_id',
         'splitter_id',
@@ -345,6 +346,11 @@ class Onu extends Model
     public function configurationJobs()
     {
         return $this->hasMany(OnuConfigurationJob::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Master\Branch::class);
     }
 }
 

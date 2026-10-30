@@ -6,6 +6,7 @@ use App\Livewire\AdminComponent;
 use App\Models\ISP\Onu as OnuModel;
 use App\Models\ISP\Olt;
 use App\Models\ISP\Vendor;
+use App\Models\Master\Branch;
 use App\Services\ISP\OnuService;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +14,7 @@ class Edit extends AdminComponent
 {
     public $onuId;
     public $onu;
+    public $branch_id;
     public $olt_id;
     public $vendor_id;
     public $code;
@@ -35,6 +37,7 @@ class Edit extends AdminComponent
         $this->onuId = $id;
         $this->onu = OnuModel::findOrFail($id);
 
+        $this->branch_id = $this->onu->branch_id;
         $this->olt_id = $this->onu->olt_id;
         $this->vendor_id = $this->onu->vendor_id;
         $this->code = $this->onu->code;
@@ -60,6 +63,7 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
+            'branch_id' => 'nullable|exists:branches,id',
             'code' => 'required|unique:onus,code,' . $this->onuId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
@@ -67,6 +71,7 @@ class Edit extends AdminComponent
 
         $service = app(OnuService::class);
         $service->update($this->onu, [
+            'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'olt_id' => $this->olt_id,
             'vendor_id' => $this->vendor_id,
             'code' => $this->code,
@@ -100,9 +105,10 @@ class Edit extends AdminComponent
 
     public function render()
     {
+        $branches = Branch::where('is_active', true)->orderBy('name')->get();
         $olts = Olt::active()->get();
         $vendors = Vendor::active()->get();
         $customerServices = \App\Models\Customer\CustomerService::with('customer')->get();
-        return view('livewire.isp.onu.edit', compact('olts', 'vendors', 'customerServices'));
+        return view('livewire.isp.onu.edit', compact('branches', 'olts', 'vendors', 'customerServices'));
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Odc extends Model
 {
+    use \App\Traits\HasBranchScope;
     use HasFactory, SoftDeletes;
 
     protected static function booted()

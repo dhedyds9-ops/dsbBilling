@@ -8,9 +8,11 @@ use App\Models\ISP\Vendor;
 use App\Services\ISP\OltService;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ISP\Olt;
+use App\Models\Master\Branch;
 
 class Create extends AdminComponent
 {
+    public $branch_id;
     public $pop_id;
     public $vendor_id;
     public $code;
@@ -169,6 +171,7 @@ class Create extends AdminComponent
     public function save()
     {
         $this->validate([
+            'branch_id' => 'nullable|exists:branches,id',
             'code' => 'required|unique:olts,code',
             'name' => 'required|string|max:255',
             'pop_id' => 'nullable|exists:pops,id',
@@ -182,6 +185,7 @@ class Create extends AdminComponent
 
         $service = app(OltService::class);
         $service->create([
+            'branch_id'            => $this->branch_id === '' ? null : $this->branch_id,
             'pop_id'               => $this->pop_id === '' ? null : $this->pop_id,
             'vendor_id'            => $this->vendor_id,
             'code'                 => $this->code,
@@ -217,9 +221,10 @@ class Create extends AdminComponent
 
     public function render()
     {
+        $branches = Branch::where('is_active', true)->orderBy('name')->get();
         $pops = Pop::active()->get();
         $vendors = Vendor::active()->get();
-        return view('livewire.isp.olt.create', compact('pops', 'vendors'));
+        return view('livewire.isp.olt.create', compact('branches', 'pops', 'vendors'));
     }
 }
 

@@ -51,13 +51,39 @@
                         @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ODC</label>
-                        <select wire:model="odc_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ODC Induk</label>
+                        <select wire:model.live="odc_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                             <option value="">Pilih ODC</option>
                             @foreach($odcs as $odc)
                                 <option value="{{ $odc->id }}">{{ $odc->code }} - {{ $odc->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cabang / Wilayah Kantor <span class="text-xs text-slate-400 font-normal">(Opsional)</span></label>
+                        <select wire:model="branch_id" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                            <option value="">-- Tanpa Cabang Khusus / Global --</option>
+                            @foreach($branches as $b)
+                                <option value="{{ $b->id }}">{{ $b->name }} ({{ $b->code }})</option>
+                            @endforeach
+                        </select>
+                        @error('branch_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kecamatan (District) <span class="text-xs text-slate-400 font-normal">(Pencocokan Reseller)</span></label>
+                        <input type="text" wire:model="district" placeholder="Contoh: Girimarto / Purwantoro" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kelurahan / Desa (Village)</label>
+                        <input type="text" wire:model="village" placeholder="Contoh: Tambakmerang" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kabupaten / Kota (Regency)</label>
+                        <input type="text" wire:model="regency" placeholder="Contoh: Wonogiri" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Provinsi</label>
+                        <input type="text" wire:model="province" placeholder="Contoh: Jawa Tengah" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah Port</label>

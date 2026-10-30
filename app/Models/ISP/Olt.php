@@ -64,6 +64,7 @@ class Olt extends Model
     }
 
     protected $fillable = [
+        'branch_id',
         'pop_id',
         'vendor_id',
         'code',

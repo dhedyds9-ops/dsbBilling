@@ -4,6 +4,7 @@ namespace App\Livewire\Isp\Olt;
 
 use App\Livewire\AdminComponent;
 use App\Models\ISP\Olt as OltModel;
+use App\Models\Master\Branch;
 use App\Models\ISP\Pop;
 use App\Models\ISP\Vendor;
 use App\Services\ISP\OltService;
@@ -13,6 +14,7 @@ class Edit extends AdminComponent
 {
     public $oltId;
     public $olt;
+    public $branch_id;
     public $pop_id;
     public $vendor_id;
     public $code;
@@ -62,6 +64,7 @@ class Edit extends AdminComponent
         $this->oltId = $id;
         $this->olt = OltModel::findOrFail($id);
 
+        $this->branch_id = $this->olt->branch_id;
         $this->pop_id = $this->olt->pop_id;
         $this->vendor_id = $this->olt->vendor_id;
         $this->code = $this->olt->code;
@@ -195,6 +198,7 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
+            'branch_id' => 'nullable|exists:branches,id',
             'code' => 'required|unique:olts,code,' . $this->oltId,
             'name' => 'required|string|max:255',
             'pop_id' => 'nullable|exists:pops,id',
@@ -208,6 +212,7 @@ class Edit extends AdminComponent
 
         $service = app(OltService::class);
         $service->update($this->olt, [
+            'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'pop_id' => $this->pop_id === '' ? null : $this->pop_id,
             'vendor_id' => $this->vendor_id,
             'code' => $this->code,
@@ -247,9 +252,10 @@ class Edit extends AdminComponent
 
     public function render()
     {
+        $branches = Branch::where('is_active', true)->orderBy('name')->get();
         $pops = Pop::active()->get();
         $vendors = Vendor::active()->get();
-        return view('livewire.isp.olt.edit', compact('pops', 'vendors'));
+        return view('livewire.isp.olt.edit', compact('branches', 'pops', 'vendors'));
     }
 }
 

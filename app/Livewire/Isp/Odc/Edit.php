@@ -6,6 +6,7 @@ use App\Livewire\AdminComponent;
 use App\Models\ISP\Odc as OdcModel;
 use App\Models\ISP\Olt;
 use App\Models\ISP\Pop;
+use App\Models\Master\Branch;
 use App\Services\ISP\OdcService;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +14,7 @@ class Edit extends AdminComponent
 {
     public $odcId;
     public $odc;
+    public $branch_id;
     public $olt_id;
     public $pop_id;
     public $code;
@@ -32,6 +34,7 @@ class Edit extends AdminComponent
         $this->odcId = $id;
         $this->odc = OdcModel::findOrFail($id);
 
+        $this->branch_id = $this->odc->branch_id;
         $this->olt_id = $this->odc->olt_id;
         $this->pop_id = $this->odc->pop_id;
         $this->code = $this->odc->code;
@@ -54,6 +57,7 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->validate([
+            'branch_id' => 'nullable|exists:branches,id',
             'code' => 'required|unique:odcs,code,' . $this->odcId,
             'name' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
@@ -61,6 +65,7 @@ class Edit extends AdminComponent
 
         $service = app(OdcService::class);
         $service->update($this->odc, [
+            'branch_id' => $this->branch_id === '' ? null : $this->branch_id,
             'olt_id' => $this->olt_id,
             'pop_id' => $this->pop_id,
             'code' => $this->code,
@@ -79,8 +84,9 @@ class Edit extends AdminComponent
 
     public function render()
     {
+        $branches = Branch::where('is_active', true)->orderBy('name')->get();
         $olts = Olt::active()->get();
         $pops = Pop::active()->get();
-        return view('livewire.isp.odc.edit', compact('olts', 'pops'));
+        return view('livewire.isp.odc.edit', compact('branches', 'olts', 'pops'));
     }
 }
