@@ -57,7 +57,15 @@ class AssetList extends AdminComponent
     public function syncInstalledOnus(bool $flash = true): void
     {
         try {
-            $onus = \App\Models\ISP\Onu::all();
+            if (!$flash && \Illuminate\Support\Facades\Cache::has('assets_onu_autosync_recent')) {
+                return;
+            }
+
+            $onus = \App\Models\ISP\Onu::select(['id', 'code', 'name', 'model', 'serial_number', 'mac_address', 'vendor_id', 'status', 'provision_status', 'provisioned_at', 'created_at'])->get();
+            $existingAssets = Asset::select(['id', 'code', 'serial_number', 'mac_address', 'vendor_id', 'status', 'installed_at'])->get();
+            $bySn = $existingAssets->whereNotNull('serial_number')->keyBy('serial_number');
+            $byCode = $existingAssets->whereNotNull('code')->keyBy('code');
+
             $synced = 0;
             foreach ($onus as $onu) {
                 $sn = $onu->serial_number ?: ($onu->code ?: 'ONU-' . $onu->id);
@@ -65,12 +73,10 @@ class AssetList extends AdminComponent
                 $name = $onu->name ?: ('ONU Modem ' . ($onu->model ?: $sn));
                 $status = ($onu->status === 'active' || $onu->provision_status === 'success' || !empty($onu->provisioned_at)) ? 'in_use' : 'available';
 
-                $asset = Asset::where('serial_number', $sn)
-                    ->orWhere('code', $code)
-                    ->first();
+                $asset = $bySn->get($sn) ?? $byCode->get($code);
 
                 if (!$asset) {
-                    Asset::create([
+                    $created = Asset::create([
                         'code' => $code,
                         'name' => $name,
                         'type' => 'onu',
@@ -78,20 +84,34 @@ class AssetList extends AdminComponent
                         'condition' => 'good',
                         'serial_number' => $sn,
                         'mac_address' => $onu->mac_address,
+                        'vendor_id' => $onu->vendor_id,
                         'installed_at' => $onu->provisioned_at ?: $onu->created_at,
                     ]);
+                    $bySn->put($sn, $created);
+                    $byCode->put($code, $created);
                     $synced++;
                 } else {
-                    $asset->update([
-                        'status' => $status,
-                        'mac_address' => $onu->mac_address ?: $asset->mac_address,
-                        'installed_at' => $onu->provisioned_at ?: ($asset->installed_at ?: $onu->created_at),
-                    ]);
+                    $newMac = $onu->mac_address ?: $asset->mac_address;
+                    $newVendor = $onu->vendor_id ?: $asset->vendor_id;
+                    $newInstalled = $onu->provisioned_at ?: ($asset->installed_at ?: $onu->created_at);
+
+                    if ($asset->status !== $status || $asset->mac_address !== $newMac || $asset->vendor_id != $newVendor) {
+                        $asset->update([
+                            'status' => $status,
+                            'mac_address' => $newMac,
+                            'vendor_id' => $newVendor,
+                            'installed_at' => $newInstalled,
+                        ]);
+                    }
                 }
             }
 
-            if ($flash && $synced > 0) {
-                session()->flash('success', "Berhasil mensinkronkan {$synced} perangkat ONU ke daftar aset.");
+            \Illuminate\Support\Facades\Cache::put('assets_onu_autosync_recent', true, now()->addMinutes(5));
+
+            if ($flash) {
+                session()->flash('success', $synced > 0
+                    ? "Berhasil mensinkronkan {$synced} perangkat ONU baru ke daftar aset."
+                    : 'Seluruh perangkat ONU sudah tersinkronisasi.');
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Sync ONUs to assets error: ' . $e->getMessage());
@@ -188,13 +208,13 @@ class AssetList extends AdminComponent
             [
                 'code' => $this->code,
                 'name' => $this->name,
-                'category_id' => $this->category_id,
-                'warehouse_id' => $this->warehouse_id,
-                'vendor_id' => $this->vendor_id,
-                'serial_number' => $this->serial_number,
+                'category_id' => $this->category_id ?: null,
+                'warehouse_id' => $this->warehouse_id ?: null,
+                'vendor_id' => $this->vendor_id ?: null,
+                'serial_number' => $this->serial_number ?: null,
                 'status' => $this->status,
-                'purchase_date' => $this->purchase_date,
-                'warranty_end_date' => $this->warranty_end_date,
+                'purchase_date' => $this->purchase_date ?: null,
+                'warranty_end_date' => $this->warranty_end_date ?: null,
             ]
         );
 

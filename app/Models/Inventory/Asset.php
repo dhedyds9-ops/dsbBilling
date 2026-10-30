@@ -2,10 +2,12 @@
 
 namespace App\Models\Inventory;
 
+use App\Models\ISP\Vendor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Asset extends Model
@@ -58,6 +60,11 @@ class Asset extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(AssetCategory::class, 'category_id');
+    }
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class, 'vendor_id');
     }
 
     public function warehouse(): BelongsTo
