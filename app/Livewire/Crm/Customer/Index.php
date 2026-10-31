@@ -124,6 +124,8 @@ class Index extends BaseCrmComponent
             'customerServices.service',
             'customerServices.pppoeUser',
             'customerServices.hotspotUser',
+            'customerServices.onu.acsDevice',
+            'customerServices.acsDevice',
             'reseller',
         ]);
 

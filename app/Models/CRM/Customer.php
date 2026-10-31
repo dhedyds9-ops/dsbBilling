@@ -160,6 +160,31 @@ class Customer extends Model
         return $date . str_pad((string) ($this->id % 100), 2, '0', STR_PAD_LEFT);
     }
 
+    public function getOnuDeviceAttribute(): ?array
+    {
+        $services = $this->relationLoaded('customerServices')
+            ? $this->customerServices
+            : $this->customerServices()->with(['onu.acsDevice', 'acsDevice'])->get();
+
+        foreach ($services as $cs) {
+            if ($cs->onu && !empty(trim((string)$cs->onu->serial_number))) {
+                return [
+                    'sn' => trim((string)$cs->onu->serial_number),
+                    'acs_device_id' => $cs->acsDevice?->id ?? $cs->onu->acsDevice?->id,
+                    'onu' => $cs->onu,
+                ];
+            }
+            if ($cs->acsDevice && !empty(trim((string)$cs->acsDevice->serial_number))) {
+                return [
+                    'sn' => trim((string)$cs->acsDevice->serial_number),
+                    'acs_device_id' => $cs->acsDevice->id,
+                    'onu' => $cs->onu,
+                ];
+            }
+        }
+        return null;
+    }
+
     public function scopeWithoutGuests($query)
     {
         return $query->where(function ($q) {

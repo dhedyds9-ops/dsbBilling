@@ -57,6 +57,34 @@ class HotspotUser extends Model
         return $this->customerService?->customer ?? $this->customer;
     }
 
+    public function getOnuDeviceAttribute(): ?array
+    {
+        $cs = $this->customerService;
+        if ($cs) {
+            if ($cs->onu && !empty(trim((string)$cs->onu->serial_number))) {
+                return [
+                    'sn' => trim((string)$cs->onu->serial_number),
+                    'acs_device_id' => $cs->acsDevice?->id ?? $cs->onu->acsDevice?->id,
+                    'onu' => $cs->onu,
+                ];
+            }
+            if ($cs->acsDevice && !empty(trim((string)$cs->acsDevice->serial_number))) {
+                return [
+                    'sn' => trim((string)$cs->acsDevice->serial_number),
+                    'acs_device_id' => $cs->acsDevice->id,
+                    'onu' => $cs->onu,
+                ];
+            }
+        }
+
+        $cust = $this->real_customer;
+        if ($cust && $cust->onu_device) {
+            return $cust->onu_device;
+        }
+
+        return null;
+    }
+
     public function subscription()
     {
         return $this->hasOneThrough(

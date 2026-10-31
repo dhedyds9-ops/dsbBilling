@@ -222,6 +222,19 @@
                             {{-- Aksi --}}
                             <td class="px-4 py-3 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    {{-- Tombol ONU (GenieACS Detail) jika SN ONU terisi --}}
+                                    @php
+                                        $onuDevice = $customer->onu_device;
+                                    @endphp
+                                    @if($onuDevice && !empty($onuDevice['sn']))
+                                        <a href="{{ route('acs.devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn']) }}" 
+                                           target="_blank" 
+                                           rel="noopener noreferrer"
+                                           class="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors" 
+                                           title="Lihat Detail GenieACS ONU (SN: {{ $onuDevice['sn'] }})">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">router</span>
+                                        </a>
+                                    @endif
                                     {{-- Edit / Detail --}}
                                     <a href="{{ route('crm.customers.show', $customer->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-900/50 transition-colors" title="Edit / Detail">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>

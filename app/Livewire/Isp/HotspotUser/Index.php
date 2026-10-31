@@ -299,7 +299,19 @@ class Index extends BaseNetworkComponent
 
     public function render()
     {
-        $query = HotspotUser::with(['customer.reseller', 'customerService.customer.reseller', 'reseller', 'serviceProfile', 'subscription', 'createdBy', 'latestAccounting'])
+        $query = HotspotUser::with([
+            'customer.reseller',
+            'customer.customerServices.onu.acsDevice',
+            'customer.customerServices.acsDevice',
+            'customerService.customer.reseller',
+            'customerService.onu.acsDevice',
+            'customerService.acsDevice',
+            'reseller',
+            'serviceProfile',
+            'subscription',
+            'createdBy',
+            'latestAccounting',
+        ])
             ->when($this->showTrashed, fn($q) => $q->withTrashed())
             ->when($this->search, function($q) {
                 $q->where(function($sq) {

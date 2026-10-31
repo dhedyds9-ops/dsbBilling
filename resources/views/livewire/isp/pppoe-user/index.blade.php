@@ -214,6 +214,18 @@
                             </td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-1">
+                                    @php
+                                        $onuDevice = $user->onu_device;
+                                    @endphp
+                                    @if($onuDevice && !empty($onuDevice['sn']))
+                                        <a href="{{ route('acs.devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn']) }}" 
+                                           target="_blank" 
+                                           rel="noopener noreferrer"
+                                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" 
+                                           title="Lihat Detail GenieACS ONU (SN: {{ $onuDevice['sn'] }})">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">router</span>
+                                        </a>
+                                    @endif
                                     <a href="{{ route('isp.pppoe-users.edit', $user->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>

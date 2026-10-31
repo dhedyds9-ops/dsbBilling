@@ -23,8 +23,8 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
         parent::mount();
         $this->activeModule = 'acs';
         $this->activePage = 'devices';
-        $this->deviceId = $id;
-        $this->device = ACSDevice::with([
+
+        $relations = [
             'customerService', 
             'asset', 
             'onu', 
@@ -41,7 +41,49 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             'logs' => function ($query) {
                 $query->latest()->take(10);
             }
-        ])->findOrFail($id);
+        ];
+
+        $device = null;
+        if (is_numeric($id)) {
+            $device = ACSDevice::with($relations)->find($id);
+        }
+
+        if (!$device) {
+            $device = ACSDevice::with($relations)
+                ->where('serial_number', $id)
+                ->orWhere('uuid', $id)
+                ->first();
+        }
+
+        if (!$device) {
+            $onu = \App\Models\ISP\Onu::where('serial_number', $id)
+                ->orWhere('id', $id)
+                ->first();
+
+            if ($onu && !empty($onu->serial_number)) {
+                $device = ACSDevice::with($relations)->where('serial_number', $onu->serial_number)->first();
+                if (!$device) {
+                    $newDevice = ACSDevice::create([
+                        'uuid' => $onu->serial_number,
+                        'serial_number' => $onu->serial_number,
+                        'mac_address' => $onu->mac_address,
+                        'onu_id' => $onu->id,
+                        'olt_id' => $onu->olt_id,
+                        'odp_id' => $onu->odp_id,
+                        'customer_service_id' => $onu->customerService?->id,
+                        'status' => $onu->status === 'active' ? 'online' : 'offline',
+                    ]);
+                    $device = ACSDevice::with($relations)->find($newDevice->id);
+                }
+            }
+        }
+
+        if (!$device) {
+            abort(404, 'Perangkat GenieACS tidak ditemukan.');
+        }
+
+        $this->device = $device;
+        $this->deviceId = $device->id;
         
         $this->loadConnectedDevices();
         $this->loadDeviceStatus();

@@ -29,9 +29,8 @@ class Show extends AdminComponent
         parent::mount();
         $this->activeModule = 'reseller';
         $this->activePage = 'network-acs';
-        $this->deviceId = $id;
 
-        $this->device = ACSDevice::forReseller()->with([
+        $relations = [
             'customerService', 
             'asset', 
             'onu', 
@@ -48,7 +47,34 @@ class Show extends AdminComponent
             'logs' => function ($query) {
                 $query->latest()->take(10);
             }
-        ])->findOrFail($id);
+        ];
+
+        $device = null;
+        if (is_numeric($id)) {
+            $device = ACSDevice::forReseller()->with($relations)->find($id);
+        }
+
+        if (!$device) {
+            $device = ACSDevice::forReseller()->with($relations)
+                ->where(function($q) use ($id) {
+                    $q->where('serial_number', $id)->orWhere('uuid', $id);
+                })
+                ->first();
+        }
+
+        if (!$device) {
+            $onu = \App\Models\ISP\Onu::forReseller()->where('serial_number', $id)->orWhere('id', $id)->first();
+            if ($onu && !empty($onu->serial_number)) {
+                $device = ACSDevice::forReseller()->with($relations)->where('serial_number', $onu->serial_number)->first();
+            }
+        }
+
+        if (!$device) {
+            abort(404, 'Perangkat GenieACS tidak ditemukan.');
+        }
+
+        $this->device = $device;
+        $this->deviceId = $device->id;
         
         $this->loadConnectedDevices();
         $this->loadDeviceStatus();
