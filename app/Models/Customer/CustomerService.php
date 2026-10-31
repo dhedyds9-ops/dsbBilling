@@ -114,6 +114,11 @@ class CustomerService extends Model
         return $this->belongsTo(ServiceProfile::class);
     }
 
+    public function getServiceTypeAttribute(): ?string
+    {
+        return $this->serviceProfile->service_type ?? ($this->attributes['service_type'] ?? null);
+    }
+
     public function onu()
     {
         return $this->belongsTo(Onu::class);

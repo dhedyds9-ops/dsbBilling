@@ -95,8 +95,9 @@ class Show extends AdminComponent
                 'ponPort:id,name,port_number',
                 'odp:id,name,code',
                 'vendor:id,name',
-                'customerService:id,onu_id,customer_id,service_type,status',
+                'customerService:id,onu_id,customer_id,service_profile_id,status',
                 'customerService.customer:id,name,code',
+                'customerService.serviceProfile:id,name,service_type',
                 'acsDevice:id,serial_number,ip_address,mac_address'
                 // Explicitly no wifi_password, admin_password (in $hidden)
             ])
