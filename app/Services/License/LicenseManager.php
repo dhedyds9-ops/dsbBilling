@@ -96,7 +96,11 @@ class LicenseManager
                 }
             }
 
-            $json = $response->json();
+            $rawBody = $response->body();
+            // Bersihkan UTF-8 BOM atau karakter tersembunyi yang mungkin menempel di awal JSON
+            $cleanBody = preg_replace('/^[\xEF\xBB\xBF\s\x00-\x1F\x7F]+/', '', $rawBody);
+            $cleanBody = trim($cleanBody);
+            $json = json_decode($cleanBody, true) ?: $response->json();
 
             if ($response->successful() && ($json['status'] ?? '') === 'active') {
                 $data = [
