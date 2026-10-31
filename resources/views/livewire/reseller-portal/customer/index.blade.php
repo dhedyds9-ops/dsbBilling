@@ -224,11 +224,13 @@
                                     {{-- Tombol ONU (GenieACS Detail) jika SN ONU terisi --}}
                                     @php
                                         $onuDevice = $customer->onu_device;
-                                        $targetRoute = \Illuminate\Support\Facades\Route::has('reseller-portal.acs-devices.show')
-                                            ? route('reseller-portal.acs-devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn'])
-                                            : route('acs.devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn']);
                                     @endphp
                                     @if($onuDevice && !empty($onuDevice['sn']))
+                                        @php
+                                            $targetRoute = \Illuminate\Support\Facades\Route::has('reseller-portal.acs-devices.show')
+                                                ? route('reseller-portal.acs-devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn'])
+                                                : route('acs.devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn']);
+                                        @endphp
                                         <a href="{{ $targetRoute }}" 
                                            target="_blank" 
                                            rel="noopener noreferrer"
