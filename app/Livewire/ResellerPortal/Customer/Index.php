@@ -35,6 +35,49 @@ class Index extends AdminComponent
         $this->resetPage();
     }
 
+    public function sortBy($field)
+    {
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'asc';
+        }
+        $this->resetPage();
+    }
+
+    public function delete($id): void
+    {
+        $ownerId = auth()->user()->getEffectiveResellerId();
+        $customer = Customer::where(function($q) use ($ownerId) {
+            $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+        })->findOrFail($id);
+
+        $hasActiveInvoices = $customer->invoices()
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->exists();
+
+        if ($hasActiveInvoices) {
+            session()->flash('error', 'Tidak dapat menghapus pelanggan karena ada tagihan aktif/belum lunas.');
+            return;
+        }
+
+        $customer->delete();
+        session()->flash('success', 'Pelanggan berhasil dihapus!');
+    }
+
+    public function toggleStatus($id): void
+    {
+        $ownerId = auth()->user()->getEffectiveResellerId();
+        $customer = Customer::where(function($q) use ($ownerId) {
+            $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
+        })->findOrFail($id);
+
+        $customer->status = $customer->status === 'active' ? 'suspend' : 'active';
+        $customer->save();
+        session()->flash('success', 'Status pelanggan berhasil diperbarui!');
+    }
+
     public function render()
     {
         $ownerId = auth()->user()->getEffectiveResellerId();
@@ -47,6 +90,8 @@ class Index extends AdminComponent
                           'service' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
                           'pppoeUser' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
                           'hotspotUser' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
+                          'onu.acsDevice' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
+                          'acsDevice' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
                       ]);
             },
             'reseller' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
