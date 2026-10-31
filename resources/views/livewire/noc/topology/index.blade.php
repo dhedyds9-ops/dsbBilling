@@ -468,9 +468,11 @@
                      'h-[580px]': canvasHeight === 'md',
                      'h-[720px]': canvasHeight === 'lg',
                      'h-[900px]': canvasHeight === 'xl'
-                 }"
-                 wire:ignore>
-                <div id="topology-network-container" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+                 }">
+                <div id="topology-network-container"
+                     wire:key="topo-canvas-{{ $activeTab }}-{{ $selectedOltId }}-{{ $selectedPonId }}-{{ $selectedRouterId }}"
+                     x-init="loadTopology(@js($topologyData))"
+                     class="w-full h-full cursor-grab active:cursor-grabbing"></div>
 
                 {{-- Empty state overlay if no data --}}
                 @if(empty($topologyData['nodes']))
@@ -774,24 +776,15 @@ function topologyManager() {
     return {
         network: null,
         isFullscreen: false,
+        currentData: null,
         init() {
             window.topologyManagerInstance = this;
-            this.$nextTick(() => {
-                this.renderNetwork();
-            });
-
-            // Listen to Livewire morph/refresh events
-            Livewire.hook('morph.updated', () => {
-                this.$nextTick(() => {
-                    this.renderNetwork();
-                });
-            });
         },
-        renderNetwork() {
+        loadTopology(topology) {
+            this.currentData = topology;
             const container = document.getElementById('topology-network-container');
             if (!container || typeof vis === 'undefined') return;
 
-            const topology = @json($topologyData);
             if (!topology || !topology.nodes || topology.nodes.length === 0) {
                 if (this.network) {
                     this.network.destroy();
@@ -809,9 +802,9 @@ function topologyManager() {
                         enabled: true,
                         direction: 'LR', // Left to Right: Core -> OLT -> PON -> ONU
                         sortMethod: 'directed',
-                        levelSeparation: 320,  // wider space between stages
-                        nodeSpacing: 130,      // comfortable vertical space
-                        treeSpacing: 160,
+                        levelSeparation: 360,  // horizontal width spacing
+                        nodeSpacing: 75,       // vertical height spacing so all 8-16 ports fit
+                        treeSpacing: 100,
                         blockShifting: true,
                         edgeMinimization: true,
                         parentCentralization: true
@@ -824,11 +817,11 @@ function topologyManager() {
                     shadow: {
                         enabled: true,
                         color: 'rgba(0,0,0,0.6)',
-                        size: 8,
+                        size: 6,
                         x: 2,
-                        y: 3
+                        y: 2
                     },
-                    margin: { top: 12, right: 18, bottom: 12, left: 18 },
+                    margin: { top: 10, right: 16, bottom: 10, left: 16 },
                     font: {
                         size: 14,
                         face: 'JetBrains Mono, monospace',
@@ -875,7 +868,7 @@ function topologyManager() {
 
             this.network = new vis.Network(container, { nodes, edges }, options);
 
-            // On click node event
+            // Click node event -> open side panel
             this.network.on('click', (params) => {
                 if (params.nodes && params.nodes.length > 0) {
                     const nodeId = params.nodes[0];
@@ -888,41 +881,31 @@ function topologyManager() {
                 }
             });
 
-            // Smart initial fit
+            // Initial fit with padding so every node is 100% visible
             setTimeout(() => {
                 this.fitViewSmart();
-            }, 100);
+            }, 80);
         },
         zoomIn() {
             if (!this.network) return;
             const currentScale = this.network.getScale();
-            this.network.moveTo({ scale: currentScale * 1.3, animation: { duration: 250 } });
+            this.network.moveTo({ scale: currentScale * 1.25, animation: { duration: 250 } });
         },
         zoomOut() {
             if (!this.network) return;
             const currentScale = this.network.getScale();
-            this.network.moveTo({ scale: currentScale * 0.75, animation: { duration: 250 } });
+            this.network.moveTo({ scale: currentScale * 0.8, animation: { duration: 250 } });
         },
         resetScale() {
             if (!this.network) return;
-            this.network.moveTo({ scale: 1.0, animation: { duration: 300 } });
+            this.network.moveTo({ scale: 1.0, animation: { duration: 250 } });
         },
         fitViewSmart() {
             if (!this.network) return;
-            this.network.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
-
-            // If fit() shrunk down too far (due to many vertical ports/clusters), zoom to at least 0.92
-            setTimeout(() => {
-                if (this.network) {
-                    const curScale = this.network.getScale();
-                    if (curScale < 0.85) {
-                        this.network.moveTo({
-                            scale: 0.92,
-                            animation: { duration: 300, easingFunction: 'easeInOutQuad' }
-                        });
-                    }
-                }
-            }, 420);
+            this.network.fit({
+                padding: 40,
+                animation: { duration: 350, easingFunction: 'easeInOutQuad' }
+            });
         },
         toggleFullscreen() {
             const el = document.getElementById('topology-card-wrapper');

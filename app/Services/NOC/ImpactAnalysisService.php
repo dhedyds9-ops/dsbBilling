@@ -198,7 +198,7 @@ class ImpactAnalysisService
             ];
         }
 
-        return Cache::remember("noc.topology.v2.{$deviceType}.{$deviceId}", self::CACHE_TTL, function () use ($deviceType, $deviceId) {
+        return Cache::remember("noc.topology.v4.{$deviceType}.{$deviceId}", self::CACHE_TTL, function () use ($deviceType, $deviceId) {
             if ($deviceType === 'olt') {
                 return $this->buildOltTopology($deviceId);
             } elseif ($deviceType === 'pon') {
@@ -217,7 +217,7 @@ class ImpactAnalysisService
     public function clearCache(string $deviceType, int $deviceId): void
     {
         Cache::forget("noc.impact.{$deviceType}.{$deviceId}");
-        Cache::forget("noc.topology.v2.{$deviceType}.{$deviceId}");
+        Cache::forget("noc.topology.v4.{$deviceType}.{$deviceId}");
     }
 
     // -------------------------------------------------------------------------
