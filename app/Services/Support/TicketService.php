@@ -8,6 +8,7 @@ use App\Services\Auth\UserQueryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Src\Domain\Support\Events\TicketAssignedEvent;
 use Src\Domain\Support\Events\TicketClosedEvent;
@@ -48,10 +49,10 @@ class TicketService
         if (!empty($filters['category'])) {
             $query->where('category', $filters['category']);
         }
-        if (!empty($filters['due_from'])) {
+        if (!empty($filters['due_from']) && Schema::hasColumn('tickets', 'due_date')) {
             $query->whereDate('due_date', '>=', $filters['due_from']);
         }
-        if (!empty($filters['due_to'])) {
+        if (!empty($filters['due_to']) && Schema::hasColumn('tickets', 'due_date')) {
             $query->whereDate('due_date', '<=', $filters['due_to']);
         }
         if (!empty($filters['ignored'])) {
@@ -71,7 +72,10 @@ class TicketService
             });
         }
 
-        $allowed = ['id', 'title', 'status', 'priority', 'due_date', 'created_at', 'updated_at'];
+        $allowed = ['id', 'title', 'status', 'priority', 'created_at', 'updated_at'];
+        if (Schema::hasColumn('tickets', 'due_date')) {
+            $allowed[] = 'due_date';
+        }
         $field = in_array($sortField, $allowed) ? $sortField : 'created_at';
         $query->orderBy($field, $sortDirection);
 
@@ -119,7 +123,7 @@ class TicketService
             $assignedTo = !empty($data['assigned_to']) ? (int) $data['assigned_to'] : null;
             $status = $data['status'] ?? ($assignedTo ? 'in_progress' : 'open');
 
-            $ticket = Ticket::create([
+            $ticketData = [
                 'uuid' => (string) Str::uuid(),
                 'customer_id' => $data['customer_id'],
                 'title' => $data['title'],
@@ -128,8 +132,13 @@ class TicketService
                 'priority' => $data['priority'] ?? 'medium',
                 'status' => $status,
                 'assigned_to' => $assignedTo,
-                'due_date' => $data['due_date'] ?? null,
-            ]);
+            ];
+
+            if (Schema::hasColumn('tickets', 'due_date')) {
+                $ticketData['due_date'] = !empty($data['due_date']) ? $data['due_date'] : null;
+            }
+
+            $ticket = Ticket::create($ticketData);
 
             Event::dispatch(TicketCreatedEvent::create(
                 (string) $ticket->id,
@@ -154,14 +163,19 @@ class TicketService
 
     public function update(Ticket $ticket, array $data, int $userId): Ticket
     {
-        $ticket->update([
+        $updateData = [
             'title' => $data['title'] ?? $ticket->title,
             'description' => $data['description'] ?? $ticket->description,
             'category' => $data['category'] ?? $ticket->category,
             'priority' => $data['priority'] ?? $ticket->priority,
             'status' => $data['status'] ?? $ticket->status,
-            'due_date' => $data['due_date'] ?? $ticket->due_date,
-        ]);
+        ];
+
+        if (Schema::hasColumn('tickets', 'due_date') && array_key_exists('due_date', $data)) {
+            $updateData['due_date'] = !empty($data['due_date']) ? $data['due_date'] : null;
+        }
+
+        $ticket->update($updateData);
         return $ticket;
     }
 

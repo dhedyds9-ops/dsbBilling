@@ -422,9 +422,11 @@ class Index extends BaseEnterpriseList
                 'priority' => $this->editingTicket['priority'] ?? 'medium',
                 'status' => $newStatus,
                 'assigned_to' => $newAssignee,
-                'due_date' => !empty($this->editingTicket['due_date']) ? $this->editingTicket['due_date'] : null,
                 'resolved_at' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? now() : $ticket->resolved_at,
             ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'due_date')) {
+                $updatePayload['due_date'] = !empty($this->editingTicket['due_date']) ? $this->editingTicket['due_date'] : null;
+            }
             if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'resolution_notes') && isset($this->editingTicket['note']) && trim((string) $this->editingTicket['note']) !== '') {
                 $updatePayload['resolution_notes'] = trim((string) $this->editingTicket['note']);
             }

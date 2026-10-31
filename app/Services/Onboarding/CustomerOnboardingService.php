@@ -210,7 +210,7 @@ class CustomerOnboardingService
             // Otomatisasi Tiket Pemasangan Baru (Level: HIGH)
             if (isset($install->survey->prospect)) {
                 $prospect = $install->survey->prospect;
-                \App\Models\Support\Ticket::create([
+                $ticketPayload = [
                     'uuid' => (string) Str::uuid(),
                     'customer_id' => null, // Pelanggan belum aktif, bisa dikaitkan ke prospect/lead di logic lain jika ada, atau dibiarkan null
                     'title' => 'Pemasangan Baru - ' . $prospect->name,
@@ -219,10 +219,13 @@ class CustomerOnboardingService
                     'priority' => 'high',
                     'status' => 'open',
                     'assigned_to' => null, // PIC teknisi pemasangan
-                    'due_date' => $data['scheduled_at'] ?? now()->addDays(3),
                     'created_by' => $data['created_by'],
                     'updated_by' => $data['updated_by'],
-                ]);
+                ];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'due_date')) {
+                    $ticketPayload['due_date'] = $data['scheduled_at'] ?? now()->addDays(3);
+                }
+                \App\Models\Support\Ticket::create($ticketPayload);
             }
 
             return $install;
