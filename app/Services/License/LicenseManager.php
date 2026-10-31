@@ -10,28 +10,39 @@ class LicenseManager
 {
     /**
      * URL API Pusat (Server Pembuat Billing).
-     * Saat di-deploy komersial, ganti URL ini ke domain utama Anda.
      */
-    private string $licenseServerUrl = 'https://license.dsbiling.id/api/v1/verify';
+    public function getLicenseServerUrl(): string
+    {
+        return env('DSBILLING_LICENSE_SERVER', 'https://dsbilling.mstore.id/api/v1/verify');
+    }
 
     /**
      * Memeriksa apakah instalasi dsBilling ini memiliki lisensi yang valid.
-     * Menggunakan cache 12 jam agar aplikasi tetap cepat.
      */
     public function isValid(): bool
     {
-        // Bypass license check for local development
-        if (app()->environment('local')) {
-            return true;
-        }
+        $info = $this->getLicenseInfo();
+        return ($info['valid'] ?? false) === true;
+    }
 
-        $licenseKey = config('app.license_key');
-        
+    /**
+     * Mendapatkan informasi detail status lisensi.
+     */
+    public function getLicenseInfo(): array
+    {
+        $licenseKey = env('DSBILLING_LICENSE_KEY') ?: config('app.license_key');
+
         if (empty($licenseKey)) {
-            return false;
+            return [
+                'valid'   => false,
+                'status'  => 'missing_key',
+                'message' => 'License Key belum dikonfigurasi di file .env server ini.',
+                'client'  => config('app.name'),
+            ];
         }
 
-        return Cache::remember("dsbilling_license_validity_{$licenseKey}", 43200, function () use ($licenseKey) {
+        // Cache status pengecekan selama 30 detik agar responsive terhadap tombol Suspend/Aktif
+        return Cache::remember("dsb_license_data_{$licenseKey}", 30, function () use ($licenseKey) {
             return $this->verifyWithServer($licenseKey);
         });
     }
@@ -39,26 +50,56 @@ class LicenseManager
     /**
      * Mengecek lisensi langsung ke server utama.
      */
-    private function verifyWithServer(string $licenseKey): bool
+    private function verifyWithServer(string $licenseKey): array
     {
         try {
-            // Uncomment baris di bawah saat server lisensi Anda sudah siap.
-            /*
-            $response = Http::timeout(5)->post($this->licenseServerUrl, [
+            $response = Http::timeout(4)->withoutVerifying()->post($this->getLicenseServerUrl(), [
                 'license_key' => $licenseKey,
                 'hardware_id' => $this->getHardwareId(),
-                'domain' => request()->getHost(),
+                'domain'      => request()->getHost(),
             ]);
 
-            return $response->successful() && $response->json('status') === 'active';
-            */
-            
-            // Dummy logic: Anggap lisensi valid jika formatnya mirip UUID atau panjangnya > 10.
-            return strlen($licenseKey) >= 10;
+            $json = $response->json();
+
+            if ($response->successful() && ($json['status'] ?? '') === 'active') {
+                $data = [
+                    'valid'       => true,
+                    'status'      => 'active',
+                    'message'     => $json['message'] ?? 'Lisensi valid dan aktif.',
+                    'client'      => $json['client'] ?? config('app.name'),
+                    'package'     => $json['package'] ?? 'Standard',
+                    'max_users'   => $json['max_users'] ?? 500,
+                    'max_routers' => $json['max_routers'] ?? 3,
+                    'features'    => $json['features'] ?? [],
+                    'expires_at'  => $json['expires_at'] ?? null,
+                ];
+
+                // Simpan fallback 12 jam jika sewaktu-waktu server lisensi maintenance
+                Cache::put("dsb_license_fallback_{$licenseKey}", $data, 43200);
+
+                return $data;
+            }
+
+            // Jika status suspended, expired, atau invalid
+            return [
+                'valid'   => false,
+                'status'  => $json['status'] ?? ($response->status() === 403 ? 'suspended' : 'invalid'),
+                'message' => $json['message'] ?? 'Lisensi software dsBilling telah dinonaktifkan oleh administrator.',
+                'client'  => $json['client'] ?? config('app.name'),
+            ];
         } catch (\Throwable $e) {
-            Log::error('License verification failed: ' . $e->getMessage());
-            // Fail-close (blokir) jika gagal verifikasi
-            return false; 
+            Log::error('License verification connection error: ' . $e->getMessage());
+
+            if (Cache::has("dsb_license_fallback_{$licenseKey}")) {
+                return Cache::get("dsb_license_fallback_{$licenseKey}");
+            }
+
+            return [
+                'valid'   => false,
+                'status'  => 'server_unreachable',
+                'message' => 'Gagal menghubungi server lisensi dsBilling. Periksa koneksi jaringan Anda.',
+                'client'  => config('app.name'),
+            ];
         }
     }
 
@@ -71,25 +112,14 @@ class LicenseManager
     }
 
     /**
-     * Menyimpan lisensi ke file .env.
+     * Bersihkan cache lisensi agar perubahan langsung dicek ulang seketika.
      */
-    public function saveLicenseKey(string $key): void
+    public function clearCache(): void
     {
-        $path = base_path('.env');
-
-        if (file_exists($path)) {
-            $content = file_get_contents($path);
-            
-            if (str_contains($content, 'DSBILLING_LICENSE_KEY=')) {
-                $content = preg_replace('/DSBILLING_LICENSE_KEY=.*/', "DSBILLING_LICENSE_KEY={$key}", $content);
-            } else {
-                $content .= "\nDSBILLING_LICENSE_KEY={$key}\n";
-            }
-
-            file_put_contents($path, $content);
-            
-            // Hapus cache lisensi lama
-            Cache::forget("dsbilling_license_validity_".config('app.license_key'));
+        $licenseKey = env('DSBILLING_LICENSE_KEY') ?: config('app.license_key');
+        if ($licenseKey) {
+            Cache::forget("dsb_license_data_{$licenseKey}");
+            Cache::forget("dsb_license_fallback_{$licenseKey}");
         }
     }
 }
