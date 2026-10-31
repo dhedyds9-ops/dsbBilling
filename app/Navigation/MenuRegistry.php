@@ -101,6 +101,7 @@ class MenuRegistry
                         'label' => 'Infrastruktur Fiber',
                         'icon' => 'hub',
                         'items' => [
+                            ['label' => 'Peta Jaringan (GIS)', 'route' => 'gis.map', 'active' => ['gis.*', 'network.map'], 'permission' => 'gis.view'],
                             ['label' => 'Data ODC', 'route' => 'isp.odcs.index', 'active' => 'isp.odcs.*', 'permission' => 'odc.view'],
                             ['label' => 'Data ODP', 'route' => 'isp.odps.index', 'active' => 'isp.odps.*', 'permission' => 'odp.view'],
                             ['label' => 'Data POP', 'route' => 'isp.pops.index', 'active' => 'isp.pops.*', 'permission' => 'pop.view'],
@@ -186,8 +187,8 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Router / MikroTik', 'route' => 'noc.routers.index', 'active' => 'noc.routers.*'],
                             ['label' => 'OLT', 'route' => 'noc.olts.index', 'active' => 'noc.olts.*'],
-
                             ['label' => 'Active Sessions', 'route' => 'noc.pppoe.index', 'active' => 'noc.pppoe.*'],
+                            ['label' => 'Peta Topologi (GIS)', 'route' => 'gis.map', 'active' => ['gis.*', 'network.map']],
                         ]
                     ],
                     [

@@ -27,6 +27,8 @@ class Asset extends Model
         'rack_id',
         'rack_position',
         'status',
+        'latitude',
+        'longitude',
         'condition',
         'serial_number',
         'mac_address',

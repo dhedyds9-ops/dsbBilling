@@ -922,7 +922,7 @@ class GisMap extends Component
                 'closures' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::all() : collect([]),
                 'odcs' => \App\Models\ISP\Odc::all(),
                 'olts' => \App\Models\ISP\Olt::all(),
-                'assets' => class_exists(\App\Models\Inventory\Asset::class) ? \App\Models\Inventory\Asset::whereNotNull('latitude')->whereNotNull('longitude')->get() : collect([]),
+                'assets' => (class_exists(\App\Models\Inventory\Asset::class) && \Illuminate\Support\Facades\Schema::hasColumn('assets', 'latitude')) ? \App\Models\Inventory\Asset::whereNotNull('latitude')->whereNotNull('longitude')->get() : collect([]),
             ];
         });
 

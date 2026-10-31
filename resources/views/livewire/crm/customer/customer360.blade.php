@@ -342,7 +342,7 @@
                         &nbsp;|&nbsp; Lng: <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $customer->longitude }}</span>
                     </div>
                     <div class="flex items-center gap-3">
-                        <a href="{{ url('/reseller-portal/network/map') }}" target="_blank" rel="noopener noreferrer"
+                        <a href="{{ url('/network/map') }}" target="_blank" rel="noopener noreferrer"
                            class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 text-sm font-medium">
                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">hub</span>
                             Peta Jaringan

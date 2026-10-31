@@ -318,13 +318,21 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/settings', \App\Livewire\ACS\Settings::class)->name('settings');
         });
 
-        // === GIS (Peta Pelanggan) ===
+        // === GIS (Peta Jaringan & Pelanggan) ===
         Route::prefix('gis')->name('gis.')->group(function () use ($cs) {
             Route::get('/', \App\Livewire\Gis\GisDashboard::class)->name('index');
             Route::get('/map', \App\Livewire\Gis\GisMap::class)->name('map');
             Route::get('/analytics', \App\Livewire\Gis\GisAnalytics::class)->name('analytics');
             Route::get('/customer-map', fn() => redirect()->route('gis.map'))->name('customer-map');
         });
+
+        // Universal route alias for /network/map (redirects according to role)
+        Route::get('/network/map', function () {
+            if (auth()->check() && auth()->user()->hasRole('reseller') && !auth()->user()->hasAnyRole(['administrator', 'superadmin', 'manager'])) {
+                return redirect()->route('reseller-portal.network.map');
+            }
+            return redirect()->route('gis.map');
+        })->name('network.map');
 
         // === GIS Map APIs (for the JS frontend) ===
         Route::prefix('map')->group(function () {
