@@ -8,7 +8,7 @@
         </a>
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Edit Customer</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Edit informasi customer</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Edit informasi customer dan perangkat</p>
         </div>
     </div>
 
@@ -42,9 +42,31 @@
                     <select wire:model="status" class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
                         <option value="active">Aktif</option>
                         <option value="inactive">Nonaktif</option>
-                        <option value="suspended">Dibatalkan</option>
+                        <option value="suspended">Dibatalkan / Suspend</option>
                     </select>
                     @error('status')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Serial Number ONU / Modem (ONT)
+                        <span class="text-xs text-slate-400 font-normal ml-1">(Contoh: ZTEGC1234567, FHTT980E4928)</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" 
+                               wire:model="onu_serial_number" 
+                               list="available-onus-list"
+                               placeholder="Ketik atau pilih Serial Number ONU..."
+                               class="w-full px-4 py-2 font-mono uppercase bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-900 dark:text-slate-100">
+                        <datalist id="available-onus-list">
+                            @foreach($availableOnus ?? [] as $onuItem)
+                                <option value="{{ $onuItem->serial_number }}">{{ $onuItem->name }} ({{ $onuItem->model ?: 'ONU' }})</option>
+                            @endforeach
+                        </datalist>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Jika SN dimasukkan, sistem akan menghubungkan modem GenieACS dan menampilkan tombol ONU di daftar pelanggan.</p>
+                    @error('onu_serial_number')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
@@ -55,6 +77,9 @@
                 @error('address')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
+            </div>
+            <div>
+                <x-forms.coordinate-picker latModel="latitude" lngModel="longitude" />
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Catatan</label>
@@ -77,4 +102,3 @@
         </form>
     </x-base.card>
 </div>
-

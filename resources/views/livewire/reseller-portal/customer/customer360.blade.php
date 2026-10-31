@@ -1047,6 +1047,14 @@
                     </select>
                 </div>
                 <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Serial Number ONU / Modem (ONT)
+                        <span class="text-xs text-slate-400 font-normal ml-1">(Contoh: ZTEGC1234567, FHTT980E4928)</span>
+                    </label>
+                    <input wire:model="edit_onu_sn" type="text" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 font-mono uppercase dark:bg-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100" placeholder="Ketik Serial Number ONU...">
+                    @error('edit_onu_sn') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Alamat</label>
                     <textarea wire:model="edit_address" rows="3" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 resize-none dark:bg-slate-900 dark:text-slate-100" placeholder="Alamat lengkap..."></textarea>
                 </div>

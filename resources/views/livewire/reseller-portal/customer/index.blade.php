@@ -239,13 +239,13 @@
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">router</span>
                                         </a>
                                     @endif
-                                    {{-- Edit / Detail --}}
-                                    <a href="{{ route('reseller-portal.customers.show', $customer->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-900/50 transition-colors" title="Edit / Detail">
+                                    {{-- Edit --}}
+                                    <a href="{{ route('reseller-portal.customers.edit', $customer->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-900/50 transition-colors" title="Edit Pelanggan & SN ONU">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
                                     </a>
-                                    {{-- Customer Portal --}}
-                                    <a href="#" class="p-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded hover:bg-sky-100 dark:bg-sky-900/50 transition-colors" title="Portal Customer">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">language</span>
+                                    {{-- Detail Customer 360 --}}
+                                    <a href="{{ route('reseller-portal.customers.show', $customer->id) }}" class="p-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded hover:bg-sky-100 dark:bg-sky-900/50 transition-colors" title="Detail Customer 360">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">account_circle</span>
                                     </a>
                                     {{-- Hapus --}}
                                     <button wire:click="delete({{ $customer->id }})" wire:confirm="Yakin ingin menghapus pelanggan ini?" class="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-900/50 transition-colors" title="Hapus">

@@ -15,6 +15,7 @@ class Customer360 extends AdminComponent
     public $showEditModal = false;
     public $edit_name, $edit_phone, $edit_email, $edit_address, $edit_latitude, $edit_longitude;
     public $edit_reseller_id = '', $edit_branch_id = '', $edit_notes = '', $edit_status = 'active';
+    public $edit_onu_sn = '';
     
     // Edit Service State
     public $showEditServiceModal = false;
@@ -89,6 +90,7 @@ class Customer360 extends AdminComponent
         $this->edit_branch_id  = $this->getCustomer()->branch_id ?? '';
         $this->edit_notes      = $this->getCustomer()->notes ?? '';
         $this->edit_status     = $this->getCustomer()->status ?? 'active';
+        $this->edit_onu_sn     = $this->getCustomer()->onu_device['sn'] ?? '';
         $this->showEditModal   = true;
     }
 
@@ -103,7 +105,18 @@ class Customer360 extends AdminComponent
             'edit_longitude'   => 'nullable|string',
             'edit_reseller_id' => 'nullable|exists:users,id',
             'edit_branch_id'   => 'nullable|exists:branches,id',
+            'edit_onu_sn'      => 'nullable|string|max:100',
         ]);
+
+        if ($this->edit_phone) {
+            try {
+                \App\Services\CRM\CustomerValidationService::validatePhone($this->edit_phone, $this->getCustomer()->id, $this->getCustomer()->user_id);
+            } catch (\InvalidArgumentException $e) {
+                $this->addError('edit_phone', $e->getMessage());
+                session()->flash('error', $e->getMessage());
+                return;
+            }
+        }
 
         $this->getCustomer()->update([
             'name'        => $this->edit_name,
@@ -119,9 +132,40 @@ class Customer360 extends AdminComponent
             'updated_by'  => auth()->user()->getEffectiveResellerId(),
         ]);
 
+        // Manage ONU SN
+        $actualOnuId = null;
+        if (!empty(trim((string)$this->edit_onu_sn))) {
+            $cleanSn = strtoupper(trim($this->edit_onu_sn));
+            $onu = \App\Models\ISP\Onu::where('serial_number', $cleanSn)->orWhere('id', $cleanSn)->first();
+            if (!$onu) {
+                $onu = \App\Models\ISP\Onu::create([
+                    'name' => 'ONU-' . $cleanSn,
+                    'code' => 'ONU-' . strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $cleanSn), -6)),
+                    'model' => 'ONT',
+                    'serial_number' => $cleanSn,
+                    'status' => 'active',
+                    'branch_id' => $this->getCustomer()->branch_id,
+                    'created_by' => auth()->id(),
+                ]);
+            }
+            $actualOnuId = $onu->id;
+        }
+
+        $service = $this->getCustomer()->customerServices()->first();
+        if ($service) {
+            $service->update(['onu_id' => $actualOnuId]);
+        } elseif ($actualOnuId) {
+            $this->getCustomer()->customerServices()->create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'onu_id' => $actualOnuId,
+                'status' => 'active',
+                'created_by' => auth()->id(),
+            ]);
+        }
+
         $this->showEditModal = false;
         $this->getCustomer()->refresh();
-        session()->flash('success', 'Data pelanggan berhasil diperbarui!');
+        session()->flash('success', 'Data pelanggan dan ONU berhasil diperbarui!');
     }
 
             public function updatedEditServicePasswordMode($val) {
