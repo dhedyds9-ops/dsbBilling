@@ -516,6 +516,12 @@ class ProvisioningService
                 if (!empty($data['address']) && empty($customer->address)) {
                     $updateFields['address'] = $data['address'];
                 }
+                if (!empty($data['latitude'])) {
+                    $updateFields['latitude'] = $data['latitude'];
+                }
+                if (!empty($data['longitude'])) {
+                    $updateFields['longitude'] = $data['longitude'];
+                }
                 if (!empty($data['reseller_id']) && empty($customer->reseller_id)) {
                     $updateFields['reseller_id'] = $data['reseller_id'];
                 }

@@ -14,18 +14,29 @@
         <div>
             <div class="flex items-center justify-between gap-2 mb-1">
                 <label class="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <span class="text-indigo-600 dark:text-indigo-400 font-bold">↕</span>
+                    <span class="text-indigo-600 dark:text-indigo-400 font-bold">&udarr;</span>
                     <span>Latitude</span>
                 </label>
-                <button type="button" 
-                        @click="openMapModal()" 
-                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs">
-                    <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    <span>Pilih Lokasi Di Maps</span>
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <a href="{{ url('/reseller-portal/network/map') }}" 
+                       target="_blank" 
+                       class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors cursor-pointer shadow-2xs"
+                       title="Buka Peta Topologi Jaringan (Wilayah Reseller) di Tab Baru">
+                        <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                        </svg>
+                        <span>Peta Jaringan</span>
+                    </a>
+                    <button type="button" 
+                            @click="openMapModal()" 
+                            class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs">
+                        <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span>Pilih Lokasi Di Maps</span>
+                    </button>
+                </div>
             </div>
             <div class="relative flex rounded-lg shadow-2xs">
                 <input type="text" 
@@ -60,18 +71,20 @@
         <div>
             <div class="flex items-center justify-between gap-2 mb-1">
                 <label class="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <span class="text-indigo-600 dark:text-indigo-400 font-bold">↔</span>
+                    <span class="text-indigo-600 dark:text-indigo-400 font-bold">&lrarr;</span>
                     <span>Longitude</span>
                 </label>
-                <button type="button" 
-                        @click="openMapModal()" 
-                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs">
-                    <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    <span>Pilih Lokasi Di Maps</span>
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" 
+                            @click="openMapModal()" 
+                            class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs">
+                        <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span>Pilih Lokasi Di Maps</span>
+                    </button>
+                </div>
             </div>
             <div class="relative flex rounded-lg shadow-2xs">
                 <input type="text" 
@@ -103,20 +116,30 @@
         </div>
     </div>
 
-    {{-- Link ke Google Maps jika koordinat sudah terisi --}}
+    {{-- Link ke Google Maps & Peta Topologi jika koordinat sudah terisi --}}
     <template x-if="lat && lng">
-        <div class="mt-2 flex items-center justify-between text-xs">
+        <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span class="text-slate-500 dark:text-slate-400 font-mono">
                 Koordinat Terpasang: <strong class="text-slate-700 dark:text-slate-200" x-text="lat + ', ' + lng"></strong>
             </span>
-            <a :href="'https://www.google.com/maps?q=' + lat + ',' + lng" 
-               target="_blank" 
-               class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">
-                <span>Lihat di Google Maps</span>
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                </svg>
-            </a>
+            <div class="flex items-center gap-3">
+                <a href="{{ url('/reseller-portal/network/map') }}" 
+                   target="_blank" 
+                   class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-semibold">
+                    <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                    </svg>
+                    <span>Lihat di Peta Jaringan</span>
+                </a>
+                <a :href="'https://www.google.com/maps?q=' + lat + ',' + lng" 
+                   target="_blank" 
+                   class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">
+                    <span>Lihat di Google Maps</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>
+            </div>
         </div>
     </template>
 
@@ -128,7 +151,7 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+         class="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
          style="display: none;">
         
         <div @click.away="closeMapModal()" 
@@ -149,11 +172,22 @@
                     </div>
                 </div>
 
-                <button type="button" @click="closeMapModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                <div class="flex items-center gap-2">
+                    <a href="{{ url('/reseller-portal/network/map') }}" 
+                       target="_blank" 
+                       class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-lg border border-emerald-200 dark:border-emerald-800 transition-colors"
+                       title="Buka Peta Topologi Jaringan Reseller di Tab Baru">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                        </svg>
+                        <span>Peta Jaringan</span>
+                    </a>
+                    <button type="button" @click="closeMapModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {{-- Modal Search & Toolbar --}}
@@ -337,7 +371,7 @@
             this.loadLeafletAssets(() => {
                 const defaultLat = parseFloat(this.tempLat) || -6.2088;
                 const defaultLng = parseFloat(this.tempLng) || 106.8456;
-                const zoom = (this.tempLat && this.tempLng) ? 16 : 12;
+                const zoom = (this.tempLat && this.tempLng) ? 16 : 13;
 
                 const mapEl = document.getElementById(this.mapId);
                 if (!mapEl) return;
@@ -349,10 +383,19 @@
 
                 this.map = L.map(this.mapId).setView([defaultLat, defaultLng], zoom);
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                    maxZoom: 22,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: 'Google'
+                });
+
+                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; OpenStreetMap contributors',
                     maxZoom: 19
-                }).addTo(this.map);
+                });
+
+                googleHybrid.addTo(this.map);
+                L.control.layers({ 'Satelit (Google)': googleHybrid, 'Street (OSM)': osm }).addTo(this.map);
 
                 const customIcon = L.icon({
                     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',

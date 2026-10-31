@@ -51,6 +51,8 @@ class Create extends AdminComponent
             'phone'              => 'required|numeric|digits_between:10,15',
             'email'              => 'nullable|email|max:255',
             'address'            => 'required|string',
+            'latitude'           => 'nullable|string',
+            'longitude'          => 'nullable|string',
             'status'             => 'required|in:active,inactive,suspended',
             'service_profile_id' => 'nullable|exists:service_profiles,id',
             'router_id'          => 'nullable|exists:routers,id',
@@ -110,12 +112,14 @@ class Create extends AdminComponent
                     'phone'              => $this->phone,
                     'email'              => $this->email,
                     'address'            => $this->address,
+                    'latitude'           => $this->latitude ?: null,
+                    'longitude'          => $this->longitude ?: null,
                     'username'           => $this->pppoe_username,
                     'password'           => $this->pppoe_password,
                     'service_profile_id' => $this->service_profile_id,
                     'router_id'          => $this->router_id,
                     'status'             => $this->status,
-                    'notes'              => json_encode(['lat' => $this->latitude, 'lng' => $this->longitude]),
+                    'notes'              => $this->notes ?: null,
                 ], $ownershipData), auth()->id());
 
                 // Update reseller/branch setelah customer terbuat

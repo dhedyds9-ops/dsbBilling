@@ -335,17 +335,24 @@
             </x-slot>
             @if($customer->latitude && $customer->longitude)
             <div class="space-y-3">
-                <div class="flex gap-4 text-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
                     <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                         <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:18px">location_on</span>
                         Lat: <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $customer->latitude }}</span>
                         &nbsp;|&nbsp; Lng: <span class="font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $customer->longitude }}</span>
                     </div>
-                    <a href="https://maps.google.com/?q={{ $customer->latitude }},{{ $customer->longitude }}" target="_blank" rel="noopener noreferrer"
-                       class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">open_in_new</span>
-                        Buka di Google Maps
-                    </a>
+                    <div class="flex items-center gap-3">
+                        <a href="{{ url('/reseller-portal/network/map') }}" target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 text-sm font-medium">
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">hub</span>
+                            Peta Jaringan
+                        </a>
+                        <a href="https://maps.google.com/?q={{ $customer->latitude }},{{ $customer->longitude }}" target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 text-sm font-medium">
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">open_in_new</span>
+                            Buka di Google Maps
+                        </a>
+                    </div>
                 </div>
                 <div class="h-72 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 relative z-0" wire:ignore>
                       <div id="customer-map" class="w-full h-full rounded-xl"></div>
@@ -1050,15 +1057,8 @@
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Alamat</label>
                     <textarea wire:model="edit_address" rows="3" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 resize-none dark:bg-slate-900 dark:text-slate-100" placeholder="Alamat lengkap..."></textarea>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Latitude</label>
-                        <input wire:model="edit_latitude" type="text" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="-7.xxx">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Longitude</label>
-                        <input wire:model="edit_longitude" type="text" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="110.xxx">
-                    </div>
+                <div>
+                    <x-forms.coordinate-picker latModel="edit_latitude" lngModel="edit_longitude" gridClass="grid grid-cols-1 md:grid-cols-2 gap-4" />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
