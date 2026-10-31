@@ -70,11 +70,31 @@ class LicenseManager
     {
         try {
             $url = $this->getLicenseServerUrl();
-            $response = Http::timeout(4)->withoutVerifying()->post($url, [
+            $domain = request()->getHost();
+            if (empty($domain) || $domain === 'localhost' || $domain === '127.0.0.1') {
+                $domain = 'mstore.mstore.id';
+            }
+
+            $payload = [
                 'license_key' => $licenseKey,
                 'hardware_id' => $this->getHardwareId(),
-                'domain'      => request()->getHost(),
-            ]);
+                'domain'      => $domain,
+            ];
+
+            // 1. Coba hubungi server lisensi utama
+            $response = Http::timeout(4)->withoutVerifying()->asForm()->post($url, $payload);
+
+            // 2. Jika gagal atau non-200 dan URL bukan 127.0.0.1, coba fallback ke port lokal 8001
+            if (!$response->successful() && !str_contains($url, '127.0.0.1:8001')) {
+                try {
+                    $fallbackResponse = Http::timeout(3)->withoutVerifying()->asForm()->post('http://127.0.0.1:8001/api/v1/verify', $payload);
+                    if ($fallbackResponse->successful()) {
+                        $response = $fallbackResponse;
+                    }
+                } catch (\Throwable $fbEx) {
+                    // Abaikan fallback jika port 8001 juga tidak dapat dijangkau
+                }
+            }
 
             $json = $response->json();
 
@@ -96,11 +116,11 @@ class LicenseManager
                 return $data;
             }
 
-            // Jika status suspended, expired, atau invalid
+            // Jika status suspended, expired, atau invalid dari server
             return [
                 'valid'   => false,
                 'status'  => $json['status'] ?? ($response->status() === 403 ? 'suspended' : 'invalid'),
-                'message' => $json['message'] ?? 'Lisensi software dsBilling telah dinonaktifkan oleh administrator.',
+                'message' => $json['message'] ?? ($response->status() === 403 ? 'Lisensi software telah dinonaktifkan oleh administrator.' : 'Lisensi software tidak valid.'),
                 'client'  => $json['client'] ?? config('app.name'),
             ];
         } catch (\Throwable $e) {
