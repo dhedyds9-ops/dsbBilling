@@ -41,10 +41,18 @@ class LicenseManager
             ];
         }
 
-        // Cache status pengecekan selama 30 detik agar responsive terhadap tombol Suspend/Aktif
-        return Cache::remember("dsb_license_data_{$licenseKey}", 30, function () use ($licenseKey) {
-            return $this->verifyWithServer($licenseKey);
-        });
+        $cacheKey = "dsb_license_data_{$licenseKey}";
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        $data = $this->verifyWithServer($licenseKey);
+
+        // Jika aktif simpan 30 detik. Jika suspended/gagal simpan hanya 3 detik agar responsif saat dibuka kembali!
+        $ttl = ($data['valid'] ?? false) ? 30 : 3;
+        Cache::put($cacheKey, $data, $ttl);
+
+        return $data;
     }
 
     /**
