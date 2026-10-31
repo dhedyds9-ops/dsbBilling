@@ -41,15 +41,15 @@ class Index extends AdminComponent
 
         $query = Customer::with([
             'customerServices' => function ($query) {
-                $query->withoutGlobalScopes()
+                $query->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
                       ->with([
-                          'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
-                          'service' => fn($q) => $q->withoutGlobalScopes(),
-                          'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
-                          'hotspotUser' => fn($q) => $q->withoutGlobalScopes(),
+                          'serviceProfile' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
+                          'service' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
+                          'pppoeUser' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
+                          'hotspotUser' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
                       ]);
             },
-            'reseller' => fn($q) => $q->withoutGlobalScopes(),
+            'reseller' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
         ])->where(function($q) use ($ownerId) {
             $q->where('reseller_id', $ownerId)
               ->orWhere('created_by', $ownerId);

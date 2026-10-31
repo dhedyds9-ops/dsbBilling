@@ -48,20 +48,21 @@ class Hotspot extends AdminComponent
     private function baseQuery()
     {
         $ownerId = Auth::user()->getEffectiveResellerId();
-        return HotspotUser::withoutGlobalScopes()->where(function($q) use ($ownerId) {
-            $q->where('hotspot_users.reseller_id', $ownerId)
-              ->orWhere('hotspot_users.created_by', $ownerId)
-              ->orWhereHas('customer', function($cq) use ($ownerId) {
-                  $cq->withoutGlobalScopes()->where(function($sq) use ($ownerId) {
-                      $sq->where('customers.reseller_id', $ownerId)->orWhere('customers.created_by', $ownerId);
+        return HotspotUser::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+            ->where(function($q) use ($ownerId) {
+                $q->where('hotspot_users.reseller_id', $ownerId)
+                  ->orWhere('hotspot_users.created_by', $ownerId)
+                  ->orWhereHas('customer', function($cq) use ($ownerId) {
+                      $cq->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->where(function($sq) use ($ownerId) {
+                          $sq->where('customers.reseller_id', $ownerId)->orWhere('customers.created_by', $ownerId);
+                      });
+                  })
+                  ->orWhereHas('customerService', function($csq) use ($ownerId) {
+                      $csq->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->where(function($sq) use ($ownerId) {
+                          $sq->where('customer_services.reseller_id', $ownerId)->orWhere('customer_services.created_by', $ownerId);
+                      });
                   });
-              })
-              ->orWhereHas('customerService', function($csq) use ($ownerId) {
-                  $csq->withoutGlobalScopes()->where(function($sq) use ($ownerId) {
-                      $sq->where('customer_services.reseller_id', $ownerId)->orWhere('customer_services.created_by', $ownerId);
-                  });
-              });
-        });
+            });
     }
 
     private function applyOnlineFilter($query, bool $isOnline)
@@ -165,9 +166,9 @@ class Hotspot extends AdminComponent
     public function render()
     {
         $query = $this->baseQuery()->with([
-            'customer' => fn($q) => $q->withoutGlobalScopes(),
-            'customerService.customer' => fn($q) => $q->withoutGlobalScopes(),
-            'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+            'customer' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
+            'customerService.customer' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
+            'serviceProfile' => fn($q) => $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation']),
             'activeSession',
             'latestAccounting',
         ])
@@ -176,7 +177,7 @@ class Hotspot extends AdminComponent
                 $q->where(function($sq) {
                     $sq->where('username', 'like', '%' . $this->search . '%')
                         ->orWhereHas('customer', function($cq) {
-                            $cq->withoutGlobalScopes()->where('name', 'like', '%' . $this->search . '%');
+                            $cq->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->where('name', 'like', '%' . $this->search . '%');
                         });
                 });
             })
