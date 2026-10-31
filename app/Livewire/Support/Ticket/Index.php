@@ -41,14 +41,60 @@ class Index extends BaseEnterpriseList
         return $this->ticketService->getAssigneeOptions(!$this->showAllStaff);
     }
 
+    public function getResellerOptionsProperty(): array
+    {
+        $resellers = app(\App\Services\Auth\UserQueryService::class)->getResellers();
+        $options = [];
+        foreach ($resellers as $r) {
+            $options[$r->id] = $r->name;
+        }
+        return $options;
+    }
+
     public function getFilteredCustomersProperty(): array
     {
-        $all = $this->filterOptions['customers'] ?? [];
-        if (empty(trim($this->customerSearch))) {
-            return $all;
+        $resellerId = $this->newTicket['reseller_id'] ?? null;
+
+        if (Auth::user()?->hasRole('reseller')) {
+            $resellerId = (string) (Auth::user()->getEffectiveResellerId() ?? Auth::id());
         }
-        $q = strtolower(trim($this->customerSearch));
-        return array_filter($all, fn($name) => str_contains(strtolower($name), $q));
+
+        $query = \App\Models\CRM\Customer::withoutGuests()->where('status', 'active');
+
+        if ($resellerId !== null && $resellerId !== '') {
+            if ($resellerId === 'hq' || $resellerId === '0') {
+                $query->whereNull('reseller_id');
+            } else {
+                $query->where('reseller_id', (int) $resellerId);
+            }
+        }
+
+        if (!empty(trim($this->customerSearch))) {
+            $q = trim($this->customerSearch);
+            $query->where(function ($sq) use ($q) {
+                $sq->where('name', 'like', "%{$q}%")
+                    ->orWhere('phone', 'like', "%{$q}%")
+                    ->orWhere('code', 'like', "%{$q}%");
+            });
+        }
+
+        return $query->orderBy('name')->pluck('name', 'id')->toArray();
+    }
+
+    public function updatedNewTicketResellerId($value): void
+    {
+        $this->newTicket['customer_id'] = '';
+        $this->customerSearch = '';
+    }
+
+    public function updatedNewTicketCustomerId($value): void
+    {
+        if ($value && empty($this->newTicket['reseller_id'])) {
+            $cust = \App\Models\CRM\Customer::find($value);
+            if ($cust) {
+                $this->newTicket['reseller_id'] = $cust->reseller_id ? (string) $cust->reseller_id : 'hq';
+            }
+        }
     }
 
     protected TicketService $ticketService;
@@ -69,9 +115,16 @@ class Index extends BaseEnterpriseList
 
         parent::mount();
         $this->activeTab = 'kanban';
+
+        $defaultResellerId = '';
+        if (Auth::user()?->hasRole('reseller')) {
+            $defaultResellerId = (string) (Auth::user()->getEffectiveResellerId() ?? Auth::id());
+        }
+
         $this->filters = [
             'status' => '',
             'priority' => '',
+            'reseller_id' => $defaultResellerId,
             'assigned_to' => '',
             'customer_id' => '',
             'category' => '',
@@ -81,6 +134,7 @@ class Index extends BaseEnterpriseList
         ];
         $this->newTicket = [
             'is_manual_customer' => false,
+            'reseller_id' => $defaultResellerId,
             'customer_id' => '',
             'manual_customer_name' => '',
             'manual_customer_phone' => '',
@@ -112,6 +166,7 @@ class Index extends BaseEnterpriseList
                 'high' => 'High',
                 'critical' => 'Critical',
             ],
+            'resellers' => $this->resellerOptions,
             'assignees' => $this->ticketService->getAssigneeOptions(),
             'customers' => $this->ticketService->getCustomerOptions(),
             'categories' => [
@@ -246,9 +301,15 @@ class Index extends BaseEnterpriseList
     public function getFilterConfig(): array
     {
         $opts = $this->filterOptions ?? [];
+        $resellerFilterOptions = ['' => 'Semua Reseller', 'hq' => 'Kantor Pusat (HQ)'];
+        foreach (($opts['resellers'] ?? []) as $k => $v) {
+            $resellerFilterOptions[$k] = $v;
+        }
+
         return [
             ['key' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => $opts['statuses'] ?? []],
             ['key' => 'priority', 'label' => 'Priority', 'type' => 'select', 'options' => $opts['priorities'] ?? []],
+            ['key' => 'reseller_id', 'label' => 'Reseller / Mitra', 'type' => 'select', 'options' => $resellerFilterOptions],
             ['key' => 'assigned_to', 'label' => 'Assignee', 'type' => 'select', 'options' => $opts['assignees'] ?? []],
             ['key' => 'customer_id', 'label' => 'Customer', 'type' => 'select', 'options' => $opts['customers'] ?? []],
             ['key' => 'category', 'label' => 'Kategori', 'type' => 'select', 'options' => $opts['categories'] ?? []],
@@ -275,8 +336,15 @@ class Index extends BaseEnterpriseList
         $this->resetErrorBag();
         $this->customerSearch = '';
         $this->showAllStaff = false;
+
+        $defaultResellerId = '';
+        if (Auth::user()?->hasRole('reseller')) {
+            $defaultResellerId = (string) (Auth::user()->getEffectiveResellerId() ?? Auth::id());
+        }
+
         $this->newTicket = [
             'is_manual_customer' => false,
+            'reseller_id' => $defaultResellerId,
             'customer_id' => '',
             'manual_customer_name' => '',
             'manual_customer_phone' => '',
@@ -311,6 +379,11 @@ class Index extends BaseEnterpriseList
                 return;
             }
 
+            $resellerId = null;
+            if (!empty($data['reseller_id']) && $data['reseller_id'] !== 'hq') {
+                $resellerId = (int) $data['reseller_id'];
+            }
+
             // Validasi Customer
             if (!empty($data['is_manual_customer'])) {
                 if (empty(trim($data['manual_customer_name'] ?? ''))) {
@@ -333,6 +406,7 @@ class Index extends BaseEnterpriseList
                     'code' => 'GST-' . strtoupper(\Illuminate\Support\Str::random(6)),
                     'phone' => $cleanPhone,
                     'address' => $cleanAddress,
+                    'reseller_id' => $resellerId,
                     'status' => 'active',
                     'created_by' => $userId,
                 ]);
@@ -343,8 +417,15 @@ class Index extends BaseEnterpriseList
                     $this->addError('newTicket.customer_id', 'Silakan pilih pelanggan dari daftar, atau aktifkan opsi Belum Terdaftar (Input Manual).');
                     return;
                 }
+
+                // Jika reseller_id belum dipilih, warisi dari reseller customer yang dipilih
+                if ($resellerId === null && empty($data['reseller_id'])) {
+                    $selectedCustomer = \App\Models\CRM\Customer::find($data['customer_id']);
+                    $resellerId = $selectedCustomer?->reseller_id;
+                }
             }
 
+            $data['reseller_id'] = $resellerId;
             $this->ticketService->create($data, $userId);
             session()->flash('success', 'Tiket berhasil dibuat.');
             $this->showCreateForm = false;
@@ -364,15 +445,18 @@ class Index extends BaseEnterpriseList
     public function rowEdit(int $id): void
     {
         $this->resetErrorBag();
-        $ticket = \App\Models\Support\Ticket::with(['customer', 'assignedTo'])->find($id);
+        $ticket = \App\Models\Support\Ticket::with(['customer', 'assignedTo', 'reseller'])->find($id);
         if (!$ticket) {
             $this->errorMessage = 'Tiket tidak ditemukan.';
             return;
         }
 
+        $effectiveReseller = $ticket->reseller_id ? (string)$ticket->reseller_id : ($ticket->customer?->reseller_id ? (string)$ticket->customer->reseller_id : 'hq');
+
         $this->editingTicket = [
             'id' => $ticket->id,
             'customer_name' => $ticket->customer?->name ?? 'Pelanggan',
+            'reseller_id' => $effectiveReseller,
             'title' => $ticket->title,
             'description' => $ticket->description ?? '',
             'category' => $ticket->category ?? 'internet',
@@ -414,6 +498,10 @@ class Index extends BaseEnterpriseList
         try {
             $newAssignee = !empty($this->editingTicket['assigned_to']) ? (int) $this->editingTicket['assigned_to'] : null;
             $newStatus = $this->editingTicket['status'] ?? $ticket->status;
+            $newResellerId = null;
+            if (!empty($this->editingTicket['reseller_id']) && $this->editingTicket['reseller_id'] !== 'hq') {
+                $newResellerId = (int) $this->editingTicket['reseller_id'];
+            }
 
             $updatePayload = [
                 'title' => trim($this->editingTicket['title']),
@@ -422,6 +510,7 @@ class Index extends BaseEnterpriseList
                 'priority' => $this->editingTicket['priority'] ?? 'medium',
                 'status' => $newStatus,
                 'assigned_to' => $newAssignee,
+                'reseller_id' => $newResellerId,
                 'resolved_at' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? now() : $ticket->resolved_at,
             ];
             if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'due_date')) {

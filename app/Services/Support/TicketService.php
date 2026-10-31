@@ -32,13 +32,20 @@ class TicketService
 
     public function list(array $filters, string $search, string $sortField, string $sortDirection, int $perPage)
     {
-        $query = $this->scopedQuery()->with(['customer', 'assignedTo']);
+        $query = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller']);
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
         if (!empty($filters['priority'])) {
             $query->where('priority', $filters['priority']);
+        }
+        if (!empty($filters['reseller_id'])) {
+            if ($filters['reseller_id'] === 'hq' || $filters['reseller_id'] === '0') {
+                $query->whereNull('reseller_id');
+            } else {
+                $query->where('reseller_id', $filters['reseller_id']);
+            }
         }
         if (!empty($filters['assigned_to'])) {
             $query->where('assigned_to', $filters['assigned_to']);
@@ -107,7 +114,7 @@ class TicketService
         $statuses = ['open', 'in_progress', 'pending_customer', 'resolved', 'closed'];
         $out = [];
         foreach ($statuses as $s) {
-            $out[$s] = $this->scopedQuery()->with(['customer', 'assignedTo'])
+            $out[$s] = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller'])
                 ->where('status', $s)
                 ->orderByDesc('priority')
                 ->orderBy('created_at')
@@ -123,9 +130,18 @@ class TicketService
             $assignedTo = !empty($data['assigned_to']) ? (int) $data['assigned_to'] : null;
             $status = $data['status'] ?? ($assignedTo ? 'in_progress' : 'open');
 
+            $resellerId = null;
+            if (isset($data['reseller_id']) && $data['reseller_id'] !== '' && $data['reseller_id'] !== 'hq') {
+                $resellerId = (int) $data['reseller_id'];
+            } elseif (!empty($data['customer_id'])) {
+                $cust = Customer::find($data['customer_id']);
+                $resellerId = $cust?->reseller_id;
+            }
+
             $ticketData = [
                 'uuid' => (string) Str::uuid(),
                 'customer_id' => $data['customer_id'],
+                'reseller_id' => $resellerId,
                 'title' => $data['title'],
                 'description' => $data['description'] ?? '',
                 'category' => $data['category'] ?? 'other',
@@ -138,7 +154,16 @@ class TicketService
                 $ticketData['due_date'] = !empty($data['due_date']) ? $data['due_date'] : null;
             }
 
-            $ticket = Ticket::create($ticketData);
+            try {
+                $ticket = Ticket::create($ticketData);
+            } catch (\Illuminate\Database\QueryException $e) {
+                if (str_contains($e->getMessage(), 'due_date')) {
+                    unset($ticketData['due_date']);
+                    $ticket = Ticket::create($ticketData);
+                } else {
+                    throw $e;
+                }
+            }
 
             Event::dispatch(TicketCreatedEvent::create(
                 (string) $ticket->id,
@@ -170,6 +195,10 @@ class TicketService
             'priority' => $data['priority'] ?? $ticket->priority,
             'status' => $data['status'] ?? $ticket->status,
         ];
+
+        if (array_key_exists('reseller_id', $data)) {
+            $updateData['reseller_id'] = ($data['reseller_id'] === 'hq' || $data['reseller_id'] === '' || $data['reseller_id'] === null) ? null : (int) $data['reseller_id'];
+        }
 
         if (Schema::hasColumn('tickets', 'due_date') && array_key_exists('due_date', $data)) {
             $updateData['due_date'] = !empty($data['due_date']) ? $data['due_date'] : null;
@@ -290,13 +319,14 @@ class TicketService
         return response()->stream(function () use ($rows) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, ['Ticket ID', 'UUID', 'Title', 'Customer', 'Category', 'Priority', 'Status', 'Assignee', 'Due Date', 'Last Update']);
+            fputcsv($handle, ['Ticket ID', 'UUID', 'Title', 'Customer', 'Reseller', 'Category', 'Priority', 'Status', 'Assignee', 'Due Date', 'Last Update']);
             foreach ($rows as $r) {
                 fputcsv($handle, [
                     $r->id,
                     $r->uuid,
                     $r->title,
                     $r->customer?->name ?? '-',
+                    $r->reseller?->name ?? ($r->customer?->reseller?->name ?? 'Kantor Pusat (HQ)'),
                     $r->category,
                     $r->priority,
                     $r->status,
@@ -334,7 +364,7 @@ class TicketService
 
     public function timeline(int $ticketId): array
     {
-        $ticket = $this->scopedQuery()->with(['customer', 'assignedTo'])->findOrFail($ticketId);
+        $ticket = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller'])->findOrFail($ticketId);
         $events = [
             ['time' => $ticket->created_at, 'type' => 'create', 'title' => 'Tiket dibuat', 'by' => $ticket->customer?->name ?? 'Sistem', 'detail' => $ticket->description],
         ];
