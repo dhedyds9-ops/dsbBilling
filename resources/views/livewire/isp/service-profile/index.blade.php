@@ -101,15 +101,16 @@
         <table class="w-full text-sm text-left">
             <thead>
                 <tr class="border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/80">
-                    <th class="px-4 py-3 font-semibold">
+                    <th class="px-4 py-3 font-semibold w-10 text-center">
                         <input type="checkbox" wire:model.live="selectAll" class="w-4 h-4 text-primary-600 border-slate-300 dark:border-slate-600 rounded dark:bg-slate-900 dark:text-slate-100">
                     </th>
+                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Nama Paket</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Jenis</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Bandwidth</th>
                     <th class="px-4 py-3 font-semibold whitespace-nowrap">Tipe</th>
-                    <th class="px-4 py-3 font-semibold whitespace-nowrap">Shared</th>
+                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Shared</th>
                     @if($isAdministrator)
                         <th class="px-4 py-3 font-semibold whitespace-nowrap text-right">Harga Reseller</th>
                     @endif
@@ -119,14 +120,35 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Owner</th>
                     @endif
                     <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Landing & Login</th>
-                    <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                 @forelse($profiles as $profile)
                     <tr wire:key="{{ $profile->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors {{ $profile->trashed() ? 'bg-red-50 dark:bg-red-900/10 opacity-75' : '' }}">
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3 text-center">
                             <input type="checkbox" wire:model.live="selectedPackages" value="{{ $profile->id }}" class="w-4 h-4 text-primary-600 border-slate-300 dark:border-slate-600 rounded" @disabled($profile->trashed())>
+                        </td>
+                        <td class="px-4 py-3 text-center whitespace-nowrap">
+                            <div class="flex items-center justify-center gap-1.5">
+                                @if(!$profile->trashed())
+                                    <a href="{{ route('isp.service-profiles.edit', $profile->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" style="font-size:18px">edit</span>
+                                    </a>
+                                    <button type="button" wire:click="toggleStatus({{ $profile->id }})" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md {{ $profile->status === 'active' ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400' }} transition-colors cursor-pointer" title="{{ $profile->status === 'active' ? 'Nonaktifkan' : 'Aktifkan' }}">
+                                        <span class="material-symbols-outlined notranslate" style="font-size:18px">{{ $profile->status === 'active' ? 'power_settings_new' : 'check_circle' }}</span>
+                                    </button>
+                                    <button type="button" wire:click="duplicate({{ $profile->id }})" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors cursor-pointer" title="Duplikat Paket">
+                                        <span class="material-symbols-outlined notranslate" style="font-size:18px">content_copy</span>
+                                    </button>
+                                    <button type="button" wire:click="delete({{ $profile->id }})" wire:loading.attr="disabled" wire:confirm="Hapus paket ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" style="font-size:18px">delete</span>
+                                    </button>
+                                @else
+                                    <button type="button" wire:click="restore({{ $profile->id }})" wire:loading.attr="disabled" wire:confirm="Pulihkan paket ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer" title="Pulihkan">
+                                        <span class="material-symbols-outlined notranslate" style="font-size:18px">restore</span>
+                                    </button>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             @if($profile->trashed())
@@ -188,36 +210,10 @@
                                 <span>{{ $profile->show_on_landing ? 'Tampil' : 'Sembunyi' }}</span>
                             </button>
                         </td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center justify-center gap-1.5">
-                                @if(!$profile->trashed())
-                                    <button type="button"
-                                        wire:click="toggleLanding({{ $profile->id }})"
-                                        wire:loading.attr="disabled"
-                                        class="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-md transition-colors {{ $profile->show_on_landing ? 'text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/40' : 'text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700' }}"
-                                        title="{{ $profile->show_on_landing ? 'Sembunyikan dari Landing Page & Login Page' : 'Tampilkan di Landing Page & Login Page' }}">
-                                        <span class="material-symbols-outlined notranslate text-[16px]">storefront</span>
-                                    </button>
-                                    <a href="{{ route('isp.service-profiles.edit', $profile->id) }}" class="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-amber-100 dark:bg-amber-900/50 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 rounded-md transition-colors" title="Edit">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                    </a>
-                                    <button type="button" wire:click="toggleStatus({{ $profile->id }})" wire:loading.attr="disabled" class="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-md transition-colors {{ $profile->status === 'active' ? 'text-slate-500 dark:text-slate-400 hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400' : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-100 dark:bg-emerald-900/50 hover:text-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400' }}" title="{{ $profile->status === 'active' ? 'Nonaktifkan' : 'Aktifkan' }}">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                    </button>
-                                    <button type="button" wire:click="delete({{ $profile->id }})" wire:loading.attr="disabled" wire:confirm="Hapus paket ini?" class="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-100 dark:bg-red-900/50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-md transition-colors" title="Hapus">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                    </button>
-                                @else
-                                    <button type="button" wire:click="restore({{ $profile->id }})" wire:loading.attr="disabled" wire:confirm="Pulihkan paket ini?" class="p-1.5 text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 rounded-md hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors" title="Pulihkan">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                    </button>
-                                @endif
-                            </div>
-                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="13" class="px-6 py-16 text-center">
+                        <td colspan="{{ $isAdministrator ? 13 : 10 }}" class="px-6 py-16 text-center">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
                                     <svg class="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>

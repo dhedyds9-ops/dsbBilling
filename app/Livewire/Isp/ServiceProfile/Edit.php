@@ -19,6 +19,7 @@ class Edit extends AdminComponent
     public $description = '';
     public $service_type = 'pppoe';
     public $status = 'active';
+    public $show_on_landing = true;
     
     // Package type
     public $package_type = 'unlimited'; // unlimited, time_based, quota_based
@@ -80,6 +81,7 @@ class Edit extends AdminComponent
         $this->description = $this->profile->description ?? '';
         $this->service_type = $this->profile->service_type;
         $this->status = $this->profile->status;
+        $this->show_on_landing = (bool) ($this->profile->show_on_landing ?? true);
         $this->download_speed = $this->profile->download_speed;
         $this->upload_speed = $this->profile->upload_speed;
         $this->base_price = $this->profile->base_price;
@@ -191,7 +193,7 @@ class Edit extends AdminComponent
         try {
             $data = $this->only([
                 'name', 'description',
-                'service_type', 'status', 'download_speed', 'upload_speed',
+                'service_type', 'status', 'show_on_landing', 'download_speed', 'upload_speed',
                 'base_price', 'owner_price', 'reseller_price', 'is_free',
                 'validity_value', 'validity_unit', 
                 'package_type', 'duration_value', 'duration_unit', 
@@ -201,6 +203,7 @@ class Edit extends AdminComponent
                 'tax_enabled', 'tax_percentage', 'technical_notes',
                 'login_start_time', 'login_end_time',
             ]);
+            $data['show_on_landing'] = (bool) $this->show_on_landing;
 
             // Sertakan burst hanya jika diaktifkan
             if ($this->enable_burst) {
@@ -247,6 +250,7 @@ class Edit extends AdminComponent
             'name' => 'required|string|max:255',
             'service_type' => 'required|in:pppoe,hotspot,voucher,ftth,combined',
             'status' => 'required|in:active,inactive',
+            'show_on_landing' => 'nullable|boolean',
             'download_speed' => 'required|integer|min:1|max:10000',
             'upload_speed' => 'required|integer|min:1|max:10000',
             'base_price' => 'required|numeric|min:0',

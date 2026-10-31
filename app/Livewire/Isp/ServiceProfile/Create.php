@@ -16,6 +16,7 @@ class Create extends AdminComponent
     public $description = '';
     public $service_type = 'pppoe';
     public $status = 'active';
+    public $show_on_landing = true;
     
     // Package type
     public $package_type = 'unlimited'; // unlimited, time_based, quota_based
@@ -146,7 +147,7 @@ class Create extends AdminComponent
         try {
             $data = $this->only([
                 'name', 'description',
-                'service_type', 'status', 'download_speed', 'upload_speed',
+                'service_type', 'status', 'show_on_landing', 'download_speed', 'upload_speed',
                 'base_price', 'owner_price', 'reseller_price', 'is_free',
                 'validity_value', 'validity_unit', 
                 'package_type', 'duration_value', 'duration_unit', 
@@ -157,6 +158,7 @@ class Create extends AdminComponent
                 'login_start_time', 'login_end_time',
                 'voucher_prefix', 'voucher_validity_after_activation',
             ]);
+            $data['show_on_landing'] = (bool) $this->show_on_landing;
 
             // Sertakan burst hanya jika diaktifkan
             if ($this->enable_burst) {
@@ -203,6 +205,7 @@ class Create extends AdminComponent
             'name' => 'required|string|max:255',
             'service_type' => 'required|in:pppoe,hotspot,voucher',
             'status' => 'required|in:active,inactive',
+            'show_on_landing' => 'nullable|boolean',
             'download_speed' => 'required|integer|min:1|max:10000',
             'upload_speed' => 'required|integer|min:1|max:10000',
             'package_type' => 'required|in:unlimited,time_based,quota_based',
