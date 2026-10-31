@@ -4,6 +4,8 @@ return [
 
 
     'version' => env('APP_VERSION', '1.0.0'),
+    'license_key' => env('DSBILLING_LICENSE_KEY'),
+    'license_server' => env('DSBILLING_LICENSE_SERVER', 'http://127.0.0.1:8001/api/v1/verify'),
     /*
     |--------------------------------------------------------------------------
     | Application Name

@@ -13,7 +13,15 @@ class LicenseManager
      */
     public function getLicenseServerUrl(): string
     {
-        return env('DSBILLING_LICENSE_SERVER', 'https://dsbilling.mstore.id/api/v1/verify');
+        return config('app.license_server') ?: env('DSBILLING_LICENSE_SERVER', 'http://127.0.0.1:8001/api/v1/verify');
+    }
+
+    /**
+     * Kunci Lisensi Terdaftar.
+     */
+    public function getLicenseKey(): ?string
+    {
+        return config('app.license_key') ?: env('DSBILLING_LICENSE_KEY');
     }
 
     /**
@@ -30,7 +38,7 @@ class LicenseManager
      */
     public function getLicenseInfo(): array
     {
-        $licenseKey = env('DSBILLING_LICENSE_KEY') ?: config('app.license_key');
+        $licenseKey = $this->getLicenseKey();
 
         if (empty($licenseKey)) {
             return [
@@ -61,7 +69,8 @@ class LicenseManager
     private function verifyWithServer(string $licenseKey): array
     {
         try {
-            $response = Http::timeout(4)->withoutVerifying()->post($this->getLicenseServerUrl(), [
+            $url = $this->getLicenseServerUrl();
+            $response = Http::timeout(4)->withoutVerifying()->post($url, [
                 'license_key' => $licenseKey,
                 'hardware_id' => $this->getHardwareId(),
                 'domain'      => request()->getHost(),
@@ -82,7 +91,6 @@ class LicenseManager
                     'expires_at'  => $json['expires_at'] ?? null,
                 ];
 
-                // Simpan fallback 12 jam jika sewaktu-waktu server lisensi maintenance
                 Cache::put("dsb_license_fallback_{$licenseKey}", $data, 43200);
 
                 return $data;
@@ -124,7 +132,7 @@ class LicenseManager
      */
     public function clearCache(): void
     {
-        $licenseKey = env('DSBILLING_LICENSE_KEY') ?: config('app.license_key');
+        $licenseKey = $this->getLicenseKey();
         if ($licenseKey) {
             Cache::forget("dsb_license_data_{$licenseKey}");
             Cache::forget("dsb_license_fallback_{$licenseKey}");
