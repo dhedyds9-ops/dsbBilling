@@ -362,67 +362,121 @@
         {{-- ============================================================
              5. SECTION E: INTERACTIVE NETWORK TOPOLOGY CANVAS & RCA
              ============================================================ --}}
-        <div id="topology-card-wrapper" class="bg-[#111827] border border-slate-800 rounded-lg overflow-hidden shadow-lg flex flex-col relative">
+        <div id="topology-card-wrapper" class="bg-[#111827] border border-slate-800 rounded-lg overflow-hidden shadow-xl flex flex-col relative"
+             x-data="{
+                 canvasHeight: 'lg',
+                 setHeight(val) {
+                     this.canvasHeight = val;
+                     this.$nextTick(() => {
+                         setTimeout(() => {
+                             if (window.topologyManagerInstance) {
+                                 window.topologyManagerInstance.fitViewSmart();
+                             }
+                         }, 250);
+                     });
+                 }
+             }">
             {{-- Topology Canvas Toolbar --}}
-            <div class="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 z-10">
+            <div class="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 z-10">
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-bold tracking-wider text-cyan-400 uppercase">Interactive Network Topology</span>
-                    <span class="text-xs text-slate-500 font-mono">|</span>
-                    <span class="text-xs text-slate-400">Hierarchical DAG Flow (Core → Distribution → Access → Endpoint)</span>
+                    <span class="text-xs text-slate-600 font-mono">|</span>
+                    <span class="text-xs text-slate-400 hidden sm:inline">Hierarchical DAG Flow (Core → Distribution → Access → Endpoint)</span>
                 </div>
 
                 {{-- Action buttons --}}
-                <div class="flex items-center gap-1.5">
-                    <button type="button" @click="zoomIn()" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Zoom In (+)">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                <div class="flex flex-wrap items-center gap-2">
+                    {{-- Height Presets --}}
+                    <div class="flex items-center bg-slate-950/80 p-0.5 rounded border border-slate-800 text-[11px] font-mono">
+                        <span class="text-slate-500 px-1.5 text-[10px] hidden md:inline">Height:</span>
+                        <button type="button"
+                                @click="setHeight('md')"
+                                :class="canvasHeight === 'md' ? 'bg-cyan-950 text-cyan-400 border border-cyan-700 font-bold' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-2 py-0.5 rounded transition">
+                            580px
+                        </button>
+                        <button type="button"
+                                @click="setHeight('lg')"
+                                :class="canvasHeight === 'lg' ? 'bg-cyan-950 text-cyan-400 border border-cyan-700 font-bold' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-2 py-0.5 rounded transition">
+                            720px
+                        </button>
+                        <button type="button"
+                                @click="setHeight('xl')"
+                                :class="canvasHeight === 'xl' ? 'bg-cyan-950 text-cyan-400 border border-cyan-700 font-bold' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-2 py-0.5 rounded transition">
+                            900px
+                        </button>
+                    </div>
+
+                    {{-- Zoom Controls --}}
+                    <div class="flex items-center bg-slate-950/80 p-0.5 rounded border border-slate-800 gap-0.5">
+                        <button type="button" @click="zoomOut()" class="p-1 rounded hover:bg-slate-800 text-slate-300 transition" title="Zoom Out (-)">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"/></svg>
+                        </button>
+                        <button type="button" @click="resetScale()" class="px-2 py-0.5 text-[10px] font-mono text-slate-300 hover:bg-slate-800 rounded transition" title="Reset Scale to 100%">
+                            100%
+                        </button>
+                        <button type="button" @click="zoomIn()" class="p-1 rounded hover:bg-slate-800 text-slate-300 transition" title="Zoom In (+)">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                        </button>
+                    </div>
+
+                    {{-- Fit View --}}
+                    <button type="button" @click="fitViewSmart()" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1 shadow-sm" title="Fit & Center View">
+                        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                        <span class="font-mono">Fit View</span>
                     </button>
-                    <button type="button" @click="zoomOut()" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Zoom Out (-)">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"/></svg>
-                    </button>
-                    <button type="button" @click="fit()" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1" title="Fit to Screen">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-                        <span>Fit View</span>
-                    </button>
-                    <button type="button" @click="toggleFullscreen()" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Toggle Fullscreen">
+
+                    {{-- Fullscreen --}}
+                    <button type="button" @click="toggleFullscreen()" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition" title="Toggle Fullscreen">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8V5a2 2 0 012-2h3m10 0h3a2 2 0 012 2v3m0 10v3a2 2 0 01-2 2h-3M7 21H4a2 2 0 01-2-2v-3"/></svg>
                     </button>
                 </div>
             </div>
 
             {{-- Legend bar --}}
-            <div class="px-4 py-1.5 bg-slate-950/80 border-b border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] gap-2">
-                <div class="flex items-center gap-4 text-slate-300 font-mono">
+            <div class="px-4 py-2 bg-slate-950/90 border-b border-slate-800/80 flex flex-wrap items-center justify-between text-xs gap-2">
+                <div class="flex items-center gap-4 text-slate-300 font-mono text-[11px]">
                     <div class="flex items-center gap-1.5">
-                        <span class="w-2.5 h-2.5 rounded-sm bg-[#10b981] border border-emerald-400"></span>
+                        <span class="w-3 h-3 rounded bg-[#10b981] border border-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.5)]"></span>
                         <span>Online / Normal</span>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <span class="w-2.5 h-2.5 rounded-sm bg-[#f59e0b] border border-amber-400"></span>
+                        <span class="w-3 h-3 rounded bg-[#f59e0b] border border-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]"></span>
                         <span>Warning / Degraded</span>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <span class="w-2.5 h-2.5 rounded-sm bg-[#ef4444] border border-rose-400"></span>
+                        <span class="w-3 h-3 rounded bg-[#ef4444] border border-rose-400 shadow-[0_0_6px_rgba(239,68,68,0.5)]"></span>
                         <span>Critical / Direct Fault / Impacted</span>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <span class="w-2.5 h-2.5 rounded-sm bg-[#64748b] border border-slate-500"></span>
+                        <span class="w-3 h-3 rounded bg-[#64748b] border border-slate-500"></span>
                         <span>Unknown / Offline</span>
                     </div>
                 </div>
-                <div class="text-slate-400 italic text-[10px]">
-                    Tip: Klik node untuk melihat Detail Teknis &amp; Alarms di Side Panel
+                <div class="text-slate-400 text-[11px] font-mono flex items-center gap-2">
+                    <span class="text-cyan-400">💡 Scroll mouse / drag untuk zoom &amp; geser</span>
+                    <span class="text-slate-600">·</span>
+                    <span>Klik node untuk side panel</span>
                 </div>
             </div>
 
-            {{-- Canvas Container with vis-network --}}
-            <div class="relative w-full h-[460px] bg-[#070b14] overflow-hidden" wire:ignore>
+            {{-- Canvas Container with vis-network (Dynamic height: 580px / 720px / 900px) --}}
+            <div class="relative w-full bg-[#070b14] overflow-hidden transition-all duration-300"
+                 :class="{
+                     'h-[580px]': canvasHeight === 'md',
+                     'h-[720px]': canvasHeight === 'lg',
+                     'h-[900px]': canvasHeight === 'xl'
+                 }"
+                 wire:ignore>
                 <div id="topology-network-container" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
 
                 {{-- Empty state overlay if no data --}}
                 @if(empty($topologyData['nodes']))
                     <div class="absolute inset-0 flex flex-col items-center justify-center bg-[#070b14]/90 text-slate-400 pointer-events-none">
-                        <svg class="w-12 h-12 text-slate-600 mb-2 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        <p class="text-sm font-semibold text-slate-300">Pilih perangkat di atas untuk memuat visualisasi topologi.</p>
+                        <svg class="w-14 h-14 text-slate-600 mb-2 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <p class="text-base font-semibold text-slate-200">Pilih perangkat di atas untuk memuat visualisasi topologi.</p>
                         <p class="text-xs text-slate-500 mt-1">Sistem akan merender jalur hirarkis secara otomatis.</p>
                     </div>
                 @endif
@@ -721,6 +775,7 @@ function topologyManager() {
         network: null,
         isFullscreen: false,
         init() {
+            window.topologyManagerInstance = this;
             this.$nextTick(() => {
                 this.renderNetwork();
             });
@@ -754,9 +809,9 @@ function topologyManager() {
                         enabled: true,
                         direction: 'LR', // Left to Right: Core -> OLT -> PON -> ONU
                         sortMethod: 'directed',
-                        levelSeparation: 220,
-                        nodeSpacing: 90,
-                        treeSpacing: 100,
+                        levelSeparation: 320,  // wider space between stages
+                        nodeSpacing: 130,      // comfortable vertical space
+                        treeSpacing: 160,
                         blockShifting: true,
                         edgeMinimization: true,
                         parentCentralization: true
@@ -765,19 +820,28 @@ function topologyManager() {
                 physics: false,
                 nodes: {
                     borderWidth: 2,
+                    borderWidthSelected: 4,
                     shadow: {
                         enabled: true,
-                        color: 'rgba(0,0,0,0.5)',
-                        size: 6,
+                        color: 'rgba(0,0,0,0.6)',
+                        size: 8,
                         x: 2,
-                        y: 2
+                        y: 3
                     },
-                    margin: 8,
+                    margin: { top: 12, right: 18, bottom: 12, left: 18 },
+                    font: {
+                        size: 14,
+                        face: 'JetBrains Mono, monospace',
+                        color: '#ffffff'
+                    },
                     shapeProperties: {
-                        borderRadius: 6
+                        borderRadius: 8
                     }
                 },
                 edges: {
+                    width: 2.5,
+                    selectionWidth: 4,
+                    hoverWidth: 3.5,
                     smooth: {
                         type: 'cubicBezier',
                         forceDirection: 'horizontal',
@@ -791,7 +855,7 @@ function topologyManager() {
                     arrows: {
                         to: {
                             enabled: true,
-                            scaleFactor: 0.65
+                            scaleFactor: 0.8
                         }
                     }
                 },
@@ -824,26 +888,41 @@ function topologyManager() {
                 }
             });
 
-            // Auto fit after stabilization
+            // Smart initial fit
             setTimeout(() => {
-                if (this.network) {
-                    this.network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
-                }
+                this.fitViewSmart();
             }, 100);
         },
         zoomIn() {
             if (!this.network) return;
             const currentScale = this.network.getScale();
-            this.network.moveTo({ scale: currentScale * 1.25, animation: { duration: 300 } });
+            this.network.moveTo({ scale: currentScale * 1.3, animation: { duration: 250 } });
         },
         zoomOut() {
             if (!this.network) return;
             const currentScale = this.network.getScale();
-            this.network.moveTo({ scale: currentScale * 0.8, animation: { duration: 300 } });
+            this.network.moveTo({ scale: currentScale * 0.75, animation: { duration: 250 } });
         },
-        fit() {
+        resetScale() {
+            if (!this.network) return;
+            this.network.moveTo({ scale: 1.0, animation: { duration: 300 } });
+        },
+        fitViewSmart() {
             if (!this.network) return;
             this.network.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
+
+            // If fit() shrunk down too far (due to many vertical ports/clusters), zoom to at least 0.92
+            setTimeout(() => {
+                if (this.network) {
+                    const curScale = this.network.getScale();
+                    if (curScale < 0.85) {
+                        this.network.moveTo({
+                            scale: 0.92,
+                            animation: { duration: 300, easingFunction: 'easeInOutQuad' }
+                        });
+                    }
+                }
+            }, 420);
         },
         toggleFullscreen() {
             const el = document.getElementById('topology-card-wrapper');
@@ -852,12 +931,12 @@ function topologyManager() {
             if (!document.fullscreenElement) {
                 el.requestFullscreen().then(() => {
                     this.isFullscreen = true;
-                    setTimeout(() => this.fit(), 300);
+                    setTimeout(() => this.fitViewSmart(), 300);
                 }).catch(() => {});
             } else {
                 document.exitFullscreen().then(() => {
                     this.isFullscreen = false;
-                    setTimeout(() => this.fit(), 300);
+                    setTimeout(() => this.fitViewSmart(), 300);
                 }).catch(() => {});
             }
         }

@@ -262,7 +262,7 @@ class ImpactAnalysisService
                 'level'              => 0,
                 'shape'              => 'box',
                 'color'              => $rColors,
-                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 12],
+                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 14, 'bold' => true],
                 'parent'             => 'Upstream / Internet Gateway',
                 'alarms_count'       => 0,
                 'children_count'     => 1,
@@ -299,7 +299,7 @@ class ImpactAnalysisService
             'level'              => 1,
             'shape'              => 'box',
             'color'              => $oltColors,
-            'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 13, 'bold' => true],
+            'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 15, 'bold' => true],
             'parent'             => $parentRouter ? "Router {$parentRouter->name}" : ($olt->pop ? "POP {$olt->pop->name}" : 'Core Network'),
             'alarms_count'       => $oltAlarms->count(),
             'children_count'     => $olt->ponPorts->count(),
@@ -331,7 +331,7 @@ class ImpactAnalysisService
                 'level'              => 2,
                 'shape'              => 'ellipse',
                 'color'              => $ponColors,
-                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 11],
+                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 13, 'bold' => true],
                 'parent'             => "OLT {$olt->name}",
                 'alarms_count'       => 0,
                 'children_count'     => $onuTotal,
@@ -344,7 +344,7 @@ class ImpactAnalysisService
                 'to'     => 'pon_' . $pon->id,
                 'arrows' => 'to',
                 'color'  => ['color' => $ponStatus === 'critical' ? '#ef4444' : '#00e5ff'],
-                'width'  => 2,
+                'width'  => 2.5,
             ];
 
             // 4. ONUs under PON
@@ -368,7 +368,7 @@ class ImpactAnalysisService
                         'level'              => 3,
                         'shape'              => 'box',
                         'color'              => $oColors,
-                        'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 10],
+                        'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 12],
                         'parent'             => "PON {$pon->port_number}",
                         'alarms_count'       => 0,
                         'children_count'     => 1,
@@ -381,7 +381,7 @@ class ImpactAnalysisService
                         'to'     => 'onu_' . $onu->id,
                         'arrows' => 'to',
                         'color'  => ['color' => $oStatus === 'critical' ? '#ef4444' : '#64748b'],
-                        'width'  => 1,
+                        'width'  => 1.5,
                     ];
                 }
             } elseif ($onuTotal > 6) {
@@ -400,7 +400,7 @@ class ImpactAnalysisService
                     'level'              => 3,
                     'shape'              => 'box',
                     'color'              => $ponColors,
-                    'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 10],
+                    'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 12, 'bold' => true],
                     'parent'             => "PON {$pon->port_number}",
                     'alarms_count'       => 0,
                     'children_count'     => $onuTotal,
@@ -413,7 +413,7 @@ class ImpactAnalysisService
                     'to'     => 'onu_cluster_' . $pon->id,
                     'arrows' => 'to',
                     'color'  => ['color' => $ponStatus === 'critical' ? '#ef4444' : '#64748b'],
-                    'width'  => 1,
+                    'width'  => 1.5,
                 ];
             }
         }
@@ -475,7 +475,7 @@ class ImpactAnalysisService
                 'level'              => 0,
                 'shape'              => 'box',
                 'color'              => $this->getStatusColor($oltStatus),
-                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 12],
+                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 14, 'bold' => true],
                 'parent'             => $olt->pop ? "POP {$olt->pop->name}" : 'Core Network',
                 'alarms_count'       => 0,
                 'children_count'     => 1,
@@ -505,7 +505,7 @@ class ImpactAnalysisService
             'level'              => 1,
             'shape'              => 'ellipse',
             'color'              => $this->getStatusColor($ponStatus),
-            'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 12, 'bold' => true],
+            'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 14, 'bold' => true],
             'parent'             => $olt ? "OLT {$olt->name}" : 'OLT Chassis',
             'alarms_count'       => 0,
             'children_count'     => $onuTotal,
@@ -519,7 +519,7 @@ class ImpactAnalysisService
                 'to'     => 'pon_' . $pon->id,
                 'arrows' => 'to',
                 'color'  => ['color' => '#00e5ff'],
-                'width'  => 2,
+                'width'  => 2.5,
             ];
         }
 
@@ -543,7 +543,7 @@ class ImpactAnalysisService
                 'level'              => 2,
                 'shape'              => 'box',
                 'color'              => $this->getStatusColor($oStatus),
-                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 10],
+                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 12],
                 'parent'             => "PON {$pon->port_number}",
                 'alarms_count'       => 0,
                 'children_count'     => 1,
@@ -556,7 +556,7 @@ class ImpactAnalysisService
                 'to'     => 'onu_' . $onu->id,
                 'arrows' => 'to',
                 'color'  => ['color' => $oStatus === 'critical' ? '#ef4444' : '#64748b'],
-                'width'  => 1,
+                'width'  => 1.5,
             ];
         }
 
@@ -619,7 +619,7 @@ class ImpactAnalysisService
             'level'              => 0,
             'shape'              => 'box',
             'color'              => $this->getStatusColor($rStatus),
-            'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 13, 'bold' => true],
+            'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 15, 'bold' => true],
             'parent'             => $router->pop ? "POP {$router->pop->name}" : 'Core Backbone',
             'alarms_count'       => $routerAlarms->count(),
             'children_count'     => 0,
@@ -648,7 +648,7 @@ class ImpactAnalysisService
                 'level'              => 1,
                 'shape'              => 'box',
                 'color'              => $this->getStatusColor($oStatus),
-                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 11],
+                'font'               => ['color' => '#f8fafc', 'face' => 'JetBrains Mono, monospace', 'size' => 13, 'bold' => true],
                 'parent'             => "Router {$router->name}",
                 'alarms_count'       => 0,
                 'children_count'     => $olt->ponPorts()->count(),
@@ -661,7 +661,7 @@ class ImpactAnalysisService
                 'to'     => 'olt_' . $olt->id,
                 'arrows' => 'to',
                 'color'  => ['color' => '#00e5ff'],
-                'width'  => 2,
+                'width'  => 2.5,
             ];
         }
 
