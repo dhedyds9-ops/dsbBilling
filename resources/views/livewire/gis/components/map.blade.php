@@ -60,9 +60,9 @@
                         <label for="olt_select" class="form-label">OLT</label>
                         <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="olt_select" name="olt_id" required>
                             <option value="">{{ __('Pilih OLT') }}</option>
-                            @foreach($olts as $olt)
+                            @foreach($oltModels ?? [] as $olt)
                                 <option value="{{ $olt->id }}" data-has-coord="{{ $olt->latitude ? 'true' : 'false' }}">
-                                    {{ $olt->name }} ({{ $olt->host }}) {{ $olt->latitude ? '[Terkunci]' : '' }}
+                                    {{ $olt->name }} ({{ $olt->host ?? 'LAN' }}) {{ $olt->latitude ? '[Terkunci]' : '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -124,7 +124,7 @@
                         <label for="odc_olt" class="form-label">{{ __('OLT') }}</label>
                         <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odc_olt" name="olt_id" required>
                             <option value="">{{ __('Pilih OLT') }}</option>
-                            @foreach($olts as $olt)
+                            @foreach($oltModels ?? [] as $olt)
                                 <option value="{{ $olt->id }}">{{ $olt->name }}</option>
                             @endforeach
                         </select>
@@ -155,6 +155,10 @@
                 <form id="odpForm">
                     <input type="hidden" id="odp_id" name="id">
                     <div class="mb-3">
+                        <label for="odp_code" class="form-label">{{ __('Kode ODP') }}</label>
+                        <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_code" name="code" placeholder="Contoh: ODP-01 (Opsional/Otomatis)">
+                    </div>
+                    <div class="mb-3">
                         <label for="odp_name" class="form-label">{{ __('Nama ODP') }}</label>
                         <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_name" name="name" required>
                     </div>
@@ -181,7 +185,7 @@
                         <label for="odp_odc" class="form-label">{{ __('Uplink ODC') }}</label>
                         <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odp_odc" name="odc_id">
                             <option value="">{{ __('Pilih ODC') }}</option>
-                            @foreach($odcs as $odc)
+                            @foreach($odcModels ?? [] as $odc)
                                 <option value="{{ $odc->id }}">{{ $odc->name }}</option>
                             @endforeach
                         </select>
@@ -306,7 +310,7 @@
                         <label for="closure_odc" class="form-label">{{ __('Uplink ODC') }}</label>
                         <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="closure_odc" name="odc_id">
                             <option value="">{{ __('Pilih ODC') }}</option>
-                            @foreach($odcs as $odc)
+                            @foreach($odcModels ?? [] as $odc)
                                 <option value="{{ $odc->id }}">{{ $odc->name }}</option>
                             @endforeach
                         </select>
@@ -1108,6 +1112,47 @@
 @endpush
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Bulletproof Bootstrap Modal Polyfill for dark theme NOC
+    window.bootstrap = window.bootstrap || {};
+    window.bootstrap.Modal = function(el) {
+        this.el = typeof el === 'string' ? document.querySelector(el) : el;
+        this.show = function() {
+            if (this.el) {
+                this.el.classList.add('show');
+                this.el.style.display = 'flex';
+                this.el.style.zIndex = '99999';
+            }
+        };
+        this.hide = function() {
+            if (this.el) {
+                this.el.classList.remove('show');
+                this.el.style.display = 'none';
+            }
+        };
+    };
+    window.bootstrap.Modal.getInstance = function(el) {
+        var element = typeof el === 'string' ? document.querySelector(el) : el;
+        return {
+            hide: function() {
+                if (element) {
+                    element.classList.remove('show');
+                    element.style.display = 'none';
+                }
+            }
+        };
+    };
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('[data-bs-dismiss="modal"]')) {
+            var m = e.target.closest('.modal');
+            if (m) {
+                m.classList.remove('show');
+                m.style.display = 'none';
+            }
+        }
+    });
+</script>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>

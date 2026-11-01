@@ -934,25 +934,28 @@ class GisMap extends Component
             return class_exists(\App\Models\User::class) ? \App\Models\User::orderBy('name')->get(['id', 'name']) : collect([]);
         });
 
-        $parentOptions = Cache::remember('gis_parent_options', 60, function() {
-            return [
-                'olts' => \App\Models\ISP\Olt::orderBy('name')->get(['id', 'name', 'code']),
-                'odcs' => \App\Models\ISP\Odc::orderBy('name')->get(['id', 'name', 'code']),
-                'odps' => \App\Models\ISP\Odp::orderBy('name')->get(['id', 'name', 'code']),
-            ];
-        });
+        $rawOlts = \App\Models\ISP\Olt::orderBy('name')->get();
+        $rawOdcs = \App\Models\ISP\Odc::orderBy('name')->get();
+        $rawOdps = \App\Models\ISP\Odp::orderBy('name')->get();
 
         return view('livewire.gis.components.map', [
-            'customers' => $cachedNodes['customers'],
-            'odps' => $cachedNodes['odps'],
-            'htbs' => $cachedNodes['htbs'],
-            'closures' => $cachedNodes['closures'],
-            'odcs' => $cachedNodes['odcs'],
-            'olts' => $cachedNodes['olts'],
-            'assets' => $cachedNodes['assets'],
+            'customers' => $cachedNodes['customers'] ?? [],
+            'odps' => $cachedNodes['odps'] ?? [],
+            'htbs' => $cachedNodes['htbs'] ?? [],
+            'closures' => $cachedNodes['closures'] ?? [],
+            'odcs' => $cachedNodes['odcs'] ?? [],
+            'olts' => $cachedNodes['olts'] ?? [],
+            'assets' => $cachedNodes['assets'] ?? [],
+            'oltModels' => $rawOlts,
+            'odcModels' => $rawOdcs,
+            'odpModels' => $rawOdps,
             'regions' => $regions,
             'coordinators' => $coordinators,
-            'parentOptions' => $parentOptions,
+            'parentOptions' => [
+                'olts' => $rawOlts,
+                'odcs' => $rawOdcs,
+                'odps' => $rawOdps,
+            ],
             'modemDataRecords' => collect([]),
             'coordinatorRegionId' => auth()->user()?->region_id ?? null,
             'canManageMap' => true,

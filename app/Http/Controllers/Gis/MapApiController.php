@@ -55,6 +55,10 @@ class MapApiController extends Controller
             $model->latitude = $lat;
             $model->longitude = $lng;
             $model->save();
+
+            \Illuminate\Support\Facades\Cache::forget('gis_map_data');
+            \Illuminate\Support\Facades\Cache::forget('gis_map_nodes');
+
             return response()->json(['success' => true]);
         }
 
@@ -75,11 +79,34 @@ class MapApiController extends Controller
     {
         $model = null;
         switch ($type) {
+            case 'olt':
+                $model = $id ? Olt::find($id) : new Olt();
+                if ($model) {
+                    $model->name = $request->input('name');
+                    $baseCode = $request->input('code') ?: ('OLT-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), '')));
+                    $code = $baseCode;
+                    $counter = 1;
+                    while (Olt::where('code', $code)->where('id', '!=', $id ?? 0)->exists()) {
+                        $code = $baseCode . '-' . $counter++;
+                    }
+                    $model->code = $code;
+                    $model->host = $request->input('host') ?: ($model->host ?? '127.0.0.1');
+                    $model->port = $request->input('port') ?: ($model->port ?? 23);
+                    $model->community = $request->input('community') ?: ($model->community ?? 'public');
+                    $model->snmp_port = $request->input('snmp_port') ?: ($model->snmp_port ?? 161);
+                }
+                break;
             case 'odc':
                 $model = $id ? Odc::find($id) : new Odc();
                 if ($model) {
                     $model->name = $request->input('name');
-                    $model->code = $request->input('code') ?: $request->input('name');
+                    $baseCode = $request->input('code') ?: ('ODC-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), '')));
+                    $code = $baseCode;
+                    $counter = 1;
+                    while (Odc::where('code', $code)->where('id', '!=', $id ?? 0)->exists()) {
+                        $code = $baseCode . '-' . $counter++;
+                    }
+                    $model->code = $code;
                     $model->address = $request->input('address');
                     $model->description = $request->input('description');
                     $model->port_count = $request->input('port_count') ?: 144;
@@ -90,7 +117,13 @@ class MapApiController extends Controller
                 $model = $id ? Odp::find($id) : new Odp();
                 if ($model) {
                     $model->name = $request->input('name');
-                    $model->code = $request->input('code') ?: $request->input('name');
+                    $baseCode = $request->input('code') ?: ('ODP-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), '')));
+                    $code = $baseCode;
+                    $counter = 1;
+                    while (Odp::where('code', $code)->where('id', '!=', $id ?? 0)->exists()) {
+                        $code = $baseCode . '-' . $counter++;
+                    }
+                    $model->code = $code;
                     $model->address = $request->input('address');
                     $model->description = $request->input('description');
                     $model->port_count = $request->input('port_count') ?: 8;
@@ -103,7 +136,13 @@ class MapApiController extends Controller
                     $model = $id ? DistributionBox::find($id) : new DistributionBox();
                     if ($model) {
                         $model->name = $request->input('name');
-                        $model->code = $request->input('code') ?: $request->input('name');
+                        $baseCode = $request->input('code') ?: ('HTB-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), '')));
+                        $code = $baseCode;
+                        $counter = 1;
+                        while (DistributionBox::where('code', $code)->where('id', '!=', $id ?? 0)->exists()) {
+                            $code = $baseCode . '-' . $counter++;
+                        }
+                        $model->code = $code;
                         $model->address = $request->input('address');
                         $model->description = $request->input('description');
                         $model->port_count = $request->input('port_count') ?: 8;
@@ -116,7 +155,13 @@ class MapApiController extends Controller
                     $model = $id ? JointClosure::find($id) : new JointClosure();
                     if ($model) {
                         $model->name = $request->input('name');
-                        $model->code = $request->input('code') ?: $request->input('name');
+                        $baseCode = $request->input('code') ?: ('JC-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), '')));
+                        $code = $baseCode;
+                        $counter = 1;
+                        while (JointClosure::where('code', $code)->where('id', '!=', $id ?? 0)->exists()) {
+                            $code = $baseCode . '-' . $counter++;
+                        }
+                        $model->code = $code;
                         $model->address = $request->input('address');
                         $model->description = $request->input('description');
                         if ($request->has('odc_id')) $model->odc_id = $request->input('odc_id');
@@ -131,6 +176,10 @@ class MapApiController extends Controller
             if ($request->has('longitude')) $model->longitude = $request->input('longitude');
             
             $model->save();
+
+            \Illuminate\Support\Facades\Cache::forget('gis_map_data');
+            \Illuminate\Support\Facades\Cache::forget('gis_map_nodes');
+
             return response()->json(['success' => true, 'id' => $model->id]);
         }
 
