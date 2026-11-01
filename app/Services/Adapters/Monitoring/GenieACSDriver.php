@@ -280,6 +280,39 @@ class GenieACSDriver
             }
         }
 
+        // Dynamic WLAN traversal if SSID or Password is still missing
+        if (empty($ssid) || empty($password)) {
+            $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] 
+                ?? $params['Device']['WiFi']['SSID'] 
+                ?? [];
+            if (is_array($wlanNode)) {
+                foreach ($wlanNode as $key => $node) {
+                    if (is_numeric($key) && is_array($node)) {
+                        if (empty($ssid)) {
+                            $s = $node['SSID']['_value'] ?? $node['SSID'] ?? null;
+                            if (!empty($s) && is_scalar($s)) {
+                                $ssid = (string)$s;
+                            }
+                        }
+                        if (empty($password)) {
+                            $p = $node['PreSharedKey']['1']['KeyPassphrase']['_value']
+                                ?? $node['PreSharedKey']['1']['PreSharedKey']['_value']
+                                ?? $node['KeyPassphrase']['_value']
+                                ?? $node['PreSharedKey']['1']['KeyPassphrase']
+                                ?? $node['KeyPassphrase']
+                                ?? null;
+                            if (!empty($p) && is_scalar($p) && $p !== '******') {
+                                $password = (string)$p;
+                            }
+                        }
+                        if (!empty($ssid) && !empty($password)) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         return [
             'ssid' => $ssid,
             'password' => $password,

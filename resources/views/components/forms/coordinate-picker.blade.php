@@ -9,40 +9,45 @@
     lat: @entangle($latModel),
     lng: @entangle($lngModel)
 })" class="w-full">
+    {{-- Header with action buttons --}}
+    <div class="flex items-center justify-between gap-2 mb-2">
+        <label class="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <span class="material-symbols-outlined text-indigo-500 text-[18px]">pin_drop</span>
+            <span>Titik Koordinat Lokasi</span>
+        </label>
+        <div class="flex items-center gap-1.5">
+            <a href="{{ url('/network/map') }}" 
+               target="_blank" 
+               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+               title="Buka Peta Topologi Jaringan di Tab Baru">
+                <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <span>Peta Jaringan</span>
+            </a>
+            <button type="button" 
+                    @click="openMapModal()" 
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer shadow-2xs">
+                <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span>Pilih di Peta</span>
+            </button>
+        </div>
+    </div>
+
     <div class="{{ $gridClass }}">
         {{-- Latitude Input --}}
         <div>
-            <div class="flex items-center justify-between gap-2 mb-1">
-                <label class="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <span class="text-indigo-600 dark:text-indigo-400 font-bold">&udarr;</span>
-                    <span>Latitude</span>
-                </label>
-                <div class="flex items-center gap-1.5">
-                    <a href="{{ url('/network/map') }}" 
-                       target="_blank" 
-                       class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors cursor-pointer shadow-2xs"
-                       title="Buka Peta Topologi Jaringan di Tab Baru">
-                        <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                        </svg>
-                        <span>Peta Jaringan</span>
-                    </a>
-                    <button type="button" 
-                            @click="openMapModal()" 
-                            class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs">
-                        <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                        <span>Pilih Lokasi Di Maps</span>
-                    </button>
-                </div>
-            </div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                Latitude
+            </label>
             <div class="relative flex rounded-lg shadow-2xs">
                 <input type="text" 
                        x-model="lat" 
                        placeholder="e.g : -0.9345797" 
-                       class="block w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-l-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono">
+                       class="block w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-l-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono">
                 
                 {{-- Copy Latitude Button --}}
                 <button type="button" 
@@ -69,28 +74,14 @@
 
         {{-- Longitude Input --}}
         <div>
-            <div class="flex items-center justify-between gap-2 mb-1">
-                <label class="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <span class="text-indigo-600 dark:text-indigo-400 font-bold">&lrarr;</span>
-                    <span>Longitude</span>
-                </label>
-                <div class="flex items-center gap-1.5">
-                    <button type="button" 
-                            @click="openMapModal()" 
-                            class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs">
-                        <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                        <span>Pilih Lokasi Di Maps</span>
-                    </button>
-                </div>
-            </div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                Longitude
+            </label>
             <div class="relative flex rounded-lg shadow-2xs">
                 <input type="text" 
                        x-model="lng" 
                        placeholder="e.g : 100.226458" 
-                       class="block w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-l-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono">
+                       class="block w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-l-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono">
                 
                 {{-- Copy Longitude Button --}}
                 <button type="button" 
@@ -143,19 +134,20 @@
         </div>
     </template>
 
-    {{-- Modal Map Picker --}}
-    <div x-show="showModal" 
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
-         style="display: none;">
-        
-        <div @click.away="closeMapModal()" 
-             class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+    {{-- Modal Map Picker (Teleported to body to escape nested overflow containers) --}}
+    <template x-teleport="body">
+        <div x-show="showModal" 
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+             style="display: none;">
+            
+            <div @click.away="closeMapModal()" 
+                 class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
             
             {{-- Modal Header --}}
             <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
@@ -265,6 +257,7 @@
             </div>
         </div>
     </div>
+    </template>
 </div>
 
 <script>
@@ -291,6 +284,11 @@
             this.tempLng = this.lng || '';
             this.$nextTick(() => {
                 this.initLeaflet();
+                setTimeout(() => {
+                    if (this.map) {
+                        this.map.invalidateSize();
+                    }
+                }, 250);
             });
         },
 

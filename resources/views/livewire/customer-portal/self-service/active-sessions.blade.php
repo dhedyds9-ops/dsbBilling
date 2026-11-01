@@ -152,32 +152,40 @@
 
                 {{-- CONNECTED DEVICES LIST (FROM GENIEACS) --}}
                 <div class="border-t border-slate-100 dark:border-slate-700/60 p-4 sm:p-5 bg-slate-50/50 dark:bg-slate-900/20">
-                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-indigo-500 text-[20px]">devices</span>
-                            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">
-                                Perangkat yang Terhubung ke Modem
-                            </h3>
-                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
-                                {{ count($modem->connected_devices) }} Perangkat
-                            </span>
+                    <div class="flex items-center justify-between mb-3.5 gap-2 flex-wrap">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-[18px]">devices</span>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                                        Perangkat Terhubung ke Modem
+                                    </h3>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 shrink-0">
+                                        {{ count($modem->connected_devices) }} Perangkat
+                                    </span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Data sinkron GenieACS TR-069</p>
+                            </div>
                         </div>
-                        <span class="text-[11px] text-slate-500 dark:text-slate-400">
-                            Data sinkron dari GenieACS TR-069
-                        </span>
                     </div>
 
                     @if(!empty($modem->connected_devices))
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             @foreach($modem->connected_devices as $dev)
                                 @php
-                                    $h = strtolower($dev['hostname'] ?? '');
+                                    $rawHost = trim($dev['hostname'] ?? '');
+                                    $h = strtolower($rawHost);
                                     $isMobile = preg_match('/android|iphone|ipad|oppo|vivo|realme|samsung|galaxy|xiaomi|redmi|poco|infinix|tecno|huawei|honor/i', $h);
                                     $isLaptop = preg_match('/mac|windows|pc|laptop|desktop/i', $h);
                                     $isTv = preg_match('/tv|smart|box|mibox|chromecast|firetv|roku/i', $h);
+                                    $cleanMac = $dev['mac'] ?? '';
+                                    $macSuffix = (strlen($cleanMac) >= 5) ? substr($cleanMac, -5) : $cleanMac;
+                                    $displayName = !empty($rawHost) ? $rawHost : 'Perangkat ' . ($dev['interface'] ?? 'Wi-Fi') . ($macSuffix ? ' (' . $macSuffix . ')' : '');
                                 @endphp
-                                <div class="bg-white dark:bg-slate-800 rounded-xl p-3.5 border {{ $dev['is_blocked'] ? 'border-red-200 dark:border-red-800/60 bg-red-50/30' : 'border-slate-200 dark:border-slate-700/80' }} shadow-xs flex items-center justify-between gap-3">
-                                    <div class="flex items-center gap-3 min-w-0">
+                                <div class="bg-white dark:bg-slate-800 rounded-xl p-3 sm:p-3.5 border {{ $dev['is_blocked'] ? 'border-red-200 dark:border-red-800/60 bg-red-50/30' : 'border-slate-200/80 dark:border-slate-700/80' }} shadow-xs flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3 min-w-0 flex-1">
                                         <div class="w-10 h-10 rounded-xl {{ $dev['is_blocked'] ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300' }} flex items-center justify-center shrink-0">
                                             @if($isMobile)
                                                 <span class="material-symbols-outlined text-[20px]">smartphone</span>
@@ -189,18 +197,18 @@
                                                 <span class="material-symbols-outlined text-[20px]">devices_other</span>
                                             @endif
                                         </div>
-                                        <div class="min-w-0">
-                                            <p class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate" title="{{ $dev['hostname'] }}">
-                                                {{ $dev['hostname'] }}
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate" title="{{ $displayName }}">
+                                                {{ $displayName }}
                                             </p>
-                                            <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                                                <span>{{ $dev['ip'] }}</span>
+                                            <div class="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 truncate">
+                                                <span>{{ $dev['ip'] ?? '-' }}</span>
                                                 <span>&bull;</span>
-                                                <span class="truncate" title="{{ $dev['mac'] }}">{{ $dev['mac'] }}</span>
+                                                <span class="truncate" title="{{ $dev['mac'] }}">{{ $dev['mac'] ?? '-' }}</span>
                                             </div>
                                             <div class="flex items-center gap-2 mt-1">
                                                 <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                                    {{ $dev['interface'] }}
+                                                    {{ $dev['interface'] ?? 'WLAN' }}
                                                 </span>
                                                 @if($dev['is_blocked'])
                                                     <span class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">

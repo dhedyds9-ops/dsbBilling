@@ -37,29 +37,89 @@ class GenieAcsService
         return $this->genieACSDriver->getDeviceSignal($onu->genieacs_device_id);
     }
 
+    public function resolveGenieAcsDeviceId(Onu $onu, ?int $customerId = null): ?string
+    {
+        // 1. Direct device correlation
+        try {
+            $deviceId = \App\Models\ISP\DeviceCorrelation::where('onu_id', $onu->id)->value('genieacs_device_id');
+            if (!empty($deviceId)) {
+                return $deviceId;
+            }
+        } catch (\Throwable) {}
+
+        // 2. Direct genieacs_device_id on ONU or CustomerService
+        if (!empty($onu->genieacs_device_id)) {
+            return $onu->genieacs_device_id;
+        }
+        $csDeviceId = $onu->customerService?->attributes['genieacs_device_id'] ?? null;
+        if (!empty($csDeviceId)) {
+            return $csDeviceId;
+        }
+
+        // 3. Search ACSDevice model
+        try {
+            $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
+
+            if (!$acsDevice && !empty($onu->serial_number)) {
+                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('serial_number', $onu->serial_number)->first();
+            }
+
+            $csId = $onu->customer_service_id ?? $onu->customerService?->id;
+            if (!$acsDevice && !empty($csId)) {
+                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('customer_service_id', $csId)->first();
+            }
+
+            if (!$acsDevice && !empty($onu->mac_address)) {
+                $cleanMac = strtoupper(str_replace([':', '-', '.'], '', $onu->mac_address));
+                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where(function ($q) use ($onu, $cleanMac) {
+                        $q->where('mac_address', $onu->mac_address)
+                          ->orWhere('mac_address', $cleanMac)
+                          ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), '.', '') = ?", [$cleanMac]);
+                    })->first();
+            }
+
+            // Suffix matching (e.g. VSOL0033EDA0 vs 12345B4641533EDA0, both ending with 33EDA0)
+            if (!$acsDevice && !empty($onu->serial_number) && strlen($onu->serial_number) >= 6) {
+                $suffix = substr($onu->serial_number, -6);
+                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where('serial_number', 'LIKE', "%{$suffix}%")
+                    ->first();
+            }
+
+            if (!$acsDevice && !empty($customerId)) {
+                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('customer_id', $customerId)->first();
+            }
+
+            if ($acsDevice) {
+                // Auto-link to ONU for instant future lookups
+                if (!$acsDevice->onu_id) {
+                    try {
+                        $acsDevice->update(['onu_id' => $onu->id]);
+                    } catch (\Throwable) {}
+                }
+                // Save correlation
+                try {
+                    \App\Models\ISP\DeviceCorrelation::updateOrCreate(
+                        ['onu_id' => $onu->id],
+                        ['genieacs_device_id' => $acsDevice->uuid, 'matched_by' => 'auto', 'status' => 'auto_bind']
+                    );
+                } catch (\Throwable) {}
+
+                return $acsDevice->uuid;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('resolveGenieAcsDeviceId ACSDevice lookup error: ' . $e->getMessage());
+        }
+
+        // 4. Fallback to using ONU serial number
+        return $onu->serial_number ?: null;
+    }
+
     public function getWifiCredentials(int $customerId, int $onuId): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
-        
-        $deviceId = null;
-        try {
-            $deviceId = \App\Models\ISP\DeviceCorrelation::where('onu_id', $onu->id)->value('genieacs_device_id');
-        } catch (\Throwable) {}
-
-        if (empty($deviceId)) {
-            try {
-                $deviceId = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
-                    ->where('onu_id', $onu->id)
-                    ->orWhere('serial_number', $onu->serial_number)
-                    ->value('uuid');
-            } catch (\Throwable) {}
-        }
-
-        if (empty($deviceId)) {
-            $deviceId = $onu->customerService?->attributes['genieacs_device_id'] 
-                ?? $onu->attributes['genieacs_device_id'] 
-                ?? $onu->genieacs_device_id;
-        }
+        $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
 
         $vendor = $onu->vendor?->name ?? 'default';
 
@@ -124,8 +184,10 @@ class GenieAcsService
     {
         try {
             $onu = $this->resolveCustomerOnu($customerId, $onuId);
-            $deviceId = \App\Models\ISP\DeviceCorrelation::where('onu_id', $onu->id)->value('genieacs_device_id')
-                ?? $onu->genieacs_device_id;
+            $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
+            if (empty($deviceId)) {
+                return [];
+            }
             return $this->genieACSDriver->getConnectedDevices($deviceId);
         } catch (\Throwable $e) {
             Log::warning("GenieACS getConnectedDevices failed for ONU {$onuId}: " . $e->getMessage());

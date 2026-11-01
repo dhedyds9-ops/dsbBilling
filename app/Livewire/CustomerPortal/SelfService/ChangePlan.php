@@ -17,6 +17,7 @@ class ChangePlan extends Component
     public $messageType;
     public $currentServices;
     public $availablePlans;
+    public string $planCategory = 'all'; // all, pppoe, hotspot
 
     protected $rules = [
         'selectedPlanId' => 'required|exists:service_profiles,id',
@@ -25,8 +26,23 @@ class ChangePlan extends Component
 
     public function mount()
     {
+        $this->loadPlans();
+    }
+
+    public function setCategory(string $category)
+    {
+        $this->planCategory = $category;
+        $this->loadPlans();
+    }
+
+    public function loadPlans()
+    {
         $user     = Auth::user();
-        $customer = $user->customer;
+        $customer = $user?->customer;
+
+        if (!$customer) {
+            $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->where('user_id', auth()->id())->first();
+        }
 
         if (!$customer) {
             $this->currentServices = collect();
@@ -39,30 +55,27 @@ class ChangePlan extends Component
             ->with(['serviceProfile', 'pppoeUser', 'hotspotUser'])
             ->get();
 
-        // Get service types this customer has
-        $serviceTypes = [];
-        foreach ($this->currentServices as $cs) {
-            $rawType = strtolower($cs->serviceProfile?->service_type ?? '');
-            if (in_array($rawType, ['hotspot', 'member_hotspot', 'voucher']) || ($cs->hotspotUser && !$cs->pppoeUser)) {
-                $serviceTypes[] = 'hotspot';
-            } else {
-                $serviceTypes[] = 'pppoe';
-            }
-        }
-        if (empty($serviceTypes)) {
-            $serviceTypes = ['pppoe', 'hotspot'];
-        }
-        $serviceTypes = array_unique($serviceTypes);
-
-        $this->availablePlans = ServiceProfile::active()
-            ->where(function ($q) use ($serviceTypes) {
-                foreach ($serviceTypes as $type) {
-                    $q->orWhere('service_type', $type);
-                }
-                $q->orWhere('service_type', 'combined');
+        // Query paket komersial (mengecualikan paket gratis / isolir)
+        $query = ServiceProfile::active()
+            ->where(function ($q) {
+                $q->whereNull('is_free')->orWhere('is_free', false);
             })
-            ->orderBy('base_price')
-            ->get();
+            ->where('base_price', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('visibility')
+                  ->orWhereNotIn('visibility', ['hidden', 'private']);
+            });
+
+        // Filter berdasarkan kategori tab jika dipilih
+        if ($this->planCategory === 'pppoe') {
+            $query->whereIn('service_type', ['pppoe', 'combined']);
+        } elseif ($this->planCategory === 'hotspot') {
+            $query->whereIn('service_type', ['hotspot', 'member_hotspot', 'voucher', 'combined']);
+        } else {
+            $query->whereIn('service_type', ['pppoe', 'hotspot', 'member_hotspot', 'voucher', 'combined']);
+        }
+
+        $this->availablePlans = $query->orderBy('base_price')->get();
     }
 
     public function submitRequest()

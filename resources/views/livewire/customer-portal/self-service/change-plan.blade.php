@@ -40,12 +40,22 @@
     <form wire:submit="submitRequest" class="space-y-5">
         {{-- Plan Selection --}}
         <div>
-            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Pilih Paket Baru</label>
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300">Pilih Paket Baru</label>
+                {{-- Category Filter Tabs --}}
+                <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-700/60 rounded-xl text-xs font-semibold">
+                    <button type="button" wire:click="setCategory('all')" class="px-3 py-1 rounded-lg transition-all {{ $planCategory === 'all' ? 'bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900' }}">Semua</button>
+                    <button type="button" wire:click="setCategory('pppoe')" class="px-3 py-1 rounded-lg transition-all {{ $planCategory === 'pppoe' ? 'bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900' }}">PPPoE</button>
+                    <button type="button" wire:click="setCategory('hotspot')" class="px-3 py-1 rounded-lg transition-all {{ $planCategory === 'hotspot' ? 'bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900' }}">Hotspot</button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 gap-3">
                 @foreach($availablePlans as $plan)
                 @php
                     $currentPlanId = $currentServices->first()?->service_profile_id;
                     $isCurrent = $currentPlanId == $plan->id;
+                    $isHotspot = in_array(strtolower($plan->service_type ?? ''), ['hotspot', 'member_hotspot', 'voucher']);
                 @endphp
                 <label class="relative flex items-start p-4 border-2 rounded-xl cursor-pointer transition-all
                     {{ $selectedPlanId == $plan->id ?'border-teal-500 bg-teal-50 dark:bg-teal-900/20 dark:border-teal-600' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-600 bg-white dark:bg-slate-800' }}
@@ -54,7 +64,12 @@
                         class="mt-1 text-teal-500" {{ $isCurrent ?'disabled' : '' }}>
                     <div class="ml-3 flex-1 min-w-0">
                         <div class="flex items-center justify-between">
-                            <span class="font-bold text-sm text-slate-800 dark:text-slate-200 line-clamp-1 pr-2">{{ $plan->name }}</span>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-sm text-slate-800 dark:text-slate-200 line-clamp-1">{{ $plan->name }}</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $isHotspot ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300' }}">
+                                    {{ $isHotspot ? 'Hotspot' : 'PPPoE' }}
+                                </span>
+                            </div>
                             <div class="text-right shrink-0">
                                 <span class="font-bold text-teal-600 dark:text-teal-400">Rp {{ number_format($plan->base_price, 0, ',', '.') }}</span>
                             </div>

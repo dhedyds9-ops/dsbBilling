@@ -138,7 +138,7 @@
 
                 @if($__hasCustomTitle)
                     <h1 class="text-lg font-bold text-teal-800 dark:text-teal-400 truncate">
-                        {{ $__headerTitle ?: ($title ?? '') }}
+                        {!! $__headerTitle ?: e($title ?? '') !!}
                     </h1>
                 @else
                     <a href="{{ route('customer-portal.dashboard') }}" class="flex items-center gap-3 min-w-0">
