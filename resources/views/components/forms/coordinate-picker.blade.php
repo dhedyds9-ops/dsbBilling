@@ -165,10 +165,10 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <a href="{{ url('/reseller-portal/network/map') }}" 
+                    <a href="{{ url('/network/map') }}" 
                        target="_blank" 
                        class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-lg border border-emerald-200 dark:border-emerald-800 transition-colors"
-                       title="Buka Peta Topologi Jaringan Reseller di Tab Baru">
+                       title="Buka Peta Topologi Jaringan di Tab Baru">
                         <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                         </svg>
