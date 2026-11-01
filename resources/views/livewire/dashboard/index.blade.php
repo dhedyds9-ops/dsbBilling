@@ -223,36 +223,159 @@
 
         <!-- Network Health & RADIUS Performance -->
         <div class="space-y-6">
-            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-                <h2 class="text-base font-bold text-slate-900 dark:text-slate-100 mb-4">Status Layanan & Core</h2>
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full {{ ($systemInfo['radius_nas_count'] ?? 0) > 0 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-amber-500' }}"></span>
-                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">FreeRADIUS NAS</span>
-                        </div>
-                        <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $systemInfo['radius_nas_count'] ?? 0 }} NAS Terdaftar</span>
+            <!-- Informasi Layanan & Kuota (SaaS & Core) -->
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/80 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/80">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-wide">INFORMASI LAYANAN</h2>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full {{ ($kpi['network']['router_online'] ?? 0) > 0 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-slate-400' }}"></span>
-                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">MikroTik Routers</span>
+                    @if(!empty($licenseInfo['package']))
+                        <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            {{ $licenseInfo['package'] }}
+                        </span>
+                    @endif
+                </div>
+
+                <div class="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
+                    <!-- 1. CORE RADIUS -->
+                    <div class="px-5 py-3 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7zm0 5h16M4 12c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3"/>
+                            </svg>
+                            <span class="font-bold text-slate-700 dark:text-slate-300">CORE RADIUS</span>
                         </div>
-                        <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $systemInfo['router_status_text'] ?? '-' }}</span>
+                        <div class="flex items-center gap-2">
+                            @if($systemInfo['radius_running'] ?? true)
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500 text-white shadow-sm">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Running
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500 text-white shadow-sm">
+                                    Stopped
+                                </span>
+                            @endif
+
+                            <button wire:click="restartRadius" wire:loading.attr="disabled" type="button" class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition active:scale-95">
+                                <svg wire:loading.remove wire:target="restartRadius" class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                <svg wire:loading wire:target="restartRadius" class="w-3 h-3 text-slate-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                RESTART
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full {{ ($systemInfo['acs_device_count'] ?? 0) > 0 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-slate-400' }}"></span>
-                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">GenieACS TR-069</span>
+
+                    <!-- 2. MIKROTIK ROUTERS -->
+                    @php
+                        $routerTotal = $kpi['network']['router_total'] ?? ($systemInfo['router_total'] ?? 0);
+                        $maxRouters = $licenseInfo['max_routers'] ?? 10;
+                        $routerRemaining = max(0, $maxRouters - $routerTotal);
+                        $routerPct = $maxRouters > 0 ? min(100, round(($routerTotal / $maxRouters) * 100)) : 0;
+                    @endphp
+                    <div class="px-5 py-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2.5">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
+                                <span class="font-bold text-slate-700 dark:text-slate-300">MIKROTIK</span>
+                            </div>
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">
+                                <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ $routerTotal }} Router</span>
+                                <span class="text-slate-400 mx-1">|</span>
+                                <span class="text-slate-500 dark:text-slate-400">{{ $routerRemaining }} Kuota Sisa</span>
+                            </span>
                         </div>
-                        <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $systemInfo['acs_device_count'] ?? 0 }} CPE Terhubung</span>
+                        <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                            <div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: {{ max(4, $routerPct) }}%"></div>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
-                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Database Engine</span>
+
+                    <!-- 3. SESSION ONLINE -->
+                    @php
+                        $activeSessions = $kpi['service']['total_online'] ?? ($systemInfo['radius_active_sessions'] ?? 0);
+                        $maxUsers = $licenseInfo['max_users'] ?? 1500;
+                        $sessionRemaining = max(0, $maxUsers - $activeSessions);
+                        $sessionPct = $maxUsers > 0 ? min(100, round(($activeSessions / $maxUsers) * 100)) : 0;
+                    @endphp
+                    <div class="px-5 py-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2.5">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+                                <span class="font-bold text-slate-700 dark:text-slate-300">SESSION</span>
+                            </div>
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">
+                                <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ number_format($activeSessions) }} Online</span>
+                                <span class="text-slate-400 mx-1">|</span>
+                                <span class="text-slate-500 dark:text-slate-400">{{ number_format($sessionRemaining) }} Kuota Sisa</span>
+                            </span>
                         </div>
-                        <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ $systemInfo['database_status'] ?? 'HEALTHY' }}</span>
+                        <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                            <div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: {{ max(4, $sessionPct) }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 4. PELANGGAN -->
+                    @php
+                        $custTotal = $kpi['customer']['total'] ?? 0;
+                        $custRemaining = max(0, $maxUsers - $custTotal);
+                        $custPct = $maxUsers > 0 ? min(100, round(($custTotal / $maxUsers) * 100)) : 0;
+                    @endphp
+                    <div class="px-5 py-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2.5">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                <span class="font-bold text-slate-700 dark:text-slate-300">PELANGGAN</span>
+                            </div>
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">
+                                <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ number_format($custTotal) }} Terdaftar</span>
+                                <span class="text-slate-400 mx-1">|</span>
+                                <span class="text-slate-500 dark:text-slate-400">Maks {{ number_format($maxUsers) }}</span>
+                            </span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                            <div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: {{ max(4, $custPct) }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 5. VOUCHER -->
+                    <div class="px-5 py-3 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                            <span class="font-bold text-slate-700 dark:text-slate-300">VOUCHER</span>
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-bold text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            <span class="font-mono text-sm">∞</span> Unlimited
+                        </span>
+                    </div>
+
+                    <!-- 6. GENIEACS TR-069 & DATABASE -->
+                    <div class="px-5 py-3 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                            <span class="font-bold text-slate-700 dark:text-slate-300">TR-069 / ACS</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono">{{ $systemInfo['acs_device_count'] ?? 0 }} CPE Terhubung</span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        </div>
+                    </div>
+
+                    <!-- 7. JATUH TEMPO -->
+                    <div class="px-5 py-3 flex items-center justify-between bg-slate-50/70 dark:bg-slate-850">
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span class="font-bold text-slate-700 dark:text-slate-300">JATUH TEMPO</span>
+                        </div>
+                        @php
+                            $expiryRaw = $licenseInfo['expires_at'] ?? null;
+                            $expiryFormatted = $expiryRaw ? Carbon::parse($expiryRaw)->translatedFormat('d F Y') : 'Lifetime / Aktif';
+                        @endphp
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold bg-emerald-600 text-white shadow-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            {{ $expiryFormatted }}
+                        </span>
                     </div>
                 </div>
             </div>

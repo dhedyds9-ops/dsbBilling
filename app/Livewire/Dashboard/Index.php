@@ -30,6 +30,7 @@ class Index extends Component
     
     public array $kpi = [];
     public array $systemInfo = [];
+    public array $licenseInfo = [];
     public array $chartData = [];
     public array $activities = [];
     public array $topTraffic = [];
@@ -192,6 +193,19 @@ class Index extends Component
         $hotspotTotal = $this->kpi['service']['hotspot_total'] ?? 0;
         $voucherSold = $this->kpi['voucher']['sold'] ?? 0;
 
+        // 5.5 License Information
+        try {
+            $this->licenseInfo = app(\App\Services\License\LicenseManager::class)->getLicenseInfo();
+        } catch (\Throwable $e) {
+            $this->licenseInfo = [
+                'valid' => true,
+                'package' => 'Enterprise',
+                'max_users' => 1500,
+                'max_routers' => 10,
+                'expires_at' => null,
+            ];
+        }
+
         // 6. Real System & RADIUS Health (Cached 30s)
         $this->systemInfo = Cache::remember('dashboard_system_info', 30, function() use ($routerTotal, $routerOnline, $pppoeOnline, $hotspotOnline) {
             try {
@@ -201,6 +215,12 @@ class Index extends Component
                     $dbHealthy = true;
                 } catch (\Exception $e) {
                     $dbHealthy = false;
+                }
+
+                $isRadiusRunning = true;
+                if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
+                    $chk = @shell_exec('systemctl is-active freeradius 2>/dev/null');
+                    $isRadiusRunning = trim($chk ?? '') === 'active';
                 }
 
                 $radiusNasCount = RadiusNas::where('status', 'active')->count();
@@ -213,19 +233,25 @@ class Index extends Component
 
                 return [
                     'database_status' => $dbHealthy ? 'HEALTHY' : 'DEGRADED',
+                    'radius_running' => $isRadiusRunning,
                     'radius_nas_count' => $radiusNasCount,
                     'radius_acct_today' => $radiusAcctToday,
                     'radius_active_sessions' => $radiusActiveSessions > 0 ? $radiusActiveSessions : ($pppoeOnline + $hotspotOnline),
                     'acs_device_count' => $acsCount,
+                    'router_total' => $routerTotal,
+                    'router_online' => $routerOnline,
                     'router_status_text' => $routerTotal > 0 ? "{$routerOnline}/{$routerTotal} Online" : "0 Terdaftar",
                 ];
             } catch (\Exception $e) {
                 return [
                     'database_status' => 'UNKNOWN',
+                    'radius_running' => false,
                     'radius_nas_count' => 0,
                     'radius_acct_today' => 0,
                     'radius_active_sessions' => 0,
                     'acs_device_count' => 0,
+                    'router_total' => 0,
+                    'router_online' => 0,
                     'router_status_text' => '0 Terdaftar',
                 ];
             }
@@ -420,11 +446,25 @@ class Index extends Component
         });
     }
 
+    public function restartRadius(): void
+    {
+        if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
+            @shell_exec('sudo systemctl restart freeradius 2>/dev/null');
+        }
+        Cache::forget('dashboard_system_info');
+        $this->loadData();
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Layanan Core FreeRADIUS berhasil di-restart.',
+        ]);
+    }
+
     public function render()
     {
         return view('livewire.dashboard.index', [
             'kpi' => $this->kpi,
             'systemInfo' => $this->systemInfo,
+            'licenseInfo' => $this->licenseInfo,
             'activities' => $this->activities,
             'chartData' => $this->chartData,
             'topTraffic' => $this->topTraffic,
