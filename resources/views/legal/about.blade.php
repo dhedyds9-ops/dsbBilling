@@ -53,12 +53,16 @@
             </p>
         </section>
 
+        @php
+            $partnerName = \App\Models\Setting::getValue('company.partner_name');
+            $partnerLegal = \App\Models\Setting::getValue('company.partner_legal_name') ?: $partnerName;
+        @endphp
         <section>
             <h2 class="text-xl font-bold text-white mb-3 flex items-center gap-2">
                 <span class="text-cyan-400">5.</span> Kemitraan ISP &amp; Upstream Backbone (Powered by)
             </h2>
             <p class="leading-relaxed">
-                Untuk menjamin kesinambungan operasional dan kepatuhan terhadap regulasi telekomunikasi di Indonesia, seluruh layanan <strong>{{ $companyName }}</strong> diselenggarakan secara resmi melalui kemitraan strategis (ISP Partnership) dengan Penyelenggara Jasa Internet berizin resmi dari Kementerian Komunikasi dan Informatika (Kominfo) RI. Jaringan kami terhubung ke multi-upstream fiber optik Tier-1 (seperti Telkom Astinet, Biznet Networks, Moratelindo / Oxygen, dan PLN Icon Plus) serta direct peering dengan Indonesia Internet Exchange (IIX / APJII) dan OpenIXP Jakarta untuk memberikan performa akses data berlatensi sangat rendah ke seluruh penjuru nusantara dan dunia.
+                Untuk menjamin kesinambungan operasional dan kepatuhan terhadap regulasi telekomunikasi di Indonesia, seluruh layanan <strong>{{ $companyName }}</strong> diselenggarakan secara resmi melalui kemitraan strategis (ISP Partnership) bersama Penyelenggara Jasa Internet (ISP) berizin resmi dari Kementerian Komunikasi dan Informatika (Kominfo) RI{{ !empty($partnerName) ? ' (' . $partnerName . ')' : '' }}. Jaringan transmisi data terhubung langsung ke infrastruktur backbone fiber optik berkecepatan tinggi serta direct peering dengan Indonesia Internet Exchange (IIX / APJII) dan OpenIXP Jakarta untuk memberikan performa akses data berlatensi sangat rendah ke seluruh penjuru nusantara dan dunia.
             </p>
         </section>
     </div>

@@ -75,6 +75,11 @@ class Index extends AdminComponent
         'partner_email' => '',
         'partner_website' => '',
         'partner_logo_url' => '',
+        'partner_service_type' => 'Dedicated Internet & FTTH Backbone',
+        'partner_license_no' => 'Izin ISP Kominfo RI & Anggota APJII',
+        'partner_description' => '',
+        'partner_upstream_backup' => '',
+        'partner_show_on_landing' => true,
     ];
 
     public $logoFile;
@@ -179,6 +184,11 @@ class Index extends AdminComponent
             'company.partner_mobile' => ['nullable', 'string', 'max:50'],
             'company.partner_email' => ['nullable', 'email', 'max:150'],
             'company.partner_website' => ['nullable', 'url', 'max:200'],
+            'company.partner_service_type' => ['nullable', 'string', 'max:150'],
+            'company.partner_license_no' => ['nullable', 'string', 'max:150'],
+            'company.partner_description' => ['nullable', 'string', 'max:500'],
+            'company.partner_upstream_backup' => ['nullable', 'string', 'max:150'],
+            'company.partner_show_on_landing' => ['nullable'],
             'logoFile' => ['nullable', 'image', 'max:2048'],
             'stampFile' => ['nullable', 'image', 'max:2048'],
             'partnerLogoFile' => ['nullable', 'image', 'max:2048'],

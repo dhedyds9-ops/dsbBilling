@@ -128,22 +128,55 @@
       
       <!-- IDENTITAS MITRA / PARTNER -->
       <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden mt-4">
-          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30">
-            <div class="font-semibold text-slate-900 dark:text-slate-100">Identitas Mitra / Partner</div>
-            <div class="text-xs text-slate-500 dark:text-slate-400">Jika Anda bermitra dengan pihak lain dan ingin logo/nama mitra tampil di invoice</div>
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg">handshake</span>
+                Kemitraan ISP &amp; Upstream Provider (Powered by)
+              </div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">Atur ISP upstream yang Anda langgani untuk ditampilkan secara resmi di Landing Page dan Invoice</div>
+            </div>
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" wire:model="company.partner_show_on_landing" class="rounded border-slate-300 dark:border-slate-600 text-blue-600 shadow-sm focus:ring-blue-500 dark:bg-slate-900">
+              <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Tampilkan di Landing Page</span>
+            </label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Mitra ISP / Upstream Utama <span class="text-red-500">*</span></label>
+                <input type="text" wire:model="company.partner_name" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: Telkom Astinet / PT Mitra Solusi">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Badan Hukum / Brand</label>
+                <input type="text" wire:model="company.partner_legal_name" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: PT Telkom Indonesia (Persero) Tbk">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Jenis Layanan / Sambungan Upstream</label>
+                <input type="text" wire:model="company.partner_service_type" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: Dedicated Internet 1:1 / Metro-E FTTH">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Nomor Izin / Akreditasi Resmi</label>
+                <input type="text" wire:model="company.partner_license_no" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: Izin Penyelenggara Jasa Internet (ISP) Kominfo RI / APJII">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">ISP Cadangan / Backup Upstream (Opsional)</label>
+                <input type="text" wire:model="company.partner_upstream_backup" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Kosongkan jika hanya 1 ISP, contoh: Biznet Networks">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Website Resmi Mitra ISP</label>
+                <input type="url" wire:model="company.partner_website" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://isp-mitra.co.id">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Telepon / WhatsApp Mitra ISP</label>
+                <input type="text" wire:model="company.partner_mobile" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="08xxx / 021-xxx">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Email Mitra ISP</label>
+                <input type="email" wire:model="company.partner_email" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="noc@isp-mitra.co.id">
+            </div>
             <div class="md:col-span-2">
-                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Mitra</label>
-                <input type="text" wire:model="company.partner_name" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:text-slate-100" placeholder="PT Mitra Sejahtera">
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Telepon / HP Mitra</label>
-                <input type="text" wire:model="company.partner_mobile" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:text-slate-100" placeholder="08xxx">
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Email Mitra</label>
-                <input type="email" wire:model="company.partner_email" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:text-slate-100" placeholder="mitra@domain.com">
+                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Deskripsi / Ringkasan Kerjasama (Opsional)</label>
+                <textarea wire:model="company.partner_description" rows="2" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs" placeholder="Koneksi internet diselenggarakan secara resmi bekerja sama dengan penyedia ISP berlisensi untuk menjamin kestabilan dan kepatuhan hukum telekomunikasi."></textarea>
             </div>
           </div>
       </div>
