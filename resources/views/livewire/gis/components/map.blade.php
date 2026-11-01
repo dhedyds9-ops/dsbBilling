@@ -3029,144 +3029,135 @@
                 const popupDiv = document.createElement('div');
                 popupDiv.className = 'custom-customer-popup';
                 popupDiv.innerHTML = `
-                    <div class="customer-card flex flex-col">
-                        <div class="customer-header">
-                            <div class="customer-header-left">
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
                                 <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}" id="popup-status-dot-${customer.id}">●</span>
                                 <div class="network-title-group">
-                                    <span class="customer-header-title" title="${customer.name}">${customer.name}</span>
-                                    <span class="network-subtitle font-mono">${customer.username || customer.code || customer.id}</span>
+                                    <div class="network-title" title="${customer.name}">${customer.name}</div>
+                                    <div class="network-subtitle">${customer.username || customer.code || customer.id}</div>
                                 </div>
                             </div>
-                            <span class="customer-badge ${isOnline ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'}">${customer.service_type || 'ONU'}</span>
+                            <span class="network-badge ${isOnline ? 'badge-odp' : 'badge-closure'}">${customer.service_type || 'ONU'}</span>
                         </div>
 
-                        <div class="customer-content">
-                            <div class="top-row">
-                                <div class="ip-box">
-                                    <i data-lucide="server" class="w-4 h-4 text-slate-400"></i>
-                                    <span class="ip-text" id="popup-ip-text-${customer.id}">${tr069Ip}</span>
-                                    <i data-lucide="globe" class="w-4 h-4 text-blue-400"></i>
+                        <div class="network-content">
+                            <!-- Network & TR069 Panel -->
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-network-wired text-slate-400 mr-1"></i> IP TR-069:</span>
+                                    <span class="node-kv-value font-mono text-cyan-400 font-bold" id="popup-ip-text-${customer.id}">${tr069Ip}</span>
                                 </div>
-                                <button onclick="window.pingCustomer(document.getElementById('popup-ip-text-${customer.id}').innerText, ${customer.id})" class="popup-btn btn-cyan" style="width:auto;min-width:78px">
-                                    <i data-lucide="terminal" class="w-4 h-4" id="ping-icon-${customer.id}"></i><span id="ping-text-${customer.id}">Ping</span>
-                                </button>
+                                <span id="popup-acs-ip-${customer.id}" class="d-none">${tr069Ip}</span>
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-signal text-slate-400 mr-1"></i> Status:</span>
+                                    <span class="node-kv-value status-value ${isOnline ? 'status-online' : 'status-offline'}" id="popup-status-text-${customer.id}">
+                                        ${isOnline ? 'ONLINE' : 'OFFLINE'}
+                                    </span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-info-circle text-slate-400 mr-1"></i> Alasan:</span>
+                                    <span class="node-kv-value text-slate-300 text-xs truncate max-w-[160px] acs-value ${isOnline ? 'acs-value-now-online' : 'acs-value-now-offline'}" id="popup-last-reason-${customer.id}" title="${lastReason}">
+                                        ${lastReason}
+                                    </span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-clock text-slate-400 mr-1"></i> Terakhir Aktif:</span>
+                                    <span class="node-kv-value text-slate-400 text-xs" id="popup-last-inform-${customer.id}">
+                                        ${hasGenieStatus ? formatLastInform(lastInform) : 'N/A'}
+                                    </span>
+                                </div>
+                                ${(customer.rx_power || customer.rdm_power) ? `
+                                <div class="node-kv mt-1 pt-1 border-t border-slate-700/50">
+                                    <span class="node-kv-label"><i class="fa fa-bolt text-amber-400 mr-1"></i> Redaman:</span>
+                                    <span class="node-kv-value d-flex gap-1">
+                                        ${customer.rx_power ? `<span class="px-1.5 py-0.5 bg-slate-800 border border-emerald-500/30 text-emerald-400 rounded text-xs font-mono font-bold">RX: ${customer.rx_power}</span>` : ''}
+                                        ${customer.rdm_power ? `<span class="px-1.5 py-0.5 bg-slate-800 border border-yellow-500/30 text-yellow-400 rounded text-xs font-mono font-bold">TX: ${customer.rdm_power}</span>` : ''}
+                                    </span>
+                                </div>
+                                ` : ''}
                             </div>
 
-                            <div id="ping-result-${customer.id}" class="card-panel p-2 text-xs font-mono hidden bg-black/50 overflow-auto max-h-32 mb-2"></div>
-
-                            <div class="status-row">
-                                <span class="status-label">Status</span>
-                                <span class="status-value ${isOnline ? 'status-online' : 'status-offline'}" id="popup-status-text-${customer.id}">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>
-                            </div>
-
-                            <div class="card-panel p-2">
-                                <div class="acs-head">
-                                    <div class="acs-title">
-                                        <i data-lucide="zap" class="w-4 h-4"></i><span class="font-bold">GenieACS</span>
-                                    </div>
-                                    <span class="acs-up" id="popup-last-inform-${customer.id}">${hasGenieStatus ? formatLastInform(lastInform) : 'N/A'}</span>
+                            <!-- WiFi & Device Info Panel -->
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-wifi text-slate-400 mr-1"></i> SSID:</span>
+                                    <span class="node-kv-value font-bold text-yellow-300 font-mono truncate max-w-[170px]" id="popup-ssid-${customer.id}" title="${ssidName}">${ssidName}</span>
                                 </div>
-                                <div class="grid grid-cols-1 gap-2">
-                                    <div class="acs-item">
-                                        <div class="acs-label">TR069 IP</div>
-                                        <div class="acs-value acs-value-start" id="popup-acs-ip-${customer.id}">${tr069Ip}</div>
-                                    </div>
-                                    <div class="acs-item">
-                                        <div class="acs-label">Last Reason</div>
-                                        <div class="acs-value ${isOnline ? 'acs-value-now-online' : 'acs-value-now-offline'}" id="popup-last-reason-${customer.id}">${lastReason}</div>
-                                    </div>
-                                    ${(customer.rx_power || customer.rdm_power) ? `
-                                        <div class="flex gap-2 mt-1">
-                                            ${customer.rx_power ? `
-                                                <div class="flex-1 bg-slate-800/60 rounded-lg p-2 border border-slate-700/50">
-                                                    <div class="acs-label text-xs mb-1">RX Power</div>
-                                                    <div class="acs-value font-bold text-emerald-400 text-sm">${customer.rx_power}</div>
-                                                </div>
-                                            ` : ''}
-                                            ${customer.rdm_power ? `
-                                                <div class="flex-1 bg-slate-800/60 rounded-lg p-2 border border-slate-700/50">
-                                                    <div class="acs-label text-xs mb-1">RDM Power</div>
-                                                    <div class="acs-value font-bold text-yellow-400 text-sm">${customer.rdm_power}</div>
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-
-                            <div class="card-panel p-2 space-y-1.5">
-                                <div class="kv-row"><span class="status-label">SSID</span><span class="text-yellow-400 font-bold" id="popup-ssid-${customer.id}">${ssidName}</span></div>
-                                <div class="kv-row">
-                                    <span class="status-label">Password</span>
-                                    <div class="flex items-center justify-between bg-slate-800/60 px-2.5 py-1.5 rounded-lg border border-slate-700/50">
-                                        <span class="text-yellow-400 font-bold font-mono text-sm" id="pass-text-${customer.id}" data-password="${customer.ssid_password || ''}">••••••••</span>
-                                        <button onclick="window.togglePassword(${customer.id}, this)" data-visible="0" title="Lihat Password" class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-all flex items-center justify-center">
-                                            <span id="pass-icon-${customer.id}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                                            </span>
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-key text-slate-400 mr-1"></i> Sandi:</span>
+                                    <span class="node-kv-value font-mono d-flex align-items-center gap-1">
+                                        <span class="text-yellow-300 font-bold" id="pass-text-${customer.id}" data-password="${customer.ssid_password || ''}">••••••••</span>
+                                        <button type="button" onclick="window.togglePassword(${customer.id}, this)" data-visible="0" class="btn btn-xs py-0 px-1 btn-dark border border-slate-600 text-slate-300 hover:text-white" title="Lihat/Sembunyikan Sandi">
+                                            <span id="pass-icon-${customer.id}"><i class="fa fa-eye"></i></span>
                                         </button>
-                                    </div>
+                                    </span>
                                 </div>
-                                <div class="kv-row"><span class="status-label">Client WLAN Aktif</span><span class="text-green-400 font-bold" id="wlan-clients-${customer.id}">...</span></div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-laptop text-slate-400 mr-1"></i> Klien Aktif:</span>
+                                    <span class="node-kv-value">
+                                        <span class="px-2 py-0.5 bg-emerald-950/70 border border-emerald-500/40 text-emerald-400 rounded-full font-bold text-xs" id="wlan-clients-${customer.id}">...</span>
+                                    </span>
+                                </div>
                             </div>
 
-                            <div class="btn-grid-2">
-                                <button onclick="window.openWifiModal(${customer.id})" class="popup-btn btn-emerald">
-                                    <i data-lucide="wifi" class="w-4 h-4"></i><span>Ganti WiFi</span>
+                            <!-- Uplink & Distance Panel -->
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-box text-emerald-400 mr-1"></i> Uplink ODP:</span>
+                                    <span class="node-kv-value text-emerald-300 font-bold">${odpName}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label"><i class="fa fa-route text-cyan-400 mr-1"></i> Jarak Drop Core:</span>
+                                    <span class="node-kv-value font-mono text-cyan-300 font-bold">${customerToOdpDistance}</span>
+                                </div>
+                            </div>
+
+                            <!-- Ping Output Container -->
+                            <div id="ping-result-${customer.id}" class="card-panel p-2 text-xs font-mono hidden bg-black/70 border border-slate-700 text-emerald-400 overflow-auto max-h-24"></div>
+
+                            <!-- Action Toolbar Row 1: Network Commands -->
+                            <div class="node-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
+                                <button type="button" onclick="window.openWifiModal(${customer.id})" class="node-btn node-btn-emerald">
+                                    <i class="fa fa-wifi"></i> WiFi
                                 </button>
-                                <button onclick="window.rebootCustomer(${customer.id})" class="popup-btn btn-red"><i data-lucide="power" class="w-4 h-4"></i><span>Reboot</span></button>
+                                <button type="button" onclick="window.rebootCustomer(${customer.id})" class="node-btn node-btn-danger">
+                                    <i class="fa fa-power-off"></i> Reboot
+                                </button>
+                                <button type="button" onclick="window.pingCustomer(document.getElementById('popup-ip-text-${customer.id}').innerText, ${customer.id})" class="node-btn node-btn-primary">
+                                    <i class="fa fa-terminal" id="ping-icon-${customer.id}"></i> <span id="ping-text-${customer.id}">Ping</span>
+                                </button>
                             </div>
 
-                            <div class="card-panel p-2">
-                                <div class="traffic-head">
-                                    <div class="traffic-title"><i data-lucide="activity" class="w-4 h-4 text-slate-300"></i><span>Live Traffic</span></div>
-                                    <div class="traffic-legend">
-                                        <span><span class="traffic-dot traffic-dot-tx"></span>TX</span>
-                                        <span><span class="traffic-dot traffic-dot-rx"></span>RX</span>
-                                    </div>
-                                </div>
-                                <div class="traffic-chart">
-                                    <svg class="absolute inset-0 w-full h-full opacity-60">
-                                        <line x1="0" y1="32" x2="300" y2="32" stroke="#1e293b" stroke-width="1" />
-                                        <path d="M 0 36 Q 45 30, 90 40 T 180 28 T 300 36" fill="none" stroke="#3b82f6" stroke-width="1.6" />
-                                        <path d="M 0 44 Q 60 36, 120 48 T 240 34 T 300 42" fill="none" stroke="#22c55e" stroke-width="1.6" />
-                                    </svg>
-                                </div>
-                                <div class="traffic-foot"><span>TX: 0 bps</span><span>RX: 0 bps</span></div>
+                            <!-- Action Toolbar Row 2: Communication & Quick Tools -->
+                            <div class="node-actions" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
+                                <button type="button" onclick="window.copyToClipboard('${customer.name}\\n${tr069Ip}')" class="node-btn node-btn-secondary" title="Salin info">
+                                    <i class="fa fa-copy"></i> Salin
+                                </button>
+                                <button type="button" onclick="window.openInMaps(${customer.latitude}, ${customer.longitude})" class="node-btn node-btn-secondary" title="Buka Google Maps">
+                                    <i class="fa fa-map-marker-alt text-rose-400"></i> Maps
+                                </button>
+                                <button type="button" onclick="window.openWA('${customer.phone}')" class="node-btn node-btn-secondary" title="Chat WhatsApp">
+                                    <i class="fab fa-whatsapp text-emerald-400"></i> WA
+                                </button>
                             </div>
 
-                            <div class="distance-row"><i class="fa fa-route mr-1 text-cyan-400"></i> Jarak ke ODP: <span class="font-mono text-cyan-300 font-bold">${customerToOdpDistance}</span></div>
-
-                            <div class="btn-grid-3">
-                                <button onclick="window.copyToClipboard('${customer.name}\\n${tr069Ip}')" class="popup-btn btn-blue icon-top"><i data-lucide="copy" class="w-4 h-4"></i><span>Salin</span></button>
-                                <button onclick="window.openInMaps(${customer.latitude}, ${customer.longitude})" class="popup-btn btn-emerald icon-top"><i data-lucide="map-pin" class="w-4 h-4"></i><span>Maps</span></button>
-                                <button onclick="window.openWA('${customer.phone}')" class="popup-btn btn-green icon-top"><i data-lucide="message-circle" class="w-4 h-4"></i><span>WA</span></button>
-                            </div>
-
-                            <div class="btn-grid-2">
-                                <button onclick="window.editCustomer('${customer.id}')" class="popup-btn btn-blue main-action">QUICK EDIT</button>
-                                <a href="/customers/${String(customer.id).replace('onu-', '')}/edit" target="_blank" class="popup-btn btn-blue main-action" style="background:#334155;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">FORM CRM</a>
+                            <!-- Action Toolbar Row 3: Edit & CRM Links -->
+                            <div class="node-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+                                <button type="button" onclick="window.editCustomer('${customer.id}')" class="node-btn node-btn-primary">
+                                    <i class="fa fa-edit"></i> Edit Lokasi
+                                </button>
+                                <a href="/customers/${String(customer.id).replace('onu-', '')}/edit" target="_blank" class="node-btn node-btn-secondary">
+                                    <i class="fa fa-external-link-alt"></i> Detail CRM
+                                </a>
                             </div>
                         </div>
-                    </div> 
-                `;
-                
-                // Initialize Lucide icons after the popup is opened
-                setTimeout(() => {
-                    if (window.lucide) {
-                        window.lucide.createIcons({
-                            attrs: {
-                                class: 'lucide-icon'
-                            },
-                            nameAttr: 'data-lucide'
-                        });
-                    }
-                }, 10);
-                
+                    </div>`;
+
                 return popupDiv;
             }, {
-                maxWidth: 300,
+                maxWidth: 320,
+                minWidth: 320,
                 className: 'modern-map-popup'
             });
 
@@ -3180,7 +3171,7 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                clientSpan.innerText = data.total_clients + ' Device';
+                                clientSpan.innerText = (data.total_clients || 0) + ' Perangkat';
                                 
                                 // Update SSID/password from live ONU data
                                 if (data.ssid_name) {
@@ -3228,12 +3219,12 @@
                                     lastInform.innerText = `Last Inform: ${formatLastInform(data.last_inform)}`;
                                 }
                             } else {
-                                clientSpan.innerText = 'Offline';
+                                clientSpan.innerText = '0 Perangkat';
                             }
                         })
                         .catch(err => {
                             console.error('Error fetching WLAN status:', err);
-                            clientSpan.innerText = 'Error';
+                            clientSpan.innerText = '-';
                         });
                 }
             });
