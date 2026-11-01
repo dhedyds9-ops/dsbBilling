@@ -183,36 +183,56 @@
             </div>
 
             {{-- Modal Search & Toolbar --}}
-            <div class="p-4 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
+            <div class="p-3 sm:p-4 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2.5">
                 <div class="relative flex-1 min-w-[240px]">
                     <input type="text" 
                            x-model="searchQuery" 
                            @keydown.enter.prevent="searchLocation()"
-                           placeholder="Cari nama lokasi, kota, atau alamat..." 
-                           class="w-full pl-9 pr-20 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100">
-                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           placeholder="Cari desa, jalan, kota, atau tempel koordinat / link Google Maps..." 
+                           class="w-full pl-9 pr-20 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                     <button type="button" 
                             @click="searchLocation()" 
-                            class="absolute right-1.5 top-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors">
+                            class="absolute right-1.5 top-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer">
                         Cari
                     </button>
                 </div>
 
                 <button type="button" 
                         @click="useCurrentLocation()" 
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors">
-                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span>Lokasi GPS Saya</span>
+                        :disabled="isLoadingGps"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50">
+                    <template x-if="!isLoadingGps">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </template>
+                    <template x-if="isLoadingGps">
+                        <svg class="animate-spin h-4 w-4 text-indigo-600" viewBox="0 0 24 24" fill="none">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </template>
+                    <span x-text="isLoadingGps ? 'Mendeteksi...' : 'Lokasi GPS Saya'"></span>
                 </button>
             </div>
 
-            {{-- Map Canvas Container --}}
-            <div class="relative flex-1 min-h-[420px] bg-slate-100 dark:bg-slate-950">
-                <div :id="mapId" class="absolute inset-0 w-full h-full z-10"></div>
+            {{-- Notice / Accuracy Banner --}}
+            <div x-show="gpsNotice" class="px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60 flex items-start justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+                <div class="flex items-start gap-2">
+                    <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span x-html="gpsNotice"></span>
+                </div>
+                <button type="button" @click="gpsNotice = ''" class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 font-bold text-sm leading-none shrink-0 cursor-pointer">&times;</button>
+            </div>
+
+            {{-- Map Canvas Container with fixed fallback height --}}
+            <div class="relative w-full bg-slate-100 dark:bg-slate-950 overflow-hidden" style="height: 480px; min-height: 420px;">
+                <div :id="mapId" class="w-full h-full z-10" style="height: 480px; min-height: 420px;"></div>
                 
                 {{-- Loading Indicator --}}
                 <div x-show="isLoading" class="absolute inset-0 bg-white/70 dark:bg-slate-900/70 z-20 flex items-center justify-center">
@@ -273,6 +293,9 @@
         tempLng: lng || '',
         showModal: false,
         isLoading: false,
+        isLoadingGps: false,
+        gpsNotice: '',
+        accuracyCircle: null,
         searchQuery: '',
         mapId: 'map-picker-' + Math.random().toString(36).substring(2, 9),
         map: null,
@@ -282,13 +305,19 @@
             this.showModal = true;
             this.tempLat = this.lat || '';
             this.tempLng = this.lng || '';
+            this.gpsNotice = '';
             this.$nextTick(() => {
                 this.initLeaflet();
                 setTimeout(() => {
                     if (this.map) {
                         this.map.invalidateSize();
                     }
-                }, 250);
+                }, 150);
+                setTimeout(() => {
+                    if (this.map) {
+                        this.map.invalidateSize();
+                    }
+                }, 400);
             });
         },
 
@@ -433,6 +462,7 @@
                     this.marker.setLatLng([lat, lng]);
                 };
 
+                let firstValidOdp = null;
                 fetch('/map/odps')
                     .then(r => r.json())
                     .then(odps => {
@@ -447,9 +477,18 @@
                             const oLat = parseFloat(odp.latitude);
                             const oLng = parseFloat(odp.longitude);
                             if (isNaN(oLat) || isNaN(oLng)) return;
+                            if (!firstValidOdp) firstValidOdp = [oLat, oLng];
                             const m = L.marker([oLat, oLng], { icon: odpIcon }).addTo(this.map);
                             m.bindPopup('<div style="min-width:140px;font-family:sans-serif;"><strong style="color:#0f172a;font-size:12px;">ODP: ' + (odp.name || '') + '</strong><br><span style="font-size:11px;color:#64748b;">' + (odp.code || '') + '</span><div style="margin-top:6px;"><button type="button" style="padding:4px 8px;background:#4f46e5;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;" onclick="window.pickNearbyOdp(' + oLat + ', ' + oLng + ')">Pilih Dekat Sini</button></div></div>');
                         });
+
+                        // Center on ODP if no custom coords
+                        if ((!this.lat || !this.lng) && firstValidOdp && defaultLat === -6.2088) {
+                            this.tempLat = firstValidOdp[0].toFixed(7);
+                            this.tempLng = firstValidOdp[1].toFixed(7);
+                            this.marker.setLatLng(firstValidOdp);
+                            this.map.setView(firstValidOdp, 15);
+                        }
                     })
                     .catch(() => {});
 
@@ -498,33 +537,109 @@
                 alert('Browser Anda tidak mendukung Geolocation.');
                 return;
             }
-            this.isLoading = true;
+            this.isLoadingGps = true;
+            this.gpsNotice = 'Sedang mendeteksi posisi GPS perangkat...';
+
+            const handleSuccess = (pos) => {
+                this.isLoadingGps = false;
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const accuracy = pos.coords.accuracy || 0;
+
+                this.tempLat = lat.toFixed(7);
+                this.tempLng = lng.toFixed(7);
+
+                if (this.accuracyCircle && this.map) {
+                    this.map.removeLayer(this.accuracyCircle);
+                    this.accuracyCircle = null;
+                }
+
+                if (this.map && this.marker) {
+                    this.marker.setLatLng([lat, lng]);
+
+                    if (accuracy > 0 && accuracy < 100000) {
+                        this.accuracyCircle = L.circle([lat, lng], {
+                            radius: accuracy,
+                            color: '#4f46e5',
+                            fillColor: '#818cf8',
+                            fillOpacity: 0.15,
+                            weight: 1.5
+                        }).addTo(this.map);
+                    }
+
+                    if (accuracy < 100) {
+                        this.map.setView([lat, lng], 18);
+                        this.gpsNotice = `<strong>Akurasi GPS Tinggi (±${Math.round(accuracy)}m).</strong> Titik koordinat berhasil diterapkan.`;
+                    } else if (accuracy < 2500) {
+                        this.map.setView([lat, lng], 16);
+                        this.gpsNotice = `<strong>Akurasi ±${Math.round(accuracy)}m.</strong> Silakan geser pin merah di peta ke posisi tiang/atap yang persis.`;
+                    } else {
+                        this.map.setView([lat, lng], 13);
+                        this.gpsNotice = `<strong>Info:</strong> Lokasi terdeteksi dari IP Internet provider (estimasi ±${Math.round(accuracy / 1000)} km). Di PC/Laptop tanpa GPS satelit, IP sering mengarah ke Gateway/NOC ISP di Jakarta/kota besar. <strong>Silakan ketik nama desa/alamat di kotak cari atau geser pin merah ke lokasi sebenarnya.</strong>`;
+                    }
+                }
+            };
+
+            const handleError = (err) => {
+                // Retry dengan low accuracy jika high accuracy gagal/timeout (umum di desktop Windows)
+                navigator.geolocation.getCurrentPosition(
+                    handleSuccess,
+                    (errFallback) => {
+                        this.isLoadingGps = false;
+                        if (errFallback.code === 1) {
+                            this.gpsNotice = '<strong>Izin Lokasi Ditolak:</strong> Izinkan akses lokasi pada ikon setelan/gembok di address bar browser Anda.';
+                        } else {
+                            this.gpsNotice = '<strong>Lokasi Tidak Terdeteksi:</strong> ' + (errFallback.message || err.message) + '. Silakan ketik nama daerah/desa di kotak pencarian atau tempel titik koordinat.';
+                        }
+                    },
+                    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+                );
+            };
+
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    this.isLoading = false;
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
+                handleSuccess,
+                handleError,
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            );
+        },
+
+        async searchLocation() {
+            const query = (this.searchQuery || '').trim();
+            if (!query) return;
+
+            // 1. Cek apakah input berupa koordinat langsung atau link Google Maps
+            // Contoh format: "-6.91234, 107.61234", "@-6.91234,107.61234", "?q=-6.91234,107.61234"
+            const coordRegex = /([-+]?\d{1,2}(?:\.\d+)?)[,\s]+([-+]?\d{1,3}(?:\.\d+)?)/;
+            const coordMatch = query.match(coordRegex);
+            if (coordMatch) {
+                const lat = parseFloat(coordMatch[1]);
+                const lng = parseFloat(coordMatch[2]);
+                if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                     this.tempLat = lat.toFixed(7);
                     this.tempLng = lng.toFixed(7);
                     if (this.map && this.marker) {
                         this.marker.setLatLng([lat, lng]);
                         this.map.setView([lat, lng], 17);
                     }
-                },
-                (err) => {
-                    this.isLoading = false;
-                    alert('Gagal mengambil lokasi GPS: ' + err.message);
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        },
+                    this.gpsNotice = `Peta diarahkan ke koordinat: <strong>${this.tempLat}, ${this.tempLng}</strong>`;
+                    return;
+                }
+            }
 
-        async searchLocation() {
-            if (!this.searchQuery.trim()) return;
+            // 2. Pencarian Nama Tempat via OpenStreetMap Nominatim
             this.isLoading = true;
+            this.gpsNotice = '';
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(this.searchQuery)}`);
-                const data = await res.json();
+                // Coba pencarian dengan prioritas Indonesia
+                let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=id&limit=5&q=${encodeURIComponent(query)}`);
+                let data = await res.json();
+                
+                // Fallback pencarian global
+                if (!data || data.length === 0) {
+                    res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`);
+                    data = await res.json();
+                }
+
                 this.isLoading = false;
                 if (data && data.length > 0) {
                     const first = data[0];
@@ -536,8 +651,9 @@
                         this.marker.setLatLng([lat, lng]);
                         this.map.setView([lat, lng], 16);
                     }
+                    this.gpsNotice = `Ditemukan: <strong>${first.display_name.split(',').slice(0, 3).join(', ')}</strong>`;
                 } else {
-                    alert('Lokasi tidak ditemukan.');
+                    alert('Lokasi tidak ditemukan. Coba ketik nama desa/kelurahan, jalan, kota, atau tempel koordinat lat, lng.');
                 }
             } catch (e) {
                 this.isLoading = false;
