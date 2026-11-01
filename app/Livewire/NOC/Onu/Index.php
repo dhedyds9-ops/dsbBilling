@@ -31,6 +31,8 @@ class Index extends AdminComponent
 
     public $editingOnuId = null;
     public $selectedCustomerId = '';
+    public $showCustomerModal = false;
+    public $editingOnu = null;
 
     #[Computed]
     public function allCustomers()
@@ -49,19 +51,26 @@ class Index extends AdminComponent
     public function editCustomer($onuId, $currentCustomerId = null)
     {
         $this->editingOnuId = $onuId;
-        $this->selectedCustomerId = $currentCustomerId ?? '';
+        $this->editingOnu = \App\Models\ISP\Onu::with(['customerService.customer', 'olt', 'ponPort'])->find($onuId);
+        $this->selectedCustomerId = $currentCustomerId ?? ($this->editingOnu?->customerService?->customer_id ?? '');
+        $this->showCustomerModal = true;
     }
 
     public function cancelEditCustomer()
     {
         $this->editingOnuId = null;
+        $this->editingOnu = null;
         $this->selectedCustomerId = '';
+        $this->showCustomerModal = false;
     }
 
-    public function assignCustomer($onuId)
+    public function assignCustomer($onuId = null)
     {
+        $targetId = $onuId ?: $this->editingOnuId;
+        if (!$targetId) return;
+
         try {
-            $onu = \App\Models\ISP\Onu::findOrFail($onuId);
+            $onu = \App\Models\ISP\Onu::findOrFail($targetId);
             
             // Unassign current service if exists
             if ($onu->customerService) {
@@ -94,8 +103,7 @@ class Index extends AdminComponent
                 session()->flash('success', 'ONU berhasil dilepas dari pelanggan');
             }
             
-            $this->editingOnuId = null;
-            $this->selectedCustomerId = '';
+            $this->cancelEditCustomer();
             
         } catch (\Throwable $e) {
             session()->flash('error', 'Gagal mengupdate pelanggan: ' . $e->getMessage());
