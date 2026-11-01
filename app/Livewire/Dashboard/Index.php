@@ -307,6 +307,7 @@ class Index extends Component
                     }
                     
                     $recentActivities[] = [
+                        'type' => 'payment',
                         'color' => 'emerald',
                         'text' => 'Pembayaran Rp ' . number_format($payment->amount, 0, ',', '.') . ' dari ' . $customerName,
                         'time' => $payment->created_at ? $payment->created_at->diffForHumans() : 'Baru saja',
@@ -317,6 +318,7 @@ class Index extends Component
                     $newestCustomers = Customer::latest()->take(5 - count($recentActivities))->get();
                     foreach ($newestCustomers as $nc) {
                         $recentActivities[] = [
+                            'type' => 'customer',
                             'color' => 'indigo',
                             'text' => 'Pendaftaran pelanggan baru: ' . $nc->name,
                             'time' => $nc->created_at ? $nc->created_at->diffForHumans() : 'Baru saja',

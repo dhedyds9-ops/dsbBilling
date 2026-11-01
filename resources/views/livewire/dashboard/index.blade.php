@@ -524,18 +524,51 @@
         </div>
 
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 flex flex-col">
-            <h2 class="text-base font-bold text-slate-900 dark:text-slate-100 mb-4">Aktivitas Terkini</h2>
-            <div class="relative border-l border-slate-200 dark:border-slate-700 ml-3 space-y-5 flex-1 overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h2 class="text-base font-bold text-slate-900 dark:text-slate-100">Aktivitas Terkini</h2>
+                </div>
+                <span class="text-xs text-slate-400 font-medium">Log Sistem</span>
+            </div>
+
+            <div class="space-y-3.5 flex-1 overflow-y-auto">
                 @forelse($activities ?? [] as $act)
-                <div class="relative pl-6">
-                    <span class="absolute -left-3 top-1 w-6 h-6 rounded-full bg-{{ $act['color'] ?? 'blue' }}-100 dark:bg-{{ $act['color'] ?? 'blue' }}-900/50 flex items-center justify-center text-{{ $act['color'] ?? 'blue' }}-600 dark:text-{{ $act['color'] ?? 'blue' }}-400 shadow-sm ring-4 ring-white dark:ring-slate-800">
-                        <span class="material-symbols-outlined text-[14px]">notifications</span>
-                    </span>
-                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ $act['text'] ?? '' }}</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ $act['time'] ?? '' }}</p>
+                <div class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/40 transition">
+                    @if(($act['type'] ?? '') === 'payment')
+                        <div class="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                        </div>
+                    @elseif(($act['type'] ?? '') === 'customer')
+                        <div class="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                            </svg>
+                        </div>
+                    @else
+                        <div class="w-8 h-8 rounded-full bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                            </svg>
+                        </div>
+                    @endif
+
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{{ $act['text'] ?? '' }}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>{{ $act['time'] ?? '' }}</span>
+                        </div>
+                    </div>
                 </div>
                 @empty
-                <div class="py-10 text-center text-slate-400 text-sm">
+                <div class="py-10 text-center text-slate-400 text-xs">
                     Belum ada riwayat aktivitas terbaru
                 </div>
                 @endforelse
