@@ -209,9 +209,16 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Tutup') }}</button>
-                <button type="button" class="btn btn-primary" id="saveOdcBtn">{{ __('Simpan ODC') }}</button>
+            <div class="modal-footer justify-content-between">
+                <div>
+                    <a id="odcFullEditBtn" href="#" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium d-none">
+                        Buka Formulir Lengkap ODC &rarr;
+                    </a>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Tutup') }}</button>
+                    <button type="button" class="btn btn-primary btn-sm font-bold px-4" id="saveOdcBtn">{{ __('Simpan ODC') }}</button>
+                </div>
             </div>
         </div>
     </div>
@@ -219,45 +226,69 @@
 
 <!-- ODP Modal -->
 <div class="modal fade" id="odpModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="odpModalLabel">{{ __('Tambah ODP') }}</h5>
+                <h5 class="modal-title font-bold" id="odpModalLabel">{{ __('Tambah ODP') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="odpForm">
                     <input type="hidden" id="odp_id" name="id">
-                    <div class="mb-3">
-                        <label for="odp_code" class="form-label">{{ __('Kode ODP') }}</label>
-                        <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_code" name="code" placeholder="Contoh: ODP-01 (Opsional/Otomatis)">
-                    </div>
-                    <div class="mb-3">
-                        <label for="odp_name" class="form-label">{{ __('Nama ODP') }}</label>
-                        <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_name" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="odp_kampung" class="form-label">{{ __('Kampung') }}</label>
-                        <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_address" name="address" required>
-                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="odp_lat" class="form-label">{{ __('Lintang') }}</label>
-                            <input type="number" step="any" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_lat" name="latitude" required readonly>
+                            <label for="odp_code" class="form-label font-semibold">{{ __('Kode ODP') }}</label>
+                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_code" name="code" placeholder="Contoh: ODP-01 (Opsional/Otomatis)">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="odp_lng" class="form-label">{{ __('Bujur') }}</label>
-                            <input type="number" step="any" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_lng" name="longitude" required readonly>
+                            <label for="odp_name" class="form-label font-semibold">{{ __('Nama ODP') }}</label>
+                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_name" name="name" required placeholder="Contoh: ODP-GUNGGURUNG-01">
                         </div>
                     </div>
+
                     <div class="mb-3">
-                        <label for="odp_capacity" class="form-label">{{ __('Kapasitas') }}</label>
-                        <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_port_count" name="port_count" value="8" required>
+                        <label for="odp_address" class="form-label font-semibold">{{ __('Kampung / Lokasi Area') }}</label>
+                        <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_address" name="address" placeholder="Contoh: Kp. Gunggurung RT 02/01">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="odp_lat" class="form-label font-semibold">{{ __('Lintang (Lat)') }}</label>
+                            <input type="number" step="any" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 font-monospace text-xs" id="odp_lat" name="latitude" required readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="odp_lng" class="form-label font-semibold">{{ __('Bujur (Lng)') }}</label>
+                            <input type="number" step="any" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 font-monospace text-xs" id="odp_lng" name="longitude" required readonly>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="odp_port_count" class="form-label font-semibold">{{ __('Kapasitas (Port)') }}</label>
+                            <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_port_count" name="port_count" value="8" min="1" max="64" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="odp_color" class="form-label font-semibold">{{ __('Warna Tube / Core') }}</label>
+                            <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_color" name="color">
+                                <option value="blue">Biru (Core 1)</option>
+                                <option value="orange">Orange (Core 2)</option>
+                                <option value="green">Hijau (Core 3)</option>
+                                <option value="brown">Coklat (Core 4)</option>
+                                <option value="grey">Abu-abu (Core 5)</option>
+                                <option value="white">Putih (Core 6)</option>
+                                <option value="red">Merah (Core 7)</option>
+                                <option value="black">Hitam (Core 8)</option>
+                                <option value="yellow">Kuning (Core 9)</option>
+                                <option value="violet">Ungu (Core 10)</option>
+                                <option value="pink">Pink (Core 11)</option>
+                                <option value="aqua">Toska (Core 12)</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="odp_odc" class="form-label">{{ __('Uplink ODC') }}</label>
-                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="odp_odc" name="odc_id">
+                        <label for="odp_odc" class="form-label font-semibold">{{ __('Uplink ODC') }}</label>
+                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_odc" name="odc_id">
                             <option value="">{{ __('Pilih ODC') }}</option>
                             @foreach($odcModels ?? [] as $odc)
                                 <option value="{{ $odc->id }}">{{ $odc->name }}</option>
@@ -266,14 +297,21 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="odp_description" class="form-label">{{ __('Deskripsi') }}</label>
-                        <textarea class="form-control dark:bg-slate-900 dark:text-slate-100" id="odp_description" name="description"></textarea>
+                        <label for="odp_description" class="form-label font-semibold">{{ __('Deskripsi') }}</label>
+                        <textarea class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="odp_description" name="description" rows="2" placeholder="Catatan splitter / tiang..."></textarea>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Tutup') }}</button>
-                <button type="button" class="btn btn-primary" id="saveOdpBtn">{{ __('Simpan ODP') }}</button>
+            <div class="modal-footer justify-content-between">
+                <div>
+                    <a id="odpFullEditBtn" href="#" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium d-none">
+                        Buka Formulir Lengkap ODP &rarr;
+                    </a>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Tutup') }}</button>
+                    <button type="button" class="btn btn-primary btn-sm font-bold px-4" id="saveOdpBtn">{{ __('Simpan ODP') }}</button>
+                </div>
             </div>
         </div>
     </div>
@@ -2386,14 +2424,21 @@
                 editBtn.innerText = '{{ __('Edit ODC') }}';
                 editBtn.onclick = function() { editOdc(odc.id); };
 
+                var detailLink = document.createElement('a');
+                detailLink.href = `/isp/odcs/${odc.id}/edit`;
+                detailLink.target = '_blank';
+                detailLink.className = 'btn btn-sm btn-outline-secondary map-popup-btn';
+                detailLink.innerText = 'Lengkap';
+
                 var deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
                 deleteBtn.innerText = 'Hapus Lokasi';
                 deleteBtn.onclick = function() { deleteLocation('odc', odc.id, marker); };
 
                 var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions';
+                actionRow.className = 'map-popup-actions d-flex gap-1 flex-wrap mt-2';
                 actionRow.appendChild(editBtn);
+                actionRow.appendChild(detailLink);
                 actionRow.appendChild(deleteBtn);
                 popupContent.querySelector('.map-popup').appendChild(actionRow);
 
@@ -2462,14 +2507,21 @@
                 editBtn.innerText = '{{ __('Edit ODP') }}';
                 editBtn.onclick = function() { editOdp(odp.id); };
 
+                var detailLink = document.createElement('a');
+                detailLink.href = `/isp/odps/${odp.id}/edit`;
+                detailLink.target = '_blank';
+                detailLink.className = 'btn btn-sm btn-outline-secondary map-popup-btn';
+                detailLink.innerText = 'Lengkap';
+
                 var deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
                 deleteBtn.innerText = 'Hapus Lokasi';
                 deleteBtn.onclick = function() { deleteLocation('odp', odp.id, marker); };
 
                 var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions';
+                actionRow.className = 'map-popup-actions d-flex gap-1 flex-wrap mt-2';
                 actionRow.appendChild(editBtn);
+                actionRow.appendChild(detailLink);
                 actionRow.appendChild(deleteBtn);
                 popupContent.querySelector('.map-popup').appendChild(actionRow);
 
@@ -3100,6 +3152,8 @@
                 document.getElementById('odc_id').value = ''; // Clear ID for new
                 document.getElementById('odc_lat').value = lat;
                 document.getElementById('odc_lng').value = lng;
+                var odcFullBtn = document.getElementById('odcFullEditBtn');
+                if (odcFullBtn) odcFullBtn.classList.add('d-none');
                 document.getElementById('odcModalLabel').innerText = '{{ __('Tambah ODC') }}'; // Set title
                 var odcModal = new bootstrap.Modal(document.getElementById('odcModal'));
                 odcModal.show();
@@ -3108,6 +3162,8 @@
                 document.getElementById('odp_id').value = ''; // Clear ID for new
                 document.getElementById('odp_lat').value = lat;
                 document.getElementById('odp_lng').value = lng;
+                var odpFullBtn = document.getElementById('odpFullEditBtn');
+                if (odpFullBtn) odpFullBtn.classList.add('d-none');
                 document.getElementById('odpModalLabel').innerText = '{{ __('Tambah ODP') }}'; // Set title
                 var odpModal = new bootstrap.Modal(document.getElementById('odpModal'));
                 odpModal.show();
@@ -3189,22 +3245,31 @@
             }
         };
 
+        function safeSetVal(elemId, val) {
+            var el = document.getElementById(elemId);
+            if (el) {
+                el.value = (val !== null && val !== undefined) ? val : '';
+            }
+        }
+
         window.editOdc = function(id) {
             var odc = odcs.find(o => o.id == id);
             if (odc) {
-                document.getElementById('odc_id').value = odc.id;
-                document.getElementById('odc_name').value = odc.name;
-                document.getElementById('odc_lat').value = odc.latitude;
-                document.getElementById('odc_lng').value = odc.longitude;
-                document.getElementById('odc_port_count').value = odc.port_count || '';
-                document.getElementById('odc_olt').value = odc.olt_id;
-                document.getElementById('odc_description').value = odc.description || '';
-                
-                // New Fields
-                
-                document.getElementById('odc_address').value = odc.address || '';
-                
-                document.getElementById('odc_code').value = odc.code || '';
+                safeSetVal('odc_id', odc.id);
+                safeSetVal('odc_name', odc.name);
+                safeSetVal('odc_lat', odc.latitude);
+                safeSetVal('odc_lng', odc.longitude);
+                safeSetVal('odc_port_count', odc.port_count || odc.capacity || 48);
+                safeSetVal('odc_olt', odc.olt_id || '');
+                safeSetVal('odc_description', odc.description || '');
+                safeSetVal('odc_address', odc.address || odc.area || '');
+                safeSetVal('odc_code', odc.code || odc.cable_no || '');
+
+                var fullEditBtn = document.getElementById('odcFullEditBtn');
+                if (fullEditBtn) {
+                    fullEditBtn.href = '/isp/odcs/' + odc.id + '/edit';
+                    fullEditBtn.classList.remove('d-none');
+                }
 
                 document.getElementById('odcModalLabel').innerText = '{{ __('Edit ODC') }}';
                 var odcModal = new bootstrap.Modal(document.getElementById('odcModal'));
@@ -3215,18 +3280,23 @@
         window.editOdp = function(id) {
             var odp = odps.find(o => o.id == id);
             if (odp) {
-                document.getElementById('odp_id').value = odp.id;
-                document.getElementById('odp_name').value = odp.name;
-                document.getElementById('odp_lat').value = odp.latitude;
-                document.getElementById('odp_lng').value = odp.longitude;
-                document.getElementById('odp_port_count').value = odp.port_count || '';
-                document.getElementById('odp_region').value = odp.region_id;
-                document.getElementById('odp_odc').value = odp.odc_id;
-                document.getElementById('odp_color').value = odp.color || '#fd7e14';
-                document.getElementById('odp_description').value = odp.description || '';
-                
-                // New Fields
-                document.getElementById('odp_address').value = odp.address || '';
+                safeSetVal('odp_id', odp.id);
+                safeSetVal('odp_code', odp.code || '');
+                safeSetVal('odp_name', odp.name || '');
+                safeSetVal('odp_lat', odp.latitude);
+                safeSetVal('odp_lng', odp.longitude);
+                safeSetVal('odp_port_count', odp.port_count || 8);
+                safeSetVal('odp_odc', odp.odc_id || '');
+                safeSetVal('odp_color', odp.color || 'blue');
+                safeSetVal('odp_description', odp.description || '');
+                safeSetVal('odp_address', odp.address || odp.kampung || '');
+                if (odp.region_id) safeSetVal('odp_region', odp.region_id);
+
+                var fullEditBtn = document.getElementById('odpFullEditBtn');
+                if (fullEditBtn) {
+                    fullEditBtn.href = '/isp/odps/' + odp.id + '/edit';
+                    fullEditBtn.classList.remove('d-none');
+                }
 
                 document.getElementById('odpModalLabel').innerText = '{{ __('Edit ODP') }}';
                 var odpModal = new bootstrap.Modal(document.getElementById('odpModal'));
@@ -3237,25 +3307,29 @@
         window.editHtb = function(id) {
             var htb = htbs.find(h => h.id == id);
             if (htb) {
-                document.getElementById('htb_id').value = htb.id;
-                document.getElementById('htb_name').value = htb.name;
-                document.getElementById('htb_lat').value = htb.latitude;
-                document.getElementById('htb_lng').value = htb.longitude;
-                document.getElementById('htb_description').value = htb.description || '';
+                safeSetVal('htb_id', htb.id);
+                safeSetVal('htb_name', htb.name);
+                safeSetVal('htb_lat', htb.latitude);
+                safeSetVal('htb_lng', htb.longitude);
+                safeSetVal('htb_description', htb.description || '');
 
                 // Handle uplink
                 if (htb.parent_htb_id) {
-                    document.getElementById('htb_uplink_type').value = 'htb';
-                    document.getElementById('htb_odp_group').classList.add('d-none');
-                    document.getElementById('htb_parent_group').classList.remove('d-none');
-                    document.getElementById('htb_parent').value = htb.parent_htb_id;
-                    document.getElementById('htb_odp').value = '';
+                    safeSetVal('htb_uplink_type', 'htb');
+                    var grpOdp = document.getElementById('htb_odp_group');
+                    var grpParent = document.getElementById('htb_parent_group');
+                    if (grpOdp) grpOdp.classList.add('d-none');
+                    if (grpParent) grpParent.classList.remove('d-none');
+                    safeSetVal('htb_parent', htb.parent_htb_id);
+                    safeSetVal('htb_odp', '');
                 } else {
-                    document.getElementById('htb_uplink_type').value = 'odp';
-                    document.getElementById('htb_odp_group').classList.remove('d-none');
-                    document.getElementById('htb_parent_group').classList.add('d-none');
-                    document.getElementById('htb_odp').value = htb.odp_id;
-                    document.getElementById('htb_parent').value = '';
+                    safeSetVal('htb_uplink_type', 'odp');
+                    var grpOdp = document.getElementById('htb_odp_group');
+                    var grpParent = document.getElementById('htb_parent_group');
+                    if (grpOdp) grpOdp.classList.remove('d-none');
+                    if (grpParent) grpParent.classList.add('d-none');
+                    safeSetVal('htb_odp', htb.odp_id || '');
+                    safeSetVal('htb_parent', '');
                 }
 
                 document.getElementById('htbModalLabel').innerText = '{{ __('Edit HTB') }}';
@@ -3267,14 +3341,14 @@
         window.editClosure = function(id) {
             var closure = closures.find(c => c.id == id);
             if (closure) {
-                document.getElementById('closure_id').value = closure.id;
-                document.getElementById('closure_name').value = closure.name;
-                document.getElementById('closure_lat').value = closure.latitude;
-                document.getElementById('closure_lng').value = closure.longitude;
-                document.getElementById('closure_capacity').value = closure.capacity;
-                document.getElementById('closure_region').value = closure.region_id;
-                document.getElementById('closure_odc').value = closure.odc_id;
-                document.getElementById('closure_description').value = closure.description || '';
+                safeSetVal('closure_id', closure.id);
+                safeSetVal('closure_name', closure.name);
+                safeSetVal('closure_lat', closure.latitude);
+                safeSetVal('closure_lng', closure.longitude);
+                safeSetVal('closure_capacity', closure.capacity || 24);
+                safeSetVal('closure_region', closure.region_id || '');
+                safeSetVal('closure_odc', closure.odc_id || '');
+                safeSetVal('closure_description', closure.description || '');
 
                 document.getElementById('closureModalLabel').innerText = '{{ __('Edit Closure') }}';
                 var closureModal = new bootstrap.Modal(document.getElementById('closureModal'));

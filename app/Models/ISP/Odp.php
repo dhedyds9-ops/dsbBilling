@@ -79,6 +79,31 @@ class Odp extends Model
         'attributes' => 'array',
     ];
 
+    protected $appends = [
+        'color',
+    ];
+
+    public function getColorAttribute()
+    {
+        $rawAttrs = $this->getAttribute('attributes');
+        if (is_array($rawAttrs) && !empty($rawAttrs['color'])) {
+            return $rawAttrs['color'];
+        }
+        return $this->attributes['color'] ?? null;
+    }
+
+    public function setColorAttribute($value)
+    {
+        $rawAttrs = $this->getAttribute('attributes') ?: [];
+        if (is_string($rawAttrs)) {
+            $rawAttrs = json_decode($rawAttrs, true) ?: [];
+        } elseif (!is_array($rawAttrs)) {
+            $rawAttrs = [];
+        }
+        $rawAttrs['color'] = $value;
+        $this->attributes['attributes'] = json_encode($rawAttrs);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');

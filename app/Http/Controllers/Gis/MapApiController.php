@@ -142,7 +142,7 @@ class MapApiController extends Controller
                 $model = $id ? Odp::find($id) : new Odp();
                 if ($model) {
                     $model->name = $request->input('name');
-                    $baseCode = $request->input('code') ?: ('ODP-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), '')));
+                    $baseCode = $request->input('code') ?: ($model->code ?: ('ODP-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), ''))));
                     $code = $baseCode;
                     $counter = 1;
                     while (Odp::where('code', $code)->where('id', '!=', $id ?? 0)->exists()) {
@@ -154,6 +154,7 @@ class MapApiController extends Controller
                     $model->port_count = $request->input('port_count') ?: 8;
                     $model->split_ratio = $request->input('split_ratio') ?: 8;
                     if ($request->has('odc_id')) $model->odc_id = $request->input('odc_id');
+                    if ($request->has('color')) $model->color = $request->input('color');
                 }
                 break;
             case 'htb':
