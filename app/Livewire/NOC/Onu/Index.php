@@ -35,7 +35,15 @@ class Index extends AdminComponent
     #[Computed]
     public function allCustomers()
     {
-        return \App\Models\CRM\Customer::select('id', 'name', 'code')->orderBy('name')->get();
+        return \App\Models\CRM\Customer::withoutGuests()
+            ->where(function ($q) {
+                $q->whereNull('code')
+                  ->orWhere('code', 'not like', 'GST-%');
+            })
+            ->where('name', 'not like', 'Guest %')
+            ->select('id', 'name', 'code', 'phone')
+            ->orderBy('name')
+            ->get();
     }
 
     public function editCustomer($onuId, $currentCustomerId = null)
@@ -72,7 +80,15 @@ class Index extends AdminComponent
                     $service->save();
                     session()->flash('success', 'ONU berhasil dipasangkan ke pelanggan ' . $service->customer->name);
                 } else {
-                    throw new \Exception('Pelanggan ini belum memiliki Layanan (Internet/Hotspot). Silakan buat layanan untuk pelanggan ini terlebih dahulu di menu Pelanggan.');
+                    // Buatkan default CustomerService jika belum ada
+                    $customer = \App\Models\CRM\Customer::findOrFail($this->selectedCustomerId);
+                    $service = \App\Models\Customer\CustomerService::create([
+                        'customer_id' => $customer->id,
+                        'onu_id' => $onu->id,
+                        'status' => 'active',
+                        'service_status' => 'active',
+                    ]);
+                    session()->flash('success', 'ONU berhasil dipasangkan ke pelanggan ' . $customer->name);
                 }
             } else {
                 session()->flash('success', 'ONU berhasil dilepas dari pelanggan');

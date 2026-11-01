@@ -105,7 +105,15 @@ class Index extends AdminComponent
     public function myCustomers()
     {
         // Global scope HasResellerScope secara otomatis membatasi hanya ke pelanggan milik reseller ini
-        return Customer::select('id', 'name', 'code')->orderBy('name')->get();
+        return Customer::withoutGuests()
+            ->where(function ($q) {
+                $q->whereNull('code')
+                  ->orWhere('code', 'not like', 'GST-%');
+            })
+            ->where('name', 'not like', 'Guest %')
+            ->select('id', 'name', 'code', 'phone')
+            ->orderBy('name')
+            ->get();
     }
 
     public function startEditName(int $id, string $currentName = ''): void

@@ -260,19 +260,97 @@
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
                                 @if($editingOnuId === $onu->id)
-                                    <div class="flex items-center gap-1">
-                                        <select wire:model="selectedCustomerId" class="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-2 py-1 pr-6 text-xs rounded-lg focus:outline-none w-44">
-                                            <option value="">- Kosongkan -</option>
-                                            @foreach($this->allCustomers as $c)
-                                                <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code }})</option>
-                                            @endforeach
-                                        </select>
-                                        <button type="button" wire:click="assignCustomer({{ $onu->id }})" class="inline-flex items-center justify-center w-7 h-7 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-md cursor-pointer" title="Simpan">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">check</span>
-                                        </button>
-                                        <button type="button" wire:click="cancelEditCustomer" class="inline-flex items-center justify-center w-7 h-7 bg-red-50 hover:bg-red-100 text-red-600 rounded-md cursor-pointer" title="Batal">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">close</span>
-                                        </button>
+                                    <div x-data="{
+                                        open: true,
+                                        search: '',
+                                        selectedId: @entangle('selectedCustomerId'),
+                                        selectedLabel: '{{ $onu->customerService?->customer ? addslashes($onu->customerService->customer->name . ' (' . ($onu->customerService->customer->code ?? '') . ')') : '- Pilih Pelanggan -' }}',
+                                        customers: {{ json_encode($this->allCustomers->map(fn($c) => ['id' => (string)$c->id, 'name' => $c->name, 'code' => $c->code ?? '', 'phone' => $c->phone ?? ''])) }},
+                                        get filtered() {
+                                            if (!this.search.trim()) return this.customers.slice(0, 30);
+                                            const s = this.search.toLowerCase();
+                                            return this.customers.filter(c => 
+                                                (c.name && c.name.toLowerCase().includes(s)) || 
+                                                (c.code && c.code.toLowerCase().includes(s)) ||
+                                                (c.phone && c.phone.includes(s))
+                                            ).slice(0, 30);
+                                        },
+                                        select(c) {
+                                            if (c) {
+                                                this.selectedId = c.id;
+                                                this.selectedLabel = c.name + (c.code ? ' (' + c.code + ')' : '');
+                                            } else {
+                                                this.selectedId = '';
+                                                this.selectedLabel = '- Kosongkan -';
+                                            }
+                                            this.open = false;
+                                        }
+                                    }" class="relative inline-block text-left" @click.away="open = false">
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" 
+                                                    @click="open = !open" 
+                                                    class="inline-flex items-center justify-between gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 hover:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-44 text-left truncate cursor-pointer shadow-2xs">
+                                                <span class="truncate" x-text="selectedLabel || '- Pilih Pelanggan -'"></span>
+                                                <span class="material-symbols-outlined text-[16px] text-slate-400 shrink-0">arrow_drop_down</span>
+                                            </button>
+                                            <button type="button" wire:click="assignCustomer({{ $onu->id }})" class="inline-flex items-center justify-center w-7 h-7 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-400 rounded-md cursor-pointer transition-colors" title="Simpan Tautan">
+                                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">check</span>
+                                            </button>
+                                            <button type="button" wire:click="cancelEditCustomer" class="inline-flex items-center justify-center w-7 h-7 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/50 dark:hover:bg-red-900/60 dark:text-red-400 rounded-md cursor-pointer transition-colors" title="Batal">
+                                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:15px">close</span>
+                                            </button>
+                                        </div>
+
+                                        {{-- Dropdown Menu Pencarian Pelanggan --}}
+                                        <div x-show="open" 
+                                             x-transition:enter="transition ease-out duration-100"
+                                             x-transition:enter-start="opacity-0 scale-95"
+                                             x-transition:enter-end="opacity-100 scale-100"
+                                             x-transition:leave="transition ease-in duration-75"
+                                             x-transition:leave-start="opacity-100 scale-100"
+                                             x-transition:leave-end="opacity-0 scale-95"
+                                             class="absolute left-0 z-50 mt-1 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden"
+                                             style="display: none;">
+                                            
+                                            {{-- Input Pencarian Nama Pelanggan --}}
+                                            <div class="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                                                <div class="relative flex items-center">
+                                                    <span class="material-symbols-outlined absolute left-2 text-[15px] text-slate-400">search</span>
+                                                    <input type="text" 
+                                                           x-model="search" 
+                                                           placeholder="Ketik nama / ID pelanggan..." 
+                                                           class="w-full pl-7 pr-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                           @click.stop>
+                                                </div>
+                                            </div>
+
+                                            {{-- Hasil Pencarian Pelanggan --}}
+                                            <div class="max-h-52 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                                                <button type="button" 
+                                                        @click="select(null)" 
+                                                        class="w-full text-left px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer">
+                                                    <span class="material-symbols-outlined text-[15px]">link_off</span>
+                                                    <span>- Kosongkan / Lepas ONU -</span>
+                                                </button>
+
+                                                <template x-for="c in filtered" :key="c.id">
+                                                    <button type="button" 
+                                                            @click="select(c)" 
+                                                            class="w-full text-left px-3 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 flex flex-col transition-colors cursor-pointer"
+                                                            :class="selectedId == c.id ? 'bg-indigo-50/70 dark:bg-indigo-950/40 font-semibold text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-200'">
+                                                        <span class="font-medium text-slate-800 dark:text-slate-100 truncate" x-text="c.name"></span>
+                                                        <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                            <span class="font-mono text-indigo-600 dark:text-indigo-400" x-show="c.code" x-text="c.code"></span>
+                                                            <span x-show="c.phone" x-text="c.phone"></span>
+                                                        </div>
+                                                    </button>
+                                                </template>
+
+                                                <div x-show="filtered.length === 0" class="px-3 py-4 text-center text-slate-400 text-xs">
+                                                    Pelanggan tidak ditemukan
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 @else
                                     <div class="inline-flex items-center gap-1.5 group cursor-pointer text-sm text-slate-700 dark:text-slate-200" wire:click="editCustomer({{ $onu->id }}, '{{ $onu->customerService->customer_id ?? '' }}')" title="Klik untuk ubah pelanggan">

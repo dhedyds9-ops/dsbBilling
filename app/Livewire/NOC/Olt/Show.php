@@ -44,7 +44,15 @@ class Show extends AdminComponent
     #[Computed]
     public function allCustomers()
     {
-        return \App\Models\CRM\Customer::select('id', 'name', 'code')->orderBy('name')->get();
+        return \App\Models\CRM\Customer::withoutGuests()
+            ->where(function ($q) {
+                $q->whereNull('code')
+                  ->orWhere('code', 'not like', 'GST-%');
+            })
+            ->where('name', 'not like', 'Guest %')
+            ->select('id', 'name', 'code', 'phone')
+            ->orderBy('name')
+            ->get();
     }
 
     public function editCustomer($onuId, $currentCustomerId = null)
