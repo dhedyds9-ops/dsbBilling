@@ -450,7 +450,7 @@
                             const oLng = parseFloat(odp.longitude);
                             if (isNaN(oLat) || isNaN(oLng)) return;
                             const m = L.marker([oLat, oLng], { icon: odpIcon }).addTo(this.map);
-                            m.bindPopup(<div style="min-width:140px;font-family:sans-serif;"><strong style="color:#0f172a;font-size:12px;">ODP:  + odp.name + </strong><br><span style="font-size:11px;color:#64748b;"> + (odp.code || '') + </span><div style="margin-top:6px;"><button type="button" style="padding:4px 8px;background:#4f46e5;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;" onclick="window.pickNearbyOdp( + oLat + ,  + oLng + )">Pilih Dekat Sini</button></div></div>);
+                            m.bindPopup('<div style="min-width:140px;font-family:sans-serif;"><strong style="color:#0f172a;font-size:12px;">ODP: ' + (odp.name || '') + '</strong><br><span style="font-size:11px;color:#64748b;">' + (odp.code || '') + '</span><div style="margin-top:6px;"><button type="button" style="padding:4px 8px;background:#4f46e5;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;" onclick="window.pickNearbyOdp(' + oLat + ', ' + oLng + ')">Pilih Dekat Sini</button></div></div>');
                         });
                     })
                     .catch(() => {});

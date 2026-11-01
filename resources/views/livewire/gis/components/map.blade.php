@@ -371,7 +371,6 @@
     </div>
 </div>
 
-@push('styles')
 <!-- Customer Modal (Quick Edit & Tambah Pelanggan / ONU) -->
 <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -442,6 +441,7 @@
     </div>
 </div>
 
+@push('styles')
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <!-- FontAwesome -->
@@ -2752,7 +2752,8 @@
                             </div>
 
                             <div class="btn-grid-2">
-                                <button onclick="window.editCustomer('${customer.id}')" class="popup-btn btn-blue main-action">QUICK EDIT</button>`r`n                                <a href="/customers/${String(customer.id).replace('onu-', '')}/edit" target="_blank" class="popup-btn btn-blue main-action" style="background:#334155;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">FORM CRM</a>
+                                <button onclick="window.editCustomer('${customer.id}')" class="popup-btn btn-blue main-action">QUICK EDIT</button>
+                                <a href="/customers/${String(customer.id).replace('onu-', '')}/edit" target="_blank" class="popup-btn btn-blue main-action" style="background:#334155;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">FORM CRM</a>
                             </div>
                         </div>
                     </div> 
