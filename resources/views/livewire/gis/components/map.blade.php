@@ -26,6 +26,7 @@
                 <button type="button" id="btnAddOdpMode" class="tb-btn tb-odp"><i class="fa fa-box"></i> ODP</button>
                 <button type="button" id="btnAddHtbMode" class="tb-btn tb-htb"><i class="fa fa-sitemap"></i> HTB</button>
                 <button type="button" id="btnAddClosureMode" class="tb-btn tb-closure"><i class="fa fa-archive"></i> Closure</button>
+                <button type="button" id="btnAddCustomerMode" class="tb-btn tb-customer" style="background: linear-gradient(135deg, #0284c7, #06b6d4); border-color: #38bdf8;"><i class="fa fa-user-plus"></i> Pelanggan</button>
                 <button type="button" id="btnCancelAdd" class="tb-btn tb-cancel" style="display:none;"><i class="fa fa-times"></i> Batal</button>
             </div>
             
@@ -371,6 +372,76 @@
 </div>
 
 @push('styles')
+<!-- Customer Modal (Quick Edit & Tambah Pelanggan / ONU) -->
+<div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title font-bold" id="customerModalLabel"><i data-lucide="user-check" class="w-5 h-5 inline-block mr-2"></i>Quick Edit Pelanggan / ONU</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="customerForm">
+                    <input type="hidden" id="customer_node_id">
+                    <div class="mb-3">
+                        <label class="form-label font-bold text-xs uppercase text-slate-400">Nama Pelanggan / Nama ONU</label>
+                        <input type="text" id="customer_node_name" name="name" class="form-control dark:bg-slate-900 dark:text-slate-100" placeholder="e.g. Bpk. Ahmad" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label font-bold text-xs uppercase text-slate-400">No. WhatsApp / HP</label>
+                            <input type="text" id="customer_node_phone" name="phone" class="form-control dark:bg-slate-900 dark:text-slate-100" placeholder="08xxxxxxxxxx">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label font-bold text-xs uppercase text-slate-400">Uplink ODP Terhubung</label>
+                            <select id="customer_node_odp" name="odp_id" class="form-select dark:bg-slate-900 dark:text-slate-100">
+                                <option value="">-- Pilih ODP (Opsional) --</option>
+                                @foreach($odpModels as $odpItem)
+                                    <option value="{{ $odpItem->id }}">{{ $odpItem->name }} (Port: {{ $odpItem->port_count ?? 8 }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label font-bold text-xs uppercase text-slate-400">Serial Number (SN) ONU</label>
+                            <input type="text" id="customer_node_sn" name="serial_number" class="form-control font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="e.g. ZTEGCXXXXXX">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label font-bold text-xs uppercase text-slate-400">Alamat Singkat</label>
+                            <input type="text" id="customer_node_address" name="address" class="form-control dark:bg-slate-900 dark:text-slate-100" placeholder="e.g. Jl. Melati No. 12">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label font-bold text-xs uppercase text-slate-400">Latitude</label>
+                            <input type="text" id="customer_node_lat" name="latitude" class="form-control font-mono text-xs dark:bg-slate-900 dark:text-slate-100" readonly>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label font-bold text-xs uppercase text-slate-400">Longitude</label>
+                            <input type="text" id="customer_node_lng" name="longitude" class="form-control font-mono text-xs dark:bg-slate-900 dark:text-slate-100" readonly>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <div>
+                    <a id="customerFullEditBtn" href="#" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium">
+                        Buka Formulir Lengkap CRM &rarr;
+                    </a>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" id="saveCustomerBtn" class="btn btn-primary btn-sm font-bold px-4">
+                        <span id="customerBtnSpinner" class="spinner-border spinner-border-sm d-none me-1"></span>
+                        Simpan Pelanggan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <!-- FontAwesome -->
@@ -1337,8 +1408,10 @@
                 return item.odp && item.odp.region_id == selectedRegionId;
             }
             if (type === 'customer') {
-                if (!item.odp) return false;
-                return item.odp.region_id == selectedRegionId;
+                if (!selectedRegionId) return true;
+                var matchedOdp = item.odp_id ? odps.find(o => o.id == item.odp_id) : (item.odp || null);
+                if (!matchedOdp) return true;
+                return matchedOdp.region_id == selectedRegionId;
             }
             
             return true;
@@ -2506,6 +2579,11 @@
 
         // Draw Customers
         customers.forEach(function(customer) {
+            var lat = parseFloat(customer.latitude);
+            var lng = parseFloat(customer.longitude);
+            if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
+            customer.latitude = lat;
+            customer.longitude = lng;
             var isOnline = customer.is_online; // Assumed passed from controller
             var iconType = isOnline ? 'online' : 'offline';
             var tr069Ip = customer.tr069_ip || '-';
@@ -2674,8 +2752,7 @@
                             </div>
 
                             <div class="btn-grid-2">
-                                <button onclick="location.href='/customers/${customer.id}/edit'" class="popup-btn btn-blue main-action">EDIT</button>
-                                <button onclick="window.duplicateCustomer(${customer.id})" class="popup-btn btn-blue main-action"><i data-lucide="layers" class="w-4 h-4"></i><span>DUPLIKAT</span></button>
+                                <button onclick="window.editCustomer('${customer.id}')" class="popup-btn btn-blue main-action">QUICK EDIT</button>`r`n                                <a href="/customers/${String(customer.id).replace('onu-', '')}/edit" target="_blank" class="popup-btn btn-blue main-action" style="background:#334155;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">FORM CRM</a>
                             </div>
                         </div>
                     </div> 
@@ -2843,6 +2920,7 @@
         var btnAddOdp = document.getElementById('btnAddOdpMode');
         var btnAddHtb = document.getElementById('btnAddHtbMode');
         var btnAddClosure = document.getElementById('btnAddClosureMode');
+        var btnAddCustomer = document.getElementById('btnAddCustomerMode');
         var btnCancel = document.getElementById('btnCancelAdd');
         var mapContainer = document.getElementById('map');
 
@@ -2856,6 +2934,7 @@
                 btnAddOdp.disabled = true;
                 btnAddHtb.disabled = true;
                 btnAddClosure.disabled = true;
+                if (btnAddCustomer) btnAddCustomer.disabled = true;
             } else {
                 mapContainer.style.cursor = 'default';
                 btnCancel.classList.add('d-none');
@@ -2864,6 +2943,7 @@
                 btnAddOdp.disabled = false;
                 btnAddHtb.disabled = false;
                 btnAddClosure.disabled = false;
+                if (btnAddCustomer) btnAddCustomer.disabled = false;
             }
         }
 
@@ -2872,6 +2952,7 @@
         btnAddOdp.addEventListener('click', function() { setMode('odp'); });
         btnAddHtb.addEventListener('click', function() { setMode('htb'); });
         btnAddClosure.addEventListener('click', function() { setMode('closure'); });
+        if (btnAddCustomer) btnAddCustomer.addEventListener('click', function() { setMode('customer'); });
         btnCancel.addEventListener('click', function() { setMode(null); });
 
         map.on('click', function(e) {
@@ -2938,6 +3019,16 @@
                 
                 var closureModal = new bootstrap.Modal(document.getElementById('closureModal'));
                 closureModal.show();
+            } else if (addMode === 'customer') {
+                document.getElementById('customerForm').reset();
+                document.getElementById('customer_node_id').value = '';
+                document.getElementById('customer_node_lat').value = lat;
+                document.getElementById('customer_node_lng').value = lng;
+                document.getElementById('customerModalLabel').innerText = '{{ __('Tambah Pelanggan / ONU') }}';
+                var fullEditBtn = document.getElementById('customerFullEditBtn');
+                if (fullEditBtn) fullEditBtn.style.display = 'none';
+                var customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
+                customerModal.show();
             }
             
             setMode(null); // Reset mode after click
@@ -3037,6 +3128,31 @@
             }
         };
 
+        window.editCustomer = function(id) {
+            var cust = customers.find(c => String(c.id) === String(id));
+            if (cust) {
+                document.getElementById('customer_node_id').value = cust.id;
+                document.getElementById('customer_node_name').value = cust.name || '';
+                document.getElementById('customer_node_phone').value = cust.phone || '';
+                document.getElementById('customer_node_lat').value = cust.latitude || '';
+                document.getElementById('customer_node_lng').value = cust.longitude || '';
+                document.getElementById('customer_node_address').value = cust.address || '';
+                document.getElementById('customer_node_sn').value = cust.serial_number || cust.sn || '';
+                document.getElementById('customer_node_odp').value = cust.odp_id || '';
+                
+                var realCustId = String(cust.id).replace('onu-', '');
+                var fullEditBtn = document.getElementById('customerFullEditBtn');
+                if (fullEditBtn) {
+                    fullEditBtn.href = '/customers/' + realCustId + '/edit';
+                    fullEditBtn.style.display = String(cust.id).startsWith('onu-') ? 'none' : 'inline-block';
+                }
+
+                document.getElementById('customerModalLabel').innerText = '{{ __('Quick Edit Pelanggan / ONU') }}';
+                var customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
+                customerModal.show();
+            }
+        };
+
         // --- Save Functions (AJAX) ---
         var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -3086,6 +3202,47 @@
                 alert('{{ __('An error occurred while saving.') }}');
             });
         });
+
+        var saveCustBtn = document.getElementById('saveCustomerBtn');
+        if (saveCustBtn) {
+            saveCustBtn.addEventListener('click', function() {
+                var id = document.getElementById('customer_node_id').value;
+                var url = id ? '/map/node/customer/' + id : '/map/node/customer';
+                var method = id ? 'PUT' : 'POST';
+                var formData = new FormData(document.getElementById('customerForm'));
+                var data = Object.fromEntries(formData.entries());
+
+                var spinner = document.getElementById('customerBtnSpinner');
+                if (spinner) spinner.classList.remove('d-none');
+                saveCustBtn.disabled = true;
+
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success || data.id) {
+                        location.reload();
+                    } else {
+                        alert('Gagal menyimpan: ' + (data.message || JSON.stringify(data)));
+                        if (spinner) spinner.classList.add('d-none');
+                        saveCustBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat menyimpan.');
+                    if (spinner) spinner.classList.add('d-none');
+                    saveCustBtn.disabled = false;
+                });
+            });
+        }
 
         document.getElementById('saveClosureBtn').addEventListener('click', function() {
             var id = document.getElementById('closure_id').value;
@@ -3428,6 +3585,13 @@
 </script>
 @endpush
 </div>
+
+
+
+
+
+
+
 
 
 

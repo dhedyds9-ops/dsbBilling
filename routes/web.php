@@ -344,6 +344,9 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/wlan-status/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanStatus'])->name('map.wlan-status');
             Route::post('/wlan-update/{id}', [\App\Http\Controllers\Gis\MapApiController::class, 'wlanUpdate'])->name('map.wlan-update');
             Route::post('/ping', [\App\Http\Controllers\Gis\MapApiController::class, 'ping'])->name('map.ping');
+            Route::get('/odps', function() {
+                return response()->json(\App\Models\ISP\Odp::select(['id', 'name', 'code', 'latitude', 'longitude', 'port_count'])->whereNotNull('latitude')->whereNotNull('longitude')->get());
+            })->name('map.odps');
         });
         Route::get('/api/network/online-paths', [\App\Http\Controllers\Gis\MapApiController::class, 'onlinePaths'])->name('api.network.online-paths');
 

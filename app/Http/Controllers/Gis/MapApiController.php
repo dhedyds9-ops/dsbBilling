@@ -47,7 +47,20 @@ class MapApiController extends Controller
                 if (class_exists(JointClosure::class)) $model = JointClosure::find($id);
                 break;
             case 'customer':
-                $model = Customer::find($id);
+                if (is_string($id) && str_starts_with($id, 'onu-')) {
+                    $onuId = substr($id, 4);
+                    $model = \App\Models\ISP\Onu::find($onuId);
+                } else {
+                    $model = Customer::find($id);
+                    if ($model) {
+                        $cs = $model->customerServices()->first();
+                        if ($cs && $cs->onu) {
+                            $cs->onu->latitude = $lat;
+                            $cs->onu->longitude = $lng;
+                            $cs->onu->save();
+                        }
+                    }
+                }
                 break;
         }
 
@@ -168,6 +181,56 @@ class MapApiController extends Controller
                     }
                 }
                 break;
+            case 'customer':
+                if (is_string($id) && str_starts_with($id, 'onu-')) {
+                    $onuId = substr($id, 4);
+                    $onu = \App\Models\ISP\Onu::find($onuId);
+                    if ($onu) {
+                        if ($request->has('name')) $onu->name = $request->input('name');
+                        if ($request->has('serial_number')) $onu->serial_number = $request->input('serial_number');
+                        if ($request->has('odp_id')) $onu->odp_id = $request->input('odp_id') ?: null;
+                        if ($request->has('latitude')) $onu->latitude = $request->input('latitude');
+                        if ($request->has('longitude')) $onu->longitude = $request->input('longitude');
+                        $onu->save();
+                    }
+                    $model = $onu;
+                } else {
+                    $model = $id ? Customer::find($id) : new Customer();
+                    if ($model) {
+                        if ($request->has('name')) $model->name = $request->input('name');
+                        if ($request->has('phone')) $model->phone = $request->input('phone');
+                        if ($request->has('address')) $model->address = $request->input('address');
+                        if ($request->has('code') && !empty($request->input('code'))) {
+                            $model->code = $request->input('code');
+                        } elseif (!$id) {
+                            $model->code = \App\Services\CRM\CustomerCodeGenerator::generate();
+                        }
+                        if (!$id) {
+                            $model->status = 'active';
+                            $model->created_by = auth()->id() ?? 1;
+                        }
+                        $model->updated_by = auth()->id() ?? 1;
+                        if ($request->has('latitude')) $model->latitude = $request->input('latitude');
+                        if ($request->has('longitude')) $model->longitude = $request->input('longitude');
+                        $model->save();
+
+                        // Hubungkan/perbarui data ONU dan ODP
+                        $cs = $model->customerServices()->first();
+                        $odpId = $request->input('odp_id');
+                        $onuSn = $request->input('serial_number');
+                        if ($cs) {
+                            $onu = $cs->onu;
+                            if ($onu) {
+                                if ($odpId !== null) $onu->odp_id = $odpId ?: null;
+                                if ($onuSn) $onu->serial_number = $onuSn;
+                                if ($request->has('latitude')) $onu->latitude = $request->input('latitude');
+                                if ($request->has('longitude')) $onu->longitude = $request->input('longitude');
+                                $onu->save();
+                            }
+                        }
+                    }
+                }
+                break;
         }
 
         if ($model) {
@@ -188,19 +251,112 @@ class MapApiController extends Controller
 
     public function wlanStatus($id)
     {
-        // Mock response for now, in real life this queries TR069
+        if (is_string($id) && str_starts_with($id, 'onu-')) {
+            $onu = \App\Models\ISP\Onu::find(substr($id, 4));
+            $isOnline = $onu?->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 10;
+            return response()->json([
+                'success' => true,
+                'is_online' => $isOnline,
+                'total_clients' => 0,
+                'ssid_name' => $onu?->wifi_ssid ?: 'N/A',
+                'ssid_password' => $onu?->wifi_password ?: '',
+                'tr069_ip' => $onu?->serial_number ? 'TR069-' . $onu->serial_number : '-',
+                'last_inform' => $onu?->last_seen_at,
+                'rx_power' => $onu?->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null,
+                'rdm_power' => $onu?->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null,
+            ]);
+        }
+
+        $customer = Customer::with(['customerServices.onu', 'customerServices.acsDevice'])->find($id);
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Customer not found'], 404);
+        }
+
+        $cs = $customer->customerServices->first();
+        $onu = $cs?->onu;
+        $acsDevice = $cs?->acsDevice ?? $onu?->acsDevice;
+
+        $isOnline = false;
+        $totalClients = 0;
+        $ssidName = $onu?->wifi_ssid ?: 'N/A';
+        $ssidPassword = $onu?->wifi_password ?: '';
+        $tr069Ip = $acsDevice?->ip_address ?: ($cs?->tr069_status ?: ($onu?->serial_number ? 'TR069-' . $onu->serial_number : '-'));
+        $lastInform = $acsDevice?->last_inform ?: ($onu?->last_seen_at ?: $cs?->last_seen_at);
+        $rxPower = $onu?->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null;
+        $rdmPower = $onu?->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null;
+
+        if ($acsDevice) {
+            $isOnline = $acsDevice->status === 'online' || ($acsDevice->last_inform && $acsDevice->last_inform->diffInMinutes(now()) <= 10);
+        } elseif ($onu && $onu->last_seen_at) {
+            $isOnline = $onu->last_seen_at->diffInMinutes(now()) <= 10;
+        } elseif ($cs) {
+            $isOnline = $cs->status === 'active';
+        }
+
+        if (class_exists(\App\Services\ISP\GenieAcsService::class) && $onu) {
+            try {
+                $genieService = app(\App\Services\ISP\GenieAcsService::class);
+                $wifiInfo = $genieService->getWifiCredentials($customer->id, $onu->id);
+                if (!empty($wifiInfo['ssid'])) $ssidName = $wifiInfo['ssid'];
+                if (!empty($wifiInfo['password'])) $ssidPassword = $wifiInfo['password'];
+                if (!empty($wifiInfo['online'])) $isOnline = true;
+            } catch (\Throwable $e) {}
+        }
+
         return response()->json([
             'success' => true,
-            'total_clients' => 0,
-            'ssid_name' => 'WIFI-' . $id,
-            'is_online' => true,
-            'tr069_ip' => '10.0.0.' . $id
+            'is_online' => $isOnline,
+            'total_clients' => $totalClients,
+            'ssid_name' => $ssidName,
+            'ssid_password' => $ssidPassword,
+            'tr069_ip' => $tr069Ip,
+            'last_inform' => $lastInform,
+            'rx_power' => $rxPower,
+            'rdm_power' => $rdmPower,
         ]);
     }
 
     public function wlanUpdate(Request $request, $id)
     {
-        return response()->json(['success' => true]);
+        $ssid = $request->input('ssid');
+        $password = $request->input('password');
+
+        if (is_string($id) && str_starts_with($id, 'onu-')) {
+            $onu = \App\Models\ISP\Onu::find(substr($id, 4));
+            if ($onu) {
+                $onu->wifi_ssid = $ssid;
+                $onu->wifi_password = $password;
+                $onu->save();
+            }
+            return response()->json(['success' => true, 'message' => 'Pengaturan WiFi berhasil diperbarui']);
+        }
+
+        $customer = Customer::with(['customerServices.onu'])->find($id);
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Customer not found'], 404);
+        }
+
+        $cs = $customer->customerServices->first();
+        $onu = $cs?->onu;
+        if ($onu) {
+            $onu->wifi_ssid = $ssid;
+            $onu->wifi_password = $password;
+            $onu->save();
+        }
+
+        if (class_exists(\App\Services\ISP\GenieAcsService::class) && $onu) {
+            try {
+                $genieService = app(\App\Services\ISP\GenieAcsService::class);
+                $genieService->setWifiCredentials($customer->id, $onu->id, $ssid, $password);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[wlanUpdate] GenieACS push notice: ' . $e->getMessage());
+            }
+        }
+
+        \Illuminate\Support\Facades\Cache::forget('gis_map_data');
+        \Illuminate\Support\Facades\Cache::forget('gis_map_nodes');
+
+        return response()->json(['success' => true, 'message' => 'Pengaturan WiFi berhasil diperbarui']);
     }
 
     public function ping(Request $request)

@@ -121,6 +121,8 @@ class Create extends AdminComponent
                 'phone'              => $this->phone,
                 'email'              => $this->email,
                 'address'            => $this->address,
+                'latitude'           => $this->latitude ?: null,
+                'longitude'          => $this->longitude ?: null,
                 'username'           => $this->username,
                 'password'           => $this->password,
                 'service_profile_id' => $this->service_profile_id,

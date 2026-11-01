@@ -893,30 +893,120 @@ class GisMap extends Component
         $cachedNodes = Cache::remember('gis_map_nodes', 30, function() {
             $customers = Customer::select(['id', 'name', 'code', 'phone', 'address', 'latitude', 'longitude', 'status'])
                 ->with([
-                    'customerServices:id,customer_id,status,tr069_status,offline_reason,last_seen_at',
-                    'customerServices.onu:id,customer_service_id,odp_id,wifi_ssid,last_seen_at'
+                    'customerServices' => function($q) {
+                        $q->select(['id', 'customer_id', 'onu_id', 'service_profile_id', 'username', 'status', 'tr069_status', 'offline_reason', 'last_seen_at'])
+                          ->with([
+                              'onu' => function($oq) {
+                                  $oq->select(['id', 'odp_id', 'name', 'serial_number', 'mac_address', 'wifi_ssid', 'wifi_password', 'rx_power_dbm', 'tx_power_dbm', 'latitude', 'longitude', 'last_seen_at']);
+                              },
+                              'pppoeUser' => function($pq) {
+                                  $pq->select(['id', 'customer_service_id', 'username', 'odp_id', 'status']);
+                              },
+                              'hotspotUser' => function($hq) {
+                                  $hq->select(['id', 'customer_service_id', 'username', 'status']);
+                              }
+                          ]);
+                    }
                 ])
-                ->whereNotNull('latitude')
-                ->whereNotNull('longitude')
                 ->get()
+                ->filter(function ($c) {
+                    $hasCustCoords = !empty($c->latitude) && !empty($c->longitude) && is_numeric($c->latitude) && is_numeric($c->longitude);
+                    if ($hasCustCoords) return true;
+                    // Cek jika relasi ONU memiliki koordinat
+                    $service = $c->customerServices->first();
+                    $onu = $service?->onu;
+                    return !empty($onu?->latitude) && !empty($onu?->longitude) && is_numeric($onu->latitude) && is_numeric($onu->longitude);
+                })
                 ->map(function ($c) {
                     $service = $c->customerServices->first();
                     $onu = $service?->onu;
-                    
+                    $pppoe = $service?->pppoeUser;
+                    $hotspot = $service?->hotspotUser;
+
+                    // Jika customer tidak punya koordinat, ambil dari ONU
+                    if (empty($c->latitude) || empty($c->longitude) || !is_numeric($c->latitude) || !is_numeric($c->longitude)) {
+                        if ($onu && !empty($onu->latitude) && !empty($onu->longitude)) {
+                            $c->latitude = $onu->latitude;
+                            $c->longitude = $onu->longitude;
+                        }
+                    }
+
+                    $isOnline = false;
+                    if ($pppoe && in_array(strtolower($pppoe->status ?? ''), ['active', 'online'])) {
+                        $isOnline = true;
+                    } elseif ($hotspot && in_array(strtolower($hotspot->status ?? ''), ['active', 'online'])) {
+                        $isOnline = true;
+                    } elseif ($service && strtolower($service->status ?? '') === 'active') {
+                        $isOnline = true;
+                    } elseif ($onu && $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 10) {
+                        $isOnline = true;
+                    }
+
                     // Inject properties expected by map JS
-                    $c->is_online = $service?->status === 'active';
-                    $c->odp_id = $onu?->odp_id;
-                    $c->tr069_ip = $service?->tr069_status ?? null;
-                    $c->ssid_name = $onu?->wifi_ssid ?? 'N/A';
+                    $c->is_online = $isOnline;
+                    $c->odp_id = $onu?->odp_id ?? $pppoe?->odp_id ?? $c->odp_id;
+                    $c->tr069_ip = $service?->tr069_status ?: ($onu?->serial_number ? 'TR069-' . $onu->serial_number : '-');
+                    $c->ssid_name = $onu?->wifi_ssid ?: 'WIFI-' . $c->name;
+                    $c->ssid_password = $onu?->wifi_password ?: '';
+                    $c->rx_power = $onu?->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null;
+                    $c->rdm_power = $onu?->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null;
                     $c->last_inform = $onu?->last_seen_at ?? $service?->last_seen_at;
-                    $c->last_reason = $service?->offline_reason ?? '-';
-                    $c->has_genie_status = (bool) $c->tr069_ip;
-                    
+                    $c->last_reason = $service?->offline_reason ?? ($isOnline ? 'Active Session' : 'Offline / Inactive');
+                    $c->has_genie_status = (bool) ($service?->tr069_status || $onu?->wifi_ssid);
+                    $c->serial_number = $onu?->serial_number ?? '-';
+                    $c->mac_address = $onu?->mac_address ?? '-';
+                    $c->service_type = $pppoe ? 'PPPoE' : ($hotspot ? 'Hotspot' : 'Internet');
+                    $c->username = $pppoe?->username ?? $hotspot?->username ?? $service?->username ?? $c->code;
+
                     return $c;
+                })
+                ->values();
+
+            // Load ONU Mandiri / Standalone yang memiliki koordinat tetapi belum terpetakan di customer
+            $standaloneOnus = \App\Models\ISP\Onu::whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->whereRaw("latitude != '' AND longitude != ''")
+                ->get()
+                ->filter(function($onu) use ($customers) {
+                    if (!is_numeric($onu->latitude) || !is_numeric($onu->longitude)) return false;
+                    return !$customers->contains(function($c) use ($onu) {
+                        return ($c->serial_number && $c->serial_number === $onu->serial_number) ||
+                               (abs((float)$c->latitude - (float)$onu->latitude) < 0.00001 && abs((float)$c->longitude - (float)$onu->longitude) < 0.00001);
+                    });
+                })
+                ->map(function($onu) {
+                    $isOnline = $onu->last_seen_at && $onu->last_seen_at->diffInMinutes(now()) <= 10;
+                    return (object)[
+                        'id' => 'onu-' . $onu->id,
+                        'name' => $onu->name ?: ('ONU ' . ($onu->serial_number ?: $onu->code)),
+                        'code' => $onu->code,
+                        'phone' => '-',
+                        'address' => $onu->description ?: 'Standalone ONU Device',
+                        'latitude' => $onu->latitude,
+                        'longitude' => $onu->longitude,
+                        'status' => $onu->status,
+                        'is_online' => $isOnline,
+                        'odp_id' => $onu->odp_id,
+                        'tr069_ip' => $onu->serial_number ? 'TR069-' . $onu->serial_number : '-',
+                        'ssid_name' => $onu->wifi_ssid ?: 'N/A',
+                        'ssid_password' => $onu->wifi_password ?: '',
+                        'rx_power' => $onu->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null,
+                        'rdm_power' => $onu->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null,
+                        'last_inform' => $onu->last_seen_at,
+                        'last_reason' => $isOnline ? 'Online' : 'Offline',
+                        'has_genie_status' => (bool)$onu->wifi_ssid,
+                        'serial_number' => $onu->serial_number ?: '-',
+                        'mac_address' => $onu->mac_address ?: '-',
+                        'service_type' => 'ONU Device',
+                        'username' => $onu->serial_number ?: $onu->code,
+                        'is_standalone_onu' => true,
+                    ];
                 });
 
+            $allCustomersAndOnus = $customers->concat($standaloneOnus);
+
             return [
-                'customers' => $customers,
+                'customers' => $allCustomersAndOnus,
                 'odps' => \App\Models\ISP\Odp::all(),
                 'htbs' => class_exists(\App\Models\ISP\DistributionBox::class) ? \App\Models\ISP\DistributionBox::all() : collect([]),
                 'closures' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::all() : collect([]),

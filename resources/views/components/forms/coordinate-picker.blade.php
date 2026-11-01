@@ -429,6 +429,32 @@
                     this.marker.setLatLng(pos);
                 });
 
+                window.pickNearbyOdp = (lat, lng) => {
+                    this.tempLat = parseFloat(lat).toFixed(7);
+                    this.tempLng = parseFloat(lng).toFixed(7);
+                    this.marker.setLatLng([lat, lng]);
+                };
+
+                fetch('/map/odps')
+                    .then(r => r.json())
+                    .then(odps => {
+                        if (!Array.isArray(odps)) return;
+                        const odpIcon = L.divIcon({
+                            html: '<div style="background:#10b981;border:2px solid #ffffff;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:#ffffff;font-size:10px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.5);">&#9632;</div>',
+                            className: '',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        odps.forEach(odp => {
+                            const oLat = parseFloat(odp.latitude);
+                            const oLng = parseFloat(odp.longitude);
+                            if (isNaN(oLat) || isNaN(oLng)) return;
+                            const m = L.marker([oLat, oLng], { icon: odpIcon }).addTo(this.map);
+                            m.bindPopup(<div style="min-width:140px;font-family:sans-serif;"><strong style="color:#0f172a;font-size:12px;">ODP:  + odp.name + </strong><br><span style="font-size:11px;color:#64748b;"> + (odp.code || '') + </span><div style="margin-top:6px;"><button type="button" style="padding:4px 8px;background:#4f46e5;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;" onclick="window.pickNearbyOdp( + oLat + ,  + oLng + )">Pilih Dekat Sini</button></div></div>);
+                        });
+                    })
+                    .catch(() => {});
+
                 setTimeout(() => {
                     this.map.invalidateSize();
                 }, 300);
@@ -530,3 +556,4 @@
     }
 })();
 </script>
+
