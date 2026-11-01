@@ -43,36 +43,109 @@
         <div id="map" class="flex-1 w-full bg-[#0a0e1a]"></div>
     </div>
 
-<!-- OLT Modal -->
+<!-- OLT Modal (Placement & Quick Edit) -->
 <div class="modal fade" id="oltModal" tabindex="-1" aria-hidden="true">
-    <!-- Added modal-fullscreen-sm-down for better mobile experience -->
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="oltModalLabel">{{ __('Tempatkan OLT') }}</h5>
+                <h5 class="modal-title font-bold" id="oltModalLabel">{{ __('Tempatkan OLT') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>{{ __('Pilih OLT untuk ditempatkan di peta:') }}</p>
                 <form id="oltForm">
+                    <input type="hidden" id="olt_id" name="id">
                     <input type="hidden" id="olt_lat" name="latitude">
                     <input type="hidden" id="olt_lng" name="longitude">
-                    <div class="mb-3">
-                        <label for="olt_select" class="form-label">OLT</label>
-                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" id="olt_select" name="olt_id" required>
+
+                    {{-- Placement Mode: Dropdown to pick existing unmapped OLT --}}
+                    <div id="olt_placement_group" class="mb-3">
+                        <p class="text-sm text-slate-500 mb-2">{{ __('Pilih OLT untuk ditempatkan di peta:') }}</p>
+                        <label for="olt_select" class="form-label font-semibold">{{ __('Pilih OLT') }}</label>
+                        <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_select" name="olt_id">
                             <option value="">{{ __('Pilih OLT') }}</option>
                             @foreach($oltModels ?? [] as $olt)
                                 <option value="{{ $olt->id }}" data-has-coord="{{ $olt->latitude ? 'true' : 'false' }}">
-                                    {{ $olt->name }} ({{ $olt->host ?? 'LAN' }}) {{ $olt->latitude ? '[Terkunci]' : '' }}
+                                    {{ $olt->name }} ({{ $olt->ip_address ?? $olt->host ?? 'LAN' }}) {{ $olt->latitude ? '[Terkunci]' : '' }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
+
+                    {{-- Edit Mode Fields --}}
+                    <div id="olt_edit_fields" class="d-none">
+                        <div class="mb-3">
+                            <label for="olt_name" class="form-label font-semibold">{{ __('Nama OLT') }}</label>
+                            <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_name" name="name" placeholder="Contoh: CDATA-KANTOR">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="olt_code" class="form-label font-semibold">{{ __('Kode OLT') }}</label>
+                                <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_code" name="code" placeholder="Contoh: OLT-KTR-01">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="olt_status" class="form-label font-semibold">{{ __('Status') }}</label>
+                                <select class="form-select dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_status" name="status">
+                                    <option value="active">Active (Aktif)</option>
+                                    <option value="inactive">Inactive (Nonaktif)</option>
+                                    <option value="maintenance">Maintenance</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="olt_ip_address" class="form-label font-semibold">{{ __('IP Address / Host') }}</label>
+                                <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 font-monospace" id="olt_ip_address" name="ip_address" placeholder="Contoh: 192.168.10.1">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="olt_pon_port_count" class="form-label font-semibold">{{ __('Jumlah Port PON') }}</label>
+                                <input type="number" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_pon_port_count" name="pon_port_count" placeholder="Contoh: 8 atau 16" min="1" max="128">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="olt_model" class="form-label font-semibold">{{ __('Model / Tipe') }}</label>
+                                <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_model" name="model" placeholder="Contoh: FD1608SN / V1600G">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="olt_address" class="form-label font-semibold">{{ __('Lokasi / Alamat') }}</label>
+                                <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_address" name="address" placeholder="Contoh: Ruang NOC Server">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label font-semibold">{{ __('Lintang (Lat)') }}</label>
+                                <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 font-monospace text-xs" id="olt_lat_display" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label font-semibold">{{ __('Bujur (Lng)') }}</label>
+                                <input type="text" class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 font-monospace text-xs" id="olt_lng_display" readonly>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="olt_description" class="form-label font-semibold">{{ __('Deskripsi') }}</label>
+                            <textarea class="form-control dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700" id="olt_description" name="description" rows="2" placeholder="Catatan teknis OLT..."></textarea>
+                        </div>
+                    </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Tutup') }}</button>
-                <button type="button" class="btn btn-primary" id="saveOltBtn">{{ __('Tempatkan OLT') }}</button>
+            <div class="modal-footer justify-content-between">
+                <div>
+                    <a id="oltFullEditBtn" href="#" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium d-none">
+                        Buka Formulir Lengkap OLT &rarr;
+                    </a>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('Tutup') }}</button>
+                    <button type="button" class="btn btn-primary btn-sm font-bold px-4" id="saveOltBtn">
+                        <span id="oltBtnSpinner" class="spinner-border spinner-border-sm d-none me-1"></span>
+                        <span id="saveOltBtnText">{{ __('Tempatkan OLT') }}</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1176,6 +1249,8 @@
     }
     .btn-outline-primary.map-popup-btn { background: #3b82f6 !important; }
     .btn-outline-primary.map-popup-btn:hover { background: #2563eb !important; }
+    .btn-outline-secondary.map-popup-btn { background: #475569 !important; }
+    .btn-outline-secondary.map-popup-btn:hover { background: #334155 !important; }
     .btn-danger.map-popup-btn { background: #ef4444 !important; }
     .btn-danger.map-popup-btn:hover { background: #dc2626 !important; }
 
@@ -2197,19 +2272,43 @@
         // Draw OLTs
         olts.forEach(function(olt) {
             if (olt.latitude && olt.longitude) {
+                var connectedOdcsCount = odcs.filter(o => o.olt_id == olt.id).length;
+                var totalOnusCount = olt.onus_count || olt.onu_active_count || (typeof customers !== 'undefined' ? customers.filter(c => c.olt_id == olt.id).length : 0);
+                var ipDisplay = olt.ip_address || olt.host || '-';
+                var ponPortsDisplay = (olt.pon_port_count || olt.port_count || '-') + (olt.pon_port_count || olt.port_count ? ' Port' : '');
+                var modelVendor = [olt.vendor?.name, olt.model].filter(Boolean).join(' - ') || '-';
+                var statusBadge = (olt.status === 'active' || olt.status === 'online' || !olt.status)
+                    ? '<span class="badge bg-success text-white" style="font-size: 10px; padding: 2px 6px;">AKTIF</span>'
+                    : '<span class="badge bg-secondary text-white" style="font-size: 10px; padding: 2px 6px;">' + (olt.status || 'AKTIF').toUpperCase() + '</span>';
+
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
                     <div class="map-popup">
-                        <h6 class="map-popup-title">OLT: ${olt.name}</h6>
-                        <table class="table table-sm table-borderless map-popup-table">
-                            <tr><td class="map-popup-label">Host:</td><td class="map-popup-value">${olt.host || '-'}</td></tr>
+                        <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-slate-700">
+                            <h6 class="map-popup-title mb-0" style="color: #60a5fa; font-weight: 700; font-size: 14px;">OLT: ${olt.name}</h6>
+                            <div>${statusBadge}</div>
+                        </div>
+                        <table class="table table-sm table-borderless map-popup-table mb-2">
+                            <tr><td class="map-popup-label">IP Address:</td><td class="map-popup-value font-monospace" style="color: #34d399; font-weight: 700;">${ipDisplay}</td></tr>
+                            <tr><td class="map-popup-label">Port PON:</td><td class="map-popup-value font-bold" style="color: #38bdf8;">${ponPortsDisplay}</td></tr>
+                            <tr><td class="map-popup-label">Model/Vendor:</td><td class="map-popup-value">${modelVendor}</td></tr>
+                            <tr><td class="map-popup-label">ODC Terhubung:</td><td class="map-popup-value font-bold">${connectedOdcsCount} ODC</td></tr>
+                            <tr><td class="map-popup-label">Pelanggan/ONU:</td><td class="map-popup-value">${totalOnusCount} Terhubung</td></tr>
+                            ${olt.address ? `<tr><td class="map-popup-label">Lokasi:</td><td class="map-popup-value">${olt.address}</td></tr>` : ''}
                         </table>
+                        ${olt.description ? `<div class="map-popup-desc mb-2 text-xs text-slate-400">${olt.description}</div>` : ''}
                     </div>`;
                 
-                var editLink = document.createElement('a');
-                editLink.href = `/isp/olts/${olt.id}/edit`;
-                editLink.className = 'btn btn-sm btn-outline-primary map-popup-btn';
-                editLink.innerText = '{{ __('Edit OLT') }}';
+                var editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-sm btn-outline-primary map-popup-btn';
+                editBtn.innerText = '{{ __('Edit OLT') }}';
+                editBtn.onclick = function() { editOlt(olt.id); };
+
+                var detailLink = document.createElement('a');
+                detailLink.href = `/isp/olts/${olt.id}/edit`;
+                detailLink.target = '_blank';
+                detailLink.className = 'btn btn-sm btn-outline-secondary map-popup-btn';
+                detailLink.innerText = 'Lengkap';
 
                 var deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
@@ -2217,8 +2316,9 @@
                 deleteBtn.onclick = function() { deleteLocation('olt', olt.id, marker); };
 
                 var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions';
-                actionRow.appendChild(editLink);
+                actionRow.className = 'map-popup-actions d-flex gap-1 flex-wrap mt-2';
+                actionRow.appendChild(editBtn);
+                actionRow.appendChild(detailLink);
                 actionRow.appendChild(deleteBtn);
                 popupContent.querySelector('.map-popup').appendChild(actionRow);
 
@@ -2976,9 +3076,23 @@
 
             if (addMode === 'olt') {
                 document.getElementById('oltForm').reset();
+                document.getElementById('olt_id').value = '';
                 document.getElementById('olt_lat').value = lat;
                 document.getElementById('olt_lng').value = lng;
-                // Filter dropdown if needed, or just show modal
+                if (document.getElementById('olt_lat_display')) {
+                    document.getElementById('olt_lat_display').value = Number(lat).toFixed(6);
+                }
+                if (document.getElementById('olt_lng_display')) {
+                    document.getElementById('olt_lng_display').value = Number(lng).toFixed(6);
+                }
+                document.getElementById('olt_placement_group').classList.remove('d-none');
+                document.getElementById('olt_edit_fields').classList.add('d-none');
+                var fullEditBtn = document.getElementById('oltFullEditBtn');
+                if (fullEditBtn) fullEditBtn.classList.add('d-none');
+
+                document.getElementById('oltModalLabel').innerText = '{{ __('Tempatkan OLT') }}';
+                document.getElementById('saveOltBtnText').innerText = '{{ __('Tempatkan OLT') }}';
+
                 var oltModal = new bootstrap.Modal(document.getElementById('oltModal'));
                 oltModal.show();
             } else if (addMode === 'odc') {
@@ -3036,6 +3150,45 @@
         });
 
         // --- Edit Functions ---
+        window.editOlt = function(id) {
+            var olt = olts.find(o => o.id == id);
+            if (olt) {
+                document.getElementById('olt_id').value = olt.id;
+                document.getElementById('olt_lat').value = olt.latitude;
+                document.getElementById('olt_lng').value = olt.longitude;
+                if (document.getElementById('olt_lat_display')) {
+                    document.getElementById('olt_lat_display').value = Number(olt.latitude).toFixed(6);
+                }
+                if (document.getElementById('olt_lng_display')) {
+                    document.getElementById('olt_lng_display').value = Number(olt.longitude).toFixed(6);
+                }
+                document.getElementById('olt_name').value = olt.name || '';
+                document.getElementById('olt_code').value = olt.code || '';
+                document.getElementById('olt_ip_address').value = olt.ip_address || olt.host || '';
+                document.getElementById('olt_pon_port_count').value = olt.pon_port_count || olt.port_count || '';
+                document.getElementById('olt_model').value = olt.model || '';
+                document.getElementById('olt_address').value = olt.address || '';
+                document.getElementById('olt_status').value = olt.status || 'active';
+                document.getElementById('olt_description').value = olt.description || '';
+
+                // Show edit fields, hide placement dropdown
+                document.getElementById('olt_placement_group').classList.add('d-none');
+                document.getElementById('olt_edit_fields').classList.remove('d-none');
+
+                var fullEditBtn = document.getElementById('oltFullEditBtn');
+                if (fullEditBtn) {
+                    fullEditBtn.href = '/isp/olts/' + olt.id + '/edit';
+                    fullEditBtn.classList.remove('d-none');
+                }
+
+                document.getElementById('oltModalLabel').innerText = '{{ __('Edit OLT') }}';
+                document.getElementById('saveOltBtnText').innerText = '{{ __('Simpan OLT') }}';
+
+                var oltModal = new bootstrap.Modal(document.getElementById('oltModal'));
+                oltModal.show();
+            }
+        };
+
         window.editOdc = function(id) {
             var odc = odcs.find(o => o.id == id);
             if (odc) {
@@ -3158,50 +3311,115 @@
         var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
         document.getElementById('saveOltBtn').addEventListener('click', function() {
-            var id = document.getElementById('olt_select').value;
-            if (!id) {
-                alert('{{ __('Please select an OLT') }}');
-                return;
-            }
+            var oltId = document.getElementById('olt_id').value;
+            var spinner = document.getElementById('oltBtnSpinner');
+            var saveBtn = document.getElementById('saveOltBtn');
 
-            var lat = document.getElementById('olt_lat').value;
-            var lng = document.getElementById('olt_lng').value;
-            var item = olts.find(i => i.id == id);
-            
-            if (!item) {
-                 alert('{{ __('OLT not found') }}');
-                 return;
-            }
-
-            // We are just updating the location, so we use the update endpoint
-            var url = `/map/location/olt/${id}`;
-            var data = {
-                latitude: lat,
-                longitude: lng,
-                _method: 'PUT'
-            };
-
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success || data.id) {
-                    location.reload();
-                } else {
-                    alert('{{ __('Error placing OLT:') }} ' + (data.message || JSON.stringify(data)));
+            if (oltId) {
+                // EDIT OLT MODE
+                var name = document.getElementById('olt_name').value.trim();
+                if (!name) {
+                    alert('Nama OLT wajib diisi');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('{{ __('An error occurred while saving.') }}');
-            });
+                var url = `/map/node/olt/${oltId}`;
+                var data = {
+                    id: oltId,
+                    name: name,
+                    code: document.getElementById('olt_code').value,
+                    ip_address: document.getElementById('olt_ip_address').value,
+                    host: document.getElementById('olt_ip_address').value,
+                    pon_port_count: document.getElementById('olt_pon_port_count').value,
+                    model: document.getElementById('olt_model').value,
+                    address: document.getElementById('olt_address').value,
+                    status: document.getElementById('olt_status').value,
+                    description: document.getElementById('olt_description').value,
+                    latitude: document.getElementById('olt_lat').value,
+                    longitude: document.getElementById('olt_lng').value,
+                    _method: 'PUT'
+                };
+
+                if (spinner) spinner.classList.remove('d-none');
+                saveBtn.disabled = true;
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success || data.id) {
+                        location.reload();
+                    } else {
+                        alert('Gagal menyimpan OLT: ' + (data.message || JSON.stringify(data)));
+                        if (spinner) spinner.classList.add('d-none');
+                        saveBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat menyimpan OLT.');
+                    if (spinner) spinner.classList.add('d-none');
+                    saveBtn.disabled = false;
+                });
+            } else {
+                // PLACEMENT MODE
+                var id = document.getElementById('olt_select').value;
+                if (!id) {
+                    alert('{{ __('Please select an OLT') }}');
+                    return;
+                }
+
+                var lat = document.getElementById('olt_lat').value;
+                var lng = document.getElementById('olt_lng').value;
+                var item = olts.find(i => i.id == id);
+                
+                if (!item) {
+                     alert('{{ __('OLT not found') }}');
+                     return;
+                }
+
+                var url = `/map/location/olt/${id}`;
+                var data = {
+                    latitude: lat,
+                    longitude: lng,
+                    _method: 'PUT'
+                };
+
+                if (spinner) spinner.classList.remove('d-none');
+                saveBtn.disabled = true;
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success || data.id) {
+                        location.reload();
+                    } else {
+                        alert('{{ __('Error placing OLT:') }} ' + (data.message || JSON.stringify(data)));
+                        if (spinner) spinner.classList.add('d-none');
+                        saveBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('{{ __('An error occurred while saving.') }}');
+                    if (spinner) spinner.classList.add('d-none');
+                    saveBtn.disabled = false;
+                });
+            }
         });
 
         var saveCustBtn = document.getElementById('saveCustomerBtn');

@@ -1011,7 +1011,7 @@ class GisMap extends Component
                 'htbs' => class_exists(\App\Models\ISP\DistributionBox::class) ? \App\Models\ISP\DistributionBox::all() : collect([]),
                 'closures' => class_exists(\App\Models\ISP\JointClosure::class) ? \App\Models\ISP\JointClosure::all() : collect([]),
                 'odcs' => \App\Models\ISP\Odc::all(),
-                'olts' => \App\Models\ISP\Olt::all(),
+                'olts' => \App\Models\ISP\Olt::with(['vendor:id,name'])->withCount(['odcs', 'onus'])->get(),
                 'assets' => (class_exists(\App\Models\Inventory\Asset::class) && \Illuminate\Support\Facades\Schema::hasColumn('assets', 'latitude')) ? \App\Models\Inventory\Asset::whereNotNull('latitude')->whereNotNull('longitude')->get() : collect([]),
             ];
         });
@@ -1024,7 +1024,7 @@ class GisMap extends Component
             return class_exists(\App\Models\User::class) ? \App\Models\User::orderBy('name')->get(['id', 'name']) : collect([]);
         });
 
-        $rawOlts = \App\Models\ISP\Olt::orderBy('name')->get();
+        $rawOlts = \App\Models\ISP\Olt::with(['vendor:id,name'])->withCount(['odcs', 'onus'])->orderBy('name')->get();
         $rawOdcs = \App\Models\ISP\Odc::orderBy('name')->get();
         $rawOdps = \App\Models\ISP\Odp::orderBy('name')->get();
 

@@ -95,18 +95,30 @@ class MapApiController extends Controller
             case 'olt':
                 $model = $id ? Olt::find($id) : new Olt();
                 if ($model) {
-                    $model->name = $request->input('name');
-                    $baseCode = $request->input('code') ?: ('OLT-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), '')));
+                    if ($request->has('name')) $model->name = $request->input('name');
+                    $baseCode = $request->input('code') ?: ($model->code ?: ('OLT-' . strtoupper(\Illuminate\Support\Str::slug($request->input('name', 'NODE'), ''))));
                     $code = $baseCode;
                     $counter = 1;
                     while (Olt::where('code', $code)->where('id', '!=', $id ?? 0)->exists()) {
                         $code = $baseCode . '-' . $counter++;
                     }
                     $model->code = $code;
-                    $model->host = $request->input('host') ?: ($model->host ?? '127.0.0.1');
-                    $model->port = $request->input('port') ?: ($model->port ?? 23);
-                    $model->community = $request->input('community') ?: ($model->community ?? 'public');
-                    $model->snmp_port = $request->input('snmp_port') ?: ($model->snmp_port ?? 161);
+                    $ip = $request->input('ip_address') ?: $request->input('host');
+                    if ($ip) {
+                        $model->ip_address = $ip;
+                        $model->host = $ip;
+                    }
+                    if ($request->has('pon_port_count')) {
+                        $model->pon_port_count = (int)$request->input('pon_port_count');
+                        $model->port_count = (int)$request->input('pon_port_count');
+                    }
+                    if ($request->has('model')) $model->model = $request->input('model');
+                    if ($request->has('address')) $model->address = $request->input('address');
+                    if ($request->has('description')) $model->description = $request->input('description');
+                    if ($request->has('status')) $model->status = $request->input('status');
+                    if ($request->has('port')) $model->port = $request->input('port') ?: ($model->port ?? 23);
+                    if ($request->has('community')) $model->community = $request->input('community') ?: ($model->community ?? 'public');
+                    if ($request->has('snmp_port')) $model->snmp_port = $request->input('snmp_port') ?: ($model->snmp_port ?? 161);
                 }
                 break;
             case 'odc':
