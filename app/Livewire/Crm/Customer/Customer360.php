@@ -29,8 +29,12 @@ class Customer360 extends AdminComponent
     public $showWifiModal = false;
     public $acsDeviceIdForWifi = null;
     public $wlanTarget = '1';
+    public $availableWlans = [];
     public $wifiSsid = '';
     public $wifiPassword = '';
+    public $wifiSaving = false;
+    public $wifiErrorMessage = null;
+    public $cachedDeviceParams = null;
 
     protected function getCustomer()
     {
@@ -38,6 +42,7 @@ class Customer360 extends AdminComponent
             $this->customer = \App\Models\CRM\Customer::with([
                 'customerServices.service',
                 'customerServices.serviceProfile',
+                'customerServices.acsDevice',
                 'customerServices.onu.odp.odc',
                 'customerServices.onu.ponPort',
                 'customerServices.onu.olt',
@@ -270,10 +275,66 @@ class Customer360 extends AdminComponent
     public function openWifiModal($deviceId)
     {
         $this->acsDeviceIdForWifi = $deviceId;
-        $this->wlanTarget = '1';
-        
         $this->showWifiModal = true;
+        $this->cachedDeviceParams = null;
+        $this->wifiErrorMessage = null;
+        
+        $this->availableWlans = $this->getAvailableWlans();
+        if (!isset($this->availableWlans[$this->wlanTarget])) {
+            $this->wlanTarget = (string)(array_key_first($this->availableWlans) ?? '1');
+        }
         $this->loadWifiCredentials();
+    }
+
+    private function getAvailableWlans(): array
+    {
+        $wlans = [];
+        try {
+            $device = \App\Models\ACS\ACSDevice::findOrFail($this->acsDeviceIdForWifi);
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            if (!$this->cachedDeviceParams) {
+                $this->cachedDeviceParams = $driver->getDeviceParameters($device->uuid);
+            }
+            $params = $this->cachedDeviceParams;
+            if (!$params) return ['1' => 'WLAN 1 (2.4GHz)'];
+
+            // Check TR-098
+            $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] ?? [];
+            if (is_array($wlanNode)) {
+                foreach ($wlanNode as $key => $node) {
+                    if (is_numeric($key) && is_array($node)) {
+                        $ssid = $node['SSID']['_value'] ?? $node['SSID'] ?? '';
+                        $name = $ssid ? "WLAN $key ($ssid)" : "WLAN $key";
+                        $wlans[(string)$key] = $name;
+                    }
+                }
+            }
+
+            // Check TR-181
+            if (empty($wlans)) {
+                $wlanNode = $params['Device']['WiFi']['SSID'] ?? [];
+                if (is_array($wlanNode)) {
+                    foreach ($wlanNode as $key => $node) {
+                        if (is_numeric($key) && is_array($node)) {
+                            $ssid = $node['SSID']['_value'] ?? $node['SSID'] ?? '';
+                            $name = $ssid ? "WLAN $key ($ssid)" : "WLAN $key";
+                            $wlans[(string)$key] = $name;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Customer360 getAvailableWlans error: " . $e->getMessage());
+        }
+
+        if (empty($wlans)) {
+            $wlans = [
+                '1' => 'WLAN 1 (Utama - 2.4GHz)',
+                '5' => 'WLAN 5 (Utama - 5GHz)'
+            ];
+        }
+
+        return $wlans;
     }
     
     public function updatedWlanTarget()
@@ -313,7 +374,7 @@ class Customer360 extends AdminComponent
                 $this->cachedDeviceParams = $driver->getDeviceParameters($device->uuid);
             }
             $params = $this->cachedDeviceParams;
-            $wlanIndex = $this->wlanTarget === '1' ? '1' : '5';
+            $wlanIndex = $this->wlanTarget;
             
             $this->wifiSsid = 
                 $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.SSID")
@@ -325,7 +386,7 @@ class Customer360 extends AdminComponent
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase") ?? '';
             
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengambil data WiFi: ' . $e->getMessage());
+            $this->wifiErrorMessage = 'Gagal mengambil data WiFi: ' . $e->getMessage();
         }
     }
 
@@ -336,10 +397,13 @@ class Customer360 extends AdminComponent
             'wifiPassword' => 'nullable|string|min:8',
         ]);
 
+        $this->wifiSaving = true;
+        $this->wifiErrorMessage = null;
+
         try {
             $device = \App\Models\ACS\ACSDevice::findOrFail($this->acsDeviceIdForWifi);
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $wlanIndex = $this->wlanTarget === '1' ? 1 : 5;
+            $wlanIndex = $this->wlanTarget;
             
             if (!$this->cachedDeviceParams) {
                 $this->cachedDeviceParams = $driver->getDeviceParameters($device->uuid);
@@ -359,7 +423,11 @@ class Customer360 extends AdminComponent
             }
             
             if (!empty($this->wifiPassword)) {
-                $passCandidates = ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.PreSharedKey.1.KeyPassphrase", "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.KeyPassphrase", "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase"];
+                $passCandidates = [
+                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.PreSharedKey.1.KeyPassphrase",
+                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.KeyPassphrase",
+                    "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase"
+                ];
                 $passSet = false;
                 foreach ($passCandidates as $path) {
                     if ($this->pathExists($params, $path)) {
@@ -374,20 +442,47 @@ class Customer360 extends AdminComponent
             $trueDeviceId = $params['_id'] ?? $device->uuid;
             $driver->setParameterValues($trueDeviceId, $paramsToSet);
 
+            // Record task log
+            try {
+                \App\Models\ACS\ACSTaskLog::create([
+                    'device_id' => $device->id,
+                    'task_name' => "Change WiFi (WLAN {$wlanIndex})",
+                    'type' => "change_wifi_{$wlanIndex}",
+                    'status' => 'completed',
+                    'created_by' => auth()->id()
+                ]);
+            } catch (\Throwable) {}
+
+            // Sync to ONU if linked
+            if ($device->onu) {
+                try {
+                    $device->onu->update([
+                        'wifi_ssid' => $this->wifiSsid,
+                        'wifi_password' => $this->wifiPassword ?: $device->onu->wifi_password,
+                    ]);
+                } catch (\Throwable) {}
+            }
+
+            $this->cachedDeviceParams = null;
             $this->showWifiModal = false;
             session()->flash('success', 'Task perubahan WiFi berhasil dikirim ke modem!');
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Task perubahan WiFi berhasil dikirim ke modem!']);
         } catch (\Exception $e) {
+            $this->wifiErrorMessage = 'Gagal mengirim task WiFi: ' . $e->getMessage();
             session()->flash('error', 'Gagal mengirim task WiFi: ' . $e->getMessage());
+        } finally {
+            $this->wifiSaving = false;
         }
     }
 
-            public function render()
+    public function render()
     {
         // Hydrate customer if not set
         if (!$this->customer) {
             $this->customer = \App\Models\CRM\Customer::with([
                 'customerServices.service',
                 'customerServices.serviceProfile',
+                'customerServices.acsDevice',
                 'customerServices.onu.odp.odc',
                 'customerServices.onu.ponPort',
                 'customerServices.onu.olt',

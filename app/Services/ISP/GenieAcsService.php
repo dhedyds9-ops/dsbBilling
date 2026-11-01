@@ -58,17 +58,31 @@ class GenieAcsService
 
         // 3. Search ACSDevice model
         try {
+            // A. Direct link via onu_id
             $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
 
+            // B. Direct link via exact serial number
             if (!$acsDevice && !empty($onu->serial_number)) {
                 $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('serial_number', $onu->serial_number)->first();
             }
 
-            $csId = $onu->customer_service_id ?? $onu->customerService?->id;
-            if (!$acsDevice && !empty($csId)) {
-                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('customer_service_id', $csId)->first();
+            // C. Direct link via customer_services
+            $cs = null;
+            if ($customerId) {
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $customerId)
+                    ->where('onu_id', $onu->id)
+                    ->first();
+            }
+            if (!$cs) {
+                $cs = CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
             }
 
+            if (!$acsDevice && $cs) {
+                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('customer_service_id', $cs->id)->first();
+            }
+
+            // D. Search by MAC address
             if (!$acsDevice && !empty($onu->mac_address)) {
                 $cleanMac = strtoupper(str_replace([':', '-', '.'], '', $onu->mac_address));
                 $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
@@ -79,16 +93,37 @@ class GenieAcsService
                     })->first();
             }
 
-            // Suffix matching (e.g. VSOL0033EDA0 vs 12345B4641533EDA0, both ending with 33EDA0)
-            if (!$acsDevice && !empty($onu->serial_number) && strlen($onu->serial_number) >= 6) {
+            // E. Suffix matching of serial number (e.g. VSOL0033EDA0 vs 12345B4641533EDA0, both ending with 33EDA0)
+            if (!$acsDevice && !empty($onu->serial_number) && strlen($onu->serial_number) >= 4) {
                 $suffix = substr($onu->serial_number, -6);
                 $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
                     ->where('serial_number', 'LIKE', "%{$suffix}%")
                     ->first();
             }
 
+            // F. Hex / clean suffix matching
+            if (!$acsDevice && !empty($onu->serial_number)) {
+                $cleanHex = preg_replace('/[^0-9A-Fa-f]/', '', $onu->serial_number);
+                if (strlen($cleanHex) >= 6) {
+                    $hexSuffix = substr($cleanHex, -6);
+                    $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                        ->where(function($q) use ($hexSuffix) {
+                            $q->where('serial_number', 'LIKE', "%{$hexSuffix}%")
+                              ->orWhere('mac_address', 'LIKE', "%{$hexSuffix}%");
+                        })->first();
+                }
+            }
+
+            // G. Search via all customer services belonging to this customer
             if (!$acsDevice && !empty($customerId)) {
-                $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where('customer_id', $customerId)->first();
+                $csIds = CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $customerId)
+                    ->pluck('id');
+                if ($csIds->isNotEmpty()) {
+                    $acsDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                        ->whereIn('customer_service_id', $csIds)
+                        ->first();
+                }
             }
 
             if ($acsDevice) {
@@ -96,6 +131,11 @@ class GenieAcsService
                 if (!$acsDevice->onu_id) {
                     try {
                         $acsDevice->update(['onu_id' => $onu->id]);
+                    } catch (\Throwable) {}
+                }
+                if (empty($onu->genieacs_device_id)) {
+                    try {
+                        $onu->update(['genieacs_device_id' => $acsDevice->uuid]);
                     } catch (\Throwable) {}
                 }
                 // Save correlation
@@ -198,6 +238,10 @@ class GenieAcsService
     public function updateWifiPassword(int $customerId, int $onuId, string $newPassword): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
+        $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
+        if (!empty($deviceId) && empty($onu->genieacs_device_id)) {
+            try { $onu->update(['genieacs_device_id' => $deviceId]); } catch (\Throwable) {}
+        }
         $ssid = $onu->wifi_ssid ?: ('ISP-' . strtoupper(substr(md5((string)$onu->id), 0, 6)));
         return $this->provisioningService->updateSsidAndPassword($onu, $ssid, $newPassword);
     }
@@ -205,6 +249,10 @@ class GenieAcsService
     public function updateWifiSsidAndPassword(int $customerId, int $onuId, string $ssid, ?string $password = null): array
     {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
+        $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
+        if (!empty($deviceId) && empty($onu->genieacs_device_id)) {
+            try { $onu->update(['genieacs_device_id' => $deviceId]); } catch (\Throwable) {}
+        }
         return $this->provisioningService->updateSsidAndPassword($onu, $ssid, $password);
     }
 

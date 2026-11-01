@@ -71,7 +71,7 @@
                                 </span>
                             </div>
                             <div class="text-right shrink-0">
-                                <span class="font-bold text-teal-600 dark:text-teal-400">Rp {{ number_format($plan->base_price, 0, ',', '.') }}</span>
+                                <span class="font-bold text-teal-600 dark:text-teal-400">Rp {{ number_format($plan->base_price ?: ($plan->price ?? 0), 0, ',', '.') }}</span>
                             </div>
                         </div>
                         @if($plan->description)

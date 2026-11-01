@@ -42,9 +42,14 @@ class ChangeOnuWifiPassword extends Component
             ->where('customer_id', $customerId)
             ->whereNotNull('onu_id')
             ->whereNotIn('status', ['cancelled', 'terminated', 'deleted'])
-            ->with(['onu' => function ($q) {
-                $q->withoutGlobalScopes();
-            }])
+            ->with([
+                'onu' => function ($q) {
+                    $q->withoutGlobalScopes();
+                },
+                'acsDevice' => function ($q) {
+                    $q->withoutGlobalScopes();
+                }
+            ])
             ->get();
         
         // Set default ONU if available

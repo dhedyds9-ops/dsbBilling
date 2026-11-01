@@ -606,8 +606,11 @@
                                     </div>
                                     
                                     <div class="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
-                                        <button wire:click="openWifiModal({{ $service->acsDevice->id }})" class="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">wifi</span> Ubah WiFi
+                                        <button wire:click="openWifiModal({{ $service->acsDevice->id }})" wire:loading.attr="disabled" class="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors disabled:opacity-50">
+                                            <span wire:loading.remove wire:target="openWifiModal({{ $service->acsDevice->id }})" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">wifi</span>
+                                            <span wire:loading wire:target="openWifiModal({{ $service->acsDevice->id }})" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">sync</span>
+                                            <span wire:loading.remove wire:target="openWifiModal({{ $service->acsDevice->id }})">Ubah WiFi</span>
+                                            <span wire:loading wire:target="openWifiModal({{ $service->acsDevice->id }})">Memuat...</span>
                                         </button>
                                         <button wire:click="rebootModem({{ $service->acsDevice->id }})" wire:confirm="Yakin ingin merestart modem ini dari jarak jauh?" class="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 border border-amber-200 hover:bg-amber-100 dark:bg-amber-900/50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">restart_alt</span> Reboot
@@ -1191,40 +1194,54 @@
 
     {{-- MODAL GANTI WIFI --}}
     @if($showWifiModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
-            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ganti Nama/Pass WiFi</h3>
-                <button wire:click="$set('showWifiModal', false)" class="text-slate-400 hover:text-slate-600 dark:text-slate-400">
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
+            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900/40">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 notranslate" translate="no">wifi</span>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Ganti Nama / Sandi WiFi</h3>
+                </div>
+                <button wire:click="$set('showWifiModal', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
                     <span class="material-symbols-outlined notranslate" translate="no">close</span>
                 </button>
             </div>
             
-            <form wire:submit.prevent="saveWifi">
+            <form wire:submit="saveWifi">
                 <div class="p-5 space-y-4">
+                    @if($wifiErrorMessage)
+                    <div class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">error</span>
+                        <span>{{ $wifiErrorMessage }}</span>
+                    </div>
+                    @endif
+
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target WLAN</label>
-                        <select wire:model.live="wlanTarget" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                            <option value="1">WLAN 1 (Utama - 2.4GHz)</option>
-                            <option value="5">WLAN 5 (Utama - 5GHz)</option>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Pilih Jaringan WLAN</label>
+                        <select wire:model.live="wlanTarget" class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
+                            @foreach($availableWlans as $wKey => $wLabel)
+                                <option value="{{ $wKey }}">{{ $wLabel }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama WiFi (SSID)</label>
-                        <input type="text" wire:model="wifiSsid" required class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                        @error('wifiSsid') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Nama WiFi (SSID)</label>
+                        <input type="text" wire:model="wifiSsid" required class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
+                        @error('wifiSsid') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
-                        <input type="text" wire:model="wifiPassword" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Minimal 8 karakter. Biarkan sama jika tidak ingin mengganti sandi.</p>
-                        @error('wifiPassword') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Password Baru</label>
+                        <input type="text" wire:model="wifiPassword" placeholder="Biarkan kosong jika tidak diubah" class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Minimal 8 karakter. Kosongkan jika hanya ingin mengubah nama WiFi.</p>
+                        @error('wifiPassword') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
                 </div>
-                <div class="px-5 py-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
-                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:bg-slate-900/50">Batal</button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span> Kirim ke Modem
+                <div class="px-5 py-3.5 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
+                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="saveWifi" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span>
+                        <span wire:loading wire:target="saveWifi" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">sync</span>
+                        <span wire:loading.remove wire:target="saveWifi">Kirim ke Modem</span>
+                        <span wire:loading wire:target="saveWifi">Mengirim...</span>
                     </button>
                 </div>
             </form>

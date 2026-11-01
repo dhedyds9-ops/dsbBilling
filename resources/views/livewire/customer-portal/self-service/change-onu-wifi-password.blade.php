@@ -21,8 +21,8 @@
                 <select id="onuId" wire:model.live="onuId" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer" required>
                     @foreach ($customerServices as $service)
                         <option value="{{ $service->onu_id }}">
-                            {{ $service->onu->name ?? 'ONU ' . $service->onu_id }} 
-                            ({{ $service->onu->serial_number ?? $service->onu->mac_address ?? 'N/A' }})
+                            {{ $service->onu?->name ?? 'ONU #' . $service->onu_id }} 
+                            ({{ $service->onu?->serial_number ?? $service->acsDevice?->serial_number ?? $service->onu?->mac_address ?? 'N/A' }})
                         </option>
                     @endforeach
                 </select>

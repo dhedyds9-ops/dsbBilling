@@ -56,24 +56,39 @@ class ChangePlan extends Component
             ->get();
 
         // Query paket komersial (mengecualikan paket gratis / isolir)
-        $query = ServiceProfile::active()
+        $query = ServiceProfile::query()
+            ->where(function ($q) {
+                $q->where('status', 'active')
+                  ->orWhereNull('status');
+            })
             ->where(function ($q) {
                 $q->whereNull('is_free')->orWhere('is_free', false);
             })
-            ->where('base_price', '>', 0)
+            ->where(function ($q) {
+                $q->where('base_price', '>', 0)
+                  ->orWhere('price', '>', 0);
+            })
             ->where(function ($q) {
                 $q->whereNull('visibility')
-                  ->orWhereNotIn('visibility', ['hidden', 'private']);
-            });
+                  ->orWhere('visibility', '!=', 'hidden');
+            })
+            ->where('name', 'NOT LIKE', '%gratis%')
+            ->where('name', 'NOT LIKE', '%isolir%');
 
         // Filter berdasarkan kategori tab jika dipilih
         if ($this->planCategory === 'pppoe') {
-            $query->whereIn('service_type', ['pppoe', 'combined']);
+            $query->where(function ($q) {
+                $q->whereRaw('LOWER(service_type) IN (?, ?)', ['pppoe', 'combined'])
+                  ->orWhereNull('service_type');
+            });
         } elseif ($this->planCategory === 'hotspot') {
-            $query->whereIn('service_type', ['hotspot', 'member_hotspot', 'voucher', 'combined']);
-        } else {
-            $query->whereIn('service_type', ['pppoe', 'hotspot', 'member_hotspot', 'voucher', 'combined']);
+            $query->where(function ($q) {
+                $q->whereRaw('LOWER(service_type) IN (?, ?, ?)', ['hotspot', 'member_hotspot', 'voucher'])
+                  ->orWhere('service_type', 'LIKE', '%hotspot%')
+                  ->orWhere('service_type', 'LIKE', '%voucher%');
+            });
         }
+        // Jika 'all', tidak batasi service_type agar semua paket berbayar (PPPoE & Hotspot) muncul
 
         $this->availablePlans = $query->orderBy('base_price')->get();
     }
