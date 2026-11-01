@@ -52,5 +52,14 @@
                 Kami menerapkan standar pengamanan jaringan tingkat tinggi, pemantauan status perangkat pelanggan secara otomatis (ACS TR-069), serta integrasi sistem pembayaran resmi yang aman dan diawasi oleh regulator perbankan Indonesia.
             </p>
         </section>
+
+        <section>
+            <h2 class="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                <span class="text-cyan-400">5.</span> Kemitraan ISP &amp; Upstream Backbone (Powered by)
+            </h2>
+            <p class="leading-relaxed">
+                Untuk menjamin kesinambungan operasional dan kepatuhan terhadap regulasi telekomunikasi di Indonesia, seluruh layanan <strong>{{ $companyName }}</strong> diselenggarakan secara resmi melalui kemitraan strategis (ISP Partnership) dengan Penyelenggara Jasa Internet berizin resmi dari Kementerian Komunikasi dan Informatika (Kominfo) RI. Jaringan kami terhubung ke multi-upstream fiber optik Tier-1 (seperti Telkom Astinet, Biznet Networks, Moratelindo / Oxygen, dan PLN Icon Plus) serta direct peering dengan Indonesia Internet Exchange (IIX / APJII) dan OpenIXP Jakarta untuk memberikan performa akses data berlatensi sangat rendah ke seluruh penjuru nusantara dan dunia.
+            </p>
+        </section>
     </div>
 </x-layouts.public-legal>

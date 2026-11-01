@@ -217,6 +217,13 @@
         $companyPostal = \App\Models\Setting::getValue('company.postal_code');
         $companyHours = \App\Models\Setting::getValue('company.operational_hours') ?: 'Senin - Minggu: 24 Jam (Teknis) / 08:00 - 21:00 WIB (Administrasi)';
 
+        $partnerName = \App\Models\Setting::getValue('company.partner_name');
+        $partnerLegal = \App\Models\Setting::getValue('company.partner_legal_name') ?: $partnerName;
+        $partnerLogo = \App\Models\Setting::getValue('company.partner_logo_url');
+        $partnerWebsite = \App\Models\Setting::getValue('company.partner_website');
+        $partnerPhone = \App\Models\Setting::getValue('company.partner_mobile') ?: \App\Models\Setting::getValue('company.partner_phone');
+        $partnerEmail = \App\Models\Setting::getValue('company.partner_email');
+
         $showPppoe = \Illuminate\Support\Collection::wrap($packagesPppoe ?? []);
         $showMemberHotspot = \Illuminate\Support\Collection::wrap($packagesHotspot ?? []);
         $showHotspotVoucher = \Illuminate\Support\Collection::wrap($packagesVoucher ?? []);
@@ -300,6 +307,7 @@
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#paket">Paket Internet</a>
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#hotspot">Hotspot</a>
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#pembayaran">Pembayaran</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#kemitraan">Kemitraan ISP</a>
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#faq">FAQ</a>
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="{{ route('legal.contact') }}">Kontak</a>
         </nav>
@@ -345,6 +353,7 @@
             <a href="#paket" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Paket Internet</a>
             <a href="#hotspot" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Hotspot</a>
             <a href="#pembayaran" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Metode Pembayaran</a>
+            <a href="#kemitraan" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Kemitraan ISP</a>
             <a href="#faq" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">FAQ & Bantuan</a>
             <a href="{{ route('legal.contact') }}" class="text-slate-700 dark:text-on-surface py-1">Hubungi Kami</a>
             <a href="{{ route('legal.about') }}" class="text-slate-700 dark:text-on-surface py-1">Tentang Kami</a>
@@ -422,6 +431,52 @@
                     <button type="submit" class="absolute right-2 top-2 bottom-2 px-6 bg-cyan-600 hover:bg-cyan-500 dark:bg-primary dark:hover:bg-primary-fixed-dim text-white dark:text-on-primary rounded-full font-bold transition-colors shadow-md">Cari</button>
                 </div>
             </form>
+        </div>
+    </section>
+
+    <!-- Upstream Partners / Powered By Quick Strip -->
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto -mt-16 mb-28 relative z-20">
+        <div class="glass-card rounded-2xl p-5 md:p-6 border border-slate-200/80 dark:border-white/10 shadow-lg">
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-5">
+                <div class="flex items-center gap-3 shrink-0 text-center lg:text-left">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-primary/10 text-cyan-600 dark:text-primary flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-xl">hub</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] tracking-wider uppercase font-extrabold text-slate-400 dark:text-slate-400 block">Jaringan &amp; Infrastruktur</span>
+                        <span class="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100">Powered by / Upstream Network Partners</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap items-center justify-center lg:justify-end gap-2.5 sm:gap-3 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    @if(!empty($partnerName))
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-300 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300 shadow-2xs font-extrabold">
+                        <span class="material-symbols-outlined text-[16px] text-cyan-600 dark:text-cyan-400">verified</span>
+                        <span>Mitra ISP: {{ $partnerName }}</span>
+                    </div>
+                    @endif
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs hover:border-cyan-500/40 transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                        <span>Telkom Astinet</span>
+                    </div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs hover:border-cyan-500/40 transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span>Biznet Networks</span>
+                    </div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs hover:border-cyan-500/40 transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Moratelindo / Oxygen</span>
+                    </div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs hover:border-cyan-500/40 transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>PLN Icon Plus</span>
+                    </div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs hover:border-cyan-500/40 transition-colors">
+                        <span class="material-symbols-outlined text-[15px] text-indigo-500">public</span>
+                        <span>APJII &amp; IIX</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -813,6 +868,210 @@
         </div>
     </section>
 
+    <!-- Kemitraan ISP (Powered by / Upstream Partners) Section -->
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-28" id="kemitraan">
+        <div class="text-center mb-16">
+            <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-cyan-50 border border-cyan-200 text-cyan-700 dark:bg-primary/10 dark:border-primary/20 dark:text-primary mb-3">
+                <span class="material-symbols-outlined text-[16px]">handshake</span> KEMITRAAN &amp; UPSTREAM PARTNERS
+            </span>
+            <h2 class="font-headline-lg text-headline-lg text-cyan-600 dark:text-primary mb-3" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Didukung Jaringan Terpercaya</h2>
+            <p class="text-slate-600 dark:text-on-surface-variant font-body-md text-body-md max-w-3xl mx-auto">
+                Konektivitas kami diselenggarakan secara resmi melalui kemitraan strategis dengan Penyelenggara Jasa Internet (ISP) berlisensi Kominfo dan didukung infrastruktur fiber backbone Tier-1 nasional untuk jaminan kestabilan akses tanpa kompromi.
+            </p>
+        </div>
+
+        @if(!empty($partnerName))
+        <!-- Featured Licensed ISP Partner Card -->
+        <div class="mb-12 p-8 md:p-10 rounded-[2.5rem] bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 dark:from-cyan-950/40 dark:via-blue-950/30 dark:to-slate-900/60 border border-cyan-300 dark:border-cyan-500/30 backdrop-blur-xl relative overflow-hidden shadow-xl">
+            <div class="absolute -right-16 -top-16 w-56 h-56 bg-cyan-400/20 dark:bg-primary/15 rounded-full blur-[70px] pointer-events-none"></div>
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
+                <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6">
+                    <div class="w-24 h-24 rounded-2xl bg-white dark:bg-slate-900 border border-cyan-200 dark:border-cyan-500/30 flex items-center justify-center p-3 shadow-lg shrink-0">
+                        @if(!empty($partnerLogo))
+                            <img src="{{ asset($partnerLogo) }}" alt="{{ $partnerName }}" class="w-full h-full object-contain">
+                        @else
+                            <span class="material-symbols-outlined text-5xl text-cyan-600 dark:text-primary">verified_user</span>
+                        @endif
+                    </div>
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-100 text-cyan-800 dark:bg-cyan-900/70 dark:text-cyan-300 mb-2">
+                            <span class="material-symbols-outlined text-[14px]">verified</span> MITRA PENYELENGGARA JASA INTERNET RESMI
+                        </div>
+                        <h3 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{{ $partnerName }}</h3>
+                        @if(!empty($partnerLegal) && $partnerLegal !== $partnerName)
+                            <p class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{{ $partnerLegal }}</p>
+                        @endif
+                        <p class="text-xs md:text-sm text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
+                            Layanan internet diselenggarakan secara legal bekerja sama dengan <strong class="text-slate-900 dark:text-white">{{ $partnerName }}</strong> sebagai pemegang Izin Operasional ISP resmi dari Kementerian Komunikasi dan Informatika (Kominfo) RI dengan jaminan standar kualitas layanan dan SLA jaringan terverifikasi.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 w-full lg:w-auto">
+                    <div class="flex items-center gap-2.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-white/90 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-500/30 px-4 py-2.5 rounded-xl shadow-2xs">
+                        <span class="material-symbols-outlined text-lg text-emerald-600 dark:text-emerald-400">gavel</span>
+                        <span>Berizin Resmi Kominfo RI</span>
+                    </div>
+                    <div class="flex items-center gap-2.5 text-xs font-semibold text-cyan-800 dark:text-cyan-300 bg-white/90 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-500/30 px-4 py-2.5 rounded-xl shadow-2xs">
+                        <span class="material-symbols-outlined text-lg text-cyan-600 dark:text-cyan-400">shield</span>
+                        <span>Anggota Resmi APJII</span>
+                    </div>
+                    <div class="flex items-center gap-2.5 text-xs font-semibold text-blue-800 dark:text-blue-300 bg-white/90 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-500/30 px-4 py-2.5 rounded-xl shadow-2xs">
+                        <span class="material-symbols-outlined text-lg text-blue-600 dark:text-blue-400">speed</span>
+                        <span>Direct Peering IIX &amp; OpenIXP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- 4 Arsitektur Pilar Jaringan -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Pilar 1 -->
+            <div class="glass-card p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 glow-hover transition-all">
+                <div class="w-12 h-12 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-primary flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined text-2xl">cable</span>
+                </div>
+                <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">Multi-Backbone Redundant</h4>
+                <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Koneksi disalurkan melalui multi-carrier fiber optik darat dan kabel bawah laut (SKKL) untuk mencegah single point of failure.
+                </p>
+            </div>
+
+            <!-- Pilar 2 -->
+            <div class="glass-card p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 glow-hover transition-all">
+                <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined text-2xl">lan</span>
+                </div>
+                <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">Direct Peering IIX &amp; OpenIXP</h4>
+                <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Akses langsung ke Indonesia Internet Exchange membuat koneksi ke perbankan, portal lokal, dan server game Indonesia berlatensi ultra-rendah (&lt;5ms).
+                </p>
+            </div>
+
+            <!-- Pilar 3 -->
+            <div class="glass-card p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 glow-hover transition-all">
+                <div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined text-2xl">cloud_sync</span>
+                </div>
+                <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">Direct CDN Edge Cache</h4>
+                <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Didukung server edge cache lokal untuk konten Google, YouTube 4K, Meta, TikTok, dan Netflix agar streaming lancar bebas buffering.
+                </p>
+            </div>
+
+            <!-- Pilar 4 -->
+            <div class="glass-card p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 glow-hover transition-all">
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined text-2xl">network_check</span>
+                </div>
+                <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">BGP Auto-Failover</h4>
+                <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Sistem routing BGP cerdas mengalihkan rute traffic secara otomatis seketika link utama mengalami pemeliharaan tanpa mengganggu sesi pengguna.
+                </p>
+            </div>
+        </div>
+
+        <!-- Upstream & Backbone Partners Grid -->
+        <div class="glass-card rounded-[2rem] p-8 md:p-12 border border-slate-200/80 dark:border-white/10 shadow-xl mb-12">
+            <div class="text-center max-w-2xl mx-auto mb-10">
+                <h3 class="text-xl md:text-2xl font-black text-slate-900 dark:text-white mb-2">Jaringan Upstream &amp; Ekosistem Interkoneksi</h3>
+                <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">Infrastruktur dan mitra backbone nasional yang menopang keandalan internet kami setiap saat.</p>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                <!-- Telkom -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center font-black text-sm mb-3">
+                        TELKOM
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">Telkom Astinet</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Backbone nasional &amp; serat optik nusantara</p>
+                </div>
+
+                <!-- Biznet -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-sm mb-3">
+                        BIZNET
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">Biznet Networks</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Global Tier-1 peering &amp; fiber network</p>
+                </div>
+
+                <!-- Moratelindo -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-100 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-sm mb-3">
+                        OXYGEN
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">Moratelindo</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Jalur kabel laut &amp; data center terproteksi</p>
+                </div>
+
+                <!-- PLN Icon Plus -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center font-black text-sm mb-3">
+                        ICON+
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">PLN Icon Plus</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Jaringan Right-of-Way serat optik PLN</p>
+                </div>
+
+                <!-- APJII -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm mb-3">
+                        APJII
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">Asosiasi ISP (APJII)</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Alokasi IP &amp; tata kelola internet nasional</p>
+                </div>
+
+                <!-- IIX & OpenIXP -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm mb-3">
+                        IIX
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">IIX &amp; OpenIXP</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Interkoneksi lalu lintas internet domestik</p>
+                </div>
+
+                <!-- Lintasarta / IOH -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-sm mb-3">
+                        IOH
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">Lintasarta / IOH</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Komunikasi data enterprise &amp; telekomunikasi</p>
+                </div>
+
+                <!-- FiberStar -->
+                <div class="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 flex flex-col items-center text-center glow-hover transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center font-black text-sm mb-3">
+                        FIBER
+                    </div>
+                    <h5 class="font-bold text-slate-900 dark:text-white text-sm mb-1">FiberStar</h5>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Infrastruktur jaringan open access FTTH</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Partnership Invitation Banner -->
+        <div class="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 dark:from-surface-container-high dark:to-surface border border-cyan-200 dark:border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+            <div class="flex items-center gap-4 text-center sm:text-left">
+                <div class="w-12 h-12 rounded-2xl bg-cyan-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <span class="material-symbols-outlined text-2xl">business_center</span>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm sm:text-base">Tertarik Bermitra atau Menjadi Reseller Resmi?</h4>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">Kami membuka peluang kerjasama kemitraan ISP &amp; distribusi internet bagi pengelola kawasan, RT/RW Net resmi, dan instansi.</p>
+                </div>
+            </div>
+            <a href="https://wa.me/{{ preg_replace('/\D/', '', $companyPhone) }}?text=Halo%2C%20saya%20tertarik%20dengan%20informasi%20kemitraan%20dan%20reseller%20ISP." target="_blank" class="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-md shrink-0 flex items-center gap-2">
+                <span class="material-symbols-outlined text-base">forum</span>
+                <span>Hubungi Tim Kemitraan</span>
+            </a>
+        </div>
+    </section>
+
     <!-- FAQ Section -->
     <section class="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto mb-28" id="faq">
         <div class="text-center mb-12">
@@ -948,6 +1207,7 @@
                 <li><a href="#paket" class="hover:text-cyan-600 dark:hover:text-primary transition-colors">Internet Rumah (PPPoE)</a></li>
                 <li><a href="#hotspot" class="hover:text-cyan-600 dark:hover:text-primary transition-colors">Voucher Prabayar Hotspot</a></li>
                 <li><a href="#member-hotspot" class="hover:text-cyan-600 dark:hover:text-primary transition-colors">Member Hotspot</a></li>
+                <li><a href="#kemitraan" class="hover:text-cyan-600 dark:hover:text-primary transition-colors">Kemitraan ISP &amp; Upstream</a></li>
                 <li><a href="{{ route('guest.payment') }}" class="hover:text-cyan-600 dark:hover:text-primary transition-colors">Cek &amp; Bayar Tagihan Online</a></li>
             </ul>
         </div>
@@ -980,8 +1240,10 @@
     <!-- Bottom Copyright & Admin link -->
     <div class="max-w-container-max mx-auto pt-6 border-t border-slate-200 dark:border-white/10 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
         <p>&copy; {{ date('Y') }} {{ $companyName }}. Hak Cipta Dilindungi Undang-Undang.</p>
-        <div class="flex items-center gap-4">
-            <span>Didukung oleh Payment Gateway Berizin Bank Indonesia</span>
+        <div class="flex flex-wrap items-center justify-center gap-4 text-[11px]">
+            <span>Didukung Kemitraan ISP Berizin Kominfo &amp; Anggota APJII</span>
+            <span class="hidden sm:inline">&bull;</span>
+            <span>Payment Gateway Berizin Bank Indonesia</span>
             <a href="{{ route('admin.login') }}" class="text-slate-400 hover:text-cyan-600 dark:text-on-surface-variant dark:hover:text-primary transition-colors flex items-center gap-1 opacity-60 hover:opacity-100" title="Admin Login">
                 <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
             </a>
