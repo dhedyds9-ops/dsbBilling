@@ -50,6 +50,7 @@ class Index extends BaseNetworkComponent
             'status' => '',
             'voucher_pool_id' => '',
             'created_date' => '',
+            'reseller_id' => '',
         ];
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
@@ -313,6 +314,7 @@ class Index extends BaseNetworkComponent
             'status' => '',
             'voucher_pool_id' => '',
             'created_date' => '',
+            'reseller_id' => '',
         ];
         $this->activeTab = 'active';
         $this->search = '';

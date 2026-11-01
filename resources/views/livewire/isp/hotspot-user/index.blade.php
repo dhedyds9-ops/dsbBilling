@@ -123,6 +123,19 @@
                     <option value="offline">Aktif & Offline</option>
                     <option value="suspended">Suspend / Isolir</option>
                 </select>
+                <select wire:model.live="filters.reseller_id"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                    <option value="">Semua Owner/Reseller</option>
+                    <option value="owner">Owner (Pusat)</option>
+                    <option value="reseller">Semua Reseller</option>
+                    @if(isset($resellers) && count($resellers) > 0)
+                        <optgroup label="Pilih Reseller">
+                            @foreach($resellers as $reseller)
+                                <option value="{{ $reseller->id }}">Reseller: {{ $reseller->name }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endif
+                </select>
                 <select wire:model.live="perPage"
                         class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                     <option value="20">20 / hal</option>
@@ -131,7 +144,7 @@
                     <option value="500">500 / hal</option>
                     <option value="999999">Semua</option>
                 </select>
-                @if($search || $filters['status'])
+                @if($search || $filters['status'] || !empty($filters['reseller_id']))
                 <button wire:click="resetFilters"
                         title="Reset Filter"
                         class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">

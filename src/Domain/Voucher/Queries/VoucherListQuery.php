@@ -104,6 +104,15 @@ class VoucherListQuery
         })
         ->when(!empty($filters['created_date']), function ($q) use ($filters) {
             $q->whereDate('vouchers.created_at', $filters['created_date']);
+        })
+        ->when(!empty($filters['reseller_id']), function ($q) use ($filters) {
+            if ($filters['reseller_id'] === 'owner' || $filters['reseller_id'] === 'pusat') {
+                $q->whereNull('vouchers.reseller_id');
+            } elseif ($filters['reseller_id'] === 'reseller') {
+                $q->whereNotNull('vouchers.reseller_id');
+            } else {
+                $q->where('vouchers.reseller_id', $filters['reseller_id']);
+            }
         });
 
         return $query;

@@ -132,11 +132,31 @@
                             <option value="expired">Kedaluwarsa</option>
                         @endif
                     </select>
+                    <select wire:model.live="filters.reseller_id" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                        <option value="">Semua Owner/Reseller</option>
+                        <option value="owner">Owner (Pusat)</option>
+                        <option value="reseller">Semua Reseller</option>
+                        @if(isset($resellers) && count($resellers) > 0)
+                            <optgroup label="Pilih Reseller">
+                                @foreach($resellers as $reseller)
+                                    <option value="{{ $reseller->id }}">Reseller: {{ $reseller->name }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endif
+                    </select>
                     <select wire:model.live="perPage" class="col-span-2 sm:col-auto w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                         <option value="20">20 / halaman</option>
                         <option value="50">50 / halaman</option>
                         <option value="100">100 / halaman</option>
                     </select>
+                    @if($search || $filters['status'] || $filters['voucher_pool_id'] || !empty($filters['reseller_id']))
+                    <button wire:click="resetFilters"
+                            title="Reset Filter"
+                            class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                        <span class="hidden sm:inline">Reset</span>
+                    </button>
+                    @endif
                 </div>
             </div>
             <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">

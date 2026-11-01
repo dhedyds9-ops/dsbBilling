@@ -29,7 +29,7 @@ class Index extends BaseNetworkComponent
         parent::mount();
         $this->activeModule = 'isp';
         $this->activePage = 'pppoe-users';
-        $this->filters = ['status' => ''];
+        $this->filters = ['status' => '', 'reseller_id' => ''];
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'ISP', 'url' => route('isp.service-profiles.index')],
@@ -62,6 +62,25 @@ class Index extends BaseNetworkComponent
                     });
                 } else {
                     $q->where('status', $this->filters['status']);
+                }
+            })
+            ->when(!empty($this->filters['reseller_id']), function($q) {
+                if ($this->filters['reseller_id'] === 'owner' || $this->filters['reseller_id'] === 'pusat') {
+                    $q->where(function($sq) {
+                        $sq->whereNull('pppoe_users.reseller_id')
+                           ->whereDoesntHave('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } elseif ($this->filters['reseller_id'] === 'reseller') {
+                    $q->where(function($sq) {
+                        $sq->whereNotNull('pppoe_users.reseller_id')
+                           ->orWhereHas('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } else {
+                    $rid = $this->filters['reseller_id'];
+                    $q->where(function($sq) use ($rid) {
+                        $sq->where('pppoe_users.reseller_id', $rid)
+                           ->orWhereHas('customer', fn($cq) => $cq->where('customers.reseller_id', $rid));
+                    });
                 }
             });
 
@@ -206,7 +225,7 @@ class Index extends BaseNetworkComponent
 
     public function resetFilters()
     {
-        $this->filters = ['status' => ''];
+        $this->filters = ['status' => '', 'reseller_id' => ''];
         $this->search = '';
         $this->showTrashed = false;
         $this->resetActionState();
@@ -309,6 +328,25 @@ class Index extends BaseNetworkComponent
                 } else {
                     $q->where('status', $this->filters['status']);
                 }
+            })
+            ->when(!empty($this->filters['reseller_id']), function($q) {
+                if ($this->filters['reseller_id'] === 'owner' || $this->filters['reseller_id'] === 'pusat') {
+                    $q->where(function($sq) {
+                        $sq->whereNull('pppoe_users.reseller_id')
+                           ->whereDoesntHave('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } elseif ($this->filters['reseller_id'] === 'reseller') {
+                    $q->where(function($sq) {
+                        $sq->whereNotNull('pppoe_users.reseller_id')
+                           ->orWhereHas('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } else {
+                    $rid = $this->filters['reseller_id'];
+                    $q->where(function($sq) use ($rid) {
+                        $sq->where('pppoe_users.reseller_id', $rid)
+                           ->orWhereHas('customer', fn($cq) => $cq->where('customers.reseller_id', $rid));
+                    });
+                }
             });
 
         $pppoeUsers = $query->orderBy($this->sortField, $this->sortDirection)
@@ -330,6 +368,10 @@ class Index extends BaseNetworkComponent
             })->count(),
         ];
 
-        return view('livewire.isp.pppoe-user.index', compact('pppoeUsers', 'stats'));
+        $resellers = \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'reseller'))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('livewire.isp.pppoe-user.index', compact('pppoeUsers', 'stats', 'resellers'));
     }
 }

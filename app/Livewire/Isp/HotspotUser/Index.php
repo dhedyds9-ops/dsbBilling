@@ -29,7 +29,7 @@ class Index extends BaseNetworkComponent
         parent::mount();
         $this->activeModule = 'isp';
         $this->activePage = 'hotspot-users';
-        $this->filters = ['status' => ''];
+        $this->filters = ['status' => '', 'reseller_id' => ''];
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'ISP', 'url' => route('isp.service-profiles.index')],
@@ -62,6 +62,25 @@ class Index extends BaseNetworkComponent
                     });
                 } else {
                     $q->where('status', $this->filters['status']);
+                }
+            })
+            ->when(!empty($this->filters['reseller_id']), function($q) {
+                if ($this->filters['reseller_id'] === 'owner' || $this->filters['reseller_id'] === 'pusat') {
+                    $q->where(function($sq) {
+                        $sq->whereNull('hotspot_users.reseller_id')
+                           ->whereDoesntHave('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } elseif ($this->filters['reseller_id'] === 'reseller') {
+                    $q->where(function($sq) {
+                        $sq->whereNotNull('hotspot_users.reseller_id')
+                           ->orWhereHas('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } else {
+                    $rid = $this->filters['reseller_id'];
+                    $q->where(function($sq) use ($rid) {
+                        $sq->where('hotspot_users.reseller_id', $rid)
+                           ->orWhereHas('customer', fn($cq) => $cq->where('customers.reseller_id', $rid));
+                    });
                 }
             });
 
@@ -249,7 +268,7 @@ class Index extends BaseNetworkComponent
 
     public function resetFilters()
     {
-        $this->filters = ['status' => ''];
+        $this->filters = ['status' => '', 'reseller_id' => ''];
         $this->search = '';
         $this->showTrashed = false;
         $this->resetActionState();
@@ -334,6 +353,25 @@ class Index extends BaseNetworkComponent
                 } else {
                     $q->where('status', $this->filters['status']);
                 }
+            })
+            ->when(!empty($this->filters['reseller_id']), function($q) {
+                if ($this->filters['reseller_id'] === 'owner' || $this->filters['reseller_id'] === 'pusat') {
+                    $q->where(function($sq) {
+                        $sq->whereNull('hotspot_users.reseller_id')
+                           ->whereDoesntHave('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } elseif ($this->filters['reseller_id'] === 'reseller') {
+                    $q->where(function($sq) {
+                        $sq->whereNotNull('hotspot_users.reseller_id')
+                           ->orWhereHas('customer', fn($cq) => $cq->whereNotNull('customers.reseller_id'));
+                    });
+                } else {
+                    $rid = $this->filters['reseller_id'];
+                    $q->where(function($sq) use ($rid) {
+                        $sq->where('hotspot_users.reseller_id', $rid)
+                           ->orWhereHas('customer', fn($cq) => $cq->where('customers.reseller_id', $rid));
+                    });
+                }
             });
 
         $query = $query->orderBy($this->sortField, $this->sortDirection);
@@ -347,6 +385,10 @@ class Index extends BaseNetworkComponent
             'online' => \App\Models\ISP\HotspotActiveSession::whereIn('user', \App\Models\ISP\HotspotUser::select('username'))->distinct('user')->count('user'),
         ];
 
-        return view('livewire.isp.hotspot-user.index', compact('hotspotUsers', 'stats'));
+        $resellers = \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'reseller'))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('livewire.isp.hotspot-user.index', compact('hotspotUsers', 'stats', 'resellers'));
     }
 }

@@ -143,8 +143,10 @@ class Index extends BaseCrmComponent
         }
 
         if (!empty($this->resellerFilter)) {
-            if ($this->resellerFilter === 'pusat') {
+            if ($this->resellerFilter === 'pusat' || $this->resellerFilter === 'owner') {
                 $query->whereNull('reseller_id');
+            } elseif ($this->resellerFilter === 'reseller') {
+                $query->whereNotNull('reseller_id');
             } else {
                 $query->where('reseller_id', $this->resellerFilter);
             }
