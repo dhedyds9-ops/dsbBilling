@@ -106,7 +106,16 @@
         olts.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = window.L.divIcon({ className: 'custom-icon icon-olt', html: '<i class="fa fa-server"></i>', iconSize: [28,28] });
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#60a5fa] border-b border-gray-700 pb-2 mb-2">OLT: ${i.name}</h6>IP: ${i.ip_address||'-'}`, popupOpt);
+                let html = `
+                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
+                            <span style="font-weight:700;color:#60a5fa;font-size:13px;">OLT: ${i.name}</span>
+                            <span style="font-size:9px;font-weight:700;background:#1e3a8a;color:#93c5fd;padding:2px 6px;border-radius:999px;">OLT</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">IP Host:</span><span style="font-family:monospace;color:#34d399;font-weight:700;">${i.ip_address || '-'}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port PON:</span><span style="color:#38bdf8;font-weight:700;">${i.pon_port_count || i.port_count || '-'} Port</span></div>
+                    </div>`;
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
             }
         });
@@ -114,7 +123,16 @@
         odcs.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = window.L.divIcon({ className: 'custom-icon icon-odc', html: '<i class="fa fa-hdd"></i>', iconSize: [24,24] });
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#fbbf24] border-b border-gray-700 pb-2 mb-2">ODC: ${i.name}</h6>Kode: ${i.code||'-'}`, popupOpt);
+                let html = `
+                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
+                            <span style="font-weight:700;color:#fbbf24;font-size:13px;">ODC: ${i.name}</span>
+                            <span style="font-size:9px;font-weight:700;background:#78350f;color:#fde68a;padding:2px 6px;border-radius:999px;">ODC</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kode:</span><span style="font-family:monospace;color:#f8fafc;font-weight:600;">${i.code || '-'}</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kapasitas:</span><span style="color:#f8fafc;font-weight:700;">${i.capacity || 48} Port</span></div>
+                    </div>`;
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
                 if(i.olt_id) {
                     let olt = olts.find(o => o.id == i.olt_id);
@@ -126,7 +144,23 @@
         odps.forEach(i => {
             if(i.latitude && i.longitude) {
                 let icon = window.L.divIcon({ className: 'custom-icon icon-odp', html: '<i class="fa fa-box"></i>', iconSize: [20,20] });
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#34d399] border-b border-gray-700 pb-2 mb-2">ODP: ${i.name}</h6>Port: ${i.used_port_count||0}/${i.port_count||0}`, popupOpt);
+                let totalP = parseInt(i.port_count) || 8;
+                let usedP = parseInt(i.used_port_count) || 0;
+                let availP = Math.max(0, totalP - usedP);
+                let pct = Math.min(100, Math.round((usedP / totalP) * 100));
+                let html = `
+                    <div style="font-family:Inter,sans-serif;width:230px;font-size:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
+                            <span style="font-weight:700;color:#34d399;font-size:13px;">ODP: ${i.name}</span>
+                            <span style="font-size:9px;font-weight:700;background:#064e3b;color:#a7f3d0;padding:2px 6px;border-radius:999px;">ODP</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Terpakai:</span><span style="color:#f8fafc;font-weight:700;">${usedP} / ${totalP} (${pct}%)</span></div>
+                        <div style="width:100%;height:5px;background:#1e293b;border-radius:999px;margin-bottom:6px;overflow:hidden;">
+                            <div style="width:${pct}%;height:100%;background:${pct > 90 ? '#ef4444' : (pct > 70 ? '#f59e0b' : '#10b981')};"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Port Tersedia:</span><span style="color:#34d399;font-weight:700;">${availP} ONU lagi</span></div>
+                    </div>`;
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
                 if(i.odc_id) {
                     let odc = odcs.find(o => o.id == i.odc_id);
@@ -140,7 +174,16 @@
                 let statusClass = i.is_online ? 'icon-customer-online' : 'icon-customer-offline';
                 let htmlIcon = i.is_online ? '<i class="fa fa-wifi text-green-400"></i>' : '<i class="fa fa-times text-red-400"></i>';
                 let icon = window.L.divIcon({ className: `custom-icon icon-customer ${statusClass}`, html: htmlIcon, iconSize: [22,22] });
-                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(`<h6 class="font-bold text-[#cbd5e1] border-b border-gray-700 pb-2 mb-2">Pelanggan: ${i.name}</h6>ID: ${i.customer_id||'-'}<br>Status: ${i.is_online?'<span class="text-green-400">Online</span>':'<span class="text-red-400">Offline</span>'}`, popupOpt);
+                let html = `
+                    <div style="font-family:Inter,sans-serif;width:220px;font-size:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:8px;">
+                            <span style="font-weight:700;color:#f8fafc;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;" title="${i.name}">${i.name}</span>
+                            <span style="font-size:9px;font-weight:700;background:${i.is_online?'#065f46':'#334155'};color:${i.is_online?'#34d399':'#94a3b8'};padding:2px 6px;border-radius:999px;">${i.is_online ? 'ONLINE' : 'OFFLINE'}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">User ID:</span><span style="font-family:monospace;color:#f8fafc;font-weight:600;">${i.customer_id || i.code || '-'}</span></div>
+                        ${i.phone ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#94a3b8;">Kontak:</span><span style="color:#38bdf8;">${i.phone}</span></div>` : ''}
+                    </div>`;
+                window.L.marker([i.latitude, i.longitude], {icon}).addTo(mapInstance).bindPopup(html, popupOpt);
                 bounds.push([i.latitude, i.longitude]);
                 if(i.odp_id) {
                     let odp = odps.find(o => o.id == i.odp_id);

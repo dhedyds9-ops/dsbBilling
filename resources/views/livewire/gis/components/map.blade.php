@@ -710,47 +710,166 @@
         box-shadow: 0 0 10px #ef4444;
     }
     .custom-icon.icon-customer-offline i { transform: rotate(45deg); }
+    /* Unified Modern Map Popup Styling */
+    .modern-map-popup .network-card,
     .modern-map-popup .customer-card {
         width: 320px;
-        padding: 16px 20px;
+        padding: 0;
         color: #cbd5e1;
         font-family: "Inter", "Segoe UI", Tahoma, sans-serif;
         font-size: 12px;
         line-height: 1.4;
+        background: #0f172a;
+        border-radius: 12px;
+        overflow: hidden;
     }
+    .modern-map-popup .network-header,
     .modern-map-popup .customer-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 12px;
-        border-bottom: 1px solid #1f2937;
+        padding: 10px 14px;
+        border-bottom: 1px solid #1e293b;
+        background: rgba(30, 41, 59, 0.5);
     }
+    .modern-map-popup .network-header-left,
     .modern-map-popup .customer-header-left {
         display: flex;
         align-items: center;
         gap: 8px;
         min-width: 0;
+        flex: 1;
     }
-    .modern-map-popup .status-dot {
-        font-size: 18px;
-        font-weight: 700;
-        line-height: 1;
-    }
-    .modern-map-popup .customer-content {
-        padding: 14px;
+    .modern-map-popup .network-title-group {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        min-width: 0;
     }
+    .modern-map-popup .network-title,
     .modern-map-popup .customer-header-title {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 700;
         color: #f1f5f9;
         letter-spacing: 0.01em;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 200px;
+        max-width: 195px;
+    }
+    .modern-map-popup .network-subtitle {
+        font-size: 10px;
+        color: #94a3b8;
+        font-family: "Consolas", monospace;
+    }
+    .modern-map-popup .network-badge,
+    .modern-map-popup .customer-badge {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    .modern-map-popup .badge-olt { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border: 1px solid #60a5fa; }
+    .modern-map-popup .badge-odc { background: linear-gradient(135deg, #78350f, #f59e0b); color: #fff; border: 1px solid #fbbf24; }
+    .modern-map-popup .badge-odp { background: linear-gradient(135deg, #064e3b, #10b981); color: #fff; border: 1px solid #34d399; }
+    .modern-map-popup .badge-htb { background: linear-gradient(135deg, #4c1d95, #8b5cf6); color: #fff; border: 1px solid #a78bfa; }
+    .modern-map-popup .badge-closure { background: #334155; color: #cbd5e1; border: 1px solid #64748b; }
+    .modern-map-popup .badge-asset { background: linear-gradient(135deg, #0e7490, #06b6d4); color: #fff; border: 1px solid #22d3ee; }
+    .modern-map-popup .badge-onu { background: #2563eb; color: #fff; }
+
+    .modern-map-popup .network-content,
+    .modern-map-popup .customer-content {
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .modern-map-popup .node-panel {
+        background: rgba(30, 41, 59, 0.45);
+        border: 1px solid rgba(71, 85, 105, 0.4);
+        border-radius: 8px;
+        padding: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    .modern-map-popup .node-kv {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+    }
+    .modern-map-popup .node-kv-label {
+        color: #94a3b8;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .modern-map-popup .node-kv-value {
+        color: #f1f5f9;
+        font-weight: 600;
+        text-align: right;
+        word-break: break-word;
+    }
+    .modern-map-popup .node-progress-bg {
+        width: 100%;
+        height: 6px;
+        background: #1e293b;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 3px;
+        margin-bottom: 2px;
+    }
+    .modern-map-popup .node-progress-bar {
+        height: 100%;
+        border-radius: 999px;
+        transition: width 0.3s;
+    }
+    .modern-map-popup .node-note {
+        font-size: 11px;
+        color: #94a3b8;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px dashed rgba(71, 85, 105, 0.5);
+        border-radius: 6px;
+        padding: 6px 8px;
+    }
+    .modern-map-popup .node-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+    }
+    .modern-map-popup .node-btn {
+        flex: 1;
+        padding: 7px 6px;
+        border-radius: 6px;
+        border: none;
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+        text-decoration: none !important;
+        text-transform: uppercase;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        transition: all 0.15s ease;
+        line-height: 1.2;
+    }
+    .modern-map-popup .node-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .modern-map-popup .node-btn-primary { background: #2563eb; color: #fff !important; }
+    .modern-map-popup .node-btn-amber { background: #d97706; color: #fff !important; }
+    .modern-map-popup .node-btn-emerald { background: #059669; color: #fff !important; }
+    .modern-map-popup .node-btn-purple { background: #7c3aed; color: #fff !important; }
+    .modern-map-popup .node-btn-secondary { background: #334155; color: #e2e8f0 !important; }
+    .modern-map-popup .node-btn-danger { background: #dc2626; color: #fff !important; }
+
+    .modern-map-popup .status-dot {
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1;
     }
     .modern-map-popup .top-row {
         display: flex;
@@ -771,7 +890,7 @@
         font-family: "Consolas", "Menlo", monospace;
         font-size: 12px;
         font-weight: 700;
-        color: #0e2a50ff;
+        color: #38bdf8;
     }
     .modern-map-popup .status-row {
         display: flex;
@@ -780,7 +899,7 @@
         font-size: 12px;
     }
     .modern-map-popup .status-label {
-        color: #0d274bff;
+        color: #94a3b8;
         font-weight: 600;
     }
     .modern-map-popup .status-value {
@@ -1679,6 +1798,27 @@
             return nearest || raw;
         }
 
+        function getFiberHex(rawColor) {
+            var c = String(rawColor || '').toLowerCase().trim();
+            var map = {
+                'blue': '#3b82f6', 'biru': '#3b82f6',
+                'orange': '#f97316', 'oranye': '#f97316',
+                'green': '#22c55e', 'hijau': '#22c55e',
+                'brown': '#b45309', 'cokelat': '#b45309', 'coklat': '#b45309',
+                'grey': '#94a3b8', 'gray': '#94a3b8', 'abu-abu': '#94a3b8',
+                'white': '#f8fafc', 'putih': '#f8fafc',
+                'red': '#ef4444', 'merah': '#ef4444',
+                'black': '#334155', 'hitam': '#334155',
+                'yellow': '#eab308', 'kuning': '#eab308',
+                'violet': '#a855f7', 'ungu': '#a855f7',
+                'pink': '#ec4899', 'merah muda': '#ec4899',
+                'aqua': '#06b6d4', 'toska': '#06b6d4'
+            };
+            if (map[c]) return map[c];
+            if (c.startsWith('#')) return c;
+            return '#10b981';
+        }
+
         function getConnectionKey(fromType, fromId, toType, toId) {
             return `${fromType}_${fromId}__${toType}_${toId}`;
         }
@@ -2315,55 +2455,67 @@
                 var ipDisplay = olt.ip_address || olt.host || '-';
                 var ponPortsDisplay = (olt.pon_port_count || olt.port_count || '-') + (olt.pon_port_count || olt.port_count ? ' Port' : '');
                 var modelVendor = [olt.vendor?.name, olt.model].filter(Boolean).join(' - ') || '-';
-                var statusBadge = (olt.status === 'active' || olt.status === 'online' || !olt.status)
-                    ? '<span class="badge bg-success text-white" style="font-size: 10px; padding: 2px 6px;">AKTIF</span>'
-                    : '<span class="badge bg-secondary text-white" style="font-size: 10px; padding: 2px 6px;">' + (olt.status || 'AKTIF').toUpperCase() + '</span>';
+                var isOltActive = (olt.status === 'active' || olt.status === 'online' || !olt.status);
 
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
-                    <div class="map-popup">
-                        <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-slate-700">
-                            <h6 class="map-popup-title mb-0" style="color: #60a5fa; font-weight: 700; font-size: 14px;">OLT: ${olt.name}</h6>
-                            <div>${statusBadge}</div>
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <span class="status-dot ${isOltActive ? 'status-online' : 'status-offline'}">●</span>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${olt.name}">${olt.name}</div>
+                                    <div class="network-subtitle">${olt.code || 'OLT-NODE'}</div>
+                                </div>
+                            </div>
+                            <div class="network-badge badge-olt">OLT</div>
                         </div>
-                        <table class="table table-sm table-borderless map-popup-table mb-2">
-                            <tr><td class="map-popup-label">IP Address:</td><td class="map-popup-value font-monospace" style="color: #34d399; font-weight: 700;">${ipDisplay}</td></tr>
-                            <tr><td class="map-popup-label">Port PON:</td><td class="map-popup-value font-bold" style="color: #38bdf8;">${ponPortsDisplay}</td></tr>
-                            <tr><td class="map-popup-label">Model/Vendor:</td><td class="map-popup-value">${modelVendor}</td></tr>
-                            <tr><td class="map-popup-label">ODC Terhubung:</td><td class="map-popup-value font-bold">${connectedOdcsCount} ODC</td></tr>
-                            <tr><td class="map-popup-label">Pelanggan/ONU:</td><td class="map-popup-value">${totalOnusCount} Terhubung</td></tr>
-                            ${olt.address ? `<tr><td class="map-popup-label">Lokasi:</td><td class="map-popup-value">${olt.address}</td></tr>` : ''}
-                        </table>
-                        ${olt.description ? `<div class="map-popup-desc mb-2 text-xs text-slate-400">${olt.description}</div>` : ''}
+                        <div class="network-content">
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">IP Address:</span>
+                                    <span class="node-kv-value font-mono text-emerald-400 font-bold">${ipDisplay}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port PON:</span>
+                                    <span class="node-kv-value text-sky-400 font-bold">${ponPortsDisplay}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Model/Vendor:</span>
+                                    <span class="node-kv-value">${modelVendor}</span>
+                                </div>
+                            </div>
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">ODC Terhubung:</span>
+                                    <span class="node-kv-value font-bold text-amber-300">${connectedOdcsCount} ODC</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Pelanggan/ONU:</span>
+                                    <span class="node-kv-value font-bold text-emerald-400">${totalOnusCount} Terhubung</span>
+                                </div>
+                                ${olt.address ? `
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Lokasi:</span>
+                                    <span class="node-kv-value">${olt.address}</span>
+                                </div>` : ''}
+                            </div>
+                            ${olt.description ? `<div class="node-note">${olt.description}</div>` : ''}
+                            <div class="node-actions">
+                                <button type="button" class="node-btn node-btn-primary btn-edit-olt"><i class="fa fa-pencil-alt"></i> Edit</button>
+                                <a href="/isp/olts/${olt.id}/edit" target="_blank" class="node-btn node-btn-secondary"><i class="fa fa-external-link-alt"></i> Lengkap</a>
+                                <button type="button" class="node-btn node-btn-danger btn-del-olt"><i class="fa fa-trash-alt"></i> Hapus</button>
+                            </div>
+                        </div>
                     </div>`;
-                
-                var editBtn = document.createElement('button');
-                editBtn.className = 'btn btn-sm btn-outline-primary map-popup-btn';
-                editBtn.innerText = '{{ __('Edit OLT') }}';
-                editBtn.onclick = function() { editOlt(olt.id); };
 
-                var detailLink = document.createElement('a');
-                detailLink.href = `/isp/olts/${olt.id}/edit`;
-                detailLink.target = '_blank';
-                detailLink.className = 'btn btn-sm btn-outline-secondary map-popup-btn';
-                detailLink.innerText = 'Lengkap';
-
-                var deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
-                deleteBtn.innerText = 'Hapus Lokasi';
-                deleteBtn.onclick = function() { deleteLocation('olt', olt.id, marker); };
-
-                var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions d-flex gap-1 flex-wrap mt-2';
-                actionRow.appendChild(editBtn);
-                actionRow.appendChild(detailLink);
-                actionRow.appendChild(deleteBtn);
-                popupContent.querySelector('.map-popup').appendChild(actionRow);
+                popupContent.querySelector('.btn-edit-olt').onclick = function() { editOlt(olt.id); };
+                popupContent.querySelector('.btn-del-olt').onclick = function() { deleteLocation('olt', olt.id, marker); };
 
                 var marker = L.marker([olt.latitude, olt.longitude], {
                     icon: createIcon('olt'),
                     draggable: !!canManageMap
-                }).bindPopup(popupContent).addTo(markers);
+                }).bindPopup(popupContent, { maxWidth: 320, className: 'modern-map-popup' }).addTo(markers);
 
                 allMarkerObjs.push({ marker: marker, type: 'olt', data: olt });
 
@@ -2402,50 +2554,71 @@
                         ));
                     }
                 }
+                var connectedOdpsInOdc = odps.filter(o => o.odc_id == odc.id).length;
+                var odcCapacity = odc.port_count || odc.capacity || 48;
 
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
-                    <div class="map-popup">
-                        <h6 class="map-popup-title">ODC: ${odc.name}</h6>
-                        <table class="table table-sm table-borderless map-popup-table">
-                            <tr><td class="map-popup-label">Kapasitas:</td><td class="map-popup-value">${odc.capacity}</td></tr>
-                            <tr><td class="map-popup-label">OLT:</td><td class="map-popup-value">${oltName}</td></tr>
-                            <tr><td class="map-popup-label">Port PON:</td><td class="map-popup-value">${odc.pon_port || '-'}</td></tr>
-                            <tr><td class="map-popup-label">Area:</td><td class="map-popup-value">${odc.area || '-'}</td></tr>
-                            <tr><td class="map-popup-label">Warna:</td><td class="map-popup-value">${odc.color || '-'}</td></tr>
-                            <tr><td class="map-popup-label">No Kabel:</td><td class="map-popup-value">${odc.cable_no || '-'}</td></tr>
-                            <tr><td class="map-popup-label">Jarak ke Server:</td><td class="map-popup-value">${odcToServerDistance}</td></tr>
-                        </table>
-                        <div class="map-popup-desc">${odc.description || ''}</div>
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <i class="fa fa-hdd text-amber-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${odc.name}">${odc.name}</div>
+                                    <div class="network-subtitle">${odc.code || 'ODC-NODE'}</div>
+                                </div>
+                            </div>
+                            <div class="network-badge badge-odc">ODC</div>
+                        </div>
+                        <div class="network-content">
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Uplink OLT:</span>
+                                    <span class="node-kv-value text-sky-400 font-bold">${oltName}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port PON:</span>
+                                    <span class="node-kv-value font-mono text-emerald-400">${odc.pon_port || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Kapasitas:</span>
+                                    <span class="node-kv-value font-bold">${odcCapacity} Port</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">ODP Terhubung:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${connectedOdpsInOdc} ODP</span>
+                                </div>
+                            </div>
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${odc.address || odc.area || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">No Kabel / Tube:</span>
+                                    <span class="node-kv-value">${odc.cable_no || '-'} / ${odc.color || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Jarak ke Server:</span>
+                                    <span class="node-kv-value text-cyan-400 font-mono">${odcToServerDistance}</span>
+                                </div>
+                            </div>
+                            ${odc.description ? `<div class="node-note">${odc.description}</div>` : ''}
+                            <div class="node-actions">
+                                <button type="button" class="node-btn node-btn-amber btn-edit-odc"><i class="fa fa-pencil-alt"></i> Edit</button>
+                                <a href="/isp/odcs/${odc.id}/edit" target="_blank" class="node-btn node-btn-secondary"><i class="fa fa-external-link-alt"></i> Lengkap</a>
+                                <button type="button" class="node-btn node-btn-danger btn-del-odc"><i class="fa fa-trash-alt"></i> Hapus</button>
+                            </div>
+                        </div>
                     </div>`;
-                
-                var editBtn = document.createElement('button');
-                editBtn.className = 'btn btn-sm btn-outline-primary map-popup-btn';
-                editBtn.innerText = '{{ __('Edit ODC') }}';
-                editBtn.onclick = function() { editOdc(odc.id); };
 
-                var detailLink = document.createElement('a');
-                detailLink.href = `/isp/odcs/${odc.id}/edit`;
-                detailLink.target = '_blank';
-                detailLink.className = 'btn btn-sm btn-outline-secondary map-popup-btn';
-                detailLink.innerText = 'Lengkap';
-
-                var deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
-                deleteBtn.innerText = 'Hapus Lokasi';
-                deleteBtn.onclick = function() { deleteLocation('odc', odc.id, marker); };
-
-                var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions d-flex gap-1 flex-wrap mt-2';
-                actionRow.appendChild(editBtn);
-                actionRow.appendChild(detailLink);
-                actionRow.appendChild(deleteBtn);
-                popupContent.querySelector('.map-popup').appendChild(actionRow);
+                popupContent.querySelector('.btn-edit-odc').onclick = function() { editOdc(odc.id); };
+                popupContent.querySelector('.btn-del-odc').onclick = function() { deleteLocation('odc', odc.id, marker); };
 
                 var marker = L.marker([odc.latitude, odc.longitude], {
                     icon: createIcon('odc'),
                     draggable: !!canManageMap
-                }).bindPopup(popupContent).addTo(markers);
+                }).bindPopup(popupContent, { maxWidth: 320, className: 'modern-map-popup' }).addTo(markers);
 
                 allMarkerObjs.push({ marker: marker, type: 'odc', data: odc });
 
@@ -2470,6 +2643,7 @@
             if (odp.latitude && odp.longitude) {
                 var odcName = 'N/A';
                 var odpColorLabel = formatFiberColorLabel(odp.color);
+                var odpColorHex = getFiberHex(odp.color);
                 var odpToOdcDistance = '-';
                 if (odp.odc_id) {
                     var odc = odcs.find(o => o.id == odp.odc_id);
@@ -2486,49 +2660,84 @@
                     }
                 }
 
+                var odpTotal = parseInt(odp.port_count) || 8;
+                var odpUsed = parseInt(odp.used_port_count) || 0;
+                var odpReserved = parseInt(odp.reserved_port_count) || 0;
+                var odpAvailable = Math.max(0, odpTotal - odpUsed - odpReserved);
+                var odpUtilPercent = Math.min(100, Math.round((odpUsed / odpTotal) * 100));
+                var odpBarColor = odpUtilPercent > 90 ? '#ef4444' : (odpUtilPercent > 70 ? '#f59e0b' : '#10b981');
+                var lossDb = odpTotal == 4 ? 7.2 : (odpTotal == 8 ? 10.5 : (odpTotal == 16 ? 13.5 : (odpTotal == 32 ? 17.0 : 0)));
+
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
-                    <div class="map-popup">
-                          <h6 class="map-popup-title">ODP: ${odp.name}</h6>
-                          <table class="table table-sm table-borderless map-popup-table">
-                              <tr><td class="map-popup-label">Splitter:</td><td class="map-popup-value">1:${odp.port_count || '?'} (-${odp.port_count == 4 ? 7.2 : (odp.port_count == 8 ? 10.5 : (odp.port_count == 16 ? 13.5 : 0))} dB)</td></tr>
-                              <tr><td class="map-popup-label">Port Terpakai:</td><td class="map-popup-value">${odp.used_port_count || 0} / ${odp.port_count || '?'}</td></tr>
-                              <tr><td class="map-popup-label">Port Tersedia:</td><td class="map-popup-value text-emerald-400 font-bold">${(odp.port_count || 0) - (odp.used_port_count || 0) - (odp.reserved_port_count || 0)} ONU lagi</td></tr>
-                              <tr><td class="map-popup-label">ODC:</td><td class="map-popup-value">${odcName}</td></tr>
-                            <tr><td class="map-popup-label">Area:</td><td class="map-popup-value">${odp.kampung || '-'}</td></tr>
-                            <tr><td class="map-popup-label">Warna:</td><td class="map-popup-value">${odpColorLabel}</td></tr>
-                            <tr><td class="map-popup-label">Jarak ODP-ODC:</td><td class="map-popup-value">${odpToOdcDistance}</td></tr>
-                        </table>
-                        <div class="map-popup-desc">${odp.description || ''}</div>
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <i class="fa fa-box text-emerald-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${odp.name}">${odp.name}</div>
+                                    <div class="network-subtitle">${odp.code || 'ODP-NODE'}</div>
+                                </div>
+                            </div>
+                            <div class="network-badge badge-odp">ODP</div>
+                        </div>
+                        <div class="network-content">
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Splitter Ratio:</span>
+                                    <span class="node-kv-value font-mono text-sky-400 font-bold">1:${odpTotal} <span class="text-xs text-slate-400 font-normal">(-${lossDb} dB)</span></span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Port Terpakai:</span>
+                                    <span class="node-kv-value"><b>${odpUsed}</b> / ${odpTotal} (${odpUtilPercent}%)</span>
+                                </div>
+                                <div class="node-progress-bg">
+                                    <div class="node-progress-bar" style="width: ${odpUtilPercent}%; background: ${odpBarColor};"></div>
+                                </div>
+                                <div class="node-kv mt-1">
+                                    <span class="node-kv-label">Port Tersedia:</span>
+                                    <span class="node-kv-value text-emerald-400 font-bold">${odpAvailable} Port ONU</span>
+                                </div>
+                            </div>
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Uplink ODC:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${odcName}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Tube / Core:</span>
+                                    <span class="node-kv-value">
+                                        <span style="display:inline-flex;align-items:center;gap:5px;">
+                                            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${odpColorHex};border:1px solid rgba(255,255,255,0.4);"></span>
+                                            <span>${odpColorLabel}</span>
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${odp.address || odp.kampung || '-'}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Jarak ke ODC:</span>
+                                    <span class="node-kv-value text-cyan-400 font-mono">${odpToOdcDistance}</span>
+                                </div>
+                            </div>
+                            ${odp.description ? `<div class="node-note">${odp.description}</div>` : ''}
+                            <div class="node-actions">
+                                <button type="button" class="node-btn node-btn-emerald btn-edit-odp"><i class="fa fa-pencil-alt"></i> Edit</button>
+                                <a href="/isp/odps/${odp.id}/edit" target="_blank" class="node-btn node-btn-secondary"><i class="fa fa-external-link-alt"></i> Lengkap</a>
+                                <button type="button" class="node-btn node-btn-danger btn-del-odp"><i class="fa fa-trash-alt"></i> Hapus</button>
+                            </div>
+                        </div>
                     </div>`;
-                
-                var editBtn = document.createElement('button');
-                editBtn.className = 'btn btn-sm btn-outline-primary map-popup-btn';
-                editBtn.innerText = '{{ __('Edit ODP') }}';
-                editBtn.onclick = function() { editOdp(odp.id); };
 
-                var detailLink = document.createElement('a');
-                detailLink.href = `/isp/odps/${odp.id}/edit`;
-                detailLink.target = '_blank';
-                detailLink.className = 'btn btn-sm btn-outline-secondary map-popup-btn';
-                detailLink.innerText = 'Lengkap';
-
-                var deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
-                deleteBtn.innerText = 'Hapus Lokasi';
-                deleteBtn.onclick = function() { deleteLocation('odp', odp.id, marker); };
-
-                var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions d-flex gap-1 flex-wrap mt-2';
-                actionRow.appendChild(editBtn);
-                actionRow.appendChild(detailLink);
-                actionRow.appendChild(deleteBtn);
-                popupContent.querySelector('.map-popup').appendChild(actionRow);
+                popupContent.querySelector('.btn-edit-odp').onclick = function() { editOdp(odp.id); };
+                popupContent.querySelector('.btn-del-odp').onclick = function() { deleteLocation('odp', odp.id, marker); };
 
                 var marker = L.marker([odp.latitude, odp.longitude], {
                     icon: createIcon('odp'),
                     draggable: !!canManageMap
-                }).bindPopup(popupContent).addTo(markers);
+                }).bindPopup(popupContent, { maxWidth: 320, className: 'modern-map-popup' }).addTo(markers);
 
                 allMarkerObjs.push({ marker: marker, type: 'odp', data: odp });
 
@@ -2559,38 +2768,47 @@
                     var parent = htbs.find(h => h.id == htb.parent_htb_id);
                     if (parent) uplinkName = 'HTB: ' + parent.name;
                 }
+                var htbArea = (htb.odp && htb.odp.kampung) ? htb.odp.kampung : (htb.address || '-');
 
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
-                    <div class="map-popup">
-                        <h6 class="map-popup-title">HTB: ${htb.name}</h6>
-                        <table class="table table-sm table-borderless map-popup-table">
-                            <tr><td class="map-popup-label">Uplink:</td><td class="map-popup-value">${uplinkName}</td></tr>
-                            <tr><td class="map-popup-label">Area:</td><td class="map-popup-value">${htb.odp && htb.odp.kampung ? htb.odp.kampung : '-'}</td></tr>
-                        </table>
-                        <div class="map-popup-desc">${htb.description || ''}</div>
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <i class="fa fa-sitemap text-purple-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${htb.name}">${htb.name}</div>
+                                    <div class="network-subtitle">${htb.code || 'HTB-BOX'}</div>
+                                </div>
+                            </div>
+                            <div class="network-badge badge-htb">HTB</div>
+                        </div>
+                        <div class="network-content">
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Uplink:</span>
+                                    <span class="node-kv-value text-purple-300 font-bold">${uplinkName}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Area / Lokasi:</span>
+                                    <span class="node-kv-value">${htbArea}</span>
+                                </div>
+                            </div>
+                            ${htb.description ? `<div class="node-note">${htb.description}</div>` : ''}
+                            <div class="node-actions">
+                                <button type="button" class="node-btn node-btn-purple btn-edit-htb"><i class="fa fa-pencil-alt"></i> Edit</button>
+                                <button type="button" class="node-btn node-btn-danger btn-del-htb"><i class="fa fa-trash-alt"></i> Hapus</button>
+                            </div>
+                        </div>
                     </div>`;
-                
-                var editBtn = document.createElement('button');
-                editBtn.className = 'btn btn-sm btn-outline-primary map-popup-btn';
-                editBtn.innerText = '{{ __('Edit HTB') }}';
-                editBtn.onclick = function() { editHtb(htb.id); };
 
-                var deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
-                deleteBtn.innerText = 'Hapus Lokasi';
-                deleteBtn.onclick = function() { deleteLocation('htb', htb.id, marker); };
-
-                var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions';
-                actionRow.appendChild(editBtn);
-                actionRow.appendChild(deleteBtn);
-                popupContent.querySelector('.map-popup').appendChild(actionRow);
+                popupContent.querySelector('.btn-edit-htb').onclick = function() { editHtb(htb.id); };
+                popupContent.querySelector('.btn-del-htb').onclick = function() { deleteLocation('htb', htb.id, marker); };
 
                 var marker = L.marker([htb.latitude, htb.longitude], {
                     icon: createIcon('htb'),
                     draggable: !!canManageMap
-                }).bindPopup(popupContent).addTo(markers);
+                }).bindPopup(popupContent, { maxWidth: 320, className: 'modern-map-popup' }).addTo(markers);
 
                 allMarkerObjs.push({ marker: marker, type: 'htb', data: htb });
 
@@ -2621,36 +2839,47 @@
 
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
-                    <div class="map-popup">
-                        <h6 class="map-popup-title">Closure: ${closure.name}</h6>
-                        <table class="table table-sm table-borderless map-popup-table">
-                            <tr><td class="map-popup-label">Kapasitas:</td><td class="map-popup-value">${closure.filled || 0}/${closure.capacity}</td></tr>
-                            <tr><td class="map-popup-label">Uplink ODC:</td><td class="map-popup-value">${odcName}</td></tr>
-                            <tr><td class="map-popup-label">Wilayah:</td><td class="map-popup-value">${closure.region ? closure.region.name : '-'}</td></tr>
-                        </table>
-                        <div class="map-popup-desc">${closure.description || ''}</div>
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <i class="fa fa-archive text-slate-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${closure.name}">${closure.name}</div>
+                                    <div class="network-subtitle">Joint Closure</div>
+                                </div>
+                            </div>
+                            <div class="network-badge badge-closure">CLOSURE</div>
+                        </div>
+                        <div class="network-content">
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Kapasitas Core:</span>
+                                    <span class="node-kv-value font-bold text-sky-400">${closure.filled || 0} / ${closure.capacity || 24} Core</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Uplink ODC:</span>
+                                    <span class="node-kv-value text-amber-300 font-bold">${odcName}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Wilayah:</span>
+                                    <span class="node-kv-value">${closure.region ? closure.region.name : '-'}</span>
+                                </div>
+                            </div>
+                            ${closure.description ? `<div class="node-note">${closure.description}</div>` : ''}
+                            <div class="node-actions">
+                                <button type="button" class="node-btn node-btn-secondary btn-edit-closure"><i class="fa fa-pencil-alt"></i> Edit</button>
+                                <button type="button" class="node-btn node-btn-danger btn-del-closure"><i class="fa fa-trash-alt"></i> Hapus</button>
+                            </div>
+                        </div>
                     </div>`;
-                
-                var editBtn = document.createElement('button');
-                editBtn.className = 'btn btn-sm btn-outline-primary map-popup-btn';
-                editBtn.innerText = '{{ __('Edit Closure') }}';
-                editBtn.onclick = function() { editClosure(closure.id); };
 
-                var deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
-                deleteBtn.innerText = 'Hapus Lokasi';
-                deleteBtn.onclick = function() { deleteLocation('closure', closure.id, marker); };
-
-                var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions';
-                actionRow.appendChild(editBtn);
-                actionRow.appendChild(deleteBtn);
-                popupContent.querySelector('.map-popup').appendChild(actionRow);
+                popupContent.querySelector('.btn-edit-closure').onclick = function() { editClosure(closure.id); };
+                popupContent.querySelector('.btn-del-closure').onclick = function() { deleteLocation('closure', closure.id, marker); };
 
                 var marker = L.marker([closure.latitude, closure.longitude], {
                     icon: createIcon('closure'),
                     draggable: !!canManageMap
-                }).bindPopup(popupContent).addTo(markers);
+                }).bindPopup(popupContent, { maxWidth: 320, className: 'modern-map-popup' }).addTo(markers);
 
                 allMarkerObjs.push({ marker: marker, type: 'closure', data: closure });
 
@@ -2679,37 +2908,46 @@
                 
                 var popupContent = document.createElement('div');
                 popupContent.innerHTML = `
-                    <div class="map-popup">
-                        <h6 class="map-popup-title">Aset: ${itemName}</h6>
-                        <table class="table table-sm table-borderless map-popup-table">
-                            <tr><td class="map-popup-label">Pemegang:</td><td class="map-popup-value">${holderName}</td></tr>
-                            <tr><td class="map-popup-label">Status:</td><td class="map-popup-value">${status}</td></tr>
-                            <tr><td class="map-popup-label">Kondisi:</td><td class="map-popup-value">${asset.condition || '-'}</td></tr>
-                            <tr><td class="map-popup-label">Serial:</td><td class="map-popup-value font-monospace">${asset.serial_number || '-'}</td></tr>
-                        </table>
-                        <div class="map-popup-desc">${asset.description || ''}</div>
+                    <div class="network-card">
+                        <div class="network-header">
+                            <div class="network-header-left">
+                                <i class="fa fa-tools text-cyan-400" style="font-size:14px;"></i>
+                                <div class="network-title-group">
+                                    <div class="network-title" title="${itemName}">${itemName}</div>
+                                    <div class="network-subtitle font-mono">${asset.serial_number || 'ASET'}</div>
+                                </div>
+                            </div>
+                            <div class="network-badge badge-asset">ASET</div>
+                        </div>
+                        <div class="network-content">
+                            <div class="node-panel">
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Pemegang:</span>
+                                    <span class="node-kv-value text-cyan-300 font-bold">${holderName}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Status:</span>
+                                    <span class="node-kv-value">${status}</span>
+                                </div>
+                                <div class="node-kv">
+                                    <span class="node-kv-label">Kondisi:</span>
+                                    <span class="node-kv-value">${asset.condition || '-'}</span>
+                                </div>
+                            </div>
+                            ${asset.description ? `<div class="node-note">${asset.description}</div>` : ''}
+                            <div class="node-actions">
+                                <a href="/inventory/assets/${asset.id}/edit" target="_blank" class="node-btn node-btn-primary"><i class="fa fa-pencil-alt"></i> Edit</a>
+                                <button type="button" class="node-btn node-btn-danger btn-del-asset"><i class="fa fa-trash-alt"></i> Hapus</button>
+                            </div>
+                        </div>
                     </div>`;
-                
-                var editLink = document.createElement('a');
-                editLink.href = `/inventory/assets/${asset.id}/edit`; // Assumed route
-                editLink.className = 'btn btn-sm btn-outline-primary map-popup-btn';
-                editLink.innerText = '{{ __('Edit Aset') }}';
 
-                var deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-sm btn-danger map-popup-btn';
-                deleteBtn.innerText = 'Hapus Lokasi';
-                deleteBtn.onclick = function() { deleteLocation('asset', asset.id, marker); };
-
-                var actionRow = document.createElement('div');
-                actionRow.className = 'map-popup-actions';
-                actionRow.appendChild(editLink);
-                actionRow.appendChild(deleteBtn);
-                popupContent.querySelector('.map-popup').appendChild(actionRow);
+                popupContent.querySelector('.btn-del-asset').onclick = function() { deleteLocation('asset', asset.id, marker); };
 
                 var marker = L.marker([asset.latitude, asset.longitude], {
                     icon: createIcon('asset'),
                     draggable: !!canManageMap
-                }).bindPopup(popupContent).addTo(markers);
+                }).bindPopup(popupContent, { maxWidth: 320, className: 'modern-map-popup' }).addTo(markers);
 
                 allMarkerObjs.push({ marker: marker, type: 'asset', data: asset });
 
@@ -2794,10 +3032,13 @@
                     <div class="customer-card flex flex-col">
                         <div class="customer-header">
                             <div class="customer-header-left">
-                                <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}" id="popup-status-dot-${customer.id}">✕</span>
-                                <span class="customer-header-title">${customer.id}-${customer.name}</span>
+                                <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}" id="popup-status-dot-${customer.id}">●</span>
+                                <div class="network-title-group">
+                                    <span class="customer-header-title" title="${customer.name}">${customer.name}</span>
+                                    <span class="network-subtitle font-mono">${customer.username || customer.code || customer.id}</span>
+                                </div>
                             </div>
-                            <span class="customer-badge">ONU</span>
+                            <span class="customer-badge ${isOnline ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'}">${customer.service_type || 'ONU'}</span>
                         </div>
 
                         <div class="customer-content">
@@ -2895,7 +3136,7 @@
                                 <div class="traffic-foot"><span>TX: 0 bps</span><span>RX: 0 bps</span></div>
                             </div>
 
-                            <div class="distance-row">${customerToOdpDistance}</div>
+                            <div class="distance-row"><i class="fa fa-route mr-1 text-cyan-400"></i> Jarak ke ODP: <span class="font-mono text-cyan-300 font-bold">${customerToOdpDistance}</span></div>
 
                             <div class="btn-grid-3">
                                 <button onclick="window.copyToClipboard('${customer.name}\\n${tr069Ip}')" class="popup-btn btn-blue icon-top"><i data-lucide="copy" class="w-4 h-4"></i><span>Salin</span></button>
