@@ -12,6 +12,32 @@
     @endsection
 
     <div class="space-y-4" wire:poll.60s>
+        {{-- ALERTS / NOTIFICATIONS --}}
+        @if (session()->has('success'))
+            <div class="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-200 text-sm flex items-center gap-2.5 shadow-sm">
+                <span class="material-symbols-outlined notranslate text-emerald-600 dark:text-emerald-400 shrink-0">check_circle</span>
+                <span>{{ session('success') }}</span>
+            </div>
+        @endif
+        @if (session()->has('warning'))
+            <div class="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-200 text-sm flex items-center gap-2.5 shadow-sm">
+                <span class="material-symbols-outlined notranslate text-amber-600 dark:text-amber-400 shrink-0">warning</span>
+                <span>{{ session('warning') }}</span>
+            </div>
+        @endif
+        @if (session()->has('error'))
+            <div class="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-sm flex items-center gap-2.5 shadow-sm">
+                <span class="material-symbols-outlined notranslate text-rose-600 dark:text-rose-400 shrink-0">error</span>
+                <span>{{ session('error') }}</span>
+            </div>
+        @endif
+        @if (session()->has('info'))
+            <div class="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-800 dark:text-blue-200 text-sm flex items-center gap-2.5 shadow-sm">
+                <span class="material-symbols-outlined notranslate text-blue-600 dark:text-blue-400 shrink-0">info</span>
+                <span>{{ session('info') }}</span>
+            </div>
+        @endif
+
         {{-- KPI CARDS --}}
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             {{-- PPPoE --}}
@@ -76,20 +102,36 @@
         </div>
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="relative w-full sm:flex-1 sm:max-w-md">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
-                </span>
-                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari User, IP, Router..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+        <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="flex flex-col sm:flex-row gap-3 flex-1">
+                {{-- Search --}}
+                <div class="relative w-full sm:flex-1 sm:max-w-md">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
+                    </span>
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari User, IP, Router..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+                </div>
+
+                {{-- Filter Router Dropdown --}}
+                <div class="w-full sm:w-64">
+                    <select wire:model.live="selectedRouterId" class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Router MikroTik ({{ count($routers) }})</option>
+                        @foreach($routers as $r)
+                            <option value="{{ $r->id }}">
+                                {{ $r->name }} ({{ $r->ip_address }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
-            <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+
+            <div class="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
                 <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ ucfirst($activeTab) }}</span> online
                 </div>
                 <button wire:click="syncRouters" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap">
                     <span class="material-symbols-outlined notranslate text-sm" wire:loading.class="animate-spin" translate="no">sync</span>
-                    <span wire:loading.remove>Sinkronkan MikroTik</span>
+                    <span wire:loading.remove>Sinkronkan {{ $selectedRouterId ? 'Router Ini' : 'MikroTik' }}</span>
                     <span wire:loading>Menyinkronkan...</span>
                 </button>
             </div>

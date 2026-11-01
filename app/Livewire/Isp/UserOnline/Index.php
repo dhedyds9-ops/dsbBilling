@@ -17,8 +17,19 @@ class Index extends BaseNetworkComponent
 {
     public string $activeTab = 'pppoe';
     public bool $showFilterModal = false;
+    public string $selectedRouterId = '';
     
     protected $listeners = ['echo:user-online,UserOnlineUpdated' => '$refresh', 'refresh-online' => '$refresh'];
+
+    public function updatedSelectedRouterId()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
 
     public function mount()
     {
@@ -44,19 +55,59 @@ class Index extends BaseNetworkComponent
     public function syncRouters(bool $isAuto = false)
     {
         try {
-            $routers = Router::query()->where('status', '!=', 'disabled')->get();
-            $count = 0;
-            foreach ($routers as $router) {
-                try {
-                    PollSingleRouterJob::dispatch($router);
-                    $count++;
-                } catch (\Throwable $th) {
-                    Log::warning('syncRouters single router dispatch failed', ['id' => $router->id, 'err' => $th->getMessage()]);
+            $routersQuery = Router::query()->where('status', '!=', 'disabled');
+            if (!empty($this->selectedRouterId)) {
+                $routersQuery->where('id', $this->selectedRouterId);
+            }
+            $routers = $routersQuery->get();
+
+            if ($routers->isEmpty()) {
+                if (!$isAuto) {
+                    session()->flash('warning', 'Tidak ada router aktif yang ditemukan untuk disinkronkan.');
+                }
+                return;
+            }
+
+            if ($isAuto) {
+                // Di auto-sync latar belakang, dispatch ke queue agar tidak membebani pemuatan halaman
+                foreach ($routers as $router) {
+                    try {
+                        PollSingleRouterJob::dispatch($router);
+                    } catch (\Throwable $th) {
+                        Log::warning('syncRouters auto dispatch failed', ['id' => $router->id, 'err' => $th->getMessage()]);
+                    }
+                }
+            } else {
+                // Saat user menekan tombol sinkron, jalankan langsung secara realtime agar user mendapat respon instan
+                $successList = [];
+                $failList = [];
+                $driver = app(\App\Services\Adapters\Monitoring\MikroTikDriver::class);
+
+                foreach ($routers as $router) {
+                    try {
+                        $job = new PollSingleRouterJob($router);
+                        $job->handle($driver);
+                        $successList[] = $router->name;
+                    } catch (\Throwable $th) {
+                        $msg = $th->getMessage() ?: 'Gagal terhubung';
+                        $failList[] = "{$router->name} ({$router->ip_address}): {$msg}";
+                        Log::warning('syncRouters manual poll error', [
+                            'router_id' => $router->id,
+                            'name' => $router->name,
+                            'err' => $msg,
+                        ]);
+                    }
+                }
+
+                if (!empty($successList) && empty($failList)) {
+                    session()->flash('success', 'Berhasil menyinkronkan data sesi dari router: ' . implode(', ', $successList) . '.');
+                } elseif (!empty($successList) && !empty($failList)) {
+                    session()->flash('warning', 'Sebagian router berhasil (' . implode(', ', $successList) . '), namun gagal pada: ' . implode('; ', $failList));
+                } else {
+                    session()->flash('error', 'Gagal menyinkronkan router: ' . implode('; ', $failList) . '. Pastikan IP, Port API (8728), user & password router benar.');
                 }
             }
-            if (!$isAuto && $count > 0) {
-                session()->flash('info', "Sinkronisasi sesi dari {$count} router sedang berjalan di antrean latar belakang.");
-            }
+
             $this->dispatch('refresh-online');
         } catch (\Throwable $e) {
             Log::error('syncRouters failed: ' . $e->getMessage());
@@ -127,6 +178,8 @@ class Index extends BaseNetworkComponent
     {
         $user = \Illuminate\Support\Facades\Auth::user();
 
+        $routers = Router::query()->orderBy('name')->get(['id', 'name', 'ip_address', 'status']);
+
         $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.reseller', 'pppoeUser.customer.reseller', 'pppoeUser.customerService.customer.reseller', 'pppoeUser.serviceProfile', 'pppoeUser.customerService.serviceProfile']);
         
         $voucherQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'voucher.reseller', 'voucher.serviceProfile', 'voucher.voucherPool.serviceProfile'])
@@ -171,6 +224,13 @@ class Index extends BaseNetworkComponent
                     ->whereRaw('vouchers.code = hotspot_active_sessions.user')
                     ->where('vouchers.reseller_id', $effectiveResellerId);
             });
+        }
+
+        // Filter berdasarkan router yang dipilih jika ada
+        if (!empty($this->selectedRouterId)) {
+            $pppoeQuery->where('router_id', $this->selectedRouterId);
+            $hotspotQuery->where('router_id', $this->selectedRouterId);
+            $voucherQuery->where('router_id', $this->selectedRouterId);
         }
 
         $stats = [
@@ -222,6 +282,6 @@ class Index extends BaseNetworkComponent
             $results = $voucherQuery->orderBy('session_started_at', 'desc')->paginate($this->perPage);
         }
 
-        return view('livewire.isp.user-online.index', compact('results', 'stats'));
+        return view('livewire.isp.user-online.index', compact('results', 'stats', 'routers'));
     }
 }

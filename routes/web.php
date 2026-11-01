@@ -212,6 +212,45 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/vendors/{id}', \App\Livewire\Isp\Vendor\Show::class)->name('vendors.show');
         });
 
+        // ==================== OLT / ODP / ODC / ONU / USER-ONLINE URL ALIASES (PREVENT 404) ====================
+        Route::get('/user-online', fn() => redirect()->route('isp.user-online.index'));
+
+        Route::get('/olt', fn() => redirect()->route('isp.olts.index'));
+        Route::get('/olts', fn() => redirect()->route('isp.olts.index'));
+        Route::get('/olt/create', fn() => redirect()->route('isp.olts.create'));
+        Route::get('/olts/create', fn() => redirect()->route('isp.olts.create'));
+        Route::get('/olt/{id}/edit', fn($id) => redirect()->route('isp.olts.edit', $id));
+        Route::get('/olts/{id}/edit', fn($id) => redirect()->route('isp.olts.edit', $id));
+        Route::get('/olt/{id}', fn($id) => redirect()->route('isp.olts.show', $id));
+        Route::get('/olts/{id}', fn($id) => redirect()->route('isp.olts.show', $id));
+
+        Route::get('/odp', fn() => redirect()->route('isp.odps.index'));
+        Route::get('/odps', fn() => redirect()->route('isp.odps.index'));
+        Route::get('/odp/create', fn() => redirect()->route('isp.odps.create'));
+        Route::get('/odps/create', fn() => redirect()->route('isp.odps.create'));
+        Route::get('/odp/{id}/edit', fn($id) => redirect()->route('isp.odps.edit', $id));
+        Route::get('/odps/{id}/edit', fn($id) => redirect()->route('isp.odps.edit', $id));
+        Route::get('/odp/{id}', fn($id) => redirect()->route('isp.odps.show', $id));
+        Route::get('/odps/{id}', fn($id) => redirect()->route('isp.odps.show', $id));
+
+        Route::get('/odc', fn() => redirect()->route('isp.odcs.index'));
+        Route::get('/odcs', fn() => redirect()->route('isp.odcs.index'));
+        Route::get('/odc/create', fn() => redirect()->route('isp.odcs.create'));
+        Route::get('/odcs/create', fn() => redirect()->route('isp.odcs.create'));
+        Route::get('/odc/{id}/edit', fn($id) => redirect()->route('isp.odcs.edit', $id));
+        Route::get('/odcs/{id}/edit', fn($id) => redirect()->route('isp.odcs.edit', $id));
+        Route::get('/odc/{id}', fn($id) => redirect()->route('isp.odcs.show', $id));
+        Route::get('/odcs/{id}', fn($id) => redirect()->route('isp.odcs.show', $id));
+
+        Route::get('/onu', fn() => redirect()->route('isp.onus.index'));
+        Route::get('/onus', fn() => redirect()->route('isp.onus.index'));
+        Route::get('/onu/create', fn() => redirect()->route('isp.onus.create'));
+        Route::get('/onus/create', fn() => redirect()->route('isp.onus.create'));
+        Route::get('/onu/{id}/edit', fn($id) => redirect()->route('isp.onus.edit', $id));
+        Route::get('/onus/{id}/edit', fn($id) => redirect()->route('isp.onus.edit', $id));
+        Route::get('/onu/{id}', fn($id) => redirect()->route('isp.onus.show', $id));
+        Route::get('/onus/{id}', fn($id) => redirect()->route('isp.onus.show', $id));
+
         // ==================== 3. LIST PELANGGAN ====================
         Route::prefix('pelanggan')->name('pelanggan.')->group(function () use ($cs) {
             // User Voucher: tabs Aktif | Terpakai | Expired | Semua

@@ -2207,7 +2207,7 @@
                     </div>`;
                 
                 var editLink = document.createElement('a');
-                editLink.href = `/olt/${olt.id}/edit`;
+                editLink.href = `/isp/olts/${olt.id}/edit`;
                 editLink.className = 'btn btn-sm btn-outline-primary map-popup-btn';
                 editLink.innerText = '{{ __('Edit OLT') }}';
 
