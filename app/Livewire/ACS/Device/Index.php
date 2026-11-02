@@ -66,202 +66,213 @@ class Index extends BaseACSComponent
             
             \Illuminate\Support\Facades\DB::transaction(function () use ($devices, &$count, &$syncedIds) {
                 foreach ($devices as $deviceData) {
-                    $deviceId = $deviceData['_id'] ?? null;
-                    if (!$deviceId) continue;
-
-                // Dynamic IP & MAC Extraction
-                $ip = null;
-                $mac = null;
-                $wanDevices = $deviceData['InternetGatewayDevice']['WANDevice'] ?? $deviceData['Device']['WANDevice'] ?? [];
-                if (is_array($wanDevices)) {
-                    foreach ($wanDevices as $wdIdx => $wdNode) {
-                        if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                        $connDevices = $wdNode['WANConnectionDevice'] ?? [];
-                        if (is_array($connDevices)) {
-                            foreach ($connDevices as $cdIdx => $connNode) {
-                                if ($cdIdx === '_object' || !is_array($connNode)) continue;
-                                
-                                $pppConns = $connNode['WANPPPConnection'] ?? [];
-                                if (is_array($pppConns)) {
-                                    foreach ($pppConns as $pIdx => $ppp) {
-                                        if ($pIdx === '_object' || !is_array($ppp)) continue;
-                                        if (!empty($ppp['ExternalIPAddress']['_value'])) $ip = $ip ?: $ppp['ExternalIPAddress']['_value'];
-                                        if (!empty($ppp['MACAddress']['_value'])) $mac = $mac ?: $ppp['MACAddress']['_value'];
-                                    }
-                                }
-                                
-                                $ipConns = $connNode['WANIPConnection'] ?? [];
-                                if (is_array($ipConns)) {
-                                    foreach ($ipConns as $iIdx => $ipc) {
-                                        if ($iIdx === '_object' || !is_array($ipc)) continue;
-                                        if (!empty($ipc['ExternalIPAddress']['_value'])) $ip = $ip ?: $ipc['ExternalIPAddress']['_value'];
-                                        if (!empty($ipc['MACAddress']['_value'])) $mac = $mac ?: $ipc['MACAddress']['_value'];
-                                    }
-                                }
-                            }
-                        }
+                    $savedId = $this->saveDeviceData($deviceData);
+                    if ($savedId) {
+                        $syncedIds[] = $savedId;
+                        $count++;
                     }
                 }
-                
-                $mac = $mac ?? $deviceData['VirtualParameters']['pppoeMac']['_value'] ?? $deviceData['VirtualParameters']['PonMac']['_value'] ?? null;
-                $ip = $ip ?? $deviceData['VirtualParameters']['pppoeIP']['_value'] ?? null;
-                
-                $model = $deviceData['_deviceId']['_ProductClass'] ?? 
-                         $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? 
-                         $deviceData['Device']['DeviceInfo']['ProductClass']['_value'] ?? 
-                         $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? 
-                         $deviceData['Device']['DeviceInfo']['ModelName']['_value'] ?? null;
-                
-                // If model is empty string, try fallback
-                if (empty(trim($model))) {
-                    $model = $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? null;
-                }
-                
-                $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
-                              $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
-                              
-                if (!$ip && $connReqUrl) {
-                    $parsedUrl = parse_url($connReqUrl);
-                    $ip = $parsedUrl['host'] ?? null;
-                }
-                
-                $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-                $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 15) ? 'online' : 'offline';
-
-                $serialNumber = $deviceData['_deviceId']['_SerialNumber'] ?? 
-                                $deviceData['InternetGatewayDevice']['DeviceInfo']['SerialNumber']['_value'] ?? $deviceId;
-
-                $extract = function($path) use ($deviceData) {
-                    $parts = explode('.', $path);
-                    $node = $deviceData;
-                    foreach ($parts as $p) {
-                        if (!is_array($node) || !array_key_exists($p, $node)) return null;
-                        $node = $node[$p];
-                    }
-                    return isset($node['_value']) ? $node['_value'] : null;
-                };
-
-                $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion') ?? $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion');
-                $hardware = $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion') ?? $extract('Device.DeviceInfo.HardwareVersion');
-                
-                $pppoeUsername = $extract('VirtualParameters.pppoeUsername') ?? 
-                                 $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username') ?? 
-                                 $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username');
-
-                // Mencari RX Power lebih cerdas (Iterasi WANDevice)
-                $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
-                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
-                        ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
-                        ?? $extract('VirtualParameters.RXPower') 
-                        ?? $extract('Device.Optical.1.Transceiver.RxPower');
-                if ($rxPower === null && is_array($wanDevices)) {
-                    // Cari konfigurasi PON yang ada didalam WANDevice
-                    foreach ($wanDevices as $wdIdx => $wdNode) {
-                        if ($wdIdx === '_object' || !is_array($wdNode)) continue;
-                        $ponConfig = $wdNode['WANPONInterfaceConfig'] ?? $wdNode['WANEponInterfaceConfig'] ?? [];
-                        if (is_array($ponConfig)) {
-                            foreach ($ponConfig as $pcIndex => $pcNode) {
-                                if (!is_numeric($pcIndex) || !is_array($pcNode)) continue;
-                                $rxPower = $pcNode['X_ZTE-COM_RxPower']['_value'] ?? $pcNode['X_HW_RxPower']['_value'] ?? $pcNode['RxPower']['_value'] ?? null;
-                                if ($rxPower !== null) break 2;
-                            }
-                        }
-                    }
-                }
-                
-                if ($rxPower !== null && is_numeric($rxPower)) {
-                    $rxPower = (float)$rxPower;
-                    if ($rxPower < -500 || $rxPower > 500) {
-                        $rxPower /= 1000;
-                    } elseif ($rxPower < -50 || $rxPower > 50) {
-                        $rxPower /= 100;
-                    }
-                }
-
-                $acsDeviceParams = [
-                    'signal' => $rxPower,
-                    'serial_number' => $serialNumber,
-                    'mac_address' => $mac,
-                    'model' => $model,
-                    'ip_address' => $ip,
-                    'connection_request_url' => $connReqUrl,
-                    'status' => $status,
-                    'last_inform' => $lastInform,
-                    'firmware_version' => $firmware,
-                    'software_version' => $firmware,
-                    'hardware_version' => $hardware,
-                    'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
-                    'oui' => $deviceData['_deviceId']['_OUI'] ?? null,
-                ];
-
-                // AUTO BINDING LOGIC
-                if ($pppoeUsername) {
-                    $customerService = \App\Models\Customer\CustomerService::where('username', $pppoeUsername)->first();
-                    if ($customerService) {
-                        $acsDeviceParams['customer_service_id'] = $customerService->id;
-                        
-                        // Cari Onu
-                        $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
-                        if ($onu) {
-                            $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
-                            
-                            // Bind Onu ke CustomerService jika berbeda (Modem Baru)
-                            if ($customerService->onu_id !== $onu->id) {
-                                // Putuskan Onu lama
-                                if ($customerService->onu_id) {
-                                    \App\Models\ISP\Onu::where('id', $customerService->onu_id)->update(['status' => 'inactive']); // Opsional menandai ONU lama inactive
-                                }
-                                $customerService->update(['onu_id' => $onu->id]);
-                            }
-                        }
-                    }
-                }
-
-                // Fallback Binding jika pppoeUsername tidak terbaca TR-069
-                if (empty($acsDeviceParams['customer_service_id'])) {
-                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
-                    if ($onu) {
-                        $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
-                        $cs = \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->first();
-                        if ($cs) {
-                            $acsDeviceParams['customer_service_id'] = $cs->id;
-                        }
-                    }
-
-                    if (empty($acsDeviceParams['customer_service_id']) && $mac) {
-                        $pppoe = \App\Models\ISP\PPPoEUser::where('mac_address', $mac)->first();
-                        if ($pppoe && $pppoe->customer_service_id) {
-                            $acsDeviceParams['customer_service_id'] = $pppoe->customer_service_id;
-                        }
-                    }
-                }
-
-                // Penanganan SoftDeletes + Unique Constraint
-                $deviceRecord = \App\Models\ACS\ACSDevice::forUserArea(auth()->user())->withTrashed()->where('uuid', $deviceId)->first();
-                if ($deviceRecord) {
-                    // Restore jika sempat terhapus
-                    if ($deviceRecord->trashed()) {
-                        $deviceRecord->restore();
-                    }
-                    $deviceRecord->update($acsDeviceParams);
-                } else {
-                    \App\Models\ACS\ACSDevice::create(array_merge(['uuid' => $deviceId], $acsDeviceParams));
-                }
-                
-                $syncedIds[] = $deviceId;
-                $count++;
-            }
             
-            // Tandai perangkat yang tidak ada di ACS sebagai offline
-            if (count($syncedIds) > 0) {
-                \App\Models\ACS\ACSDevice::whereNotIn('uuid', $syncedIds)->update(['status' => 'offline']);
-            }
+                // Tandai perangkat yang tidak ada di ACS sebagai offline
+                if (count($syncedIds) > 0) {
+                    \App\Models\ACS\ACSDevice::whereNotIn('uuid', $syncedIds)->update(['status' => 'offline']);
+                }
             });
 
             session()->flash('success', "Berhasil mensinkronisasi {$count} perangkat dari GenieACS!");
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal sinkronisasi: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Memproses dan menyimpan/mengupdate data satu perangkat dari GenieACS ke database dsBilling
+     */
+    public function saveDeviceData(array $deviceData): ?string
+    {
+        $deviceId = $deviceData['_id'] ?? null;
+        if (!$deviceId) return null;
+
+        // Dynamic IP & MAC Extraction
+        $ip = null;
+        $mac = null;
+        $wanDevices = $deviceData['InternetGatewayDevice']['WANDevice'] ?? $deviceData['Device']['WANDevice'] ?? [];
+        if (is_array($wanDevices)) {
+            foreach ($wanDevices as $wdIdx => $wdNode) {
+                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
+                $connDevices = $wdNode['WANConnectionDevice'] ?? [];
+                if (is_array($connDevices)) {
+                    foreach ($connDevices as $cdIdx => $connNode) {
+                        if ($cdIdx === '_object' || !is_array($connNode)) continue;
+                        
+                        $pppConns = $connNode['WANPPPConnection'] ?? [];
+                        if (is_array($pppConns)) {
+                            foreach ($pppConns as $pIdx => $ppp) {
+                                if ($pIdx === '_object' || !is_array($ppp)) continue;
+                                if (!empty($ppp['ExternalIPAddress']['_value'])) $ip = $ip ?: $ppp['ExternalIPAddress']['_value'];
+                                if (!empty($ppp['MACAddress']['_value'])) $mac = $mac ?: $ppp['MACAddress']['_value'];
+                            }
+                        }
+                        
+                        $ipConns = $connNode['WANIPConnection'] ?? [];
+                        if (is_array($ipConns)) {
+                            foreach ($ipConns as $iIdx => $ipc) {
+                                if ($iIdx === '_object' || !is_array($ipc)) continue;
+                                if (!empty($ipc['ExternalIPAddress']['_value'])) $ip = $ip ?: $ipc['ExternalIPAddress']['_value'];
+                                if (!empty($ipc['MACAddress']['_value'])) $mac = $mac ?: $ipc['MACAddress']['_value'];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        $mac = $mac ?? $deviceData['VirtualParameters']['pppoeMac']['_value'] ?? $deviceData['VirtualParameters']['PonMac']['_value'] ?? null;
+        $ip = $ip ?? $deviceData['VirtualParameters']['pppoeIP']['_value'] ?? null;
+        
+        $model = $deviceData['_deviceId']['_ProductClass'] ?? 
+                 $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? 
+                 $deviceData['Device']['DeviceInfo']['ProductClass']['_value'] ?? 
+                 $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? 
+                 $deviceData['Device']['DeviceInfo']['ModelName']['_value'] ?? null;
+        
+        // If model is empty string, try fallback
+        if (empty(trim((string)$model))) {
+            $model = $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? null;
+        }
+        
+        $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
+                      $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
+                      
+        if (!$ip && $connReqUrl) {
+            $parsedUrl = parse_url($connReqUrl);
+            $ip = $parsedUrl['host'] ?? null;
+        }
+        
+        $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
+        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 15) ? 'online' : 'offline';
+
+        $serialNumber = $deviceData['_deviceId']['_SerialNumber'] ?? 
+                        $deviceData['InternetGatewayDevice']['DeviceInfo']['SerialNumber']['_value'] ?? $deviceId;
+
+        $extract = function($path) use ($deviceData) {
+            $parts = explode('.', $path);
+            $node = $deviceData;
+            foreach ($parts as $p) {
+                if (!is_array($node) || !array_key_exists($p, $node)) return null;
+                $node = $node[$p];
+            }
+            return isset($node['_value']) ? $node['_value'] : null;
+        };
+
+        $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion') ?? $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion');
+        $hardware = $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion') ?? $extract('Device.DeviceInfo.HardwareVersion');
+        
+        $pppoeUsername = $extract('VirtualParameters.pppoeUsername') ?? 
+                         $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username') ?? 
+                         $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username');
+
+        // Mencari RX Power lebih cerdas (Iterasi WANDevice)
+        $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
+                ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
+                ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
+                ?? $extract('VirtualParameters.RXPower') 
+                ?? $extract('Device.Optical.1.Transceiver.RxPower');
+        if ($rxPower === null && is_array($wanDevices)) {
+            // Cari konfigurasi PON yang ada didalam WANDevice
+            foreach ($wanDevices as $wdIdx => $wdNode) {
+                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
+                $ponConfig = $wdNode['WANPONInterfaceConfig'] ?? $wdNode['WANEponInterfaceConfig'] ?? [];
+                if (is_array($ponConfig)) {
+                    foreach ($ponConfig as $pcIndex => $pcNode) {
+                        if (!is_numeric($pcIndex) || !is_array($pcNode)) continue;
+                        $rxPower = $pcNode['X_ZTE-COM_RxPower']['_value'] ?? $pcNode['X_HW_RxPower']['_value'] ?? $pcNode['RxPower']['_value'] ?? null;
+                        if ($rxPower !== null) break 2;
+                    }
+                }
+            }
+        }
+        
+        if ($rxPower !== null && is_numeric($rxPower)) {
+            $rxPower = (float)$rxPower;
+            if ($rxPower < -500 || $rxPower > 500) {
+                $rxPower /= 1000;
+            } elseif ($rxPower < -50 || $rxPower > 50) {
+                $rxPower /= 100;
+            }
+        }
+
+        $acsDeviceParams = [
+            'signal' => $rxPower,
+            'serial_number' => $serialNumber,
+            'mac_address' => $mac,
+            'model' => $model,
+            'ip_address' => $ip,
+            'connection_request_url' => $connReqUrl,
+            'status' => $status,
+            'last_inform' => $lastInform,
+            'firmware_version' => $firmware,
+            'software_version' => $firmware,
+            'hardware_version' => $hardware,
+            'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
+            'oui' => $deviceData['_deviceId']['_OUI'] ?? null,
+        ];
+
+        // AUTO BINDING LOGIC
+        if ($pppoeUsername) {
+            $customerService = \App\Models\Customer\CustomerService::where('username', $pppoeUsername)->first();
+            if ($customerService) {
+                $acsDeviceParams['customer_service_id'] = $customerService->id;
+                
+                // Cari Onu
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
+                if ($onu) {
+                    $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
+                    
+                    // Bind Onu ke CustomerService jika berbeda (Modem Baru)
+                    if ($customerService->onu_id !== $onu->id) {
+                        // Putuskan Onu lama
+                        if ($customerService->onu_id) {
+                            \App\Models\ISP\Onu::where('id', $customerService->onu_id)->update(['status' => 'inactive']); // Opsional menandai ONU lama inactive
+                        }
+                        $customerService->update(['onu_id' => $onu->id]);
+                    }
+                }
+            }
+        }
+
+        // Fallback Binding jika pppoeUsername tidak terbaca TR-069
+        if (empty($acsDeviceParams['customer_service_id'])) {
+            $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
+            if ($onu) {
+                $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
+                $cs = \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->first();
+                if ($cs) {
+                    $acsDeviceParams['customer_service_id'] = $cs->id;
+                }
+            }
+
+            if (empty($acsDeviceParams['customer_service_id']) && $mac) {
+                $pppoe = \App\Models\ISP\PPPoEUser::where('mac_address', $mac)->first();
+                if ($pppoe && $pppoe->customer_service_id) {
+                    $acsDeviceParams['customer_service_id'] = $pppoe->customer_service_id;
+                }
+            }
+        }
+
+        // Penanganan SoftDeletes + Unique Constraint
+        $deviceRecord = \App\Models\ACS\ACSDevice::forUserArea(auth()->user())->withTrashed()->where('uuid', $deviceId)->first();
+        if ($deviceRecord) {
+            // Restore jika sempat terhapus
+            if ($deviceRecord->trashed()) {
+                $deviceRecord->restore();
+            }
+            $deviceRecord->update($acsDeviceParams);
+        } else {
+            \App\Models\ACS\ACSDevice::create(array_merge(['uuid' => $deviceId], $acsDeviceParams));
+        }
+
+        return $deviceId;
     }
 
     public function render()
@@ -310,7 +321,18 @@ class Index extends BaseACSComponent
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $success = $driver->summonDevice($uuid);
             if ($success) {
-                session()->flash('success', "Perintah summon berhasil dikirim ke perangkat ($uuid).");
+                // Tunggu sejenak agar Inform selesai diproses oleh GenieACS, lalu perbarui data lokal
+                try {
+                    usleep(1200000); // 1.2 detik
+                    $latest = $driver->getDeviceParameters($uuid);
+                    if (!empty($latest)) {
+                        $this->saveDeviceData($latest);
+                    }
+                } catch (\Throwable $te) {
+                    // Abaikan jika proses fetch parameters gagal di background
+                }
+
+                session()->flash('success', "Perintah summon berhasil dikirim ke perangkat ($uuid). Data perangkat dan status telah diperbarui.");
             } else {
                 session()->flash('error', "Gagal melakukan summon. Perangkat mungkin mati atau IP tidak terjangkau.");
             }
