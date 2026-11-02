@@ -145,9 +145,16 @@ class Index extends Component
 
     public function removeTicketPhoto(int $index): void
     {
-        if (isset($this->ticket_upload_photos[$index])) {
+        if (is_array($this->ticket_upload_photos) && isset($this->ticket_upload_photos[$index])) {
             unset($this->ticket_upload_photos[$index]);
             $this->ticket_upload_photos = array_values($this->ticket_upload_photos);
+        }
+    }
+
+    public function updatedTicketUploadPhotos(): void
+    {
+        if (!is_array($this->ticket_upload_photos)) {
+            $this->ticket_upload_photos = $this->ticket_upload_photos ? [$this->ticket_upload_photos] : [];
         }
     }
 
@@ -207,7 +214,8 @@ class Index extends Component
         // Upload dan simpan foto bukti jika teknisi mengunggah saat update progress
         $photos = is_array($ticket->photos) ? $ticket->photos : [];
         if (!empty($this->ticket_upload_photos)) {
-            foreach ($this->ticket_upload_photos as $photo) {
+            $photosToProcess = is_array($this->ticket_upload_photos) ? $this->ticket_upload_photos : [$this->ticket_upload_photos];
+            foreach ($photosToProcess as $photo) {
                 if ($photo) {
                     $path = $photo->store('tickets/' . $ticket->id, 'public');
                     $photos[] = 'storage/' . $path;
@@ -274,7 +282,8 @@ class Index extends Component
         // Upload dan simpan foto bukti pekerjaan jika ada
         $photos = is_array($ticket->photos) ? $ticket->photos : [];
         if (!empty($this->ticket_upload_photos)) {
-            foreach ($this->ticket_upload_photos as $photo) {
+            $photosToProcess = is_array($this->ticket_upload_photos) ? $this->ticket_upload_photos : [$this->ticket_upload_photos];
+            foreach ($photosToProcess as $photo) {
                 if ($photo) {
                     $path = $photo->store('tickets/' . $ticket->id, 'public');
                     $photos[] = 'storage/' . $path;

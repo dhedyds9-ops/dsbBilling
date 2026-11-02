@@ -80,32 +80,32 @@
     @endif
 
     {{-- Sub Filters: Tipe Pekerjaan --}}
-    <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs -mx-4 px-4 scrollbar-none">
         <button wire:click="filterJobType('all')" type="button"
-                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap
+                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0
                        {{ $jobType === 'all' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             Semua ({{ ($stats['active'] ?? 0) + ($stats['history'] ?? 0) }})
         </button>
         <button wire:click="filterJobType('installation')" type="button"
-                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
+                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'installation' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">build_circle</span>
             Instalasi ({{ $stats['total_installations'] ?? 0 }})
         </button>
         <button wire:click="filterJobType('ticket')" type="button"
-                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
+                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'ticket' ? 'bg-amber-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">build</span>
             Tiket Gangguan ({{ $stats['total_tickets'] ?? 0 }})
         </button>
         <button wire:click="filterJobType('maintenance')" type="button"
-                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
+                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'maintenance' ? 'bg-sky-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">engineering</span>
             Maintenance ({{ $stats['total_maintenances'] ?? 0 }})
         </button>
         <button wire:click="filterJobType('survey')" type="button"
-                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1
+                class="px-3.5 py-1.5 rounded-full font-bold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1
                        {{ $jobType === 'survey' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }}">
             <span class="material-symbols-outlined text-sm">radar</span>
             Survey ({{ $stats['total_surveys'] ?? 0 }})
@@ -130,14 +130,14 @@
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
             <div class="absolute left-0 top-0 bottom-0 w-1.5 {{ $job->is_completed ? 'bg-emerald-500' : 'bg-indigo-500' }}"></div>
 
-            {{-- Header: Tanggal & Kategori Badges --}}
-            <div class="flex justify-between items-start gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 text-xs font-semibold">
+            {{-- Header: Tanggal & Kategori Badges (Mobile-Responsive Wrapped) --}}
+            <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs font-semibold">
                     <span class="material-symbols-outlined text-indigo-500 text-sm">event</span>
-                    {{ $job->date ? \Carbon\Carbon::parse($job->date)->format('d M Y, H:i') : '-' }}
+                    <span>{{ $job->date ? \Carbon\Carbon::parse($job->date)->format('d M Y, H:i') : '-' }}</span>
                 </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                    <span class="px-2 py-0.5 {{ $job->job_type === 'ticket' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : ($job->job_type === 'maintenance' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800' : ($job->job_type === 'installation' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800')) }} rounded-lg text-[10px] font-bold uppercase">
+                <div class="flex flex-wrap items-center gap-1.5 ml-auto">
+                    <span class="px-2 py-0.5 {{ $job->job_type === 'ticket' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : ($job->job_type === 'maintenance' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800' : ($job->job_type === 'installation' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800')) }} rounded-lg text-[10px] font-bold uppercase whitespace-nowrap">
                         {{ $job->type_badge }}
                     </span>
                     @if(!empty($job->priority) && $job->priority !== 'normal')
@@ -149,23 +149,23 @@
                                 default => 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
                             };
                         @endphp
-                        <span class="px-2 py-0.5 {{ $prioClass }} rounded-lg text-[10px] font-bold uppercase border">
+                        <span class="px-2 py-0.5 {{ $prioClass }} rounded-lg text-[10px] font-bold uppercase border whitespace-nowrap">
                             {{ strtoupper($job->priority) }}
                         </span>
                     @endif
                     @if($job->is_completed)
-                        <span class="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold uppercase">
+                        <span class="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap">
                             {{ $job->status_label }}
                         </span>
                     @else
                         @if($job->job_type === 'ticket')
                             <button type="button" wire:click="openProgressTicketModal({{ $job->ticket_id }})" title="Klik untuk ubah progress status"
-                                    class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-0.5 transition-all active:scale-95">
+                                    class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-0.5 transition-all active:scale-95 whitespace-nowrap">
                                 <span class="material-symbols-outlined text-xs">edit</span>
                                 <span>{{ $job->status_label }}</span>
                             </button>
                         @else
-                            <span class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] font-bold uppercase">
+                            <span class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap">
                                 {{ $job->status_label }}
                             </span>
                         @endif
@@ -537,91 +537,121 @@
 </div>
 @endif
 
-{{-- Modal Konfirmasi Selesaikan Tiket (Popup Bawaan Aplikasi) --}}
+{{-- Modal Konfirmasi Selesaikan Tiket (Mobile Responsive Bottom-Sheet / Dialog) --}}
 @if($showResolveTicketModal)
-<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+<div class="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-sm transition-all"
      x-data
      @keydown.escape.window="$wire.set('showResolveTicketModal', false)">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-150">
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm sm:max-w-md w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col text-center relative overflow-hidden">
         {{-- Top Accent Bar --}}
-        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+        <div class="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 shrink-0"></div>
 
-        {{-- Icon --}}
-        <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-            <span class="material-symbols-outlined" style="font-size:32px">task_alt</span>
+        {{-- Header with Close Button --}}
+        <div class="p-4 pb-2 relative shrink-0">
+            <button type="button" wire:click="$set('showResolveTicketModal', false)"
+                    class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                <span class="material-symbols-outlined" style="font-size:28px">task_alt</span>
+            </div>
+
+            <h3 class="text-base font-black text-slate-900 dark:text-white leading-tight">
+                Selesaikan Tiket?
+            </h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Konfirmasi perbaikan gangguan telah selesai ditangani.
+            </p>
         </div>
 
-        {{-- Title --}}
-        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">
-            Selesaikan Tiket?
-        </h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Konfirmasi bahwa perbaikan gangguan telah selesai ditangani.
-        </p>
-
-        {{-- Ticket Summary Box --}}
-        <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-1.5">
-            <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
-                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
-                <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold text-[10px] uppercase">Subjek</span>
-                <span class="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[180px]">{{ $selectedTicketTitle }}</span>
-            </div>
-        </div>
-
-        {{-- Optional Resolution Notes --}}
-        <div class="mt-3 text-left">
-            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
-                Catatan Perbaikan <span class="text-slate-400 font-normal lowercase">(opsional)</span>
-            </label>
-            <textarea wire:model="ticket_resolution_notes" rows="2" placeholder="Contoh: Kabel fiber optik disambung, sinyal normal..."
-                      class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
-        </div>
-
-        {{-- Upload Foto Bukti Lapangan --}}
-        <div class="mt-3 text-left">
-            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
-                Foto Bukti Lapangan <span class="text-slate-400 font-normal lowercase">(Kamera / Galeri)</span>
-            </label>
-            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-center hover:border-emerald-500 transition-colors">
-                <input type="file" wire:model="ticket_upload_photos" multiple accept="image/*" id="myjobs-ticket-photos-input" class="hidden">
-                <label for="myjobs-ticket-photos-input" class="cursor-pointer flex flex-col items-center justify-center">
-                    <span class="material-symbols-outlined text-2xl text-emerald-600 dark:text-emerald-400">add_a_photo</span>
-                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Ambil Foto / Pilih Gambar</span>
-                    <span class="text-[10px] text-slate-400">Bisa foto modem, ODP, atau redaman meter</span>
-                </label>
-            </div>
-
-            <div wire:loading wire:target="ticket_upload_photos" class="mt-2 text-xs text-indigo-600 flex items-center gap-1.5">
-                <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                <span>Mengunggah foto...</span>
-            </div>
-
-            @if(!empty($ticket_upload_photos))
-                <div class="mt-2.5 grid grid-cols-3 gap-2">
-                    @foreach($ticket_upload_photos as $index => $photo)
-                        <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                            @if(is_object($photo) && method_exists($photo, 'temporaryUrl'))
-                                <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
-                            @endif
-                            <button type="button" wire:click="removeTicketPhoto({{ $index }})"
-                                    class="absolute top-1 right-1 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center shadow hover:bg-rose-700">
-                                <span class="material-symbols-outlined text-xs">close</span>
-                            </button>
-                        </div>
-                    @endforeach
+        {{-- Scrollable Form Content --}}
+        <div class="overflow-y-auto px-4 py-2 space-y-3 flex-1 text-left overscroll-contain">
+            {{-- Ticket Summary Box --}}
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
+                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
                 </div>
-            @endif
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-semibold text-[10px] uppercase">Subjek</span>
+                    <span class="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[180px]">{{ $selectedTicketTitle }}</span>
+                </div>
+            </div>
+
+            {{-- Optional Resolution Notes --}}
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                    Catatan Perbaikan <span class="text-slate-400 font-normal lowercase">(opsional)</span>
+                </label>
+                <textarea wire:model="ticket_resolution_notes" rows="2" placeholder="Contoh: Kabel fiber optik disambung, redaman -19 dBm normal..."
+                          class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
+            </div>
+
+            {{-- Upload Foto Bukti Lapangan (Kamera Langsung & Galeri) --}}
+            <div class="space-y-1.5">
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                    Foto Bukti Lapangan <span class="text-slate-400 font-normal lowercase">(Kamera / Galeri)</span>
+                </label>
+
+                <div class="grid grid-cols-2 gap-2">
+                    {{-- Tombol Buka Kamera Langsung --}}
+                    <div>
+                        <input type="file" wire:model="ticket_upload_photos" accept="image/*" capture="environment" id="myjobs-resolve-camera-input" class="hidden">
+                        <label for="myjobs-resolve-camera-input" class="cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-center transition-all active:scale-95 shadow-sm">
+                            <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center mb-1 shadow-sm">
+                                <span class="material-symbols-outlined text-lg">photo_camera</span>
+                            </div>
+                            <span class="text-xs font-bold text-emerald-900 dark:text-emerald-200">Foto Kamera</span>
+                            <span class="text-[9px] text-emerald-600/80 dark:text-emerald-400">Jepret Langsung</span>
+                        </label>
+                    </div>
+
+                    {{-- Tombol Pilih dari Galeri --}}
+                    <div>
+                        <input type="file" wire:model="ticket_upload_photos" multiple accept="image/*" id="myjobs-resolve-gallery-input" class="hidden">
+                        <label for="myjobs-resolve-gallery-input" class="cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-center transition-all active:scale-95 shadow-sm">
+                            <div class="w-8 h-8 rounded-full bg-slate-600 text-white flex items-center justify-center mb-1 shadow-sm">
+                                <span class="material-symbols-outlined text-lg">photo_library</span>
+                            </div>
+                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">Pilih Galeri</span>
+                            <span class="text-[9px] text-slate-500 dark:text-slate-400">Album / File</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div wire:loading wire:target="ticket_upload_photos" class="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 py-1">
+                    <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                    <span>Mengunggah foto...</span>
+                </div>
+
+                @if(!empty($ticket_upload_photos))
+                    @php
+                        $photoList = is_array($ticket_upload_photos) ? $ticket_upload_photos : [$ticket_upload_photos];
+                    @endphp
+                    <div class="mt-2 grid grid-cols-3 gap-2">
+                        @foreach($photoList as $index => $photo)
+                            <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100">
+                                @if(is_object($photo) && method_exists($photo, 'temporaryUrl'))
+                                    <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                                @endif
+                                <button type="button" wire:click="removeTicketPhoto({{ $index }})"
+                                        class="absolute top-1 right-1 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center shadow hover:bg-rose-700 active:scale-95">
+                                    <span class="material-symbols-outlined text-xs">close</span>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </div>
 
-        {{-- Action Buttons --}}
-        <div class="mt-4 flex items-center gap-2">
+        {{-- Sticky Action Buttons Footer --}}
+        <div class="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-850 backdrop-blur flex items-center gap-2 shrink-0 pb-6 sm:pb-3.5">
             <button wire:click="$set('showResolveTicketModal', false)" type="button"
                     class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
                 Batal
@@ -640,31 +670,41 @@
 
 {{-- Modal Edit Penyelesaian Tiket --}}
 @if($showEditTicketResolutionModal)
-<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+<div class="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-sm transition-all"
      x-data
      @keydown.escape.window="$wire.set('showEditTicketResolutionModal', false)">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden">
-        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm sm:max-w-md w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col text-center relative overflow-hidden">
+        {{-- Top Accent Bar --}}
+        <div class="h-1.5 bg-gradient-to-r from-indigo-500 to-blue-500 shrink-0"></div>
 
-        <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-            <span class="material-symbols-outlined" style="font-size:30px">edit_note</span>
+        {{-- Header with Close Button --}}
+        <div class="p-4 pb-2 relative shrink-0">
+            <button type="button" wire:click="$set('showEditTicketResolutionModal', false)"
+                    class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                <span class="material-symbols-outlined" style="font-size:28px">edit_note</span>
+            </div>
+
+            <h3 class="text-base font-black text-slate-900 dark:text-white leading-tight">Edit Penyelesaian Tiket</h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Perbarui catatan perbaikan atau buka kembali ke Tugas Aktif.</p>
         </div>
 
-        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">Edit Penyelesaian Tiket</h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Perbarui catatan perbaikan atau buka kembali ke Tugas Aktif.</p>
-
-        <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-1.5">
-            <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
-                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+        {{-- Scrollable Form Content --}}
+        <div class="overflow-y-auto px-4 py-2 space-y-3 flex-1 text-left overscroll-contain">
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
+                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
+                </div>
             </div>
-            <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
-                <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
-            </div>
-        </div>
 
-        <div class="mt-3 text-left space-y-3">
             <div>
                 <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Status Tiket</label>
                 <select wire:model="ticket_edit_status"
@@ -680,7 +720,8 @@
             </div>
         </div>
 
-        <div class="mt-4 flex items-center gap-2">
+        {{-- Sticky Action Buttons Footer --}}
+        <div class="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-850 backdrop-blur flex items-center gap-2 shrink-0 pb-6 sm:pb-3.5">
             <button wire:click="$set('showEditTicketResolutionModal', false)" type="button"
                     class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
                 Batal
@@ -699,31 +740,42 @@
 
 {{-- Modal Update Progress Pekerjaan Tiket --}}
 @if($showProgressTicketModal)
-<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+<div class="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-sm transition-all"
      x-data
      @keydown.escape.window="$wire.set('showProgressTicketModal', false)">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden">
-        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm sm:max-w-md w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col text-center relative overflow-hidden">
+        {{-- Top Accent Bar --}}
+        <div class="h-1.5 bg-gradient-to-r from-amber-500 to-orange-500 shrink-0"></div>
 
-        <div class="w-14 h-14 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-            <span class="material-symbols-outlined" style="font-size:30px">edit_document</span>
+        {{-- Header with Close Button --}}
+        <div class="p-4 pb-2 relative shrink-0">
+            <button type="button" wire:click="$set('showProgressTicketModal', false)"
+                    class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <div class="w-12 h-12 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                <span class="material-symbols-outlined" style="font-size:28px">edit_document</span>
+            </div>
+
+            <h3 class="text-base font-black text-slate-900 dark:text-white leading-tight">Update Progress Lapangan</h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Perbarui status dan catatan kendala sebelum tiket diselesaikan.</p>
         </div>
 
-        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">Update Progress Lapangan</h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Perbarui status dan catatan kendala sebelum tiket diselesaikan.</p>
-
-        <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-1.5">
-            <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
-                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+        {{-- Scrollable Form Content --}}
+        <div class="overflow-y-auto px-4 py-2 space-y-3 flex-1 text-left overscroll-contain">
+            {{-- Ticket Summary Box --}}
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
+                    <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
+                </div>
             </div>
-            <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
-                <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
-            </div>
-        </div>
 
-        <div class="mt-3 text-left space-y-3">
             <div>
                 <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Status Pengerjaan</label>
                 <select wire:model="progress_status"
@@ -747,33 +799,55 @@
                           class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
             </div>
 
-            {{-- Upload Foto Saat Update Progress --}}
-            <div>
-                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
+            {{-- Upload Foto Saat Update Progress (Kamera & Galeri) --}}
+            <div class="space-y-1.5">
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase">
                     Foto Lapangan / Kendala <span class="text-slate-400 font-normal lowercase">(Kamera / Galeri)</span>
                 </label>
-                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-2.5 text-center hover:border-amber-500 transition-colors">
-                    <input type="file" wire:model="ticket_upload_photos" multiple accept="image/*" id="myjobs-progress-photos-input" class="hidden">
-                    <label for="myjobs-progress-photos-input" class="cursor-pointer flex flex-col items-center justify-center">
-                        <span class="material-symbols-outlined text-2xl text-amber-500">add_a_photo</span>
-                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-0.5">Ambil / Pilih Foto Lapangan</span>
-                    </label>
+
+                <div class="grid grid-cols-2 gap-2">
+                    {{-- Tombol Buka Kamera Langsung --}}
+                    <div>
+                        <input type="file" wire:model="ticket_upload_photos" accept="image/*" capture="environment" id="myjobs-progress-camera-input" class="hidden">
+                        <label for="myjobs-progress-camera-input" class="cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-center transition-all active:scale-95 shadow-sm">
+                            <div class="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center mb-1 shadow-sm">
+                                <span class="material-symbols-outlined text-lg">photo_camera</span>
+                            </div>
+                            <span class="text-xs font-bold text-amber-900 dark:text-amber-200">Foto Kamera</span>
+                            <span class="text-[9px] text-amber-600/80 dark:text-amber-400">Jepret Langsung</span>
+                        </label>
+                    </div>
+
+                    {{-- Tombol Pilih dari Galeri --}}
+                    <div>
+                        <input type="file" wire:model="ticket_upload_photos" multiple accept="image/*" id="myjobs-progress-gallery-input" class="hidden">
+                        <label for="myjobs-progress-gallery-input" class="cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-center transition-all active:scale-95 shadow-sm">
+                            <div class="w-8 h-8 rounded-full bg-slate-600 text-white flex items-center justify-center mb-1 shadow-sm">
+                                <span class="material-symbols-outlined text-lg">photo_library</span>
+                            </div>
+                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">Pilih Galeri</span>
+                            <span class="text-[9px] text-slate-500 dark:text-slate-400">Album / File</span>
+                        </label>
+                    </div>
                 </div>
 
-                <div wire:loading wire:target="ticket_upload_photos" class="mt-1.5 text-xs text-amber-600 flex items-center gap-1.5">
+                <div wire:loading wire:target="ticket_upload_photos" class="text-xs text-amber-600 flex items-center gap-1.5 py-1">
                     <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
                     <span>Mengunggah foto...</span>
                 </div>
 
                 @if(!empty($ticket_upload_photos))
+                    @php
+                        $photoList = is_array($ticket_upload_photos) ? $ticket_upload_photos : [$ticket_upload_photos];
+                    @endphp
                     <div class="mt-2 grid grid-cols-3 gap-2">
-                        @foreach($ticket_upload_photos as $index => $photo)
-                            <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                        @foreach($photoList as $index => $photo)
+                            <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100">
                                 @if(is_object($photo) && method_exists($photo, 'temporaryUrl'))
                                     <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
                                 @endif
                                 <button type="button" wire:click="removeTicketPhoto({{ $index }})"
-                                        class="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center shadow hover:bg-rose-700">
+                                        class="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center shadow hover:bg-rose-700 active:scale-95">
                                     <span class="material-symbols-outlined text-xs">close</span>
                                 </button>
                             </div>
@@ -783,7 +857,8 @@
             </div>
         </div>
 
-        <div class="mt-4 flex items-center gap-2">
+        {{-- Sticky Action Buttons Footer --}}
+        <div class="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-850 backdrop-blur flex items-center gap-2 shrink-0 pb-6 sm:pb-3.5">
             <button wire:click="$set('showProgressTicketModal', false)" type="button"
                     class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
                 Batal
@@ -802,30 +877,40 @@
 
 {{-- Modal Selesaikan / Edit Maintenance Jaringan --}}
 @if($showResolveMaintModal)
-<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+<div class="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-sm transition-all"
      x-data
      @keydown.escape.window="$wire.set('showResolveMaintModal', false)">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden">
-        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 to-emerald-500"></div>
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm sm:max-w-md w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col text-center relative overflow-hidden">
+        {{-- Top Accent Bar --}}
+        <div class="h-1.5 bg-gradient-to-r from-sky-500 to-emerald-500 shrink-0"></div>
 
-        <div class="w-14 h-14 bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-            <span class="material-symbols-outlined" style="font-size:30px">engineering</span>
+        {{-- Header with Close Button --}}
+        <div class="p-4 pb-2 relative shrink-0">
+            <button type="button" wire:click="$set('showResolveMaintModal', false)"
+                    class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <div class="w-12 h-12 bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                <span class="material-symbols-outlined" style="font-size:28px">engineering</span>
+            </div>
+
+            <h3 class="text-base font-black text-slate-900 dark:text-white leading-tight">
+                {{ $isEditingMaintResolution ? 'Edit Penyelesaian Maintenance' : 'Selesaikan Maintenance?' }}
+            </h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {{ $selectedMaintTitle }}
+            </p>
         </div>
 
-        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">
-            {{ $isEditingMaintResolution ? 'Edit Penyelesaian Maintenance' : 'Selesaikan Maintenance?' }}
-        </h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {{ $selectedMaintTitle }}
-        </p>
+        {{-- Scrollable Form Content --}}
+        <div class="overflow-y-auto px-4 py-2 space-y-3 flex-1 text-left overscroll-contain">
+            @if($selectedMaintDevice)
+                <div class="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
+                    {{ $selectedMaintDevice }}
+                </div>
+            @endif
 
-        @if($selectedMaintDevice)
-            <div class="mt-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
-                {{ $selectedMaintDevice }}
-            </div>
-        @endif
-
-        <div class="mt-3 text-left space-y-3">
             @if($isEditingMaintResolution)
                 <div>
                     <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Status Maintenance</label>
@@ -843,7 +928,8 @@
             </div>
         </div>
 
-        <div class="mt-4 flex items-center gap-2">
+        {{-- Sticky Action Buttons Footer --}}
+        <div class="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-850 backdrop-blur flex items-center gap-2 shrink-0 pb-6 sm:pb-3.5">
             <button wire:click="$set('showResolveMaintModal', false)" type="button"
                     class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
                 Batal
