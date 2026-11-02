@@ -99,7 +99,7 @@ final class IpaymuPaymentDriver implements PaymentGatewayDriverInterface
 
         $notifyUrl = $req->callbackUrl ?: ($this->config['callback_url'] ?? '');
         $returnUrl = $req->successRedirectUrl ?: ($this->config['return_url'] ?? url('/'));
-        $cancelUrl = $req->failedRedirectUrl ?: ($this->config['cancel_url'] ?? url('/'));
+        $cancelUrl = $req->failureRedirectUrl ?: ($this->config['cancel_url'] ?? url('/'));
 
         $payload = [
             'name'        => $req->customerName ?: 'Customer dsBilling',
