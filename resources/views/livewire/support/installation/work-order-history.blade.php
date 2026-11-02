@@ -207,13 +207,13 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                @if($item->reseller_id)
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                @if(!empty($item->reseller_name) || $item->reseller_id)
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" title="{{ $item->reseller_id ? 'ID Reseller: #' . $item->reseller_id : '' }}">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">storefront</span>
-                                        Reseller #{{ $item->reseller_id }}
+                                        {{ $item->reseller_name ?: ('Reseller #' . $item->reseller_id) }}
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">domain</span>
                                         Direct (Kantor)
                                     </span>

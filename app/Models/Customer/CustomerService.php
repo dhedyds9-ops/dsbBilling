@@ -99,6 +99,11 @@ class CustomerService extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reseller_id');
+    }
+
     public function contract()
     {
         return $this->belongsTo(Contract::class);

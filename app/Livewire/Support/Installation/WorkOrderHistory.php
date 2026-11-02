@@ -55,7 +55,7 @@ class WorkOrderHistory extends AdminComponent
         // 1. Installations (CustomerService)
         if ($this->typeFilter === 'all' || $this->typeFilter === 'installation') {
             $csQ = CustomerService::withoutGlobalScopes()
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'onu.olt', 'serviceProfile', 'service', 'createdBy']);
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'onu.olt', 'serviceProfile', 'service', 'createdBy', 'reseller']);
 
             if ($this->technicianFilter) {
                 $csQ->where('customer_services.created_by', $this->technicianFilter);
@@ -102,6 +102,9 @@ class WorkOrderHistory extends AdminComponent
                       })
                       ->orWhereHas('createdBy', function($uq) use ($search) {
                           $uq->where('name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('reseller', function($rq) use ($search) {
+                          $rq->where('name', 'like', "%{$search}%");
                       });
                 });
             }
@@ -112,6 +115,8 @@ class WorkOrderHistory extends AdminComponent
                 $serviceType = strtoupper($cs->serviceProfile?->service_type ?? ($cs->service?->type ?? 'PPPOE'));
                 $serviceName = $cs->serviceProfile?->name ?? ($cs->service?->name ?? 'Layanan Internet');
                 $isCompleted = in_array($cs->status, ['active', 'completed', 'approved']);
+                $resellerId = $cs->reseller_id ?? $cs->customer?->reseller_id;
+                $resellerName = $cs->reseller?->name ?? ($cs->customer?->reseller?->name ?? null);
 
                 $items->push((object)[
                     'id' => 'cs_' . $cs->id,
@@ -124,7 +129,8 @@ class WorkOrderHistory extends AdminComponent
                     'customer_phone' => $cs->customer?->phone ?? '-',
                     'customer_address' => $cs->customer?->address ?? 'Alamat tidak tersedia',
                     'technician_name' => $cs->createdBy?->name ?? 'Teknisi Lapangan',
-                    'reseller_id' => $cs->reseller_id,
+                    'reseller_id' => $resellerId,
+                    'reseller_name' => $resellerName,
                     'package_name' => $serviceName,
                     'username' => $cs->username,
                     'device_info' => $cs->onu ? 'ONU ' . ($cs->onu->model ?? '') . ' (SN: ' . $cs->onu->serial_number . ')' : '-',
@@ -141,7 +147,7 @@ class WorkOrderHistory extends AdminComponent
         // 2. Repair Tickets
         if ($this->typeFilter === 'all' || $this->typeFilter === 'repair') {
             $tQ = Ticket::withoutGlobalScopes()
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'assignedTo']);
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'assignedTo', 'reseller']);
 
             if ($this->technicianFilter) {
                 $tQ->where('tickets.assigned_to', $this->technicianFilter);
@@ -185,6 +191,9 @@ class WorkOrderHistory extends AdminComponent
                       })
                       ->orWhereHas('assignedTo', function($uq) use ($search) {
                           $uq->where('name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('reseller', function($rq) use ($search) {
+                          $rq->where('name', 'like', "%{$search}%");
                       });
                 });
             }
@@ -193,6 +202,8 @@ class WorkOrderHistory extends AdminComponent
 
             foreach ($tickets as $ticket) {
                 $isCompleted = in_array($ticket->status, ['resolved', 'closed']);
+                $resellerId = $ticket->reseller_id ?? $ticket->customer?->reseller_id;
+                $resellerName = $ticket->reseller?->name ?? ($ticket->customer?->reseller?->name ?? null);
 
                 $items->push((object)[
                     'id' => 'ticket_' . $ticket->id,
@@ -205,7 +216,8 @@ class WorkOrderHistory extends AdminComponent
                     'customer_phone' => $ticket->customer?->phone ?? '-',
                     'customer_address' => $ticket->customer?->address ?? 'Alamat tidak tersedia',
                     'technician_name' => $ticket->assignedTo?->name ?? 'Teknisi Lapangan',
-                    'reseller_id' => $ticket->reseller_id,
+                    'reseller_id' => $resellerId,
+                    'reseller_name' => $resellerName,
                     'package_name' => $ticket->title,
                     'username' => null,
                     'device_info' => $ticket->description ? substr($ticket->description, 0, 80) : '-',
