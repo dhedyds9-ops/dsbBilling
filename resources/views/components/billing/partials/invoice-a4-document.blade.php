@@ -100,15 +100,45 @@
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-slate-700 border-b border-slate-300 dark:border-slate-600">
                     @forelse($invoice->item_details ?? ($invoice->items ?? []) as $idx => $item)
+                        @php
+                            $rawDesc = is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan');
+                            $cs = $invoice->customer_service;
+                            $profile = $cs?->serviceProfile ?? $invoice->service_profile;
+                            $desc = $rawDesc;
+
+                            // Jika deskripsi masih generik ('Langganan Bulanan' / 'Langganan'), perjelas dengan nama paket
+                            if (($desc === 'Langganan Bulanan' || $desc === 'Langganan' || $desc === 'Langganan Service' || empty($desc)) && $profile) {
+                                $desc = 'Langganan ' . $profile->name;
+                            }
+                        @endphp
                         <tr>
-                            <td class="py-4 px-4 text-center text-slate-600 dark:text-slate-400">{{ $loop->iteration }}</td>
+                            <td class="py-4 px-4 text-center text-slate-600 dark:text-slate-400 font-medium">{{ $loop->iteration }}</td>
                             <td class="py-4 px-4">
-                                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan') }}</p>
+                                <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ $desc }}</p>
+                                @if($profile)
+                                    <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                        @if(!empty($profile->name) && !str_contains(strtolower($desc), strtolower($profile->name)))
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                                                Paket: {{ $profile->name }}
+                                            </span>
+                                        @endif
+                                        @if($profile->download_speed && $profile->upload_speed)
+                                            <span class="inline-flex items-center gap-1 text-[11px]">
+                                                Kecepatan: {{ $profile->download_speed }}/{{ $profile->upload_speed }} Mbps
+                                            </span>
+                                        @endif
+                                        @if(!empty($cs?->username))
+                                            <span class="inline-flex items-center gap-1 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+                                                User: {{ $cs->username }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                @endif
                             </td>
-                            <td class="py-4 px-4 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                            <td class="py-4 px-4 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs font-medium">
                                 {{ $invoice->issue_date ? $invoice->issue_date->format('M Y') : '-' }}
                             </td>
-                            <td class="py-4 px-4 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                            <td class="py-4 px-4 text-right font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                                 Rp {{ number_format(is_array($item) ? ($item['subtotal'] ?? 0) : ($item->subtotal ?? $item->total ?? 0), 0, ',', '.') }}
                             </td>
                         </tr>

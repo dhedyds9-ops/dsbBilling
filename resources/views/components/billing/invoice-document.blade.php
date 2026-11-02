@@ -215,9 +215,24 @@
                 </div>
                 <div class="divide-y divide-slate-100 dark:divide-slate-800">
                     @forelse($invoice->item_details ?? ($invoice->items ?? []) as $item)
+                        @php
+                            $rawDesc = is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan');
+                            $cs = $invoice->customer_service;
+                            $profile = $cs?->serviceProfile ?? $invoice->service_profile;
+                            $desc = $rawDesc;
+                            if (($desc === 'Langganan Bulanan' || $desc === 'Langganan' || $desc === 'Langganan Service' || empty($desc)) && $profile) {
+                                $desc = 'Langganan ' . $profile->name;
+                            }
+                        @endphp
                         <div class="p-3.5 flex justify-between items-start gap-3">
                             <div class="min-w-0 flex-1">
-                                <p class="font-semibold text-xs text-slate-800 dark:text-slate-200 leading-snug">{{ is_array($item) ? ($item['description'] ?? 'Item Layanan') : ($item->description ?? 'Item Layanan') }}</p>
+                                <p class="font-semibold text-xs text-slate-800 dark:text-slate-200 leading-snug">{{ $desc }}</p>
+                                @if($profile)
+                                    <p class="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5">
+                                        {{ $profile->name }} ({{ $profile->download_speed }}/{{ $profile->upload_speed }} Mbps)
+                                        @if(!empty($cs?->username)) &bull; {{ $cs->username }} @endif
+                                    </p>
+                                @endif
                                 <p class="text-[11px] text-slate-400 mt-0.5">Periode: {{ $invoice->issue_date ? $invoice->issue_date->format('M Y') : '-' }}</p>
                             </div>
                             <p class="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 shrink-0">

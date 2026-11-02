@@ -48,6 +48,11 @@ class Invoice extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
+    public function contract()
+    {
+        return $this->belongsTo(\App\Models\CRM\Contract::class, 'contract_id');
+    }
+
     public function reseller()
     {
         return $this->belongsTo(User::class, 'reseller_id');
@@ -71,6 +76,77 @@ class Invoice extends Model
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Dapatkan Subtotal invoice dari rincian items atau total
+     */
+    public function getSubtotalAttribute(): float
+    {
+        if ($this->relationLoaded('items') && $this->items->isNotEmpty()) {
+            return (float) $this->items->sum('subtotal');
+        }
+        if (!empty($this->item_details) && is_array($this->item_details)) {
+            $sum = 0.0;
+            foreach ($this->item_details as $item) {
+                $sum += (float) ($item['subtotal'] ?? (($item['quantity'] ?? 1) * ($item['unit_price'] ?? 0)));
+            }
+            if ($sum > 0) {
+                return $sum;
+            }
+        }
+        return (float) ($this->total_amount ?? 0);
+    }
+
+    /**
+     * Dapatkan Service Profile paket internet terkait invoice ini
+     */
+    public function getServiceProfileAttribute(): ?\App\Models\ISP\ServiceProfile
+    {
+        if ($this->contract_id) {
+            $cs = \App\Models\Customer\CustomerService::with('serviceProfile')
+                ->where('contract_id', $this->contract_id)
+                ->first();
+            if ($cs && $cs->serviceProfile) {
+                return $cs->serviceProfile;
+            }
+        }
+
+        if ($this->customer_id) {
+            $cs = \App\Models\Customer\CustomerService::with('serviceProfile')
+                ->where('customer_id', $this->customer_id)
+                ->latest()
+                ->first();
+            if ($cs && $cs->serviceProfile) {
+                return $cs->serviceProfile;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Dapatkan Layanan Pelanggan (CustomerService) terkait invoice ini
+     */
+    public function getCustomerServiceAttribute(): ?\App\Models\Customer\CustomerService
+    {
+        if ($this->contract_id) {
+            $cs = \App\Models\Customer\CustomerService::with(['serviceProfile'])
+                ->where('contract_id', $this->contract_id)
+                ->first();
+            if ($cs) {
+                return $cs;
+            }
+        }
+
+        if ($this->customer_id) {
+            return \App\Models\Customer\CustomerService::with(['serviceProfile'])
+                ->where('customer_id', $this->customer_id)
+                ->latest()
+                ->first();
+        }
+
+        return null;
     }
 
     /**
