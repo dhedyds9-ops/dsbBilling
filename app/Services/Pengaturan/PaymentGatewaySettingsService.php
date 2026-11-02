@@ -71,12 +71,33 @@ class PaymentGatewaySettingsService
                 'label' => 'Tripay (Multi-Channel Closed Payment)',
                 'environment' => 'sandbox',
                 'merchant_id' => '',
+                'merchant_code' => '',
                 'server_key' => '',
+                'api_key_sandbox' => '',
+                'api_key_production' => '',
                 'client_key' => '',
-                'callback_url' => $this->generateCallbackUrl('tripay'),
+                'private_key' => '',
                 'webhook_secret' => '',
+                'callback_url' => $this->generateCallbackUrl('tripay'),
                 'fee_percent' => 1.5,
                 'fee_fixed' => 0,
+                'expiry_hours' => 24,
+                'enabled_channels' => [
+                    'QRIS'       => true,
+                    'BRIVA'      => true,
+                    'BNIVA'      => true,
+                    'BCAVA'      => true,
+                    'MANDIRIVA'  => true,
+                    'PERMATAVA'  => false,
+                    'CIMBVA'     => false,
+                    'MUAMALATVA' => false,
+                    'ALFAMART'   => true,
+                    'INDOMARET'  => true,
+                    'SHOPEEPAY'  => true,
+                    'DANA'       => true,
+                    'OVO'        => true,
+                    'ALFAMIDI'   => false,
+                ],
             ],
             'ipaymu' => [
                 'enabled' => false,
@@ -84,6 +105,8 @@ class PaymentGatewaySettingsService
                 'environment' => 'sandbox',
                 'va_number' => '',
                 'api_key' => '',
+                'api_key_sandbox' => '',
+                'api_key_production' => '',
                 'callback_url' => $this->generateCallbackUrl('ipaymu'),
                 'webhook_secret' => '',
                 'fee_percent' => 1.5,
@@ -210,7 +233,15 @@ class PaymentGatewaySettingsService
             $config['client_key'] = !empty($config['public_key_' . $env]) 
                 ? $config['public_key_' . $env] 
                 : (!empty($config['public_key_production']) ? $config['public_key_production'] : ($config['public_key_sandbox'] ?? $config['client_key'] ?? ''));
-        } elseif ($key === 'duitku' || $key === 'tripay') {
+        } elseif ($key === 'tripay') {
+            $config['merchant_id'] = !empty($config['merchant_code']) ? $config['merchant_code'] : ($config['merchant_id'] ?? '');
+            $config['merchant_code'] = $config['merchant_id'];
+            $config['webhook_secret'] = !empty($config['private_key']) ? $config['private_key'] : ($config['webhook_secret'] ?? '');
+            $config['private_key'] = $config['webhook_secret'];
+            $config['server_key'] = !empty($config['api_key_' . $env]) 
+                ? $config['api_key_' . $env] 
+                : (!empty($config['api_key_production']) ? $config['api_key_production'] : ($config['api_key_sandbox'] ?? $config['server_key'] ?? ''));
+        } elseif ($key === 'duitku') {
             $config['server_key'] = !empty($config['api_key_' . $env]) 
                 ? $config['api_key_' . $env] 
                 : (!empty($config['api_key_production']) ? $config['api_key_production'] : ($config['api_key_sandbox'] ?? $config['server_key'] ?? ''));

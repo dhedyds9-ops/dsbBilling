@@ -23,6 +23,7 @@ class Index extends AdminComponent
         $this->errorMessage = '';
         $this->successMessage = '';
         $this->balanceInfo = null;
+        $this->loadSettings();
     }
 
     public array $general = [
@@ -204,6 +205,11 @@ class Index extends AdminComponent
         $this->activeModule = 'pengaturan';
         $this->activePage   = 'payment-gateway';
 
+        $this->loadSettings();
+    }
+
+    public function loadSettings(): void
+    {
         $svc = app(\App\Services\Pengaturan\PaymentGatewaySettingsService::class);
         $all = $svc->getAll();
 
@@ -268,6 +274,7 @@ class Index extends AdminComponent
     {
         try {
             $svc->save('midtrans', $this->midtrans);
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'Konfigurasi Midtrans berhasil disimpan.';
@@ -283,6 +290,7 @@ class Index extends AdminComponent
     {
         try {
             $svc->save('xendit', $this->xendit);
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'Konfigurasi Xendit berhasil disimpan.';
@@ -298,6 +306,7 @@ class Index extends AdminComponent
     {
         try {
             $svc->save('duitku', $this->duitku);
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'Konfigurasi Duitku berhasil disimpan.';
@@ -313,6 +322,7 @@ class Index extends AdminComponent
     {
         try {
             $svc->save('tripay', $this->tripay);
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'Konfigurasi Tripay berhasil disimpan.';
@@ -328,6 +338,7 @@ class Index extends AdminComponent
     {
         try {
             $svc->save('ipaymu', $this->ipaymu);
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'Konfigurasi iPaymu berhasil disimpan.';
@@ -349,6 +360,7 @@ class Index extends AdminComponent
                 'max_wait_hours'      => $this->manualBank['max_wait_hours'] ?? 48,
                 'bank_accounts'       => $this->manualBank['accounts'] ?? [],
             ]);
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'Rekening bank manual berhasil disimpan.';
@@ -368,6 +380,7 @@ class Index extends AdminComponent
                 'require_attachment' => $this->ewalletManual['require_attachment'] ?? true,
                 'providers'          => $this->ewalletManual['providers'] ?? [],
             ]);
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'e-Wallet manual berhasil disimpan.';
@@ -401,6 +414,7 @@ class Index extends AdminComponent
             \App\Models\Setting::setValue('payment_gateway.general.auto_confirm_payment', $this->general['auto_confirm_payment'] ?? true, 'boolean', 'payment_gateway');
             \App\Models\Setting::setValue('payment_gateway.general.send_receipt_on_success', $this->general['send_receipt_on_success'] ?? true, 'boolean', 'payment_gateway');
             \App\Models\Setting::setValue('payment_gateway.general.minimum_topup_min_amount', $this->general['minimum_topup_min_amount'] ?? 10000, 'integer', 'payment_gateway');
+            $this->loadSettings();
             $this->savedStatus = 'saved';
             $this->errorMessage = '';
             $this->successMessage = 'Pengaturan umum berhasil disimpan.';

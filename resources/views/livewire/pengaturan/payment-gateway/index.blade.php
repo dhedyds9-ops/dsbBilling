@@ -46,9 +46,9 @@
   @endif
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-    <form class="xl:col-span-2 space-y-4 text-sm">
+    <div class="xl:col-span-2 space-y-4 text-sm">
       @if($activeTab === 'general')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-general" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 font-semibold text-slate-900 dark:text-slate-100">Pengaturan Umum Payment</div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode</label><select wire:model="general.mode" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm dark:bg-slate-900 dark:text-slate-100"><option value="sandbox">Sandbox</option><option value="production">Production</option></select></div>
@@ -78,7 +78,7 @@
         @php
           $mEnv = $midtrans['environment'] ?? 'sandbox';
         @endphp
-        <div x-data="{ env: '{{ $mEnv }}' }" x-init="env = '{{ $mEnv }}'" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-midtrans" x-data="{ env: '{{ $mEnv }}' }" x-init="env = '{{ $mEnv }}'" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="font-semibold text-slate-900 dark:text-slate-100">Midtrans (Pembayaran Indonesia)</span>
@@ -225,7 +225,7 @@
         </div>
 
       @elseif($activeTab === 'xendit')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-xendit" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="font-semibold text-slate-900 dark:text-slate-100">Xendit Payment Gateway</span>
@@ -284,7 +284,7 @@
         </div>
 
       @elseif($activeTab === 'duitku')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-duitku" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="font-semibold text-slate-900 dark:text-slate-100">Duitku (PT. Dukita Indonesia)</span>
@@ -332,7 +332,7 @@
         </div>
 
       @elseif($activeTab === 'tripay')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-tripay" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="font-semibold text-slate-900 dark:text-slate-100">Tripay (PT. Lini Masa Triyas)</span>
@@ -340,31 +340,31 @@
                 Mode Aktif: {{ strtoupper($tripay['environment'] ?? $general['mode']) }}
               </span>
             </div>
-            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="tripay.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan Tripay</label>
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:key="tripay_enabled_chk" wire:model="tripay.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan Tripay</label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="md:col-span-2">
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode Tripay</label>
-              <select wire:model.live="tripay.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
+              <select wire:key="tripay_env_sel" wire:model.live="tripay.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
                 <option value="sandbox">Sandbox (Testing / Uji Coba)</option>
                 <option value="production">Production (Live / Transaksi Nyata)</option>
               </select>
             </div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Merchant Code</label><input type="text" wire:model="tripay.merchant_code" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Private Key</label><input type="password" wire:model="tripay.private_key" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
-            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:model="tripay.api_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
-            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Production</label><input type="password" wire:model="tripay.api_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Expiry Hours</label><input type="number" wire:model="tripay.expiry_hours" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
+            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Merchant Code</label><input type="text" wire:key="tripay_merchant_code_txt" wire:model="tripay.merchant_code" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
+            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Private Key</label><input type="password" wire:key="tripay_private_key_txt" wire:model="tripay.private_key" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:key="tripay_sandbox_key_txt" wire:model="tripay.api_key_sandbox" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Production</label><input type="password" wire:key="tripay_prod_key_txt" wire:model="tripay.api_key_production" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
+            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Expiry Hours</label><input type="number" wire:key="tripay_expiry_txt" wire:model="tripay.expiry_hours" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
             <div class="md:col-span-2">
               <div class="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Aktif Channels (Tripay Kode)</div>
               <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
                 @foreach(array_keys($tripay['enabled_channels']) as $p)
-                  <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 p-1.5 rounded bg-slate-50 dark:bg-slate-700/40"><input type="checkbox" wire:model="tripay.enabled_channels.{{$p}}" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> {{ $p }}</label>
+                  <label wire:key="tripay_channel_{{$p}}" class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 p-1.5 rounded bg-slate-50 dark:bg-slate-700/40"><input type="checkbox" wire:model="tripay.enabled_channels.{{$p}}" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> {{ $p }}</label>
                 @endforeach
               </div>
             </div>
             <div class="md:col-span-2 flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
-              <button type="button" wire:click="saveTripay" wire:loading.attr="disabled" wire:target="saveTripay" class="px-5 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60">
+              <button type="button" wire:key="tripay_save_btn" wire:click="saveTripay" wire:loading.attr="disabled" wire:target="saveTripay" class="px-5 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60">
                 <span wire:loading.remove wire:target="saveTripay" class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
                 <span wire:loading wire:target="saveTripay" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:16px">sync</span>
                 <span wire:loading.remove wire:target="saveTripay">Simpan Tripay</span>
@@ -375,7 +375,7 @@
         </div>
 
       @elseif($activeTab === 'ipaymu')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-ipaymu" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <div class="flex items-center gap-2">
               <span class="font-semibold text-slate-900 dark:text-slate-100">iPaymu Payment Gateway</span>
@@ -383,32 +383,32 @@
                 Mode Aktif: {{ strtoupper($ipaymu['environment'] ?? $general['mode']) }}
               </span>
             </div>
-            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:model="ipaymu.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan iPaymu</label>
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"><input type="checkbox" wire:key="ipaymu_enabled_chk" wire:model="ipaymu.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> Aktifkan iPaymu</label>
           </div>
           <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="md:col-span-2">
               <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mode iPaymu</label>
-              <select wire:model.live="ipaymu.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
+              <select wire:key="ipaymu_env_sel" wire:model.live="ipaymu.environment" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-semibold">
                 <option value="sandbox">Sandbox (Testing / Uji Coba)</option>
                 <option value="production">Production (Live / Transaksi Nyata)</option>
               </select>
             </div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">VA Number</label><input type="text" wire:model="ipaymu.va_number" placeholder="Contoh: 0000001234567890" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
-            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Callback / Webhook URL (notifyUrl)</label><input type="text" readonly value="{{ $ipaymu['callback_url'] ?? url('/api/payment/webhook/ipaymu/' . md5(config('app.key') . 'ipaymu')) }}" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 font-mono text-xs cursor-text"></div>
-            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:model="ipaymu.api_key_sandbox" placeholder="API Key dari Dashboard Sandbox iPaymu" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
-            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Production</label><input type="password" wire:model="ipaymu.api_key_production" placeholder="API Key dari Dashboard Production (my.ipaymu.com)" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
+            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">VA Number</label><input type="text" wire:key="ipaymu_va_number_txt" wire:model="ipaymu.va_number" placeholder="Contoh: 0000001234567890" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
+            <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Callback / Webhook URL (notifyUrl)</label><input type="text" wire:key="ipaymu_callback_txt" readonly value="{{ $ipaymu['callback_url'] ?? url('/api/payment/webhook/ipaymu/' . md5(config('app.key') . 'ipaymu')) }}" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 font-mono text-xs cursor-text"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:key="ipaymu_sandbox_key_txt" wire:model="ipaymu.api_key_sandbox" placeholder="API Key dari Dashboard Sandbox iPaymu" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Production</label><input type="password" wire:key="ipaymu_prod_key_txt" wire:model="ipaymu.api_key_production" placeholder="API Key dari Dashboard Production (my.ipaymu.com)" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
             
             <div class="md:col-span-2">
               <div class="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Aktif Channels (iPaymu)</div>
               <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
                 @foreach(array_keys($ipaymu['enabled_channels']) as $p)
-                  <label class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 p-1.5 rounded bg-slate-50 dark:bg-slate-700/40"><input type="checkbox" wire:model="ipaymu.enabled_channels.{{$p}}" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> {{ $p }}</label>
+                  <label wire:key="ipaymu_channel_{{$p}}" class="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 p-1.5 rounded bg-slate-50 dark:bg-slate-700/40"><input type="checkbox" wire:model="ipaymu.enabled_channels.{{$p}}" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"> {{ $p }}</label>
                 @endforeach
               </div>
             </div>
             
             <div class="md:col-span-2 flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
-              <button type="button" wire:click="saveIpaymu" wire:loading.attr="disabled" wire:target="saveIpaymu" class="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60">
+              <button type="button" wire:key="ipaymu_save_btn" wire:click="saveIpaymu" wire:loading.attr="disabled" wire:target="saveIpaymu" class="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-60">
                 <span wire:loading.remove wire:target="saveIpaymu" class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">save</span>
                 <span wire:loading wire:target="saveIpaymu" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:16px">sync</span>
                 <span wire:loading.remove wire:target="saveIpaymu">Simpan iPaymu</span>
@@ -419,7 +419,7 @@
         </div>
 
       @elseif($activeTab === 'manual')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-manual" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <span class="font-semibold text-slate-900 dark:text-slate-100">Rekening Bank Manual (Transfer)</span>
             <div class="flex items-center gap-4">
@@ -456,7 +456,7 @@
         </div>
 
       @elseif($activeTab === 'ewallet')
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div wire:key="tab-pane-ewallet" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
           <div class="px-4 py-3 border-y border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between flex-wrap gap-2">
             <span class="font-semibold text-slate-900 dark:text-slate-100">e-Wallet Manual (GoPay / OVO / DANA / ShopeePay)</span>
             <div class="flex items-center gap-4">
@@ -490,7 +490,7 @@
           </div>
         </div>
       @endif
-    </form>
+    </div>
 
     <aside class="space-y-4">
         @if(in_array($activeTab, ['midtrans','xendit','tripay','ipaymu']))
