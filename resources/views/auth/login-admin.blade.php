@@ -83,7 +83,7 @@
             </div>
 
             <div class="text-center lg:text-left mb-8">
-                <h2 class="text-2xl sm:text-3xl font-heading font-bold text-white mb-2">Welcome Back, Admin</h2>
+                <h2 class="text-2xl sm:text-3xl font-heading font-bold text-white mb-2">Login Admin/Reseller/Tecnician</h2>
                 <p class="text-slate-400 text-sm sm:text-base">Silakan masuk ke ruang kendali Anda.</p>
             </div>
 

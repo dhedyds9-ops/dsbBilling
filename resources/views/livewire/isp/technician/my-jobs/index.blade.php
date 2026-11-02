@@ -158,9 +158,17 @@
                             {{ $job->status_label }}
                         </span>
                     @else
-                        <span class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] font-bold uppercase">
-                            {{ $job->status_label }}
-                        </span>
+                        @if($job->job_type === 'ticket')
+                            <button type="button" wire:click="openProgressTicketModal({{ $job->ticket_id }})" title="Klik untuk ubah progress status"
+                                    class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-0.5 transition-all active:scale-95">
+                                <span class="material-symbols-outlined text-xs">edit</span>
+                                <span>{{ $job->status_label }}</span>
+                            </button>
+                        @else
+                            <span class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-[10px] font-bold uppercase">
+                                {{ $job->status_label }}
+                            </span>
+                        @endif
                     @endif
                 </div>
             </div>
@@ -739,6 +747,41 @@
                 <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Catatan Pekerjaan / Hasil Pengecekan</label>
                 <textarea wire:model="progress_notes" rows="3" placeholder="Tuliskan kendala di lapangan, redaman awal, atau langkah yang sedang dikerjakan..."
                           class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
+            </div>
+
+            {{-- Upload Foto Saat Update Progress --}}
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                    Foto Lapangan / Kendala <span class="text-slate-400 font-normal lowercase">(Kamera / Galeri)</span>
+                </label>
+                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-2.5 text-center hover:border-amber-500 transition-colors">
+                    <input type="file" wire:model="ticket_upload_photos" multiple accept="image/*" id="myjobs-progress-photos-input" class="hidden">
+                    <label for="myjobs-progress-photos-input" class="cursor-pointer flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined text-2xl text-amber-500">add_a_photo</span>
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-0.5">Ambil / Pilih Foto Lapangan</span>
+                    </label>
+                </div>
+
+                <div wire:loading wire:target="ticket_upload_photos" class="mt-1.5 text-xs text-amber-600 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                    <span>Mengunggah foto...</span>
+                </div>
+
+                @if(!empty($ticket_upload_photos))
+                    <div class="mt-2 grid grid-cols-3 gap-2">
+                        @foreach($ticket_upload_photos as $index => $photo)
+                            <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                                @if(is_object($photo) && method_exists($photo, 'temporaryUrl'))
+                                    <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                                @endif
+                                <button type="button" wire:click="removeTicketPhoto({{ $index }})"
+                                        class="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center shadow hover:bg-rose-700">
+                                    <span class="material-symbols-outlined text-xs">close</span>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
 

@@ -185,6 +185,7 @@ class Index extends Component
         $this->progress_status = $ticket->status ?? 'in_progress';
         $this->progress_notes = (string) ($ticket->description ?? '');
         $this->progress_category = (string) ($ticket->category ?? '');
+        $this->ticket_upload_photos = [];
         $this->showProgressTicketModal = true;
     }
 
@@ -197,11 +198,28 @@ class Index extends Component
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
-        $ticket->update([
+        $payload = [
             'status' => in_array($this->progress_status, ['open', 'in_progress', 'pending_customer', 'pending_material']) ? $this->progress_status : 'in_progress',
             'description' => trim($this->progress_notes) !== '' ? trim($this->progress_notes) : $ticket->description,
             'category' => trim($this->progress_category) !== '' ? trim($this->progress_category) : $ticket->category,
-        ]);
+        ];
+
+        // Upload dan simpan foto bukti jika teknisi mengunggah saat update progress
+        $photos = is_array($ticket->photos) ? $ticket->photos : [];
+        if (!empty($this->ticket_upload_photos)) {
+            foreach ($this->ticket_upload_photos as $photo) {
+                if ($photo) {
+                    $path = $photo->store('tickets/' . $ticket->id, 'public');
+                    $photos[] = 'storage/' . $path;
+                }
+            }
+            $this->ticket_upload_photos = [];
+        }
+        if (Schema::hasColumn('tickets', 'photos')) {
+            $payload['photos'] = $photos;
+        }
+
+        $ticket->update($payload);
 
         $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
         $this->showProgressTicketModal = false;
@@ -569,7 +587,9 @@ class Index extends Component
             if ($this->activeTab === 'active') {
                 $csQuery->whereIn('status', ['pending', 'provisioning', 'in_progress']);
             } else {
-                $csQuery->whereIn('status', ['active', 'completed', 'suspended', 'approved']);
+                $csQuery->whereIn('status', ['active', 'completed'])
+                    ->whereNotNull('activated_at')
+                    ->where('activated_at', '>=', now()->subDays(30));
             }
 
             if ($search) {
@@ -921,7 +941,9 @@ class Index extends Component
 
         $historyCs = CustomerService::withoutGlobalScopes()
             ->when(!$isAllScope, fn ($q) => $q->where('created_by', $userId))
-            ->whereIn('status', ['active', 'completed', 'suspended', 'approved'])
+            ->whereIn('status', ['active', 'completed'])
+            ->whereNotNull('activated_at')
+            ->where('activated_at', '>=', now()->subDays(30))
             ->count();
 
         // Active & History Installations (CRM)

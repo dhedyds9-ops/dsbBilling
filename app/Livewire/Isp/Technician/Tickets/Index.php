@@ -145,6 +145,7 @@ class Index extends Component
         $this->progress_status = $ticket->status ?? 'in_progress';
         $this->progress_notes = (string) ($ticket->description ?? '');
         $this->progress_category = (string) ($ticket->category ?? '');
+        $this->upload_photos = [];
         $this->showProgressModal = true;
     }
 
@@ -157,11 +158,28 @@ class Index extends Component
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
-        $ticket->update([
+        $payload = [
             'status' => in_array($this->progress_status, ['open', 'in_progress', 'pending_customer', 'pending_material']) ? $this->progress_status : 'in_progress',
             'description' => trim($this->progress_notes) !== '' ? trim($this->progress_notes) : $ticket->description,
             'category' => trim($this->progress_category) !== '' ? trim($this->progress_category) : $ticket->category,
-        ]);
+        ];
+
+        // Upload dan simpan foto bukti jika teknisi mengunggah saat update progress
+        $photos = is_array($ticket->photos) ? $ticket->photos : [];
+        if (!empty($this->upload_photos)) {
+            foreach ($this->upload_photos as $photo) {
+                if ($photo) {
+                    $path = $photo->store('tickets/' . $ticket->id, 'public');
+                    $photos[] = 'storage/' . $path;
+                }
+            }
+            $this->upload_photos = [];
+        }
+        if (Schema::hasColumn('tickets', 'photos')) {
+            $payload['photos'] = $photos;
+        }
+
+        $ticket->update($payload);
 
         $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
         $this->showProgressModal = false;
