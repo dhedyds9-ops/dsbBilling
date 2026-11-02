@@ -43,9 +43,13 @@ class TicketResolvedListener
                         context: ['ticket_id' => $ticket->id, 'type' => 'ticket_resolved'],
                     );
                     try {
-                        SendWaMessageJob::dispatchSync($msg);
-                    } catch (\Throwable) {
                         SendWaMessageJob::dispatch($msg)->onQueue('notifications-wa');
+                    } catch (\Throwable) {
+                        try {
+                            SendWaMessageJob::dispatch($msg);
+                        } catch (\Throwable $waErr) {
+                            Log::warning('[TicketResolvedListener] Dispatch SendWaMessageJob error: ' . $waErr->getMessage());
+                        }
                     }
                 }
             } catch (\Throwable $ce) {

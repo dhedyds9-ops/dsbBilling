@@ -26,11 +26,13 @@ class Ticket extends Model
         'reseller_id',
         'resolved_at',
         'due_date',
+        'photos',
     ];
 
     protected $casts = [
         'resolved_at' => 'datetime',
         'due_date' => 'date',
+        'photos' => 'array',
     ];
 
     public function customer(): BelongsTo

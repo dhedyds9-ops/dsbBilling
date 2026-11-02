@@ -11,17 +11,19 @@ use App\Models\Customer\CustomerService;
 use App\Models\Support\Ticket;
 use App\Models\ISP\Odp;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Src\Domain\Support\Events\TicketResolvedEvent;
 
 #[Layout('layouts.technician-app')]
 class Index extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     #[Url]
     public string $activeTab = 'active'; // active, history
@@ -52,8 +54,19 @@ class Index extends Component
     public ?string $selectedTicketCode = null;
     public ?string $selectedTicketTitle = null;
     public ?string $selectedTicketCustomer = null;
+    public ?int $selectedTicketCustomerId = null;
     public string $ticket_resolution_notes = '';
     public string $ticket_edit_status = 'resolved';
+
+    // Upload Foto Bukti Lapangan untuk Tiket
+    public $ticket_upload_photos = [];
+
+    // Edit Progress Tiket
+    public bool $showProgressTicketModal = false;
+    public ?int $progressTicketId = null;
+    public string $progress_status = 'in_progress';
+    public string $progress_notes = '';
+    public string $progress_category = '';
 
     // Modal Selesaikan / Edit Maintenance Jaringan
     public bool $showResolveMaintModal = false;
@@ -64,9 +77,6 @@ class Index extends Component
     public string $maint_resolution_notes = '';
     public string $maint_edit_status = 'completed';
 
-    /**
-     * Hanya Super Admin murni (bukan akun Teknisi ber-role Manager) yang memiliki mode pantau semua tugas.
-     */
     private function isAdminOversight(): bool
     {
         $user = Auth::user();
@@ -74,8 +84,27 @@ class Index extends Component
             return false;
         }
 
-        return $user->hasRole(['administrator', 'superadmin'])
-            && strtoupper((string) $user->job_function) !== 'TECHNICIAN';
+        return $user->hasRole(['administrator', 'superadmin', 'manager', 'admin'])
+            || in_array(strtolower((string) ($user->role ?? '')), ['administrator', 'superadmin', 'manager', 'admin'], true);
+    }
+
+    private function canOperateTicket(Ticket $ticket): bool
+    {
+        if ($this->isAdminOversight()) {
+            return true;
+        }
+
+        $userId = (int) Auth::id();
+        if ((int) $ticket->assigned_to === $userId) {
+            return true;
+        }
+
+        if (empty($ticket->assigned_to)) {
+            $ticket->update(['assigned_to' => $userId]);
+            return true;
+        }
+
+        return false;
     }
 
     public function mount()
@@ -105,13 +134,79 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function removeTicketPhoto(int $index): void
+    {
+        if (isset($this->ticket_upload_photos[$index])) {
+            unset($this->ticket_upload_photos[$index]);
+            $this->ticket_upload_photos = array_values($this->ticket_upload_photos);
+        }
+    }
+
+    public function updateCustomerCoordinates(int $customerId, $latitude, $longitude): void
+    {
+        $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->find($customerId);
+        if ($customer) {
+            $customer->update([
+                'latitude' => round((float) $latitude, 8),
+                'longitude' => round((float) $longitude, 8),
+            ]);
+            session()->flash('success', "Titik koordinat pelanggan {$customer->name} berhasil diperbarui dari GPS HP Anda!");
+        } else {
+            session()->flash('error', "Pelanggan tidak ditemukan.");
+        }
+    }
+
+    public function openProgressTicketModal(int $id): void
+    {
+        $ticket = Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+            ->findOrFail($id);
+
+        if (!$this->canOperateTicket($ticket)) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        $this->progressTicketId = $ticket->id;
+        $this->selectedTicketCode = !empty($ticket->uuid)
+            ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6)))
+            : ('#' . $ticket->id);
+        $this->selectedTicketTitle = $ticket->title;
+        $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-');
+        $this->selectedTicketCustomerId = $ticket->customer_id;
+        $this->progress_status = $ticket->status ?? 'in_progress';
+        $this->progress_notes = (string) ($ticket->description ?? '');
+        $this->progress_category = (string) ($ticket->category ?? '');
+        $this->showProgressTicketModal = true;
+    }
+
+    public function saveTicketProgress(): void
+    {
+        if (!$this->progressTicketId) return;
+
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->progressTicketId);
+        if (!$this->canOperateTicket($ticket)) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        $ticket->update([
+            'status' => in_array($this->progress_status, ['open', 'in_progress', 'pending_customer', 'pending_material']) ? $this->progress_status : 'in_progress',
+            'description' => trim($this->progress_notes) !== '' ? trim($this->progress_notes) : $ticket->description,
+            'category' => trim($this->progress_category) !== '' ? trim($this->progress_category) : $ticket->category,
+        ]);
+
+        $code = $this->selectedTicketCode ?? ('#' . $ticket->id);
+        $this->showProgressTicketModal = false;
+        $this->progressTicketId = null;
+        session()->flash('success', "Progress pekerjaan tiket {$code} berhasil diperbarui.");
+    }
+
     public function openResolveTicketModal($ticketId)
     {
         $ticket = Ticket::withoutGlobalScopes()
             ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
             ->findOrFail($ticketId);
 
-        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+        if (!$this->canOperateTicket($ticket)) {
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
@@ -119,7 +214,9 @@ class Index extends Component
         $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
         $this->selectedTicketTitle = $ticket->title;
         $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
+        $this->selectedTicketCustomerId = $ticket->customer_id;
         $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
+        $this->ticket_upload_photos = [];
         $this->showResolveTicketModal = true;
     }
 
@@ -131,7 +228,7 @@ class Index extends Component
 
         $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
 
-        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+        if (!$this->canOperateTicket($ticket)) {
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
@@ -145,6 +242,20 @@ class Index extends Component
         ];
         if (Schema::hasColumn('tickets', 'resolution_notes')) {
             $payload['resolution_notes'] = $note;
+        }
+
+        // Upload dan simpan foto bukti pekerjaan jika ada
+        $photos = is_array($ticket->photos) ? $ticket->photos : [];
+        if (!empty($this->ticket_upload_photos)) {
+            foreach ($this->ticket_upload_photos as $photo) {
+                if ($photo) {
+                    $path = $photo->store('tickets/' . $ticket->id, 'public');
+                    $photos[] = 'storage/' . $path;
+                }
+            }
+        }
+        if (Schema::hasColumn('tickets', 'photos')) {
+            $payload['photos'] = $photos;
         }
 
         $ticket->update($payload);
@@ -161,6 +272,7 @@ class Index extends Component
         $this->showResolveTicketModal = false;
         $this->selectedTicketId = null;
         $this->ticket_resolution_notes = '';
+        $this->ticket_upload_photos = [];
 
         session()->flash('success', "Tiket {$code} berhasil diselesaikan.");
     }
@@ -171,7 +283,7 @@ class Index extends Component
             ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
             ->findOrFail($ticketId);
 
-        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+        if (!$this->canOperateTicket($ticket)) {
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
@@ -184,6 +296,7 @@ class Index extends Component
         $this->selectedTicketCode = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('#' . $ticket->id);
         $this->selectedTicketTitle = $ticket->title;
         $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
+        $this->selectedTicketCustomerId = $ticket->customer_id;
         $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
         $this->ticket_edit_status = 'resolved';
         $this->showEditTicketResolutionModal = true;
@@ -197,7 +310,7 @@ class Index extends Component
 
         $ticket = Ticket::withoutGlobalScopes()->findOrFail($this->selectedTicketId);
 
-        if (!$this->isAdminOversight() && (int) $ticket->assigned_to !== (int) Auth::id()) {
+        if (!$this->canOperateTicket($ticket)) {
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
@@ -351,6 +464,20 @@ class Index extends Component
         );
     }
 
+    public function startTicket(int $id): void
+    {
+        $ticket = Ticket::withoutGlobalScopes()->findOrFail($id);
+
+        if (!$this->canOperateTicket($ticket)) {
+            abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
+        }
+
+        if ($ticket->status === 'open') {
+            $ticket->update(['status' => 'in_progress']);
+            session()->flash('success', 'Status tiket diperbarui menjadi Sedang Diproses.');
+        }
+    }
+
     public function markTicketResolved($id)
     {
         $this->openResolveTicketModal($id);
@@ -485,6 +612,8 @@ class Index extends Component
                     'status' => $cs->status,
                     'status_label' => $isActive ? 'Selesai / Aktif' : 'Menunggu / Proses',
                     'is_completed' => $isActive,
+                    'customer_id' => $cs->customer_id,
+                    'photos' => null,
                     'latitude' => $cs->customer?->latitude,
                     'longitude' => $cs->customer?->longitude,
                     'survey_id' => null,
@@ -558,6 +687,8 @@ class Index extends Component
                     'status' => $inst->status,
                     'status_label' => $isCompleted ? 'Selesai' : (in_array($inst->status, ['in_progress']) ? 'Dalam Pengerjaan' : 'Dijadwalkan'),
                     'is_completed' => $isCompleted,
+                    'customer_id' => $inst->customer_id,
+                    'photos' => null,
                     'latitude' => $inst->customer?->latitude ?? $inst->survey?->latitude,
                     'longitude' => $inst->customer?->longitude ?? $inst->survey?->longitude,
                     'survey_id' => null,
@@ -631,6 +762,8 @@ class Index extends Component
                     'status_label' => $isResolved ? 'Selesai' : (in_array($ticket->status, ['in_progress']) ? 'Dalam Pengerjaan' : 'Tiket Aktif'),
                     'is_completed' => $isResolved,
                     'resolution_notes' => $ticket->resolution_notes ?? null,
+                    'photos' => $ticket->photos ?? null,
+                    'customer_id' => $ticket->customer_id,
                     'latitude' => $ticket->customer?->latitude,
                     'longitude' => $ticket->customer?->longitude,
                     'survey_id' => null,

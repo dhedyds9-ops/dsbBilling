@@ -177,10 +177,56 @@
                 </div>
             @endif
 
-            {{-- Address --}}
-            <div class="flex items-start gap-1.5 mt-2 text-slate-500 dark:text-slate-400 text-xs bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl">
-                <span class="material-symbols-outlined text-slate-400 mt-0.5 shrink-0 text-sm">location_on</span>
-                <span class="leading-snug">{{ $job->address }}</span>
+            {{-- Address & GPS --}}
+            <div class="mt-2 text-slate-500 dark:text-slate-400 text-xs bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl space-y-2">
+                <div class="flex items-start gap-1.5">
+                    <span class="material-symbols-outlined text-slate-400 mt-0.5 shrink-0 text-sm">location_on</span>
+                    <div class="flex-1">
+                        <span class="leading-snug block">{{ $job->address }}</span>
+                        @if($job->latitude && $job->longitude)
+                            <div class="mt-1 flex items-center gap-1.5 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                                <span class="material-symbols-outlined text-xs">my_location</span>
+                                <span>{{ $job->latitude }}, {{ $job->longitude }}</span>
+                            </div>
+                        @else
+                            <div class="mt-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                <span>Koordinat GPS belum tersimpan</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                @if(!empty($job->customer_id))
+                    <div class="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2"
+                         x-data="{ updating: false }">
+                        <span class="text-[10px] text-slate-400 font-medium">Titik Lokasi Rumah:</span>
+                        <button type="button"
+                                :disabled="updating"
+                                @click="
+                                    if (!navigator.geolocation) {
+                                        alert('Fitur Geolocation tidak didukung di browser ini.');
+                                        return;
+                                    }
+                                    updating = true;
+                                    navigator.geolocation.getCurrentPosition(
+                                        (pos) => {
+                                            $wire.updateCustomerCoordinates({{ $job->customer_id }}, pos.coords.latitude, pos.coords.longitude)
+                                                .then(() => { updating = false; })
+                                                .catch(() => { updating = false; });
+                                        },
+                                        (err) => {
+                                            updating = false;
+                                            alert('Gagal mengambil GPS: ' + err.message + '. Pastikan izin GPS aktif di browser HP.');
+                                        },
+                                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                                    );
+                                "
+                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg text-[11px] font-bold active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-xs" :class="updating ? 'animate-spin' : ''" x-text="updating ? 'progress_activity' : 'near_me'"></span>
+                            <span x-text="updating ? 'Mendeteksi GPS...' : '📍 Update GPS dari HP'"></span>
+                        </button>
+                    </div>
+                @endif
             </div>
 
             {{-- Ticket / Maintenance Details --}}
@@ -207,6 +253,22 @@
                     <p class="text-slate-700 dark:text-slate-300 text-xs pl-5 leading-relaxed">
                         {{ $job->resolution_notes }}
                     </p>
+                </div>
+            @endif
+
+            @if(!empty($job->photos) && is_array($job->photos))
+                <div class="mt-2.5">
+                    <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">photo_library</span>
+                        <span>Foto Bukti Pekerjaan ({{ count($job->photos) }}):</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        @foreach($job->photos as $photoUrl)
+                            <a href="{{ asset($photoUrl) }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity">
+                                <img src="{{ asset($photoUrl) }}" alt="Bukti Lapangan" class="w-full h-full object-cover">
+                            </a>
+                        @endforeach
+                    </div>
                 </div>
             @endif
 
@@ -245,6 +307,18 @@
                 @endif
 
                 @if($job->job_type === 'ticket' && !$job->is_completed)
+                    @if($job->status === 'open')
+                        <button wire:click="startTicket({{ $job->ticket_id }})" type="button"
+                                class="py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-base">play_arrow</span>
+                            Kerjakan
+                        </button>
+                    @endif
+                    <button wire:click="openProgressTicketModal({{ $job->ticket_id }})" type="button"
+                            class="py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors">
+                        <span class="material-symbols-outlined text-base text-amber-500">edit_note</span>
+                        Progress
+                    </button>
                     <button wire:click="openResolveTicketModal({{ $job->ticket_id }})" type="button"
                             class="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                         <span class="material-symbols-outlined text-base">check_circle</span>
@@ -484,6 +558,42 @@
                       class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
         </div>
 
+        {{-- Upload Foto Bukti Lapangan --}}
+        <div class="mt-3 text-left">
+            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                Foto Bukti Lapangan <span class="text-slate-400 font-normal lowercase">(Kamera / Galeri)</span>
+            </label>
+            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-center hover:border-emerald-500 transition-colors">
+                <input type="file" wire:model="ticket_upload_photos" multiple accept="image/*" id="myjobs-ticket-photos-input" class="hidden">
+                <label for="myjobs-ticket-photos-input" class="cursor-pointer flex flex-col items-center justify-center">
+                    <span class="material-symbols-outlined text-2xl text-emerald-600 dark:text-emerald-400">add_a_photo</span>
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Ambil Foto / Pilih Gambar</span>
+                    <span class="text-[10px] text-slate-400">Bisa foto modem, ODP, atau redaman meter</span>
+                </label>
+            </div>
+
+            <div wire:loading wire:target="ticket_upload_photos" class="mt-2 text-xs text-indigo-600 flex items-center gap-1.5">
+                <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                <span>Mengunggah foto...</span>
+            </div>
+
+            @if(!empty($ticket_upload_photos))
+                <div class="mt-2.5 grid grid-cols-3 gap-2">
+                    @foreach($ticket_upload_photos as $index => $photo)
+                        <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                            @if(is_object($photo) && method_exists($photo, 'temporaryUrl'))
+                                <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                            @endif
+                            <button type="button" wire:click="removeTicketPhoto({{ $index }})"
+                                    class="absolute top-1 right-1 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center shadow hover:bg-rose-700">
+                                <span class="material-symbols-outlined text-xs">close</span>
+                            </button>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
         {{-- Action Buttons --}}
         <div class="mt-4 flex items-center gap-2">
             <button wire:click="$set('showResolveTicketModal', false)" type="button"
@@ -555,6 +665,74 @@
                 <span wire:loading.remove wire:target="saveTicketResolutionUpdate" class="material-symbols-outlined text-sm">save</span>
                 <span wire:loading wire:target="saveTicketResolutionUpdate" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
                 <span>Simpan</span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Modal Update Progress Pekerjaan Tiket --}}
+@if($showProgressTicketModal)
+<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all"
+     x-data
+     @keydown.escape.window="$wire.set('showProgressTicketModal', false)">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-5 text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
+
+        <div class="w-14 h-14 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <span class="material-symbols-outlined" style="font-size:30px">edit_document</span>
+        </div>
+
+        <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight">Update Progress Lapangan</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Perbarui status dan catatan kendala sebelum tiket diselesaikan.</p>
+
+        <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Kode Tiket</span>
+                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $selectedTicketCode }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold text-[10px] uppercase">Pelanggan</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{{ $selectedTicketCustomer }}</span>
+            </div>
+        </div>
+
+        <div class="mt-3 text-left space-y-3">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Status Pengerjaan</label>
+                <select wire:model="progress_status"
+                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 dark:text-slate-100">
+                    <option value="in_progress">Sedang Diproses (In Progress)</option>
+                    <option value="pending_material">Menunggu Material / Splicer (Pending Material)</option>
+                    <option value="pending_customer">Menunggu Konfirmasi Pelanggan (Pending Customer)</option>
+                    <option value="open">Masih Terbuka (Open)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Kategori Gangguan</label>
+                <input type="text" wire:model="progress_category" placeholder="Contoh: LOS, Kabel Putus, Adaptor Mati..."
+                       class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 dark:text-slate-100">
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Catatan Pekerjaan / Hasil Pengecekan</label>
+                <textarea wire:model="progress_notes" rows="3" placeholder="Tuliskan kendala di lapangan, redaman awal, atau langkah yang sedang dikerjakan..."
+                          class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 dark:text-slate-100 shadow-inner"></textarea>
+            </div>
+        </div>
+
+        <div class="mt-4 flex items-center gap-2">
+            <button wire:click="$set('showProgressTicketModal', false)" type="button"
+                    class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors">
+                Batal
+            </button>
+            <button wire:click="saveTicketProgress" type="button"
+                    wire:loading.attr="disabled"
+                    class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                <span wire:loading.remove wire:target="saveTicketProgress" class="material-symbols-outlined text-sm">save</span>
+                <span wire:loading wire:target="saveTicketProgress" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                <span>Simpan Progress</span>
             </button>
         </div>
     </div>
