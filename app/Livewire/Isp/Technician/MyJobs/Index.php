@@ -29,6 +29,9 @@ class Index extends Component
     public string $activeTab = 'active'; // active, history
 
     #[Url]
+    public string $scope = 'my'; // 'my' (Tugas Saya), 'all' (Semua Tugas - khusus admin)
+
+    #[Url]
     public string $jobType = 'all'; // all, installation, ticket, maintenance, survey
 
     #[Url]
@@ -131,6 +134,12 @@ class Index extends Component
     public function filterJobType($type)
     {
         $this->jobType = in_array($type, ['all', 'installation', 'ticket', 'maintenance', 'survey'], true) ? $type : 'all';
+        $this->resetPage();
+    }
+
+    public function setScope(string $scope): void
+    {
+        $this->scope = in_array($scope, ['my', 'all'], true) ? $scope : 'my';
         $this->resetPage();
     }
 
@@ -538,6 +547,7 @@ class Index extends Component
     {
         $userId = Auth::id();
         $isAdmin = $this->isAdminOversight();
+        $isAllScope = ($this->scope === 'all' && $isAdmin);
         $search = trim($this->search);
 
         $items = collect();
@@ -552,7 +562,7 @@ class Index extends Component
                     'service',
                 ]);
 
-            if (!$isAdmin) {
+            if (!$isAllScope) {
                 $csQuery->where('created_by', $userId);
             }
 
@@ -629,7 +639,7 @@ class Index extends Component
                     'onu' => fn ($q) => $q->withoutGlobalScopes(),
                 ]);
 
-            if (!$isAdmin) {
+            if (!$isAllScope) {
                 $instQuery->where(function ($q) use ($userId) {
                     $q->where('technician_id', $userId)
                       ->orWhere('assigned_to', $userId);
@@ -705,7 +715,7 @@ class Index extends Component
                     'assignedTo',
                 ]);
 
-            if (!$isAdmin) {
+            if (!$isAllScope) {
                 $ticketQuery->where('assigned_to', $userId);
             }
 
@@ -777,7 +787,7 @@ class Index extends Component
         if (($this->jobType === 'all' || $this->jobType === 'maintenance') && Schema::hasTable('support_maintenances')) {
             $maintQuery = DB::table('support_maintenances');
 
-            if (!$isAdmin) {
+            if (!$isAllScope) {
                 $maintQuery->where('assigned_to', $userId);
             }
 
@@ -840,7 +850,7 @@ class Index extends Component
             $surveyQuery = Survey::withoutGlobalScopes()
                 ->with(['prospect', 'odp']);
 
-            if (!$isAdmin) {
+            if (!$isAllScope) {
                 $surveyQuery->where('assigned_to', $userId);
             }
 
@@ -901,28 +911,29 @@ class Index extends Component
     {
         $userId = Auth::id();
         $isAdmin = $this->isAdminOversight();
+        $isAllScope = ($this->scope === 'all' && $isAdmin);
 
         // Active & History CS
         $activeCs = CustomerService::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where('created_by', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where('created_by', $userId))
             ->whereIn('status', ['pending', 'provisioning', 'in_progress'])
             ->count();
 
         $historyCs = CustomerService::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where('created_by', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where('created_by', $userId))
             ->whereIn('status', ['active', 'completed', 'suspended', 'approved'])
             ->count();
 
         // Active & History Installations (CRM)
         $activeInst = Installation::withoutGlobalScopes()
-            ->when(!$isAdmin, function ($q) use ($userId) {
+            ->when(!$isAllScope, function ($q) use ($userId) {
                 $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId));
             })
             ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
             ->count();
 
         $historyInst = Installation::withoutGlobalScopes()
-            ->when(!$isAdmin, function ($q) use ($userId) {
+            ->when(!$isAllScope, function ($q) use ($userId) {
                 $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId));
             })
             ->whereIn('status', ['completed', 'cancelled'])
@@ -930,23 +941,23 @@ class Index extends Component
 
         // Active & History Surveys
         $activeSurveys = Survey::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
             ->whereIn('status', ['scheduled', 'in_progress', 'pending'])
             ->count();
 
         $historySurveys = Survey::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
             ->whereIn('status', ['completed', 'activated'])
             ->count();
 
         // Active & History Tickets
         $activeTickets = Ticket::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
             ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
             ->count();
 
         $historyTickets = Ticket::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
             ->whereIn('status', ['resolved', 'closed'])
             ->count();
 
@@ -955,12 +966,12 @@ class Index extends Component
         $historyMaint = 0;
         if (Schema::hasTable('support_maintenances')) {
             $activeMaint = DB::table('support_maintenances')
-                ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+                ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
                 ->whereIn('status', ['scheduled', 'in_progress'])
                 ->count();
 
             $historyMaint = DB::table('support_maintenances')
-                ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+                ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
                 ->whereIn('status', ['completed', 'cancelled'])
                 ->count();
         }
@@ -996,6 +1007,7 @@ class Index extends Component
             'jobs' => $paginatedJobs,
             'stats' => $stats,
             'odps' => $odps,
+            'isAdmin' => $this->isAdminOversight(),
         ]);
     }
 }

@@ -23,6 +23,9 @@ class Index extends Component
     public string $activeTab = 'open'; // open, resolved
 
     #[Url]
+    public string $scope = 'my'; // 'my' (Tiket Saya), 'all' (Semua Tiket - khusus admin)
+
+    #[Url]
     public string $search = '';
 
     public bool $showResolveModal = false;
@@ -85,6 +88,12 @@ class Index extends Component
     public function switchTab($tab): void
     {
         $this->activeTab = in_array($tab, ['open', 'resolved'], true) ? $tab : 'open';
+        $this->resetPage();
+    }
+
+    public function setScope(string $scope): void
+    {
+        $this->scope = in_array($scope, ['my', 'all'], true) ? $scope : 'my';
         $this->resetPage();
     }
 
@@ -338,9 +347,11 @@ class Index extends Component
     {
         $userId = Auth::id();
         $isAdmin = $this->isAdminOversight();
+        $isAllScope = ($this->scope === 'all' && $isAdmin);
         $search = trim($this->search);
 
-        $baseScope = fn ($q) => $q->when(!$isAdmin, fn ($sq) => $sq->where('assigned_to', $userId));
+        // Secara default HANYA tampilkan tiket yang ditugaskan kepada teknisi yang sedang login
+        $baseScope = fn ($q) => $q->when(!$isAllScope, fn ($sq) => $sq->where('assigned_to', $userId));
 
         $openCount = Ticket::withoutGlobalScopes()
             ->tap($baseScope)
@@ -384,7 +395,8 @@ class Index extends Component
         return view('livewire.isp.technician.tickets.index', compact(
             'tickets',
             'openCount',
-            'resolvedCount'
+            'resolvedCount',
+            'isAdmin'
         ));
     }
 }

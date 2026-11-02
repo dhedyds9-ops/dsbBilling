@@ -31,6 +31,26 @@
         </button>
     </div>
 
+    {{-- Filter Scope (Hanya untuk Admin / Pengawas) --}}
+    @if(!empty($isAdmin))
+        <div class="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-sm text-xs">
+            <span class="font-bold text-slate-600 dark:text-slate-400 pl-1 flex items-center gap-1.5 text-[11px]">
+                <span class="material-symbols-outlined text-sm text-indigo-500">filter_alt</span>
+                <span>Tampilan Tiket:</span>
+            </span>
+            <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                <button type="button" wire:click="setScope('my')"
+                        class="px-3 py-1 rounded-lg text-xs font-bold transition-all {{ $scope === 'my' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">
+                    Tiket Saya
+                </button>
+                <button type="button" wire:click="setScope('all')"
+                        class="px-3 py-1 rounded-lg text-xs font-bold transition-all {{ $scope === 'all' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400' }}">
+                    Semua Tiket
+                </button>
+            </div>
+        </div>
+    @endif
+
     {{-- Search Bar --}}
     <div class="relative">
         <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:20px">search</span>
