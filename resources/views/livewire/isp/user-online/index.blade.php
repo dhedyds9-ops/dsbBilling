@@ -174,11 +174,11 @@
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                                 @if($activeTab === 'pppoe')
-                                    {{ $session->pppoeUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
+                                    {{ $session->pppoeUser?->real_customer?->name ?? $session->pppoeUser?->customer?->name ?? $session->pppoeUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
                                 @elseif($activeTab === 'voucher')
                                     <span class="italic text-slate-500 dark:text-slate-400">Pengguna Voucher</span>
                                 @else
-                                    {{ $session->hotspotUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
+                                    {{ $session->hotspotUser?->real_customer?->name ?? $session->hotspotUser?->customer?->name ?? $session->hotspotUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs font-semibold">
