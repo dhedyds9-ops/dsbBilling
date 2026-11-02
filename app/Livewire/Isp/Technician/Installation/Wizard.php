@@ -90,6 +90,13 @@ class Wizard extends Component
                     'new_customer_address' => 'required|string',
                     'new_customer_reseller_id' => 'nullable|exists:users,id',
                 ]);
+
+                $existing = Customer::withoutGlobalScopes()
+                    ->where('phone', $this->new_customer_phone)
+                    ->first();
+                if ($existing && $existing->customerServices()->exists() && $existing->name !== $this->new_customer_name) {
+                    $this->addError('new_customer_phone', "Nomor HP ini sudah aktif digunakan oleh pelanggan lain ({$existing->name}).");
+                }
             } else {
                 $this->validate(['customer_id' => 'required|exists:customers,id']);
             }
@@ -116,16 +123,29 @@ class Wizard extends Component
         $this->validateStep();
 
         if ($this->is_new_customer) {
-            $customerCode = \App\Services\CRM\CustomerCodeGenerator::generate();
-            $customer = Customer::create([
-                'code' => $customerCode,
-                'name' => $this->new_customer_name,
-                'phone' => $this->new_customer_phone,
-                'address' => $this->new_customer_address,
-                'reseller_id' => $this->new_customer_reseller_id,
-                'status' => 'active',
-                'created_by' => auth()->id(),
-            ]);
+            $existing = Customer::withoutGlobalScopes()
+                ->where('phone', $this->new_customer_phone)
+                ->first();
+
+            if ($existing) {
+                $customer = $existing;
+                $customer->update([
+                    'name' => $this->new_customer_name ?: $customer->name,
+                    'address' => $this->new_customer_address ?: $customer->address,
+                    'reseller_id' => $this->new_customer_reseller_id ?: $customer->reseller_id,
+                ]);
+            } else {
+                $customerCode = \App\Services\CRM\CustomerCodeGenerator::generate();
+                $customer = Customer::create([
+                    'code' => $customerCode,
+                    'name' => $this->new_customer_name,
+                    'phone' => $this->new_customer_phone,
+                    'address' => $this->new_customer_address,
+                    'reseller_id' => $this->new_customer_reseller_id,
+                    'status' => 'active',
+                    'created_by' => auth()->id(),
+                ]);
+            }
             $this->customer_id = $customer->id;
         } else {
             $customer = Customer::find($this->customer_id);
@@ -167,6 +187,7 @@ class Wizard extends Component
         }
 
         $data = [
+            'customer_id' => $customer->id,
             'name' => $customer->name,
             'phone' => $customer->phone,
             'email' => $customer->email,

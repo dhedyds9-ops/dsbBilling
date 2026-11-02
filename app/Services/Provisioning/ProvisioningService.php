@@ -440,6 +440,37 @@ class ProvisioningService
 
     protected function findOrCreateCustomer(array $data, int $userId): Customer
     {
+        // 1. Jika customer_id sudah diberikan secara eksplisit, gunakan langsung
+        if (!empty($data['customer_id'])) {
+            $customer = Customer::withoutGlobalScopes()->find($data['customer_id']);
+            if ($customer) {
+                // Pastikan user portal login tersedia jika belum ada
+                if (empty($customer->user_id)) {
+                    $code = $customer->code ?: ($data['customer_code'] ?? \App\Services\CRM\CustomerCodeGenerator::generate());
+                    if (empty($customer->code)) {
+                        $customer->update(['code' => $code]);
+                    }
+
+                    $user = \App\Models\User::create([
+                        'name' => $customer->name,
+                        'email' => $customer->email,
+                        'whatsapp' => $customer->phone,
+                        'customer_code' => $code,
+                        'username' => $code,
+                        'password' => \Illuminate\Support\Facades\Hash::make('123456'),
+                        'is_active' => true,
+                    ]);
+
+                    if ($role = \App\Models\Role::where('name', 'customer')->first()) {
+                        $user->roles()->attach($role->id);
+                    }
+
+                    $customer->update(['user_id' => $user->id]);
+                }
+                return $customer;
+            }
+        }
+
         // === VALIDASI KEAMANAN: Cek jika nomor HP sudah dipakai oleh Admin/Reseller ===
         $phone = $data['phone'];
         $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
