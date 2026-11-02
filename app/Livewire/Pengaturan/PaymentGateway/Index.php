@@ -169,6 +169,7 @@ class Index extends AdminComponent
         'va_number'         => '',
         'api_key_sandbox'   => '',
         'api_key_production'=> '',
+        'callback_url'      => '',
         'enabled_channels'  => [
             'qris'             => true,
             'va_bca'           => true,
@@ -524,14 +525,42 @@ class Index extends AdminComponent
             $key = $mode === 'sandbox'
                 ? ($this->ipaymu['api_key_sandbox'] ?: $this->ipaymu['api_key_production'])
                 : ($this->ipaymu['api_key_production'] ?: $this->ipaymu['api_key_sandbox']);
-            
-            if (empty($key) || empty($this->ipaymu['va_number'])) { 
-                $this->balanceInfo = '⚠️ API key / VA Number belum diisi.'; 
+            $va = trim((string)($this->ipaymu['va_number'] ?? ''));
+
+            if (empty($key) || empty($va)) { 
+                $this->balanceInfo = '⚠️ VA Number dan API Key (' . strtoupper($mode) . ') belum diisi.'; 
                 return; 
             }
-            // iPaymu requires signature generation to hit their API. 
-            // We just show a placeholder since hitting their balance API requires full signature calculation.
-            $this->balanceInfo = 'ℹ️ Fitur cek koneksi iPaymu akan diimplementasikan bersama signature generation.';
+
+            $baseUrl = ($mode === 'sandbox') ? 'https://sandbox.ipaymu.com' : 'https://my.ipaymu.com';
+            $url = $baseUrl . '/api/v2/balance';
+
+            $bodyData = ['account' => $va];
+            $jsonBody = json_encode($bodyData, JSON_UNESCAPED_SLASHES);
+            $bodyHash = strtolower(hash('sha256', $jsonBody));
+            $stringToSign = 'POST:' . $va . ':' . $bodyHash . ':' . $key;
+            $signature = hash_hmac('sha256', $stringToSign, $key);
+            $timestamp = date('YmdHis');
+
+            $resp = Http::timeout(10)->withHeaders([
+                'Content-Type' => 'application/json',
+                'va'           => $va,
+                'signature'    => $signature,
+                'timestamp'    => $timestamp,
+            ])->post($url, $bodyData);
+
+            if ($resp->successful()) {
+                $res = $resp->json();
+                if (($res['Status'] ?? 0) == 200) {
+                    $merchantBal = number_format((float)($res['Data']['MerchantBalance'] ?? 0), 0, ',', '.');
+                    $memberBal = number_format((float)($res['Data']['MemberBalance'] ?? 0), 0, ',', '.');
+                    $this->balanceInfo = '✅ Koneksi Sukses (' . strtoupper($mode) . ") — Saldo Merchant: Rp {$merchantBal} | Saldo Member: Rp {$memberBal}";
+                } else {
+                    $this->balanceInfo = '❌ iPaymu Response: ' . ($res['Message'] ?? json_encode($res));
+                }
+            } else {
+                $this->balanceInfo = '❌ HTTP ' . $resp->status() . ' (' . strtoupper($mode) . '): ' . $resp->body();
+            }
         } catch (Throwable $e) {
             $this->balanceInfo = 'Error: ' . $e->getMessage();
         }
