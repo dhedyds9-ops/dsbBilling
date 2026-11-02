@@ -45,24 +45,66 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
 
         $device = null;
         if (is_numeric($id)) {
-            $device = ACSDevice::with($relations)->find($id);
+            $device = ACSDevice::withoutGlobalScopes()->with($relations)->find($id);
         }
 
         if (!$device) {
-            $device = ACSDevice::with($relations)
-                ->where('serial_number', $id)
-                ->orWhere('uuid', $id)
+            $device = ACSDevice::withoutGlobalScopes()->with($relations)
+                ->where(function ($q) use ($id) {
+                    $q->where('serial_number', $id)
+                      ->orWhere('uuid', $id);
+                })
                 ->first();
         }
 
+        // Cek apakah ada record yang ter-soft delete (trashed), jika ada restore kembali
         if (!$device) {
-            $onu = \App\Models\ISP\Onu::where('serial_number', $id)
+            $trashed = ACSDevice::withoutGlobalScopes()->withTrashed()
+                ->where(function ($q) use ($id) {
+                    $q->where('serial_number', $id)
+                      ->orWhere('uuid', $id);
+                })
+                ->first();
+
+            if ($trashed) {
+                if ($trashed->trashed()) {
+                    $trashed->restore();
+                }
+                $device = ACSDevice::withoutGlobalScopes()->with($relations)->find($trashed->id);
+            }
+        }
+
+        if (!$device) {
+            $onu = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->where('serial_number', $id)
                 ->orWhere('id', $id)
                 ->first();
 
             if ($onu && !empty($onu->serial_number)) {
-                $device = ACSDevice::with($relations)->where('serial_number', $onu->serial_number)->first();
-                if (!$device) {
+                // Cek apakah perangkat sudah ada di acs_devices (termasuk trashed/global scope)
+                $existingDevice = ACSDevice::withoutGlobalScopes()->withTrashed()
+                    ->where(function ($q) use ($onu) {
+                        $q->where('serial_number', $onu->serial_number)
+                          ->orWhere('uuid', $onu->serial_number)
+                          ->orWhere('onu_id', $onu->id);
+                    })
+                    ->first();
+
+                if ($existingDevice) {
+                    if ($existingDevice->trashed()) {
+                        $existingDevice->restore();
+                    }
+                    $existingDevice->update([
+                        'serial_number' => $onu->serial_number,
+                        'mac_address' => $onu->mac_address ?? $existingDevice->mac_address,
+                        'onu_id' => $onu->id,
+                        'olt_id' => $onu->olt_id ?? $existingDevice->olt_id,
+                        'odp_id' => $onu->odp_id ?? $existingDevice->odp_id,
+                        'customer_service_id' => $onu->customerService?->id ?? $existingDevice->customer_service_id,
+                        'status' => $existingDevice->status ?? ($onu->status === 'active' ? 'online' : 'offline'),
+                    ]);
+                    $device = ACSDevice::withoutGlobalScopes()->with($relations)->find($existingDevice->id);
+                } else {
                     $newDevice = ACSDevice::create([
                         'uuid' => $onu->serial_number,
                         'serial_number' => $onu->serial_number,
@@ -73,7 +115,7 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                         'customer_service_id' => $onu->customerService?->id,
                         'status' => $onu->status === 'active' ? 'online' : 'offline',
                     ]);
-                    $device = ACSDevice::with($relations)->find($newDevice->id);
+                    $device = ACSDevice::withoutGlobalScopes()->with($relations)->find($newDevice->id);
                 }
             }
         }
