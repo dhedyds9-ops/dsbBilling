@@ -393,6 +393,16 @@
                 <option value="production">Production (Live / Transaksi Nyata)</option>
               </select>
             </div>
+            <div class="md:col-span-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md text-xs text-amber-800 dark:text-amber-300">
+              <div class="flex items-start gap-2">
+                <span class="material-symbols-outlined notranslate text-amber-600 dark:text-amber-400 shrink-0 text-base mt-0.5" translate="no">info</span>
+                <div>
+                  <span class="font-bold">PENTING (Mode Production / Live):</span>
+                  iPaymu mewajibkan IP Publik server Anda didaftarkan di <b>Dashboard iPaymu (my.ipaymu.com) &rarr; Integrasi API &rarr; IP Terdaftar (Whitelist IP)</b>.
+                  Jika belum didaftarkan, iPaymu akan menolak proses checkout pembayaran dengan error: <code>HTTP 400 - Invalid IP</code>.
+                </div>
+              </div>
+            </div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">VA Number</label><input type="text" wire:key="ipaymu_va_number_txt" wire:model="ipaymu.va_number" placeholder="Contoh: 0000001234567890" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>
             <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Callback / Webhook URL (notifyUrl)</label><input type="text" wire:key="ipaymu_callback_txt" readonly value="{{ $ipaymu['callback_url'] ?? url('/api/payment/webhook/ipaymu/' . md5(config('app.key') . 'ipaymu')) }}" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 font-mono text-xs cursor-text"></div>
             <div class="md:col-span-2"><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">API Key Sandbox</label><input type="password" wire:key="ipaymu_sandbox_key_txt" wire:model="ipaymu.api_key_sandbox" placeholder="API Key dari Dashboard Sandbox iPaymu" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono"></div>

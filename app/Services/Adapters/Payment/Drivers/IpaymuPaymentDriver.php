@@ -141,16 +141,24 @@ final class IpaymuPaymentDriver implements PaymentGatewayDriverInterface
 
             $raw = $response->body();
             if (!$response->successful()) {
+                $decoded = json_decode($raw, true);
+                $msg = $decoded['Message'] ?? ('iPaymu HTTP ' . $response->status() . ' - ' . mb_substr($raw, 0, 500));
+                if (stripos($msg, 'Invalid IP') !== false) {
+                    $msg = 'iPaymu menolak transaksi ("Invalid IP"): Alamat IP publik server Anda belum didaftarkan di Whitelist IP iPaymu. Silakan buka Dashboard iPaymu (my.ipaymu.com) -> menu Integrasi API -> IP Terdaftar, lalu daftarkan IP publik server Anda.';
+                }
                 return new CreatePaymentResponse(
                     success: false,
                     rawResponse: $raw,
-                    errorMessage: 'iPaymu HTTP ' . $response->status() . ' - ' . mb_substr($raw, 0, 500)
+                    errorMessage: $msg
                 );
             }
 
             $data = json_decode($raw, true) ?: [];
             if (($data['Status'] ?? 0) != 200 || empty($data['Data']['Url'])) {
                 $msg = (string)($data['Message'] ?? 'iPaymu gagal membuat transaksi pembayaran.');
+                if (stripos($msg, 'Invalid IP') !== false) {
+                    $msg = 'iPaymu menolak transaksi ("Invalid IP"): Alamat IP publik server Anda belum didaftarkan di Whitelist IP iPaymu. Silakan buka Dashboard iPaymu (my.ipaymu.com) -> menu Integrasi API -> IP Terdaftar, lalu daftarkan IP publik server Anda.';
+                }
                 return new CreatePaymentResponse(
                     success: false,
                     rawResponse: $raw,
