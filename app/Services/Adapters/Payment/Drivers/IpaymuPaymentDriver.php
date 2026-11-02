@@ -144,7 +144,8 @@ final class IpaymuPaymentDriver implements PaymentGatewayDriverInterface
                 $decoded = json_decode($raw, true);
                 $msg = $decoded['Message'] ?? ('iPaymu HTTP ' . $response->status() . ' - ' . mb_substr($raw, 0, 500));
                 if (stripos($msg, 'Invalid IP') !== false) {
-                    $msg = 'iPaymu menolak transaksi ("Invalid IP"): Alamat IP publik server Anda belum didaftarkan di Whitelist IP iPaymu. Silakan buka Dashboard iPaymu (my.ipaymu.com) -> menu Integrasi API -> IP Terdaftar, lalu daftarkan IP publik server Anda.';
+                    $detectedIp = self::getOutgoingIp();
+                    $msg = "iPaymu menolak transaksi (\"Invalid IP\"): Alamat IP publik server Anda saat ini [{$detectedIp}] belum didaftarkan di Whitelist IP iPaymu. Silakan buka Dashboard iPaymu (my.ipaymu.com) -> menu Integrasi API -> IP Terdaftar, lalu daftarkan IP: {$detectedIp}";
                 }
                 return new CreatePaymentResponse(
                     success: false,
@@ -157,7 +158,8 @@ final class IpaymuPaymentDriver implements PaymentGatewayDriverInterface
             if (($data['Status'] ?? 0) != 200 || empty($data['Data']['Url'])) {
                 $msg = (string)($data['Message'] ?? 'iPaymu gagal membuat transaksi pembayaran.');
                 if (stripos($msg, 'Invalid IP') !== false) {
-                    $msg = 'iPaymu menolak transaksi ("Invalid IP"): Alamat IP publik server Anda belum didaftarkan di Whitelist IP iPaymu. Silakan buka Dashboard iPaymu (my.ipaymu.com) -> menu Integrasi API -> IP Terdaftar, lalu daftarkan IP publik server Anda.';
+                    $detectedIp = self::getOutgoingIp();
+                    $msg = "iPaymu menolak transaksi (\"Invalid IP\"): Alamat IP publik server Anda saat ini [{$detectedIp}] belum didaftarkan di Whitelist IP iPaymu. Silakan buka Dashboard iPaymu (my.ipaymu.com) -> menu Integrasi API -> IP Terdaftar, lalu daftarkan IP: {$detectedIp}";
                 }
                 return new CreatePaymentResponse(
                     success: false,
@@ -344,5 +346,26 @@ final class IpaymuPaymentDriver implements PaymentGatewayDriverInterface
             'cstore_indomaret', 'indomaret' => ['method' => 'cstore', 'channel' => 'indomaret'],
             default              => null,
         };
+    }
+
+    public static function getOutgoingIp(): string
+    {
+        return cache()->remember('server_outgoing_ip_detect', 300, function () {
+            try {
+                $resp = Http::timeout(3)->get('https://api.ipify.org');
+                if ($resp->successful() && filter_var(trim($resp->body()), FILTER_VALIDATE_IP)) {
+                    return trim($resp->body());
+                }
+            } catch (\Throwable) {}
+
+            try {
+                $resp = Http::timeout(3)->get('https://icanhazip.com');
+                if ($resp->successful() && filter_var(trim($resp->body()), FILTER_VALIDATE_IP)) {
+                    return trim($resp->body());
+                }
+            } catch (\Throwable) {}
+
+            return (string)(request()->server('SERVER_ADDR') ?? 'IP Server');
+        });
     }
 }

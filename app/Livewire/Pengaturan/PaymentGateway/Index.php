@@ -580,6 +580,11 @@ class Index extends AdminComponent
         }
     }
 
+    public function getServerPublicIp(): string
+    {
+        return \App\Services\Adapters\Payment\Drivers\IpaymuPaymentDriver::getOutgoingIp();
+    }
+
     public function render()
     {
         return view('livewire.pengaturan.payment-gateway.index');

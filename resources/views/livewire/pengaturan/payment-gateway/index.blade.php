@@ -393,13 +393,31 @@
                 <option value="production">Production (Live / Transaksi Nyata)</option>
               </select>
             </div>
-            <div class="md:col-span-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md text-xs text-amber-800 dark:text-amber-300">
-              <div class="flex items-start gap-2">
-                <span class="material-symbols-outlined notranslate text-amber-600 dark:text-amber-400 shrink-0 text-base mt-0.5" translate="no">info</span>
-                <div>
-                  <span class="font-bold">PENTING (Mode Production / Live):</span>
-                  iPaymu mewajibkan IP Publik server Anda didaftarkan di <b>Dashboard iPaymu (my.ipaymu.com) &rarr; Integrasi API &rarr; IP Terdaftar (Whitelist IP)</b>.
-                  Jika belum didaftarkan, iPaymu akan menolak proses checkout pembayaran dengan error: <code>HTTP 400 - Invalid IP</code>.
+            <div class="md:col-span-2 p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg text-xs text-amber-900 dark:text-amber-200 shadow-xs">
+              <div class="flex items-start gap-2.5">
+                <span class="material-symbols-outlined notranslate text-amber-600 dark:text-amber-400 shrink-0 text-lg mt-0.5" translate="no">shield</span>
+                <div class="space-y-1.5 w-full">
+                  <div class="font-bold text-amber-900 dark:text-amber-100 flex items-center justify-between">
+                    <span>KEAMANAN IP WHITELIST IPAYMU (MODE PRODUCTION)</span>
+                  </div>
+                  <p class="leading-relaxed text-slate-700 dark:text-slate-300">
+                    Untuk mode <b>Production (Live)</b>, iPaymu mewajibkan IP Publik server Anda didaftarkan di <b>Dashboard iPaymu (my.ipaymu.com) &rarr; Integrasi API &rarr; IP Terdaftar</b>.
+                  </p>
+                  <div class="pt-1.5 flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">IP Publik Server Anda:</span>
+                    <span class="font-mono font-bold text-xs bg-white dark:bg-slate-900 px-2.5 py-1 rounded border border-amber-300 dark:border-amber-700 text-indigo-700 dark:text-indigo-300 select-all tracking-wider shadow-xs">
+                      {{ $this->getServerPublicIp() }}
+                    </span>
+                    <button type="button" 
+                            onclick="navigator.clipboard && navigator.clipboard.writeText('{{ $this->getServerPublicIp() }}'); alert('IP Publik server disalin: {{ $this->getServerPublicIp() }}');"
+                            class="px-2 py-1 text-[11px] font-semibold bg-amber-200/80 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 rounded transition-colors inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined notranslate text-xs" translate="no">content_copy</span>
+                      Salin IP
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-amber-800 dark:text-amber-400 mt-1 italic">
+                    &bull; Daftarkan IP di atas ke menu <b>IP Baru</b> di Dashboard iPaymu &rarr; Submit. Setelah itu transaksi pembayaran akan langsung berjalan normal.
+                  </p>
                 </div>
               </div>
             </div>
