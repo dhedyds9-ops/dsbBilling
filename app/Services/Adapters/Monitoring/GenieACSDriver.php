@@ -340,6 +340,37 @@ class GenieACSDriver
         ]);
     }
 
+    public function postTaskWithFallback(string $deviceId, array $payload, bool $tryConnectionRequest = true): \Illuminate\Http\Client\Response
+    {
+        $realDeviceId = $this->resolveDeviceId($deviceId);
+        $encodedId = urlencode($realDeviceId);
+
+        if ($tryConnectionRequest) {
+            try {
+                return Http::withBasicAuth($this->username, $this->password)
+                    ->timeout(10)
+                    ->asJson()
+                    ->post("{$this->baseUrl}/devices/{$encodedId}/tasks?connection_request", $payload);
+            } catch (ConnectionException $ce) {
+                // Jika connection_request timeout (modem di balik NAT/firewall tidak merespons pemicu port 7547),
+                // antrikan task TANPA ?connection_request ke GenieACS agar tetap tersimpan dan dieksekusi saat modem Inform.
+                if (str_contains(strtolower($ce->getMessage()), 'timeout') || str_contains(strtolower($ce->getMessage()), 'timed out')) {
+                    \Illuminate\Support\Facades\Log::warning("GenieACS connection_request timed out for device {$realDeviceId}. Fallbacking to queue task without connection_request.");
+                    return Http::withBasicAuth($this->username, $this->password)
+                        ->timeout(10)
+                        ->asJson()
+                        ->post("{$this->baseUrl}/devices/{$encodedId}/tasks", $payload);
+                }
+                throw $ce;
+            }
+        }
+
+        return Http::withBasicAuth($this->username, $this->password)
+            ->timeout(10)
+            ->asJson()
+            ->post("{$this->baseUrl}/devices/{$encodedId}/tasks", $payload);
+    }
+
     public function setParameterValues(string $deviceId, array $keyValuePairs): bool
     {
         try {
@@ -359,10 +390,7 @@ class GenieACSDriver
                 return false;
             }
             $payload = ['name' => 'setParameterValues', 'parameterValues' => $parameterValues];
-            $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout($this->timeout)
-                ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($realDeviceId) . "/tasks?connection_request", $payload);
+            $response = $this->postTaskWithFallback($realDeviceId, $payload, true);
                 
             if ($response->successful()) {
                 return true;
@@ -385,10 +413,7 @@ class GenieACSDriver
                 'provision' => 'dsBilling_Setup_WAN',
                 'args' => [$username, $password, $vlanId ?? ""]
             ];
-            $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout($this->timeout)
-                ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+            $response = $this->postTaskWithFallback($deviceId, $payload, true);
                 
             if ($response->successful()) {
                 return true;
@@ -404,10 +429,7 @@ class GenieACSDriver
     {
         try {
             $payload = ['name' => 'reboot'];
-            $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout($this->timeout)
-                ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+            $response = $this->postTaskWithFallback($deviceId, $payload, true);
                 
             return $response->successful();
         } catch (ConnectionException|RequestException $e) {
@@ -686,10 +708,7 @@ class GenieACSDriver
     {
         try {
             $payload = ['name' => 'provision', 'args' => ['provision' => $provisionName]];
-            $response = \Illuminate\Support\Facades\Http::withBasicAuth($this->username, $this->password)
-                ->timeout($this->timeout)
-                ->asJson()
-                ->post("{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request", $payload);
+            $response = $this->postTaskWithFallback($deviceId, $payload, true);
             return $response->successful();
         } catch (\Exception $e) {
             report($e);
