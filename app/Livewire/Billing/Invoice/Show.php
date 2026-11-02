@@ -27,6 +27,46 @@ class Show extends AdminComponent
 
         $this->authorize('view', $this->invoice);
 
+        // Auto-heal paket gratis:
+        // Jika invoice terbit untuk paket gratis (is_free = true, base_price = 0, atau nama paket mengandung 'gratis'),
+        // tetapi terlanjur berbayar dan belum lunas, otomatis koreksi menjadi Rp 0 dan LUNAS.
+        $sp = $this->invoice->service_profile;
+        $isFree = $sp && ($sp->is_free || (float)$sp->base_price === 0.0 || stripos($sp->name, 'gratis') !== false);
+        if ($isFree && (float)$this->invoice->total_amount > 0 && $this->invoice->status === 'unpaid') {
+            $this->invoice->update([
+                'total_amount' => 0,
+                'paid_amount' => 0,
+                'status' => 'paid',
+                'paid_at' => now(),
+                'payment_method' => 'free',
+            ]);
+            $this->invoice->items()->update([
+                'unit_price' => 0,
+                'subtotal' => 0,
+                'owner_settlement_price' => 0,
+                'reseller_settlement_price' => 0,
+                'branch_settlement_price' => 0,
+            ]);
+            if ($this->invoice->contract_id) {
+                \App\Models\Billing\Subscription::where('contract_id', $this->invoice->contract_id)->update([
+                    'recurring_price' => 0,
+                ]);
+            }
+            if ($sp && (!$sp->is_free || (float)$sp->base_price > 0)) {
+                $sp->update([
+                    'is_free' => true,
+                    'base_price' => 0,
+                    'reseller_price' => 0,
+                    'owner_price' => 0,
+                    'reseller_settlement_price' => 0,
+                    'owner_settlement_price' => 0,
+                    'branch_settlement_price' => 0,
+                ]);
+            }
+            $this->invoice->refresh();
+            $this->invoice->load(['customer', 'items', 'payments']);
+        }
+
         try {
             $this->company = app(\App\Services\Pengaturan\CompanySettingsService::class)->getAll();
         } catch (\Throwable) {

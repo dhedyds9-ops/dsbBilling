@@ -1,60 +1,62 @@
 <article class="invoice-document relative overflow-hidden text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
     <!-- HEADER SECTION -->
-    <header class="flex flex-row justify-between items-start gap-4 border-b border-slate-300 dark:border-slate-600 pb-4 mb-6 print-flex-row invoice-header">
-        <div class="flex flex-row items-center gap-4">
+    <header class="flex flex-row justify-between items-start gap-6 border-b border-slate-300 dark:border-slate-600 pb-5 mb-6 print-flex-row invoice-header">
+        <div class="flex-1 min-w-0 flex flex-row items-center gap-4 sm:gap-6">
             <!-- ISP Info -->
-            <div class="flex items-center gap-4">
-                <div class="h-20 w-24 sm:h-24 sm:w-28 rounded flex items-center justify-center p-1 shrink-0">
+            <div class="flex items-center gap-3.5">
+                <div class="h-16 w-20 sm:h-20 sm:w-24 rounded flex items-center justify-center p-1 shrink-0">
                     @if(!empty($company['logo_url']))
-                        <img src="{{ asset(ltrim($company['logo_url'], '/')) }}" alt="Logo" class="w-full h-full object-contain">
+                        <img src="{{ asset(ltrim($company['logo_url'], '/')) }}" alt="Logo" class="max-h-full max-w-full object-contain">
                     @else
                         <span class="font-bold text-slate-400 text-xs text-center">LOGO</span>
                     @endif
                 </div>
                 <div>
-                    <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight uppercase">{{ ($company['name'] ?? '') ?: 'ISP INDONESIA' }}</h1>
-                    <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-xs leading-relaxed">{!! nl2br(e($companyAddress)) !!}</p>
-                    <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                        @if (($company['mobile'] ?? '') !== '')<span>Telp: {{ $company['mobile'] }}</span><br>@endif
+                    <h1 class="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase leading-snug">{{ ($company['name'] ?? '') ?: 'ISP INDONESIA' }}</h1>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed max-w-xs">{!! nl2br(e($companyAddress)) !!}</p>
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex flex-col gap-0.5">
+                        @if (($company['mobile'] ?? '') !== '')<span>Telp: {{ $company['mobile'] }}</span>@endif
                         @if (($company['email'] ?? '') !== '')<span>Email: {{ $company['email'] }}</span>@endif
                     </div>
                 </div>
             </div>
 
             @if($showPartner)
-                <div class="block h-12 w-px bg-slate-300 mx-2"></div>
+                <div class="h-14 w-px bg-slate-300 dark:bg-slate-600 shrink-0 mx-1"></div>
                 <!-- Partner Info -->
-                <div class="flex items-center gap-4">
-                    <div class="h-14 w-14 rounded flex items-center justify-center p-1 shrink-0">
+                <div class="flex items-center gap-2.5 shrink-0">
+                    <div class="h-12 w-12 sm:h-14 sm:w-14 rounded flex items-center justify-center p-1 shrink-0 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
                         @if(!empty($company['partner_logo_url']))
-                            <img src="{{ asset(ltrim($company['partner_logo_url'], '/')) }}" alt="Partner Logo" class="w-full h-full object-contain">
+                            <img src="{{ asset(ltrim($company['partner_logo_url'], '/')) }}" alt="Partner Logo" class="max-h-full max-w-full object-contain">
                         @else
-                            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V1a2 2 0 002-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V1a2 2 0 002-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                         @endif
                     </div>
-                    <div>
-                        <h3 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200">{{ ($company['partner_name'] ?? '') ?: 'Mitra' }}</h3>
-                        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Mitra Resmi</p>
-                        <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            @if (($company['partner_mobile'] ?? '') !== '')<span>{{ $company['partner_mobile'] }}</span>@endif
-                            @if (($company['partner_phone'] ?? '') !== '')<span>{{ $company['partner_phone'] }}</span>@endif
+                    <div class="shrink-0">
+                        <span class="inline-block px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 mb-0.5">
+                            Mitra Resmi
+                        </span>
+                        <h3 class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap leading-tight">{{ ($company['partner_name'] ?? '') ?: 'Mitra' }}</h3>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex flex-col">
+                            @if (($company['partner_mobile'] ?? '') !== '')<span>Telp: {{ $company['partner_mobile'] }}</span>@endif
+                            @if (($company['partner_phone'] ?? '') !== '' && ($company['partner_phone'] !== ($company['partner_mobile'] ?? '')))<span>{{ $company['partner_phone'] }}</span>@endif
                         </div>
                     </div>
                 </div>
             @endif
         </div>
 
-        <div class="w-1/2 text-right mt-0 print-w-1-2 print-text-right">
-            <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-200 tracking-widest uppercase print-text-3xl">INVOICE</h2>
-            <p class="text-sm font-mono text-slate-600 dark:text-slate-400 mt-1">#{{ $invoice->invoice_number ?? $invoice->id }}</p>
-            <table class="mt-4 w-full text-right text-xs flex flex-col items-end">
+        <div class="shrink-0 text-right mt-0 print-text-right">
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-widest uppercase print-text-3xl leading-none">INVOICE</h2>
+            <p class="text-xs sm:text-sm font-mono text-slate-600 dark:text-slate-400 mt-1 font-semibold">#{{ $invoice->invoice_number ?? $invoice->id }}</p>
+            <table class="mt-3 text-right text-xs inline-block">
                 <tr>
-                    <td class="text-slate-500 dark:text-slate-400 py-1 pr-4 w-auto">Tanggal</td>
-                    <td class="font-semibold text-slate-800 dark:text-slate-200 py-1">{{ $invoice->issue_date ? $invoice->issue_date->format('d M Y') : '-' }}</td>
+                    <td class="text-slate-500 dark:text-slate-400 py-0.5 pr-3 text-right">Tanggal</td>
+                    <td class="font-semibold text-slate-800 dark:text-slate-200 py-0.5 text-right">{{ $invoice->issue_date ? $invoice->issue_date->format('d M Y') : '-' }}</td>
                 </tr>
                 <tr>
-                    <td class="text-slate-500 dark:text-slate-400 py-1 pr-4">Jatuh Tempo</td>
-                    <td class="font-semibold text-slate-800 dark:text-slate-200 py-1">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : '-' }}</td>
+                    <td class="text-slate-500 dark:text-slate-400 py-0.5 pr-3 text-right">Jatuh Tempo</td>
+                    <td class="font-semibold text-slate-800 dark:text-slate-200 py-0.5 text-right">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : '-' }}</td>
                 </tr>
             </table>
         </div>

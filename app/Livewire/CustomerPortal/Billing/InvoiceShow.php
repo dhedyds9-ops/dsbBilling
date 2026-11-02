@@ -132,6 +132,44 @@ class InvoiceShow extends Component
             ->where('id', $id)
             ->firstOrFail();
 
+        // Auto-heal paket gratis:
+        $sp = $this->invoice->service_profile;
+        $isFree = $sp && ($sp->is_free || (float)$sp->base_price === 0.0 || stripos($sp->name, 'gratis') !== false);
+        if ($isFree && (float)$this->invoice->total_amount > 0 && $this->invoice->status === 'unpaid') {
+            $this->invoice->update([
+                'total_amount' => 0,
+                'paid_amount' => 0,
+                'status' => 'paid',
+                'paid_at' => now(),
+                'payment_method' => 'free',
+            ]);
+            $this->invoice->items()->update([
+                'unit_price' => 0,
+                'subtotal' => 0,
+                'owner_settlement_price' => 0,
+                'reseller_settlement_price' => 0,
+                'branch_settlement_price' => 0,
+            ]);
+            if ($this->invoice->contract_id) {
+                \App\Models\Billing\Subscription::where('contract_id', $this->invoice->contract_id)->update([
+                    'recurring_price' => 0,
+                ]);
+            }
+            if ($sp && (!$sp->is_free || (float)$sp->base_price > 0)) {
+                $sp->update([
+                    'is_free' => true,
+                    'base_price' => 0,
+                    'reseller_price' => 0,
+                    'owner_price' => 0,
+                    'reseller_settlement_price' => 0,
+                    'owner_settlement_price' => 0,
+                    'branch_settlement_price' => 0,
+                ]);
+            }
+            $this->invoice->refresh();
+            $this->invoice->load(['customer', 'items', 'payments']);
+        }
+
         // Check if returning from payment gateway
         if (request()->query('paid') == '1') {
             $this->dispatch('toast', ['type' => 'success', 'message' => 'Pembayaran sedang diproses oleh sistem. Harap tunggu beberapa saat hingga status diperbarui.']);
@@ -405,6 +443,5 @@ class InvoiceShow extends Component
         ));
     }
 }
-
 
 
