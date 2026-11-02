@@ -196,6 +196,7 @@
                                 <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
                             </th>
                             <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
+                            <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Id</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Username</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Password</th>
@@ -206,7 +207,6 @@
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Tanggal Dibuat</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Jatuh Tempo</th>
                             <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner Data</th>
-                            <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
@@ -268,6 +268,32 @@
                                         </button>
                                     </div>
                                 </td>
+                                <td class="px-4 py-3 text-center whitespace-nowrap">
+                                    @if($isExpired)
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-600 text-white shadow-sm">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                            Expired
+                                        </span>
+                                    @elseif($isOnline)
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-600 text-white shadow-sm">
+                                            <span class="relative flex h-2 w-2">
+                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                                            </span>
+                                            Online
+                                        </span>
+                                    @elseif($isUsed)
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 text-white shadow-sm">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-200"></span>
+                                            Terpakai
+                                        </span>
+                                    @elseif($isAvailable)
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-600 text-white shadow-sm">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800"></span>
+                                            Tersedia
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 {{ $textSecondary }} font-mono text-xs">
                                     {{ $voucher->id }}
                                 </td>
@@ -308,32 +334,6 @@
                                 </td>
                                 <td class="px-4 py-3 {{ $textSecondary }}">
                                     {{ $voucher->reseller?->name ?? 'Pusat (HQ)' }}
-                                </td>
-                                <td class="px-4 py-3 text-center whitespace-nowrap">
-                                    @if($isExpired)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-600 text-white shadow-sm">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
-                                            Expired
-                                        </span>
-                                    @elseif($isOnline)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-600 text-white shadow-sm">
-                                            <span class="relative flex h-2 w-2">
-                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                                            </span>
-                                            Online
-                                        </span>
-                                    @elseif($isUsed)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 text-white shadow-sm">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-200"></span>
-                                            Terpakai
-                                        </span>
-                                    @elseif($isAvailable)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-600 text-white shadow-sm">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800"></span>
-                                            Tersedia
-                                        </span>
-                                    @endif
                                 </td>
                             </tr>
                         @empty

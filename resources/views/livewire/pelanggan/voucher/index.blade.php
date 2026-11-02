@@ -103,14 +103,14 @@
           <th class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('duration')">
             Durasi{!! $sortIcon('duration') !!}
           </th>
-          <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('status')">
-            Status{!! $sortIcon('status') !!}
-          </th>
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('created_at')">
             Dibuat{!! $sortIcon('created_at') !!}
           </th>
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('redeemed_at')">
             Diredeem{!! $sortIcon('redeemed_at') !!}
+          </th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer" wire:click="sortBy('status')">
+            Status{!! $sortIcon('status') !!}
           </th>
           <th class="w-24 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aksi</th>
         </tr>
@@ -142,13 +142,13 @@
             <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-300">
               {{ $row->duration ? "{$row->duration}h" : '-' }}
             </td>
-            <td class="px-3 py-2">{!! $statusBadge($row->status) !!}</td>
             <td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-xs">
               {{ $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at)->format('d/m/Y H:i') : '-' }}
             </td>
             <td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-xs">
               {{ $row->redeemed_at ? \Illuminate\Support\Carbon::parse($row->redeemed_at)->format('d/m/Y H:i') : '-' }}
             </td>
+            <td class="px-3 py-2">{!! $statusBadge($row->status) !!}</td>
             <td class="px-3 py-2">
               <div class="flex items-center justify-end gap-1">
                 <button wire:click="confirmRowAction('detail', {{ $row->id }})" title="Detail"

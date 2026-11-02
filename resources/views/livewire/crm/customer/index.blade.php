@@ -147,6 +147,7 @@
                             <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-600 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                         </th>
                         <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
+                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
                             <button wire:click="sortBy('id')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                                 Id
@@ -161,7 +162,6 @@
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Ip Address</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner/Reseller</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">WhatsApp</th>
-                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
                             <button wire:click="sortBy('created_at')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                                 Tgl Register
@@ -263,6 +263,26 @@
                                 </div>
                             </td>
 
+                            {{-- Status Online/Offline --}}
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                @if($isInactive || $tglIsolir !== '-')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
+                                        Suspend
+                                    </span>
+                                @elseif($isOnline)
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
+                                        Online
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                        Offline
+                                    </span>
+                                @endif
+                            </td>
+
                             {{-- Id + Checkbox Toggle --}}
                             <td class="px-4 py-3 whitespace-nowrap {{ $idColor }} font-mono text-xs flex items-center gap-2">
                                 <input type="checkbox" wire:change="toggleStatus({{ $customer->id }})" 
@@ -339,26 +359,6 @@
                             {{-- WhatsApp --}}
                             <td class="px-4 py-3 whitespace-nowrap {{ $textSecondary }}">
                                 {{ $customer->phone ?? '-' }}
-                            </td>
-                            
-                            {{-- Status Online/Offline --}}
-                            <td class="px-4 py-3 whitespace-nowrap">
-                                @if($isInactive || $tglIsolir !== '-')
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
-                                        Suspend
-                                    </span>
-                                @elseif($isOnline)
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
-                                        Online
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
-                                        Offline
-                                    </span>
-                                @endif
                             </td>
                             
                             {{-- Tgl Register --}}

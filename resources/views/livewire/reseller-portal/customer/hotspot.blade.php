@@ -144,6 +144,7 @@
                             <input type="checkbox" wire:model.live="selectAll" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
                         </th>
                         <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Aksi</th>
+                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
                             <button wire:click="sortBy('id')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                                 ID
@@ -158,7 +159,6 @@
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Ip Address</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner/Reseller</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">WhatsApp</th>
-                        <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">
                             <button wire:click="sortBy('created_at')" class="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                                 Tgl Register
@@ -236,6 +236,24 @@
                                     </button>
                                 </div>
                             </td>
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                @if($user->status === 'suspended')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
+                                        Suspend
+                                    </span>
+                                @elseif($isOnline)
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
+                                        Online
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                        Offline
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 font-mono text-xs {{ $idColor }}">
                                   <div class="flex items-center gap-2">
                                       <input type="checkbox" wire:change="toggleStatus({{ $user->id }})" 
@@ -301,24 +319,6 @@
                             </td>
                             <td class="px-4 py-3 {{ $textSecondary }}">
                                 {{ $user->customer->phone ?? '-' }}
-                            </td>
-                            <td class="px-4 py-3 text-center whitespace-nowrap">
-                                @if($user->status === 'suspended')
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
-                                        Suspend
-                                    </span>
-                                @elseif($isOnline)
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
-                                        Online
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
-                                        Offline
-                                    </span>
-                                @endif
                             </td>
                             <td class="px-4 py-3 {{ $textSecondary }} text-xs">
                                 {{ $user->created_at ? $user->created_at->format('d-m-Y') : '-' }}
