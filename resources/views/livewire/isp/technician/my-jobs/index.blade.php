@@ -426,8 +426,6 @@
         <div class="pt-2">{{ $jobs->links(data: ['scrollTo' => false]) }}</div>
     @endif
 
-</div>
-
 {{-- Modal Input Hasil Survey (Fullscreen) --}}
 @if($showInputResultModal)
 <div class="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col overflow-hidden">
@@ -861,3 +859,4 @@
     </div>
 </div>
 @endif
+</div>

@@ -276,7 +276,6 @@
             {{ $tickets->links(data: ['scrollTo' => false]) }}
         </div>
     @endif
-</div>
 
 {{-- Modal Konfirmasi Selesaikan Tiket --}}
 @if($showResolveModal)
@@ -535,3 +534,4 @@
     </div>
 </div>
 @endif
+</div>
