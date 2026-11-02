@@ -135,6 +135,15 @@ class Edit extends AdminComponent
         ];
     }
     
+    public function updatedIsFree($value)
+    {
+        if ($value) {
+            $this->base_price = 0;
+            $this->owner_price = 0;
+            $this->reseller_price = 0;
+        }
+    }
+
     public function updated($property)
     {
         if ($property === 'is_free' && $this->is_free) {
@@ -165,6 +174,12 @@ class Edit extends AdminComponent
     public function save(ServiceProfileService $service)
     {
         Log::info('Update service profile: Starting process', ['user_id' => auth()->id(), 'profile_id' => $this->profileId]);
+        
+        if ($this->is_free) {
+            $this->base_price = 0;
+            $this->owner_price = 0;
+            $this->reseller_price = 0;
+        }
         
         // Pastikan visibility selalu punya nilai valid
         if (empty($this->visibility) || !in_array($this->visibility, ['private', 'shared', 'global'])) {

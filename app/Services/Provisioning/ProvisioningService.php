@@ -121,7 +121,9 @@ class ProvisioningService
             ]);
 
             // Step 5: Create Subscription - Use base_price from ServiceProfile
-            $recurringPrice = $serviceProfile?->base_price ?? 100000;
+            $isFreePackage = $serviceProfile && ($serviceProfile->is_free || (float) $serviceProfile->base_price === 0.0);
+            $recurringPrice = $isFreePackage ? 0.0 : (float) ($serviceProfile?->base_price ?? 0);
+
             $subscription = $this->subscriptionService->createSubscription(
                 $customerService,
                 $contract,
@@ -130,12 +132,16 @@ class ProvisioningService
             );
 
             // Step 6: Create First Invoice
+            $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
+            $packageName = $serviceProfile?->name ?? 'Bulanan';
+            $itemDescription = $isFreePackage ? "Langganan {$packageName} (Gratis)" : "Langganan {$packageName}";
+
             $invoice = $this->invoiceService->createInvoice(
                 $contract->customer_id,
                 $userId,
                 [
                     [
-                        'description' => 'Langganan Bulanan',
+                        'description' => $itemDescription,
                         'quantity' => 1,
                         'unit_price' => $recurringPrice,
                     ]
@@ -143,8 +149,19 @@ class ProvisioningService
                 null,
                 null,
                 null,
-                $contract->id
+                $contract->id,
+                'IDR',
+                $invoiceStatus
             );
+
+            if ($isFreePackage) {
+                $invoice->update([
+                    'paid_amount' => 0,
+                    'paid_at' => now(),
+                    'payment_method' => 'free',
+                    'status' => 'paid',
+                ]);
+            }
 
             // Step 7: Create PPPoE User
             $networkData = collect($data)->only([
@@ -299,10 +316,11 @@ class ProvisioningService
                 'updated_by' => $userId,
             ]);
 
-            // Step 5: Create Subscription if base_price exists
-            $recurringPrice = $serviceProfile?->base_price;
+            // Step 5: Create Subscription if base_price exists or profile is free
+            $isFreePackage = $serviceProfile && ($serviceProfile->is_free || (float) $serviceProfile->base_price === 0.0);
+            $recurringPrice = $isFreePackage ? 0.0 : (float) ($serviceProfile?->base_price ?? 0);
             $subscription = null;
-            if ($recurringPrice) {
+            if ($recurringPrice > 0 || $isFreePackage) {
                 $subscription = $this->subscriptionService->createSubscription(
                     $customerService,
                     $contract,
@@ -311,12 +329,16 @@ class ProvisioningService
                 );
 
                 // Step 6: Create First Invoice
+                $invoiceStatus = $isFreePackage ? 'paid' : 'unpaid';
+                $packageName = $serviceProfile?->name ?? 'Bulanan';
+                $itemDescription = $isFreePackage ? "Langganan {$packageName} (Gratis)" : "Langganan {$packageName}";
+
                 $invoice = $this->invoiceService->createInvoice(
                     $contract->customer_id,
                     $userId,
                     [
                         [
-                            'description' => 'Langganan Bulanan',
+                            'description' => $itemDescription,
                             'quantity' => 1,
                             'unit_price' => $recurringPrice,
                         ]
@@ -324,8 +346,19 @@ class ProvisioningService
                     null,
                     null,
                     null,
-                    $contract->id
+                    $contract->id,
+                    'IDR',
+                    $invoiceStatus
                 );
+
+                if ($isFreePackage) {
+                    $invoice->update([
+                        'paid_amount' => 0,
+                        'paid_at' => now(),
+                        'payment_method' => 'free',
+                        'status' => 'paid',
+                    ]);
+                }
             }
 
             // Step 7: Create Hotspot User

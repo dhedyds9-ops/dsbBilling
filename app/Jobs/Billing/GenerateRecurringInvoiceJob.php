@@ -24,12 +24,15 @@ class GenerateRecurringInvoiceJob implements ShouldQueue
         $customerService = $this->subscription->customerService;
         $userId = 1; // TODO: gunakan user system
 
-        $invoiceService->createInvoice(
+        $isFree = ((float) $this->subscription->recurring_price) <= 0;
+        $status = $isFree ? 'paid' : 'unpaid';
+
+        $invoice = $invoiceService->createInvoice(
             $contract->customer_id,
             $userId,
             [
                 [
-                    'description' => 'Langganan ' . $customerService->service->name,
+                    'description' => 'Langganan ' . ($customerService->service->name ?? 'Layanan'),
                     'quantity' => 1,
                     'unit_price' => $this->subscription->recurring_price,
                 ],
@@ -37,8 +40,19 @@ class GenerateRecurringInvoiceJob implements ShouldQueue
             null,
             null,
             null,
-            $contract->id
+            $contract->id,
+            'IDR',
+            $status
         );
+
+        if ($isFree) {
+            $invoice->update([
+                'paid_amount' => 0,
+                'paid_at' => now(),
+                'payment_method' => 'free',
+                'status' => 'paid',
+            ]);
+        }
 
         $this->subscription->update([
             'last_billing_date' => now(),

@@ -39,9 +39,9 @@ class Create extends AdminComponent
     public $burst_time_upload = 60;
 
     // Billing
-    public $base_price = 150000;
+    public $base_price = 0;
     public $owner_price = 0;
-    public $reseller_price = 120000;
+    public $reseller_price = 0;
     public $is_free = false;
     
     // Validity
@@ -81,6 +81,15 @@ class Create extends AdminComponent
         ];
     }
 
+    public function updatedIsFree($value)
+    {
+        if ($value) {
+            $this->base_price = 0;
+            $this->owner_price = 0;
+            $this->reseller_price = 0;
+        }
+    }
+
     public function updated($property)
     {
         if ($property === 'is_free' && $this->is_free) {
@@ -114,6 +123,12 @@ class Create extends AdminComponent
     public function save(ServiceProfileService $service)
     {
         Log::info('Create service profile: Starting process', ['user_id' => auth()->id()]);
+        
+        if ($this->is_free) {
+            $this->base_price = 0;
+            $this->owner_price = 0;
+            $this->reseller_price = 0;
+        }
         
         // Auto generate code - handled in ServiceProfileService
         // Pastikan visibility selalu punya nilai valid

@@ -170,9 +170,17 @@ class ServiceProfileService
         }
 
         // Handle free package
-        if (isset($data['is_free']) && $data['is_free']) {
+        if (!empty($data['is_free'])) {
+            $data['is_free'] = true;
             $data['base_price'] = 0;
-            $data['reseller_price'] = $data['reseller_price'] ?? 0;
+            $data['reseller_price'] = 0;
+            $data['owner_price'] = 0;
+            $data['reseller_settlement_price'] = 0;
+            $data['owner_settlement_price'] = 0;
+            $data['branch_settlement_price'] = 0;
+        } elseif (isset($data['base_price']) && (float) $data['base_price'] === 0.0) {
+            $data['is_free'] = true;
+            $data['base_price'] = 0;
         }
 
         // Set validity based on unit

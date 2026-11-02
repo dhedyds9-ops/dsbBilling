@@ -38,6 +38,8 @@ class GenerateInvoiceJob implements ShouldQueue
 
             $invoiceNumber = 'INV/' . date('Y/m/d') . '/' . strtoupper(Str::random(6));
 
+            $isFree = ((float) $this->subscription->recurring_price) <= 0;
+
             $invoice = Invoice::create([
                 'uuid' => (string) Str::uuid(),
                 'customer_id' => $this->subscription->customer_id,
@@ -47,8 +49,10 @@ class GenerateInvoiceJob implements ShouldQueue
                 'due_date' => now()->addDays((int) \App\Models\Setting::getValue('billing.due_days', 7)),
                 'total_amount' => $this->subscription->recurring_price,
                 'currency' => 'IDR',
-                'status' => 'unpaid',
+                'status' => $isFree ? 'paid' : 'unpaid',
                 'paid_amount' => 0,
+                'paid_at' => $isFree ? now() : null,
+                'payment_method' => $isFree ? 'free' : null,
                 'created_by' => auth()->id() ?? 1,
                 'updated_by' => auth()->id() ?? 1,
             ]);
