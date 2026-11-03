@@ -245,9 +245,13 @@ class Index extends BaseNetworkComponent
                 $pppoeQuery->where(function ($subQuery) {
                     $subQuery->where('name', 'like', '%' . $this->search . '%')
                         ->orWhere('address', 'like', '%' . $this->search . '%')
+                        ->orWhere('caller_id', 'like', '%' . $this->search . '%')
                         ->orWhere('uptime', 'like', '%' . $this->search . '%')
                         ->orWhereHas('router', function ($routerQuery) {
                             $routerQuery->where('name', 'like', '%' . $this->search . '%');
+                        })
+                        ->orWhereHas('pppoeUser', function ($puQuery) {
+                            $puQuery->where('mac_address', 'like', '%' . $this->search . '%');
                         });
                 });
             } elseif ($this->activeTab === 'hotspot') {

@@ -99,9 +99,7 @@
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Owner / Reseller</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Router</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Alamat IP</th>
-                        @if($activeTab !== 'pppoe')
-                            <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">MAC Address</th>
-                        @endif
+                        <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">MAC Address</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Uptime</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Traffic (In/Out)</th>
                         <th class="px-4 py-3 text-left font-semibold whitespace-nowrap">Mulai Session</th>
@@ -159,11 +157,13 @@
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono">
                                 {{ $session->address }}
                             </td>
-                            @if($activeTab !== 'pppoe')
-                                <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono">
+                            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs">
+                                @if($activeTab === 'pppoe')
+                                    {{ $session->caller_id ?: ($session->pppoeUser?->mac_address ?: '-') }}
+                                @else
                                     {{ $session->mac_address ?? '-' }}
-                                </td>
-                            @endif
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
                                 <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
                                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 14px">schedule</span>
@@ -180,7 +180,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $activeTab === 'pppoe' ? 10 : 11 }}" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <td colspan="11" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="material-symbols-outlined notranslate mb-2 text-slate-300 dark:text-slate-600 dark:text-slate-400" translate="no" style="font-size:48px">cell_tower</span>
                                     <p class="text-lg font-medium text-slate-900 dark:text-slate-100 mt-2">Belum ada Sesi Aktif</p>
