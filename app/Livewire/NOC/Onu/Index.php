@@ -282,25 +282,56 @@ class Index extends AdminComponent
             }))
             ->when($this->statusFilter === 'low_rx', fn ($q) => $q->whereBetween('rx_power_dbm', [$rxCrit, $rxLow]))
             ->when(!empty($this->search), function ($q) {
-                $q->where(function ($sq) {
-                    $sq->where('serial_number', 'like', "%{$this->search}%")
-                       ->orWhere('name', 'like', "%{$this->search}%")
-                       ->orWhere('mac_address', 'like', "%{$this->search}%")
-                       ->orWhereHas('customerService.customer', function ($cq) {
-                           $cq->where('name', 'like', "%{$this->search}%")
-                              ->orWhere('code', 'like', "%{$this->search}%");
+                $s = trim($this->search);
+                $sUpper = strtoupper($s);
+                $searchAlts = [$s];
+                
+                // Fiberhome HEX <-> ASCII (46485454 <-> FHTT)
+                if (str_starts_with($sUpper, 'FHTT')) {
+                    $searchAlts[] = '46485454' . substr($sUpper, 4);
+                } elseif (str_starts_with($sUpper, '46485454')) {
+                    $searchAlts[] = 'FHTT' . substr($sUpper, 8);
+                }
+                // Huawei HEX <-> ASCII (48575443 <-> HWTC)
+                if (str_starts_with($sUpper, 'HWTC')) {
+                    $searchAlts[] = '48575443' . substr($sUpper, 4);
+                } elseif (str_starts_with($sUpper, '48575443')) {
+                    $searchAlts[] = 'HWTC' . substr($sUpper, 8);
+                }
+                // ZTE HEX <-> ASCII (5A544547 <-> ZTEG)
+                if (str_starts_with($sUpper, 'ZTEG')) {
+                    $searchAlts[] = '5A544547' . substr($sUpper, 4);
+                } elseif (str_starts_with($sUpper, '5A544547')) {
+                    $searchAlts[] = 'ZTEG' . substr($sUpper, 8);
+                }
+                // VSOL HEX <-> ASCII (56534F4C <-> VSOL)
+                if (str_starts_with($sUpper, 'VSOL')) {
+                    $searchAlts[] = '56534F4C' . substr($sUpper, 4);
+                } elseif (str_starts_with($sUpper, '56534F4C')) {
+                    $searchAlts[] = 'VSOL' . substr($sUpper, 8);
+                }
+
+                $q->where(function ($sq) use ($searchAlts, $s) {
+                    foreach (array_unique($searchAlts) as $alt) {
+                        $sq->orWhere('serial_number', 'like', "%{$alt}%");
+                    }
+                    $sq->orWhere('name', 'like', "%{$s}%")
+                       ->orWhere('mac_address', 'like', "%{$s}%")
+                       ->orWhereHas('customerService.customer', function ($cq) use ($s) {
+                           $cq->where('name', 'like', "%{$s}%")
+                              ->orWhere('code', 'like', "%{$s}%");
                        })
-                       ->orWhereHas('acsDevice', function ($aq) {
-                           $aq->where('ip_address', 'like', "%{$this->search}%");
+                       ->orWhereHas('acsDevice', function ($aq) use ($s) {
+                           $aq->where('ip_address', 'like', "%{$s}%");
                        })
-                       ->orWhereHas('olt', function ($oq) {
-                           $oq->where('name', 'like', "%{$this->search}%");
+                       ->orWhereHas('olt', function ($oq) use ($s) {
+                           $oq->where('name', 'like', "%{$s}%");
                        })
-                       ->orWhereHas('odp', function ($odpq) {
-                           $odpq->where('name', 'like', "%{$this->search}%");
+                       ->orWhereHas('odp', function ($odpq) use ($s) {
+                           $odpq->where('name', 'like', "%{$s}%");
                        })
-                       ->orWhereHas('ponPort', function ($pq) {
-                           $pq->where('name', 'like', "%{$this->search}%");
+                       ->orWhereHas('ponPort', function ($pq) use ($s) {
+                           $pq->where('name', 'like', "%{$s}%");
                        });
                 });
             })

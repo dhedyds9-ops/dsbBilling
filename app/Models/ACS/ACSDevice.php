@@ -248,6 +248,17 @@ class ACSDevice extends Model
                 if ($onu) return $onu;
             }
 
+            // Fiberhome HEX (46485454) <-> ASCII (FHTT)
+            if (str_starts_with(strtoupper($snClean), '46485454')) {
+                $alt = 'FHTT' . substr($snClean, 8);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            } elseif (str_starts_with(strtoupper($snClean), 'FHTT')) {
+                $alt = '46485454' . substr($snClean, 4);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+
             // VSOL HEX (56534F4C) <-> ASCII (VSOL)
             if (str_starts_with(strtoupper($snClean), '56534F4C')) {
                 $alt = 'VSOL' . substr($snClean, 8);

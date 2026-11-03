@@ -392,6 +392,17 @@ class Index extends BaseACSComponent
                     if ($onu) return $onu;
                 }
 
+                // Fiberhome HEX (46485454) <-> ASCII (FHTT)
+                if (str_starts_with(strtoupper($snClean), '46485454')) {
+                    $alt = 'FHTT' . substr($snClean, 8);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                } elseif (str_starts_with(strtoupper($snClean), 'FHTT')) {
+                    $alt = '46485454' . substr($snClean, 4);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                }
+
                 // VSOL HEX (56534F4C) <-> ASCII (VSOL)
                 if (str_starts_with(strtoupper($snClean), '56534F4C')) {
                     $alt = 'VSOL' . substr($snClean, 8);
@@ -443,9 +454,34 @@ class Index extends BaseACSComponent
             $customerService = \App\Models\Customer\CustomerService::where('username', $pppoeUsername)->first();
             if ($customerService) {
                 $acsDeviceParams['customer_service_id'] = $customerService->id;
+                if (!empty($customerService->olt_id)) {
+                    $acsDeviceParams['olt_id'] = $customerService->olt_id;
+                }
                 
                 // Cari Onu
                 $onu = $findOnu($serialNumber, $mac);
+
+                // Auto-create Onu jika belum terdaftar di tabel onus namun customer dan OLT diketahui
+                if (!$onu && !empty($serialNumber) && !empty($acsDeviceParams['olt_id'])) {
+                    try {
+                        $onu = \App\Models\ISP\Onu::create([
+                            'olt_id'           => $acsDeviceParams['olt_id'],
+                            'branch_id'        => $customerService->branch_id ?? null,
+                            'customer_id'      => $customerService->customer_id ?? null,
+                            'serial_number'    => strtoupper(trim($serialNumber)),
+                            'mac_address'      => $mac,
+                            'name'             => $customerService->customer?->name ?? strtoupper(trim($serialNumber)),
+                            'model'            => $acsDeviceParams['model'] ?? null,
+                            'firmware_version' => $acsDeviceParams['software_version'] ?? null,
+                            'rx_power_dbm'     => $acsDeviceParams['signal'] ?? null,
+                            'status'           => 'active',
+                            'provision_status' => 'provisioned',
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("Auto-create Onu from ACS Inform failed: " . $e->getMessage());
+                    }
+                }
+
                 if ($onu) {
                     $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
                     if (empty($onu->mac_address) && $mac) {
