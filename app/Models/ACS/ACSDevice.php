@@ -193,14 +193,7 @@ class ACSDevice extends Model
             }
         }
 
-        $onu = null;
-        if ($this->onu_id) {
-            $onu = $this->relationLoaded('onu') && $this->onu
-                ? $this->onu
-                : Onu::withoutGlobalScopes(['branch_isolation'])->find($this->onu_id);
-        } elseif (!empty($this->serial_number)) {
-            $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $this->serial_number)->first();
-        }
+        $onu = $this->resolved_onu;
 
         if ($onu) {
             $cs = $onu->relationLoaded('customerService') && $onu->customerService
@@ -272,7 +265,31 @@ class ACSDevice extends Model
                 $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
                 if ($onu) return $onu;
             }
+
+            // ZTE HEX (5A544547) <-> ASCII (ZTEG)
+            if (str_starts_with(strtoupper($snClean), '5A544547')) {
+                $alt = 'ZTEG' . substr($snClean, 8);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            } elseif (str_starts_with(strtoupper($snClean), 'ZTEG')) {
+                $alt = '5A544547' . substr($snClean, 4);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
         }
+
+        // Fallback pencocokan via MAC Address (sangat berguna untuk ZTE ONU & EPON)
+        if (!empty($this->mac_address)) {
+            $macClean = trim((string)$this->mac_address);
+            $hexMac = preg_replace('/[^0-9A-Fa-f]/', '', $macClean);
+            $onu = Onu::withoutGlobalScopes(['branch_isolation'])
+                ->where('mac_address', $macClean)
+                ->orWhere('mac_address', strtoupper($macClean))
+                ->orWhere('mac_address', $hexMac)
+                ->first();
+            if ($onu) return $onu;
+        }
+
         return null;
     }
 

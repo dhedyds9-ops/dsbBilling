@@ -272,6 +272,34 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 }
             }
 
+            $cleanMac = function ($val) {
+                if (empty($val) || !is_string($val)) return null;
+                $val = trim($val);
+                if ($val === '' || $val === '00:00:00:00:00:00' || $val === 'ff:ff:ff:ff:ff:ff' || strtoupper($val) === 'FF:FF:FF:FF:FF:FF') {
+                    return null;
+                }
+                $hexOnly = preg_replace('/[^0-9A-Fa-f]/', '', $val);
+                if (strlen($hexOnly) === 12) {
+                    return strtoupper(implode(':', str_split($hexOnly, 2)));
+                }
+                if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $val)) {
+                    return strtoupper(str_replace('-', ':', $val));
+                }
+                return null;
+            };
+
+            $wanMac = $cleanMac($wanMac)
+                   ?? $cleanMac($extract('VirtualParameters.PonMac'))
+                   ?? $cleanMac($extract('VirtualParameters.ponMac'))
+                   ?? $cleanMac($extract('VirtualParameters.pppoeMac'))
+                   ?? $cleanMac($extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
+                   ?? $cleanMac($params['VirtualParameters']['PonMac']['_value'] ?? null)
+                   ?? $cleanMac($this->device->mac_address);
+
+            if ($wanMac && empty($this->device->mac_address)) {
+                $this->device->update(['mac_address' => $wanMac]);
+            }
+
             $this->deviceStatus = [
                 'rx_power' => $rxPower !== null ? round((float)$rxPower, 2) . ' dBm' : '-',
                 'tx_power' => $txPower !== null ? round((float)$txPower, 2) . ' dBm' : '-',

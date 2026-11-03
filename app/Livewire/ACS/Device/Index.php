@@ -58,7 +58,7 @@ class Index extends BaseACSComponent
         try {
             $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $query = [
-                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
+                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,VirtualParameters.PonMac,VirtualParameters.ponMac,VirtualParameters.pppoeIP,VirtualParameters.IPTR069,VirtualParameters.pppoeMac,VirtualParameters.getSerialNumber,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
             ];
             $devices = $acsService->listDevices($query, 5000);
             $count = 0;
@@ -203,7 +203,42 @@ class Index extends BaseACSComponent
         // IP utama: prioritaskan IP PPPoE, jika belum ada/offline gunakan IP TR-069
         $ip = $pppoeIp ?: ($tr069Ip ?: null);
 
-        // Ekstraksi MAC Address
+        // Helper validasi dan pembersih MAC Address
+        $cleanMac = function ($val) {
+            if (empty($val) || !is_string($val)) return null;
+            $val = trim($val);
+            if ($val === '' || $val === '00:00:00:00:00:00' || $val === 'ff:ff:ff:ff:ff:ff' || strtoupper($val) === 'FF:FF:FF:FF:FF:FF') {
+                return null;
+            }
+            $hexOnly = preg_replace('/[^0-9A-Fa-f]/', '', $val);
+            if (strlen($hexOnly) === 12) {
+                return strtoupper(implode(':', str_split($hexOnly, 2)));
+            }
+            if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $val)) {
+                return strtoupper(str_replace('-', ':', $val));
+            }
+            return null;
+        };
+
+        // Ekstraksi MAC Address (Prioritas: VirtualParameters.PonMac untuk ZTE ONU -> pppoeMac -> ZTE Vendor Extension -> WAN Connection -> LAN)
+        $vpPonMac = $cleanMac($extract('VirtualParameters.PonMac'))
+                 ?? $cleanMac($extract('VirtualParameters.ponMac'))
+                 ?? $cleanMac($extract('VirtualParameters.PonMAC'))
+                 ?? $cleanMac($extract('VirtualParameters.PONMAC'))
+                 ?? $cleanMac($extract('VirtualParameters.pon_mac'))
+                 ?? $cleanMac($deviceData['VirtualParameters']['PonMac']['_value'] ?? null)
+                 ?? $cleanMac($deviceData['VirtualParameters']['ponMac']['_value'] ?? null);
+
+        $vpPppoeMac = $cleanMac($extract('VirtualParameters.pppoeMac'))
+                   ?? $cleanMac($extract('VirtualParameters.pppoeMAC'))
+                   ?? $cleanMac($deviceData['VirtualParameters']['pppoeMac']['_value'] ?? null);
+
+        $zteMac = $cleanMac($extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
+               ?? $cleanMac($extract('Device.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
+               ?? $cleanMac($extract('InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MacAddress'))
+               ?? $cleanMac($extract('Device.DeviceInfo.X_ZTE-COM_MacAddress'));
+
+        $wanMac = null;
         if (is_array($wanDevices)) {
             foreach ($wanDevices as $wdIdx => $wdNode) {
                 if ($wdIdx === '_object' || !is_array($wdNode)) continue;
@@ -215,21 +250,33 @@ class Index extends BaseACSComponent
                         if (is_array($pppConns)) {
                             foreach ($pppConns as $pIdx => $ppp) {
                                 if ($pIdx === '_object' || !is_array($ppp)) continue;
-                                if (!empty($ppp['MACAddress']['_value'])) $mac = $mac ?: $ppp['MACAddress']['_value'];
+                                $cand = $cleanMac($ppp['MACAddress']['_value'] ?? null);
+                                if ($cand) {
+                                    $wanMac = $cand;
+                                    break 3;
+                                }
                             }
                         }
                         $ipConns = $connNode['WANIPConnection'] ?? [];
                         if (is_array($ipConns)) {
                             foreach ($ipConns as $iIdx => $ipc) {
                                 if ($iIdx === '_object' || !is_array($ipc)) continue;
-                                if (!empty($ipc['MACAddress']['_value'])) $mac = $mac ?: $ipc['MACAddress']['_value'];
+                                $cand = $cleanMac($ipc['MACAddress']['_value'] ?? null);
+                                if ($cand) {
+                                    $wanMac = $cand;
+                                    break 3;
+                                }
                             }
                         }
                     }
                 }
             }
         }
-        $mac = $mac ?? $deviceData['VirtualParameters']['pppoeMac']['_value'] ?? $deviceData['VirtualParameters']['PonMac']['_value'] ?? null;
+
+        $lanMac = $cleanMac($extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress'))
+               ?? $cleanMac($extract('Device.Ethernet.Interface.1.MACAddress'));
+
+        $mac = $vpPonMac ?: ($vpPppoeMac ?: ($zteMac ?: ($wanMac ?: ($lanMac ?: null))));
         
         $model = $deviceData['_deviceId']['_ProductClass'] ?? 
                  $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? 
@@ -327,51 +374,64 @@ class Index extends BaseACSComponent
             'oui' => $deviceData['_deviceId']['_OUI'] ?? null,
         ];
 
-        // Helper pencarian ONU dengan toleransi format SN (ASCII vs HEX)
-        $findOnu = function ($sn) {
-            if (empty($sn)) return null;
-            $snClean = trim((string)$sn);
-            $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $snClean)->first();
-            if ($onu) return $onu;
+        // Helper pencarian ONU dengan toleransi format SN (ASCII vs HEX) dan Fallback MAC Address
+        $findOnu = function ($sn, $macAddr = null) {
+            if (!empty($sn)) {
+                $snClean = trim((string)$sn);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $snClean)->first();
+                if ($onu) return $onu;
 
-            // Huawei HEX (48575443) <-> ASCII (HWTC)
-            if (str_starts_with(strtoupper($snClean), '48575443')) {
-                $alt = 'HWTC' . substr($snClean, 8);
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
-                if ($onu) return $onu;
-            } elseif (str_starts_with(strtoupper($snClean), 'HWTC')) {
-                $alt = '48575443' . substr($snClean, 4);
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
-                if ($onu) return $onu;
+                // Huawei HEX (48575443) <-> ASCII (HWTC)
+                if (str_starts_with(strtoupper($snClean), '48575443')) {
+                    $alt = 'HWTC' . substr($snClean, 8);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                } elseif (str_starts_with(strtoupper($snClean), 'HWTC')) {
+                    $alt = '48575443' . substr($snClean, 4);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                }
+
+                // VSOL HEX (56534F4C) <-> ASCII (VSOL)
+                if (str_starts_with(strtoupper($snClean), '56534F4C')) {
+                    $alt = 'VSOL' . substr($snClean, 8);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                } elseif (str_starts_with(strtoupper($snClean), 'VSOL')) {
+                    $alt = '56534F4C' . substr($snClean, 4);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                }
+
+                // VSOL awalan 12345 fallback (misal 12345B4641533EDA0)
+                if (str_starts_with($snClean, '12345') && strlen($snClean) >= 12) {
+                    $last8 = substr($snClean, -8);
+                    $alt = 'VSOL' . $last8;
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                }
+
+                // ZTE HEX (5A544547) <-> ASCII (ZTEG)
+                if (str_starts_with(strtoupper($snClean), '5A544547')) {
+                    $alt = 'ZTEG' . substr($snClean, 8);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                } elseif (str_starts_with(strtoupper($snClean), 'ZTEG')) {
+                    $alt = '5A544547' . substr($snClean, 4);
+                    $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                    if ($onu) return $onu;
+                }
             }
 
-            // VSOL HEX (56534F4C) <-> ASCII (VSOL)
-            if (str_starts_with(strtoupper($snClean), '56534F4C')) {
-                $alt = 'VSOL' . substr($snClean, 8);
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
-                if ($onu) return $onu;
-            } elseif (str_starts_with(strtoupper($snClean), 'VSOL')) {
-                $alt = '56534F4C' . substr($snClean, 4);
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
-                if ($onu) return $onu;
-            }
-
-            // VSOL awalan 12345 fallback (misal 12345B4641533EDA0)
-            if (str_starts_with($snClean, '12345') && strlen($snClean) >= 12) {
-                $last8 = substr($snClean, -8);
-                $alt = 'VSOL' . $last8;
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
-                if ($onu) return $onu;
-            }
-
-            // ZTE HEX (5A544547) <-> ASCII (ZTEG)
-            if (str_starts_with(strtoupper($snClean), '5A544547')) {
-                $alt = 'ZTEG' . substr($snClean, 8);
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
-                if ($onu) return $onu;
-            } elseif (str_starts_with(strtoupper($snClean), 'ZTEG')) {
-                $alt = '5A544547' . substr($snClean, 4);
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+            // Fallback via MAC Address (sangat berguna untuk ONU ZTE / EPON)
+            if (!empty($macAddr)) {
+                $cleanMac = trim((string)$macAddr);
+                $hexMac = preg_replace('/[^0-9A-Fa-f]/', '', $cleanMac);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()
+                    ->where('mac_address', $cleanMac)
+                    ->orWhere('mac_address', strtoupper($cleanMac))
+                    ->orWhere('mac_address', $hexMac)
+                    ->first();
                 if ($onu) return $onu;
             }
 
@@ -385,9 +445,12 @@ class Index extends BaseACSComponent
                 $acsDeviceParams['customer_service_id'] = $customerService->id;
                 
                 // Cari Onu
-                $onu = $findOnu($serialNumber);
+                $onu = $findOnu($serialNumber, $mac);
                 if ($onu) {
                     $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
+                    if (empty($onu->mac_address) && $mac) {
+                        $onu->update(['mac_address' => $mac]);
+                    }
                     
                     // Bind Onu ke CustomerService jika berbeda (Modem Baru)
                     if ($customerService->onu_id !== $onu->id) {
@@ -403,9 +466,12 @@ class Index extends BaseACSComponent
 
         // Fallback Binding jika pppoeUsername tidak terbaca TR-069
         if (empty($acsDeviceParams['customer_service_id'])) {
-            $onu = $findOnu($serialNumber);
+            $onu = $findOnu($serialNumber, $mac);
             if ($onu) {
                 $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
+                if (empty($onu->mac_address) && $mac) {
+                    $onu->update(['mac_address' => $mac]);
+                }
                 $cs = \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->first();
                 if ($cs) {
                     $acsDeviceParams['customer_service_id'] = $cs->id;

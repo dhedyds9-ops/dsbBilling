@@ -185,7 +185,41 @@ class Edit extends BaseACSComponent
             if ($tr069Ip && (empty($this->connection_request_url) || str_contains($this->connection_request_url, '0.0.0.0'))) {
                 $this->connection_request_url = "http://{$tr069Ip}:7547/";
             }
-            $mac = $mac ?? $extract('VirtualParameters.pppoeMac') ?? $extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress');
+            $cleanMac = function ($val) {
+                if (empty($val) || !is_string($val)) return null;
+                $val = trim($val);
+                if ($val === '' || $val === '00:00:00:00:00:00' || $val === 'ff:ff:ff:ff:ff:ff' || strtoupper($val) === 'FF:FF:FF:FF:FF:FF') {
+                    return null;
+                }
+                $hexOnly = preg_replace('/[^0-9A-Fa-f]/', '', $val);
+                if (strlen($hexOnly) === 12) {
+                    return strtoupper(implode(':', str_split($hexOnly, 2)));
+                }
+                if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $val)) {
+                    return strtoupper(str_replace('-', ':', $val));
+                }
+                return null;
+            };
+
+            // Prioritaskan VirtualParameters.PonMac (ZTE ONU), pppoeMac, vendor extension, dsb
+            $vpPonMac = $cleanMac($extract('VirtualParameters.PonMac'))
+                     ?? $cleanMac($extract('VirtualParameters.ponMac'))
+                     ?? $cleanMac($extract('VirtualParameters.PonMAC'))
+                     ?? $cleanMac($extract('VirtualParameters.PONMAC'))
+                     ?? $cleanMac($extract('VirtualParameters.pon_mac'))
+                     ?? $cleanMac($params['VirtualParameters']['PonMac']['_value'] ?? null)
+                     ?? $cleanMac($params['VirtualParameters']['ponMac']['_value'] ?? null);
+
+            $vpPppoeMac = $cleanMac($extract('VirtualParameters.pppoeMac'))
+                       ?? $cleanMac($extract('VirtualParameters.pppoeMAC'))
+                       ?? $cleanMac($params['VirtualParameters']['pppoeMac']['_value'] ?? null);
+
+            $zteMac = $cleanMac($extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
+                   ?? $cleanMac($extract('Device.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
+                   ?? $cleanMac($extract('InternetGatewayDevice.DeviceInfo.X_ZTE-COM_MacAddress'))
+                   ?? $cleanMac($extract('Device.DeviceInfo.X_ZTE-COM_MacAddress'));
+
+            $mac = $vpPonMac ?: ($vpPppoeMac ?: ($zteMac ?: ($cleanMac($mac) ?: $cleanMac($extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress')))));
 
             if ($ip && $ip !== '0.0.0.0') {
                 $this->acs_ip_address = $ip;
