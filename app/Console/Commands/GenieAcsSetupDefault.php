@@ -111,6 +111,36 @@ for (let p of paths) {
     }
 }
 return null;',
+            'getSerialNumber' => '
+// 1. Cek parameter khusus Huawei (X_HW_SerialNumber)
+let hwPaths = [
+    "InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber",
+    "Device.DeviceInfo.X_HW_SerialNumber",
+    "InternetGatewayDevice.DeviceInfo.X_HW_GponSN"
+];
+for (let p of hwPaths) {
+    let d = declare(p, {value: 1});
+    if (d.value && d.value[0]) return {writable: false, value: [d.value[0].trim(), "xsd:string"]};
+}
+
+// 2. Cek DeviceID / DeviceInfo standar
+let serial = declare("DeviceID.SerialNumber", {value: 1});
+let raw = (serial.value && serial.value[0]) ? serial.value[0] : "";
+if (!raw) {
+    let d2 = declare("InternetGatewayDevice.DeviceInfo.SerialNumber", {value: 1});
+    raw = (d2.value && d2.value[0]) ? d2.value[0] : "";
+}
+
+// 3. Normalisasi khusus VSOL (bersihkan karakter kontrol/non-printable dan format VSOL)
+if (raw) {
+    let clean = raw.replace(/[^\x20-\x7E]/g, "").trim();
+    // Jika format VSOL diawali 12345 dan OUI B46415
+    if (clean.startsWith("12345") && clean.length >= 13) {
+        clean = "VSOL" + clean.slice(-8);
+    }
+    return {writable: false, value: [clean, "xsd:string"]};
+}
+return null;',
         ];
 
         $this->info("Pushing Virtual Parameters...");

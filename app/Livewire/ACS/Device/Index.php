@@ -162,18 +162,32 @@ class Index extends BaseACSComponent
             return isset($node['_value']) ? $node['_value'] : null;
         };
 
-        // Deteksi Serial Number Khusus Huawei (X_HW_SerialNumber) vs Standar TR-069
-        $hwSn = $extract('InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber')
-             ?? $extract('Device.DeviceInfo.X_HW_SerialNumber')
-             ?? $extract('InternetGatewayDevice.DeviceInfo.X_HW_GponSN')
-             ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.SerialNumber')
-             ?? $extract('VirtualParameters.gponSN')
-             ?? $extract('VirtualParameters.GPONSN');
+        // Helper pembersih karakter rusak/non-printable (sering terjadi pada VSOL)
+        $cleanSn = function ($val) {
+            if (!$val) return null;
+            $clean = preg_replace('/[^\x20-\x7E]/', '', (string)$val);
+            $clean = preg_replace('/[^A-Za-z0-9_\-:]/', '', $clean);
+            return trim($clean);
+        };
 
-        $serialNumber = !empty($hwSn) ? trim((string)$hwSn) : (
-            $deviceData['_deviceId']['_SerialNumber'] ?? 
-            $extract('InternetGatewayDevice.DeviceInfo.SerialNumber') ?? 
-            $extract('Device.DeviceInfo.SerialNumber') ?? 
+        // Deteksi Serial Number Khusus:
+        // 1. VirtualParameters (getSerialNumber / gponSN) dari GenieACS untuk VSOL & Huawei
+        // 2. Vendor Extension (X_HW_SerialNumber)
+        // 3. Fallback standar TR-069
+        $detectedSn = $cleanSn($extract('VirtualParameters.getSerialNumber'))
+                   ?? $cleanSn($extract('VirtualParameters.serialNumber'))
+                   ?? $cleanSn($extract('VirtualParameters.SerialNumber'))
+                   ?? $cleanSn($extract('VirtualParameters.gponSN'))
+                   ?? $cleanSn($extract('VirtualParameters.GPONSN'))
+                   ?? $cleanSn($extract('InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber'))
+                   ?? $cleanSn($extract('Device.DeviceInfo.X_HW_SerialNumber'))
+                   ?? $cleanSn($extract('InternetGatewayDevice.DeviceInfo.X_HW_GponSN'))
+                   ?? $cleanSn($extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.SerialNumber'));
+
+        $serialNumber = !empty($detectedSn) ? $detectedSn : (
+            $cleanSn($deviceData['_deviceId']['_SerialNumber'] ?? null) ?? 
+            $cleanSn($extract('InternetGatewayDevice.DeviceInfo.SerialNumber')) ?? 
+            $cleanSn($extract('Device.DeviceInfo.SerialNumber')) ?? 
             $deviceId
         );
 
@@ -244,6 +258,25 @@ class Index extends BaseACSComponent
                 if ($onu) return $onu;
             } elseif (str_starts_with(strtoupper($snClean), 'HWTC')) {
                 $alt = '48575443' . substr($snClean, 4);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+
+            // VSOL HEX (56534F4C) <-> ASCII (VSOL)
+            if (str_starts_with(strtoupper($snClean), '56534F4C')) {
+                $alt = 'VSOL' . substr($snClean, 8);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            } elseif (str_starts_with(strtoupper($snClean), 'VSOL')) {
+                $alt = '56534F4C' . substr($snClean, 4);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+
+            // VSOL awalan 12345 fallback (misal 12345B4641533EDA0)
+            if (str_starts_with($snClean, '12345') && strlen($snClean) >= 12) {
+                $last8 = substr($snClean, -8);
+                $alt = 'VSOL' . $last8;
                 $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
                 if ($onu) return $onu;
             }
