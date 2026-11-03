@@ -94,6 +94,23 @@ for (let p of paths) {
     }
 }
 return null;',
+            'gponSN' => '
+let paths = [
+    "InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber",
+    "Device.DeviceInfo.X_HW_SerialNumber",
+    "InternetGatewayDevice.DeviceInfo.X_HW_GponSN",
+    "InternetGatewayDevice.WANDevice.*.WANPONInterfaceConfig.*.X_HW_SerialNumber",
+    "InternetGatewayDevice.WANDevice.*.X_HW_PONInterfaceConfig.SerialNumber"
+];
+for (let p of paths) {
+    let d = declare(p, {value: 1});
+    for (let item of d) {
+        if (item.value && item.value[0]) {
+            return {writable: false, value: [item.value[0], "xsd:string"]};
+        }
+    }
+}
+return null;',
         ];
 
         $this->info("Pushing Virtual Parameters...");

@@ -172,7 +172,16 @@ class Edit extends BaseACSComponent
                 $this->acs_mac_address = $this->mac_address ?: '-';
             }
 
-                        $this->acs_error = '';
+            // Fallback Serial Number Khusus Huawei (X_HW_SerialNumber)
+            $hwSn = $extract('InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber')
+                 ?? $extract('Device.DeviceInfo.X_HW_SerialNumber')
+                 ?? $extract('InternetGatewayDevice.DeviceInfo.X_HW_GponSN')
+                 ?? $extract('VirtualParameters.gponSN');
+            if ($hwSn && (empty($this->serial_number) || str_starts_with($this->serial_number, '2102') || str_starts_with($this->serial_number, '0231'))) {
+                $this->serial_number = trim((string)$hwSn);
+            }
+
+            $this->acs_error = '';
 
 
 

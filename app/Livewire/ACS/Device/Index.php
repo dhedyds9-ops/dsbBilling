@@ -152,9 +152,6 @@ class Index extends BaseACSComponent
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
         $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 15) ? 'online' : 'offline';
 
-        $serialNumber = $deviceData['_deviceId']['_SerialNumber'] ?? 
-                        $deviceData['InternetGatewayDevice']['DeviceInfo']['SerialNumber']['_value'] ?? $deviceId;
-
         $extract = function($path) use ($deviceData) {
             $parts = explode('.', $path);
             $node = $deviceData;
@@ -164,6 +161,21 @@ class Index extends BaseACSComponent
             }
             return isset($node['_value']) ? $node['_value'] : null;
         };
+
+        // Deteksi Serial Number Khusus Huawei (X_HW_SerialNumber) vs Standar TR-069
+        $hwSn = $extract('InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber')
+             ?? $extract('Device.DeviceInfo.X_HW_SerialNumber')
+             ?? $extract('InternetGatewayDevice.DeviceInfo.X_HW_GponSN')
+             ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.SerialNumber')
+             ?? $extract('VirtualParameters.gponSN')
+             ?? $extract('VirtualParameters.GPONSN');
+
+        $serialNumber = !empty($hwSn) ? trim((string)$hwSn) : (
+            $deviceData['_deviceId']['_SerialNumber'] ?? 
+            $extract('InternetGatewayDevice.DeviceInfo.SerialNumber') ?? 
+            $extract('Device.DeviceInfo.SerialNumber') ?? 
+            $deviceId
+        );
 
         $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion') ?? $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion');
         $hardware = $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion') ?? $extract('Device.DeviceInfo.HardwareVersion');
@@ -218,6 +230,38 @@ class Index extends BaseACSComponent
             'oui' => $deviceData['_deviceId']['_OUI'] ?? null,
         ];
 
+        // Helper pencarian ONU dengan toleransi format SN (ASCII vs HEX)
+        $findOnu = function ($sn) {
+            if (empty($sn)) return null;
+            $snClean = trim((string)$sn);
+            $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $snClean)->first();
+            if ($onu) return $onu;
+
+            // Huawei HEX (48575443) <-> ASCII (HWTC)
+            if (str_starts_with(strtoupper($snClean), '48575443')) {
+                $alt = 'HWTC' . substr($snClean, 8);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            } elseif (str_starts_with(strtoupper($snClean), 'HWTC')) {
+                $alt = '48575443' . substr($snClean, 4);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+
+            // ZTE HEX (5A544547) <-> ASCII (ZTEG)
+            if (str_starts_with(strtoupper($snClean), '5A544547')) {
+                $alt = 'ZTEG' . substr($snClean, 8);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            } elseif (str_starts_with(strtoupper($snClean), 'ZTEG')) {
+                $alt = '5A544547' . substr($snClean, 4);
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+
+            return null;
+        };
+
         // AUTO BINDING LOGIC
         if ($pppoeUsername) {
             $customerService = \App\Models\Customer\CustomerService::where('username', $pppoeUsername)->first();
@@ -225,7 +269,7 @@ class Index extends BaseACSComponent
                 $acsDeviceParams['customer_service_id'] = $customerService->id;
                 
                 // Cari Onu
-                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
+                $onu = $findOnu($serialNumber);
                 if ($onu) {
                     $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
                     
@@ -243,7 +287,7 @@ class Index extends BaseACSComponent
 
         // Fallback Binding jika pppoeUsername tidak terbaca TR-069
         if (empty($acsDeviceParams['customer_service_id'])) {
-            $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $serialNumber)->first();
+            $onu = $findOnu($serialNumber);
             if ($onu) {
                 $acsDeviceParams['onu_id'] = $onu->id; $acsDeviceParams['olt_id'] = $onu->olt_id; $acsDeviceParams['odp_id'] = $onu->odp_id;
                 $cs = \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->first();
