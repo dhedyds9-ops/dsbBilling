@@ -241,22 +241,38 @@ class CDataOltDriver extends BaseOltDriver
 
         if (!empty($this->cachedCliParsedOnus[$portNum])) {
             $res = [];
+            $missingOpticalCount = 0;
             foreach ($this->cachedCliParsedOnus[$portNum] as $item) {
                 $item['pon_port'] = $ponPort;
+                if ($item['rx_power_dbm'] === null && ($item['status'] ?? 'offline') === 'online') {
+                    $missingOpticalCount++;
+                }
                 $res[] = $item;
             }
+
+            if ($missingOpticalCount > 0) {
+                $this->enrichOpticalFromSnmp($res, $ponPort, $portNum);
+            }
+
             return $res;
         }
 
         if (($this->olt->pon_port_count ?? 0) === 1 && !empty($this->cachedCliParsedOnus)) {
             $res = [];
+            $missingOpticalCount = 0;
             foreach ($this->cachedCliParsedOnus as $pOnus) {
                 foreach ($pOnus as $item) {
                     $item['pon_port'] = $ponPort;
+                    if ($item['rx_power_dbm'] === null && ($item['status'] ?? 'offline') === 'online') {
+                        $missingOpticalCount++;
+                    }
                     $res[] = $item;
                 }
             }
             if (!empty($res)) {
+                if ($missingOpticalCount > 0) {
+                    $this->enrichOpticalFromSnmp($res, $ponPort, $portNum);
+                }
                 return $res;
             }
         }
@@ -418,103 +434,188 @@ class CDataOltDriver extends BaseOltDriver
                 }
             }
 
+            // Build fast lookup map: serial_number => [port, onu_id]
+            $snMap = [];
+            foreach ($this->cachedCliParsedOnus as $p => $onus) {
+                foreach ($onus as $oId => $oData) {
+                    if (!empty($oData['serial_number'])) {
+                        $snMap[strtoupper($oData['serial_number'])] = ['port' => (int)$p, 'onu_id' => (int)$oId];
+                    }
+                    if (!empty($oData['mac_address'])) {
+                        $cleanM = strtoupper(str_replace('-', ':', $oData['mac_address']));
+                        $snMap[$cleanM] = ['port' => (int)$p, 'onu_id' => (int)$oId];
+                    }
+                }
+            }
+
             // Parse show ont optical-info lines helper
-            $parseOptLines = function(string $rawOpt, ?int $defaultPort = null) {
+            $parseOptLines = function(string $rawOpt, ?int $defaultPort = null) use (&$snMap) {
                 $cleanOpt = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]+/', '', $rawOpt);
                 foreach (explode("\n", $cleanOpt) as $line) {
                     $line = trim($line);
-                    if (empty($line) || str_starts_with($line, '-') || str_starts_with($line, 'F/S') || str_starts_with($line, 'Slot') || str_starts_with($line, 'Port') || str_starts_with($line, 'ONT') || str_starts_with($line, 'ID') || str_starts_with($line, 'Total:') || str_starts_with($line, 'show') || str_starts_with($line, 'FD1608S') || str_starts_with($line, 'No')) {
+                    if (empty($line) 
+                        || str_starts_with($line, '-') 
+                        || str_starts_with($line, '=') 
+                        || str_starts_with($line, 'F/S') 
+                        || str_starts_with($line, 'Slot') 
+                        || str_starts_with($line, 'Port') 
+                        || str_starts_with($line, 'PON') 
+                        || str_starts_with($line, 'ONT') 
+                        || str_starts_with($line, 'ONU') 
+                        || str_starts_with($line, 'ID') 
+                        || str_starts_with($line, 'Total:') 
+                        || str_starts_with($line, 'show') 
+                        || str_starts_with($line, 'FD16') 
+                        || str_starts_with($line, 'No') 
+                        || str_contains($line, '#')) {
                         continue;
                     }
 
-                    $cols = preg_split('/\s+/', $line);
                     $lPort = $defaultPort;
                     $lOnuId = null;
-                    $rx = null;
-                    $tx = null;
-                    $temp = null;
 
-                    // Priority 1: Per-port query: "1 -22.21 2.16 -28.86 55.41 3.26 14.82" (ONT_ID, Rx, Tx, OLT-Rx, Temp)
-                    if ($defaultPort !== null && count($cols) >= 3 && is_numeric($cols[0]) && (int)$cols[0] > 0 && !str_contains($cols[0], '/')) {
-                        $lPort = $defaultPort;
-                        $lOnuId = (int)$cols[0];
-                        $rx = $cols[1];
-                        $tx = $cols[2];
-                        $temp = count($cols) >= 5 ? $cols[4] : ($cols[3] ?? null);
-                    }
-                    // Priority 2: "0/0 2 1 -21.40 2.35 45.0" (F/S, Port, ONT_ID, Rx, Tx, Temp)
-                    elseif (count($cols) >= 5 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
-                        $lPort = (int)$cols[1];
-                        $lOnuId = (int)$cols[2];
-                        $rx = $cols[3];
-                        $tx = $cols[4];
-                        $temp = $cols[5] ?? null;
-                    }
-                    // Priority 3: "0/2 1 -21.40 2.35" (Slot/Port, ONT_ID, Rx, Tx)
-                    elseif (count($cols) >= 4 && str_contains($cols[0], '/')) {
-                        $parts = explode('/', $cols[0]);
-                        $lPort = (int)end($parts);
-                        $lOnuId = (int)$cols[1];
-                        $rx = $cols[2];
-                        $tx = $cols[3];
-                        $temp = $cols[5] ?? null;
-                    }
-                    // Priority 4: "1 5 -21.40 2.35" (Port, ONT_ID, Rx, Tx)
-                    elseif (count($cols) >= 4 && is_numeric($cols[0]) && is_numeric($cols[1]) && !str_contains($cols[1], '.') && (int)$cols[1] > 0) {
-                        $lPort = (int)$cols[0];
-                        $lOnuId = (int)$cols[1];
-                        $rx = $cols[2];
-                        $tx = $cols[3];
-                        $temp = $cols[4] ?? null;
+                    // Match 1: If line contains a known Serial Number or MAC from $snMap
+                    if (preg_match('/([A-Z0-9]{4}[A-Z0-9]{8,12}|(?:[A-F0-9]{2}[:-]){5}[A-F0-9]{2})/i', $line, $snMatch)) {
+                        $matchedSn = strtoupper(str_replace('-', ':', $snMatch[1]));
+                        if (isset($snMap[$matchedSn])) {
+                            $lPort = $snMap[$matchedSn]['port'];
+                            $lOnuId = $snMap[$matchedSn]['onu_id'];
+                        } elseif (isset($snMap[str_replace(':', '', $matchedSn)])) {
+                            $mapped = $snMap[str_replace(':', '', $matchedSn)];
+                            $lPort = $mapped['port'];
+                            $lOnuId = $mapped['onu_id'];
+                        }
                     }
 
-                    if ($lPort !== null && $lOnuId !== null) {
-                        if (isset($this->cachedCliParsedOnus[$lPort][$lOnuId])) {
-                            // Extract numeric float value, discarding dBm / C units (e.g. "-21.40(dBm)")
-                            $cleanNum = function($v) {
-                                if ($v === null || $v === '--' || $v === 'N/A' || $v === '') return null;
-                                if (preg_match('/[-+]?[0-9]*\.?[0-9]+/', (string)$v, $nm)) {
-                                    return (float)$nm[0];
-                                }
-                                return null;
-                            };
+                    // Match 2: If port/ONU was not identified by SN, parse leading port & ONU index
+                    if ($lPort === null || $lOnuId === null) {
+                        $cols = preg_split('/\s+/', $line);
+                        // Case A: "0/0/2 1" or "0/2 1" or "0/0 2 1"
+                        if (count($cols) >= 3 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
+                            $lPort = (int)$cols[1];
+                            $lOnuId = (int)$cols[2];
+                        } elseif (count($cols) >= 2 && str_contains($cols[0], '/') && is_numeric($cols[1])) {
+                            $pParts = explode('/', $cols[0]);
+                            $lPort = (int)end($pParts);
+                            $lOnuId = (int)$cols[1];
+                        } elseif (preg_match('/(?:gpon|epon|pon)?\s*(?:0\/0\/|0\/)?(\d+)[\s:\/]+(\d+)/i', $line, $pm)) {
+                            $lPort = (int)$pm[1];
+                            $lOnuId = (int)$pm[2];
+                        } elseif ($defaultPort !== null && count($cols) >= 2 && is_numeric($cols[0])) {
+                            $lPort = $defaultPort;
+                            $lOnuId = (int)$cols[0];
+                        }
+                    }
 
-                            $valA = $cleanNum($rx);
-                            $valB = $cleanNum($tx);
-                            $tempVal = $cleanNum($temp);
+                    if (($this->olt->pon_port_count ?? 0) === 1) {
+                        $lPort = 1;
+                        if ($lOnuId === null && preg_match('/^(\d+)\b/', $line, $firstNum)) {
+                            $lOnuId = (int)$firstNum[1];
+                        }
+                    }
 
-                            $detectedRx = null;
-                            $detectedTx = null;
+                    if ($lPort === null || $lOnuId === null || !isset($this->cachedCliParsedOnus[$lPort][$lOnuId])) {
+                        continue;
+                    }
 
-                            if ($valA !== null && $valB !== null) {
-                                if ($valA < 0 && $valB >= 0) {
-                                    $detectedRx = $valA;
-                                    $detectedTx = $valB;
-                                } elseif ($valB < 0 && $valA >= 0) {
-                                    $detectedRx = $valB;
-                                    $detectedTx = $valA;
-                                } else {
-                                    $detectedRx = $valA;
-                                    $detectedTx = $valB;
-                                }
-                            } elseif ($valA !== null) {
-                                if ($valA < 0) $detectedRx = $valA;
-                                else $detectedTx = $valA;
-                            }
+                    // Extract all numeric floats from the line (handling optional (dBm), (V), (C) units)
+                    $tokens = preg_split('/\s+/', $line);
+                    $floats = [];
+                    foreach ($tokens as $idx => $tok) {
+                        $tok = trim($tok);
+                        if ($tok === '' || $tok === '--' || $tok === 'N/A' || $tok === '-' || $tok === 'null') {
+                            continue;
+                        }
+                        if (preg_match('/^[-+]?\d+(?:\.\d+)?/', $tok, $fm)) {
+                            $floats[] = [
+                                'raw_idx' => $idx,
+                                'val'     => (float)$fm[0],
+                            ];
+                        }
+                    }
 
-                            if ($detectedRx !== null && $detectedRx > -50.0 && $detectedRx < 10.0 && $detectedRx !== 0.0) {
-                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = $detectedRx;
-                            }
-                            if ($detectedTx !== null && $detectedTx > -10.0 && $detectedTx < 25.0 && $detectedTx !== 0.0) {
-                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = $detectedTx;
-                            }
-                            if ($tempVal !== null && $tempVal > 0 && $tempVal < 120) {
-                                $this->cachedCliParsedOnus[$lPort][$lOnuId]['temperature'] = $tempVal;
+                    // Optical Rx power: In optical networks, Rx is ALWAYS negative dBm, typically -45.0 to -5.0
+                    $detectedRx = null;
+                    $detectedTx = null;
+                    $detectedTemp = null;
+                    $rxFloatIndex = null;
+
+                    foreach ($floats as $fIdx => $fData) {
+                        $val = $fData['val'];
+                        // Skip ONU ID or Port if it happened to be in floats
+                        if ($fIdx === 0 && ($val == $lPort || $val == $lOnuId)) {
+                            continue;
+                        }
+                        if ($fIdx === 1 && $val == $lOnuId) {
+                            continue;
+                        }
+                        // Distance can be a large integer like 1310 or 0
+                        if ($val >= -45.0 && $val <= -5.0 && $rxFloatIndex === null) {
+                            $detectedRx = $val;
+                            $rxFloatIndex = $fIdx;
+                            break;
+                        }
+                    }
+
+                    // Optical Tx power: Usually the float immediately following Rx Power, typically -5.0 to +12.0 dBm
+                    if ($rxFloatIndex !== null) {
+                        if (isset($floats[$rxFloatIndex + 1])) {
+                            $nextVal = $floats[$rxFloatIndex + 1]['val'];
+                            if ($nextVal >= -5.0 && $nextVal <= 12.0) {
+                                $detectedTx = $nextVal;
                             }
                         }
                     }
+
+                    // Temperature: In C-Data optical tables, Temperature is typically between 15.0 and 85.0 °C
+                    // Usually the last float in the line
+                    if (!empty($floats)) {
+                        $lastFloat = end($floats)['val'];
+                        if ($lastFloat >= 15.0 && $lastFloat <= 90.0 && $lastFloat != $detectedRx && $lastFloat != $detectedTx) {
+                            $detectedTemp = $lastFloat;
+                        }
+                    }
+
+                    // Also support Key-Value formats (e.g. Rx Optical Power: -16.86 dBm)
+                    if ($detectedRx === null && preg_match('/rx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $line, $km)) {
+                        $v = (float)$km[1];
+                        if ($v >= -45.0 && $v <= 10.0 && $v != 0.0) $detectedRx = $v;
+                    }
+                    if ($detectedTx === null && preg_match('/tx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $line, $km)) {
+                        $v = (float)$km[1];
+                        if ($v >= -10.0 && $v <= 25.0 && $v != 0.0) $detectedTx = $v;
+                    }
+                    if ($detectedTemp === null && preg_match('/temp.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $line, $km)) {
+                        $v = (float)$km[1];
+                        if ($v > 0.0 && $v < 120.0) $detectedTemp = $v;
+                    }
+
+                    if ($detectedRx !== null) {
+                        $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = $detectedRx;
+                    }
+                    if ($detectedTx !== null) {
+                        $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = $detectedTx;
+                    }
+                    if ($detectedTemp !== null) {
+                        $this->cachedCliParsedOnus[$lPort][$lOnuId]['temperature'] = $detectedTemp;
+                    }
                 }
             };
+
+            // Parse global optical output if already captured in Attempt 1 or Attempt 2
+            if (!empty($optOut) && !$isBad($optOut)) {
+                $parseOptLines($optOut);
+            } else {
+                $tryOpt = $this->cli->execute("show ont optical-info all\r\n", false);
+                if (!$isBad($tryOpt)) {
+                    $parseOptLines($tryOpt);
+                } else {
+                    $tryOpt2 = $this->cli->execute("show onu optical-info all\r\n", false);
+                    if (!$isBad($tryOpt2)) {
+                        $parseOptLines($tryOpt2);
+                    }
+                }
+            }
 
             // 1. Parse MAC Address Dynamic globally (Supports both FD1608S and FD1602S formats)
             $macOut = $this->cli->execute("show mac-address dynamic\r\n", false);
@@ -557,42 +658,103 @@ class CDataOltDriver extends BaseOltDriver
                 }
             }
 
-            // 2. Query per port optical info INSIDE interface mode (Required by C-Data FD1608S firmware)
-            $this->cli->execute("config\r\n", false);
-            $inGpon = $this->cli->execute("interface gpon 0/{$slot}\r\n", false);
-            if ($isBad($inGpon)) {
-                $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
-            }
-
-            $inInterface = !$isBad($inGpon);
-
-            $isSinglePort = (($this->olt->pon_port_count ?? 0) === 1);
-            $portsWithOnus = !empty($this->cachedCliParsedOnus) 
-                ? array_keys($this->cachedCliParsedOnus) 
-                : ($isSinglePort ? [1] : range(1, 8));
-
-            foreach ($portsWithOnus as $pNum) {
-                $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
-                if ($isBad($pOpt)) {
-                    $pOpt = $this->cli->execute("show ont optical-info 0/0 {$pNum} all\r\n", false);
-                }
-                if ($isBad($pOpt)) {
-                    $pOpt = $this->cli->execute("show ont optical-info {$pNum}\r\n", false);
-                }
-                if ($isBad($pOpt)) {
-                    $pOpt = $this->cli->execute("show onu optical-info {$pNum} all\r\n", false);
-                }
-                if (!$isBad($pOpt)) {
-                    $parseOptLines($pOpt, (int)$pNum);
+            // 2. Query per port optical info if any online ONU still has missing optical signal
+            $missingOptical = false;
+            foreach ($this->cachedCliParsedOnus as $p => $onus) {
+                foreach ($onus as $o) {
+                    if (($o['status'] ?? 'offline') === 'online' && $o['rx_power_dbm'] === null) {
+                        $missingOptical = true;
+                        break 2;
+                    }
                 }
             }
 
-            if ($inInterface) {
-                $this->cli->execute("exit\r\n", false);
-                $this->cli->execute("exit\r\n", false);
+            if ($missingOptical) {
+                $this->cli->execute("config\r\n", false);
+                $inGpon = $this->cli->execute("interface gpon 0/{$slot}\r\n", false);
+                if ($isBad($inGpon)) {
+                    $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
+                }
+
+                $inInterface = !$isBad($inGpon);
+
+                $isSinglePort = (($this->olt->pon_port_count ?? 0) === 1);
+                $portsWithOnus = !empty($this->cachedCliParsedOnus) 
+                    ? array_keys($this->cachedCliParsedOnus) 
+                    : ($isSinglePort ? [1] : range(1, 8));
+
+                foreach ($portsWithOnus as $pNum) {
+                    $pOpt = $this->cli->execute("show ont optical-info {$pNum} all\r\n", false);
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show ont optical-info 0/0 {$pNum} all\r\n", false);
+                    }
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show ont optical-info {$pNum}\r\n", false);
+                    }
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show onu optical-info {$pNum} all\r\n", false);
+                    }
+                    if (!$isBad($pOpt)) {
+                        $parseOptLines($pOpt, (int)$pNum);
+                    }
+                }
+
+                if ($inInterface) {
+                    $this->cli->execute("exit\r\n", false);
+                    $this->cli->execute("exit\r\n", false);
+                }
             }
         } catch (\Throwable $e) {
             Log::warning("CData OLT Telnet CLI sync failed: " . $e->getMessage() . ". Falling back to SNMP.");
+        }
+    }
+
+    protected function enrichOpticalFromSnmp(array &$onus, int $ponPort, int $portNum): void
+    {
+        try {
+            $snmpOnus = $this->scrapeSnmpOnus($ponPort, $portNum);
+            if (empty($snmpOnus)) {
+                return;
+            }
+
+            $bySn = [];
+            $byIndex = [];
+            foreach ($snmpOnus as $so) {
+                if (!empty($so['serial_number'])) {
+                    $bySn[strtoupper($so['serial_number'])] = $so;
+                }
+                if (!empty($so['mac_address'])) {
+                    $bySn[strtoupper(str_replace('-', ':', $so['mac_address']))] = $so;
+                }
+                if (!empty($so['onu_index'])) {
+                    $byIndex[(int)$so['onu_index']] = $so;
+                }
+            }
+
+            foreach ($onus as &$o) {
+                if ($o['rx_power_dbm'] !== null) {
+                    continue;
+                }
+                $sn = strtoupper($o['serial_number'] ?? '');
+                $mac = strtoupper(str_replace('-', ':', $o['mac_address'] ?? ''));
+                $idx = (int)($o['onu_index'] ?? 0);
+
+                $match = $bySn[$sn] ?? ($bySn[$mac] ?? ($byIndex[$idx] ?? null));
+                if ($match) {
+                    if ($match['rx_power_dbm'] !== null) {
+                        $o['rx_power_dbm'] = $match['rx_power_dbm'];
+                    }
+                    if ($match['tx_power_dbm'] !== null) {
+                        $o['tx_power_dbm'] = $match['tx_power_dbm'];
+                    }
+                    if ($match['temperature'] !== null) {
+                        $o['temperature'] = $match['temperature'];
+                    }
+                }
+            }
+            unset($o);
+        } catch (\Throwable $e) {
+            Log::debug("CData enrichOpticalFromSnmp exception: " . $e->getMessage());
         }
     }
 
