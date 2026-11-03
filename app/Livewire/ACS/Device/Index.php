@@ -58,7 +58,7 @@ class Index extends BaseACSComponent
         try {
             $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $query = [
-                'projection' => '_id,_deviceId,_lastInform,VirtualParameters,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
+                'projection' => '_id,_deviceId,_ip,_lastInform,VirtualParameters,InternetGatewayDevice.DeviceInfo,Device.DeviceInfo,InternetGatewayDevice.WANDevice,Device.WANDevice,Device.Optical,InternetGatewayDevice.ManagementServer.ConnectionRequestURL,Device.ManagementServer.ConnectionRequestURL'
             ];
             $devices = $acsService->listDevices($query, 5000);
             $count = 0;
@@ -93,10 +93,117 @@ class Index extends BaseACSComponent
         $deviceId = $deviceData['_id'] ?? null;
         if (!$deviceId) return null;
 
-        // Dynamic IP & MAC Extraction
-        $ip = null;
-        $mac = null;
+        $extract = function($path) use ($deviceData) {
+            $parts = explode('.', $path);
+            $node = $deviceData;
+            foreach ($parts as $p) {
+                if (!is_array($node) || !array_key_exists($p, $node)) return null;
+                $node = $node[$p];
+            }
+            return isset($node['_value']) ? $node['_value'] : null;
+        };
+
+        // Helper validasi IP Address yang bukan 0.0.0.0 atau loopback
+        $isValidIp = function ($val) {
+            if (empty($val) || !is_string($val)) return false;
+            $val = trim($val);
+            if ($val === '' || $val === '0.0.0.0' || $val === '::' || $val === '127.0.0.1') return false;
+            return filter_var($val, FILTER_VALIDATE_IP) !== false;
+        };
+
         $wanDevices = $deviceData['InternetGatewayDevice']['WANDevice'] ?? $deviceData['Device']['WANDevice'] ?? [];
+        $mac = null;
+
+        // 1. Ekstraksi IP PPPoE (Prioritas: VirtualParameters.pppoeIP -> WANPPPConnection)
+        $pppoeIp = null;
+        $vpPppoe = $extract('VirtualParameters.pppoeIP') 
+                ?? $extract('VirtualParameters.pppoeIp')
+                ?? $extract('VirtualParameters.PPPOEIP');
+        if ($isValidIp($vpPppoe)) {
+            $pppoeIp = trim($vpPppoe);
+        }
+
+        if (!$pppoeIp && is_array($wanDevices)) {
+            foreach ($wanDevices as $wdIdx => $wdNode) {
+                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
+                $connDevices = $wdNode['WANConnectionDevice'] ?? [];
+                if (is_array($connDevices)) {
+                    foreach ($connDevices as $cdIdx => $connNode) {
+                        if ($cdIdx === '_object' || !is_array($connNode)) continue;
+                        $pppConns = $connNode['WANPPPConnection'] ?? [];
+                        if (is_array($pppConns)) {
+                            foreach ($pppConns as $pIdx => $ppp) {
+                                if ($pIdx === '_object' || !is_array($ppp)) continue;
+                                $candidate = $ppp['ExternalIPAddress']['_value'] ?? null;
+                                if ($isValidIp($candidate)) {
+                                    $pppoeIp = trim($candidate);
+                                    break 3;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Ekstraksi IP TR-069 (Prioritas: VirtualParameters.IPTR069 -> ConnectionRequestURL -> WANIPConnection -> _ip)
+        $tr069Ip = null;
+        $vpTr069 = $extract('VirtualParameters.IPTR069')
+                ?? $extract('VirtualParameters.iptr069')
+                ?? $extract('VirtualParameters.ipTR069')
+                ?? $extract('VirtualParameters.Iptr069')
+                ?? $extract('VirtualParameters.TR069IP');
+        if ($isValidIp($vpTr069)) {
+            $tr069Ip = trim($vpTr069);
+        }
+
+        $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
+                      $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
+        if (!empty($connReqUrl)) {
+            $parsedHost = parse_url($connReqUrl, PHP_URL_HOST);
+            if ($isValidIp($parsedHost)) {
+                $tr069Ip = $tr069Ip ?: $parsedHost;
+            }
+        }
+
+        if (!$tr069Ip && is_array($wanDevices)) {
+            foreach ($wanDevices as $wdIdx => $wdNode) {
+                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
+                $connDevices = $wdNode['WANConnectionDevice'] ?? [];
+                if (is_array($connDevices)) {
+                    foreach ($connDevices as $cdIdx => $connNode) {
+                        if ($cdIdx === '_object' || !is_array($connNode)) continue;
+                        $ipConns = $connNode['WANIPConnection'] ?? [];
+                        if (is_array($ipConns)) {
+                            foreach ($ipConns as $iIdx => $ipc) {
+                                if ($iIdx === '_object' || !is_array($ipc)) continue;
+                                $candidate = $ipc['ExternalIPAddress']['_value'] ?? null;
+                                if ($isValidIp($candidate)) {
+                                    $tr069Ip = trim($candidate);
+                                    break 3;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!$tr069Ip && !empty($deviceData['_ip']) && $isValidIp($deviceData['_ip'])) {
+            $tr069Ip = trim($deviceData['_ip']);
+        }
+
+        // Pastikan connection_request_url menyimpan TR-069 IP yang benar untuk pencarian dan pemanggilan
+        if ($tr069Ip) {
+            if (empty($connReqUrl) || str_contains($connReqUrl, '0.0.0.0')) {
+                $connReqUrl = "http://{$tr069Ip}:7547/";
+            }
+        }
+
+        // IP utama: prioritaskan IP PPPoE, jika belum ada/offline gunakan IP TR-069
+        $ip = $pppoeIp ?: ($tr069Ip ?: null);
+
+        // Ekstraksi MAC Address
         if (is_array($wanDevices)) {
             foreach ($wanDevices as $wdIdx => $wdNode) {
                 if ($wdIdx === '_object' || !is_array($wdNode)) continue;
@@ -104,21 +211,17 @@ class Index extends BaseACSComponent
                 if (is_array($connDevices)) {
                     foreach ($connDevices as $cdIdx => $connNode) {
                         if ($cdIdx === '_object' || !is_array($connNode)) continue;
-                        
                         $pppConns = $connNode['WANPPPConnection'] ?? [];
                         if (is_array($pppConns)) {
                             foreach ($pppConns as $pIdx => $ppp) {
                                 if ($pIdx === '_object' || !is_array($ppp)) continue;
-                                if (!empty($ppp['ExternalIPAddress']['_value'])) $ip = $ip ?: $ppp['ExternalIPAddress']['_value'];
                                 if (!empty($ppp['MACAddress']['_value'])) $mac = $mac ?: $ppp['MACAddress']['_value'];
                             }
                         }
-                        
                         $ipConns = $connNode['WANIPConnection'] ?? [];
                         if (is_array($ipConns)) {
                             foreach ($ipConns as $iIdx => $ipc) {
                                 if ($iIdx === '_object' || !is_array($ipc)) continue;
-                                if (!empty($ipc['ExternalIPAddress']['_value'])) $ip = $ip ?: $ipc['ExternalIPAddress']['_value'];
                                 if (!empty($ipc['MACAddress']['_value'])) $mac = $mac ?: $ipc['MACAddress']['_value'];
                             }
                         }
@@ -126,9 +229,7 @@ class Index extends BaseACSComponent
                 }
             }
         }
-        
         $mac = $mac ?? $deviceData['VirtualParameters']['pppoeMac']['_value'] ?? $deviceData['VirtualParameters']['PonMac']['_value'] ?? null;
-        $ip = $ip ?? $deviceData['VirtualParameters']['pppoeIP']['_value'] ?? null;
         
         $model = $deviceData['_deviceId']['_ProductClass'] ?? 
                  $deviceData['InternetGatewayDevice']['DeviceInfo']['ProductClass']['_value'] ?? 
@@ -141,26 +242,8 @@ class Index extends BaseACSComponent
             $model = $deviceData['InternetGatewayDevice']['DeviceInfo']['ModelName']['_value'] ?? null;
         }
         
-        $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
-                      $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
-                      
-        if (!$ip && $connReqUrl) {
-            $parsedUrl = parse_url($connReqUrl);
-            $ip = $parsedUrl['host'] ?? null;
-        }
-        
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
         $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 15) ? 'online' : 'offline';
-
-        $extract = function($path) use ($deviceData) {
-            $parts = explode('.', $path);
-            $node = $deviceData;
-            foreach ($parts as $p) {
-                if (!is_array($node) || !array_key_exists($p, $node)) return null;
-                $node = $node[$p];
-            }
-            return isset($node['_value']) ? $node['_value'] : null;
-        };
 
         // Helper pembersih karakter rusak/non-printable (sering terjadi pada VSOL)
         $cleanSn = function ($val) {
@@ -364,20 +447,25 @@ class Index extends BaseACSComponent
         ]);
 
         if ($this->search) {
-            $query->where(function($q) {
-                $q->where('serial_number', 'like', '%' . $this->search . '%')
-                  ->orWhere('mac_address', 'like', '%' . $this->search . '%')
-                  ->orWhere('model', 'like', '%' . $this->search . '%')
-                  ->orWhere('ip_address', 'like', '%' . $this->search . '%')
-                  ->orWhere('connection_request_url', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('customerService.customer', function($cq) {
-                      $cq->where('name', 'like', '%' . $this->search . '%')
-                        ->orWhere('code', 'like', '%' . $this->search . '%')
-                        ->orWhere('phone', 'like', '%' . $this->search . '%');
+            $term = trim($this->search);
+            $query->where(function($q) use ($term) {
+                $q->where('serial_number', 'like', '%' . $term . '%')
+                  ->orWhere('mac_address', 'like', '%' . $term . '%')
+                  ->orWhere('model', 'like', '%' . $term . '%')
+                  ->orWhere('ip_address', 'like', '%' . $term . '%')
+                  ->orWhere('connection_request_url', 'like', '%' . $term . '%')
+                  ->orWhereHas('customerService', function($csq) use ($term) {
+                      $csq->where('username', 'like', '%' . $term . '%')
+                          ->orWhere('ip_address', 'like', '%' . $term . '%');
                   })
-                  ->orWhereHas('onu.customer', function($cq) {
-                      $cq->where('name', 'like', '%' . $this->search . '%')
-                        ->orWhere('code', 'like', '%' . $this->search . '%');
+                  ->orWhereHas('customerService.customer', function($cq) use ($term) {
+                      $cq->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('code', 'like', '%' . $term . '%')
+                        ->orWhere('phone', 'like', '%' . $term . '%');
+                  })
+                  ->orWhereHas('onu.customer', function($cq) use ($term) {
+                      $cq->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('code', 'like', '%' . $term . '%');
                   });
             });
         }

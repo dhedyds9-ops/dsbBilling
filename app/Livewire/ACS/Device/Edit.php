@@ -115,8 +115,25 @@ class Edit extends BaseACSComponent
             $this->status = $newStatus;
 
             // === IP & MAC ADDRESS (Smart Dynamic Extraction) ===
+            $isValidIp = function ($val) {
+                if (empty($val) || !is_string($val)) return false;
+                $val = trim($val);
+                if ($val === '' || $val === '0.0.0.0' || $val === '::' || $val === '127.0.0.1') return false;
+                return filter_var($val, FILTER_VALIDATE_IP) !== false;
+            };
+
             $ip = null;
             $mac = null;
+
+            // Prioritas Virtual Parameters
+            $vpPppoe = $extract('VirtualParameters.pppoeIP') ?? $extract('VirtualParameters.pppoeIp') ?? $extract('VirtualParameters.PPPOEIP');
+            if ($isValidIp($vpPppoe)) {
+                $ip = trim($vpPppoe);
+            }
+
+            $vpTr069 = $extract('VirtualParameters.IPTR069') ?? $extract('VirtualParameters.iptr069') ?? $extract('VirtualParameters.ipTR069');
+            $tr069Ip = $isValidIp($vpTr069) ? trim($vpTr069) : null;
+
             $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? $params['Device']['WANDevice'] ?? [];
             if (is_array($wanDevices)) {
                 foreach ($wanDevices as $wdNode) {
@@ -130,7 +147,10 @@ class Edit extends BaseACSComponent
                             if (is_array($pppConns)) {
                                 foreach ($pppConns as $ppp) {
                                     if (is_array($ppp) && !empty($ppp['ExternalIPAddress']['_value'])) {
-                                        $ip = $ppp['ExternalIPAddress']['_value'];
+                                        $cand = $ppp['ExternalIPAddress']['_value'];
+                                        if ($isValidIp($cand) && !$ip) {
+                                            $ip = $cand;
+                                        }
                                     }
                                     if (is_array($ppp) && !empty($ppp['MACAddress']['_value'])) {
                                         $mac = $ppp['MACAddress']['_value'];
@@ -142,7 +162,11 @@ class Edit extends BaseACSComponent
                             if (is_array($ipConns)) {
                                 foreach ($ipConns as $ipc) {
                                     if (is_array($ipc) && !empty($ipc['ExternalIPAddress']['_value'])) {
-                                        $ip = $ip ?: $ipc['ExternalIPAddress']['_value'];
+                                        $cand = $ipc['ExternalIPAddress']['_value'];
+                                        if ($isValidIp($cand)) {
+                                            $tr069Ip = $tr069Ip ?: $cand;
+                                            if (!$ip) $ip = $cand;
+                                        }
                                     }
                                     if (is_array($ipc) && !empty($ipc['MACAddress']['_value'])) {
                                         $mac = $mac ?: $ipc['MACAddress']['_value'];
@@ -155,7 +179,12 @@ class Edit extends BaseACSComponent
             }
 
             // Fallback
-            $ip = $ip ?? $extract('VirtualParameters.pppoeIP') ?? $extract('Device.DHCPv4.Client.1.IPAddress');
+            if (!$ip && $tr069Ip) {
+                $ip = $tr069Ip;
+            }
+            if ($tr069Ip && (empty($this->connection_request_url) || str_contains($this->connection_request_url, '0.0.0.0'))) {
+                $this->connection_request_url = "http://{$tr069Ip}:7547/";
+            }
             $mac = $mac ?? $extract('VirtualParameters.pppoeMac') ?? $extract('InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress');
 
             if ($ip && $ip !== '0.0.0.0') {

@@ -94,6 +94,39 @@ for (let p of paths) {
     }
 }
 return null;',
+            'IPTR069' => '
+// 1. Ambil dari ConnectionRequestURL
+let cr = declare("InternetGatewayDevice.ManagementServer.ConnectionRequestURL", {value: 1});
+if (!cr.value || !cr.value[0]) {
+    cr = declare("Device.ManagementServer.ConnectionRequestURL", {value: 1});
+}
+if (cr.value && cr.value[0]) {
+    let match = cr.value[0].match(/https?:\\/\\/([^\\/:]+)/i);
+    if (match && match[1] && match[1] !== "0.0.0.0") {
+        return {writable: false, value: [match[1], "xsd:string"]};
+    }
+}
+
+// 2. Ambil dari WANIPConnection (IP Host / Management TR069)
+let paths = [
+    "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.ExternalIPAddress",
+    "Device.IP.Interface.*.IPv4Address.*.IPAddress"
+];
+for (let p of paths) {
+    let d = declare(p, {value: 1});
+    for (let item of d) {
+        if (item.value && item.value[0] && item.value[0] !== "0.0.0.0") {
+            return {writable: false, value: [item.value[0], "xsd:string"]};
+        }
+    }
+}
+
+// 3. Fallback ke IP inform socket
+let devIp = declare("DeviceID.IP", {value: 1});
+if (devIp.value && devIp.value[0] && devIp.value[0] !== "0.0.0.0") {
+    return {writable: false, value: [devIp.value[0], "xsd:string"]};
+}
+return null;',
             'gponSN' => '
 let paths = [
     "InternetGatewayDevice.DeviceInfo.X_HW_SerialNumber",

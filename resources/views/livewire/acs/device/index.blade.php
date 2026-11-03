@@ -137,14 +137,27 @@
                                 <div class="text-[11px] {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $device->vendor?->name ?? $device->vendor ?? '-' }}</div>
                             </td>
                             <td class="px-4 py-3">
-                                <div class="font-mono text-xs {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}" title="PPPoE IP">{{ $device->ip_address ?? '-' }}</div>
-                                @if($device->connection_request_url)
-                                    @php
-                                        $tr069Ip = parse_url($device->connection_request_url, PHP_URL_HOST);
-                                    @endphp
-                                    @if($tr069Ip && $tr069Ip !== $device->ip_address)
-                                        <div class="font-mono text-[11px] {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}" title="TR069 IP (Connection Request)">{{ $tr069Ip }}</div>
-                                    @endif
+                                @php
+                                    $rawTr069 = $device->connection_request_url ? parse_url($device->connection_request_url, PHP_URL_HOST) : null;
+                                    $tr069Ip = ($rawTr069 && $rawTr069 !== '0.0.0.0' && filter_var($rawTr069, FILTER_VALIDATE_IP)) ? $rawTr069 : null;
+                                    $rawPpp = ($device->ip_address && $device->ip_address !== '0.0.0.0') ? $device->ip_address : null;
+                                    $pppoeIp = ($rawPpp && $rawPpp !== $tr069Ip) ? $rawPpp : null;
+                                    if (!$pppoeIp && $rawPpp && !$tr069Ip) {
+                                        $pppoeIp = $rawPpp;
+                                    }
+                                @endphp
+                                @if($pppoeIp)
+                                    <div class="font-mono text-xs font-semibold {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}" title="IP PPPoE">
+                                        <span class="text-[10px] text-blue-500 font-bold uppercase mr-1">PPP:</span>{{ $pppoeIp }}
+                                    </div>
+                                @endif
+                                @if($tr069Ip)
+                                    <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400 {{ $pppoeIp ? 'mt-0.5' : '' }}" title="IP TR-069">
+                                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase mr-1">TR069:</span>{{ $tr069Ip }}
+                                    </div>
+                                @endif
+                                @if(!$pppoeIp && !$tr069Ip)
+                                    <span class="font-mono text-xs text-slate-400">-</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 font-mono text-xs">
