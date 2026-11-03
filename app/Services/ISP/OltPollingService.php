@@ -220,19 +220,23 @@ class OltPollingService
                             $macCleaned = strtoupper(preg_replace('/[^A-F0-9]/i', '', trim($item['mac_address'])));
                             $macAddress = strlen($macCleaned) === 12 ? implode(':', str_split($macCleaned, 2)) : null;
                         }
-                        $onu = Onu::where('olt_id', $olt->id)
+                        $onu = Onu::withTrashed()->where('olt_id', $olt->id)
                             ->where(fn ($q) => $q->where('serial_number', $snNormalized))
                             ->first();
                         if (!$onu && $macAddress) {
-                            $onu = Onu::where('olt_id', $olt->id)
+                            $onu = Onu::withTrashed()->where('olt_id', $olt->id)
                                 ->where(fn ($q) => $q->where('mac_address', $macAddress))
                                 ->first();
                         }
                         if (!$onu) {
-                            $onu = Onu::where('olt_id', $olt->id)
+                            $onu = Onu::withTrashed()->where('olt_id', $olt->id)
                                 ->where('pon_port', $idx)
                                 ->where('onu_id_on_olt', (int)($item['onu_index'] ?? 0))
                                 ->first();
+                        }
+
+                        if ($onu && $onu->trashed()) {
+                            $onu->restore();
                         }
 
                         $status = $item['status'] ?? 'unknown';
@@ -305,7 +309,7 @@ class OltPollingService
                         if (!empty($model) && empty($onu->model)) {
                             $onuUpdate['model'] = $model; } if (!empty($item['name']) && trim((string) $item['name']) !== $snNormalized) { $currentName = trim((string) ($onu->name ?? '')); if ($currentName === '' || strtoupper($currentName) === $snNormalized || str_starts_with($currentName, 'ONU-')) { $onuUpdate['name'] = trim((string) $item['name']); }
                         }
-                        if (empty($onu->serial_number) || str_starts_with($onu->serial_number, 'CDATA-GPON-')) {
+                        if (!empty($snNormalized) && $onu->serial_number !== $snNormalized) {
                             $onuUpdate['serial_number'] = $snNormalized;
                         }
                         $onu->update($onuUpdate);
