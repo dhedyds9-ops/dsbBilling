@@ -474,8 +474,16 @@ class CDataOltDriver extends BaseOltDriver
                     $lPort = $defaultPort;
                     $lOnuId = null;
 
-                    // Match 1: If line contains a known Serial Number or MAC from $snMap
-                    if (preg_match('/([A-Z0-9]{4}[A-Z0-9]{8,12}|(?:[A-F0-9]{2}[:-]){5}[A-F0-9]{2})/i', $line, $snMatch)) {
+                    $cols = preg_split('/\s+/', $line);
+
+                    // CASE 1: In per-port query ($defaultPort !== null):
+                    // First column is the ONU ID: "1 -22.21 2.16 -28.86 55.41 3.26 14.82"
+                    if ($defaultPort !== null && count($cols) >= 2 && is_numeric($cols[0]) && (int)$cols[0] > 0 && !str_contains($cols[0], '/')) {
+                        $lPort = $defaultPort;
+                        $lOnuId = (int)$cols[0];
+                    }
+                    // CASE 2: Match by known Serial Number or MAC from $snMap
+                    elseif (preg_match('/([A-Z0-9]{4}[A-Z0-9]{8,12}|(?:[A-F0-9]{2}[:-]){5}[A-F0-9]{2})/i', $line, $snMatch)) {
                         $matchedSn = strtoupper(str_replace('-', ':', $snMatch[1]));
                         if (isset($snMap[$matchedSn])) {
                             $lPort = $snMap[$matchedSn]['port'];
@@ -487,10 +495,8 @@ class CDataOltDriver extends BaseOltDriver
                         }
                     }
 
-                    // Match 2: If port/ONU was not identified by SN, parse leading port & ONU index
+                    // CASE 3: Multi-port format: "0/0/2 1" or "0/2 1" or "0/0 2 1"
                     if ($lPort === null || $lOnuId === null) {
-                        $cols = preg_split('/\s+/', $line);
-                        // Case A: "0/0/2 1" or "0/2 1" or "0/0 2 1"
                         if (count($cols) >= 3 && str_contains($cols[0], '/') && is_numeric($cols[1]) && is_numeric($cols[2])) {
                             $lPort = (int)$cols[1];
                             $lOnuId = (int)$cols[2];
@@ -498,7 +504,7 @@ class CDataOltDriver extends BaseOltDriver
                             $pParts = explode('/', $cols[0]);
                             $lPort = (int)end($pParts);
                             $lOnuId = (int)$cols[1];
-                        } elseif (preg_match('/(?:gpon|epon|pon)?\s*(?:0\/0\/|0\/)?(\d+)[\s:\/]+(\d+)/i', $line, $pm)) {
+                        } elseif (preg_match('/^(?:gpon|epon|pon)?\s*(?:0\/0\/|0\/)?(\d+)[\s:\/]+(\d+)\b/i', $line, $pm)) {
                             $lPort = (int)$pm[1];
                             $lOnuId = (int)$pm[2];
                         } elseif ($defaultPort !== null && count($cols) >= 2 && is_numeric($cols[0])) {
@@ -675,6 +681,21 @@ class CDataOltDriver extends BaseOltDriver
                 if ($isBad($inGpon)) {
                     $inGpon = $this->cli->execute("interface gpon 0/0\r\n", false);
                 }
+                if ($isBad($inGpon)) {
+                    $inGpon = $this->cli->execute("interface gpon 0/1\r\n", false);
+                }
+                if ($isBad($inGpon)) {
+                    $inGpon = $this->cli->execute("interface gpon 0\r\n", false);
+                }
+                if ($isBad($inGpon)) {
+                    $inGpon = $this->cli->execute("interface epon 0/{$slot}\r\n", false);
+                }
+                if ($isBad($inGpon)) {
+                    $inGpon = $this->cli->execute("interface epon 0/0\r\n", false);
+                }
+                if ($isBad($inGpon)) {
+                    $inGpon = $this->cli->execute("interface epon 0/1\r\n", false);
+                }
 
                 $inInterface = !$isBad($inGpon);
 
@@ -689,10 +710,25 @@ class CDataOltDriver extends BaseOltDriver
                         $pOpt = $this->cli->execute("show ont optical-info 0/0 {$pNum} all\r\n", false);
                     }
                     if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show ont optical-info 0/1 {$pNum} all\r\n", false);
+                    }
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show ont optical-info 0/0/{$pNum} all\r\n", false);
+                    }
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show ont optical-info 0/1/{$pNum} all\r\n", false);
+                    }
+                    if ($isBad($pOpt)) {
                         $pOpt = $this->cli->execute("show ont optical-info {$pNum}\r\n", false);
                     }
                     if ($isBad($pOpt)) {
                         $pOpt = $this->cli->execute("show onu optical-info {$pNum} all\r\n", false);
+                    }
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show onu optical-info 0/0 {$pNum} all\r\n", false);
+                    }
+                    if ($isBad($pOpt)) {
+                        $pOpt = $this->cli->execute("show onu optical-info 0/1 {$pNum} all\r\n", false);
                     }
                     if (!$isBad($pOpt)) {
                         $parseOptLines($pOpt, (int)$pNum);
@@ -701,6 +737,8 @@ class CDataOltDriver extends BaseOltDriver
 
                 if ($inInterface) {
                     $this->cli->execute("exit\r\n", false);
+                    $this->cli->execute("exit\r\n", false);
+                } else {
                     $this->cli->execute("exit\r\n", false);
                 }
             }
@@ -806,25 +844,64 @@ class CDataOltDriver extends BaseOltDriver
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: []))) : [];
             
-            // Optical Rx Power (.18.19.1.1.3 or .18.19.1.1.2 or .19.1.1.3)
-            $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.2')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.9')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.3')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.8') ?: [])))))))) : [];
+            // GPON Optical Collect Table (.18.19.1.2 - Official CDATA-GPON-MIB OctetString holding Rx, Tx, Temp)
+            $opticalCollect = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.2')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.2') ?: [])) : [];
 
-            $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.4')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.4')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.4')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.4')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.4') ?: []))))) : [];
+            $gponRx = [];
+            $gponTx = [];
+            $gponTemps = [];
 
-            $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.6')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.6')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.6') ?: []))) : [];
+            if (!empty($opticalCollect)) {
+                foreach ($opticalCollect as $oKey => $oStr) {
+                    $cleanStr = trim((string)$oStr);
+                    $cleanStr = preg_replace('/^(STRING|Hex-STRING|OctetString|Hex)\s*:?\s*/i', '', $cleanStr);
+                    $hexOnly = preg_replace('/[^0-9A-Fa-f]/', '', $cleanStr);
+                    if (strlen($hexOnly) > 16 && strlen($hexOnly) % 2 === 0) {
+                        $decoded = @hex2bin($hexOnly);
+                        if ($decoded && preg_match('/[a-zA-Z]/', $decoded)) {
+                            $cleanStr = $decoded;
+                        }
+                    }
+
+                    if (preg_match('/rx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $rm)) {
+                        $gponRx[$oKey] = (float)$rm[1];
+                    } elseif (preg_match('/[-+]?\d+(?:\.\d+)?/', $cleanStr, $nm) && (float)$nm[0] < -5.0 && (float)$nm[0] > -45.0) {
+                        $gponRx[$oKey] = (float)$nm[0];
+                    }
+                    if (preg_match('/tx.*?power.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $tm)) {
+                        $gponTx[$oKey] = (float)$tm[1];
+                    }
+                    if (preg_match('/temp.*?:?\s*([-+]?\d+(?:\.\d+)?)/i', $cleanStr, $tpm)) {
+                        $gponTemps[$oKey] = (float)$tpm[1];
+                    }
+                }
+            }
+
+            // Numeric GPON Optical OID Fallbacks (.18.19.1.1.3 or legacy .100.9.4.1.3)
+            if (empty($gponRx)) {
+                $gponRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.3')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.3')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.3')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.9')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.3')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.3')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.4.1.1.8') ?: []))))))) : [];
+            }
+
+            if (empty($gponTx)) {
+                $gponTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.4')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.4')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.20.1.1.4')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.4')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.3.1.4') ?: []))))) : [];
+            }
+
+            if (empty($gponTemps)) {
+                $gponTemps = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.6')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.19.1.1.6')
+                    ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.4.1.6') ?: []))) : [];
+            }
 
             // Check C-Data EPON (34592 / 51810 / 17409 CTC)
             $eponSerials = [];
