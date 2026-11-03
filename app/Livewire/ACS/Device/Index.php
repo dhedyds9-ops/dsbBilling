@@ -442,6 +442,8 @@ class Index extends BaseACSComponent
             'asset',
             'onu.customer',
             'onu.customerService.customer',
+            'onu.olt',
+            'onu.ponPort',
             'olt',
             'vendor'
         ]);
@@ -454,6 +456,12 @@ class Index extends BaseACSComponent
                   ->orWhere('model', 'like', '%' . $term . '%')
                   ->orWhere('ip_address', 'like', '%' . $term . '%')
                   ->orWhere('connection_request_url', 'like', '%' . $term . '%')
+                  ->orWhereHas('olt', function($oq) use ($term) {
+                      $oq->where('name', 'like', '%' . $term . '%');
+                  })
+                  ->orWhereHas('onu.olt', function($oq) use ($term) {
+                      $oq->where('name', 'like', '%' . $term . '%');
+                  })
                   ->orWhereHas('customerService', function($csq) use ($term) {
                       $csq->where('username', 'like', '%' . $term . '%')
                           ->orWhere('ip_address', 'like', '%' . $term . '%');

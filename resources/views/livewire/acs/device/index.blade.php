@@ -91,6 +91,7 @@
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Serial Number</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">MAC Address</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Model / Vendor</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">OLT / PON</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">IP Address</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Optical Power</th>
                         <th class="px-4 py-3 font-semibold whitespace-nowrap">Software Ver.</th>
@@ -135,6 +136,32 @@
                             <td class="px-4 py-3">
                                 <div class="font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->model ?? '-' }}</div>
                                 <div class="text-[11px] {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $device->vendor?->name ?? $device->vendor ?? '-' }}</div>
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $resolvedOlt = $device->olt ?? $device->onu?->olt ?? $device->resolved_olt;
+                                    $resolvedOnu = $device->onu ?? $device->resolved_onu;
+                                    $ponName = $resolvedOnu?->ponPort?->name 
+                                        ?? ($resolvedOnu?->pon_port ? 'PON ' . $resolvedOnu->pon_port : null);
+                                @endphp
+                                @if($resolvedOlt)
+                                    <div class="font-medium text-xs {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">
+                                        <span class="inline-flex items-center gap-1">
+                                            <span class="material-symbols-outlined notranslate text-indigo-500" style="font-size:14px" translate="no">hub</span>
+                                            {{ $resolvedOlt->name }}
+                                        </span>
+                                    </div>
+                                    @if($ponName)
+                                        <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                                            {{ $ponName }}
+                                        </div>
+                                    @endif
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-xs text-slate-400 italic">
+                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:13px" translate="no">router</span>
+                                        -
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 @php
@@ -201,7 +228,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-12 text-center">
+                            <td colspan="10" class="px-4 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">
                                     <span class="material-symbols-outlined notranslate {{ $isNocLayout ? 'text-gray-500' : 'text-slate-300 dark:text-slate-600 dark:text-slate-400' }} mb-3" translate="no" style="font-size:48px">router</span>
                                     <div class="text-sm font-medium {{ $isNocLayout ? 'text-gray-200' : 'text-slate-900 dark:text-slate-100' }}">Belum ada data Device</div>

@@ -219,6 +219,63 @@ class ACSDevice extends Model
         return null;
     }
 
+    public function getResolvedOltAttribute(): ?Olt
+    {
+        if ($this->relationLoaded('olt') && $this->olt) {
+            return $this->olt;
+        }
+        if ($this->relationLoaded('onu') && $this->onu && $this->onu->olt) {
+            return $this->onu->olt;
+        }
+        $resolvedOnu = $this->resolved_onu;
+        return $resolvedOnu?->olt;
+    }
+
+    public function getResolvedOnuAttribute(): ?Onu
+    {
+        if ($this->relationLoaded('onu') && $this->onu) {
+            return $this->onu;
+        }
+        if (!empty($this->onu_id)) {
+            return Onu::withoutGlobalScopes(['branch_isolation'])->find($this->onu_id);
+        }
+        if (!empty($this->serial_number)) {
+            $snClean = trim((string)$this->serial_number);
+            $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $snClean)->first();
+            if ($onu) return $onu;
+
+            // Huawei HEX (48575443) <-> ASCII (HWTC)
+            if (str_starts_with(strtoupper($snClean), '48575443')) {
+                $alt = 'HWTC' . substr($snClean, 8);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            } elseif (str_starts_with(strtoupper($snClean), 'HWTC')) {
+                $alt = '48575443' . substr($snClean, 4);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+
+            // VSOL HEX (56534F4C) <-> ASCII (VSOL)
+            if (str_starts_with(strtoupper($snClean), '56534F4C')) {
+                $alt = 'VSOL' . substr($snClean, 8);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            } elseif (str_starts_with(strtoupper($snClean), 'VSOL')) {
+                $alt = '56534F4C' . substr($snClean, 4);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+
+            // VSOL awalan 12345
+            if (str_starts_with($snClean, '12345') && strlen($snClean) >= 12) {
+                $alt = 'VSOL' . substr($snClean, -8);
+                $onu = Onu::withoutGlobalScopes(['branch_isolation'])->where('serial_number', $alt)->first();
+                if ($onu) return $onu;
+            }
+        }
+        return null;
+    }
+
     public function asset()
     {
         return $this->belongsTo(Asset::class);
