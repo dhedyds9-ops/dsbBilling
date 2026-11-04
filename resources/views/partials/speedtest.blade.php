@@ -20,29 +20,50 @@
         <div class="absolute -top-24 -left-24 w-72 h-72 bg-cyan-500/10 dark:bg-primary/15 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-500/10 dark:bg-secondary-container/20 rounded-full blur-3xl pointer-events-none"></div>
 
-        <!-- Top Status & Network Info Bar -->
-        <div class="relative z-10 flex flex-wrap items-center justify-between gap-4 pb-6 mb-8 border-b border-slate-200/80 dark:border-white/10 text-xs sm:text-sm">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-cyan-50 dark:bg-primary/10 border border-cyan-200/60 dark:border-primary/20 text-cyan-600 dark:text-primary flex items-center justify-center shrink-0 shadow-xs">
-                    <span class="material-symbols-outlined text-xl">dns</span>
+        <!-- Top Status & Network Info Bar (Server, IP Publik, dan ISP) -->
+        <div class="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 pb-6 mb-8 border-b border-slate-200/80 dark:border-white/10 text-xs sm:text-sm">
+            <!-- 1. Server Pengujian -->
+            <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
+                <div class="w-11 h-11 rounded-xl bg-cyan-50 dark:bg-primary/10 border border-cyan-200/60 dark:border-primary/20 text-cyan-600 dark:text-primary flex items-center justify-center shrink-0 shadow-xs">
+                    <span class="material-symbols-outlined text-2xl">dns</span>
                 </div>
-                <div>
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[11px] font-semibold uppercase tracking-wider">Server Pengujian</div>
-                    <div class="font-bold text-slate-800 dark:text-on-surface flex items-center gap-1.5">
-                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span x-text="serverName">dsBilling Edge Node</span>
-                        <span class="text-slate-400 dark:text-on-surface-variant font-normal" x-show="serverLocation" x-text="'(' + serverLocation + ')'"></span>
+                <div class="min-w-0">
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[10px] font-bold uppercase tracking-wider">Server Pengujian</div>
+                    <div class="font-bold text-slate-800 dark:text-on-surface flex items-center gap-1.5 truncate">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0"></span>
+                        <span class="truncate" x-text="serverName">dsBilling Edge Node</span>
                     </div>
+                    <div class="text-[11px] text-slate-500 dark:text-on-surface-variant/80 truncate" x-show="serverLocation" x-text="serverLocation"></div>
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center shrink-0 shadow-xs">
-                    <span class="material-symbols-outlined text-xl">person_pin_circle</span>
+            <!-- 2. IP Publik Pengguna -->
+            <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
+                <div class="w-11 h-11 rounded-xl bg-blue-50 dark:bg-secondary-container/20 border border-blue-200/60 dark:border-secondary-container/20 text-blue-600 dark:text-secondary flex items-center justify-center shrink-0 shadow-xs">
+                    <span class="material-symbols-outlined text-2xl">public</span>
                 </div>
-                <div>
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[11px] font-semibold uppercase tracking-wider">IP Pengguna</div>
-                    <div class="font-mono font-bold text-slate-800 dark:text-on-surface" x-text="clientIp">Mendeteksi...</div>
+                <div class="min-w-0">
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span>IP Publik Anda</span>
+                        <span class="text-[9px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded font-bold">WAN</span>
+                    </div>
+                    <div class="font-mono font-bold text-slate-800 dark:text-on-surface text-sm sm:text-base truncate" x-text="clientIp">Mendeteksi...</div>
+                    <div class="text-[11px] text-slate-500 dark:text-on-surface-variant/80 truncate" x-show="clientLocation" x-text="clientLocation"></div>
+                </div>
+            </div>
+
+            <!-- 3. ISP / Operator Internet -->
+            <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
+                <div class="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200/60 dark:border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-xs">
+                    <span class="material-symbols-outlined text-2xl">wifi_tethering</span>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[10px] font-bold uppercase tracking-wider">ISP / Operator Internet</div>
+                    <div class="font-bold text-slate-800 dark:text-on-surface text-sm truncate" x-text="clientIsp">Mendeteksi...</div>
+                    <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">verified</span>
+                        Jaringan Terdeteksi
+                    </div>
                 </div>
             </div>
         </div>
@@ -287,8 +308,11 @@
                         <h4 class="font-bold text-slate-900 dark:text-on-surface text-base sm:text-lg mb-1" x-text="getRecommendationTitle()">
                             Analisis Koneksi Anda
                         </h4>
-                        <p class="text-slate-600 dark:text-on-surface-variant text-xs sm:text-sm max-w-xl" x-text="getRecommendationText()">
-                            Hasil pengujian telah selesai.
+                        <p class="text-slate-600 dark:text-on-surface-variant text-xs sm:text-sm max-w-xl">
+                            <span x-text="getRecommendationText()"></span>
+                            <span class="block mt-2 font-semibold text-cyan-600 dark:text-primary text-xs" x-show="clientIsp && clientIsp !== 'Mendeteksi...'">
+                                Operator: <span class="font-bold" x-text="clientIsp"></span> &bull; IP: <span class="font-mono font-bold" x-text="clientIp"></span>
+                            </span>
                         </p>
                     </div>
                 </div>
@@ -327,22 +351,59 @@ function speedtestEngine() {
         statusMessage: 'Klik tombol MULAI untuk mengukur kecepatan koneksi internet Anda.',
         errorMessage: '',
         clientIp: 'Mendeteksi...',
+        clientIsp: 'Mendeteksi...',
+        clientLocation: '',
+        isPrivateIp: false,
         serverName: 'dsBilling Edge Node',
         serverLocation: 'Indonesia',
+        serverPartner: '',
         abortController: null,
 
-        initEngine() {
-            // Fetch client IP and server info on page load
-            fetch('{{ route('speedtest.info') }}', { cache: 'no-store' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.client_ip) this.clientIp = data.client_ip;
-                    if (data.server_name) this.serverName = data.server_name;
-                    if (data.server_location) this.serverLocation = data.server_location;
-                })
-                .catch(() => {
-                    this.clientIp = '127.0.0.1';
-                });
+        async initEngine() {
+            // 1. Fetch info from local backend
+            try {
+                const resp = await fetch('{{ route('speedtest.info') }}', { cache: 'no-store' });
+                const data = await resp.json();
+                if (data.client_ip) this.clientIp = data.client_ip;
+                if (data.client_isp) this.clientIsp = data.client_isp;
+                if (data.client_city) this.clientLocation = data.client_city;
+                if (data.server_name) this.serverName = data.server_name;
+                if (data.server_location) this.serverLocation = data.server_location;
+                if (data.server_partner) this.serverPartner = data.server_partner;
+                this.isPrivateIp = !!data.is_private_ip;
+            } catch (err) {
+                console.warn('Backend speedtest info unavailable:', err);
+            }
+
+            // 2. If IP is private / local or ISP is not detected yet, query GeoIP directly from client browser
+            if (this.isPrivateIp || !this.clientIsp || this.clientIsp === 'Mendeteksi...' || this.clientIp === '127.0.0.1') {
+                try {
+                    const geoResp = await fetch('https://ipwho.is/', { cache: 'no-store' });
+                    const geo = await geoResp.json();
+                    if (geo && geo.success) {
+                        this.clientIp = geo.ip;
+                        const isp = (geo.connection && (geo.connection.isp || geo.connection.org)) || geo.isp || geo.org;
+                        if (isp) {
+                            this.clientIsp = isp;
+                        }
+                        if (geo.city) {
+                            this.clientLocation = geo.city + (geo.country_code ? ', ' + geo.country_code : '');
+                        }
+                    }
+                } catch (e) {
+                    // Fallback to ipify for public IP
+                    try {
+                        const ipifyResp = await fetch('https://api.ipify.org?format=json');
+                        const ipify = await ipifyResp.json();
+                        if (ipify && ipify.ip) {
+                            this.clientIp = ipify.ip;
+                        }
+                    } catch (_) {}
+                    if (!this.clientIsp || this.clientIsp === 'Mendeteksi...') {
+                        this.clientIsp = 'Jaringan Lokal / ISP';
+                    }
+                }
+            }
         },
 
         getStrokeDashoffset() {

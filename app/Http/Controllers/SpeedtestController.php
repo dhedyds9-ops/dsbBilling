@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SpeedtestController extends Controller
@@ -98,7 +99,7 @@ class SpeedtestController extends Controller
     }
 
     /**
-     * Get client IP and local server info.
+     * Get client IP, ISP, and local server info.
      */
     public function info(Request $request)
     {
@@ -110,11 +111,53 @@ class SpeedtestController extends Controller
 
         $companyName = Setting::getValue('company.name') ?: $defaultTenantName;
         $companyCity = Setting::getValue('company.city') ?: 'Indonesia';
+        $partnerName = Setting::getValue('company.partner_name');
+
+        // Resolve real client IP
+        $clientIp = $request->header('CF-Connecting-IP')
+            ?: ($request->header('X-Real-IP')
+            ?: ($request->header('X-Forwarded-For') ? trim(explode(',', $request->header('X-Forwarded-For'))[0]) : $request->ip()));
+
+        // Check whether IP is private/local
+        $isPrivate = filter_var(
+            $clientIp, 
+            FILTER_VALIDATE_IP, 
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        ) === false;
+
+        $clientIsp = null;
+        $clientCity = null;
+
+        if (!$isPrivate) {
+            try {
+                $geo = Cache::remember('ip_isp_' . $clientIp, 86400, function () use ($clientIp) {
+                    $ctx = stream_context_create(['http' => ['timeout' => 2]]);
+                    $res = @file_get_contents("http://ip-api.com/json/{$clientIp}?fields=status,isp,org,as,city", false, $ctx);
+                    if ($res) {
+                        $json = json_decode($res, true);
+                        if (($json['status'] ?? '') === 'success') {
+                            return $json;
+                        }
+                    }
+                    return null;
+                });
+                if ($geo) {
+                    $clientIsp = $geo['isp'] ?? ($geo['org'] ?? null);
+                    $clientCity = $geo['city'] ?? null;
+                }
+            } catch (\Throwable $e) {
+                // Silently fallback to browser resolution
+            }
+        }
 
         return response()->json([
-            'client_ip' => $request->ip(),
+            'client_ip' => $clientIp,
+            'is_private_ip' => $isPrivate,
+            'client_isp' => $clientIsp,
+            'client_city' => $clientCity,
             'server_name' => $companyName . ' Edge Node',
             'server_location' => $companyCity,
+            'server_partner' => $partnerName,
             'timestamp' => microtime(true),
         ])->withHeaders([
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
