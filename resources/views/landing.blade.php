@@ -296,64 +296,64 @@
     @endphp
 
 <!-- TopNavBar -->
-<header class="bg-white/80 dark:bg-surface/60 backdrop-blur-3xl border-b border-slate-200/80 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] fixed top-0 w-full z-50 transition-colors duration-300">
-    <div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+<header class="bg-white/90 dark:bg-surface/80 backdrop-blur-2xl border-b border-slate-200/80 dark:border-white/10 shadow-xs dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] fixed top-0 w-full z-50 transition-colors duration-300">
+    <div class="flex justify-between items-center px-4 sm:px-6 lg:px-8 max-w-container-max mx-auto h-16 md:h-20">
         <!-- Brand -->
-        <a href="{{ route('home') }}" class="flex items-center gap-2 font-display-lg text-headline-lg font-black text-cyan-600 dark:text-primary tracking-tighter">
+        <a href="{{ route('home') }}" class="flex items-center gap-2.5 shrink-0 group py-1">
             @if($companyLogo)
-                <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" class="h-10 w-auto object-contain">
+                <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" class="h-9 md:h-10 w-auto object-contain transition-transform group-hover:scale-105">
             @else
-                <x-application-logo class="h-10 w-auto" />
+                <x-application-logo class="h-9 md:h-10 w-auto" />
             @endif
         </a>
         
         <!-- Navigation Links (Desktop) -->
-        <nav class="hidden md:flex items-center gap-5 text-sm font-semibold">
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#keunggulan">Keunggulan</a>
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded flex items-center gap-1 cursor-pointer" 
+        <nav class="hidden lg:flex items-center gap-1 xl:gap-2 2xl:gap-4 text-xs xl:text-[13px] 2xl:text-sm font-semibold whitespace-nowrap">
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg whitespace-nowrap shrink-0" href="#keunggulan">Keunggulan</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0" 
                href="#speedtest" 
                @click="window.dispatchEvent(new CustomEvent('open-speedtest'))">
-                <span class="material-symbols-outlined text-[16px] text-cyan-500">speed</span>
-                Speedtest
+                <span class="material-symbols-outlined text-[17px] text-cyan-500">speed</span>
+                <span>Speedtest</span>
             </a>
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#paket">Paket Internet</a>
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#hotspot">Hotspot</a>
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#pembayaran">Pembayaran</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg whitespace-nowrap shrink-0" href="#paket">Paket Internet</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg whitespace-nowrap shrink-0" href="#hotspot">Hotspot</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg whitespace-nowrap shrink-0" href="#pembayaran">Pembayaran</a>
             @if($partnerShowLanding && !empty($partnerName))
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#kemitraan">Kemitraan ISP</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg whitespace-nowrap shrink-0" href="#kemitraan">Kemitraan ISP</a>
             @endif
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#faq">FAQ</a>
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="{{ route('legal.contact') }}">Kontak</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg whitespace-nowrap shrink-0" href="#faq">FAQ</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all py-1.5 px-2.5 rounded-lg whitespace-nowrap shrink-0" href="{{ route('legal.contact') }}">Kontak</a>
         </nav>
         
-        <!-- Actions -->
-        <div class="hidden md:flex items-center gap-3">
+        <!-- Actions (Desktop) -->
+        <div class="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0">
             <!-- Dark/Light Theme Toggle -->
             <button type="button" @click="darkMode = !darkMode" 
-                    class="flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer" 
+                    class="flex items-center justify-center w-8 h-8 xl:w-9 xl:h-9 shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer" 
                     :title="darkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'">
-                <span class="material-symbols-outlined text-[19px]" x-show="!darkMode">dark_mode</span>
-                <span class="material-symbols-outlined text-[19px] text-amber-400" x-show="darkMode" x-cloak>light_mode</span>
+                <span class="material-symbols-outlined text-[18px]" x-show="!darkMode">dark_mode</span>
+                <span class="material-symbols-outlined text-[18px] text-amber-400" x-show="darkMode" x-cloak>light_mode</span>
             </button>
 
-            <a href="{{ route('admin.login') }}" class="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-all shadow-2xs">
+            <a href="{{ route('admin.login') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-all shadow-2xs whitespace-nowrap shrink-0">
                 <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
-                Admin
+                <span>Admin</span>
             </a>
-            <a href="{{ route('customer.login') }}" class="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-md shadow-cyan-500/20">
+            <a href="{{ route('customer.login') }}" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 xl:px-4 xl:py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white transition-all shadow-sm hover:shadow-md shadow-cyan-500/20 whitespace-nowrap shrink-0">
                 <span class="material-symbols-outlined text-[16px]">account_circle</span>
-                Portal Pelanggan
+                <span>Portal Pelanggan</span>
             </a>
         </div>
         
         <!-- Mobile menu & theme buttons -->
-        <div class="flex items-center gap-2 md:hidden">
+        <div class="flex items-center gap-2 lg:hidden shrink-0">
             <button type="button" @click="darkMode = !darkMode" 
-                    class="flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer">
-                <span class="material-symbols-outlined text-[19px]" x-show="!darkMode">dark_mode</span>
-                <span class="material-symbols-outlined text-[19px] text-amber-400" x-show="darkMode" x-cloak>light_mode</span>
+                    class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]" x-show="!darkMode">dark_mode</span>
+                <span class="material-symbols-outlined text-[18px] text-amber-400" x-show="darkMode" x-cloak>light_mode</span>
             </button>
-            <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-slate-700 dark:text-primary p-2">
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-slate-700 dark:text-primary p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
                 <span class="material-symbols-outlined" x-show="!mobileMenuOpen">menu</span>
                 <span class="material-symbols-outlined" x-show="mobileMenuOpen" x-cloak>close</span>
             </button>
@@ -361,36 +361,38 @@
     </div>
     
     <!-- Mobile Menu -->
-    <div x-show="mobileMenuOpen" x-collapse x-cloak class="md:hidden bg-white dark:bg-surface-container-high border-t border-slate-200 dark:border-white/10 px-margin-mobile py-4 shadow-xl">
-        <div class="flex flex-col gap-3 text-sm font-semibold">
-            <a href="#keunggulan" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Keunggulan</a>
-            <a href="#speedtest" @click="mobileMenuOpen = false; window.dispatchEvent(new CustomEvent('open-speedtest'))" class="text-slate-700 dark:text-on-surface py-1 flex items-center gap-1.5 text-cyan-600 dark:text-primary">
+    <div x-show="mobileMenuOpen" x-collapse x-cloak class="lg:hidden bg-white/95 dark:bg-surface-container-high/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 px-4 sm:px-6 py-4 shadow-xl">
+        <div class="flex flex-col gap-2.5 text-sm font-semibold">
+            <a href="#keunggulan" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Keunggulan</a>
+            <a href="#speedtest" @click="mobileMenuOpen = false; window.dispatchEvent(new CustomEvent('open-speedtest'))" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-cyan-600 dark:text-primary">
                 <span class="material-symbols-outlined text-[18px]">speed</span>
-                Speedtest
+                <span>Speedtest</span>
             </a>
-            <a href="#paket" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Paket Internet</a>
-            <a href="#hotspot" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Hotspot</a>
-            <a href="#pembayaran" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Metode Pembayaran</a>
+            <a href="#paket" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Paket Internet</a>
+            <a href="#hotspot" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Hotspot</a>
+            <a href="#pembayaran" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Metode Pembayaran</a>
             @if($partnerShowLanding && !empty($partnerName))
-            <a href="#kemitraan" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Kemitraan ISP</a>
+            <a href="#kemitraan" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Kemitraan ISP</a>
             @endif
-            <a href="#faq" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">FAQ & Bantuan</a>
-            <a href="{{ route('legal.contact') }}" class="text-slate-700 dark:text-on-surface py-1">Hubungi Kami</a>
-            <a href="{{ route('legal.about') }}" class="text-slate-700 dark:text-on-surface py-1">Tentang Kami</a>
-            <hr class="border-slate-200 dark:border-white/10 my-2">
-            <a href="{{ route('admin.login') }}" class="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-all">
-                <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
-                Login Admin
-            </a>
-            <a href="{{ route('customer.login') }}" class="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white transition-all shadow-md shadow-cyan-500/20">
-                <span class="material-symbols-outlined text-[18px]">account_circle</span>
-                Portal Pelanggan
-            </a>
+            <a href="#faq" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">FAQ & Bantuan</a>
+            <a href="{{ route('legal.contact') }}" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Hubungi Kami</a>
+            <a href="{{ route('legal.about') }}" class="text-slate-700 dark:text-on-surface py-1.5 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Tentang Kami</a>
+            <hr class="border-slate-200 dark:border-white/10 my-1">
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <a href="{{ route('admin.login') }}" class="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition-all">
+                    <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+                    <span>Admin</span>
+                </a>
+                <a href="{{ route('customer.login') }}" class="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white transition-all shadow-md shadow-cyan-500/20">
+                    <span class="material-symbols-outlined text-[16px]">account_circle</span>
+                    <span>Portal Pelanggan</span>
+                </a>
+            </div>
         </div>
     </div>
 </header>
 
-<main class="pt-24 md:pt-32 pb-24">
+<main class="pt-20 sm:pt-24 md:pt-28 pb-20">
     @if(session('success'))
     <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop mb-8" x-data="{ show: true }" x-show="show">
         <div class="p-4 md:p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-200 flex items-center justify-between gap-4 shadow-sm dark:shadow-xl backdrop-blur-md">
