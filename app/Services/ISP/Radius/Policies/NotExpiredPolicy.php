@@ -21,6 +21,12 @@ class NotExpiredPolicy implements RadiusAccessPolicy
             }
             return PolicyResult::pass();
         }
+        if ($ctx->hotspotUser && !empty($ctx->hotspotUser->expires_at)) {
+            $expires = is_string($ctx->hotspotUser->expires_at) ? \Illuminate\Support\Carbon::parse($ctx->hotspotUser->expires_at) : $ctx->hotspotUser->expires_at;
+            if ($expires->isPast()) {
+                return PolicyResult::reject('Masa aktif akun Hotspot Anda berakhir', self::ruleClass());
+            }
+        }
         $cs = $ctx->customerService;
         if ($cs && !empty($cs->expires_at)) {
             $expires = is_string($cs->expires_at) ? \Illuminate\Support\Carbon::parse($cs->expires_at) : $cs->expires_at;

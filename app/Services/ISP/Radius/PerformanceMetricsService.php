@@ -42,7 +42,7 @@ final class PerformanceMetricsService
                 $pipe->hIncrBy($base, 'total', 1);
                 $pipe->hIncrByFloat($base, 'latency_sum', $latencyMs);
                 $pipe->hIncrBy($base, $success ? 'success' : 'fail', 1);
-                $pipe->zAdd("{$base}:latencies", [$latencyMs => uniqid('', true)]);
+                $pipe->zAdd("{$base}:latencies", (float)$latencyMs, uniqid('', true));
 
                 $pipe->expire($base, self::WINDOW_SECONDS + 60);
                 $pipe->expire("{$base}:latencies", self::WINDOW_SECONDS + 60);

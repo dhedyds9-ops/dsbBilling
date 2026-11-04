@@ -15,6 +15,18 @@ class CustomerActivePolicy implements RadiusAccessPolicy
     {
         $cs = $ctx->customerService;
         if ($ctx->voucher !== null) return PolicyResult::pass(); // Voucher punya lifecycle sendiri
+
+        if ($ctx->hotspotUser !== null) {
+            $huStatus = (string)($ctx->hotspotUser->status ?? 'active');
+            if ($huStatus !== 'active') {
+                return PolicyResult::reject("Akun Hotspot Anda sedang tidak aktif ({$huStatus}). Silakan hubungi admin.", self::ruleClass());
+            }
+            if (!$cs) {
+                // Hotspot user mandiri / tanpa langganan customer service
+                return PolicyResult::pass();
+            }
+        }
+
         if (!$cs) return PolicyResult::reject('Customer service tidak ditemukan', self::ruleClass());
         $status = is_string($cs->status) ? $cs->status : (string)($cs->status?->value ?? $cs->status);
         if ($status !== 'active') {

@@ -14,6 +14,9 @@ class PackageActivePolicy implements RadiusAccessPolicy
     public function passes(RadiusAccessContext $ctx, array $config = []): PolicyResult
     {
         if ($ctx->voucher !== null) return PolicyResult::pass();
+        if ($ctx->hotspotUser !== null && $ctx->serviceProfile === null) {
+            return PolicyResult::pass();
+        }
         if ($ctx->serviceProfile === null) return PolicyResult::reject('Paket layanan tidak terkonfigurasi', self::ruleClass());
         $active = (string)($ctx->serviceProfile->status ?? 'inactive');
         if ($active !== 'active') {
