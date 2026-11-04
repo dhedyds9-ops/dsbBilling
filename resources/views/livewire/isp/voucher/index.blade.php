@@ -101,15 +101,15 @@
         @endif
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:flex-1">
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="flex flex-wrap items-center gap-2.5 w-full xl:flex-1">
                 <div class="relative w-full sm:w-64">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
                     </span>
                     <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari kode voucher / pelanggan..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
                 </div>
-                <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <select wire:model.live="filters.voucher_pool_id" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
                         <option value="">Semua Tanggal Buat</option>
                         @foreach($voucherPools as $pool)
@@ -144,28 +144,28 @@
                             </optgroup>
                         @endif
                     </select>
-                    <select wire:model.live="perPage" class="col-span-2 sm:col-auto w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                        <option value="20">20 / halaman</option>
-                        <option value="50">50 / halaman</option>
-                        <option value="100">100 / halaman</option>
+                    <select wire:model.live="perPage" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                        <option value="20">20 / hal</option>
+                        <option value="50">50 / hal</option>
+                        <option value="100">100 / hal</option>
                     </select>
                     @if($search || $filters['status'] || $filters['voucher_pool_id'] || !empty($filters['reseller_id']))
                     <button wire:click="resetFilters"
                             title="Reset Filter"
-                            class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
                         <span class="hidden sm:inline">Reset</span>
                     </button>
                     @endif
                 </div>
             </div>
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full lg:w-auto shrink-0">
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 shrink-0">
                 @if(count($selectedIds) > 0)
                     <button wire:click="bulkMarkAsExpired" wire:confirm="Tandai {{ count($selectedIds) }} voucher sebagai Expired?" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-lg border border-amber-200 dark:border-amber-700 transition-colors whitespace-nowrap" title="Tandai Expired ({{ count($selectedIds) }})">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">timer_off</span>
                         <span class="hidden sm:inline">Tandai Expired ({{ count($selectedIds) }})</span>
                     </button>
-                    <button wire:confirm="Yakin ingin menghapus {{ count($selectedIds) }} voucher?" wire:click="confirmBulkDelete" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap" title="Hapus ({{ count($selectedIds) }})">
+                    <button wire:confirm="Yakin ingin menghapus {{ count($selectedIds) }} voucher?" wire:click="confirmBulkDelete" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer" title="Hapus ({{ count($selectedIds) }})">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">delete</span>
                         <span class="hidden sm:inline">Hapus ({{ count($selectedIds) }})</span>
                     </button>
@@ -174,13 +174,9 @@
                         <span class="hidden sm:inline">Cetak ({{ count($selectedIds) }})</span>
                     </button>
                 @endif
-                <a href="{{ route('keuangan.income-harian', ['user_type' => 'voucher']) }}" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-sm font-medium rounded-lg border border-emerald-200 dark:border-emerald-700 transition-colors whitespace-nowrap" title="Buka Data & Histori Keuangan Voucher">
-                    <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">payments</span>
-                    <span class="hidden sm:inline">Data Keuangan</span>
-                </a>
-                <button wire:click="$set('showGenerateModal', true)" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap" title="Generate Voucher">
-                    <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">add</span>
-                    <span class="hidden sm:inline">Generate Voucher</span>
+                <button wire:click="$set('showGenerateModal', true)" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-all whitespace-nowrap shrink-0 cursor-pointer" title="Generate Voucher">
+                    <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">add</span>
+                    <span>Generate</span>
                 </button>
             </div>
         </div>
@@ -222,31 +218,16 @@
                                 $isUsed = !$isExpired && !$isOnline && ($voucher->status === 'used' || !empty($voucher->activated_at));
                                 $isAvailable = !$isExpired && !$isOnline && !$isUsed;
                                 
-                                $rowBg = 'hover:bg-slate-50 dark:bg-slate-800/50 transition-colors';
+                                $rowBg = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
                                 $textPrimary = 'text-slate-900 dark:text-slate-100 font-medium';
                                 $textSecondary = 'text-slate-600 dark:text-slate-400';
                                 $idColor = 'text-slate-700 dark:text-slate-300';
                                 
                                 if ($isExpired) {
-                                    $rowBg = 'bg-red-50/40 dark:bg-red-900/10 hover:bg-red-100 dark:bg-red-900/20 transition-colors';
-                                    $textPrimary = 'text-red-900 dark:text-red-100 font-semibold';
-                                    $textSecondary = 'text-red-700 dark:text-red-300';
-                                    $idColor = 'text-red-800 dark:text-red-200';
-                                } elseif ($isOnline) {
-                                    $rowBg = 'bg-blue-50/40 dark:bg-blue-900/10 hover:bg-blue-100 dark:bg-blue-900/20 transition-colors';
-                                    $textPrimary = 'text-blue-900 dark:text-blue-100 font-semibold';
-                                    $textSecondary = 'text-blue-700 dark:text-blue-300';
-                                    $idColor = 'text-blue-800 dark:text-blue-200';
-                                } elseif ($isUsed) {
-                                    $rowBg = 'bg-amber-50/30 dark:bg-amber-900/10 hover:bg-amber-100 dark:bg-amber-900/20 transition-colors';
-                                    $textPrimary = 'text-amber-900 dark:text-amber-100 font-semibold';
-                                    $textSecondary = 'text-amber-700 dark:text-amber-300';
-                                    $idColor = 'text-amber-800 dark:text-amber-200';
-                                } elseif ($isAvailable) {
-                                    $rowBg = 'bg-emerald-50/30 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:bg-emerald-900/20 transition-colors';
-                                    $textPrimary = 'text-emerald-900 dark:text-emerald-100 font-semibold';
-                                    $textSecondary = 'text-emerald-700 dark:text-emerald-300';
-                                    $idColor = 'text-emerald-800 dark:text-emerald-200';
+                                    $rowBg = 'bg-rose-50/20 hover:bg-rose-100/40 dark:bg-rose-900/10 dark:hover:bg-rose-900/20 transition-colors';
+                                    $textPrimary = 'text-rose-900 dark:text-rose-100 font-semibold';
+                                    $textSecondary = 'text-rose-700 dark:text-rose-300';
+                                    $idColor = 'text-rose-800 dark:text-rose-400';
                                 }
                             @endphp
                             <tr class="{{ $rowBg }}">
@@ -255,41 +236,38 @@
                                 </td>
                                 <td class="px-4 py-3 text-center whitespace-nowrap">
                                     <div class="flex items-center justify-center gap-1">
-                                        <button wire:click="printSingle({{ $voucher->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Cetak Voucher & Batch">
+                                        <button wire:click="printSingle({{ $voucher->id }})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Cetak Voucher & Batch">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">print</span>
                                         </button>
                                         @if(!$isExpired)
-                                            <button wire:click="markAsExpired({{ $voucher->id }})" wire:confirm="Tandai voucher ini sebagai Expired?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Tandai Expired">
+                                            <button wire:click="markAsExpired({{ $voucher->id }})" wire:confirm="Tandai voucher ini sebagai Expired?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Tandai Expired">
                                                 <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">timer_off</span>
                                             </button>
                                         @endif
-                                        <button wire:click="delete({{ $voucher->id }})" wire:confirm="Yakin ingin menghapus voucher ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                        <button wire:click="delete({{ $voucher->id }})" wire:confirm="Yakin ingin menghapus voucher ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer" title="Hapus">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                         </button>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-center whitespace-nowrap">
                                     @if($isExpired)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-600 text-white shadow-sm">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                             Expired
                                         </span>
                                     @elseif($isOnline)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-600 text-white shadow-sm">
-                                            <span class="relative flex h-2 w-2">
-                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                                            </span>
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                             Online
                                         </span>
                                     @elseif($isUsed)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500 text-white shadow-sm">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-200"></span>
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                                             Terpakai
                                         </span>
                                     @elseif($isAvailable)
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-600 text-white shadow-sm">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800"></span>
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                                             Tersedia
                                         </span>
                                     @endif
