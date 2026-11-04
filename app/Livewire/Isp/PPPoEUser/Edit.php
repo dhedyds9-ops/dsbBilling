@@ -30,7 +30,7 @@ class Edit extends AdminComponent
         $this->pppoeUser = PPPoEUser::with('customerService.customer')->findOrFail($id);
 
         $cs = $this->pppoeUser->customerService;
-        $cust = $cs ? $cs->customer : null;
+        $cust = $this->pppoeUser->real_customer;
 
         $this->name = $cust?->name;
         $this->phone = $cust?->phone;
@@ -38,7 +38,7 @@ class Edit extends AdminComponent
         $this->address = $cust?->address;
         $this->latitude = $cust?->latitude;
         $this->longitude = $cust?->longitude;
-        $this->reseller_id = $cust?->reseller_id;
+        $this->reseller_id = $cust?->reseller_id ?? $this->pppoeUser->reseller_id;
         $this->notes = is_array($cs?->attributes) ? ($cs->attributes['notes'] ?? '') : '';
 
         $this->username = $this->pppoeUser->username;
@@ -217,7 +217,6 @@ class Edit extends AdminComponent
 
     public function render()
     {
-        $customerServices = \App\Models\Customer\CustomerService::all();
         $serviceProfiles = \App\Models\ISP\ServiceProfile::all();
         $routers = \App\Models\ISP\Router::active()->get();
         $odps = \App\Models\ISP\Odp::all();
@@ -225,6 +224,6 @@ class Edit extends AdminComponent
         $userQueryService = app(\App\Services\Auth\UserQueryService::class);
         $resellers = $userQueryService->getResellers();
 
-        return view('livewire.isp.pppoe-user.edit', compact('customerServices', 'serviceProfiles', 'routers', 'odps', 'onus', 'resellers'));
+        return view('livewire.isp.pppoe-user.edit', compact('serviceProfiles', 'routers', 'odps', 'onus', 'resellers'));
     }
 }

@@ -204,21 +204,16 @@
                             $tglLogin = $loginDate ? $loginDate->format('d-m-Y H:i') : '-';
                             $tglLogout = $user->latestAccounting?->acct_stop_time ? $user->latestAccounting->acct_stop_time->format('d-m-Y H:i') : '-';
                             
-                            $rowBg = 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-700/20 transition-colors';
+                            $rowBg = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
                             $textPrimary = 'text-slate-900 dark:text-slate-100 font-medium';
                             $textSecondary = 'text-slate-600 dark:text-slate-300';
                             $idColor = 'text-slate-700 dark:text-slate-300';
                             
                             if ($isSuspend) {
-                                $rowBg = 'bg-red-50/40 hover:bg-red-100/60 dark:bg-red-900/10 dark:hover:bg-red-900/20 transition-colors grayscale-[20%]';
-                                $textPrimary = 'text-red-900 dark:text-red-100 font-semibold';
-                                $textSecondary = 'text-red-700 dark:text-red-300';
-                                $idColor = 'text-red-800 dark:text-red-400';
-                            } elseif ($isOnline) {
-                                $rowBg = 'bg-emerald-50/30 hover:bg-emerald-100/50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 transition-colors';
-                                $textPrimary = 'text-emerald-900 dark:text-emerald-100 font-semibold';
-                                $textSecondary = 'text-emerald-700 dark:text-emerald-300';
-                                $idColor = 'text-emerald-800 dark:text-emerald-400';
+                                $rowBg = 'bg-rose-50/20 hover:bg-rose-100/40 dark:bg-rose-900/10 dark:hover:bg-rose-900/20 transition-colors';
+                                $textPrimary = 'text-rose-900 dark:text-rose-100 font-semibold';
+                                $textSecondary = 'text-rose-700 dark:text-rose-300';
+                                $idColor = 'text-rose-800 dark:text-rose-400';
                             }
                         @endphp
                         <tr class="{{ $rowBg }}">
@@ -243,29 +238,29 @@
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
                                     @if(isset($cust->id))
-                                        <a href="{{ route('crm.customers.show', $cust->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 transition-colors" title="Portal Customer 360">
+                                        <a href="{{ route('crm.customers.show', $cust->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Portal Customer 360">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">account_circle</span>
                                         </a>
                                     @endif
-                                    <button wire:click="delete({{ $user->id }}, null)" wire:confirm="Yakin ingin menghapus user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors" title="Hapus">
+                                    <button wire:click="delete({{ $user->id }}, null)" wire:confirm="Yakin ingin menghapus user ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer" title="Hapus">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
-                                @if($user->status === 'suspended')
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
+                                @if($isSuspend)
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                         Suspend
                                     </span>
                                 @elseif($isOnline)
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                         Online
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                         Offline
                                     </span>
                                 @endif

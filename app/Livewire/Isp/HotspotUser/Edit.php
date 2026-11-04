@@ -30,7 +30,7 @@ class Edit extends AdminComponent
         $this->hotspotUser = HotspotUser::with('customerService.customer')->findOrFail($id);
 
         $cs = $this->hotspotUser->customerService;
-        $cust = $cs ? $cs->customer : null;
+        $cust = $this->hotspotUser->real_customer;
 
         $this->name = $cust?->name;
         $this->phone = $cust?->phone;
@@ -38,7 +38,7 @@ class Edit extends AdminComponent
         $this->address = $cust?->address;
         $this->latitude = $cust?->latitude;
         $this->longitude = $cust?->longitude;
-        $this->reseller_id = $cust?->reseller_id;
+        $this->reseller_id = $cust?->reseller_id ?? $this->hotspotUser->reseller_id;
         $this->notes = is_array($cs?->attributes) ? ($cs->attributes['notes'] ?? '') : '';
 
         $this->username = $this->hotspotUser->username;
@@ -55,7 +55,7 @@ class Edit extends AdminComponent
         $this->odp_id = $this->hotspotUser->odp_id;
         $this->port_number = $this->hotspotUser->port_number;
         
-        $this->onu_id = $cs?->onu_id;
+        $this->onu_id = $cs?->onu?->serial_number ?? $cs?->onu_id;
         $this->network_profile_id = $cs?->network_profile_id;
         $this->genieacs_device_id = is_array($cs?->attributes) ? ($cs->attributes['genieacs_device_id'] ?? '') : '';
     }
@@ -203,17 +203,15 @@ class Edit extends AdminComponent
 
     public function render()
     {
-        $customerServices = \App\Models\Customer\CustomerService::all();
         $serviceProfiles = \App\Models\ISP\ServiceProfile::where('service_type', 'hotspot')->orWhere('service_type', 'combined')->get();
         $routers = \App\Models\ISP\Router::all();
-        $networkProfiles = \App\Models\Provisioning\NetworkProfile::all();
         $odps = \App\Models\ISP\Odp::all();
         $onus = \App\Models\ISP\Onu::all();
         $userQueryService = app(\App\Services\Auth\UserQueryService::class);
         $resellers = $userQueryService->getResellers();
 
         return view('livewire.isp.hotspot-user.edit', compact(
-            'customerServices', 'serviceProfiles', 'routers', 'resellers', 'odps', 'onus', 'networkProfiles'
+            'serviceProfiles', 'routers', 'resellers', 'odps', 'onus'
         ));
     }
 }
