@@ -22,8 +22,18 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-PROJECT_DIR="/var/www/dsbilling"
-if [ ! -d "$PROJECT_DIR" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CANDIDATE_DIR="$(dirname "$SCRIPT_DIR")"
+
+if [ -f "$CANDIDATE_DIR/artisan" ]; then
+  PROJECT_DIR="$CANDIDATE_DIR"
+elif [ -f "$(pwd)/artisan" ]; then
+  PROJECT_DIR="$(pwd)"
+elif [ -d "/var/www/winets" ] && [ -f "/var/www/winets/artisan" ]; then
+  PROJECT_DIR="/var/www/winets"
+elif [ -d "/var/www/dsbilling" ] && [ -f "/var/www/dsbilling/artisan" ]; then
+  PROJECT_DIR="/var/www/dsbilling"
+else
   PROJECT_DIR="$(pwd)"
 fi
 
@@ -37,6 +47,14 @@ echo -e "${GREEN}✓ Paket FreeRADIUS berhasil diinstal.${NC}"
 # 2. Ambil Shared Secret dari Database dsBilling atau argumen
 echo -e "\n${YELLOW}[2/6] Membaca RADIUS Secret dari sistem dsBilling...${NC}"
 SECRET="${1:-}"
+
+if [ -z "$SECRET" ] && [ -f "$PROJECT_DIR/artisan" ]; then
+  val=$(php "$PROJECT_DIR/artisan" tinker --execute="echo \App\Models\ISP\Router::whereNotNull('radius_secret')->value('radius_secret') ?: '';" 2>/dev/null || true)
+  val=$(echo "$val" | tr -d '[:space:]')
+  if [ -n "$val" ]; then
+    SECRET="$val"
+  fi
+fi
 
 if [ -z "$SECRET" ]; then
   # Cari di database tenant SQLite
@@ -63,7 +81,10 @@ else
   echo -e "${GREEN}  ✓ Secret router ditemukan: ${SECRET}${NC}"
 fi
 
-# Pastikan router di SQLite juga tersinkronisasi dengan secret ini
+# Pastikan router di MySQL / SQLite juga tersinkronisasi dengan secret ini jika ada yang kosong
+if [ -f "$PROJECT_DIR/artisan" ]; then
+  php "$PROJECT_DIR/artisan" tinker --execute="\App\Models\ISP\Router::whereNull('radius_secret')->orWhereRaw('length(radius_secret) < 4')->update(['radius_secret' => '$SECRET']);" 2>/dev/null || true
+fi
 for db in "$PROJECT_DIR/database/tenants/"*.sqlite; do
   if [ -f "$db" ]; then
     sqlite3 "$db" "UPDATE routers SET radius_secret='$SECRET' WHERE radius_secret IS NULL OR length(radius_secret) < 4;" 2>/dev/null || true
@@ -153,7 +174,6 @@ client all_mikrotik {
     secret = "${SECRET}"
     shortname = mikrotik
     nas_type = other
-    require_message_authenticator = auto
 }
 # END DSBILLING MIKROTIK
 EOF

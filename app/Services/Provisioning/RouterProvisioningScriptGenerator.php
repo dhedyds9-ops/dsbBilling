@@ -70,7 +70,7 @@ class RouterProvisioningScriptGenerator
 
         // 2. RADIUS Client Configuration
         // Router radius_secret is the source of truth
-        $radiusSecret = $router->radius_secret ?? Str::random(32);
+        $radiusSecret = $router->radius_secret ?: (Router::withoutGlobalScopes()->whereNotNull('radius_secret')->value('radius_secret') ?: env('RADIUS_SECRET', 'dsBillingSecret123'));
         if ($router->radius_secret !== $radiusSecret) {
             $router->update(['radius_secret' => $radiusSecret]);
             // Sync to RadiusNas
@@ -98,12 +98,12 @@ class RouterProvisioningScriptGenerator
 
         $lines[] = ":do { /radius add address={$host} secret=\"{$radiusSecret}\" service=ppp,hotspot,login authentication-port=1812 accounting-port=1813 timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ /radius set [find comment~\"dsbilling\"] address={$host} secret=\"{$radiusSecret}\" service=ppp,hotspot,login authentication-port=1812 accounting-port=1813 timeout=3000ms }";
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :put \"Radius incoming configured\" }";
-        $lines[] = ":do { /ip pool add name=pool-pppoe ranges=10.20.20.2-10.20.20.254 comment=\"managed-by=dsbilling\" } on-error={ :nothing }";
-        $lines[] = ":do { /ppp profile set [find name=default] local-address=10.20.20.1 remote-address=pool-pppoe dns-server=8.8.8.8,1.1.1.1 } on-error={ :nothing }";
-        $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=5m accounting=yes } on-error={ :put \"PPP AAA configured\" }";
-        $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=5m login-by=http-pap,cookie,mac-cookie [find] } on-error={ :nothing }";
-        $lines[] = ":do { /ip hotspot user profile set mac-cookie-timeout=1w [find] } on-error={ :nothing }";
-        $lines[] = ":do { /ip firewall nat add chain=srcnat action=masquerade src-address=10.20.20.0/24 comment=\"managed-by=dsbilling: NAT PPPoE\" } on-error={ :nothing }";
+        $lines[] = ":do { /ip pool add name=pool-pppoe ranges=10.20.20.2-10.20.20.254 comment=\"managed-by=dsbilling\" } on-error={}";
+        $lines[] = ":do { /ppp profile set [find name=default] local-address=10.20.20.1 remote-address=pool-pppoe dns-server=8.8.8.8,1.1.1.1 } on-error={}";
+        $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=00:05:00 accounting=yes } on-error={ :put \"PPP AAA configured\" }";
+        $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=00:05:00 login-by=http-pap,cookie,mac-cookie [find] } on-error={}";
+        $lines[] = ":do { /ip hotspot user profile set mac-cookie-timeout=1w [find] } on-error={}";
+        $lines[] = ":do { /ip firewall nat add chain=srcnat action=masquerade src-address=10.20.20.0/24 comment=\"managed-by=dsbilling: NAT PPPoE\" } on-error={}";
         $lines[] = "";
 
         // 3. Network Profiles (VLANs and PPPoE Servers)

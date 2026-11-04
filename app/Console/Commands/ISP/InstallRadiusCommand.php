@@ -23,7 +23,12 @@ class InstallRadiusCommand extends Command
 
         @chmod($scriptPath, 0755);
 
-        $process = new Process(['bash', $scriptPath]);
+        $args = ['bash', $scriptPath];
+        if ($this->option('secret')) {
+            $args[] = (string)$this->option('secret');
+        }
+
+        $process = new Process($args);
         $process->setTimeout(600);
         $process->run(function ($type, $buffer) {
             $this->output->write($buffer);
