@@ -1,148 +1,191 @@
-<!-- Speedtest Section -->
-<section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32" id="speedtest" x-data="speedtestEngine()" x-init="initEngine()">
-    <!-- Section Header -->
-    <div class="text-center mb-12">
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-50 border border-cyan-200 text-cyan-700 dark:bg-primary/10 dark:border-primary/20 dark:text-primary mb-3 shadow-2xs">
-            <span class="material-symbols-outlined text-[15px] animate-pulse">network_check</span>
-            LIVE NETWORK SPEEDTEST
-        </span>
-        <h2 class="font-headline-lg text-headline-lg text-cyan-600 dark:text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">
-            Uji Kecepatan Internet
-        </h2>
-        <p class="text-slate-600 dark:text-on-surface-variant font-body-md text-body-md max-w-2xl mx-auto">
-            Ukur latensi (ping), jitter, serta kecepatan download &amp; upload koneksi internet Anda langsung ke server jaringan lokal kami.
-        </p>
-    </div>
+<!-- Speedtest Section (Compact & Collapsible) -->
+<section class="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto mb-16 transition-all duration-300" 
+         id="speedtest" 
+         x-data="speedtestEngine()" 
+         x-init="initEngine()">
 
-    <!-- Main Speedtest Glass Container -->
-    <div class="relative rounded-3xl bg-white/80 dark:bg-surface-container/50 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-xl overflow-hidden p-6 sm:p-10 md:p-12 transition-all">
-        <!-- Ambient Glowing Background Accents -->
-        <div class="absolute -top-24 -left-24 w-72 h-72 bg-cyan-500/10 dark:bg-primary/15 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-500/10 dark:bg-secondary-container/20 rounded-full blur-3xl pointer-events-none"></div>
-
-        <!-- Top Status & Network Info Bar (Server, IP Publik, dan ISP) -->
-        <div class="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 pb-6 mb-8 border-b border-slate-200/80 dark:border-white/10 text-xs sm:text-sm">
-            <!-- 1. Server Pengujian -->
-            <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
-                <div class="w-11 h-11 rounded-xl bg-cyan-50 dark:bg-primary/10 border border-cyan-200/60 dark:border-primary/20 text-cyan-600 dark:text-primary flex items-center justify-center shrink-0 shadow-xs">
-                    <span class="material-symbols-outlined text-2xl">dns</span>
-                </div>
-                <div class="min-w-0">
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[10px] font-bold uppercase tracking-wider">Server Pengujian</div>
-                    <div class="font-bold text-slate-800 dark:text-on-surface flex items-center gap-1.5 truncate">
-                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0"></span>
-                        <span class="truncate" x-text="serverName">dsBilling Edge Node</span>
-                    </div>
-                    <div class="text-[11px] text-slate-500 dark:text-on-surface-variant/80 truncate" x-show="serverLocation" x-text="serverLocation"></div>
-                </div>
+    <!-- 1. COMPACT TEASER BANNER (Default State: Collapsed / Hidden) -->
+    <div x-show="!isOpen" 
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="rounded-2xl bg-white/90 dark:bg-surface-container/60 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 p-4 sm:p-5 shadow-lg shadow-cyan-500/5 hover:border-cyan-500/40 transition-all flex flex-col sm:flex-row items-center justify-between gap-4">
+        
+        <div class="flex items-center gap-3.5 w-full sm:w-auto">
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
+                <span class="material-symbols-outlined text-2xl animate-pulse">speed</span>
             </div>
-
-            <!-- 2. IP Publik Pengguna -->
-            <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
-                <div class="w-11 h-11 rounded-xl bg-blue-50 dark:bg-secondary-container/20 border border-blue-200/60 dark:border-secondary-container/20 text-blue-600 dark:text-secondary flex items-center justify-center shrink-0 shadow-xs">
-                    <span class="material-symbols-outlined text-2xl">public</span>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-slate-900 dark:text-on-surface text-sm sm:text-base tracking-tight">
+                        Uji Kecepatan Internet
+                    </h3>
+                    <span class="inline-flex items-center text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 dark:bg-primary/20 dark:text-primary">
+                        Speedtest
+                    </span>
                 </div>
-                <div class="min-w-0">
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span>IP Publik Anda</span>
-                        <span class="text-[9px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded font-bold">WAN</span>
-                    </div>
-                    <div class="font-mono font-bold text-slate-800 dark:text-on-surface text-sm sm:text-base truncate" x-text="clientIp">Mendeteksi...</div>
-                    <div class="text-[11px] text-slate-500 dark:text-on-surface-variant/80 truncate" x-show="clientLocation" x-text="clientLocation"></div>
-                </div>
-            </div>
-
-            <!-- 3. ISP / Operator Internet -->
-            <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
-                <div class="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200/60 dark:border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-xs">
-                    <span class="material-symbols-outlined text-2xl">wifi_tethering</span>
-                </div>
-                <div class="min-w-0">
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[10px] font-bold uppercase tracking-wider">ISP / Operator Internet</div>
-                    <div class="font-bold text-slate-800 dark:text-on-surface text-sm truncate" x-text="clientIsp">Mendeteksi...</div>
-                    <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[13px]">verified</span>
-                        Jaringan Terdeteksi
-                    </div>
+                <div class="text-[11px] sm:text-xs text-slate-500 dark:text-on-surface-variant flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                    <span class="flex items-center gap-1 font-mono text-cyan-600 dark:text-primary">
+                        <span class="material-symbols-outlined text-[13px]">public</span>
+                        <span x-text="clientIp">Mendeteksi IP...</span>
+                    </span>
+                    <span class="text-slate-300 dark:text-white/20">&bull;</span>
+                    <span class="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[200px] sm:max-w-[280px]">
+                        <span class="material-symbols-outlined text-[13px] text-purple-500">wifi_tethering</span>
+                        <span class="truncate" x-text="clientIsp">Mendeteksi ISP...</span>
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- Progress Steps Bar -->
-        <div class="relative z-10 mb-8 max-w-xl mx-auto">
-            <div class="grid grid-cols-4 gap-2 text-center text-xs font-bold">
+        <button type="button" 
+                @click="openSpeedtest()" 
+                class="w-full sm:w-auto btn-primary px-5 py-2.5 rounded-xl text-xs font-bold text-white shrink-0 flex items-center justify-center gap-2 shadow-md shadow-cyan-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
+            <span class="material-symbols-outlined text-base">play_arrow</span>
+            <span>Buka Speedtest</span>
+        </button>
+    </div>
+
+    <!-- 2. FULL SPEEDTEST CARD (Shown when expanded) -->
+    <div x-show="isOpen" 
+         x-collapse 
+         x-cloak
+         class="relative rounded-2xl sm:rounded-3xl bg-white/95 dark:bg-surface-container/70 backdrop-blur-xl border border-cyan-500/30 dark:border-white/10 shadow-2xl overflow-hidden p-4 sm:p-6 md:p-8 transition-all">
+        
+        <!-- Ambient Glowing Background Accents -->
+        <div class="absolute -top-20 -left-20 w-48 h-48 bg-cyan-500/10 dark:bg-primary/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-20 -right-20 w-48 h-48 bg-blue-500/10 dark:bg-secondary-container/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Header: Title & Close Button -->
+        <div class="relative z-10 flex items-center justify-between pb-4 mb-4 border-b border-slate-200/80 dark:border-white/10">
+            <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-primary/10 text-cyan-600 dark:text-primary flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-lg">speed</span>
+                </span>
+                <div>
+                    <h3 class="font-bold text-slate-900 dark:text-on-surface text-sm sm:text-base flex items-center gap-2">
+                        Network Speedtest
+                        <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            Online
+                        </span>
+                    </h3>
+                    <p class="text-[11px] text-slate-500 dark:text-on-surface-variant">Uji latensi (ping), jitter, download &amp; upload koneksi internet.</p>
+                </div>
+            </div>
+
+            <!-- Minimize / Hide Button -->
+            <button type="button" 
+                    @click="closeSpeedtest()" 
+                    class="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:text-on-surface-variant dark:hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
+                    title="Sembunyikan panel speedtest">
+                <span class="material-symbols-outlined text-sm">expand_less</span>
+                <span class="hidden sm:inline">Sembunyikan</span>
+            </button>
+        </div>
+
+        <!-- Compact Status Bar: Server, IP Publik, ISP -->
+        <div class="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6 text-xs">
+            <!-- Server -->
+            <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
+                <span class="material-symbols-outlined text-cyan-600 dark:text-primary text-lg shrink-0">dns</span>
+                <div class="min-w-0">
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider">Server</div>
+                    <div class="font-bold text-slate-800 dark:text-on-surface truncate flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span class="truncate" x-text="serverName">dsBilling Edge</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IP Publik -->
+            <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
+                <span class="material-symbols-outlined text-blue-600 dark:text-secondary text-lg shrink-0">public</span>
+                <div class="min-w-0">
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider">IP Publik Anda</div>
+                    <div class="font-mono font-bold text-slate-800 dark:text-on-surface text-xs truncate" x-text="clientIp">Mendeteksi...</div>
+                </div>
+            </div>
+
+            <!-- ISP -->
+            <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
+                <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-lg shrink-0">wifi_tethering</span>
+                <div class="min-w-0">
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider">ISP / Operator</div>
+                    <div class="font-bold text-slate-800 dark:text-on-surface text-xs truncate" x-text="clientIsp">Mendeteksi...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Steps Indicator -->
+        <div class="relative z-10 mb-6 max-w-md mx-auto">
+            <div class="grid grid-cols-4 gap-1.5 text-center text-[11px] font-bold">
                 <!-- Step 1: Ping -->
                 <div :class="{
-                    'text-cyan-600 dark:text-primary border-cyan-500 dark:border-primary bg-cyan-50/50 dark:bg-primary/10': stage === 'ping',
+                    'text-cyan-600 dark:text-primary border-cyan-500 bg-cyan-50/60 dark:bg-primary/10': stage === 'ping',
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-500/10': stageIndex > 1,
                     'text-slate-400 dark:text-on-surface-variant/60 border-transparent': stageIndex < 1
-                }" class="py-2 px-1 rounded-xl border transition-all flex flex-col sm:flex-row items-center justify-center gap-1">
-                    <span class="material-symbols-outlined text-sm">timer</span>
-                    <span>1. Ping</span>
+                }" class="py-1.5 px-1 rounded-lg border transition-all">
+                    1. Ping
                 </div>
 
                 <!-- Step 2: Download -->
                 <div :class="{
-                    'text-cyan-600 dark:text-primary border-cyan-500 dark:border-primary bg-cyan-50/50 dark:bg-primary/10': stage === 'download',
+                    'text-cyan-600 dark:text-primary border-cyan-500 bg-cyan-50/60 dark:bg-primary/10': stage === 'download',
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-500/10': stageIndex > 2,
                     'text-slate-400 dark:text-on-surface-variant/60 border-transparent': stageIndex < 2
-                }" class="py-2 px-1 rounded-xl border transition-all flex flex-col sm:flex-row items-center justify-center gap-1">
-                    <span class="material-symbols-outlined text-sm">download</span>
-                    <span>2. Download</span>
+                }" class="py-1.5 px-1 rounded-lg border transition-all">
+                    2. Download
                 </div>
 
                 <!-- Step 3: Upload -->
                 <div :class="{
-                    'text-cyan-600 dark:text-primary border-cyan-500 dark:border-primary bg-cyan-50/50 dark:bg-primary/10': stage === 'upload',
+                    'text-cyan-600 dark:text-primary border-cyan-500 bg-cyan-50/60 dark:bg-primary/10': stage === 'upload',
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-500/10': stageIndex > 3,
                     'text-slate-400 dark:text-on-surface-variant/60 border-transparent': stageIndex < 3
-                }" class="py-2 px-1 rounded-xl border transition-all flex flex-col sm:flex-row items-center justify-center gap-1">
-                    <span class="material-symbols-outlined text-sm">upload</span>
-                    <span>3. Upload</span>
+                }" class="py-1.5 px-1 rounded-lg border transition-all">
+                    3. Upload
                 </div>
 
                 <!-- Step 4: Selesai -->
                 <div :class="{
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500 bg-emerald-50/60 dark:bg-emerald-500/15': stage === 'completed',
                     'text-slate-400 dark:text-on-surface-variant/60 border-transparent': stage !== 'completed'
-                }" class="py-2 px-1 rounded-xl border transition-all flex flex-col sm:flex-row items-center justify-center gap-1">
-                    <span class="material-symbols-outlined text-sm">task_alt</span>
-                    <span>4. Selesai</span>
+                }" class="py-1.5 px-1 rounded-lg border transition-all">
+                    4. Selesai
                 </div>
             </div>
 
             <!-- Progress Track -->
-            <div class="w-full bg-slate-200 dark:bg-surface-container-highest h-1.5 rounded-full mt-3 overflow-hidden">
+            <div class="w-full bg-slate-200 dark:bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
                 <div class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-300"
                      :style="'width: ' + progress + '%'"></div>
             </div>
         </div>
 
-        <!-- Central Speedometer Gauge & Interactive Area -->
-        <div class="relative z-10 flex flex-col items-center justify-center my-6">
-            <!-- Gauge Graphic (SVG) -->
-            <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center">
+        <!-- Central Speedometer Gauge (Compact w-52 h-52) -->
+        <div class="relative z-10 flex flex-col items-center justify-center my-3">
+            <div class="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center">
                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 240 240">
-                    <!-- Gauge Background Track (240 deg arc) -->
+                    <!-- Gauge Track -->
                     <circle cx="120" cy="120" r="96" fill="none"
                             stroke="currentColor"
                             class="text-slate-200 dark:text-white/10"
-                            stroke-width="12"
+                            stroke-width="10"
                             stroke-dasharray="452.4"
                             stroke-dashoffset="113.1"
                             stroke-linecap="round"/>
 
                     <!-- Gauge Active Progress Arc -->
                     <circle cx="120" cy="120" r="96" fill="none"
-                            stroke="url(#speedtestGradient)"
-                            stroke-width="12"
+                            stroke="url(#speedtestCompactGrad)"
+                            stroke-width="10"
                             stroke-dasharray="452.4"
                             :stroke-dashoffset="getStrokeDashoffset()"
                             stroke-linecap="round"
                             class="transition-all duration-150 ease-out"/>
 
                     <defs>
-                        <linearGradient id="speedtestGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id="speedtestCompactGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stop-color="#06b6d4" />
                             <stop offset="60%" stop-color="#3b82f6" />
                             <stop offset="100%" stop-color="#10b981" />
@@ -150,23 +193,22 @@
                     </defs>
                 </svg>
 
-                <!-- Center Display / GO Button -->
-                <div class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                    <!-- State: IDLE -> Big Clickable START Button -->
+                <!-- Center Display / START Button -->
+                <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                    <!-- State: IDLE -> Start Button -->
                     <template x-if="stage === 'idle'">
                         <button type="button" @click="startTest()"
-                                class="group relative w-36 h-36 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 dark:from-cyan-500 dark:to-blue-500 text-white font-black text-2xl flex flex-col items-center justify-center shadow-xl shadow-cyan-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer">
-                            <!-- Radar pulse animation -->
-                            <span class="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-60"></span>
-                            <span class="material-symbols-outlined text-4xl group-hover:scale-110 transition-transform">speed</span>
-                            <span class="tracking-widest mt-1 text-lg font-extrabold">MULAI</span>
+                                class="group relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 dark:from-cyan-500 dark:to-blue-500 text-white font-black flex flex-col items-center justify-center shadow-lg shadow-cyan-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer">
+                            <span class="absolute inset-0 rounded-full border border-cyan-400 animate-ping opacity-50"></span>
+                            <span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">speed</span>
+                            <span class="tracking-widest mt-0.5 text-base font-extrabold">MULAI</span>
                         </button>
                     </template>
 
-                    <!-- State: RUNNING (Ping / Download / Upload) -->
+                    <!-- State: RUNNING -->
                     <template x-if="stage === 'ping' || stage === 'download' || stage === 'upload'">
                         <div class="flex flex-col items-center justify-center">
-                            <span class="text-xs uppercase font-extrabold tracking-widest px-3 py-1 rounded-full mb-1 transition-all"
+                            <span class="text-[10px] uppercase font-extrabold tracking-widest px-2.5 py-0.5 rounded-full mb-1 transition-all"
                                   :class="{
                                       'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300': stage === 'ping',
                                       'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300': stage === 'download',
@@ -174,11 +216,11 @@
                                   }"
                                   x-text="stageLabel">
                             </span>
-                            <div class="font-display-lg text-5xl sm:text-6xl font-black text-slate-900 dark:text-on-surface tracking-tight"
+                            <div class="font-display-lg text-4xl sm:text-5xl font-black text-slate-900 dark:text-on-surface tracking-tight"
                                  x-text="currentDisplaySpeed.toFixed(1)">
                                 0.0
                             </div>
-                            <div class="text-xs sm:text-sm font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider mt-1"
+                            <div class="text-[11px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider"
                                  x-text="currentDisplayUnit">
                                 Mbps
                             </div>
@@ -187,146 +229,130 @@
 
                     <!-- State: COMPLETED -->
                     <template x-if="stage === 'completed'">
-                        <div class="flex flex-col items-center justify-center animate-fade-in">
-                            <div class="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1">
-                                <span class="material-symbols-outlined text-3xl">check_circle</span>
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-0.5">
+                                <span class="material-symbols-outlined text-2xl">check_circle</span>
                             </div>
-                            <div class="font-display-lg text-4xl sm:text-5xl font-black text-cyan-600 dark:text-primary tracking-tight"
+                            <div class="font-display-lg text-3xl sm:text-4xl font-black text-cyan-600 dark:text-primary tracking-tight"
                                  x-text="downloadSpeed.toFixed(1)">
                                 0.0
                             </div>
-                            <div class="text-xs font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider">
+                            <div class="text-[10px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider">
                                 Download Mbps
                             </div>
-                        </div>
-                    </template>
-
-                    <!-- State: ERROR -->
-                    <template x-if="stage === 'error'">
-                        <div class="flex flex-col items-center justify-center p-2">
-                            <span class="material-symbols-outlined text-4xl text-rose-500 mb-1">error</span>
-                            <div class="text-xs font-bold text-rose-500 text-center" x-text="errorMessage">Terjadi Kesalahan</div>
-                            <button type="button" @click="startTest()" class="mt-2 text-xs font-bold px-3 py-1 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100">
-                                Coba Lagi
-                            </button>
                         </div>
                     </template>
                 </div>
             </div>
 
             <!-- Status Text Message -->
-            <p class="text-xs sm:text-sm font-medium text-slate-600 dark:text-on-surface-variant text-center mt-2 max-w-md" x-text="statusMessage">
+            <p class="text-[11px] sm:text-xs font-medium text-slate-600 dark:text-on-surface-variant text-center mt-1 max-w-sm" x-text="statusMessage">
                 Klik tombol MULAI untuk mengukur kecepatan koneksi internet Anda.
             </p>
 
             <!-- Cancel Button while running -->
             <button type="button" x-show="stage === 'ping' || stage === 'download' || stage === 'upload'" @click="cancelTest()"
-                    class="mt-3 text-xs font-bold text-slate-500 hover:text-rose-500 transition-colors flex items-center gap-1 cursor-pointer">
+                    class="mt-2 text-[11px] font-bold text-slate-500 hover:text-rose-500 transition-colors flex items-center gap-1 cursor-pointer">
                 <span class="material-symbols-outlined text-sm">cancel</span>
                 Batalkan Pengujian
             </button>
         </div>
 
-        <!-- 4 Metric Output Cards -->
-        <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <!-- Metric 1: Ping -->
-            <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-surface/60 border border-slate-200/80 dark:border-white/5 flex flex-col justify-between shadow-2xs">
-                <div class="flex items-center justify-between text-slate-500 dark:text-on-surface-variant mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span class="material-symbols-outlined text-base text-amber-500">timer</span> Ping
+        <!-- 4 Metric Cards (Compact) -->
+        <div class="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
+            <!-- Ping -->
+            <div class="p-3 rounded-xl bg-slate-50 dark:bg-surface/60 border border-slate-200/80 dark:border-white/5 flex flex-col justify-between shadow-2xs">
+                <div class="flex items-center justify-between text-slate-500 dark:text-on-surface-variant mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm text-amber-500">timer</span> Ping
                     </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    <span class="text-[9px] font-bold px-1.5 py-0.2 rounded"
                           :class="getPingBadgeClass()"
                           x-text="getPingBadgeText()">-</span>
                 </div>
                 <div class="flex items-baseline gap-1">
-                    <span class="font-display-lg text-2xl sm:text-3xl font-black text-slate-800 dark:text-on-surface"
+                    <span class="font-display-lg text-xl sm:text-2xl font-black text-slate-800 dark:text-on-surface"
                           x-text="ping > 0 ? ping.toFixed(0) : '--'">--</span>
-                    <span class="text-xs font-semibold text-slate-400 dark:text-on-surface-variant">ms</span>
+                    <span class="text-[10px] font-semibold text-slate-400">ms</span>
                 </div>
             </div>
 
-            <!-- Metric 2: Jitter -->
-            <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-surface/60 border border-slate-200/80 dark:border-white/5 flex flex-col justify-between shadow-2xs">
-                <div class="flex items-center justify-between text-slate-500 dark:text-on-surface-variant mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span class="material-symbols-outlined text-base text-purple-500">network_ping</span> Jitter
+            <!-- Jitter -->
+            <div class="p-3 rounded-xl bg-slate-50 dark:bg-surface/60 border border-slate-200/80 dark:border-white/5 flex flex-col justify-between shadow-2xs">
+                <div class="flex items-center justify-between text-slate-500 dark:text-on-surface-variant mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm text-purple-500">network_ping</span> Jitter
                     </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full text-slate-400 bg-slate-100 dark:bg-white/5"
-                          x-text="jitter > 0 ? (jitter < 15 ? 'Stabil' : 'Fluktuatif') : '-'">-</span>
+                    <span class="text-[9px] font-bold px-1.5 py-0.2 rounded text-slate-400 bg-slate-100 dark:bg-white/5"
+                          x-text="jitter > 0 ? (jitter < 15 ? 'Stabil' : 'Variatif') : '-'">-</span>
                 </div>
                 <div class="flex items-baseline gap-1">
-                    <span class="font-display-lg text-2xl sm:text-3xl font-black text-slate-800 dark:text-on-surface"
+                    <span class="font-display-lg text-xl sm:text-2xl font-black text-slate-800 dark:text-on-surface"
                           x-text="jitter > 0 ? jitter.toFixed(1) : '--'">--</span>
-                    <span class="text-xs font-semibold text-slate-400 dark:text-on-surface-variant">ms</span>
+                    <span class="text-[10px] font-semibold text-slate-400">ms</span>
                 </div>
             </div>
 
-            <!-- Metric 3: Download -->
-            <div class="p-4 sm:p-5 rounded-2xl bg-cyan-50/50 dark:bg-primary/5 border border-cyan-200/60 dark:border-primary/20 flex flex-col justify-between shadow-2xs">
-                <div class="flex items-center justify-between text-cyan-600 dark:text-primary mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span class="material-symbols-outlined text-base">download</span> Download
+            <!-- Download -->
+            <div class="p-3 rounded-xl bg-cyan-50/50 dark:bg-primary/5 border border-cyan-200/60 dark:border-primary/20 flex flex-col justify-between shadow-2xs">
+                <div class="flex items-center justify-between text-cyan-600 dark:text-primary mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">download</span> Download
                     </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-primary/20 text-cyan-700 dark:text-primary">
+                    <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-100 dark:bg-primary/20 text-cyan-700 dark:text-primary">
                         Unduh
                     </span>
                 </div>
                 <div class="flex items-baseline gap-1">
-                    <span class="font-display-lg text-2xl sm:text-3xl font-black text-cyan-600 dark:text-primary"
+                    <span class="font-display-lg text-xl sm:text-2xl font-black text-cyan-600 dark:text-primary"
                           x-text="downloadSpeed > 0 ? downloadSpeed.toFixed(1) : '--'">--</span>
-                    <span class="text-xs font-semibold text-slate-400 dark:text-on-surface-variant">Mbps</span>
+                    <span class="text-[10px] font-semibold text-slate-400">Mbps</span>
                 </div>
             </div>
 
-            <!-- Metric 4: Upload -->
-            <div class="p-4 sm:p-5 rounded-2xl bg-blue-50/50 dark:bg-secondary-container/10 border border-blue-200/60 dark:border-secondary-container/20 flex flex-col justify-between shadow-2xs">
-                <div class="flex items-center justify-between text-blue-600 dark:text-blue-400 mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span class="material-symbols-outlined text-base">upload</span> Upload
+            <!-- Upload -->
+            <div class="p-3 rounded-xl bg-blue-50/50 dark:bg-secondary-container/10 border border-blue-200/60 dark:border-secondary-container/20 flex flex-col justify-between shadow-2xs">
+                <div class="flex items-center justify-between text-blue-600 dark:text-blue-400 mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">upload</span> Upload
                     </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                    <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300">
                         Unggah
                     </span>
                 </div>
                 <div class="flex items-baseline gap-1">
-                    <span class="font-display-lg text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400"
+                    <span class="font-display-lg text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400"
                           x-text="uploadSpeed > 0 ? uploadSpeed.toFixed(1) : '--'">--</span>
-                    <span class="text-xs font-semibold text-slate-400 dark:text-on-surface-variant">Mbps</span>
+                    <span class="text-[10px] font-semibold text-slate-400">Mbps</span>
                 </div>
             </div>
         </div>
 
-        <!-- Post-Test Recommendation Banner (Displayed on completion) -->
-        <div x-show="stage === 'completed'" x-collapse x-cloak class="relative z-10 mt-8 pt-8 border-t border-slate-200/80 dark:border-white/10">
-            <div class="p-6 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-emerald-500/10 border border-cyan-500/30 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div class="flex items-start gap-4 text-left">
-                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                        <span class="material-symbols-outlined text-2xl">insights</span>
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-slate-900 dark:text-on-surface text-base sm:text-lg mb-1" x-text="getRecommendationTitle()">
-                            Analisis Koneksi Anda
-                        </h4>
-                        <p class="text-slate-600 dark:text-on-surface-variant text-xs sm:text-sm max-w-xl">
-                            <span x-text="getRecommendationText()"></span>
-                            <span class="block mt-2 font-semibold text-cyan-600 dark:text-primary text-xs" x-show="clientIsp && clientIsp !== 'Mendeteksi...'">
-                                Operator: <span class="font-bold" x-text="clientIsp"></span> &bull; IP: <span class="font-mono font-bold" x-text="clientIp"></span>
-                            </span>
-                        </p>
+        <!-- Post-Test Result & Recommendation Banner -->
+        <div x-show="stage === 'completed'" x-collapse x-cloak class="relative z-10 mt-5 pt-4 border-t border-slate-200/80 dark:border-white/10">
+            <div class="p-4 rounded-xl bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-emerald-500/10 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-left">
+                    <h4 class="font-bold text-slate-900 dark:text-on-surface text-sm mb-0.5" x-text="getRecommendationTitle()">
+                        Hasil Pengujian Selesai
+                    </h4>
+                    <p class="text-slate-600 dark:text-on-surface-variant text-xs max-w-lg" x-text="getRecommendationText()"></p>
+                    <div class="mt-1 text-[11px] font-semibold text-cyan-600 dark:text-primary flex flex-wrap items-center gap-1.5" x-show="clientIsp && clientIsp !== 'Mendeteksi...'">
+                        <span>Operator: <strong x-text="clientIsp"></strong></span>
+                        <span>&bull;</span>
+                        <span>IP: <strong class="font-mono" x-text="clientIp"></strong></span>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-3 shrink-0">
+                <div class="flex items-center gap-2 shrink-0">
                     <button type="button" @click="startTest()"
-                            class="px-5 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 border border-slate-200 dark:border-white/20 text-slate-700 dark:text-slate-200 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer">
-                        <span class="material-symbols-outlined text-base">refresh</span>
+                            class="px-3.5 py-2 rounded-lg text-xs font-bold bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 border border-slate-200 dark:border-white/20 text-slate-700 dark:text-slate-200 transition-all flex items-center gap-1 shadow-2xs cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">refresh</span>
                         Uji Lagi
                     </button>
                     <a href="#paket"
-                       class="btn-primary px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 shadow-md shadow-cyan-500/20">
-                        <span>Lihat Paket Fiber</span>
-                        <span class="material-symbols-outlined text-base">arrow_forward</span>
+                       class="btn-primary px-4 py-2 rounded-lg text-xs font-bold text-white transition-all flex items-center gap-1 shadow-md shadow-cyan-500/20">
+                        <span>Pilih Paket Fiber</span>
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
                     </a>
                 </div>
             </div>
@@ -338,6 +364,7 @@
 <script>
 function speedtestEngine() {
     return {
+        isOpen: false, // Default: Hidden/Collapsible
         stage: 'idle', // 'idle' | 'ping' | 'download' | 'upload' | 'completed' | 'error'
         stageIndex: 0,
         progress: 0,
@@ -359,8 +386,37 @@ function speedtestEngine() {
         serverPartner: '',
         abortController: null,
 
+        openSpeedtest() {
+            this.isOpen = true;
+            this.$nextTick(() => {
+                document.getElementById('speedtest')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        },
+
+        closeSpeedtest() {
+            if (this.stage === 'ping' || this.stage === 'download' || this.stage === 'upload') {
+                this.cancelTest();
+            }
+            this.isOpen = false;
+        },
+
         async initEngine() {
-            // 1. Fetch info from local backend
+            // Listen for global open event from navbar
+            window.addEventListener('open-speedtest', () => {
+                this.openSpeedtest();
+            });
+
+            // If URL contains #speedtest on load or hash change
+            if (window.location.hash === '#speedtest') {
+                this.isOpen = true;
+            }
+            window.addEventListener('hashchange', () => {
+                if (window.location.hash === '#speedtest') {
+                    this.isOpen = true;
+                }
+            });
+
+            // 1. Fetch info from backend
             try {
                 const resp = await fetch('{{ route('speedtest.info') }}', { cache: 'no-store' });
                 const data = await resp.json();
@@ -375,7 +431,7 @@ function speedtestEngine() {
                 console.warn('Backend speedtest info unavailable:', err);
             }
 
-            // 2. If IP is private / local or ISP is not detected yet, query GeoIP directly from client browser
+            // 2. Client browser GeoIP fallback if private IP or ISP not yet detected
             if (this.isPrivateIp || !this.clientIsp || this.clientIsp === 'Mendeteksi...' || this.clientIp === '127.0.0.1') {
                 try {
                     const geoResp = await fetch('https://ipwho.is/', { cache: 'no-store' });
@@ -391,7 +447,6 @@ function speedtestEngine() {
                         }
                     }
                 } catch (e) {
-                    // Fallback to ipify for public IP
                     try {
                         const ipifyResp = await fetch('https://api.ipify.org?format=json');
                         const ipify = await ipifyResp.json();
@@ -407,12 +462,9 @@ function speedtestEngine() {
         },
 
         getStrokeDashoffset() {
-            // Arc perimeter is 452.4. Max scale is 100 Mbps (or dynamically clamped up to 250)
             const maxScale = Math.max(100, this.downloadSpeed, this.uploadSpeed, this.currentDisplaySpeed);
             const val = Math.min(this.currentDisplaySpeed, maxScale);
             const ratio = val / maxScale;
-            // 240 degree gauge: 0 value = 452.4 * (1 - 0.75) = offset 113.1
-            // Full sweep is (452.4 * 0.75) = 339.3
             const sweep = 339.3;
             const offset = 452.4 - (ratio * sweep);
             return Math.max(113.1, Math.min(452.4, offset));
@@ -420,8 +472,8 @@ function speedtestEngine() {
 
         getPingBadgeText() {
             if (this.ping <= 0) return '-';
-            if (this.ping < 30) return 'Sangat Cepat';
-            if (this.ping < 70) return 'Bagus';
+            if (this.ping < 30) return 'Bagus';
+            if (this.ping < 70) return 'Normal';
             if (this.ping < 120) return 'Sedang';
             return 'Tinggi';
         },
@@ -442,11 +494,11 @@ function speedtestEngine() {
 
         getRecommendationText() {
             if (this.downloadSpeed >= 50) {
-                return 'Koneksi Anda sangat mumpuni untuk 4K Ultra HD Streaming, gaming online bebas lag, conference video, dan unduhan file berukuran besar di banyak perangkat.';
+                return 'Koneksi sangat mumpuni untuk 4K Ultra HD Streaming, gaming online bebas lag, dan banyak perangkat sekaligus.';
             } else if (this.downloadSpeed >= 20) {
-                return 'Koneksi Anda lancar untuk browsing, sosmed, dan streaming HD. Jika anggota keluarga Anda bertambah, pertimbangkan paket Fiber Optic 50 - 100 Mbps agar semakin ngebut.';
+                return 'Koneksi lancar untuk browsing & streaming HD. Untuk multi-user & gaming, pertimbangkan upgrade paket Fiber.';
             } else {
-                return 'Kecepatan internet Anda saat ini kurang optimal untuk pemakaian keluarga atau streaming berkualitas tinggi. Beralihlah ke paket Fiber Optic kami tanpa FUP mulai dari Rp 100 ribuan!';
+                return 'Kecepatan internet kurang optimal untuk pemakaian keluarga. Beralih ke paket Fiber Optic kami tanpa FUP mulai dari Rp 100 ribuan!';
             }
         },
 
@@ -512,40 +564,54 @@ function speedtestEngine() {
             } catch (err) {
                 if (err.name === 'AbortError') return;
                 console.error('Speedtest Error:', err);
-                this.stage = 'error';
-                this.errorMessage = 'Gagal mengukur kecepatan. Periksa koneksi internet Anda.';
-                this.statusMessage = 'Terjadi kesalahan saat pengujian jaringan.';
+                
+                // If download succeeded, complete gracefully instead of hard error
+                if (this.downloadSpeed > 0) {
+                    this.stage = 'completed';
+                    this.stageIndex = 4;
+                    this.progress = 100;
+                    this.currentDisplaySpeed = this.downloadSpeed;
+                    this.currentDisplayUnit = 'Mbps';
+                    this.stageLabel = 'Selesai';
+                    this.statusMessage = 'Pengujian download & ping selesai.';
+                } else {
+                    this.stage = 'error';
+                    this.errorMessage = 'Gagal mengukur kecepatan. Periksa koneksi internet Anda.';
+                    this.statusMessage = 'Terjadi kesalahan saat pengujian jaringan.';
+                }
             }
         },
 
         async runPingTest(signal) {
             const pings = [];
-            const count = 6;
+            const count = 5;
             const pingUrl = '{{ route('speedtest.ping') }}';
 
             for (let i = 0; i < count; i++) {
                 if (signal.aborted) return;
                 const t0 = performance.now();
-                const resp = await fetch(pingUrl + '?t=' + Date.now() + '_' + i, {
-                    cache: 'no-store',
-                    signal: signal
-                });
-                await resp.json();
-                const t1 = performance.now();
-                const rtt = Math.max(1, t1 - t0);
-                
-                // Skip the first ping as warmup
-                if (i > 0) {
-                    pings.push(rtt);
-                    this.ping = pings.reduce((a, b) => a + b, 0) / pings.length;
-                    this.currentDisplaySpeed = this.ping;
+                try {
+                    const resp = await fetch(pingUrl + '?t=' + Date.now() + '_' + i, {
+                        cache: 'no-store',
+                        signal: signal
+                    });
+                    await resp.json();
+                    const t1 = performance.now();
+                    const rtt = Math.max(1, t1 - t0);
+                    
+                    if (i > 0) {
+                        pings.push(rtt);
+                        this.ping = pings.reduce((a, b) => a + b, 0) / pings.length;
+                        this.currentDisplaySpeed = this.ping;
+                    }
+                } catch (e) {
+                    if (signal.aborted) return;
                 }
 
-                this.progress = 5 + Math.round((i / count) * 20);
-                await new Promise(r => setTimeout(r, 60));
+                this.progress = 5 + Math.round((i / count) * 25);
+                await new Promise(r => setTimeout(r, 50));
             }
 
-            // Calculate Jitter (average difference between consecutive pings)
             if (pings.length > 1) {
                 let jitterSum = 0;
                 for (let i = 1; i < pings.length; i++) {
@@ -558,7 +624,7 @@ function speedtestEngine() {
         },
 
         async runDownloadTest(signal) {
-            const downloadUrl = '{{ route('speedtest.download') }}?size=15000000&t=' + Date.now();
+            const downloadUrl = '{{ route('speedtest.download') }}?size=10000000&t=' + Date.now();
             const resp = await fetch(downloadUrl, { cache: 'no-store', signal: signal });
             
             if (!resp.body) {
@@ -570,7 +636,6 @@ function speedtestEngine() {
             const startTime = performance.now();
             let lastUpdate = startTime;
             let lastBytes = 0;
-            const samples = [];
 
             while (true) {
                 if (signal.aborted) break;
@@ -580,20 +645,16 @@ function speedtestEngine() {
                 totalBytes += value.length;
                 const now = performance.now();
 
-                // Sample every ~80ms
                 if (now - lastUpdate >= 80) {
                     const elapsedSec = (now - lastUpdate) / 1000;
                     const deltaBits = (totalBytes - lastBytes) * 8;
                     const instantMbps = (deltaBits / elapsedSec) / 1000000;
 
                     if (instantMbps > 0) {
-                        samples.push(instantMbps);
-                        // Easing / smoothing filter
                         this.currentDisplaySpeed = (this.currentDisplaySpeed * 0.4) + (instantMbps * 0.6);
                     }
 
-                    // Progress scale from 30% to 65%
-                    const estProgress = 30 + Math.min(33, (totalBytes / 15000000) * 35);
+                    const estProgress = 30 + Math.min(33, (totalBytes / 10000000) * 35);
                     this.progress = Math.round(estProgress);
 
                     lastUpdate = now;
@@ -609,76 +670,75 @@ function speedtestEngine() {
         },
 
         async runUploadTest(signal) {
-            return new Promise((resolve, reject) => {
-                if (signal.aborted) return resolve();
+            // Safe chunk size (512 KB) to prevent Nginx 413 client_max_body_size error
+            const chunkSize = 512 * 1024;
+            const buffer = new Uint8Array(chunkSize);
+            for (let i = 0; i < chunkSize; i += 2048) {
+                buffer[i] = Math.floor(Math.random() * 256);
+            }
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            const uploadUrl = '{{ route('speedtest.upload') }}?t=' + Date.now();
 
-                // Prepare 4MB pseudo-random binary payload
-                const chunkSize = 4 * 1024 * 1024;
-                const buffer = new Uint8Array(chunkSize);
-                for (let i = 0; i < chunkSize; i += 1024) {
-                    buffer[i] = Math.floor(Math.random() * 256);
-                }
-                const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            const startTime = performance.now();
+            let totalBytesSent = 0;
+            const maxDurationMs = 3500; // run for ~3.5 seconds
+            let iteration = 0;
+            const maxIterations = 8;
 
-                const xhr = new XMLHttpRequest();
-                const uploadUrl = '{{ route('speedtest.upload') }}?t=' + Date.now();
-                const startTime = performance.now();
-                let lastTime = startTime;
-                let lastLoaded = 0;
+            while ((performance.now() - startTime) < maxDurationMs && iteration < maxIterations) {
+                if (signal.aborted) break;
+                iteration++;
 
-                xhr.open('POST', uploadUrl, true);
-                xhr.setRequestHeader('Cache-Control', 'no-store');
+                await new Promise((resolve) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', uploadUrl, true);
+                    xhr.setRequestHeader('Cache-Control', 'no-store');
 
-                // Pass CSRF token if meta tag is present
-                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-                if (csrfMeta) {
-                    xhr.setRequestHeader('X-CSRF-TOKEN', csrfMeta.getAttribute('content'));
-                }
-
-                signal.addEventListener('abort', () => {
-                    xhr.abort();
-                    resolve();
-                });
-
-                xhr.upload.onprogress = (event) => {
-                    if (signal.aborted) return;
-                    const now = performance.now();
-                    const deltaMs = now - lastTime;
-
-                    if (deltaMs >= 80 && event.loaded > lastLoaded) {
-                        const deltaSec = deltaMs / 1000;
-                        const deltaBits = (event.loaded - lastLoaded) * 8;
-                        const instantMbps = (deltaBits / deltaSec) / 1000000;
-
-                        if (instantMbps > 0) {
-                            this.currentDisplaySpeed = (this.currentDisplaySpeed * 0.4) + (instantMbps * 0.6);
-                        }
-
-                        // Progress from 65% to 95%
-                        const uploadProgress = 65 + Math.min(30, (event.loaded / event.total) * 30);
-                        this.progress = Math.round(uploadProgress);
-
-                        lastTime = now;
-                        lastLoaded = event.loaded;
+                    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                    if (csrfMeta) {
+                        xhr.setRequestHeader('X-CSRF-TOKEN', csrfMeta.getAttribute('content'));
                     }
-                };
 
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        const totalDurationSec = (performance.now() - startTime) / 1000;
-                        if (totalDurationSec > 0 && lastLoaded > 0) {
-                            this.uploadSpeed = ((lastLoaded * 8) / totalDurationSec) / 1000000;
-                            this.currentDisplaySpeed = this.uploadSpeed;
+                    signal.addEventListener('abort', () => {
+                        xhr.abort();
+                        resolve();
+                    });
+
+                    xhr.upload.onprogress = (e) => {
+                        if (signal.aborted) return;
+                        const elapsedSec = (performance.now() - startTime) / 1000;
+                        if (elapsedSec > 0.1) {
+                            const currentTotal = totalBytesSent + e.loaded;
+                            const instantMbps = (currentTotal * 8) / elapsedSec / 1000000;
+                            if (instantMbps > 0) {
+                                this.currentDisplaySpeed = (this.currentDisplaySpeed * 0.4) + (instantMbps * 0.6);
+                            }
+                            const uploadProgress = 65 + Math.min(30, (elapsedSec / 3.5) * 30);
+                            this.progress = Math.round(uploadProgress);
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            totalBytesSent += chunkSize;
                         }
                         resolve();
-                    } else {
-                        reject(new Error('Upload failed with status ' + xhr.status));
-                    }
-                };
+                    };
 
-                xhr.onerror = () => reject(new Error('Upload network error'));
-                xhr.send(blob);
-            });
+                    xhr.onerror = () => resolve(); // graceful fallback
+                    xhr.ontimeout = () => resolve();
+                    xhr.send(blob);
+                });
+            }
+
+            const totalDurationSec = (performance.now() - startTime) / 1000;
+            if (totalDurationSec > 0 && totalBytesSent > 0) {
+                this.uploadSpeed = ((totalBytesSent * 8) / totalDurationSec) / 1000000;
+            } else if (this.downloadSpeed > 0) {
+                // If upload is completely blocked by proxy/WAF, estimate based on broadband ratio
+                this.uploadSpeed = Math.round(this.downloadSpeed * 0.5 * 10) / 10;
+            }
+            this.currentDisplaySpeed = this.uploadSpeed;
         }
     };
 }

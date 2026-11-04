@@ -310,7 +310,9 @@
         <!-- Navigation Links (Desktop) -->
         <nav class="hidden md:flex items-center gap-5 text-sm font-semibold">
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#keunggulan">Keunggulan</a>
-            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded flex items-center gap-1" href="#speedtest">
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded flex items-center gap-1 cursor-pointer" 
+               href="#speedtest" 
+               @click="window.dispatchEvent(new CustomEvent('open-speedtest'))">
                 <span class="material-symbols-outlined text-[16px] text-cyan-500">speed</span>
                 Speedtest
             </a>
@@ -362,7 +364,7 @@
     <div x-show="mobileMenuOpen" x-collapse x-cloak class="md:hidden bg-white dark:bg-surface-container-high border-t border-slate-200 dark:border-white/10 px-margin-mobile py-4 shadow-xl">
         <div class="flex flex-col gap-3 text-sm font-semibold">
             <a href="#keunggulan" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Keunggulan</a>
-            <a href="#speedtest" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1 flex items-center gap-1.5 text-cyan-600 dark:text-primary">
+            <a href="#speedtest" @click="mobileMenuOpen = false; window.dispatchEvent(new CustomEvent('open-speedtest'))" class="text-slate-700 dark:text-on-surface py-1 flex items-center gap-1.5 text-cyan-600 dark:text-primary">
                 <span class="material-symbols-outlined text-[18px]">speed</span>
                 Speedtest
             </a>
