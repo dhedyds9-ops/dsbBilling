@@ -38,7 +38,6 @@ class SpeedtestController extends Controller
 
         return response()->stream(function () use ($size, $chunk, $chunkSize) {
             $sent = 0;
-            // Prevent script timing out during high throughput / slow client
             @set_time_limit(60);
 
             while ($sent < $size) {
@@ -55,7 +54,6 @@ class SpeedtestController extends Controller
                 }
                 @flush();
 
-                // If connection aborted, break early
                 if (connection_aborted()) {
                     break;
                 }
@@ -99,7 +97,7 @@ class SpeedtestController extends Controller
     }
 
     /**
-     * Get client IP, ISP, and local server info.
+     * Get client IP, accurate ISP, and local server info.
      */
     public function info(Request $request)
     {
@@ -126,13 +124,14 @@ class SpeedtestController extends Controller
         ) === false;
 
         $clientIsp = null;
+        $clientAsn = null;
         $clientCity = null;
 
         if (!$isPrivate) {
             try {
                 $geo = Cache::remember('ip_isp_' . $clientIp, 86400, function () use ($clientIp) {
                     $ctx = stream_context_create(['http' => ['timeout' => 2]]);
-                    $res = @file_get_contents("http://ip-api.com/json/{$clientIp}?fields=status,isp,org,as,city", false, $ctx);
+                    $res = @file_get_contents("http://ip-api.com/json/{$clientIp}?fields=status,isp,org,as,asname,city", false, $ctx);
                     if ($res) {
                         $json = json_decode($res, true);
                         if (($json['status'] ?? '') === 'success') {
@@ -141,9 +140,45 @@ class SpeedtestController extends Controller
                     }
                     return null;
                 });
+
                 if ($geo) {
-                    $clientIsp = $geo['isp'] ?? ($geo['org'] ?? null);
+                    $isGeneric = function (?string $str): bool {
+                        if (empty($str)) return true;
+                        $lower = strtolower(trim($str));
+                        return str_contains($lower, 'network information center') ||
+                               str_contains($lower, 'idnic') ||
+                               str_contains($lower, 'apnic') ||
+                               str_contains($lower, 'iana') ||
+                               str_contains($lower, 'apjii') ||
+                               str_contains($lower, 'registry') ||
+                               str_starts_with($lower, 'komplek') ||
+                               str_starts_with($lower, 'jl.') ||
+                               str_starts_with($lower, 'jalan') ||
+                               str_starts_with($lower, 'rt ') ||
+                               str_starts_with($lower, 'rw ');
+                    };
+
+                    $name = null;
+                    if (!$isGeneric($geo['org'] ?? null)) {
+                        $name = $geo['org'];
+                    } elseif (!$isGeneric($geo['isp'] ?? null)) {
+                        $name = $geo['isp'];
+                    } elseif (!empty($geo['as'])) {
+                        $asClean = preg_replace('/^AS\d+\s+/i', '', $geo['as']);
+                        if (!$isGeneric($asClean)) {
+                            $name = $asClean;
+                        }
+                    }
+
+                    if (empty($name)) {
+                        $name = $geo['org'] ?? ($geo['isp'] ?? null);
+                    }
+
+                    $clientIsp = $name;
                     $clientCity = $geo['city'] ?? null;
+                    if (!empty($geo['as']) && preg_match('/^(AS\d+)/i', $geo['as'], $m)) {
+                        $clientAsn = strtoupper($m[1]);
+                    }
                 }
             } catch (\Throwable $e) {
                 // Silently fallback to browser resolution
@@ -154,6 +189,7 @@ class SpeedtestController extends Controller
             'client_ip' => $clientIp,
             'is_private_ip' => $isPrivate,
             'client_isp' => $clientIsp,
+            'client_asn' => $clientAsn,
             'client_city' => $clientCity,
             'server_name' => $companyName . ' Edge Node',
             'server_location' => $companyCity,

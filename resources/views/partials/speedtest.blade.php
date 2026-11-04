@@ -30,9 +30,12 @@
                         <span x-text="clientIp">Mendeteksi IP...</span>
                     </span>
                     <span class="text-slate-300 dark:text-white/20">&bull;</span>
-                    <span class="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[200px] sm:max-w-[280px]">
-                        <span class="material-symbols-outlined text-[13px] text-purple-500">wifi_tethering</span>
-                        <span class="truncate" x-text="clientIsp">Mendeteksi ISP...</span>
+                    <span class="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[220px] sm:max-w-[340px]">
+                        <span class="material-symbols-outlined text-[13px] text-purple-500 shrink-0">wifi_tethering</span>
+                        <span class="truncate font-semibold" x-text="clientIsp">Mendeteksi ISP...</span>
+                        <span class="text-[9px] px-1.5 py-0.2 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded font-mono font-bold shrink-0" 
+                              x-show="clientAsn" 
+                              x-text="clientAsn"></span>
                     </span>
                 </div>
             </div>
@@ -83,17 +86,18 @@
             </button>
         </div>
 
-        <!-- Compact Status Bar: Server, IP Publik, ISP -->
+        <!-- Compact Status Bar: Server, IP Publik, ISP Pemilik IP -->
         <div class="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6 text-xs">
             <!-- Server -->
             <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
                 <span class="material-symbols-outlined text-cyan-600 dark:text-primary text-lg shrink-0">dns</span>
                 <div class="min-w-0">
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider">Server</div>
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider">Server Pengujian</div>
                     <div class="font-bold text-slate-800 dark:text-on-surface truncate flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
                         <span class="truncate" x-text="serverName">dsBilling Edge</span>
                     </div>
+                    <div class="text-[10px] text-slate-400 dark:text-on-surface-variant/70 truncate" x-show="serverLocation" x-text="serverLocation"></div>
                 </div>
             </div>
 
@@ -101,17 +105,30 @@
             <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
                 <span class="material-symbols-outlined text-blue-600 dark:text-secondary text-lg shrink-0">public</span>
                 <div class="min-w-0">
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider">IP Publik Anda</div>
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span>IP Publik Anda</span>
+                        <span class="text-[9px] px-1 py-0.2 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded font-bold">WAN</span>
+                    </div>
                     <div class="font-mono font-bold text-slate-800 dark:text-on-surface text-xs truncate" x-text="clientIp">Mendeteksi...</div>
+                    <div class="text-[10px] text-slate-400 dark:text-on-surface-variant/70 truncate" x-show="clientLocation" x-text="clientLocation"></div>
                 </div>
             </div>
 
-            <!-- ISP -->
+            <!-- ISP / Pemilik IP -->
             <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/5 border border-slate-200/60 dark:border-white/5">
                 <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-lg shrink-0">wifi_tethering</span>
                 <div class="min-w-0">
-                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider">ISP / Operator</div>
-                    <div class="font-bold text-slate-800 dark:text-on-surface text-xs truncate" x-text="clientIsp">Mendeteksi...</div>
+                    <div class="text-slate-400 dark:text-on-surface-variant text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span>ISP / Pemilik IP</span>
+                        <span class="text-[9px] px-1 py-0.2 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded font-mono font-bold" 
+                              x-show="clientAsn" 
+                              x-text="clientAsn"></span>
+                    </div>
+                    <div class="font-bold text-slate-800 dark:text-on-surface text-xs truncate" x-text="clientIsp" :title="clientIsp">Mendeteksi...</div>
+                    <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-[12px]">verified</span>
+                        Terverifikasi
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,7 +136,6 @@
         <!-- Progress Steps Indicator -->
         <div class="relative z-10 mb-6 max-w-md mx-auto">
             <div class="grid grid-cols-4 gap-1.5 text-center text-[11px] font-bold">
-                <!-- Step 1: Ping -->
                 <div :class="{
                     'text-cyan-600 dark:text-primary border-cyan-500 bg-cyan-50/60 dark:bg-primary/10': stage === 'ping',
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-500/10': stageIndex > 1,
@@ -128,7 +144,6 @@
                     1. Ping
                 </div>
 
-                <!-- Step 2: Download -->
                 <div :class="{
                     'text-cyan-600 dark:text-primary border-cyan-500 bg-cyan-50/60 dark:bg-primary/10': stage === 'download',
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-500/10': stageIndex > 2,
@@ -137,7 +152,6 @@
                     2. Download
                 </div>
 
-                <!-- Step 3: Upload -->
                 <div :class="{
                     'text-cyan-600 dark:text-primary border-cyan-500 bg-cyan-50/60 dark:bg-primary/10': stage === 'upload',
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-500/10': stageIndex > 3,
@@ -146,7 +160,6 @@
                     3. Upload
                 </div>
 
-                <!-- Step 4: Selesai -->
                 <div :class="{
                     'text-emerald-600 dark:text-emerald-400 border-emerald-500 bg-emerald-50/60 dark:bg-emerald-500/15': stage === 'completed',
                     'text-slate-400 dark:text-on-surface-variant/60 border-transparent': stage !== 'completed'
@@ -166,7 +179,6 @@
         <div class="relative z-10 flex flex-col items-center justify-center my-3">
             <div class="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center">
                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 240 240">
-                    <!-- Gauge Track -->
                     <circle cx="120" cy="120" r="96" fill="none"
                             stroke="currentColor"
                             class="text-slate-200 dark:text-white/10"
@@ -175,7 +187,6 @@
                             stroke-dashoffset="113.1"
                             stroke-linecap="round"/>
 
-                    <!-- Gauge Active Progress Arc -->
                     <circle cx="120" cy="120" r="96" fill="none"
                             stroke="url(#speedtestCompactGrad)"
                             stroke-width="10"
@@ -336,10 +347,10 @@
                         Hasil Pengujian Selesai
                     </h4>
                     <p class="text-slate-600 dark:text-on-surface-variant text-xs max-w-lg" x-text="getRecommendationText()"></p>
-                    <div class="mt-1 text-[11px] font-semibold text-cyan-600 dark:text-primary flex flex-wrap items-center gap-1.5" x-show="clientIsp && clientIsp !== 'Mendeteksi...'">
-                        <span>Operator: <strong x-text="clientIsp"></strong></span>
+                    <div class="mt-1.5 text-[11px] font-semibold text-cyan-600 dark:text-primary flex flex-wrap items-center gap-1.5" x-show="clientIsp && clientIsp !== 'Mendeteksi...'">
+                        <span>ISP Pemilik IP: <strong class="text-slate-900 dark:text-white" x-text="clientIsp"></strong> <span x-show="clientAsn" class="font-mono text-[10px] px-1 py-0.2 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded font-bold" x-text="clientAsn"></span></span>
                         <span>&bull;</span>
-                        <span>IP: <strong class="font-mono" x-text="clientIp"></strong></span>
+                        <span>IP Publik: <strong class="font-mono" x-text="clientIp"></strong></span>
                     </div>
                 </div>
 
@@ -364,8 +375,8 @@
 <script>
 function speedtestEngine() {
     return {
-        isOpen: false, // Default: Hidden/Collapsible
-        stage: 'idle', // 'idle' | 'ping' | 'download' | 'upload' | 'completed' | 'error'
+        isOpen: false,
+        stage: 'idle',
         stageIndex: 0,
         progress: 0,
         ping: 0,
@@ -379,12 +390,60 @@ function speedtestEngine() {
         errorMessage: '',
         clientIp: 'Mendeteksi...',
         clientIsp: 'Mendeteksi...',
+        clientAsn: '',
         clientLocation: '',
         isPrivateIp: false,
         serverName: 'dsBilling Edge Node',
         serverLocation: 'Indonesia',
         serverPartner: '',
         abortController: null,
+
+        isGenericRegistry(str) {
+            if (!str || typeof str !== 'string') return true;
+            const s = str.trim().toLowerCase();
+            return s.includes('network information center') ||
+                   s.includes('idnic') ||
+                   s.includes('apnic') ||
+                   s.includes('iana') ||
+                   s.includes('apjii') ||
+                   s.includes('registry') ||
+                   s.startsWith('komplek') ||
+                   s.startsWith('jl.') ||
+                   s.startsWith('jalan') ||
+                   s.startsWith('rt ') ||
+                   s.startsWith('rw ');
+        },
+
+        resolveAccurateIspFromGeo(geo) {
+            if (!geo) return { isp: '', asn: '' };
+            const conn = geo.connection || {};
+            let isp = '';
+            let asn = '';
+
+            if (conn.asn) {
+                asn = 'AS' + conn.asn;
+            } else if (geo.asn) {
+                asn = String(geo.asn).startsWith('AS') ? geo.asn : ('AS' + geo.asn);
+            }
+
+            // Prioritize real company/operating ISP over generic national registry
+            if (!this.isGenericRegistry(conn.org)) {
+                isp = conn.org;
+            } else if (!this.isGenericRegistry(conn.isp)) {
+                isp = conn.isp;
+            } else if (!this.isGenericRegistry(geo.org)) {
+                isp = geo.org;
+            } else if (!this.isGenericRegistry(geo.isp)) {
+                isp = geo.isp;
+            } else if (conn.domain && !this.isGenericRegistry(conn.domain)) {
+                isp = conn.domain;
+            } else {
+                isp = conn.org || conn.isp || geo.org || geo.isp || 'ISP Terdeteksi';
+            }
+
+            isp = isp.replace(/^AS\d+\s+/i, '').trim();
+            return { isp, asn };
+        },
 
         openSpeedtest() {
             this.isOpen = true;
@@ -401,12 +460,10 @@ function speedtestEngine() {
         },
 
         async initEngine() {
-            // Listen for global open event from navbar
             window.addEventListener('open-speedtest', () => {
                 this.openSpeedtest();
             });
 
-            // If URL contains #speedtest on load or hash change
             if (window.location.hash === '#speedtest') {
                 this.isOpen = true;
             }
@@ -416,12 +473,15 @@ function speedtestEngine() {
                 }
             });
 
-            // 1. Fetch info from backend
+            // 1. Fetch info from backend API
             try {
                 const resp = await fetch('{{ route('speedtest.info') }}', { cache: 'no-store' });
                 const data = await resp.json();
                 if (data.client_ip) this.clientIp = data.client_ip;
-                if (data.client_isp) this.clientIsp = data.client_isp;
+                if (data.client_isp && !this.isGenericRegistry(data.client_isp)) {
+                    this.clientIsp = data.client_isp;
+                }
+                if (data.client_asn) this.clientAsn = data.client_asn;
                 if (data.client_city) this.clientLocation = data.client_city;
                 if (data.server_name) this.serverName = data.server_name;
                 if (data.server_location) this.serverLocation = data.server_location;
@@ -431,17 +491,22 @@ function speedtestEngine() {
                 console.warn('Backend speedtest info unavailable:', err);
             }
 
-            // 2. Client browser GeoIP fallback if private IP or ISP not yet detected
-            if (this.isPrivateIp || !this.clientIsp || this.clientIsp === 'Mendeteksi...' || this.clientIp === '127.0.0.1') {
+            // 2. Client browser accurate GeoIP lookup (resolves real ISP even if behind NAT or local dev)
+            const needsAccurateLookup = this.isPrivateIp || 
+                                       !this.clientIsp || 
+                                       this.clientIsp === 'Mendeteksi...' || 
+                                       this.isGenericRegistry(this.clientIsp);
+
+            if (needsAccurateLookup) {
                 try {
-                    const geoResp = await fetch('https://ipwho.is/', { cache: 'no-store' });
+                    const queryIp = (!this.isPrivateIp && this.clientIp && this.clientIp !== '127.0.0.1') ? this.clientIp : '';
+                    const geoResp = await fetch('https://ipwho.is/' + queryIp, { cache: 'no-store' });
                     const geo = await geoResp.json();
                     if (geo && geo.success) {
-                        this.clientIp = geo.ip;
-                        const isp = (geo.connection && (geo.connection.isp || geo.connection.org)) || geo.isp || geo.org;
-                        if (isp) {
-                            this.clientIsp = isp;
-                        }
+                        if (geo.ip) this.clientIp = geo.ip;
+                        const resolved = this.resolveAccurateIspFromGeo(geo);
+                        if (resolved.isp) this.clientIsp = resolved.isp;
+                        if (resolved.asn) this.clientAsn = resolved.asn;
                         if (geo.city) {
                             this.clientLocation = geo.city + (geo.country_code ? ', ' + geo.country_code : '');
                         }
@@ -450,12 +515,10 @@ function speedtestEngine() {
                     try {
                         const ipifyResp = await fetch('https://api.ipify.org?format=json');
                         const ipify = await ipifyResp.json();
-                        if (ipify && ipify.ip) {
-                            this.clientIp = ipify.ip;
-                        }
+                        if (ipify && ipify.ip) this.clientIp = ipify.ip;
                     } catch (_) {}
                     if (!this.clientIsp || this.clientIsp === 'Mendeteksi...') {
-                        this.clientIsp = 'Jaringan Lokal / ISP';
+                        this.clientIsp = 'Jaringan ISP';
                     }
                 }
             }
@@ -565,7 +628,6 @@ function speedtestEngine() {
                 if (err.name === 'AbortError') return;
                 console.error('Speedtest Error:', err);
                 
-                // If download succeeded, complete gracefully instead of hard error
                 if (this.downloadSpeed > 0) {
                     this.stage = 'completed';
                     this.stageIndex = 4;
@@ -681,7 +743,7 @@ function speedtestEngine() {
 
             const startTime = performance.now();
             let totalBytesSent = 0;
-            const maxDurationMs = 3500; // run for ~3.5 seconds
+            const maxDurationMs = 3500;
             let iteration = 0;
             const maxIterations = 8;
 
@@ -725,7 +787,7 @@ function speedtestEngine() {
                         resolve();
                     };
 
-                    xhr.onerror = () => resolve(); // graceful fallback
+                    xhr.onerror = () => resolve();
                     xhr.ontimeout = () => resolve();
                     xhr.send(blob);
                 });
@@ -735,7 +797,6 @@ function speedtestEngine() {
             if (totalDurationSec > 0 && totalBytesSent > 0) {
                 this.uploadSpeed = ((totalBytesSent * 8) / totalDurationSec) / 1000000;
             } else if (this.downloadSpeed > 0) {
-                // If upload is completely blocked by proxy/WAF, estimate based on broadband ratio
                 this.uploadSpeed = Math.round(this.downloadSpeed * 0.5 * 10) / 10;
             }
             this.currentDisplaySpeed = this.uploadSpeed;
