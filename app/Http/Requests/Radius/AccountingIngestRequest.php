@@ -48,6 +48,10 @@ class AccountingIngestRequest extends FormRequest
     public function normalized(): array
     {
         $data = $this->validated();
+        $data['acct_session_id'] ??= $data['session_id'] ?? $this->input('session_id') ?? $this->input('Acct-Session-Id');
+        $data['acct_status_type'] ??= $data['status_type'] ?? $this->input('status_type') ?? $this->input('Acct-Status-Type');
+        $data['acct_input_octets'] = isset($data['acct_input_octets']) && $data['acct_input_octets'] !== '' ? (int)$data['acct_input_octets'] : (int)($this->input('input_octets') ?? 0);
+        $data['acct_output_octets'] = isset($data['acct_output_octets']) && $data['acct_output_octets'] !== '' ? (int)$data['acct_output_octets'] : (int)($this->input('output_octets') ?? 0);
         $data['nas_ip_address'] ??= $this->attributes->get('radius_nas')?->nas_ip_address ?? $this->ip();
         $data['raw_payload'] = $data['raw_payload'] ?? $this->except(['raw_payload', 'signature', 'message_authenticator']);
         return $data;
