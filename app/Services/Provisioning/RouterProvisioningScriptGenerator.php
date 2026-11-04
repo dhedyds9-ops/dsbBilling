@@ -51,6 +51,11 @@ class RouterProvisioningScriptGenerator
         $lines[] = "# Router: " . $router->name;
         $lines[] = "";
 
+        // 0. Anti-duplikasi pembersihan aturan lama
+        $lines[] = ":do { /radius remove [find comment~\"dsbilling\"] } on-error={}";
+        $lines[] = ":do { /ip firewall nat remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
+        $lines[] = ":do { /ip firewall address-list remove [find list=\"ISOLIR_WHITELIST\"] } on-error={}";
+        $lines[] = "";
         // 1. API User Creation
         $apiUsername = $router->username ?? 'api.dsb.' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $router->name));
         $apiPassword = $router->password ?? Str::random(16);
