@@ -20,6 +20,7 @@ class VerifyLicense
             'build/*',
             'api/*',
             'up',
+            'ping-session',
             'livewire/*',
         ];
 

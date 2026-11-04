@@ -161,6 +161,53 @@
     @livewireScripts
     @stack('scripts')
 
+    <!-- Session Keep-Alive & Auto-Refresh Token to Prevent 419 Page Expired -->
+    <script>
+        (function() {
+            function pingSession() {
+                fetch('{{ route('session.ping') }}', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data && data.csrf) {
+                        var meta = document.querySelector('meta[name="csrf-token"]');
+                        if (meta) meta.setAttribute('content', data.csrf);
+                    }
+                })
+                .catch(function(err) {
+                    // Silent fail if network momentarily disconnected
+                });
+            }
+
+            // Ping session every 5 minutes while tab is open
+            setInterval(pingSession, 5 * 60 * 1000);
+
+            // Ping immediately when user switches back to this tab
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    pingSession();
+                }
+            });
+
+            // Graceful 419 Handling for Livewire
+            document.addEventListener('livewire:init', function() {
+                if (window.Livewire && window.Livewire.hook) {
+                    window.Livewire.hook('request', function(ctx) {
+                        if (ctx && ctx.fail) {
+                            ctx.fail(function(payload) {
+                                if (payload && payload.status === 419) {
+                                    // Refresh token immediately
+                                    pingSession();
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        })();
+    </script>
+
     <!-- Protect Material Symbols from Google Translate -->
     <script>
         function protectIcons() {

@@ -39,6 +39,13 @@ Route::get('/', function () {
     return view('landing', compact('packagesPppoe', 'packagesHotspot', 'packagesVoucher'));
 })->name('home');
 Route::get('/coming-soon', fn() => view('coming-soon'))->name('coming-soon');
+Route::get('/ping-session', function () {
+    return response()->json([
+        'status' => 'ok',
+        'csrf' => csrf_token(),
+        'timestamp' => now()->timestamp,
+    ]);
+})->name('session.ping');
 
 // ==================== LEGAL & COMPLIANCE PAGES (PAYMENT GATEWAY COMPLIANCE) ====================
 Route::get('/terms', fn() => view('legal.terms'))->name('legal.terms');

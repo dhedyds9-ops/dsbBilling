@@ -78,8 +78,10 @@ class Create extends AdminComponent
         ]);
     }
 
-    public function save(ProvisioningService $provisioningService)
+    public function save(?ProvisioningService $provisioningService = null)
     {
+        $provisioningService = $provisioningService ?? app(ProvisioningService::class);
+
         if ($this->login_method === 'username_only') {
             $this->password = $this->username;
         }
