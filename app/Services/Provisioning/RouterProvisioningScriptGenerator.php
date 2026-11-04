@@ -66,6 +66,8 @@ class RouterProvisioningScriptGenerator
         $lines[] = ":do { /radius remove [find comment~\"dsbilling\"] } on-error={}";
         $lines[] = ":do { /user remove [find comment~\"dsbilling\"] } on-error={}";
         $lines[] = ":do { /user group remove [find comment~\"dsbilling\"] } on-error={}";
+        $lines[] = ":do { /ip firewall filter remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
+        $lines[] = ":do { /ip firewall filter remove [find comment~\"dsBilling\"] } on-error={}";
         $lines[] = ":do { /ip firewall nat remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
         $lines[] = ":do { /ip firewall address-list remove [find list=\"ISOLIR_WHITELIST\"] } on-error={}";
         $lines[] = "";
