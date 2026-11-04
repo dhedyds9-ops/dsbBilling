@@ -7,8 +7,11 @@ use Src\Domain\Workforce\ValueObjects\GPSCoordinate;
 
 class GoogleMapsAdapter implements MapsAdapterInterface
 {
-    public function __construct(protected string $apiKey)
+    protected string $apiKey;
+
+    public function __construct(?string $apiKey = null)
     {
+        $this->apiKey = (string) ($apiKey ?? config('services.google.maps.key') ?? '');
     }
 
     public function getDistance(GPSCoordinate $start, GPSCoordinate $end): float

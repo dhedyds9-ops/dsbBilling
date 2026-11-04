@@ -48,7 +48,7 @@ class InfrastructureServiceProvider extends ServiceProvider
         }
 
         $this->app->singleton(GoogleMapsDriver::class, function ($app) {
-            return new GoogleMapsDriver(config('services.google.maps.key', ''));
+            return new GoogleMapsDriver((string) (config('services.google.maps.key') ?? ''));
         });
 
         $this->app->singleton(OpenStreetMapDriver::class, function () {

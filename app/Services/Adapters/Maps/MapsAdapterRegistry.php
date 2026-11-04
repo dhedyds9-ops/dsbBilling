@@ -7,8 +7,9 @@ class MapsAdapterRegistry
     protected array $adapters = [];
 
     public function __construct() {
+        $googleKey = (string) (config('services.google.maps.key') ?? '');
         $this->adapters = [
-            'google' => new GoogleMapsAdapter(config('services.google.maps.key', '')),
+            'google' => new GoogleMapsAdapter($googleKey),
             'osm' => new OpenStreetMapAdapter(),
         ];
     }
