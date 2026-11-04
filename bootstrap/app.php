@@ -16,6 +16,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\VerifyLicense::class,
         ]);
+        $middleware->validateCsrfTokens(except: [
+            'speedtest/*',
+        ]);
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'job_function' => \App\Http\Middleware\JobFunctionMiddleware::class,

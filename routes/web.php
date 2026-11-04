@@ -48,6 +48,14 @@ Route::get('/about', fn() => view('legal.about'))->name('legal.about');
 Route::get('/contact', fn() => view('legal.contact'))->name('legal.contact');
 Route::get('/faq', fn() => redirect('/#faq'))->name('legal.faq');
 
+// ==================== SPEEDTEST ENDPOINTS ====================
+Route::prefix('speedtest')->group(function () {
+    Route::get('/ping', [\App\Http\Controllers\SpeedtestController::class, 'ping'])->name('speedtest.ping');
+    Route::get('/download', [\App\Http\Controllers\SpeedtestController::class, 'download'])->name('speedtest.download');
+    Route::post('/upload', [\App\Http\Controllers\SpeedtestController::class, 'upload'])->name('speedtest.upload');
+    Route::get('/info', [\App\Http\Controllers\SpeedtestController::class, 'info'])->name('speedtest.info');
+});
+
 Route::get('/payment', [\App\Http\Controllers\GuestPaymentController::class, 'index'])->name('guest.payment');
 Route::post('/payment/checkout', [\App\Http\Controllers\GuestPaymentController::class, 'checkout'])->name('guest.payment.checkout');
 Route::post('/payment/reset', [\App\Http\Controllers\GuestPaymentController::class, 'resetSession'])->name('guest.payment.reset');

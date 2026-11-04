@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="csrf-token" content="{{ csrf_token() }}"/>
     <title>{{ config('app.name', 'dsBilling') }} - Reliable Fiber Optic Connection</title>
 
     <script>
@@ -309,6 +310,10 @@
         <!-- Navigation Links (Desktop) -->
         <nav class="hidden md:flex items-center gap-5 text-sm font-semibold">
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#keunggulan">Keunggulan</a>
+            <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded flex items-center gap-1" href="#speedtest">
+                <span class="material-symbols-outlined text-[16px] text-cyan-500">speed</span>
+                Speedtest
+            </a>
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#paket">Paket Internet</a>
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#hotspot">Hotspot</a>
             <a class="text-slate-600 dark:text-on-surface-variant hover:text-cyan-600 dark:hover:text-primary transition-colors py-1 px-2 rounded" href="#pembayaran">Pembayaran</a>
@@ -357,6 +362,10 @@
     <div x-show="mobileMenuOpen" x-collapse x-cloak class="md:hidden bg-white dark:bg-surface-container-high border-t border-slate-200 dark:border-white/10 px-margin-mobile py-4 shadow-xl">
         <div class="flex flex-col gap-3 text-sm font-semibold">
             <a href="#keunggulan" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Keunggulan</a>
+            <a href="#speedtest" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1 flex items-center gap-1.5 text-cyan-600 dark:text-primary">
+                <span class="material-symbols-outlined text-[18px]">speed</span>
+                Speedtest
+            </a>
             <a href="#paket" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Paket Internet</a>
             <a href="#hotspot" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Hotspot</a>
             <a href="#pembayaran" @click="mobileMenuOpen = false" class="text-slate-700 dark:text-on-surface py-1">Metode Pembayaran</a>
@@ -476,6 +485,9 @@
             </div>
         </div>
     </section>
+
+    <!-- Speedtest Section -->
+    @include('partials.speedtest')
 
     <!-- Internet Packages -->
     @if($showPppoe->isNotEmpty())
