@@ -101,8 +101,16 @@ class VerifyNasSecret
 
         $matchedTenant = null;
 
+        // 0. Deteksi langsung dari domain / realm username (contoh: user@winets)
+        if ($username !== '' && str_contains($username, '@')) {
+            $domainPart = strtolower(trim(explode('@', $username)[1]));
+            if (file_exists($tenantsDir . '/' . $domainPart . '.sqlite')) {
+                $matchedTenant = $domainPart;
+            }
+        }
+
         // If only 1 tenant exists, select it directly
-        if (count($sqliteFiles) === 1) {
+        if (!$matchedTenant && count($sqliteFiles) === 1) {
             $matchedTenant = basename($sqliteFiles[0], '.sqlite');
         } else {
             // 1. Prioritaskan pencarian berdasarkan username / voucher code
