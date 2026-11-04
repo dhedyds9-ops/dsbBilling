@@ -870,41 +870,92 @@
                         <span class="material-symbols-outlined notranslate" translate="no">close</span>
                     </button>
                 </div>
-                <div class="px-6 py-6">
-                    <div class="mb-4">
-                        <p class="text-sm text-slate-600 dark:text-slate-300">
-                            Jalankan perintah ini di Terminal (New Terminal) pada router Mikrotik Anda. Skrip ini akan secara otomatis mengunduh konfigurasi API dan Radius dari dsBilling dan menerapkannya ke router.
+                <div class="p-4 space-y-4">
+                    <!-- Tab Selector -->
+                    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                        <button type="button" wire:click="$set('modalTab', 'oneline')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer {{ $modalTab === 'oneline' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200' }}">
+                            1. One-Line Fetch &amp; Import
+                        </button>
+                        <button type="button" wire:click="$set('modalTab', 'manual')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer {{ $modalTab === 'manual' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200' }}">
+                            2. Skrip Manual (Terminal WinBox)
+                        </button>
+                    </div>
+
+                    @if($modalTab === 'oneline')
+                    <div class="space-y-3">
+                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Jalankan perintah ini di WinBox &gt; <strong>New Terminal</strong> pada router MikroTik Anda. Skrip ini akan secara otomatis mengunduh konfigurasi API dan Radius dari dsBilling dan menerapkannya ke router.
                         </p>
-                        <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
                             <p class="text-xs text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
                                 <span class="material-symbols-outlined notranslate text-[16px]" translate="no">warning</span>
                                 Token ini hanya berlaku 1 kali dan kedaluwarsa dalam {{ $provisioningExpires }}.
                             </p>
                         </div>
-                    </div>
-                    <div class="relative bg-slate-900 rounded-xl p-4 overflow-hidden border border-slate-700 group">
-                        <div class="flex items-center gap-2 mb-3 border-b border-slate-700 pb-2">
-                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
-                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span class="text-slate-400 text-xs font-mono ml-2">RouterOS Terminal</span>
+                        <div class="relative bg-slate-950 rounded-xl p-4 border border-slate-800 shadow-inner group">
+                            <div class="flex items-center gap-2 mb-2 border-b border-slate-800 pb-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                                <span class="text-slate-400 text-[11px] font-mono ml-2">RouterOS Terminal (One-Liner)</span>
+                            </div>
+                            <code class="text-emerald-400 text-xs font-mono break-all whitespace-pre-wrap select-all">/tool fetch url="{{ url('/api/v1/provision/router') }}" http-header-field="Authorization: Bearer {{ $provisioningToken }}" dst-path="provision.rsc"; /import provision.rsc; /file remove provision.rsc;</code>
+                            
+                            <div x-data="{ copied: false }" class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <button type="button" 
+                                        @click="window.copyToClipboard('/tool fetch url=\'{{ url('/api/v1/provision/router') }}\' http-header-field=\'Authorization: Bearer {{ $provisioningToken }}\' dst-path=\'provision.rsc\'; /import provision.rsc; /file remove provision.rsc;', 'Perintah provisioning berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
+                                        :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'"
+                                        class="px-3 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all duration-200" title="Salin Perintah">
+                                    <template x-if="!copied">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
+                                            Salin Perintah
+                                        </span>
+                                    </template>
+                                    <template x-if="copied">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">check</span>
+                                            Tersalin!
+                                        </span>
+                                    </template>
+                                </button>
+                            </div>
                         </div>
-                        <code class="text-emerald-400 text-sm font-mono break-all whitespace-pre-wrap select-all">/tool fetch url="{{ url('/api/v1/provision/router') }}" http-header-field="Authorization: Bearer {{ $provisioningToken }}" dst-path="provision.rsc"; /import provision.rsc; /file remove provision.rsc;</code>
-                        
-                        <div x-data="{ copied: false }" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button type="button" 
-                                    @click="window.copyToClipboard('/tool fetch url=\'{{ url('/api/v1/provision/router') }}\' http-header-field=\'Authorization: Bearer {{ $provisioningToken }}\' dst-path=\'provision.rsc\'; /import provision.rsc; /file remove provision.rsc;', 'Perintah provisioning berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
-                                    :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-600'"
-                                    class="p-2 rounded-lg shadow-sm border transition-all duration-200" title="Salin ke clipboard">
-                                <template x-if="!copied">
-                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">content_copy</span>
-                                </template>
-                                <template x-if="copied">
-                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">check</span>
-                                </template>
-                            </button>
+                    </div>
+                    @else
+                    <div class="space-y-3">
+                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Gunakan skrip manual di bawah jika router Anda belum memiliki akses internet atau DNS. Salin dan tempel langsung seluruh baris perintah berikut ke WinBox &gt; <strong>New Terminal</strong>.
+                        </p>
+                        <div class="relative bg-slate-950 rounded-xl p-4 border border-slate-800 shadow-inner group">
+                            <div class="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-800 pb-2 mb-2">
+                                <span>Perintah Terminal WinBox:</span>
+                                <span class="text-indigo-400 font-semibold">{{ $router->name }}</span>
+                            </div>
+                            <pre id="scriptCodeShow" class="text-emerald-400 text-xs font-mono whitespace-pre-wrap select-all overflow-x-auto max-h-60 leading-relaxed">{{ $provisioningRawScript }}</pre>
+                            
+                            <div x-data="{ copied: false }" class="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <button type="button" 
+                                        @click="window.copyToClipboard(document.getElementById('scriptCodeShow').innerText, 'Skrip manual berhasil disalin!'); copied = true; setTimeout(() => copied = false, 2500)" 
+                                        :class="copied ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'"
+                                        class="px-3 py-1.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all duration-200">
+                                    <template x-if="!copied">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">content_copy</span>
+                                            Salin Skrip
+                                        </span>
+                                    </template>
+                                    <template x-if="copied">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined notranslate text-[16px]" translate="no">check</span>
+                                            Tersalin!
+                                        </span>
+                                    </template>
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    @endif
                 </div>
                 <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
                     <button type="button" wire:click="closeProvisioningModal" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">

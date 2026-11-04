@@ -57,10 +57,11 @@ class RouterService extends NetworkInfrastructureService
         
         $radiusNas->nas_name = $router->name;
         $radiusNas->nas_ip_address = $router->ip_address;
-        $radiusNas->nas_secret = $router->radius_secret ?? 'radius_secret'; // Fallback if null
+        $radiusNas->nas_secret = $router->radius_secret ?? env('RADIUS_SECRET', 'dsBillingSecret123'); // Fallback if null
         $radiusNas->nas_type = 'mikrotik';
         $radiusNas->status = $router->status;
         $radiusNas->updated_by = $user->id;
         $radiusNas->save();
     }
 }
+

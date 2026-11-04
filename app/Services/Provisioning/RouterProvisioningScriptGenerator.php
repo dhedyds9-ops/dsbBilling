@@ -8,60 +8,73 @@ use Illuminate\Support\Str;
 
 class RouterProvisioningScriptGenerator
 {
-    public function generateScript(Router $router, string $uplinkInterface = 'ether1'): string
+    public function generateScript(Router $router, string $uplinkInterface = 'ether1', array $options = []): string
     {
         $appUrl = rtrim(config('app.url', 'http://127.0.0.1:8000'), '/');
-        // If appUrl is localhost, we need an accessible IP. For testing, we use $_SERVER['HTTP_HOST'] or a fallback.
         $rawHost = parse_url($appUrl, PHP_URL_HOST) ?? '127.0.0.1';
         $host = filter_var($rawHost, FILTER_VALIDATE_IP) ? $rawHost : gethostbyname($rawHost);
 
-        // Jika gethostbyname mengembalikan IP local (127.x.x.x akibat /etc/hosts pada VPS),
-        // ambil IP Public server yang sesungguhnya agar MikroTik bisa menghubungi RADIUS!
-        if (str_starts_with($host, '127.') || $host === '::1' || $host === 'localhost') {
-            try {
-                $dnsRecords = @dns_get_record($rawHost, DNS_A);
-                if (!empty($dnsRecords[0]['ip']) && !str_starts_with($dnsRecords[0]['ip'], '127.')) {
-                    $host = $dnsRecords[0]['ip'];
-                }
-            } catch (\Throwable $e) {}
-
-            if ((str_starts_with($host, '127.') || $host === 'localhost') && !empty($_SERVER['SERVER_ADDR']) && !str_starts_with($_SERVER['SERVER_ADDR'], '127.')) {
-                $host = $_SERVER['SERVER_ADDR'];
-            }
-
-            if (str_starts_with($host, '127.') || $host === 'localhost') {
-                $cachedIp = \Illuminate\Support\Facades\Cache::remember('server_public_ip', 86400, function() {
-                    try {
-                        $ctx = stream_context_create(['http' => ['timeout' => 2]]);
-                        $res = @file_get_contents('https://api.ipify.org', false, $ctx);
-                        return filter_var(trim($res), FILTER_VALIDATE_IP) ?: null;
-                    } catch (\Throwable $e) {
-                        return null;
+        // Check if options specify connection_mode or custom host
+        $isVpn = (!empty($options['connection_mode']) && $options['connection_mode'] === 'vpn');
+        
+        if ($isVpn) {
+            $host = '10.200.0.1';
+        } elseif (!empty($options['host'])) {
+            $host = filter_var($options['host'], FILTER_VALIDATE_IP) ? $options['host'] : gethostbyname($options['host']);
+        } else {
+            // Jika gethostbyname mengembalikan IP local (127.x.x.x akibat /etc/hosts pada VPS),
+            // ambil IP Public server yang sesungguhnya agar MikroTik bisa menghubungi RADIUS!
+            if (str_starts_with($host, '127.') || $host === '::1' || $host === 'localhost') {
+                try {
+                    $dnsRecords = @dns_get_record($rawHost, DNS_A);
+                    if (!empty($dnsRecords[0]['ip']) && !str_starts_with($dnsRecords[0]['ip'], '127.')) {
+                        $host = $dnsRecords[0]['ip'];
                     }
-                });
-                if ($cachedIp) {
-                    $host = $cachedIp;
+                } catch (\Throwable $e) {}
+
+                if ((str_starts_with($host, '127.') || $host === 'localhost') && !empty($_SERVER['SERVER_ADDR']) && !str_starts_with($_SERVER['SERVER_ADDR'], '127.')) {
+                    $host = $_SERVER['SERVER_ADDR'];
+                }
+
+                if (str_starts_with($host, '127.') || $host === 'localhost') {
+                    $cachedIp = \Illuminate\Support\Facades\Cache::remember('server_public_ip', 86400, function() {
+                        try {
+                            $ctx = stream_context_create(['http' => ['timeout' => 2]]);
+                            $res = @file_get_contents('https://api.ipify.org', false, $ctx);
+                            return filter_var(trim($res), FILTER_VALIDATE_IP) ?: null;
+                        } catch (\Throwable $e) {
+                            return null;
+                        }
+                    });
+                    if ($cachedIp) {
+                        $host = $cachedIp;
+                    }
                 }
             }
         }
         
         $lines = [];
-        $lines[] = "# dsBilling MikroTik Auto-Provisioning Script";
+        $lines[] = "# =================================================================";
+        $lines[] = "# dsBilling MikroTik Setup & Auto-Provisioning Script";
+        $lines[] = "# Router: " . ($router->name ?: 'MikroTik');
         $lines[] = "# Generated at: " . now()->toDateTimeString();
-        $lines[] = "# Router: " . $router->name;
+        $lines[] = "# Salin dan tempel perintah ini di: WinBox -> New Terminal";
+        $lines[] = "# =================================================================";
         $lines[] = "";
 
         // 0. Anti-duplikasi pembersihan aturan lama
         $lines[] = ":do { /radius remove [find comment~\"dsbilling\"] } on-error={}";
+        $lines[] = ":do { /user remove [find comment~\"dsbilling\"] } on-error={}";
+        $lines[] = ":do { /user group remove [find comment~\"dsbilling\"] } on-error={}";
         $lines[] = ":do { /ip firewall nat remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
         $lines[] = ":do { /ip firewall address-list remove [find list=\"ISOLIR_WHITELIST\"] } on-error={}";
         $lines[] = "";
+
         // 1. API User Creation
-        $apiUsername = $router->username ?? 'api.dsb.' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $router->name));
+        $apiUsername = $router->username ?? 'api.dsb.' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $router->name ?: 'router'));
         $apiPassword = $router->password ?? Str::random(16);
         
-        // Ensure router has these credentials saved (usually they are generated in the Create component, but just in case)
-        if ($router->username !== $apiUsername || $router->password !== $apiPassword) {
+        if ($router->exists && ($router->username !== $apiUsername || $router->password !== $apiPassword)) {
             $router->update([
                 'username' => $apiUsername,
                 'password' => $apiPassword,
@@ -74,11 +87,9 @@ class RouterProvisioningScriptGenerator
         $lines[] = "";
 
         // 2. RADIUS Client Configuration
-        // Router radius_secret is the source of truth
-        $radiusSecret = $router->radius_secret ?: (Router::withoutGlobalScopes()->whereNotNull('radius_secret')->value('radius_secret') ?: env('RADIUS_SECRET', 'dsBillingSecret123'));
-        if ($router->radius_secret !== $radiusSecret) {
+        $radiusSecret = env('RADIUS_SECRET', 'dsBillingSecret123');
+        if ($router->exists && $router->radius_secret !== $radiusSecret) {
             $router->update(['radius_secret' => $radiusSecret]);
-            // Sync to RadiusNas
             try {
                 $radiusNas = \App\Models\ISP\RadiusNas::withoutGlobalScopes()->firstOrCreate(
                     ['nas_ip_address' => $router->ip_address],
@@ -91,14 +102,8 @@ class RouterProvisioningScriptGenerator
                         'updated_by' => 1
                     ]
                 );
-            } catch (\Illuminate\Database\QueryException $e) {
-                if ($e->errorInfo[1] == 1062 || $e->errorInfo[1] == 19) {
-                    $radiusNas = \App\Models\ISP\RadiusNas::withoutGlobalScopes()->where('nas_ip_address', $router->ip_address)->firstOrFail();
-                } else {
-                    throw $e;
-                }
-            }
-            $radiusNas->update(['nas_secret' => $radiusSecret]);
+                $radiusNas->update(['nas_secret' => $radiusSecret]);
+            } catch (\Throwable $e) {}
         }
 
         $lines[] = ":do { /radius add address={$host} secret=\"{$radiusSecret}\" service=ppp,hotspot,login authentication-port=1812 accounting-port=1813 timeout=3000ms comment=\"managed-by=dsbilling\" } on-error={ /radius set [find comment~\"dsbilling\"] address={$host} secret=\"{$radiusSecret}\" service=ppp,hotspot,login authentication-port=1812 accounting-port=1813 timeout=3000ms }";
@@ -112,7 +117,7 @@ class RouterProvisioningScriptGenerator
         $lines[] = "";
 
         // 3. Network Profiles (VLANs and PPPoE Servers)
-        $profiles = NetworkProfile::where('router_id', $router->id)->get();
+        $profiles = $router->id ? NetworkProfile::where('router_id', $router->id)->get() : collect();
         
         foreach ($profiles as $profile) {
             if ($profile->vlan_id) {
@@ -123,8 +128,6 @@ class RouterProvisioningScriptGenerator
                     $serverName = "dsb-pppoe-{$profile->vlan_id}";
                     $lines[] = ":do { /interface pppoe-server server add name=\"{$serverName}\" interface=\"{$vlanName}\" service-name=\"{$serverName}\" authentication=pap,chap,mschap1,mschap2 one-session-per-host=yes default-profile=default comment=\"managed-by=dsbilling\" disabled=no } on-error={ :put \"PPPoE Server {$serverName} exists\" }";
                 } elseif ($profile->type === 'hotspot') {
-                    // Basic Hotspot bridge preparation (Actual Hotspot setup is complex and usually requires IP pool/DHCP)
-                    // We prepare the interface.
                     $lines[] = "# Hotspot interface {$vlanName} prepared.";
                 }
             }
@@ -132,53 +135,9 @@ class RouterProvisioningScriptGenerator
         
         $lines[] = "";
         
-        // 4. VPN Failover Configuration (HA Setup)
-        // Check if application has VPN servers configured in .env (e.g., DSB_VPN_SERVERS=ip1,ip2)
-        $vpnServersStr = env('DSB_VPN_SERVERS', '');
-        $vpnServers = array_filter(array_map('trim', explode(',', $vpnServersStr)));
-        
-        if (count($vpnServers) > 0) {
-            $vpnUsername = "dsb_" . ($router->code ?? strtolower(Str::slug($router->name, '')));
-            $vpnPassword = substr($radiusSecret, 0, 10); // Simple deterministic password
-            $vpnInternalTarget = env('DSB_VPN_RADIUS_IP', '172.31.1.216'); // The Radius IP inside the VPN
-            $vpnInternalSrc = $router->vpn_ip ?? '172.30.8.x';
-            
-            $lines[] = "# 4. VPN Failover Configuration (High Availability)";
-            $lines[] = ":do { /ppp profile add name=DSB-VPN use-encryption=yes change-tcp-mss=yes comment=\"managed-by=dsbilling\" } on-error={ :put \"VPN Profile exists\" }";
-            
-            foreach ($vpnServers as $index => $serverIp) {
-                $num = $index + 1;
-                $disabled = $num === 1 ? 'no' : 'yes'; // Only enable the first one by default
-                $lines[] = ":do { /interface ovpn-client add disabled={$disabled} connect-to={$serverIp} name=\"DSB-VPN-{$num}\" profile=DSB-VPN user=\"{$vpnUsername}\" password=\"{$vpnPassword}\" comment=\"DSB VPN Server {$num}\" } on-error={ :put \"VPN {$num} exists\" }";
-            }
-            
-            $lines[] = ":do { /system scheduler remove [find name=\"dsb_vpn_failover\"] } on-error={ :put \"Old scheduler removed\" }";
-            $lines[] = "/system scheduler add interval=10s name=dsb_vpn_failover on-event=\"{\\r\\
-    \\n:global dsbLastVpnIndex\\r\\
-    \\n:local targetIP \\\"{$vpnInternalTarget}\\\"\\r\\
-    \\n:local vpnIfaces [/interface find name~\\\"^DSB-VPN-\\\"]\\r\\
-    \\n:local vpnCount [:len \$vpnIfaces]\\r\\
-    \\n:if (\$vpnCount = 0) do={\\r\\
-    \\n    :return\\r\\
-    \\n}\\r\\
-    \\n:if ([:typeof \$dsbLastVpnIndex] = \\\"nothing\\\") do={\\r\\
-    \\n    :set dsbLastVpnIndex 0\\r\\
-    \\n}\\r\\
-    \\n:local pingResult [/ping \$targetIP count=5]\\r\\
-    \\n:if (\$pingResult = 0) do={\\r\\
-    \\n    :set dsbLastVpnIndex ((\$dsbLastVpnIndex + 1) % \$vpnCount)\\r\\
-    \\n    /interface set \$vpnIfaces disabled=yes\\r\\
-    \\n    :local selectedIface (\$vpnIfaces->\$dsbLastVpnIndex)\\r\\
-    \\n    /interface set \$selectedIface disabled=no\\r\\
-    \\n    :log warning \\\"DSB VPN Failover: Switching to VPN \$(\$dsbLastVpnIndex + 1)\\\"\\r\\
-    \\n}\\r\\
-}\" policy=read,write,policy,test start-time=startup comment=\"managed-by=dsbilling\"";
-            $lines[] = "";
-        }
-        
-        // 5. Walled Garden (Isolir) Firewall Setup
+        // 4. Walled Garden (Isolir) Firewall Setup
         $billingPort = parse_url($appUrl, PHP_URL_PORT) ?? 80;
-        $lines[] = "# 5. Walled Garden (Isolir) Firewall Setup";
+        $lines[] = "# 4. Walled Garden (Isolir) Firewall Setup";
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$host}\" comment=\"managed-by=dsbilling: Server\" } on-error={ :put \"Whitelist Billing exists\" }";
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"app.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Midtrans exists\" }";
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"api.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Midtrans API exists\" }";
@@ -195,8 +154,9 @@ class RouterProvisioningScriptGenerator
         $lines[] = ":do { /ip firewall filter add chain=forward action=drop src-address-list=ISOLIR_LIST comment=\"managed-by=dsbilling: Drop other Isolir Traffic\" } on-error={ :put \"Filter Drop exists\" }";
         $lines[] = "";
 
-        $lines[] = ":put \"\";";
-        $lines[] = ":put \"[SUCCESS] Router Auto-Provisioning Complete.\";";
+        $lines[] = ":put \"==================================================\";";
+        $lines[] = ":put \"[SUCCESS] Konfigurasi dsBilling Berhasil Diterapkan!\";";
+        $lines[] = ":put \"==================================================\";";
 
         return implode("\n", $lines);
     }
