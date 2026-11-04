@@ -142,12 +142,9 @@
                             </td>
                             <td class="px-6 py-4 text-sm text-slate-900 dark:text-slate-100">{{ $user->serviceProfile?->name ?? '-' }}</td>
                             <td class="px-6 py-4">
-                                <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                    @if($user->status === 'active') bg-green-100 dark:bg-green-900/50 text-green-600
-                                    @else bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600
-                                    @endif
-                                ">
-                                    {{ ucfirst($user->status) }}
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider {{ $user->status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400' }}">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ $user->status === 'active' ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
+                                    {{ $user->status }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ $user->activated_at?->format('d/m/Y') ?? '-' }}</td>

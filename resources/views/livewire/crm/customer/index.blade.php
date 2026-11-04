@@ -209,20 +209,15 @@
                             $isInactive = $customer->status !== 'active';
                             
                             if ($isInactive) {
-                                $rowBg = 'bg-slate-50/80 dark:bg-slate-800/40 opacity-75 grayscale-[30%] hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800/60';
+                                $rowBg = 'bg-slate-50/60 dark:bg-slate-800/40 opacity-75 hover:bg-slate-100 dark:hover:bg-slate-800/60';
                                 $textPrimary = 'text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600';
-                                $textSecondary = 'text-slate-400 dark:text-slate-500 dark:text-slate-400';
-                                $idColor = 'text-slate-500 dark:text-slate-500 dark:text-slate-400';
-                            } elseif ($isOnline) {
-                                $rowBg = 'bg-emerald-50/40 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:bg-emerald-900/50/50 dark:hover:bg-emerald-900/30';
-                                $textPrimary = 'text-emerald-900 dark:text-emerald-100 font-bold';
-                                $textSecondary = 'text-emerald-700 dark:text-emerald-300';
-                                $idColor = 'text-emerald-800 dark:text-emerald-400 font-semibold';
+                                $textSecondary = 'text-slate-400 dark:text-slate-500';
+                                $idColor = 'text-slate-500 dark:text-slate-400';
                             } else {
-                                $rowBg = 'hover:bg-indigo-50 dark:bg-indigo-900/30/40 dark:hover:bg-indigo-900/10';
+                                $rowBg = 'hover:bg-slate-50 dark:hover:bg-slate-800/50';
                                 $textPrimary = 'text-slate-800 dark:text-slate-100 font-medium';
-                                $textSecondary = 'text-slate-600 dark:text-slate-400';
-                                $idColor = 'text-slate-700 dark:text-slate-300';
+                                $textSecondary = 'text-slate-500 dark:text-slate-400';
+                                $idColor = 'text-slate-600 dark:text-slate-400';
                             }
                         @endphp
                         <tr wire:key="customer-{{ $customer->id }}" class="{{ $rowBg }} transition-colors group">
@@ -234,7 +229,7 @@
 
                             {{-- Aksi --}}
                             <td class="px-4 py-3 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-1.5">
+                                <div class="flex items-center justify-center gap-1">
                                     {{-- Tombol ONU (GenieACS Detail) jika SN ONU terisi --}}
                                     @php
                                         $onuDevice = $customer->onu_device;
@@ -243,22 +238,30 @@
                                         <a href="{{ route('acs.devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn']) }}" 
                                            target="_blank" 
                                            rel="noopener noreferrer"
-                                           class="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors" 
+                                           class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" 
                                            title="Lihat Detail GenieACS ONU (SN: {{ $onuDevice['sn'] }})">
-                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">router</span>
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">router</span>
                                         </a>
                                     @endif
                                     {{-- Edit / Detail --}}
-                                    <a href="{{ route('crm.customers.show', $customer->id) }}" class="p-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded hover:bg-amber-100 dark:bg-amber-900/50 dark:hover:bg-amber-900/50 transition-colors" title="Edit / Detail">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">edit</span>
+                                    <a href="{{ route('crm.customers.show', $customer->id) }}" 
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" 
+                                       title="Edit / Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
                                     {{-- Customer Portal --}}
-                                    <button type="button" wire:click="impersonate({{ $customer->id }})" class="p-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded hover:bg-sky-100 dark:bg-sky-900/50 transition-colors cursor-pointer" title="Buka Portal Pelanggan">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">language</span>
+                                    <button type="button" 
+                                            wire:click="impersonate({{ $customer->id }})" 
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer" 
+                                            title="Buka Portal Pelanggan">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">language</span>
                                     </button>
                                     {{-- Hapus --}}
-                                    <button wire:click="delete({{ $customer->id }})" wire:confirm="Yakin ingin menghapus pelanggan ini?" class="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-900/50 transition-colors" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">delete</span>
+                                    <button wire:click="delete({{ $customer->id }})" 
+                                            wire:confirm="Yakin ingin menghapus pelanggan ini?" 
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer" 
+                                            title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>
                             </td>
@@ -266,18 +269,18 @@
                             {{-- Status Online/Offline --}}
                             <td class="px-4 py-3 whitespace-nowrap text-center">
                                 @if($isInactive || $tglIsolir !== '-')
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                         Suspend
                                     </span>
                                 @elseif($isOnline)
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                         Online
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                         Offline
                                     </span>
                                 @endif
@@ -293,8 +296,8 @@
                             </td>
                             
                             {{-- Nama --}}
-                            <td class="px-4 py-3 whitespace-nowrap {{ $textPrimary }}">
-                                <a href="{{ route('crm.customers.show', $customer->id) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors">
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <a href="{{ route('crm.customers.show', $customer->id) }}" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition-colors">
                                     {{ $customer->name ?? '-' }}
                                 </a>
                             </td>
