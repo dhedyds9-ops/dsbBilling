@@ -209,9 +209,14 @@
                                     @endphp
                                     @if($onuDevice && !empty($onuDevice['sn']))
                                         @php
-                                            $targetRoute = \Illuminate\Support\Facades\Route::has('reseller-portal.acs-devices.show')
-                                                ? route('reseller-portal.acs-devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn'])
-                                                : route('acs.devices.show', $onuDevice['acs_device_id'] ?? $onuDevice['sn']);
+                                            $deviceId = $onuDevice['acs_device_id'] ?? $onuDevice['sn'];
+                                            if (\Illuminate\Support\Facades\Route::has('reseller-portal.network.acs-devices.show')) {
+                                                $targetRoute = route('reseller-portal.network.acs-devices.show', $deviceId);
+                                            } elseif (\Illuminate\Support\Facades\Route::has('reseller-portal.acs-devices.show')) {
+                                                $targetRoute = route('reseller-portal.acs-devices.show', $deviceId);
+                                            } else {
+                                                $targetRoute = route('acs.devices.show', $deviceId);
+                                            }
                                         @endphp
                                         <a href="{{ $targetRoute }}" 
                                            target="_blank" 

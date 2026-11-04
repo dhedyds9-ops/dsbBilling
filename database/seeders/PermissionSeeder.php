@@ -109,5 +109,13 @@ class PermissionSeeder extends Seeder
             ])->orWhere('name', 'like', '%.view')->get();
             $managerRole->permissions()->sync($managerPermissions);
         }
+
+        // 5. Assign default permissions to Reseller
+        $resellerRole = Role::where('name', UserRole::Reseller->value)->first();
+        if ($resellerRole) {
+            $resellerPermNames = UserPermission::defaultResellerPermissions();
+            $resellerPermissions = Permission::whereIn('name', $resellerPermNames)->get();
+            $resellerRole->permissions()->sync($resellerPermissions);
+        }
     }
 }

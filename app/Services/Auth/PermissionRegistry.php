@@ -123,6 +123,17 @@ class PermissionRegistry
                     ],
                 ],
             ],
+            'support_ticket' => [
+                'title' => 'Support & Tiket Gangguan',
+                'icon' => 'support_agent',
+                'description' => 'Akses pembuatan tiket aduan/gangguan pelanggan reseller ke tim teknisi.',
+                'modules' => [
+                    'ticket' => [
+                        'title' => 'Tiket Gangguan Pelanggan',
+                        'actions' => ['view', 'create', 'update'],
+                    ],
+                ],
+            ],
         ];
     }
 

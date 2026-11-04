@@ -119,6 +119,16 @@ class Index extends BaseEnterpriseList
         $defaultResellerId = '';
         if (Auth::user()?->hasRole('reseller')) {
             $defaultResellerId = (string) (Auth::user()->getEffectiveResellerId() ?? Auth::id());
+            $this->breadcrumbs = [
+                ['label' => 'Portal Reseller', 'url' => route('reseller-portal.dashboard')],
+                ['label' => 'Tiket Gangguan', 'url' => route('reseller-portal.tickets.index')],
+            ];
+            $this->activeModule = 'reseller-portal';
+        } else {
+            $this->breadcrumbs = [
+                ['label' => 'Support', 'url' => '#'],
+                ['label' => 'Tiket', 'url' => route('support.ticket')],
+            ];
         }
 
         $this->filters = [
@@ -380,7 +390,9 @@ class Index extends BaseEnterpriseList
             }
 
             $resellerId = null;
-            if (!empty($data['reseller_id']) && $data['reseller_id'] !== 'hq') {
+            if (Auth::user()?->hasRole('reseller')) {
+                $resellerId = (int) (Auth::user()->getEffectiveResellerId() ?? Auth::id());
+            } elseif (!empty($data['reseller_id']) && $data['reseller_id'] !== 'hq') {
                 $resellerId = (int) $data['reseller_id'];
             }
 

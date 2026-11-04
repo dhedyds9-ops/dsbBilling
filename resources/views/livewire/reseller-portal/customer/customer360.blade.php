@@ -605,7 +605,14 @@
                                         <button wire:click="rebootModem({{ $service->acsDevice->id }})" wire:confirm="Yakin ingin merestart modem ini dari jarak jauh?" class="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 border border-amber-200 hover:bg-amber-100 dark:bg-amber-900/50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">restart_alt</span> Reboot
                                         </button>
-                                        <a href="{{ route('acs.devices.show', $service->acsDevice->id) }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors" target="_blank">
+                                        @php
+                                            $showAcsRoute = \Illuminate\Support\Facades\Route::has('reseller-portal.network.acs-devices.show')
+                                                ? route('reseller-portal.network.acs-devices.show', $service->acsDevice->id)
+                                                : (\Illuminate\Support\Facades\Route::has('reseller-portal.acs-devices.show')
+                                                    ? route('reseller-portal.acs-devices.show', $service->acsDevice->id)
+                                                    : route('acs.devices.show', $service->acsDevice->id));
+                                        @endphp
+                                        <a href="{{ $showAcsRoute }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors" target="_blank">
                                             <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">open_in_new</span> Detail Penuh
                                         </a>
                                     </div>

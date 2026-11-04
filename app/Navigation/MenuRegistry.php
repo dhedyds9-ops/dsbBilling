@@ -363,6 +363,13 @@ class MenuRegistry
                             ['label' => 'Top Up', 'route' => 'reseller-portal.finance.topup', 'active' => 'reseller-portal.finance.topup', 'permission' => 'finance.settlement'],
                             ['label' => 'Mutasi Saldo', 'route' => 'reseller-portal.finance.mutations', 'active' => 'reseller-portal.finance.mutations', 'permission' => 'finance.view'],
                         ]
+                    ],
+                    [
+                        'label' => 'Support & Tiket',
+                        'icon' => 'support_agent',
+                        'items' => [
+                            ['label' => 'Tiket Gangguan', 'route' => 'reseller-portal.tickets.index', 'active' => ['reseller-portal.tickets*', 'support.ticket*'], 'permission' => 'ticket.view'],
+                        ]
                     ]
                 ]
             ]
