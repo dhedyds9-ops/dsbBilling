@@ -81,6 +81,21 @@ class Create extends AdminComponent
 
         $this->authorize('create', \App\Models\ISP\PPPoEUser::class);
 
+        // Normalisasi string kosong menjadi null agar lolos validasi nullable
+        $this->router_id = !empty($this->router_id) ? (int)$this->router_id : null;
+        $this->odp_id = !empty($this->odp_id) ? (int)$this->odp_id : null;
+        $this->reseller_id = !empty($this->reseller_id) ? (int)$this->reseller_id : null;
+        $this->static_ip = !empty(trim((string)$this->static_ip)) ? trim((string)$this->static_ip) : null;
+        $this->mac_address = !empty(trim((string)$this->mac_address)) ? trim((string)$this->mac_address) : null;
+        $this->port_number = !empty($this->port_number) ? (int)$this->port_number : null;
+        $this->onu_id = !empty(trim((string)$this->onu_id)) ? trim((string)$this->onu_id) : null;
+        $this->setup_fee = !empty($this->setup_fee) ? (float)$this->setup_fee : 0;
+        $this->email = !empty(trim((string)$this->email)) ? trim((string)$this->email) : null;
+        $this->latitude = !empty($this->latitude) ? (string)$this->latitude : null;
+        $this->longitude = !empty($this->longitude) ? (string)$this->longitude : null;
+        $this->notes = !empty(trim((string)$this->notes)) ? trim((string)$this->notes) : null;
+        $this->address = !empty(trim((string)$this->address)) ? trim((string)$this->address) : null;
+
         $this->validate([
             'name' => 'required|string',
             'phone' => 'required|string',
@@ -180,7 +195,10 @@ class Create extends AdminComponent
 
             session()->flash('success', "User PPPoE berhasil dibuat! Username: {$result['pppoe_user']->username}");
             return redirect()->route('billing.invoices.show', $result['invoice']->id);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[PPPoEUser Create] Gagal membuat user: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
             session()->flash('error', 'Gagal membuat user: ' . $e->getMessage());
         }
     }
