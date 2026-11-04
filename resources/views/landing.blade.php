@@ -419,7 +419,7 @@
     @endif
 
     <!-- Hero Section -->
-    <section class="relative min-h-[80vh] flex items-center justify-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32">
+    <section class="relative min-h-[80vh] flex items-center justify-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8">
         <div class="absolute inset-0 z-[-1] overflow-hidden rounded-3xl">
             <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-400/20 dark:bg-primary/20 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen pointer-events-none"></div>
             <div class="absolute bottom-1/4 right-1/4 w-[30rem] h-[30rem] bg-blue-400/20 dark:bg-secondary-container/20 rounded-full blur-[150px] mix-blend-multiply dark:mix-blend-screen pointer-events-none"></div>
@@ -455,7 +455,7 @@
     </section>
 
     <!-- Features (Keunggulan) -->
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32" id="keunggulan">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8" id="keunggulan">
         <div class="text-center mb-16">
             <h2 class="font-headline-lg text-headline-lg text-cyan-600 dark:text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Mengapa Memilih Kami?</h2>
             <p class="text-slate-600 dark:text-on-surface-variant font-body-md text-body-md">Kualitas layanan premium yang tidak kompromi pada performa.</p>
@@ -493,7 +493,7 @@
 
     <!-- Internet Packages -->
     @if($showPppoe->isNotEmpty())
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32" id="paket">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8" id="paket">
         <div class="text-center mb-16">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-50 border border-cyan-200 text-cyan-700 dark:bg-primary/10 dark:border-primary/20 dark:text-primary mb-3">
                 <span class="material-symbols-outlined text-[14px]">router</span> KONEKSI FIBER OPTIC RUMAH
@@ -585,7 +585,7 @@
 
     <!-- Hotspot Section -->
     @if($showHotspotVoucher->isNotEmpty())
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32 bg-amber-50/40 dark:bg-surface-container/30 rounded-3xl p-6 sm:p-10 md:p-14 border border-amber-200/50 dark:border-white/5" id="hotspot">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8 bg-amber-50/40 dark:bg-surface-container/30 rounded-3xl p-6 sm:p-10 md:p-14 border border-amber-200/50 dark:border-white/5" id="hotspot">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
             <div>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300 mb-2">
@@ -663,7 +663,7 @@
 
     <!-- Member Hotspot Section -->
     @if($showMemberHotspot->isNotEmpty())
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-32" id="member-hotspot">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8" id="member-hotspot">
         <div class="text-center mb-16">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700 dark:bg-secondary-container/30 dark:border-secondary/30 dark:text-secondary mb-3">
                 <span class="material-symbols-outlined text-[14px]">wifi</span> LANGGANAN HOTSPOT BULANAN
@@ -754,7 +754,7 @@
     @endif
 
     <!-- Billing CTA -->
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-28">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8">
         <div class="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 dark:from-surface-container-high dark:to-surface p-8 md:p-12 border border-cyan-200 dark:border-primary/20 shadow-md dark:shadow-[0_0_40px_rgba(6,182,212,0.1)] flex flex-col md:flex-row items-center justify-between gap-8">
             <div class="absolute -right-20 -top-20 w-64 h-64 bg-cyan-400/10 dark:bg-primary/10 rounded-full blur-[60px]"></div>
             <div class="z-10 text-center md:text-left">
@@ -771,7 +771,7 @@
     </section>
 
     <!-- Supported Payment Methods Section (Payment Gateway Merchant Compliance) -->
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-28" id="pembayaran">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8" id="pembayaran">
         <div class="glass-card rounded-[2rem] p-8 md:p-14 border border-slate-200/80 dark:border-white/10 shadow-xl relative overflow-hidden">
             <div class="text-center max-w-3xl mx-auto mb-12">
                 <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/30 mb-4">
@@ -847,7 +847,7 @@
 
     @if($partnerShowLanding && !empty($partnerName))
     <!-- Kemitraan ISP (Powered by / Upstream Partner) Section -->
-    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-28" id="kemitraan">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-8" id="kemitraan">
         <div class="text-center mb-12">
             <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-cyan-50 border border-cyan-200 text-cyan-700 dark:bg-primary/10 dark:border-primary/20 dark:text-primary mb-3">
                 <span class="material-symbols-outlined text-[16px]">handshake</span> KEMITRAAN &amp; UPSTREAM RESMI
@@ -963,7 +963,7 @@
     @endif
 
     <!-- FAQ Section -->
-    <section class="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto mb-28" id="faq">
+    <section class="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto mb-8" id="faq">
         <div class="text-center mb-12">
             <h2 class="font-headline-lg text-headline-lg text-cyan-600 dark:text-primary mb-2" style="font-family: Caveat, cursive; font-size: 3.5rem; line-height: 1;">Pertanyaan Umum (FAQ)</h2>
             <p class="text-slate-600 dark:text-on-surface-variant font-body-md text-body-md">Jawaban seputar pemasangan, cara bayar, dan layanan {{ $companyName }}.</p>

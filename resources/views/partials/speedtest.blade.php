@@ -1,5 +1,5 @@
 <!-- Speedtest Section (Compact & Collapsible) -->
-<section class="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto mb-16 transition-all duration-300" 
+<section class="px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto mb-8 transition-all duration-300" 
          id="speedtest" 
          x-data="speedtestEngine()" 
          x-init="initEngine()">
