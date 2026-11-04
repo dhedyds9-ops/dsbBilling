@@ -101,75 +101,73 @@
         @endif
 
         {{-- TOOLBAR --}}
-        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div class="flex flex-wrap items-center gap-2.5 w-full xl:flex-1">
-                <div class="relative w-full sm:w-64">
+        <div class="flex items-center justify-between gap-2.5 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-x-auto">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+                <div class="relative w-48 sm:w-56 shrink-0">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 20px">search</span>
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size: 18px">search</span>
                     </span>
-                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari kode voucher / pelanggan..." class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari kode / pelanggan..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:text-slate-100">
                 </div>
-                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                    <select wire:model.live="filters.voucher_pool_id" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">Semua Tanggal Buat</option>
-                        @foreach($voucherPools as $pool)
-                            <option value="{{ $pool->id }}">vc-{{ $pool->created_at->format('d-m-Y-H:i:s') }}</option>
-                        @endforeach
-                    </select>
-                    <select wire:model.live="filters.status" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                        @if($activeTab === 'active')
-                            <option value="">Semua Voucher Aktif</option>
-                            <option value="available">Tersedia</option>
-                            <option value="online">Online</option>
-                            <option value="used">Terpakai (Offline)</option>
-                        @elseif($activeTab === 'expired')
-                            <option value="">Semua Kedaluwarsa</option>
-                        @else
-                            <option value="">Semua Status</option>
-                            <option value="available">Tersedia</option>
-                            <option value="online">Online</option>
-                            <option value="used">Terpakai (Offline)</option>
-                            <option value="expired">Kedaluwarsa</option>
-                        @endif
-                    </select>
-                    <select wire:model.live="filters.reseller_id" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">Semua Owner/Reseller</option>
-                        <option value="owner">Owner (Pusat)</option>
-                        <option value="reseller">Semua Reseller</option>
-                        @if(isset($resellers) && count($resellers) > 0)
-                            <optgroup label="Pilih Reseller">
-                                @foreach($resellers as $reseller)
-                                    <option value="{{ $reseller->id }}">Reseller: {{ $reseller->name }}</option>
-                                @endforeach
-                            </optgroup>
-                        @endif
-                    </select>
-                    <select wire:model.live="perPage" class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100">
-                        <option value="20">20 / hal</option>
-                        <option value="50">50 / hal</option>
-                        <option value="100">100 / hal</option>
-                    </select>
-                    @if($search || $filters['status'] || $filters['voucher_pool_id'] || !empty($filters['reseller_id']))
-                    <button wire:click="resetFilters"
-                            title="Reset Filter"
-                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
-                        <span class="hidden sm:inline">Reset</span>
-                    </button>
+                <select wire:model.live="filters.voucher_pool_id" class="w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100 shrink-0">
+                    <option value="">Semua Tanggal Buat</option>
+                    @foreach($voucherPools as $pool)
+                        <option value="{{ $pool->id }}">vc-{{ $pool->created_at->format('d-m-Y-H:i:s') }}</option>
+                    @endforeach
+                </select>
+                <select wire:model.live="filters.status" class="w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100 shrink-0">
+                    @if($activeTab === 'active')
+                        <option value="">Semua Voucher Aktif</option>
+                        <option value="available">Tersedia</option>
+                        <option value="online">Online</option>
+                        <option value="used">Terpakai (Offline)</option>
+                    @elseif($activeTab === 'expired')
+                        <option value="">Semua Kedaluwarsa</option>
+                    @else
+                        <option value="">Semua Status</option>
+                        <option value="available">Tersedia</option>
+                        <option value="online">Online</option>
+                        <option value="used">Terpakai (Offline)</option>
+                        <option value="expired">Kedaluwarsa</option>
                     @endif
-                </div>
+                </select>
+                <select wire:model.live="filters.reseller_id" class="w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100 shrink-0">
+                    <option value="">Semua Owner/Reseller</option>
+                    <option value="owner">Owner (Pusat)</option>
+                    <option value="reseller">Semua Reseller</option>
+                    @if(isset($resellers) && count($resellers) > 0)
+                        <optgroup label="Pilih Reseller">
+                            @foreach($resellers as $reseller)
+                                <option value="{{ $reseller->id }}">Reseller: {{ $reseller->name }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endif
+                </select>
+                <select wire:model.live="perPage" class="w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:text-slate-100 shrink-0">
+                    <option value="20">20 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
+                </select>
+                @if($search || $filters['status'] || $filters['voucher_pool_id'] || !empty($filters['reseller_id']))
+                <button wire:click="resetFilters"
+                        title="Reset Filter"
+                        class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+                @endif
             </div>
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 shrink-0">
+            <div class="flex items-center gap-2 shrink-0">
                 @if(count($selectedIds) > 0)
-                    <button wire:click="bulkMarkAsExpired" wire:confirm="Tandai {{ count($selectedIds) }} voucher sebagai Expired?" class="inline-flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-lg border border-amber-200 dark:border-amber-700 transition-colors whitespace-nowrap" title="Tandai Expired ({{ count($selectedIds) }})">
+                    <button wire:click="bulkMarkAsExpired" wire:confirm="Tandai {{ count($selectedIds) }} voucher sebagai Expired?" class="inline-flex items-center justify-center px-3 py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-lg border border-amber-200 dark:border-amber-700 transition-colors whitespace-nowrap shrink-0" title="Tandai Expired ({{ count($selectedIds) }})">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">timer_off</span>
                         <span class="hidden sm:inline">Tandai Expired ({{ count($selectedIds) }})</span>
                     </button>
-                    <button wire:confirm="Yakin ingin menghapus {{ count($selectedIds) }} voucher?" wire:click="confirmBulkDelete" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer" title="Hapus ({{ count($selectedIds) }})">
+                    <button wire:confirm="Yakin ingin menghapus {{ count($selectedIds) }} voucher?" wire:click="confirmBulkDelete" class="inline-flex items-center justify-center px-3.5 py-2 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer shrink-0" title="Hapus ({{ count($selectedIds) }})">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">delete</span>
                         <span class="hidden sm:inline">Hapus ({{ count($selectedIds) }})</span>
                     </button>
-                    <button wire:click="printSelected" class="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap" title="Cetak ({{ count($selectedIds) }})">
+                    <button wire:click="printSelected" class="inline-flex items-center justify-center px-3.5 py-2 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap shrink-0" title="Cetak ({{ count($selectedIds) }})">
                         <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">print</span>
                         <span class="hidden sm:inline">Cetak ({{ count($selectedIds) }})</span>
                     </button>
