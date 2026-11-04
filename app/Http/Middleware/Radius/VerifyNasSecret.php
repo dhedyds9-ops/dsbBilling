@@ -85,9 +85,19 @@ class VerifyNasSecret
             return;
         }
 
+        // Jangan pernah override ke SQLite jika konfigurasi sistem menggunakan MySQL / MariaDB
+        if (config('database.default') !== 'sqlite') {
+            return;
+        }
+
+        $isLocalhost = in_array($request->ip(), ['127.0.0.1', '::1'], true);
+        $username = (string)($request->input('username') ?? '');
+        if ($isLocalhost && !str_contains($username, '@') && !$request->header('X-Tenant')) {
+            return;
+        }
+
         $nasIp = $this->resolveNasIp($request);
         $nasName = $request->input('nas_name') ?? $request->input('NAS-Identifier');
-        $username = (string)($request->input('username') ?? '');
 
         $tenantsDir = database_path('tenants');
         if (!is_dir($tenantsDir)) {

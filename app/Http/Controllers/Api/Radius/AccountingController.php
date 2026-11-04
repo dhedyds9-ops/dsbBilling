@@ -148,6 +148,16 @@ class AccountingController extends Controller
         }
 
         try {
+            $dbName = null;
+            try { $dbName = \Illuminate\Support\Facades\DB::connection()->getDatabaseName(); } catch (\Throwable) {}
+            Log::info('RADIUS_AUTHORIZE_REQ', [
+                'username' => $username,
+                'ip' => $request->ip(),
+                'db_conn' => config('database.default'),
+                'db_name' => $dbName,
+                'hu_count' => \App\Models\ISP\HotspotUser::withoutGlobalScopes()->where('username', $username)->count(),
+            ]);
+
             // Hydrate context tanpa verifikasi password — authorize-only endpoint
             // PENTING: gunakan flag $authorizeOnly=true, bukan password dummy string.
             $authResult = $this->authService->authenticate(
@@ -163,6 +173,12 @@ class AccountingController extends Controller
 
             $ctx = $authResult['context'] ?? null;
             if (!$ctx) {
+                Log::warning('RADIUS_AUTHORIZE_FAILED', [
+                    'username' => $username,
+                    'reason' => $authResult['reason'] ?? null,
+                    'db_conn' => config('database.default'),
+                    'db_name' => $dbName,
+                ]);
                 return $this->jsonPayload([
                     'Reply-Message' => (string)($authResult['reason'] ?? 'User not found'),
                 ], 401);
