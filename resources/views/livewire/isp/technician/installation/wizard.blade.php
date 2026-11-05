@@ -1,6 +1,31 @@
 @section('header_title', 'Instalasi Cepat')
 
 <div class="space-y-4 p-4">
+    {{-- Global Alert Banner --}}
+    @if(session('error') || $errors->any())
+        <div class="p-4 bg-rose-500 text-white rounded-2xl text-xs sm:text-sm font-semibold flex items-start gap-3 shadow-md">
+            <span class="material-symbols-outlined text-lg shrink-0 mt-0.5">error</span>
+            <div class="space-y-1 flex-1">
+                @if(session('error'))
+                    <p class="font-bold">{{ session('error') }}</p>
+                @endif
+                @if($errors->any())
+                    <ul class="list-disc pl-4 space-y-0.5 text-xs">
+                        @foreach($errors->all() as $err)
+                            <li>{{ $err }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    @if(session('success'))
+        <div class="p-4 bg-emerald-500 text-white rounded-2xl text-xs sm:text-sm font-semibold flex items-center gap-3 shadow-md">
+            <span class="material-symbols-outlined text-lg shrink-0">check_circle</span>
+            <p class="font-bold">{{ session('success') }}</p>
+        </div>
+    @endif
 
     {{-- Stepper Progress --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">

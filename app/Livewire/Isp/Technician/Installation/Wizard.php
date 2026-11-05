@@ -181,6 +181,37 @@ class Wizard extends Component
             $branchId = $existingCust?->branch_id ?? $existingCust?->reseller?->branch_id;
         }
 
+        // Resolusi cabang dari infrastruktur (ODP / OLT) jika belum terikat
+        if (!$branchId && !empty($this->odp_id)) {
+            $branchId = Odp::withoutGlobalScopes()->where('id', $this->odp_id)->value('branch_id');
+        }
+        if (!$branchId && !empty($this->olt_id)) {
+            $branchId = Olt::withoutGlobalScopes()->where('id', $this->olt_id)->value('branch_id');
+        }
+
+        // Fallback jika user adalah Administrator/Superadmin oversight atau branch belum terikat
+        if (!$branchId) {
+            $defaultBranch = \App\Models\Master\Branch::first();
+            if (!$defaultBranch) {
+                try {
+                    $defaultBranch = \App\Models\Master\Branch::create([
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'code' => 'PST',
+                        'name' => 'Kantor Pusat',
+                        'is_active' => true,
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+            $branchId = $defaultBranch?->id;
+        }
+
+        // Jika user teknisi memiliki branch_id, pastikan tidak lintas cabang
+        if ($user->branch_id && $branchId && (int) $user->branch_id !== (int) $branchId) {
+            session()->flash('error', 'Akses ditolak: Anda tidak memiliki wewenang untuk melakukan instalasi di luar cabang Anda (Branch Isolation).');
+            $this->addError('general', 'Instalasi di luar cabang kantor Anda tidak diizinkan.');
+            return;
+        }
+
         if (!$branchId) {
             session()->flash('error', 'Cabang kantor (Branch) Anda atau Reseller belum dikonfigurasi di sistem. Silakan hubungi Administrator untuk menetapkan cabang sebelum instalasi.');
             $this->addError('general', 'Cabang kantor Anda belum ditentukan.');
