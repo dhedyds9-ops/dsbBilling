@@ -86,10 +86,13 @@ class GenieACSDriver
                 $data = $response->json();
                 return $data[0] ?? [];
             }
-            throw new Exception("Failed to get device parameters: " . $response->status());
+            if ($response->status() === 404) {
+                return [];
+            }
+            throw new Exception("Failed to get device parameters: HTTP " . $response->status());
         } catch (ConnectionException|RequestException $e) {
             if ($e instanceof RequestException && $e->response && $e->response->status() === 404) {
-                throw new Exception("Perangkat tidak ditemukan di GenieACS", 0, $e);
+                return [];
             }
             throw new Exception("GenieACS tidak dapat dihubungi: " . $e->getMessage(), 0, $e);
         }
@@ -465,7 +468,7 @@ class GenieACSDriver
             $informInterval = (int)$params['Device']['ManagementServer']['PeriodicInformInterval']['_value'];
         }
 
-        $diffInSeconds = now()->diffInSeconds(\Carbon\Carbon::parse($lastInform));
+        $diffInSeconds = abs(now()->diffInSeconds(\Carbon\Carbon::parse($lastInform)));
         $offlineThreshold = ($informInterval * 2) + 120;
 
         if ($diffInSeconds <= $informInterval + 60) return 'online';
@@ -475,12 +478,11 @@ class GenieACSDriver
 
     public function isDeviceOnline(string $deviceId): bool
     {
-        try {
-            $params = $this->getDeviceParameters($deviceId);
-            return self::calculateStatus($params) !== 'offline';
-        } catch (\Exception $e) {
+        $params = $this->getDeviceParameters($deviceId);
+        if (empty($params)) {
             return false;
         }
+        return self::calculateStatus($params) !== 'offline';
     }
 
     public function summonDevice(string $deviceId): bool

@@ -2,35 +2,37 @@
 
 namespace App\Jobs\Provisioning\Steps;
 
-use App\Services\Adapters\Monitoring\GenieACSDriver;
+use App\Models\ISP\Onu;
+use App\Services\ISP\GenieAcsProvisioningService;
 use Exception;
 
 class OnuTr069ProvisioningJob extends BasePipelineStepJob
 {
     protected function executeStep(): ?array
     {
-        $cs = $this->step->provisionPipeline->serviceInstance->customerService;
-        
-        $attrs = is_array($cs->attributes) ? $cs->attributes : [];
-        $deviceId = $attrs['genieacs_device_id'] ?? null;
-
-        if (!$deviceId) {
-            return ['status' => 'skipped', 'reason' => 'No GenieACS Device ID attached. Configuration will rely purely on OMCI/RADIUS.'];
+        $cs = $this->step->provisionPipeline?->serviceInstance?->customerService;
+        if (!$cs) {
+            return ['status' => 'skipped', 'reason' => 'No CustomerService linked to pipeline.'];
         }
 
-        // Initialize GenieACS Driver directly as requested (no nested jobs)
-        $driver = app(GenieACSDriver::class);
-        
-        $pppoeUser = \App\Models\ISP\PPPoEUser::where('customer_service_id', $cs->id)->first();
-        if ($pppoeUser) {
-            // Push PPPoE Credentials via TR-069
-            // Example logic (abstracted)
-            // $driver->setParameterValues($deviceId, ['InternetGatewayDevice.WANDevice.1...' => $pppoeUser->username]);
+        $onu = $cs->onu ?? ($cs->onu_id ? Onu::withoutGlobalScopes()->find($cs->onu_id) : null);
+        if (!$onu) {
+            return ['status' => 'skipped', 'reason' => 'No ONU attached. Configuration will rely on OMCI/RADIUS.'];
+        }
+
+        $provisioningService = app(GenieAcsProvisioningService::class);
+        $result = $provisioningService->provisionOnt($onu, [
+            'customer_service' => $cs,
+        ]);
+
+        if ($result['status'] === 'failed') {
+            throw new Exception($result['error'] ?? 'GenieACS NBI provisioning failed.');
         }
 
         return [
-            'tr069_status' => 'CONFIGURED',
-            'device_id' => $deviceId
+            'tr069_status' => $result['status'] === 'success' ? 'completed' : $result['status'],
+            'device_id' => $result['device_id'] ?? $onu->serial_number,
+            'message' => $result['message'] ?? null,
         ];
     }
 }

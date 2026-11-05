@@ -135,6 +135,9 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/technician-portal/odp/search', \App\Livewire\Isp\Technician\Odp\Search::class)->name('technician.odp.search');
             Route::get('/technician-portal/odp/nearest', \App\Livewire\Isp\Technician\Odp\Nearest::class)->name('technician.odp.nearest');
         });
+
+        // Private Secure Ticket Photos Stream Endpoint (P0-H1)
+        Route::get('/technician-portal/tickets/{ticket}/photos/{filename}', [\App\Http\Controllers\Isp\Technician\TicketPhotoController::class, 'show'])->name('technician.tickets.photo');
     });
 
     // ==================== SHARED FINANCIAL REPORTS (ADMIN, MANAGER, RESELLER) ====================

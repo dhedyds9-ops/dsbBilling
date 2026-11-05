@@ -1,4 +1,4 @@
-﻿@section('header_title', 'Monitor Provisioning')
+@section('header_title', 'Monitor Provisioning')
 
 <div class="space-y-4 p-4" wire:poll.3s>
 
@@ -134,5 +134,24 @@
         INSTALASI SELESAI & ONLINE!
     </div>
     @endif
+
+    {{-- Action Controls (P1-1A) --}}
+    <div class="space-y-2 pt-2">
+        <button wire:click="retryProvisioning" wire:loading.attr="disabled" type="button" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
+            <span wire:loading.remove wire:target="retryProvisioning" class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+                Retry Provisioning GenieACS
+            </span>
+            <span wire:loading wire:target="retryProvisioning" class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined animate-spin" style="font-size:18px">sync</span>
+                Mengirim Ulang Task...
+            </span>
+        </button>
+
+        <a href="{{ route('technician.my-jobs.index') }}" class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center gap-2 transition-colors">
+            <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span>
+            Kembali ke Daftar Pekerjaan
+        </a>
+    </div>
 
 </div>

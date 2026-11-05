@@ -6,7 +6,7 @@
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
         <div class="flex items-center justify-between relative mb-3">
             <div class="absolute left-0 top-4 w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full z-0"></div>
-            <div class="absolute left-0 top-4 h-1 bg-indigo-500 rounded-full z-0 transition-all duration-300" style="width: {{ (($currentStep - 1) / 5) * 100 }}%"></div>
+            <div class="absolute left-0 top-4 h-1 bg-indigo-500 rounded-full z-0 transition-all duration-300" style="width: {{ $currentStep >= 6 ? '100%' : ((($currentStep - 1) / 5) * 100) }}%"></div>
             @foreach(range(1, 6) as $step)
                 <div class="relative z-10 flex flex-col items-center">
                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shadow-sm
@@ -26,8 +26,9 @@
             @elseif($currentStep === 2) Paket Layanan
             @elseif($currentStep === 3) Titik ODP
             @elseif($currentStep === 4) OLT & Port
-            @elseif($currentStep === 5) Scan ONU
+            @elseif($currentStep === 5) Scan ONU & Wi-Fi
             @elseif($currentStep === 6) Konfirmasi
+            @elseif($currentStep === 7) Selesai & Status Provisioning
             @endif
         </p>
     </div>
@@ -232,6 +233,24 @@
                         <input type="text" wire:model="onu_model" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase dark:bg-slate-900 dark:text-slate-100" placeholder="F609">
                     </div>
                 </div>
+
+                {{-- Wi-Fi Configuration Inputs --}}
+                <div class="border-t border-slate-200 dark:border-slate-700/60 pt-3 mt-3">
+                    <p class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-indigo-500" style="font-size:16px">wifi</span>
+                        Konfigurasi Wi-Fi Pelanggan (TR-069)
+                    </p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Wi-Fi SSID</label>
+                            <input type="text" wire:model="wifi_ssid" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="Default: WINETS-XXXX">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Wi-Fi Password</label>
+                            <input type="text" wire:model="wifi_password" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono" placeholder="Default: Kosong / Bebas">
+                        </div>
+                    </div>
+                </div>
             </div>
         @endif
 
@@ -274,16 +293,120 @@
                 </div>
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Password</span>
-                    <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">{{ !empty(trim($custom_password)) ? $custom_password : ($service_type === 'pppoe' ? 'pppoe' : '(Random)') }}</span>
+                    <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">{{ !empty(trim($custom_password)) ? '••••••' : ($service_type === 'pppoe' ? 'pppoe' : '(Random)') }}</span>
+                </div>
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Wi-Fi SSID</span>
+                    <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ !empty(trim($wifi_ssid)) ? $wifi_ssid : ('WINETS-' . substr($onu_sn, -4)) }}</span>
+                </div>
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Wi-Fi Password</span>
+                    <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">{{ !empty(trim($wifi_password)) ? '••••••' : '(Bebas / Tanpa Password)' }}</span>
                 </div>
             </div>
             <div class="p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 flex gap-2">
                 <span class="material-symbols-outlined shrink-0 mt-0.5" style="font-size:18px">warning</span>
-                <p class="text-xs leading-relaxed">Pastikan fiber sudah terpasang sebelum menekan Aktifkan. Sistem akan provisioning otomatis.</p>
+                <p class="text-xs leading-relaxed">Pastikan fiber sudah terpasang sebelum menekan Aktifkan. Sistem akan provisioning otomatis ke OLT & GenieACS NBI.</p>
             </div>
         @endif
 
-        {{-- Navigation --}}
+        {{-- Step 7: Ringkasan Hasil PSB & Status Provisioning ONT (P1-1A) --}}
+        @if($currentStep === 7)
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <span class="material-symbols-outlined" style="font-size:36px">check_circle</span>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-slate-100">PSB Berhasil Disimpan!</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Data pelanggan dan perangkat telah berhasil tersimpan ke sistem dsBilling.</p>
+            </div>
+
+            {{-- Provisioning Status Card --}}
+            <div class="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700 overflow-hidden mb-5">
+                <div class="flex justify-between items-center px-4 py-3.5 bg-slate-100/70 dark:bg-slate-800">
+                    <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-indigo-500" style="font-size:18px">settings_remote</span>
+                        Status Provisioning ONT
+                    </span>
+                    @php
+                        $badgeClasses = match($provisioning_status) {
+                            'success' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+                            'waiting_device' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+                            'processing', 'queued', 'pending' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+                            default => 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+                        };
+                        $statusLabels = [
+                            'success' => 'BERHASIL TERKONFIGURASI',
+                            'waiting_device' => 'MENUNGGU INFORM ONT',
+                            'queued' => 'ANTREAN GENIEACS',
+                            'processing' => 'SEDANG DIPROSES',
+                            'failed' => 'GAGAL / RETRY DIBUTUHKAN',
+                        ];
+                    @endphp
+                    <span class="px-2.5 py-1 font-black text-[11px] uppercase rounded-full {{ $badgeClasses }}">
+                        {{ $statusLabels[$provisioning_status] ?? strtoupper($provisioning_status) }}
+                    </span>
+                </div>
+
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Serial Number ONT</span>
+                    <span class="font-mono text-sm font-black text-indigo-600 dark:text-indigo-400">{{ $onu_sn }}</span>
+                </div>
+
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Status WAN PPPoE</span>
+                    <span class="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {{ !empty(trim($custom_username)) ? $custom_username : '(Otomatis Sistem)' }}
+                    </span>
+                </div>
+
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Status Wi-Fi (SSID)</span>
+                    <span class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {{ !empty(trim($wifi_ssid)) ? $wifi_ssid : ('WINETS-' . substr($onu_sn, -4)) }}
+                    </span>
+                </div>
+
+                <div class="flex justify-between items-center px-4 py-3">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Waktu Terakhir</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ $last_provisioned_at }}</span>
+                </div>
+            </div>
+
+            @if(!empty($provisioning_message))
+                <div class="p-3.5 mb-5 rounded-xl border text-xs leading-relaxed {{ $provisioning_status === 'failed' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/50' : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50' }}">
+                    {{ $provisioning_message }}
+                </div>
+            @endif
+
+            {{-- Action Buttons --}}
+            <div class="space-y-2.5">
+                @if($completed_pipeline_id)
+                    <a href="{{ route('technician.provisioning.show', $completed_pipeline_id) }}" class="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined" style="font-size:18px">visibility</span>
+                        Lihat Detail Provisioning
+                    </a>
+                @endif
+
+                <button wire:click="retryProvisioning" wire:loading.attr="disabled" type="button" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform">
+                    <span wire:loading.remove wire:target="retryProvisioning" class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+                        Retry Provisioning jika gagal
+                    </span>
+                    <span wire:loading wire:target="retryProvisioning" class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined animate-spin" style="font-size:18px">sync</span>
+                        Mengirim Ulang...
+                    </span>
+                </button>
+
+                <a href="{{ route('technician.my-jobs.index') }}" class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center gap-2 transition-colors">
+                    <span class="material-symbols-outlined" style="font-size:18px">check</span>
+                    Selesai & Ke Daftar Pekerjaan
+                </a>
+            </div>
+        @endif
+
+        {{-- Navigation (Hanya tampil di Langkah 1 s.d. 6) --}}
+        @if($currentStep < 7)
         <div class="mt-6 flex gap-2">
             @if($currentStep > 1)
                 <button wire:click="previousStep" class="w-1/3 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
@@ -307,6 +430,7 @@
                 </button>
             @endif
         </div>
+        @endif
     </div>
 
 </div>

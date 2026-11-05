@@ -13,7 +13,17 @@ class EnsureWorkforceCheckedIn
     public function handle(Request $request, Closure $next)
     {
         if (Auth::check()) {
-            $hasCheckedIn = Attendance::where('technician_id', Auth::id())
+            $user = Auth::user();
+
+            // Administrator / Superadmin yang bukan teknisi dikecualikan untuk keperluan pengawasan (oversight)
+            $isAdminOversight = $user->hasRole(['administrator', 'superadmin'])
+                && strtoupper((string) ($user->job_function ?? '')) !== 'TECHNICIAN';
+
+            if ($isAdminOversight) {
+                return $next($request);
+            }
+
+            $hasCheckedIn = Attendance::where('technician_id', $user->id)
                 ->whereDate('date', Carbon::today())
                 ->whereNotNull('checked_in_at')
                 ->exists();

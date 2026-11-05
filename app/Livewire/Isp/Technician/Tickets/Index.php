@@ -167,11 +167,24 @@ class Index extends Component
         // Upload dan simpan foto bukti jika teknisi mengunggah saat update progress
         $photos = is_array($ticket->photos) ? $ticket->photos : [];
         if (!empty($this->upload_photos)) {
+            $this->validate([
+                'upload_photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+            ], [
+                'upload_photos.*.image' => 'File bukti harus berupa gambar valid.',
+                'upload_photos.*.mimes' => 'Format file bukti hanya boleh JPEG, PNG, JPG, atau WEBP.',
+                'upload_photos.*.max' => 'Ukuran file bukti maksimal 5 MB per foto.',
+            ]);
+
             $photosToProcess = is_array($this->upload_photos) ? $this->upload_photos : [$this->upload_photos];
             foreach ($photosToProcess as $photo) {
                 if ($photo) {
-                    $path = $photo->store('tickets/' . $ticket->id, 'public');
-                    $photos[] = 'storage/' . $path;
+                    $ext = strtolower($photo->getClientOriginalExtension());
+                    if (!in_array($ext, ['jpeg', 'png', 'jpg', 'webp'], true)) {
+                        $ext = $photo->extension() ?: 'jpg';
+                    }
+                    $filename = \Illuminate\Support\Str::random(40) . '.' . $ext;
+                    $path = $photo->storeAs('tickets/' . $ticket->id, $filename, 'local');
+                    $photos[] = route('technician.tickets.photo', ['ticket' => $ticket->id, 'filename' => $filename], false);
                 }
             }
             $this->upload_photos = [];
@@ -223,6 +236,14 @@ class Index extends Component
         if (!is_array($this->upload_photos)) {
             $this->upload_photos = $this->upload_photos ? [$this->upload_photos] : [];
         }
+
+        $this->validate([
+            'upload_photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+        ], [
+            'upload_photos.*.image' => 'File bukti harus berupa gambar valid.',
+            'upload_photos.*.mimes' => 'Format file bukti hanya boleh JPEG, PNG, JPG, atau WEBP.',
+            'upload_photos.*.max' => 'Ukuran file bukti maksimal 5 MB per foto.',
+        ]);
     }
 
     public function confirmResolve(): void
@@ -252,11 +273,24 @@ class Index extends Component
         // Upload dan simpan foto bukti pekerjaan jika ada
         $photos = is_array($ticket->photos) ? $ticket->photos : [];
         if (!empty($this->upload_photos)) {
+            $this->validate([
+                'upload_photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+            ], [
+                'upload_photos.*.image' => 'File bukti harus berupa gambar valid.',
+                'upload_photos.*.mimes' => 'Format file bukti hanya boleh JPEG, PNG, JPG, atau WEBP.',
+                'upload_photos.*.max' => 'Ukuran file bukti maksimal 5 MB per foto.',
+            ]);
+
             $photosToProcess = is_array($this->upload_photos) ? $this->upload_photos : [$this->upload_photos];
             foreach ($photosToProcess as $photo) {
                 if ($photo) {
-                    $path = $photo->store('tickets/' . $ticket->id, 'public');
-                    $photos[] = 'storage/' . $path;
+                    $ext = strtolower($photo->getClientOriginalExtension());
+                    if (!in_array($ext, ['jpeg', 'png', 'jpg', 'webp'], true)) {
+                        $ext = $photo->extension() ?: 'jpg';
+                    }
+                    $filename = \Illuminate\Support\Str::random(40) . '.' . $ext;
+                    $path = $photo->storeAs('tickets/' . $ticket->id, $filename, 'local');
+                    $photos[] = route('technician.tickets.photo', ['ticket' => $ticket->id, 'filename' => $filename], false);
                 }
             }
         }

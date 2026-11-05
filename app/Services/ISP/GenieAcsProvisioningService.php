@@ -320,4 +320,201 @@ JS,
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
+    /**
+     * Automatic ONT Provisioning via GenieACS NBI REST (P1-1A)
+     * Configures WAN PPPoE and Wi-Fi asynchronously with tenant checks,
+     * idempotency protection, offline handling, and sanitized logging.
+     */
+    public function provisionOnt(Onu $onu, array $options = []): array
+    {
+        // 1. Tenant & Authorization Check
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            $isGlobalAdmin = $currentUser->hasRole(['administrator', 'superadmin']) 
+                && strtoupper((string)$currentUser->job_function) !== 'TECHNICIAN';
+            
+            if (!$isGlobalAdmin && $currentUser->branch_id && $onu->branch_id) {
+                if ((int)$currentUser->branch_id !== (int)$onu->branch_id) {
+                    Log::warning("SECURITY_VIOLATION: User {$currentUser->id} from branch {$currentUser->branch_id} attempted cross-branch ONT provisioning on ONU {$onu->id} (branch {$onu->branch_id}).");
+                    throw new \Illuminate\Auth\Access\AuthorizationException("Anda tidak memiliki izin untuk mengonfigurasi perangkat di luar cabang Anda.");
+                }
+            }
+        }
+
+        // 2. Resolve Parameters
+        $cs = $options['customer_service'] ?? $onu->customerService ?? \App\Models\Customer\CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
+        $pppoeUser = $options['pppoe_user'] ?? ($cs ? \App\Models\ISP\PPPoEUser::withoutGlobalScopes()->where('customer_service_id', $cs->id)->first() : null);
+
+        $pppoeUsername = trim((string)($options['pppoe_username'] ?? $pppoeUser?->username ?? $cs?->username ?? ''));
+        $pppoePassword = (string)($options['pppoe_password'] ?? $pppoeUser?->password ?? $cs?->password ?? '');
+        $vlanId = $options['vlan_id'] ?? $onu->olt?->vlan_id ?? null;
+
+        $wifiSsid = trim((string)($options['wifi_ssid'] ?? $onu->wifi_ssid ?? ($cs?->attributes['wifi_ssid'] ?? '')));
+        $wifiPassword = (string)($options['wifi_password'] ?? $onu->wifi_password ?? ($cs?->attributes['wifi_password'] ?? ''));
+
+        // Smart defaults if Wi-Fi not specified
+        if ($wifiSsid === '') {
+            $compName = \App\Models\Setting::getValue('company.name', 'WINETS');
+            $snSuffix = substr($onu->serial_number, -4);
+            $wifiSsid = strtoupper("{$compName}-{$snSuffix}");
+        }
+
+        // 3. Idempotency Protection (prevent double-push within 60 seconds)
+        $idempotencyKey = md5("{$onu->id}_{$onu->serial_number}_{$pppoeUsername}_{$wifiSsid}_" . (int)(time() / 60));
+        $attrs = (array)($onu->attributes ?? []);
+        if (
+            ($attrs['idempotency_key'] ?? '') === $idempotencyKey 
+            && in_array($onu->provision_status, ['success', 'processing'])
+            && !($options['force_retry'] ?? false)
+        ) {
+            Log::info("Idempotent provisioning ignored for ONU {$onu->id}. Same parameters recently executed.", [
+                'onu_id' => $onu->id,
+                'status' => $onu->provision_status,
+            ]);
+            return [
+                'status' => $onu->provision_status,
+                'idempotent' => true,
+                'message' => 'Provisioning identik baru saja dijalankan. Mencegah duplikasi task GenieACS.',
+                'device_id' => $attrs['genieacs_device_id'] ?? $onu->serial_number,
+            ];
+        }
+
+        // Update status to processing and set idempotency key
+        $attrs['idempotency_key'] = $idempotencyKey;
+        $attrs['last_provisioning_attempt'] = now()->toIso8601String();
+        $onu->update([
+            'provision_status' => 'processing',
+            'attributes' => $attrs,
+        ]);
+
+        // 4. Resolve Device ID in GenieACS NBI
+        $genieAcsService = app(GenieAcsService::class);
+        $deviceId = $genieAcsService->resolveGenieAcsDeviceId($onu, $cs?->customer_id);
+        if (empty($deviceId)) {
+            $deviceId = $onu->serial_number;
+        }
+
+        // 5. Check Connection Status via GenieACS NBI REST
+        $isOnline = false;
+        try {
+            $isOnline = $this->driver->isDeviceOnline($deviceId);
+        } catch (\Throwable $e) {
+            $sanitizedMsg = 'GenieACS NBI tidak dapat dihubungi: ' . preg_replace('/:[^@]+@/', ':***@', $e->getMessage());
+            Log::error("[GenieACS Provisioning] NBI Connection Error for ONU {$onu->id}: {$sanitizedMsg}");
+
+            $attrs['provisioning_error'] = $sanitizedMsg;
+            $onu->update([
+                'provision_status' => 'failed',
+                'attributes' => $attrs,
+            ]);
+
+            return [
+                'status' => 'failed',
+                'error' => $sanitizedMsg,
+                'device_id' => $deviceId,
+            ];
+        }
+
+        // 6. Device Offline / Not yet informed Handling
+        if (!$isOnline) {
+            // Queue tasks into GenieACS without connection_request
+            $taskQueued = false;
+            try {
+                if ($pppoeUsername !== '') {
+                    $this->driver->postTaskWithFallback($deviceId, [
+                        'name' => 'run_provision',
+                        'provision' => 'dsBilling_Setup_WAN',
+                        'args' => [$pppoeUsername, $pppoePassword, (string)($vlanId ?? '')]
+                    ], false);
+                    $taskQueued = true;
+                }
+                if ($wifiSsid !== '') {
+                    $vendor = $onu->vendor?->name ?? 'default';
+                    $this->driver->updateWifiSsidAndPassword($deviceId, $wifiSsid, $wifiPassword ?: null, $vendor);
+                    $taskQueued = true;
+                }
+            } catch (\Throwable $e) {
+                Log::warning("[GenieACS Provisioning] Queue offline task warning for ONU {$onu->id}: " . $e->getMessage());
+            }
+
+            $attrs['provisioning_error'] = 'Perangkat ONT sedang offline atau belum mengirim Inform pertama ke GenieACS.';
+            $onu->update([
+                'provision_status' => 'waiting_device',
+                'attributes' => $attrs,
+            ]);
+
+            Log::info("[GenieACS Provisioning] ONT is waiting_device for ONU {$onu->id} (SN: {$onu->serial_number})", [
+                'device_id' => $deviceId,
+                'task_queued' => $taskQueued,
+                'pppoe_user' => $pppoeUsername,
+                'wifi_ssid' => $wifiSsid,
+            ]);
+
+            return [
+                'status' => 'waiting_device',
+                'message' => 'Perangkat ONT offline/belum terdeteksi Inform. Task konfigurasi telah diantrikan di GenieACS dan akan otomatis dieksekusi saat ONT online.',
+                'device_id' => $deviceId,
+            ];
+        }
+
+        // 7. Device Online -> Execute Real-Time NBI Provisioning
+        try {
+            $wanSuccess = true;
+            if ($pppoeUsername !== '') {
+                $wanSuccess = $this->driver->provisionPppoe($deviceId, $pppoeUsername, $pppoePassword, $vlanId ? (string)$vlanId : null);
+            }
+
+            $wifiSuccess = true;
+            if ($wifiSsid !== '') {
+                $vendor = $onu->vendor?->name ?? 'default';
+                $wifiSuccess = $this->driver->updateWifiSsidAndPassword($deviceId, $wifiSsid, $wifiPassword ?: null, $vendor);
+            }
+
+            if ($wanSuccess && $wifiSuccess) {
+                $attrs['completed_at'] = now()->toIso8601String();
+                $attrs['genieacs_device_id'] = $deviceId;
+                unset($attrs['provisioning_error']);
+
+                $onu->update([
+                    'provision_status' => 'success',
+                    'provisioned_at' => now(),
+                    'wifi_ssid' => $wifiSsid,
+                    'wifi_password' => $wifiPassword ?: $onu->wifi_password,
+                    'attributes' => $attrs,
+                ]);
+
+                // Sanitized Log: Do NOT log passwords!
+                Log::info("[GenieACS Provisioning] SUCCESS for ONU {$onu->id} (SN: {$onu->serial_number})", [
+                    'device_id' => $deviceId,
+                    'pppoe_username' => $pppoeUsername,
+                    'wifi_ssid' => $wifiSsid,
+                    'vlan_id' => $vlanId,
+                ]);
+
+                return [
+                    'status' => 'success',
+                    'message' => 'Konfigurasi WAN PPPoE dan Wi-Fi berhasil dikirim dan diverifikasi pada ONT via GenieACS.',
+                    'device_id' => $deviceId,
+                ];
+            } else {
+                throw new Exception("Sebagian task NBI ditolak oleh GenieACS (WAN: " . ($wanSuccess ? 'OK' : 'FAIL') . ", Wi-Fi: " . ($wifiSuccess ? 'OK' : 'FAIL') . ")");
+            }
+        } catch (\Throwable $e) {
+            $sanitizedErr = 'Gagal provisioning ONT via GenieACS: ' . preg_replace('/:[^@]+@/', ':***@', $e->getMessage());
+            Log::error("[GenieACS Provisioning] Task Execution Failed for ONU {$onu->id}: {$sanitizedErr}");
+
+            $attrs['provisioning_error'] = $sanitizedErr;
+            $onu->update([
+                'provision_status' => 'failed',
+                'attributes' => $attrs,
+            ]);
+
+            return [
+                'status' => 'failed',
+                'error' => $sanitizedErr,
+                'device_id' => $deviceId,
+            ];
+        }
+    }
 }

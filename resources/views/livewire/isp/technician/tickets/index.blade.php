@@ -202,8 +202,13 @@
                         </div>
                         <div class="grid grid-cols-3 gap-2">
                             @foreach($ticket->photos as $photoUrl)
-                                <a href="{{ asset($photoUrl) }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity">
-                                    <img src="{{ asset($photoUrl) }}" alt="Bukti Lapangan" class="w-full h-full object-cover">
+                                @php
+                                    $secureUrl = \Illuminate\Support\Str::startsWith($photoUrl, ['http://', 'https://', '/technician-portal'])
+                                        ? $photoUrl
+                                        : (\Illuminate\Support\Str::contains($photoUrl, 'tickets/') ? route('technician.tickets.photo', ['ticket' => $ticket->id, 'filename' => basename($photoUrl)]) : asset($photoUrl));
+                                @endphp
+                                <a href="{{ $secureUrl }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:opacity-90 transition-opacity">
+                                    <img src="{{ $secureUrl }}" alt="Bukti Lapangan" class="w-full h-full object-cover">
                                 </a>
                             @endforeach
                         </div>

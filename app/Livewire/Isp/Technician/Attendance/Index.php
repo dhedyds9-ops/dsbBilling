@@ -55,25 +55,32 @@ class Index extends Component
 
         $now = Carbon::now();
 
-        // Validasi Geofencing jika koordinat kantor/cabang sudah ditentukan di sistem
+        // Validasi Geofencing cabang kantor teknisi
         $user = Auth::user();
-        $branch = $user->branch ?? \App\Models\Master\Branch::where('is_active', true)->whereNotNull('latitude')->whereNotNull('longitude')->first();
-        $distanceMeters = null;
+        $branch = $user->branch;
 
-        if ($branch && !empty($branch->latitude) && !empty($branch->longitude)) {
-            $distanceMeters = $this->calculateDistanceInMeters(
-                (float) $this->latitude,
-                (float) $this->longitude,
-                (float) $branch->latitude,
-                (float) $branch->longitude
-            );
+        if (!$branch) {
+            $this->errorMessage = "Gagal Check-In: Cabang kantor Anda belum ditentukan pada sistem. Silakan hubungi Administrator atau HRD untuk menetapkan cabang penugasan Anda.";
+            return;
+        }
 
-            // Radius batas wajar: 150 meter dari kantor
-            $maxAllowedRadius = 150;
-            if ($distanceMeters > $maxAllowedRadius) {
-                $this->errorMessage = "Gagal Check-In: Anda berada di luar radius kantor {$branch->name} (Jarak terdeteksi: {$distanceMeters} meter, batas toleransi: {$maxAllowedRadius} meter).";
-                return;
-            }
+        if (empty($branch->latitude) || empty($branch->longitude)) {
+            $this->errorMessage = "Gagal Check-In: Koordinat GPS untuk cabang kantor '{$branch->name}' belum diatur oleh Administrator.";
+            return;
+        }
+
+        $distanceMeters = $this->calculateDistanceInMeters(
+            (float) $this->latitude,
+            (float) $this->longitude,
+            (float) $branch->latitude,
+            (float) $branch->longitude
+        );
+
+        // Radius batas wajar: 150 meter dari kantor
+        $maxAllowedRadius = 150;
+        if ($distanceMeters > $maxAllowedRadius) {
+            $this->errorMessage = "Gagal Check-In: Anda berada di luar radius kantor {$branch->name} (Jarak terdeteksi: {$distanceMeters} meter, batas toleransi: {$maxAllowedRadius} meter).";
+            return;
         }
 
         // Batas telat jam 09:00 pagi

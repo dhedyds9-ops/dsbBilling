@@ -38,43 +38,74 @@ class Form extends Component
     {
         $this->validate();
 
+        $user = auth()->user();
         $customer = Customer::find($this->customer_id);
 
-        // Update Koordinat Pelanggan jika ada
-        if ($this->latitude && $this->longitude) {
-            $customer->update([
-                "latitude" => $this->latitude,
-                "longitude" => $this->longitude,
-            ]);
+        if (!$customer) {
+            $this->addError('customer_id', 'Pelanggan tidak ditemukan.');
+            return;
         }
 
-        // 1. Buat/Update ONU (Tandai online pasif, tanpa pipeline OMCI)
-        $onu = Onu::updateOrCreate(
-            ["serial_number" => $this->onu_sn],
-            [
-                "olt_id" => $this->olt_id,
-                "pon_port" => $this->pon_port,
-                "name" => "ONU " . $customer->name,
-                "status" => "online",
-            ]
-        );
-
-        // 2. Buat CustomerService (Soft Link, tanpa dikirim ke Orchestrator)
-        $profile = ServiceProfile::find($this->service_profile_id);
-        
-        $cs = CustomerService::where("customer_id", $customer->id)->where("onu_id", $onu->id)->first();
-        if (!$cs) {
-            CustomerService::create([
-                "uuid" => (string) \Illuminate\Support\Str::uuid(),
-                "customer_id" => $customer->id,
-                "service_id" => $profile->service_id ?? 1,
-                "service_profile_id" => $profile->id,
-                "onu_id" => $onu->id,
-                "status" => "active",
-                "service_status" => "active",
-                "created_by" => auth()->id(),
-            ]);
+        // Tentukan branch_id dari konteks organisasi yang sah
+        $branchId = $user->branch_id ?? $customer->branch_id ?? $customer->reseller?->branch_id;
+        if (!$branchId) {
+            $this->addError('customer_id', 'Cabang kantor (Branch) Anda atau Pelanggan belum ditentukan. Hubungi Administrator untuk menetapkan cabang.');
+            return;
         }
+
+        // Validasi: Cegah penggunaan ONU yang sedang aktif digunakan oleh pelanggan lain (Cross-Branch Aware)
+        $existingOnu = Onu::withoutGlobalScopes()->where('serial_number', $this->onu_sn)->first();
+        if ($existingOnu) {
+            $activeOtherCs = CustomerService::withoutGlobalScopes()->where('onu_id', $existingOnu->id)
+                ->where('status', 'active')
+                ->where('customer_id', '!=', $customer->id)
+                ->with('customer')
+                ->first();
+            if ($activeOtherCs) {
+                $otherName = $activeOtherCs->customer?->name ?? 'Pelanggan #' . $activeOtherCs->customer_id;
+                $this->addError('onu_sn', "ONU SN {$this->onu_sn} sedang aktif digunakan oleh pelanggan lain ({$otherName}). Tidak dapat dialihkan secara sepihak.");
+                return;
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($customer, $branchId, $user) {
+            // Update Koordinat Pelanggan & pastikan branch_id terikat
+            $updateCust = ['branch_id' => $branchId];
+            if ($this->latitude && $this->longitude) {
+                $updateCust['latitude'] = $this->latitude;
+                $updateCust['longitude'] = $this->longitude;
+            }
+            $customer->update($updateCust);
+
+            // 1. Buat/Update ONU (Tandai online pasif, terikat branch_id)
+            $onu = Onu::withoutGlobalScopes()->updateOrCreate(
+                ["serial_number" => $this->onu_sn],
+                [
+                    "olt_id" => $this->olt_id,
+                    "pon_port" => $this->pon_port,
+                    "branch_id" => $branchId,
+                    "name" => "ONU " . $customer->name,
+                    "status" => "online",
+                ]
+            );
+
+            // 2. Buat CustomerService (Soft Link, tanpa dikirim ke Orchestrator)
+            $profile = ServiceProfile::find($this->service_profile_id);
+            
+            $cs = CustomerService::where("customer_id", $customer->id)->where("onu_id", $onu->id)->first();
+            if (!$cs) {
+                CustomerService::create([
+                    "uuid" => (string) \Illuminate\Support\Str::uuid(),
+                    "customer_id" => $customer->id,
+                    "service_id" => $profile->service_id ?? 1,
+                    "service_profile_id" => $profile->id,
+                    "onu_id" => $onu->id,
+                    "status" => "active",
+                    "service_status" => "active",
+                    "created_by" => $user->id,
+                ]);
+            }
+        });
 
         session()->flash("success", "Data Sensus ONU & Koordinat berhasil disimpan tanpa mereset modem!");
         return redirect()->route("technician.dashboard");
