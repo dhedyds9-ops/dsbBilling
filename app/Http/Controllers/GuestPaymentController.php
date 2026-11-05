@@ -189,6 +189,12 @@ class GuestPaymentController extends Controller
                 } elseif ($voucher && $voucher->hotspotUser) {
                     $customer = $voucher->hotspotUser->customerService?->customer ?? $voucher->hotspotUser->customer;
                 }
+            } elseif (!$customerService && !$pppoe && !$hotspot) {
+                $customerService = $customer->customerServices()->with(['serviceProfile', 'pppoeUser', 'hotspotUser'])->first();
+                if ($customerService) {
+                    $pppoe = $customerService->pppoeUser;
+                    $hotspot = $customerService->hotspotUser;
+                }
             }
 
             if ($customer && !$user && $customer->user_id) {
@@ -208,21 +214,10 @@ class GuestPaymentController extends Controller
                 if (!$customer) {
                     $customer = $directInvoice->customer;
                 }
-            } elseif ($customer || $user) {
-                $targetIds = array_values(array_unique(array_filter([$customer?->id, $user?->id])));
+            } elseif ($customer) {
                 $invoices = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
                     ->whereNull('deleted_at')
-                    ->where(function ($q) use ($targetIds, $customer, $user) {
-                        if (!empty($targetIds)) {
-                            $q->whereIn('customer_id', $targetIds);
-                        }
-                        if ($customer?->code) {
-                            $q->orWhere('customer_id', $customer->code);
-                        }
-                        if ($user?->customer_code) {
-                            $q->orWhere('customer_id', $user->customer_code);
-                        }
-                    })
+                    ->where('customer_id', $customer->id)
                     ->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue'])
                     ->orderBy('due_date', 'asc')
                     ->with('items')

@@ -213,6 +213,28 @@ class HotspotPortalController extends Controller
                 $customerService = CustomerService::withoutGlobalScopes()->where('username', $unique)->with(['customer', 'serviceProfile'])->first();
             }
 
+            // Fallback: Jika input berupa ID Pelanggan (code), No HP, atau Email di tabel Customer
+            $customer = null;
+            if (!$hotspotUser && !$voucher && !$pppoeUser && !$customerService) {
+                $uniqueLower = strtolower($unique);
+                $customer = Customer::withoutGlobalScopes()
+                    ->where(function($q) use ($unique, $uniqueLower) {
+                        $q->whereRaw('LOWER(code) = ?', [$uniqueLower])
+                          ->orWhere('phone', $unique)
+                          ->orWhereRaw('LOWER(email) = ?', [$uniqueLower]);
+                    })
+                    ->with(['customerServices.serviceProfile', 'customerServices.pppoeUser', 'customerServices.hotspotUser'])
+                    ->first();
+
+                if ($customer) {
+                    $customerService = $customer->customerServices?->first();
+                    $pppoeUser = $customerService?->pppoeUser;
+                    $hotspotUser = $customerService?->hotspotUser;
+                }
+            } else {
+                $customer = $customerService?->customer ?? $pppoeUser?->customerService?->customer ?? $hotspotUser?->customerService?->customer ?? null;
+            }
+
             // Bersihkan ghost sessions yang tidak memiliki IP dan MAC sama sekali
             try {
                 HotspotActiveSession::where(function($q) {
@@ -232,11 +254,20 @@ class HotspotPortalController extends Controller
                 // Ignore cleanup errors
             }
 
+            // Kumpulan candidate username untuk pengecekan sesi aktif di MikroTik/Radius
+            $candidateUsernames = array_values(array_unique(array_filter([
+                $unique,
+                $customerService?->username,
+                $pppoeUser?->username,
+                $hotspotUser?->username,
+                $voucher?->code,
+            ])));
+
             // 2. Ambil sesi aktif dari semua sumber (Hotspot, PPPoE, OnlineSession, RadiusAccounting)
-            $activeHsSessions = HotspotActiveSession::where('user', $unique)->with('router')->get();
-            $activePppSessions = PppActiveSession::where('name', $unique)->with('router')->get();
-            $onlineSessions = OnlineSession::where('username', $unique)->get();
-            $radAccts = RadiusAccounting::where('username', $unique)->whereNull('acct_stop_time')->latest('acct_start_time')->get();
+            $activeHsSessions = HotspotActiveSession::whereIn('user', $candidateUsernames)->with('router')->get();
+            $activePppSessions = PppActiveSession::whereIn('name', $candidateUsernames)->with('router')->get();
+            $onlineSessions = OnlineSession::whereIn('username', $candidateUsernames)->get();
+            $radAccts = RadiusAccounting::whereIn('username', $candidateUsernames)->whereNull('acct_stop_time')->latest('acct_start_time')->get();
 
             $devices = [];
             $deviceLines = [];
@@ -322,18 +353,27 @@ class HotspotPortalController extends Controller
             $download = 0;
             $upload = 0;
 
-            if ($hotspotUser) {
-                $profileName = $hotspotUser->serviceProfile->name ?? 'Hotspot Member';
-                $expiry = $hotspotUser->expires_at ? $hotspotUser->expires_at->format('Y-m-d H:i:s') : '-';
-            } elseif ($voucher) {
-                $profileName = $voucher->serviceProfile->name ?? 'Voucher Hotspot';
-                $expiry = $voucher->expires_at ? $voucher->expires_at->format('Y-m-d H:i:s') : '-';
-            } elseif ($pppoeUser) {
-                $profileName = $pppoeUser->serviceProfile->name ?? 'Langganan PPPoE';
+            if ($customerService && $customerService->serviceProfile) {
+                $profileName = $customerService->serviceProfile->name;
+                $expiry = $customerService->expired_at ? $customerService->expired_at->format('Y-m-d H:i:s') : '-';
+            } elseif ($pppoeUser && $pppoeUser->serviceProfile) {
+                $profileName = $pppoeUser->serviceProfile->name;
                 $expiry = $pppoeUser->expires_at ? $pppoeUser->expires_at->format('Y-m-d H:i:s') : '-';
+            } elseif ($hotspotUser && $hotspotUser->serviceProfile) {
+                $profileName = $hotspotUser->serviceProfile->name;
+                $expiry = $hotspotUser->expires_at ? $hotspotUser->expires_at->format('Y-m-d H:i:s') : '-';
+            } elseif ($voucher && $voucher->serviceProfile) {
+                $profileName = $voucher->serviceProfile->name;
+                $expiry = $voucher->expires_at ? $voucher->expires_at->format('Y-m-d H:i:s') : '-';
             } elseif ($customerService) {
                 $profileName = $customerService->serviceProfile->name ?? 'Langganan Internet';
                 $expiry = $customerService->expired_at ? $customerService->expired_at->format('Y-m-d H:i:s') : '-';
+            } elseif ($pppoeUser) {
+                $profileName = $pppoeUser->serviceProfile->name ?? 'Langganan PPPoE';
+                $expiry = $pppoeUser->expires_at ? $pppoeUser->expires_at->format('Y-m-d H:i:s') : '-';
+            } elseif ($hotspotUser) {
+                $profileName = $hotspotUser->serviceProfile->name ?? 'Hotspot Member';
+                $expiry = $hotspotUser->expires_at ? $hotspotUser->expires_at->format('Y-m-d H:i:s') : '-';
             }
 
             // Hitung bytes
@@ -344,7 +384,7 @@ class HotspotPortalController extends Controller
 
             // Cari tagihan terakhir jika ada
             $latestInvoice = null;
-            $targetCustId = $customerService?->customer_id ?? $pppoeUser?->customerService?->customer_id ?? $hotspotUser?->customerService?->customer_id ?? null;
+            $targetCustId = $customer?->id ?? $customerService?->customer_id ?? $pppoeUser?->customerService?->customer_id ?? $hotspotUser?->customerService?->customer_id ?? null;
             if ($targetCustId) {
                 $latestInvoice = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->whereNull('deleted_at')->where('customer_id', $targetCustId)
                     ->orderBy('created_at', 'desc')
@@ -507,25 +547,26 @@ class HotspotPortalController extends Controller
                 if (!$customer) {
                     $customer = $directInvoice->customer;
                 }
-            } elseif ($customer || $user) {
-                $targetIds = array_values(array_unique(array_filter([$customer?->id, $user?->id])));
+            } elseif ($customer) {
                 $invoices = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
                     ->whereNull('deleted_at')
-                    ->where(function ($q) use ($targetIds, $customer, $user) {
-                        if (!empty($targetIds)) {
-                            $q->whereIn('customer_id', $targetIds);
-                        }
-                        if ($customer?->code) {
-                            $q->orWhere('customer_id', $customer->code);
-                        }
-                        if ($user?->customer_code) {
-                            $q->orWhere('customer_id', $user->customer_code);
-                        }
-                    })
+                    ->where('customer_id', $customer->id)
                     ->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue'])
                     ->orderBy('due_date', 'asc')
                     ->with('items')
                     ->get();
+            } elseif ($user) {
+                $userCustomer = Customer::withoutGlobalScopes()->where('user_id', $user->id)->first();
+                if ($userCustomer) {
+                    $customer = $userCustomer;
+                    $invoices = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                        ->whereNull('deleted_at')
+                        ->where('customer_id', $customer->id)
+                        ->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue'])
+                        ->orderBy('due_date', 'asc')
+                        ->with('items')
+                        ->get();
+                }
             }
 
             if ($invoices->isEmpty()) {
