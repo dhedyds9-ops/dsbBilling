@@ -17,11 +17,25 @@ class BuyVoucher extends Component
     public $service_profile_id;
     public $wa_number;
     public $serviceProfile;
+    public $gateway;
+    public array $availableGateways = [];
 
     public function mount()
     {
         $this->service_profile_id = request()->query('paket') ?: request()->query('package_id');
         $this->wa_number = request()->query('phone') ?: request()->query('wa');
+
+        // Otomatis deteksi gateway pembayaran yang sedang aktif
+        $registry = app(\App\Services\Adapters\Payment\PaymentGatewayRegistry::class);
+        $enabledDrivers = $registry->allEnabledDrivers();
+        $this->availableGateways = array_keys($enabledDrivers);
+
+        $preferred = \App\Models\Setting::getValue('payment.default_gateway');
+        if ($preferred && in_array($preferred, $this->availableGateways, true)) {
+            $this->gateway = $preferred;
+        } else {
+            $this->gateway = !empty($this->availableGateways) ? $this->availableGateways[0] : null;
+        }
 
         if ($this->service_profile_id) {
             $this->serviceProfile = ServiceProfile::withoutGlobalScopes()
@@ -97,11 +111,27 @@ class BuyVoucher extends Component
 
             DB::commit();
 
-            // 4. Initiate Payment
-            $defaultGateway = \App\Models\Setting::getValue('payment.default_gateway', 'midtrans');
+            // 4. Deteksi otomatis Payment Gateway yang aktif
+            $registry = app(\App\Services\Adapters\Payment\PaymentGatewayRegistry::class);
+            $enabledDrivers = $registry->allEnabledDrivers();
+            $enabledGateways = array_keys($enabledDrivers);
+
+            $targetGateway = $this->gateway;
+            if (!$targetGateway || !in_array($targetGateway, $enabledGateways, true)) {
+                $preferred = \App\Models\Setting::getValue('payment.default_gateway');
+                if ($preferred && in_array($preferred, $enabledGateways, true)) {
+                    $targetGateway = $preferred;
+                } else {
+                    $targetGateway = !empty($enabledGateways) ? $enabledGateways[0] : null;
+                }
+            }
+
+            if (!$targetGateway) {
+                throw new \RuntimeException('Belum ada Payment Gateway online yang aktif di sistem. Silakan aktifkan salah satu gateway pembayaran (Tripay, Midtrans, Duitku, Xendit, atau iPaymu) di Pengaturan.');
+            }
             
             $result = $orchestration->initiatePayment(
-                gatewayKey: $defaultGateway,
+                gatewayKey: $targetGateway,
                 customerId: $customer->id,
                 userId: 1, // System
                 amountIdr: (int) $this->serviceProfile->base_price,

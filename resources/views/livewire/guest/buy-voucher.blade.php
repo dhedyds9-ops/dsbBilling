@@ -119,10 +119,40 @@
             </p>
         </div>
 
+        @if(count($availableGateways) > 1)
+        <!-- Payment Gateway Selection jika lebih dari 1 aktif -->
+        <div>
+            <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                Pilih Gateway Pembayaran
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+                @foreach($availableGateways as $gw)
+                    <label class="relative flex items-center p-2.5 rounded-xl border cursor-pointer transition-all {{ $gateway === $gw ? 'border-cyan-500 bg-cyan-50/60 dark:bg-cyan-950/30 text-cyan-900 dark:text-cyan-100 ring-2 ring-cyan-500/20' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300' }}">
+                        <input type="radio" wire:model.live="gateway" value="{{ $gw }}" class="sr-only">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full border flex items-center justify-center {{ $gateway === $gw ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 dark:border-slate-600' }}">
+                                @if($gateway === $gw)
+                                    <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                @endif
+                            </span>
+                            <span class="text-xs font-bold uppercase tracking-wider">{{ $gw }}</span>
+                        </div>
+                    </label>
+                @endforeach
+            </div>
+        </div>
+        @elseif(count($availableGateways) === 1)
+        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/50">
+            <span class="material-symbols-outlined text-[16px] text-cyan-600 dark:text-cyan-400">credit_card</span>
+            <span>Metode Pembayaran Online: <strong class="uppercase text-slate-700 dark:text-slate-200">{{ $availableGateways[0] }}</strong></span>
+        </div>
+        @endif
+
         <!-- Checkout Button -->
         <div class="pt-2">
             <button type="submit" 
-                class="w-full relative py-3.5 px-6 rounded-xl text-base font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/30 active:scale-[0.99] transition-all disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                @if(empty($availableGateways)) disabled @endif
+                class="w-full relative py-3.5 px-6 rounded-xl text-base font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/30 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
                 wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="checkout" class="flex items-center justify-center gap-2 w-full">
                     <span class="material-symbols-outlined text-[20px]">payments</span>
