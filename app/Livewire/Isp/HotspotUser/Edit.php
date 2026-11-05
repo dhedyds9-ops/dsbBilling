@@ -62,6 +62,8 @@ class Edit extends AdminComponent
 
     public function updateCustomer()
     {
+        $this->reseller_id = !empty($this->reseller_id) ? (int)$this->reseller_id : null;
+
         $this->validate([
             'name' => 'required|string',
             'phone' => 'required|string',
@@ -74,8 +76,9 @@ class Edit extends AdminComponent
         ]);
 
         $cs = $this->hotspotUser->customerService;
-        $customerId = $cs?->customer_id;
-        $userId = $cs?->customer?->user_id;
+        $cust = $this->hotspotUser->real_customer ?? $cs?->customer;
+        $customerId = $cust?->id ?? $cs?->customer_id;
+        $userId = $cust?->user_id ?? $cs?->customer?->user_id;
 
         try {
             \App\Services\CRM\CustomerValidationService::validatePhone($this->phone, $customerId, $userId);
@@ -85,8 +88,8 @@ class Edit extends AdminComponent
             return;
         }
 
-        if ($cs && $cs->customer) {
-            $cs->customer->update([
+        if ($cust) {
+            $cust->update([
                 'name' => $this->name,
                 'phone' => $this->phone,
                 'email' => $this->email,
@@ -95,10 +98,15 @@ class Edit extends AdminComponent
                 'latitude' => $this->latitude,
                 'longitude' => $this->longitude,
             ]);
-            
+        }
+
+        if ($cs) {
             $attrs = is_array($cs->attributes) ? $cs->attributes : [];
             $attrs['notes'] = $this->notes;
-            $cs->update(['attributes' => $attrs]);
+            $cs->update([
+                'reseller_id' => $this->reseller_id,
+                'attributes' => $attrs,
+            ]);
         }
         
         $this->hotspotUser->update(['reseller_id' => $this->reseller_id]);
@@ -187,8 +195,19 @@ class Edit extends AdminComponent
     public function save()
     {
         $this->updateCustomer();
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
+
         $this->updateService();
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
+
         $this->updateNetwork();
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
 
         session()->flash('success', 'Perubahan berhasil disimpan dan disinkronisasikan ke Mikrotik.');
         return redirect()->route('isp.hotspot-users.index');
