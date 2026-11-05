@@ -40,6 +40,10 @@ class InvoicePolicy
 
     public function delete(User $user, Invoice $invoice): bool
     {
+        if ($user->hasRole(\App\Enums\UserRole::Administrator->value) || $user->isSuperAdmin() || $user->hasRole(['administrator', 'admin', 'super_admin'])) {
+            return true;
+        }
+
         if ($user->hasRole('reseller') || !empty($user->getEffectiveResellerId())) {
             return false;
         }

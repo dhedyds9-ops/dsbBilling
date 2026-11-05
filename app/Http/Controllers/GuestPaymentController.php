@@ -193,7 +193,8 @@ class GuestPaymentController extends Controller
             }
 
             // 9. Cek Invoice langsung jika query adalah Nomor Invoice
-            $directInvoice = Invoice::withoutGlobalScopes()
+            $directInvoice = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                ->whereNull('deleted_at')
                 ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
                 ->with(['customer', 'items'])
                 ->first();
@@ -206,7 +207,8 @@ class GuestPaymentController extends Controller
                 }
             } elseif ($customer || $user) {
                 $targetIds = array_values(array_unique(array_filter([$customer?->id, $user?->id])));
-                $invoices = Invoice::withoutGlobalScopes()
+                $invoices = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                    ->whereNull('deleted_at')
                     ->where(function ($q) use ($targetIds, $customer, $user) {
                         if (!empty($targetIds)) {
                             $q->whereIn('customer_id', $targetIds);

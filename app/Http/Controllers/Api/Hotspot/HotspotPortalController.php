@@ -287,7 +287,7 @@ class HotspotPortalController extends Controller
             $latestInvoice = null;
             $targetCustId = $customerService?->customer_id ?? $pppoeUser?->customerService?->customer_id ?? $hotspotUser?->customerService?->customer_id ?? null;
             if ($targetCustId) {
-                $latestInvoice = Invoice::withoutGlobalScopes()->where('customer_id', $targetCustId)
+                $latestInvoice = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->whereNull('deleted_at')->where('customer_id', $targetCustId)
                     ->orderBy('created_at', 'desc')
                     ->first();
             }
@@ -435,7 +435,8 @@ class HotspotPortalController extends Controller
             }
 
             // 5. Cari Invoice langsung jika input adalah No Invoice
-            $directInvoice = Invoice::withoutGlobalScopes()
+            $directInvoice = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                ->whereNull('deleted_at')
                 ->whereRaw('LOWER(invoice_number) = ?', [$queryLower])
                 ->with(['customer', 'items'])
                 ->first();
@@ -449,7 +450,8 @@ class HotspotPortalController extends Controller
                 }
             } elseif ($customer || $user) {
                 $targetIds = array_values(array_unique(array_filter([$customer?->id, $user?->id])));
-                $invoices = Invoice::withoutGlobalScopes()
+                $invoices = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                    ->whereNull('deleted_at')
                     ->where(function ($q) use ($targetIds, $customer, $user) {
                         if (!empty($targetIds)) {
                             $q->whereIn('customer_id', $targetIds);

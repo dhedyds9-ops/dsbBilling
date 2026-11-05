@@ -225,6 +225,12 @@
                                             </svg>
                                         </a>
                                     @endif
+                                    {{-- Hapus Invoice --}}
+                                    @can('delete', $invoice)
+                                        <button wire:click="delete({{ $invoice->id }})" wire:confirm="Yakin ingin menghapus invoice {{ $invoice->invoice_number }}?" type="button" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors" title="Hapus Invoice">
+                                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                        </button>
+                                    @endcan
                                 </div>
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">

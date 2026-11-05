@@ -97,7 +97,7 @@ class Index extends BaseBillingComponent
 
     protected function buildScopedQuery($forStats = false)
     {
-        $query = Invoice::withoutGlobalScopes();
+        $query = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->whereNull('invoices.deleted_at');
         
         if (!$forStats) {
             $query->with(['customer.customerServices.serviceProfile', 'items', 'customer.reseller', 'reseller']);
@@ -312,7 +312,7 @@ class Index extends BaseBillingComponent
 
     public function delete($id)
     {
-        $invoice = Invoice::findOrFail($id);
+        $invoice = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->findOrFail($id);
         $this->authorize('delete', $invoice);
 
         if (in_array($invoice->status, ['paid', 'partial'], true)) {
@@ -323,7 +323,7 @@ class Index extends BaseBillingComponent
         $invoice->delete();
         $this->selected = array_values(array_diff($this->selected, [(string) $id]));
         $this->selectAll = false;
-        session()->flash('success', 'Invoice berhasil dihapus!');
+        session()->flash('success', 'Invoice ' . $invoice->invoice_number . ' berhasil dihapus!');
     }
 
     public function sendWhatsApp($id)
@@ -344,14 +344,16 @@ class Index extends BaseBillingComponent
         if (empty($this->selected)) return;
 
         $scopedIds = $this->buildScopedQuery()
-            ->whereIn('id', array_values(array_map('intval', $this->selected)))
-            ->pluck('id')
+            ->whereIn('invoices.id', array_values(array_map('intval', $this->selected)))
+            ->pluck('invoices.id')
             ->map(fn($id) => (string) $id)
             ->toArray();
 
         $count = 0;
         $skippedPaid = 0;
-        $invoices = Invoice::whereIn('id', array_map('intval', $scopedIds))->get();
+        $invoices = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+            ->whereIn('id', array_map('intval', $scopedIds))
+            ->get();
         foreach ($invoices as $invoice) {
             try {
                 $this->authorize('delete', $invoice);
@@ -374,7 +376,7 @@ class Index extends BaseBillingComponent
         } elseif ($count > 0) {
             session()->flash('success', "$count Invoice berhasil dihapus!");
         } else {
-            session()->flash('info', 'Tidak ada invoice yang bisa dihapus.');
+            session()->flash('error', "Gagal menghapus invoice. Pastikan Anda memiliki hak akses dan invoice belum dibayar.");
         }
     }
 

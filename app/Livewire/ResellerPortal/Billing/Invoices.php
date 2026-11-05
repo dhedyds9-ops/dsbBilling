@@ -153,7 +153,9 @@ class Invoices extends AdminComponent
         $resellerId = Auth::user()->getEffectiveResellerId();
 
         // Start querying customer subscription invoices for this reseller (excluding one-time voucher orders)
-        $query = Invoice::withoutGlobalScopes()->where(function($q) use ($resellerId) {
+        $query = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+            ->whereNull('invoices.deleted_at')
+            ->where(function($q) use ($resellerId) {
             $q->where('reseller_id', $resellerId)
               ->orWhereHas('customer', function ($cq) use ($resellerId) {
                   $cq->withoutGlobalScopes()->where('reseller_id', $resellerId)->orWhere('created_by', $resellerId);
