@@ -123,7 +123,15 @@ class Edit extends AdminComponent
             'customer_source' => 'required|in:customer,survey,manual',
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'required|string',
-            'assigned_to' => 'nullable|exists:users,id',
+            'assigned_to' => ['nullable', function ($attr, $value, $fail) {
+                if (!$value) return;
+                // Data lama: izinkan mempertahankan penugasan yang sudah ada
+                $current = Installation::whereKey($this->installationId)->value('assigned_to');
+                if ((int) $current === (int) $value) return;
+                if (!\App\Services\CRM\InstallationTechnicianNotifier::technicianQuery()->whereKey($value)->exists()) {
+                    $fail('Teknisi yang dipilih tidak valid (hanya user dengan fungsi Teknisi).');
+                }
+            }],
             'status' => 'required|in:scheduled,in_progress,completed,canceled',
             'priority' => 'required|in:low,medium,high,critical',
             'notes' => 'nullable|string',
@@ -160,6 +168,7 @@ class Edit extends AdminComponent
         $scheduledAt = Carbon::parse($this->scheduled_date . ' ' . ($this->scheduled_time ?: '09:00:00'));
 
         $installation = Installation::findOrFail($this->installationId);
+        $previousTechId = (int) ($installation->assigned_to ?: $installation->technician_id ?: 0);
         $installation->update([
             'customer_id' => $this->customer_source === 'customer' ? $this->customer_id : null,
             'survey_id' => $this->customer_source === 'survey' ? $this->survey_id : null,
@@ -179,7 +188,18 @@ class Edit extends AdminComponent
             'updated_by' => Auth::id() ?? 1,
         ]);
 
-        session()->flash('success', 'Data instalasi berhasil diperbarui!');
+        $successMsg = 'Data instalasi berhasil diperbarui!';
+        $newTechId = (int) ($this->assigned_to ?: 0);
+        // Kirim notifikasi hanya jika teknisi baru ditugaskan / diganti (hindari spam saat edit biasa)
+        if ($newTechId && $newTechId !== $previousTechId) {
+            $notif = app(\App\Services\CRM\InstallationTechnicianNotifier::class)
+                ->notifyAssigned($installation->fresh(), $previousTechId ? 'reassigned' : 'created');
+            $successMsg .= $notif['whatsapp']
+                ? ' Notifikasi WhatsApp & Portal Teknisi terkirim.'
+                : ' Notifikasi Portal Teknisi terkirim; WhatsApp gagal: ' . ($notif['whatsapp_error'] ?? 'tidak diketahui') . '.';
+        }
+
+        session()->flash('success', $successMsg);
         return redirect()->route('crm.installations.index');
     }
 
@@ -187,7 +207,18 @@ class Edit extends AdminComponent
     {
         $customers = Customer::orderBy('name')->get(['id', 'name', 'code', 'phone']);
         $surveys = Survey::with('prospect')->orderBy('id', 'desc')->get();
-        $technicians = User::orderBy('name')->get(['id', 'name', 'email']);
+        $technicians = \App\Services\CRM\InstallationTechnicianNotifier::technicianQuery()
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        // Pertahankan penugasan lama (non-teknisi) agar tetap tampil di dropdown
+        if ($this->assigned_to && !$technicians->contains('id', (int) $this->assigned_to)) {
+            $current = Installation::whereKey($this->installationId)->value('assigned_to');
+            if ((int) $current === (int) $this->assigned_to && ($legacy = User::find($current, ['id', 'name', 'email']))) {
+                $legacy->name .= ' (penugasan lama)';
+                $technicians->prepend($legacy);
+            }
+        }
 
         return view('livewire.crm.installation.edit', [
             'customers' => $customers,

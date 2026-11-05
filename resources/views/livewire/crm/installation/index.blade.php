@@ -96,19 +96,19 @@
                                 <div class="flex items-center justify-center gap-1.5">
                                     <a href="{{ route('crm.installations.show', $installation->id) }}" 
                                        title="Lihat Rincian"
-                                       class="p-1.5 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">visibility</span>
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">visibility</span>
                                     </a>
                                     <a href="{{ route('crm.installations.edit', $installation->id) }}" 
                                        title="Edit Instalasi"
-                                       class="p-1.5 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">edit</span>
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
                                     <button wire:click="delete({{ $installation->id }})" 
                                             wire:confirm="Yakin ingin menghapus data instalasi ini?" 
                                             title="Hapus"
-                                            class="p-1.5 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">delete</span>
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>
                             </td>

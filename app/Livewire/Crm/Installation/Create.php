@@ -100,7 +100,11 @@ class Create extends AdminComponent
             'customer_source' => 'required|in:customer,survey,manual',
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'required|string',
-            'assigned_to' => 'nullable|exists:users,id',
+            'assigned_to' => ['nullable', function ($attr, $value, $fail) {
+                if ($value && !\App\Services\CRM\InstallationTechnicianNotifier::technicianQuery()->whereKey($value)->exists()) {
+                    $fail('Teknisi yang dipilih tidak valid (hanya user dengan fungsi Teknisi).');
+                }
+            }],
             'status' => 'required|in:scheduled,in_progress,completed,canceled',
             'priority' => 'required|in:low,medium,high,critical',
             'notes' => 'nullable|string',
@@ -159,7 +163,15 @@ class Create extends AdminComponent
 
         $this->sendInstallationWhatsAppNotification($wo);
 
-        session()->flash('success', 'Instalasi baru berhasil dijadwalkan!');
+        $successMsg = 'Instalasi baru berhasil dijadwalkan!';
+        if ($wo->assigned_to) {
+            $notif = app(\App\Services\CRM\InstallationTechnicianNotifier::class)->notifyAssigned($wo, 'created');
+            $successMsg .= $notif['whatsapp']
+                ? ' Notifikasi WhatsApp & Portal Teknisi terkirim.'
+                : ' Notifikasi Portal Teknisi terkirim; WhatsApp gagal: ' . ($notif['whatsapp_error'] ?? 'tidak diketahui') . '.';
+        }
+
+        session()->flash('success', $successMsg);
         return redirect()->route('crm.installations.index');
     }
 
@@ -190,19 +202,8 @@ class Create extends AdminComponent
                 \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
             }
 
-            // 2. Kirim ke nomor WhatsApp teknisi jika ada teknisi ditugaskan
-            if ($technician) {
-                $rawPhone = $technician->phone ?? $technician->whatsapp ?? null;
-                if ($rawPhone) {
-                    $techPhone = preg_replace('/\D/', '', (string)$rawPhone);
-                    if (str_starts_with($techPhone, '0')) $techPhone = '62' . substr($techPhone, 1);
-                    if (!str_starts_with($techPhone, '62')) $techPhone = '62' . $techPhone;
-
-                    if (strlen($techPhone) >= 10) {
-                        \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $groupText);
-                    }
-                }
-            }
+            // 2. Notifikasi teknisi (in-app Portal Teknisi + WhatsApp pribadi) ditangani
+            //    oleh InstallationTechnicianNotifier di save().
 
             // 3. Kirim ke Telegram Bot
             try {
@@ -232,7 +233,9 @@ class Create extends AdminComponent
     {
         $customers = Customer::orderBy('name')->get(['id', 'name', 'code', 'phone']);
         $surveys = Survey::with('prospect')->orderBy('id', 'desc')->get();
-        $technicians = User::orderBy('name')->get(['id', 'name', 'email']);
+        $technicians = \App\Services\CRM\InstallationTechnicianNotifier::technicianQuery()
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
 
         return view('livewire.crm.installation.create', [
             'customers' => $customers,

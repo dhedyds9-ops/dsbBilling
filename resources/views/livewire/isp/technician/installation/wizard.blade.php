@@ -333,6 +333,17 @@
                 <span class="material-symbols-outlined shrink-0 mt-0.5" style="font-size:18px">warning</span>
                 <p class="text-xs leading-relaxed">Pastikan fiber sudah terpasang sebelum menekan Aktifkan. Sistem akan provisioning otomatis ke OLT & GenieACS NBI.</p>
             </div>
+            @if(session('error') || $errors->any())
+                <div class="mt-3 p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded-xl border border-rose-200 dark:border-rose-800/50 flex gap-2" x-data x-init="$el.scrollIntoView({behavior: 'smooth', block: 'center'})">
+                    <span class="material-symbols-outlined shrink-0 mt-0.5" style="font-size:18px">error</span>
+                    <div class="text-xs leading-relaxed font-semibold space-y-0.5">
+                        @if(session('error'))<p>{{ session('error') }}</p>@endif
+                        @foreach($errors->all() as $err)
+                            @if($err !== session('error'))<p>{{ $err }}</p>@endif
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         @endif
 
         {{-- Step 7: Ringkasan Hasil PSB & Status Provisioning ONT (P1-1A) --}}
