@@ -213,6 +213,25 @@ class HotspotPortalController extends Controller
                 $customerService = CustomerService::withoutGlobalScopes()->where('username', $unique)->with(['customer', 'serviceProfile'])->first();
             }
 
+            // Bersihkan ghost sessions yang tidak memiliki IP dan MAC sama sekali
+            try {
+                HotspotActiveSession::where(function($q) {
+                    $q->whereNull('address')->orWhere('address', '')->orWhere('address', '-')->orWhere('address', '0.0.0.0');
+                })->where(function($q) {
+                    $q->whereNull('mac_address')->orWhere('mac_address', '')->orWhere('mac_address', '-');
+                })->delete();
+
+                OnlineSession::where(function($q) {
+                    $q->whereNull('address')->orWhere('address', '')->orWhere('address', '-')->orWhere('address', '0.0.0.0');
+                })->where(function($q) {
+                    $q->whereNull('mac_address')->orWhere('mac_address', '')->orWhere('mac_address', '-');
+                })->where(function($q) {
+                    $q->whereNull('caller_id')->orWhere('caller_id', '')->orWhere('caller_id', '-');
+                })->delete();
+            } catch (\Throwable $e) {
+                // Ignore cleanup errors
+            }
+
             // 2. Ambil sesi aktif dari semua sumber (Hotspot, PPPoE, OnlineSession, RadiusAccounting)
             $activeHsSessions = HotspotActiveSession::where('user', $unique)->with('router')->get();
             $activePppSessions = PppActiveSession::where('name', $unique)->with('router')->get();
@@ -242,8 +261,8 @@ class HotspotPortalController extends Controller
                     $mac = trim((string)($radAccts->first()->calling_station_id ?? ''));
                 }
 
-                // Abaikan jika ghost session (IP dan MAC dua-duanya tidak ada dan uptime 0s / '-')
-                if (($ip === '' || $ip === '-' || $ip === '0.0.0.0') && ($mac === '' || $mac === '-') && ($uptime === '' || $uptime === '0s' || $uptime === '-')) {
+                // Abaikan jika ghost session: jika IP dan MAC dua-duanya tidak ada, bukan perangkat nyata!
+                if (($ip === '' || $ip === '-' || $ip === '0.0.0.0') && ($mac === '' || $mac === '-')) {
                     return;
                 }
 

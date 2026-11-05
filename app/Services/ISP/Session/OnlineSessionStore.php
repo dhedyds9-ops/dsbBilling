@@ -213,7 +213,7 @@ class OnlineSessionStore
                 $router = Router::where('ip_address', $nasIp)->first() ?? Router::first();
                 $routerId = $router?->id ?? 1;
 
-                if ($isHotspot) {
+                if ($isHotspot && (!empty($caller) || !empty($address))) {
                     HotspotActiveSession::query()->updateOrCreate(
                         ['user' => $username],
                         [
@@ -226,7 +226,7 @@ class OnlineSessionStore
                             'session_started_at' => $startedAt,
                         ]
                     );
-                } elseif ($isPppoe) {
+                } elseif ($isPppoe && (!empty($caller) || !empty($address))) {
                     PppActiveSession::query()->updateOrCreate(
                         ['name' => $username],
                         [
