@@ -24,6 +24,8 @@ class Index extends AdminComponent
     public string $form_address = '';
     public string $form_phone = '';
     public string $form_email = '';
+    public string $form_latitude = '';
+    public string $form_longitude = '';
     public bool $form_is_active = true;
     public string $form_notes = '';
 
@@ -37,6 +39,8 @@ class Index extends AdminComponent
             'form_address'   => 'nullable|string',
             'form_phone'     => 'nullable|string|max:20',
             'form_email'     => 'nullable|email|max:255',
+            'form_latitude'  => 'nullable|numeric|between:-90,90',
+            'form_longitude' => 'nullable|numeric|between:-180,180',
             'form_is_active' => 'boolean',
             'form_notes'     => 'nullable|string',
         ];
@@ -89,6 +93,8 @@ class Index extends AdminComponent
         $this->form_address   = $branch->address ?? '';
         $this->form_phone     = $branch->phone ?? '';
         $this->form_email     = $branch->email ?? '';
+        $this->form_latitude  = (string) ($branch->latitude ?? '');
+        $this->form_longitude = (string) ($branch->longitude ?? '');
         $this->form_is_active = (bool) $branch->is_active;
         $this->form_notes     = $branch->notes ?? '';
         $this->isEditing      = true;
@@ -107,6 +113,8 @@ class Index extends AdminComponent
             'address'    => $this->form_address ?: null,
             'phone'      => $this->form_phone ?: null,
             'email'      => $this->form_email ?: null,
+            'latitude'   => trim($this->form_latitude) !== '' ? (float) $this->form_latitude : null,
+            'longitude'  => trim($this->form_longitude) !== '' ? (float) $this->form_longitude : null,
             'is_active'  => $this->form_is_active,
             'notes'      => $this->form_notes ?: null,
             'updated_by' => auth()->id(),
@@ -155,6 +163,8 @@ class Index extends AdminComponent
         $this->form_address   = '';
         $this->form_phone     = '';
         $this->form_email     = '';
+        $this->form_latitude  = '';
+        $this->form_longitude = '';
         $this->form_is_active = true;
         $this->form_notes     = '';
         $this->resetValidation();

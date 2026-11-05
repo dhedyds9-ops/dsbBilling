@@ -254,6 +254,31 @@
                             </div>
                         </div>
 
+                        {{-- Titik Koordinat GPS Kantor (Geofencing Absensi Teknisi) --}}
+                        <div class="p-3.5 bg-sky-50 dark:bg-sky-950/40 rounded-2xl border border-sky-100 dark:border-sky-800/50 space-y-2">
+                            <div class="flex items-center gap-1.5 text-xs font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">
+                                <span class="material-symbols-outlined text-sm text-sky-600">location_on</span>
+                                <span>Titik Koordinat GPS Kantor (Geofencing Absensi)</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                Diperlukan untuk validasi Check-In Presensi Teknisi (Radius batas wajar 150 meter dari kantor cabang).
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Latitude (Lintang)</label>
+                                    <input type="text" wire:model="form_latitude" placeholder="Contoh: -6.200000"
+                                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono focus:ring-2 focus:ring-sky-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                                    @error('form_latitude') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Longitude (Bujur)</label>
+                                    <input type="text" wire:model="form_longitude" placeholder="Contoh: 106.816666"
+                                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono focus:ring-2 focus:ring-sky-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                                    @error('form_longitude') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="flex items-center gap-3 pt-2">
                             <button type="button" wire:click="$toggle('form_is_active')"
                                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $form_is_active ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600' }}">
