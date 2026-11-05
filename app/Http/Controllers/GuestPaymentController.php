@@ -10,6 +10,9 @@ use App\Models\ISP\HotspotUser;
 use App\Models\ISP\PPPoEUser;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\RadiusAccounting;
+use App\Models\ISP\HotspotActiveSession;
+use App\Models\ISP\PppActiveSession;
+use App\Models\ISP\OnlineSession;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -226,17 +229,45 @@ class GuestPaymentController extends Controller
                     ->get();
             }
 
-            // Cek session aktif
-            if ($hotspot) {
-                $activeSessions = RadiusAccounting::where(function ($q) use ($hotspot) {
-                    $q->where('hotspot_user_id', $hotspot->id)
-                      ->orWhere('username', $hotspot->username);
-                })->whereNull('acct_stop_time')->count();
-            } elseif ($pppoe) {
-                $activeSessions = RadiusAccounting::where(function ($q) use ($pppoe) {
-                    $q->where('pppoe_user_id', $pppoe->id)
-                      ->orWhere('username', $pppoe->username);
-                })->whereNull('acct_stop_time')->count();
+            // Cek session aktif secara komprehensif
+            $targetUsernames = array_values(array_filter(array_unique([
+                $query,
+                $hotspot?->username,
+                $pppoe?->username,
+                $voucher?->code,
+                $customerService?->username,
+            ])));
+
+            $activeSessionData = null;
+            $activeSessions = 0;
+
+            if (!empty($targetUsernames)) {
+                $onlineSession = OnlineSession::whereIn('username', $targetUsernames)->latest()->first();
+                $hsSession = HotspotActiveSession::whereIn('user', $targetUsernames)->latest()->first();
+                $pppSession = PppActiveSession::whereIn('name', $targetUsernames)->latest()->first();
+                $radAcct = RadiusAccounting::whereIn('username', $targetUsernames)
+                    ->whereNull('acct_stop_time')
+                    ->latest('acct_start_time')
+                    ->first();
+
+                // Cari IP & MAC terbaik
+                $resolvedIp = $onlineSession?->address ?: ($hsSession?->address ?: ($pppSession?->address ?: ($radAcct?->framed_ip_address ?: '')));
+                $resolvedMac = $onlineSession?->mac_address ?: ($onlineSession?->caller_id ?: ($hsSession?->mac_address ?: ($pppSession?->caller_id ?: ($radAcct?->calling_station_id ?: ''))));
+                $resolvedUptime = $onlineSession?->uptime ?: ($hsSession?->uptime ?: ($pppSession?->uptime ?: ($radAcct?->acct_session_time ? gmdate('H:i:s', (int)$radAcct->acct_session_time) : '')));
+
+                // Validasi bukan ghost session
+                $isGhost = ($resolvedIp === '' || $resolvedIp === '-' || $resolvedIp === '0.0.0.0') 
+                    && ($resolvedMac === '' || $resolvedMac === '-') 
+                    && ($resolvedUptime === '' || $resolvedUptime === '0s' || $resolvedUptime === '-');
+
+                if (($onlineSession || $hsSession || $pppSession || $radAcct) && !$isGhost) {
+                    $activeSessions = 1;
+                    $activeSessionData = [
+                        'ip' => ($resolvedIp !== '' && $resolvedIp !== '0.0.0.0') ? $resolvedIp : '-',
+                        'mac' => ($resolvedMac !== '') ? $resolvedMac : '-',
+                        'uptime' => ($resolvedUptime !== '') ? $resolvedUptime : '-',
+                    ];
+                }
             }
 
             if ($invoices->isNotEmpty()) {
@@ -314,6 +345,7 @@ class GuestPaymentController extends Controller
             'pppoe',
             'customerService',
             'activeSessions',
+            'activeSessionData',
             'activeGateways'
         ));
     }
@@ -394,8 +426,9 @@ class GuestPaymentController extends Controller
 
         if ($username) {
             try {
-                \App\Models\ISP\HotspotActiveSession::where('user', $username)->delete();
-                \App\Models\ISP\OnlineSession::where('username', $username)->delete();
+                HotspotActiveSession::where('user', $username)->delete();
+                PppActiveSession::where('name', $username)->delete();
+                OnlineSession::where('username', $username)->delete();
             } catch (\Throwable $e) {
                 // Ignore
             }

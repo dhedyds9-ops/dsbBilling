@@ -211,47 +211,85 @@ class HotspotPortalController extends Controller
                 $customerService = CustomerService::withoutGlobalScopes()->where('username', $unique)->with(['customer', 'serviceProfile'])->first();
             }
 
-            // 2. Ambil sesi aktif
-            $activeSessions = HotspotActiveSession::where('user', $unique)->with('router')->get();
-            $onlineSessions = OnlineSession::where('protocol', 'hotspot')->where('username', $unique)->get();
+            // 2. Ambil sesi aktif dari semua sumber (Hotspot, PPPoE, OnlineSession, RadiusAccounting)
+            $activeHsSessions = HotspotActiveSession::where('user', $unique)->with('router')->get();
+            $activePppSessions = PppActiveSession::where('name', $unique)->with('router')->get();
+            $onlineSessions = OnlineSession::where('username', $unique)->get();
+            $radAccts = RadiusAccounting::where('username', $unique)->whereNull('acct_stop_time')->latest('acct_start_time')->get();
 
             $devices = [];
             $deviceLines = [];
             $index = 1;
 
-            // Merge active sessions
-            foreach ($activeSessions as $s) {
-                $ip = $s->address ?? '-';
-                $mac = $s->mac_address ?? '-';
-                $devices[] = [
-                    'id' => $s->id,
-                    'ip' => $ip,
-                    'mac' => $mac,
-                    'uptime' => $s->uptime ?? '-',
-                    'bytes_in' => (int)$s->bytes_in,
-                    'bytes_out' => (int)$s->bytes_out,
-                ];
-                $deviceLines[] = "{$index}. {$ip} : {$mac}";
-                $index++;
-            }
+            // Helper untuk membersihkan IP dan MAC
+            $resolveDevice = function ($rawIp, $rawMac, $rawUptime, $rawBytesIn = 0, $rawBytesOut = 0, $rawId = null) use (&$devices, &$deviceLines, &$index, $onlineSessions, $radAccts) {
+                $ip = trim((string)($rawIp ?? ''));
+                $mac = trim((string)($rawMac ?? ''));
+                $uptime = trim((string)($rawUptime ?? ''));
 
-            // Tambahkan dari OnlineSession jika belum ada di list
-            foreach ($onlineSessions as $os) {
-                $mac = $os->mac_address ?? $os->caller_id ?? '-';
-                $already = collect($devices)->firstWhere('mac', $mac);
-                if (!$already && $mac !== '-') {
-                    $ip = $os->address ?? '-';
+                if (($ip === '' || $ip === '-' || $ip === '0.0.0.0') && $onlineSessions->isNotEmpty()) {
+                    $ip = trim((string)($onlineSessions->first()->address ?? ''));
+                }
+                if (($mac === '' || $mac === '-') && $onlineSessions->isNotEmpty()) {
+                    $mac = trim((string)($onlineSessions->first()->mac_address ?? ($onlineSessions->first()->caller_id ?? '')));
+                }
+                if (($ip === '' || $ip === '-' || $ip === '0.0.0.0') && $radAccts->isNotEmpty()) {
+                    $ip = trim((string)($radAccts->first()->framed_ip_address ?? ''));
+                }
+                if (($mac === '' || $mac === '-') && $radAccts->isNotEmpty()) {
+                    $mac = trim((string)($radAccts->first()->calling_station_id ?? ''));
+                }
+
+                // Abaikan jika ghost session (IP dan MAC dua-duanya tidak ada dan uptime 0s / '-')
+                if (($ip === '' || $ip === '-' || $ip === '0.0.0.0') && ($mac === '' || $mac === '-') && ($uptime === '' || $uptime === '0s' || $uptime === '-')) {
+                    return;
+                }
+
+                // Cek duplikasi
+                $exists = collect($devices)->first(function ($d) use ($ip, $mac) {
+                    if ($mac !== '' && $mac !== '-' && $d['mac'] === $mac) return true;
+                    if ($ip !== '' && $ip !== '-' && $d['ip'] === $ip) return true;
+                    return false;
+                });
+
+                if (!$exists) {
+                    $devIp = ($ip !== '' && $ip !== '0.0.0.0') ? $ip : '-';
+                    $devMac = ($mac !== '') ? $mac : '-';
+                    $devUptime = ($uptime !== '') ? $uptime : '-';
+
                     $devices[] = [
-                        'id' => $os->id,
-                        'ip' => $ip,
-                        'mac' => $mac,
-                        'uptime' => $os->uptime ?? '-',
-                        'bytes_in' => (int)$os->bytes_in,
-                        'bytes_out' => (int)$os->bytes_out,
+                        'id' => $rawId ?? ('dev_' . $index),
+                        'ip' => $devIp,
+                        'mac' => $devMac,
+                        'uptime' => $devUptime,
+                        'bytes_in' => (int)$rawBytesIn,
+                        'bytes_out' => (int)$rawBytesOut,
                     ];
-                    $deviceLines[] = "{$index}. {$ip} : {$mac}";
+                    $deviceLines[] = "{$index}. {$devIp} : {$devMac}";
                     $index++;
                 }
+            };
+
+            // Process Hotspot sessions
+            foreach ($activeHsSessions as $s) {
+                $resolveDevice($s->address, $s->mac_address, $s->uptime, $s->bytes_in, $s->bytes_out, $s->id);
+            }
+
+            // Process PPPoE sessions
+            foreach ($activePppSessions as $s) {
+                $resolveDevice($s->address, $s->caller_id, $s->uptime, $s->bytes_in, $s->bytes_out, $s->id);
+            }
+
+            // Process OnlineSession
+            foreach ($onlineSessions as $os) {
+                $resolveDevice($os->address, $os->mac_address ?: $os->caller_id, $os->uptime, $os->bytes_in, $os->bytes_out, $os->id);
+            }
+
+            // Process RadiusAccounting
+            foreach ($radAccts as $ra) {
+                $upSec = (int)($ra->acct_session_time ?? 0);
+                $upStr = $upSec > 0 ? gmdate('H:i:s', $upSec) : '-';
+                $resolveDevice($ra->framed_ip_address, $ra->calling_station_id, $upStr, $ra->acct_input_octets, $ra->acct_output_octets, $ra->id);
             }
 
             $isOnline = count($devices) > 0;
@@ -594,11 +632,21 @@ class HotspotPortalController extends Controller
             // 3. Bersihkan sesi di database jika tersisa
             if ($username !== '') {
                 HotspotActiveSession::where('user', $username)->delete();
-                OnlineSession::where('protocol', 'hotspot')->where('username', $username)->delete();
+                PppActiveSession::where('name', $username)->delete();
+                OnlineSession::where('username', $username)->delete();
+                RadiusAccounting::where('username', $username)->whereNull('acct_stop_time')->update([
+                    'acct_stop_time' => now(),
+                    'acct_terminate_cause' => 'User-Kick-Web',
+                ]);
             }
             if ($mac !== '') {
                 HotspotActiveSession::where('mac_address', $mac)->delete();
-                OnlineSession::where('protocol', 'hotspot')->where('mac_address', $mac)->delete();
+                PppActiveSession::where('caller_id', $mac)->delete();
+                OnlineSession::where('mac_address', $mac)->orWhere('caller_id', $mac)->delete();
+                RadiusAccounting::where('calling_station_id', $mac)->whereNull('acct_stop_time')->update([
+                    'acct_stop_time' => now(),
+                    'acct_terminate_cause' => 'User-Kick-Web',
+                ]);
             }
 
             return $this->jsonResponse([

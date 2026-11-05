@@ -164,12 +164,26 @@
                         </div>
 
                         @if($activeSessions > 0)
-                        <div class="p-5 bg-error/10 border border-error/20 rounded-xl">
+                        <div class="p-5 bg-surface-container-highest/60 border border-outline-variant/60 rounded-2xl mb-4">
                             <div class="flex items-start gap-4">
-                                <span class="material-symbols-outlined text-error shrink-0 mt-0.5">devices</span>
+                                <span class="material-symbols-outlined text-tertiary shrink-0 mt-0.5">devices</span>
                                 <div class="flex-1">
-                                    <h4 class="font-bold text-white mb-1">Sesi Internet Sedang Aktif</h4>
-                                    <p class="text-sm text-gray-300 mb-4">Jika koneksi Anda bermasalah atau sesi tersangkut di router, Anda dapat mereset sesi.</p>
+                                    <h4 class="font-bold text-white mb-1">Perangkat Terkoneksi (Sesi Aktif)</h4>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-3">
+                                        <div class="bg-surface-container p-3 rounded-xl border border-outline-variant/40">
+                                            <span class="text-xs text-gray-400 block mb-0.5">IP Address</span>
+                                            <span class="text-sm font-mono font-bold text-white">{{ $activeSessionData['ip'] ?? '-' }}</span>
+                                        </div>
+                                        <div class="bg-surface-container p-3 rounded-xl border border-outline-variant/40">
+                                            <span class="text-xs text-gray-400 block mb-0.5">MAC Address</span>
+                                            <span class="text-sm font-mono font-bold text-white">{{ $activeSessionData['mac'] ?? '-' }}</span>
+                                        </div>
+                                        <div class="bg-surface-container p-3 rounded-xl border border-outline-variant/40">
+                                            <span class="text-xs text-gray-400 block mb-0.5">Lama Terhubung</span>
+                                            <span class="text-sm font-bold text-white">{{ $activeSessionData['uptime'] ?? '-' }}</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-400 mb-3">Jika koneksi Anda bermasalah atau sesi tersangkut di router, Anda dapat mereset sesi perangkat ini.</p>
                                     
                                     <form method="POST" action="{{ route('guest.payment.reset') }}">
                                         @csrf
@@ -181,9 +195,9 @@
                                             <input type="hidden" name="voucher_code" value="{{ $voucher->code }}">
                                         @endif
                                         <input type="hidden" name="q" value="{{ $query }}">
-                                        <button type="submit" class="px-5 py-2.5 bg-error/20 hover:bg-error/30 text-error font-bold rounded-lg transition-colors border border-error/30 text-sm flex items-center gap-2">
+                                        <button type="submit" class="px-4 py-2 bg-error/20 hover:bg-error/30 text-error font-bold rounded-lg transition-colors border border-error/30 text-xs sm:text-sm flex items-center gap-1.5">
                                             <span class="material-symbols-outlined text-sm">restart_alt</span>
-                                            Reset Sesi Sekarang
+                                            Putuskan &amp; Reset Sesi
                                         </button>
                                     </form>
                                 </div>
