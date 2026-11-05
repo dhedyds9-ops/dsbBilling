@@ -15,7 +15,7 @@
                     <div>
                         <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Manajemen Koneksi WAN & Binding (TR-069)</h3>
                         <p class="text-[11px] text-slate-500 dark:text-slate-400">
-                            Vendor: <span class="font-semibold uppercase text-purple-600 dark:text-purple-400">{{ $device->vendor?->name ?? 'Generic / Unknown' }}</span>
+                            Vendor: <span class="font-semibold uppercase text-purple-600 dark:text-purple-400">{{ $detectedVendor !== 'generic' ? strtoupper($detectedVendor) : ($device->vendor?->name ?? 'Generic / Unknown') }}</span>
                             @if($device->product_class) &bull; Tipe: <span class="font-medium text-slate-700 dark:text-slate-300">{{ $device->product_class }}</span>@endif
                         </p>
                     </div>

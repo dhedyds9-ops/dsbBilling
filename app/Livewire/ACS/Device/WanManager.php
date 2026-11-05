@@ -13,6 +13,8 @@ class WanManager extends Component
     public $wanConnections = [];
     public $zteBindings = [];
     public $isLoading = false;
+    public $rawParams = [];
+    public string $detectedVendor = 'generic';
 
     // Form Edit & Create State
     public $isEditing = false;
@@ -53,11 +55,64 @@ class WanManager extends Component
         $this->isLoading = true;
     }
 
+    public function detectVendor(array $params = []): string
+    {
+        $candidates = [
+            $this->device->vendor?->name ?? '',
+            $this->device->manufacturer ?? '',
+            $this->device->product_class ?? '',
+            $this->device->model ?? '',
+            $this->device->serial_number ?? '',
+            $this->device->onu?->vendor?->name ?? '',
+            $this->device->onu?->serial_number ?? '',
+            $params['DeviceID']['Manufacturer']['_value'] ?? '',
+            $params['_deviceId']['_Manufacturer'] ?? '',
+            $params['InternetGatewayDevice']['DeviceInfo']['Manufacturer']['_value'] ?? '',
+            $params['Device']['DeviceInfo']['Manufacturer']['_value'] ?? '',
+        ];
+
+        $combined = strtolower(implode(' ', array_filter($candidates)));
+
+        if (str_contains($combined, 'huawei') || str_contains($combined, 'hwtc') || str_contains($combined, 'eg8') || str_contains($combined, 'hg8') || str_contains($combined, 'ws70')) {
+            return 'huawei';
+        }
+        if (str_contains($combined, 'zte') || str_contains($combined, 'zteg') || str_contains($combined, 'f609') || str_contains($combined, 'f670') || str_contains($combined, 'f660')) {
+            return 'zte';
+        }
+        if (str_contains($combined, 'fiberhome') || str_contains($combined, 'fhtt') || str_contains($combined, 'an5506') || str_contains($combined, 'hg6')) {
+            return 'fiberhome';
+        }
+        if (str_contains($combined, 'ecomtech')) {
+            return 'ecomtech';
+        }
+        if (str_contains($combined, 'alcatel') || str_contains($combined, 'nokia') || str_contains($combined, 'alcl')) {
+            return 'nokia';
+        }
+
+        return 'generic';
+    }
+
+    public function pathExistsInTree(array $tree, string $path): bool
+    {
+        $keys = explode('.', $path);
+        $curr = $tree;
+        foreach ($keys as $k) {
+            if (!is_array($curr) || !array_key_exists($k, $curr)) {
+                return false;
+            }
+            $curr = $curr[$k];
+        }
+        return true;
+    }
+
     public function loadWans()
     {
         try {
             $driver = new GenieACSDriver();
             $params = $driver->getDeviceParameters($this->device->uuid);
+            $this->rawParams = $params;
+
+            $this->detectedVendor = $this->detectVendor($params);
 
             // Pre-process ZTE Port Bindings
             $this->zteBindings = [];
@@ -72,8 +127,7 @@ class WanManager extends Component
                 }
             }
 
-            $vendor = strtolower($this->device->vendor?->name ?? 'default');
-            $this->wanConnections = $this->parseWanConnections($params, $vendor);
+            $this->wanConnections = $this->parseWanConnections($params, $this->detectedVendor);
         } catch (\Throwable $e) {
             session()->flash('error', 'Gagal memuat WAN: ' . $e->getMessage());
         }
@@ -241,7 +295,7 @@ class WanManager extends Component
 
     public function updatedFormMode($value)
     {
-        $vendor = strtolower($this->device->vendor?->name ?? 'default');
+        $vendor = $this->detectedVendor;
         $isFiberHome = str_contains($vendor, 'fiberhome');
 
         if ($value === 'pppoe_route') {
@@ -281,7 +335,7 @@ class WanManager extends Component
         $this->editFullPath = $fullPath;
         $this->formName = $wan['name'];
         $this->formType = $wan['type'];
-        $this->formVlan = $wan['vlan'] ?? '';
+        $this->formVlan = $wan['vlan'] !== null ? (string)$wan['vlan'] : '';
         $this->formNat = (bool) $wan['nat'];
         $this->formUsername = $wan['username'] ?? '';
         $this->formPassword = ''; // Password selalu kosong demi keamanan
@@ -310,7 +364,7 @@ class WanManager extends Component
         $this->isEditing = false;
         $this->isCreating = true;
         
-        $vendor = strtolower($this->device->vendor?->name ?? 'default');
+        $vendor = $this->detectedVendor;
         $isFiberHome = str_contains($vendor, 'fiberhome');
 
         $this->formMode = 'pppoe_route';
@@ -351,7 +405,7 @@ class WanManager extends Component
 
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $vendor = strtolower($this->device->vendor?->name ?? 'default');
+            $vendor = $this->detectedVendor;
             $isFiberHome = str_contains($vendor, 'fiberhome');
             $isZte = str_contains($vendor, 'zte');
             $isHuawei = str_contains($vendor, 'huawei') || str_contains($vendor, 'ecomtech');
@@ -425,7 +479,14 @@ if ({$vlanId} > 0) {
     if ("{$vendor}".includes("fiberhome")) {
         declare(basePath + ".X_FH_WANGponLinkConfig.VLANIDMark", {value: now}, {value: {$vlanId}});
         declare(basePath + ".X_FH_WANGponLinkConfig.VLANID", {value: now}, {value: {$vlanId}});
+    } else if ("{$vendor}".includes("huawei") || "{$vendor}".includes("ecomtech")) {
+        declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
+        declare(pppPath + ".X_HW_VLAN", {value: now}, {value: {$vlanId}});
+    } else if ("{$vendor}".includes("zte")) {
+        declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: {$vlanId}});
+        declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 1});
     } else {
+        declare(basePath + ".WANEthernetLinkConfig.X_HW_VLAN", {value: now}, {value: {$vlanId}});
         declare(basePath + ".VLANID", {value: now}, {value: {$vlanId}});
     }
 }
@@ -509,7 +570,7 @@ JS;
         array_pop($pathParts); array_pop($pathParts);
         $parentPath = implode('.', $pathParts);
 
-        $vendor = strtolower($this->device->vendor?->name ?? 'default');
+        $vendor = $this->detectedVendor;
 
         // Username & Password for PPPoE
         if ($this->formType === 'PPPoE') {
@@ -549,19 +610,48 @@ JS;
             }
         }
 
-        // VLAN
+        // VLAN Handling
         if ($this->formVlan !== '') {
             $vlanId = (int) $this->formVlan;
-            if (str_contains($vendor, 'zte')) {
-                $parameters["{$this->editFullPath}.X_ZTE-COM_VLANID"] = $vlanId;
-                $parameters["{$this->editFullPath}.X_ZTE-COM_VLANEnable"] = 1;
-            } elseif (str_contains($vendor, 'huawei') || str_contains($vendor, 'ecomtech')) {
-                $parameters["{$this->editFullPath}.X_HW_VLAN"] = $vlanId;
-            } elseif (str_contains($vendor, 'fiberhome')) {
+
+            if ($vendor === 'huawei') {
+                // Priority: check existing parameter in rawParams
+                if ($this->pathExistsInTree($this->rawParams, "{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN")) {
+                    $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
+                } elseif ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_HW_VLAN")) {
+                    $parameters["{$this->editFullPath}.X_HW_VLAN"] = $vlanId;
+                } else {
+                    // Standard Huawei WAN VLAN path
+                    $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
+                }
+            } elseif ($vendor === 'zte') {
+                if ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_VLANEnable"] = 1;
+                } elseif ($this->pathExistsInTree($this->rawParams, "{$parentPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$parentPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                    $parameters["{$parentPath}.X_ZTE-COM_VLANEnable"] = 1;
+                } else {
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_VLANEnable"] = 1;
+                }
+            } elseif ($vendor === 'fiberhome') {
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = $vlanId;
                 $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANID"] = $vlanId;
             } else {
-                $parameters["{$this->editFullPath}.VLANID"] = $vlanId;
+                // Generic: check rawParams first
+                if ($this->pathExistsInTree($this->rawParams, "{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN")) {
+                    $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
+                } elseif ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_ZTE-COM_VLANID")) {
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_VLANID"] = $vlanId;
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_VLANEnable"] = 1;
+                } elseif ($this->pathExistsInTree($this->rawParams, "{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark")) {
+                    $parameters["{$parentPath}.X_FH_WANGponLinkConfig.VLANIDMark"] = $vlanId;
+                } elseif ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.VLANID")) {
+                    $parameters["{$this->editFullPath}.VLANID"] = $vlanId;
+                } else {
+                    $parameters["{$parentPath}.WANEthernetLinkConfig.X_HW_VLAN"] = $vlanId;
+                }
             }
         }
 
@@ -570,9 +660,20 @@ JS;
             $success = $driver->setParameterValues($this->device->uuid, $parameters);
 
             if ($success) {
-                session()->flash('success', 'Task pembaruan WAN berhasil dikirim ke perangkat. Perubahan akan berlaku sebentar lagi.');
+                // Optimistically update local array so the table shows the new VLAN immediately
+                foreach ($this->wanConnections as &$w) {
+                    if ($w['fullPath'] === $this->editFullPath) {
+                        $w['vlan'] = $this->formVlan !== '' ? (int) $this->formVlan : null;
+                        $w['nat'] = (bool) $this->formNat;
+                        $w['service_list'] = $serviceVal;
+                        if (!empty($bindString)) $w['port_bind'] = $bindString;
+                        if (!empty($this->formUsername)) $w['username'] = $this->formUsername;
+                    }
+                }
+                unset($w);
+
+                session()->flash('success', "Task pembaruan WAN (VLAN: {$this->formVlan}) berhasil dikirim ke perangkat ({$this->detectedVendor}).");
                 $this->isEditing = false;
-                $this->loadWans();
             } else {
                 session()->flash('error', 'Gagal mengirim task pembaruan WAN ke GenieACS.');
             }
