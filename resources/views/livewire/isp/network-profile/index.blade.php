@@ -1,46 +1,157 @@
-<div class="space-y-6">
-    <div class="sm:flex sm:items-center sm:justify-between">
+@section('page_title')
+    <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:24px">alt_route</span>
+        <span class="text-lg">Network Profile & VLAN</span>
+    </div>
+@endsection
+
+<div class="space-y-6 pb-12">
+    {{-- Flash Messages --}}
+    @if(session()->has('success'))
+        <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 rounded-2xl text-sm flex items-center gap-2">
+            <span class="material-symbols-outlined notranslate text-emerald-600" translate="no" style="font-size:20px">check_circle</span>
+            <span>{{ session('success') }}</span>
+        </div>
+    @endif
+    @if(session()->has('error'))
+        <div class="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-300 rounded-2xl text-sm flex items-center gap-2">
+            <span class="material-symbols-outlined notranslate text-red-600" translate="no" style="font-size:20px">error</span>
+            <span>{{ session('error') }}</span>
+        </div>
+    @endif
+
+    {{-- Header --}}
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Network Profiles</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Manajemen profil jaringan (VLAN- PPPoE Server- Router) untuk dsBilling Auto-Provisioning.</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Manajemen profil jaringan (VLAN, Mode Layanan, Target Router) untuk dsBilling Auto-Provisioning.</p>
         </div>
-        <div class="mt-4 sm:mt-0">
-            <a href="{{ route('isp.network-profiles.create') }}" class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors" </a>
-                                  <button class="p-1.5 text-danger-500 hover:text-danger-700 rounded-md hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"  aria-label="Delete"  wire:click="delete({{ $profile->id }})" wire:confirm="Yakin ingin menghapus profile ini?">
-                                      <x-icon name="trash" class="w-4 h-4" />
-                                  </button>
-                              </div>
-                          </td>
+        <div>
+            <a href="{{ route('isp.network-profiles.create') }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all text-sm font-semibold shadow-sm shadow-indigo-600/20 active:scale-95">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                Tambah Profile
+            </a>
+        </div>
+    </div>
+
+    {{-- Toolbar / Search --}}
+    <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="relative w-full max-w-md">
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style="font-size:20px">search</span>
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama profil atau deskripsi..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+        </div>
+    </div>
+
+    {{-- Table Card --}}
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700 bg-slate-50/75 dark:bg-slate-800/80 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <th class="px-4 py-3.5 text-center w-28">Aksi</th>
+                        <th class="px-4 py-3.5">Nama Profile</th>
+                        <th class="px-4 py-3.5">Tipe Layanan</th>
+                        <th class="px-4 py-3.5">VLAN Tag</th>
+                        <th class="px-4 py-3.5">Target Router</th>
+                        <th class="px-4 py-3.5">Deskripsi</th>
                     </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+                    @forelse($profiles as $profile)
+                        <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                            {{-- Action Buttons --}}
+                            <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('isp.network-profiles.edit', $profile->id) }}" 
+                                       title="Edit Profil"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    <button wire:click="delete({{ $profile->id }})" 
+                                            wire:confirm="Yakin ingin menghapus profile ini?" 
+                                            title="Hapus"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+
+                            {{-- Nama Profile --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                <div class="font-bold text-slate-900 dark:text-white">{{ $profile->name }}</div>
+                                @if($profile->uuid)
+                                    <div class="text-[10px] font-mono text-slate-400">{{ substr($profile->uuid, 0, 8) }}...</div>
+                                @endif
+                            </td>
+
+                            {{-- Tipe Layanan --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @php
+                                    $t = strtolower($profile->type ?? '');
+                                    $badge = match($t) {
+                                        'pppoe'   => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                        'hotspot' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+                                        default   => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+                                    };
+                                @endphp
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-wider {{ $badge }}">
+                                    {{ $profile->type }}
+                                </span>
+                            </td>
+
+                            {{-- VLAN Tag --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @if($profile->vlan_id)
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                        <span class="material-symbols-outlined" style="font-size:14px">tag</span>
+                                        VLAN {{ $profile->vlan_id }}
+                                    </span>
+                                @else
+                                    <span class="text-xs text-slate-400 font-italic">Default / Untagged</span>
+                                @endif
+                            </td>
+
+                            {{-- Target Router --}}
+                            <td class="px-4 py-3.5 whitespace-nowrap">
+                                @if($profile->router)
+                                    <div class="font-semibold text-slate-800 dark:text-slate-200">{{ $profile->router->name }}</div>
+                                    <div class="text-xs font-mono text-slate-400">{{ $profile->router->ip_address }}</div>
+                                @else
+                                    <span class="text-xs text-slate-400">-</span>
+                                @endif
+                            </td>
+
+                            {{-- Deskripsi --}}
+                            <td class="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-300 max-w-xs truncate">
+                                {{ $profile->description ?: '-' }}
+                            </td>
+                        </tr>
                     @empty
-                    <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td colspan="5" class="p-3  text-center">
-                            <svg class="mx-auto h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
-                            <h3 class="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">Belum ada data</h3>
-                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Buat Network Profile pertama Anda.</p>
-                            <div class="mt-6">
-                                <a href="{{ route('isp.network-profiles.create') }}" class="w-7 h-7 inline-flex items-center justify-center rounded shadow-sm transition-colors bg-blue-500 text-white hover:bg-primary-600">
-                                    <svg class="w-4 h-4 inline-flex items-center justify-center rounded shadow-sm transition-colors bg-blue-500 text-white hover:bg-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                    Tambah Profile
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td colspan="6" class="p-12 text-center">
+                                <div class="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-700/50 text-slate-400 rounded-full flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined" style="font-size:32px">alt_route</span>
+                                </div>
+                                <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Belum ada Network Profile</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                                    Network Profile digunakan untuk memetakan VLAN ID (misal VLAN 200, 300, 901) ke OLT dan MikroTik Router.
+                                </p>
+                                <div class="mt-4">
+                                    <a href="{{ route('isp.network-profiles.create') }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all">
+                                        <span class="material-symbols-outlined" style="font-size:16px">add</span> Tambah Profile Sekarang
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+
         @if($profiles->hasPages())
-        <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
-            {{ $profiles->links() }}
-        </div>
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                {{ $profiles->links() }}
+            </div>
         @endif
     </div>
 </div>
-
-
-
-
-
-
-
