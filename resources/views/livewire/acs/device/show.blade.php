@@ -247,16 +247,20 @@
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Security Mode</label>
                         <select wire:model.live="wifiSecurity" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
                             <option value="None">Open / None (Tanpa Password)</option>
-                            <option value="WPA2PSK">WPA2-PSK (Standar)</option>
-                            <option value="WPAPSKWPA2PSK">WPA/WPA2-PSK (Mixed)</option>
+                            <option value="WPA2PSK">WPA2-PSK (Standar / 11i)</option>
+                            <option value="WPAPSKWPA2PSK">WPA/WPA2-PSK (Mixed / WPAand11i)</option>
                             <option value="Basic">WEP (Tidak Disarankan)</option>
                         </select>
                         @error('wifiSecurity') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
-                        <input type="text" wire:model="wifiPassword" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Minimal 8 karakter. Biarkan sama jika tidak ingin mengganti sandi.</p>
+                        <input type="text" wire:model="wifiPassword" {{ $wifiSecurity === 'None' ? 'disabled' : '' }}
+                            placeholder="{{ $wifiSecurity === 'None' ? 'Tidak aktif (Mode Tanpa Password)' : 'Minimal 8 karakter' }}"
+                            class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800">
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                            {{ $wifiSecurity === 'None' ? 'SSID ini terbuka tanpa kata sandi (Hotspot / Captive Portal).' : 'Minimal 8 karakter. Biarkan sama jika tidak ingin mengganti sandi.' }}
+                        </p>
                         @error('wifiPassword') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
                 </div></div>

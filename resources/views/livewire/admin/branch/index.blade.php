@@ -186,22 +186,22 @@
 
     {{-- Modal Tambah / Edit Cabang --}}
     @if($showModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-700" @click.away="$wire.set('showModal', false)">
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex min-h-full items-center justify-center p-3 sm:p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 my-auto" @click.away="$wire.set('showModal', false)">
                 {{-- Header --}}
-                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                     <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <span class="material-symbols-outlined text-blue-600 text-[22px]">store</span>
                         <span>{{ $isEditing ? 'Edit Cabang' : 'Tambah Cabang Baru' }}</span>
                     </h3>
-                    <button type="button" wire:click="$set('showModal', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <button type="button" wire:click="$set('showModal', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                         <span class="material-symbols-outlined text-[20px]">close</span>
                     </button>
                 </div>
 
                 {{-- Form Body --}}
-                <form wire:submit.prevent="save">
-                    <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                <form wire:submit.prevent="save" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <div class="flex-1 overflow-y-auto p-6 space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
@@ -297,7 +297,7 @@
                     </div>
 
                     {{-- Footer --}}
-                    <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
+                    <div class="shrink-0 px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
                         <button type="button" wire:click="$set('showModal', false)"
                             class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                             Batal
