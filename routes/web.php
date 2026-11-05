@@ -64,6 +64,7 @@ Route::prefix('speedtest')->group(function () {
 });
 
 Route::get('/payment', [\App\Http\Controllers\GuestPaymentController::class, 'index'])->name('guest.payment');
+Route::get('/bayar-tagihan', [\App\Http\Controllers\GuestPaymentController::class, 'index'])->name('guest.payment.alias');
 Route::post('/payment/checkout', [\App\Http\Controllers\GuestPaymentController::class, 'checkout'])->name('guest.payment.checkout');
 Route::post('/payment/reset', [\App\Http\Controllers\GuestPaymentController::class, 'resetSession'])->name('guest.payment.reset');
 

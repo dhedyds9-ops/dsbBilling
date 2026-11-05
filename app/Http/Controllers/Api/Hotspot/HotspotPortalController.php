@@ -504,7 +504,7 @@ class HotspotPortalController extends Controller
                     'paid_amount' => (float)($inv->paid_amount ?? 0),
                     'remaining_amount' => $remaining,
                     'status' => $inv->status,
-                    'payment_url' => url('/bayar-tagihan?q=' . urlencode($inv->invoice_number)),
+                    'payment_url' => url('/payment?q=' . urlencode($inv->invoice_number) . '&auto=1'),
                 ];
             });
 

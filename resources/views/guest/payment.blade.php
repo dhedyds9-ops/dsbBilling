@@ -328,6 +328,18 @@
             window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`, '_blank');
         }
         @endif
+
+        @if(!empty($activeGateways) && $invoices->count() === 1 && (request()->boolean('auto') || str_starts_with(strtoupper($query), 'INV-')))
+        document.addEventListener('DOMContentLoaded', function() {
+            @php
+                $firstInv = $invoices->first();
+                $sisaFirst = max(0, $firstInv->total_amount - ($firstInv->paid_amount ?? 0));
+            @endphp
+            @if($sisaFirst > 0)
+                openPaymentModal('{{ $firstInv->invoice_number }}', {{ $sisaFirst }});
+            @endif
+        });
+        @endif
     </script>
 </body>
 </html>

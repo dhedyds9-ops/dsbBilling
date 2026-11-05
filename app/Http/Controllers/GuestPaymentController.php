@@ -267,6 +267,42 @@ class GuestPaymentController extends Controller
             \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
         }
 
+        // Auto-checkout jika ada parameter auto/pay atau jika query adalah nomor invoice tunggal dan auto diminta
+        $shouldAutoPay = ($request->boolean('auto') || $request->boolean('pay') || $request->has('checkout'));
+        if ($shouldAutoPay && $invoices->count() === 1 && !empty($activeGateways)) {
+            $singleInvoice = $invoices->first();
+            $targetGateway = $request->input('gateway') ?: array_key_first($activeGateways);
+            $amountIdr = (int) max(0, $singleInvoice->total_amount - ($singleInvoice->paid_amount ?? 0));
+
+            if ($targetGateway && $amountIdr > 0) {
+                try {
+                    $orchestrator = app(\App\Services\Adapters\Payment\PaymentOrchestrationService::class);
+                    $queryKey = $singleInvoice->customer?->customer_code ?: ($singleInvoice->customer?->phone ?: $singleInvoice->invoice_number);
+                    $redirectUrl = route('guest.payment', ['q' => $queryKey]);
+
+                    $result = $orchestrator->initiatePayment(
+                        gatewayKey: $targetGateway,
+                        customerId: $singleInvoice->customer_id,
+                        userId: $singleInvoice->customer->user_id ?? 1,
+                        amountIdr: $amountIdr,
+                        invoiceIds: [$singleInvoice->id],
+                        paymentMethodCode: null,
+                        customerName: $singleInvoice->customer->name ?? 'Guest',
+                        customerEmail: $singleInvoice->customer->email ?? 'guest@example.com',
+                        customerPhone: $singleInvoice->customer->phone ?? '00000',
+                        successRedirectUrl: $redirectUrl,
+                        failureRedirectUrl: $redirectUrl,
+                    );
+
+                    if ($result['gateway_response']->success && !empty($result['gateway_response']->redirectUrl)) {
+                        return redirect()->away($result['gateway_response']->redirectUrl);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[GuestPaymentController] Auto-checkout failed: ' . $e->getMessage());
+                }
+            }
+        }
+
         return view('guest.payment', compact(
             'query',
             'customer',
