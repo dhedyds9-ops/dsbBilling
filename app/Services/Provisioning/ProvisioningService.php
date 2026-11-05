@@ -657,14 +657,12 @@ class ProvisioningService
     public function startProvisioning(CustomerService $customerService, int $userId): ServiceInstance
     {
         return DB::transaction(function () use ($customerService, $userId) {
-            $isAlreadyActive = $customerService->status === 'active';
-
             $serviceInstance = $this->serviceInstanceRepository->create([
                 'uuid' => (string) Str::uuid(),
                 'customer_service_id' => $customerService->id,
                 'service_id' => $customerService->service_id,
-                'status' => $isAlreadyActive ? 'provisioned' : 'provisioning',
-                'provisioned_at' => $isAlreadyActive ? now() : null,
+                'status' => 'provisioning',
+                'provisioned_at' => null,
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
@@ -672,7 +670,7 @@ class ProvisioningService
             $pipeline = $this->pipelineRepository->create([
                 'uuid' => (string) Str::uuid(),
                 'service_instance_id' => $serviceInstance->id,
-                'status' => $isAlreadyActive ? 'completed' : 'pending',
+                'status' => 'pending',
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
@@ -681,9 +679,7 @@ class ProvisioningService
 
             Event::dispatch(new ServiceInstanceCreatedEvent($serviceInstance->uuid, $customerService->id));
 
-            if (!$isAlreadyActive) {
-                app(\App\Services\Provisioning\Pipeline\PipelineOrchestrator::class)->processNext($pipeline);
-            }
+            app(\App\Services\Provisioning\Pipeline\PipelineOrchestrator::class)->processNext($pipeline);
 
             return $serviceInstance;
         });
@@ -691,8 +687,6 @@ class ProvisioningService
 
     protected function createPipelineSteps(ProvisionPipeline $pipeline, ?CustomerService $customerService = null): void
     {
-        $isAlreadyActive = $customerService && $customerService->status === 'active';
-
         $steps = [
             ['name' => 'Validasi Layanan', 'type' => 'customer_validation', 'order' => 1],
             ['name' => 'Reservasi Port & Resource', 'type' => 'resource_reservation', 'order' => 2],
@@ -709,17 +703,17 @@ class ProvisioningService
                 'step_name' => $stepData['name'],
                 'step_type' => $stepData['type'],
                 'order' => $stepData['order'],
-                'status' => $isAlreadyActive ? 'completed' : 'pending',
-                'started_at' => $isAlreadyActive ? now() : null,
-                'completed_at' => $isAlreadyActive ? now() : null,
+                'status' => 'pending',
+                'started_at' => null,
+                'completed_at' => null,
             ]);
         }
 
         $pipeline->update([
             'total_steps' => count($steps),
-            'status' => $isAlreadyActive ? 'completed' : 'pending',
-            'current_step' => $isAlreadyActive ? count($steps) : 0,
-            'completed_at' => $isAlreadyActive ? now() : null,
+            'status' => 'pending',
+            'current_step' => 0,
+            'completed_at' => null,
         ]);
     }
 

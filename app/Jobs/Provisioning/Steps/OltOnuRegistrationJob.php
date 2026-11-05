@@ -39,15 +39,18 @@ class OltOnuRegistrationJob extends BasePipelineStepJob
 
         // 2. Injeksi Otomatis OMCI WAN (PPPoE / DHCP) jika data tersedia
         if (!empty($cs->username) && !empty($cs->password)) {
-            $vlanId = $cs->networkProfile->vlan_id ?? 10; // Ambil VLAN dari profil jaringan, default 10
+            $vlanId = $cs->networkProfile?->vlan_id 
+                ?? $cs->serviceProfile?->vlan?->vlan_id 
+                ?? 200;
             
             $omciConfig = [
-                'mode'     => 'pppoe',
-                'username' => $cs->username,
-                'password' => $cs->password,
-                'vlan_id'  => $vlanId,
-                'ip_index' => 1,
-                'priority' => 0
+                'mode'       => 'pppoe',
+                'username'   => $cs->username,
+                'password'   => $cs->password,
+                'vlan_id'    => $vlanId,
+                'tr069_vlan' => 901,
+                'ip_index'   => 1,
+                'priority'   => 0
             ];
             
             try {

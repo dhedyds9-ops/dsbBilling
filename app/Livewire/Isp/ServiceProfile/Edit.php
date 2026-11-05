@@ -18,6 +18,7 @@ class Edit extends AdminComponent
     public $name = '';
     public $description = '';
     public $service_type = 'pppoe';
+    public $vlan_id = null;
     public $status = 'active';
     public $show_on_landing = true;
     
@@ -80,6 +81,7 @@ class Edit extends AdminComponent
         $this->name = $this->profile->name;
         $this->description = $this->profile->description ?? '';
         $this->service_type = $this->profile->service_type;
+        $this->vlan_id = $this->profile->vlan_id;
         $this->status = $this->profile->status;
         $this->show_on_landing = (bool) ($this->profile->show_on_landing ?? true);
         $this->download_speed = $this->profile->download_speed;
@@ -208,7 +210,7 @@ class Edit extends AdminComponent
         try {
             $data = $this->only([
                 'name', 'description',
-                'service_type', 'status', 'show_on_landing', 'download_speed', 'upload_speed',
+                'service_type', 'vlan_id', 'status', 'show_on_landing', 'download_speed', 'upload_speed',
                 'base_price', 'owner_price', 'reseller_price', 'is_free',
                 'validity_value', 'validity_unit', 
                 'package_type', 'duration_value', 'duration_unit', 
@@ -264,6 +266,7 @@ class Edit extends AdminComponent
         $rules = [
             'name' => 'required|string|max:255',
             'service_type' => 'required|in:pppoe,hotspot,voucher,ftth,combined',
+            'vlan_id' => 'nullable|exists:vlans,id',
             'status' => 'required|in:active,inactive',
             'show_on_landing' => 'nullable|boolean',
             'download_speed' => 'required|integer|min:1|max:10000',
@@ -324,7 +327,9 @@ class Edit extends AdminComponent
                 ->get()
             : [];
         
-        return view('livewire.isp.service-profile.form', compact('isAdministrator', 'users'));
+        $vlansList = \App\Models\ISP\Vlan::active()->orderBy('vlan_id')->get();
+
+        return view('livewire.isp.service-profile.form', compact('isAdministrator', 'users', 'vlansList'));
     }
 }
 

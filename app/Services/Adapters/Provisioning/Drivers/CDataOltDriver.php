@@ -38,10 +38,6 @@ class CDataOltDriver extends BaseOltDriver
     public function __construct(Olt $olt)
     {
         parent::__construct($olt);
-
-        if ($this->checkIsNewBranch()) {
-            $this->systemOids['sysTemperature'] = '.1.3.6.1.4.1.34592.1.3.100.1.8.6.0';
-        }
     }
 
     protected function checkIsNewBranch(): bool
@@ -53,6 +49,7 @@ class CDataOltDriver extends BaseOltDriver
         $testOid = '.1.3.6.1.4.1.34592.1.3.100.1.8.1.0';
         $res = @$this->snmp->get($testOid);
         if ($res !== false && $res !== '') {
+            $this->systemOids['sysTemperature'] = '.1.3.6.1.4.1.34592.1.3.100.1.8.6.0';
             return $this->isNewBranch = true;
         }
 
@@ -1301,20 +1298,53 @@ class CDataOltDriver extends BaseOltDriver
         return $onus;
     }
 
+    protected function resolveVlanId(Onu $onu, int $default = 200): int
+    {
+        try {
+            $cs = $onu->customerService ?? \App\Models\Customer\CustomerService::where('onu_id', $onu->id)->latest('id')->first();
+            if ($cs) {
+                if (!empty($cs->networkProfile?->vlan_id)) {
+                    return (int) $cs->networkProfile->vlan_id;
+                }
+                if (!empty($cs->network_profile_id)) {
+                    $npVlan = \App\Models\Provisioning\NetworkProfile::whereKey($cs->network_profile_id)->value('vlan_id');
+                    if (!empty($npVlan)) {
+                        return (int) $npVlan;
+                    }
+                }
+                $sp = $cs->serviceProfile ?? ($cs->service_profile_id ? \App\Models\ISP\ServiceProfile::find($cs->service_profile_id) : null);
+                if ($sp) {
+                    if (!empty($sp->vlan?->vlan_id)) {
+                        return (int) $sp->vlan->vlan_id;
+                    }
+                    if (!empty($sp->vlan_id)) {
+                        $vlanTag = \App\Models\ISP\Vlan::whereKey($sp->vlan_id)->value('vlan_id');
+                        return (int) ($vlanTag ?: $sp->vlan_id);
+                    }
+                }
+            }
+        } catch (\Throwable) {}
+
+        return $default;
+    }
+
     public function provisionOnu(Onu $onu, string $serialNumber, int $ponPort, string $profile = 'default'): bool
     {
         try {
             $this->initializeCli();
             $onuId = $onu->onu_id_on_olt ?? $onu->getKey();
             $name  = $onu->name ?? ('CUST-' . $onuId);
+            $vlanId = $this->resolveVlanId($onu, 200);
+
             $this->cli->execute("configure terminal\r\n", false);
             $this->cli->execute("interface gpon 0/0/$ponPort\r\n", false);
             $this->cli->execute("onu add $onuId sn-auth $serialNumber line-profile-id 1 srv-profile-id 1 description \"$name\"\r\n", false);
-            $this->cli->execute("onu $onuId port uni 1 native-vlan 100\r\n", false);
+            $this->cli->execute("onu $onuId port uni 1 native-vlan $vlanId\r\n", false);
             $this->cli->execute("exit\r\n", false);
             $this->cli->execute("write\r\n", false);
             return true;
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::error("Failed to provision C-Data ONU {$onu->id}: " . $e->getMessage());
             return false;
         }
     }
@@ -1337,7 +1367,8 @@ class CDataOltDriver extends BaseOltDriver
             $this->cli->execute("exit\r\n", false);
             $this->cli->execute("write\r\n", false);
             return true;
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::error("Failed to set admin status on C-Data ONU {$onu->id}: " . $e->getMessage());
             return false;
         }
     }
@@ -1349,7 +1380,7 @@ class CDataOltDriver extends BaseOltDriver
             $onuId   = $onu->onu_index ?? $onu->onu_id_on_olt ?? $onu->getKey();
 
             $mode = strtolower($config['mode'] ?? 'pppoe');
-            $vlanId = (int)($config['vlan_id'] ?? 10);
+            $vlanId = (int)($config['vlan_id'] ?? $this->resolveVlanId($onu, 200));
             $priority = (int)($config['priority'] ?? 0);
             $ipIndex = (int)($config['ip_index'] ?? 1);
 
@@ -1361,18 +1392,32 @@ class CDataOltDriver extends BaseOltDriver
                 $user = $config['username'] ?? '';
                 $pass = $config['password'] ?? '';
                 $cmd = "ont ipconfig $ponPort $onuId ip-index $ipIndex pppoe username $user password $pass vlan $vlanId priority $priority";
+                $this->cli->execute($cmd . "\r\n", false);
             } elseif ($mode === 'dhcp' || $mode === 'ipoe') {
                 $cmd = "ont ipconfig $ponPort $onuId ip-index $ipIndex dhcp vlan $vlanId priority $priority";
-            } else {
-                throw new \Exception("Unsupported WAN mode: $mode");
+                $this->cli->execute($cmd . "\r\n", false);
             }
 
-            $this->cli->execute($cmd . "\r\n", false);
+            // Injeksi otomatis WAN IP Management TR-069 (VLAN 901)
+            $tr069Vlan = (int)($config['tr069_vlan'] ?? 901);
+            $mgmtCmd = "ont ipconfig $ponPort $onuId ip-index 2 dhcp vlan $tr069Vlan priority 0";
+            $this->cli->execute($mgmtCmd . "\r\n", false);
+
+            // Injeksi OMCI TR-069 ACS Server URL jika tersedia di konfigurasi / pengaturan
+            $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
+            $acsUrl = $acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', '');
+            if (!empty($acsUrl)) {
+                $acsUser = $acsSettings['connection_request_username'] ?? config('genieacs.cpe_defaults.connection_request_username', 'dsbilling_cwmp');
+                $acsPass = $acsSettings['connection_request_password'] ?? config('genieacs.cpe_defaults.connection_request_password', 'ChangeMePlease!123');
+                $tr069Cmd = "ont tr069-server $ponPort $onuId url $acsUrl user $acsUser password $acsPass";
+                $this->cli->execute($tr069Cmd . "\r\n", false);
+            }
+
             $this->cli->execute("exit\r\n", false);
             $this->cli->execute("write\r\n", false);
             return true;
         } catch (\Exception $e) {
-            Log::error("Failed to push WAN config to C-Data ONU {$onu->id}: " . $e->getMessage());
+            Log::error("Failed to push WAN & TR-069 config to C-Data ONU {$onu->id}: " . $e->getMessage());
             return false;
         }
     }
@@ -1385,18 +1430,28 @@ class CDataOltDriver extends BaseOltDriver
             $profileName  = "DSB_{$downloadMbps}_{$uploadMbps}";
             $downKbps     = $downloadMbps * 1000;
             $upKbps       = $uploadMbps * 1000;
+            $vlanId       = $this->resolveVlanId($onu, 200);
+            $tr069Vlan    = 901;
 
             $this->initializeCli();
             $this->cli->execute("configure terminal\r\n", false);
             $this->cli->execute("dba-profile add profile-name $profileName type 4 max $downKbps\r\n", false);
             $this->cli->execute("interface gpon 0/0/$ponPort\r\n", false);
             $this->cli->execute("onu $onuId tcont 1 dba-profile-name $profileName\r\n", false);
+            
+            // GEM 1 & Service-Port 1: Internet Data (VLAN 200 / VLAN Hotspot 300)
             $this->cli->execute("onu $onuId gemport 1 unicast tcont 1 dir both\r\n", false);
-            $this->cli->execute("onu $onuId service-port 1 gemport 1 vlan 100 rx-cttr $downKbps tx-cttr $upKbps\r\n", false);
+            $this->cli->execute("onu $onuId service-port 1 gemport 1 vlan $vlanId rx-cttr $downKbps tx-cttr $upKbps\r\n", false);
+
+            // GEM 2 & Service-Port 2: Management TR-069 GenieACS (VLAN 901)
+            $this->cli->execute("onu $onuId gemport 2 unicast tcont 1 dir both\r\n", false);
+            $this->cli->execute("onu $onuId service-port 2 gemport 2 vlan $tr069Vlan\r\n", false);
+
             $this->cli->execute("exit\r\n", false);
             $this->cli->execute("write\r\n", false);
             return true;
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::error("Failed to set bandwidth & service ports on C-Data ONU {$onu->id}: " . $e->getMessage());
             return false;
         }
     }

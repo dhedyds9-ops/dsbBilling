@@ -71,7 +71,7 @@ class Wizard extends Component
         if ($value) {
             $profile = ServiceProfile::find($value);
             $this->service_type = $profile ? $profile->service_type : 'pppoe';
-            $this->network_profile_id = NetworkProfile::where('type', $this->service_type)->first()?->id;
+            $this->network_profile_id = NetworkProfile::where('type', $this->service_type)->orderByDesc('vlan_id')->first()?->id;
         }
     }
 
@@ -333,6 +333,9 @@ class Wizard extends Component
                     $onu = $existingOnu;
                 }
 
+                $npId = $this->network_profile_id 
+                    ?: NetworkProfile::where('type', $this->service_type)->orderByDesc('vlan_id')->value('id');
+
                 $data = [
                     'customer_id' => $customer->id,
                     'name' => $customer->name,
@@ -340,8 +343,8 @@ class Wizard extends Component
                     'email' => $customer->email,
                     'address' => $customer->address,
                     'service_profile_id' => $this->service_profile_id,
-                    'network_profile_id' => $this->network_profile_id,
-                    'router_id' => $this->network_profile_id,
+                    'network_profile_id' => $npId,
+                    'router_id' => $npId,
                     'username' => $username,
                     'password' => $password,
                     'status' => 'active',

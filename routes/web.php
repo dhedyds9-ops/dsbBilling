@@ -167,6 +167,11 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/service-profiles/create', \App\Livewire\Isp\ServiceProfile\Create::class)->name('service-profiles.create');
             Route::get('/service-profiles/{id}/edit', \App\Livewire\Isp\ServiceProfile\Edit::class)->name('service-profiles.edit');
 
+            // Network Profile = Profil Jaringan & Mapping VLAN (PPPoE / Hotspot / TR-069)
+            Route::get('/network-profiles', \App\Livewire\Isp\NetworkProfile\Index::class)->name('network-profiles.index');
+            Route::get('/network-profiles/create', \App\Livewire\Isp\NetworkProfile\Create::class)->name('network-profiles.create');
+            Route::get('/network-profiles/{id}/edit', \App\Livewire\Isp\NetworkProfile\Edit::class)->name('network-profiles.edit');
+
 
             // User Online = List Pelanggan > User Online (tabs PPPoE/Hotspot/Voucher + Kick)
             Route::get('/user-online', \App\Livewire\Isp\UserOnline\Index::class)->name('user-online.index');

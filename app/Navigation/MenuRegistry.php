@@ -59,7 +59,7 @@ class MenuRegistry
                         'label' => '',
                         'items' => [
                             ['label' => 'Profil Paket', 'route' => 'isp.service-profiles.index', 'icon' => 'inventory_2', 'active' => 'isp.service-profiles.*', 'permission' => 'service-profile.view'],
-                           
+                            ['label' => 'Network Profile (VLAN)', 'route' => 'isp.network-profiles.index', 'icon' => 'alt_route', 'active' => 'isp.network-profiles.*', 'permission' => 'service-profile.view'],
                         ]
                     ],
                     [
