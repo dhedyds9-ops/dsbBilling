@@ -180,7 +180,12 @@ class Index extends BaseNetworkComponent
 
         $routers = Router::query()->orderBy('name')->get(['id', 'name', 'ip_address', 'status']);
 
-        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.reseller', 'pppoeUser.customer.reseller', 'pppoeUser.customerService.customer.reseller', 'pppoeUser.serviceProfile', 'pppoeUser.customerService.serviceProfile']);
+        $pppoeQuery = \App\Models\ISP\PppActiveSession::with(['router', 'pppoeUser.reseller', 'pppoeUser.customer.reseller', 'pppoeUser.customerService.customer.reseller', 'pppoeUser.serviceProfile', 'pppoeUser.customerService.serviceProfile'])
+            ->where(function ($q) {
+                $q->whereNull('service')
+                  ->orWhere('service', 'pppoe')
+                  ->orWhere('service', '');
+            });
         
         $voucherQuery = \App\Models\ISP\HotspotActiveSession::with(['router', 'voucher.reseller', 'voucher.serviceProfile', 'voucher.voucherPool.serviceProfile'])
             ->whereExists(function ($q) {

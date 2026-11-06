@@ -22,6 +22,11 @@ class OnlineSessionStore
         $keys = [];
         $now = now();
         foreach ($sessions as $s) {
+            $service = strtolower((string)($s['service'] ?? 'pppoe'));
+            if ($service !== '' && $service !== 'pppoe') {
+                continue; // Jangan masukkan L2TP/PPTP/SSTP/OVPN ke store PPPoE
+            }
+
             $name = (string)($s['name'] ?? '');
             $caller = (string)($s['caller_id'] ?? '');
             $address = (string)($s['address'] ?? '');

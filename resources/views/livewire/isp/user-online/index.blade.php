@@ -189,7 +189,7 @@
                             <td class="px-4 py-3 whitespace-nowrap">
                                 @if($activeTab === 'pppoe')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                                        {{ $session->pppoeUser?->serviceProfile?->name ?? $session->pppoeUser?->customerService?->serviceProfile?->name ?? 'PPPoE' }}
+                                        {{ $session->pppoeUser?->serviceProfile?->name ?? $session->pppoeUser?->customerService?->serviceProfile?->name ?? strtoupper($session->service ?: 'PPPoE') }}
                                     </span>
                                 @elseif($activeTab === 'voucher')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
