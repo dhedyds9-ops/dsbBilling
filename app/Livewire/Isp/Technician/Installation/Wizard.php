@@ -64,6 +64,38 @@ class Wizard extends Component
         ];
 
         $this->network_profile_id = NetworkProfile::where('type', 'pppoe')->first()?->id;
+
+        // Auto pre-populate from query parameters (PSB, Work Order, CRM Installation, or Ticket)
+        $customerId = request()->query('customer_id');
+        $ticketId = request()->query('ticket');
+        $installationId = request()->query('installation_id');
+
+        if ($customerId) {
+            $cust = Customer::withoutGlobalScopes()->find($customerId);
+            if ($cust) {
+                $this->customer_id = (string) $cust->id;
+                $this->is_new_customer = false;
+            }
+        } elseif ($ticketId) {
+            $ticket = \App\Models\Support\Ticket::withoutGlobalScopes()->find($ticketId);
+            if ($ticket && $ticket->customer_id) {
+                $this->customer_id = (string) $ticket->customer_id;
+                $this->is_new_customer = false;
+            }
+        } elseif ($installationId) {
+            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->find($installationId);
+            if ($inst) {
+                if ($inst->customer_id) {
+                    $this->customer_id = (string) $inst->customer_id;
+                    $this->is_new_customer = false;
+                } elseif (!empty($inst->customer_name)) {
+                    $this->is_new_customer = true;
+                    $this->new_customer_name = $inst->customer_name;
+                    $this->new_customer_phone = $inst->customer_phone ?? '';
+                    $this->new_customer_address = $inst->installation_address ?? '';
+                }
+            }
+        }
     }
 
     public function updatedServiceProfileId($value)
@@ -436,22 +468,42 @@ class Wizard extends Component
     public function searchCustomers(string $query = ''): array
     {
         $q = trim($query);
-        return Customer::withoutGuests()
-            ->when(!empty($q), function ($builder) use ($q) {
-                $builder->where(function ($sub) use ($q) {
+        $user = auth()->user();
+
+        $builder = Customer::withoutGlobalScopes()
+            ->where(function ($sq) {
+                $sq->whereNull('code')
+                  ->orWhere('code', 'not like', 'GST-%')
+                  ->orWhereHas('customerServices');
+            });
+
+        // Jika user memiliki branch_id, izinkan pelanggan di cabang tersebut atau pelanggan unassigned
+        if ($user && $user->branch_id && !$user->isSuperAdmin()) {
+            $builder->where(function ($bq) use ($user) {
+                $bq->where('branch_id', $user->branch_id)
+                   ->orWhereNull('branch_id');
+            });
+        }
+
+        return $builder
+            ->when(!empty($q), function ($b) use ($q) {
+                $b->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
                         ->orWhere('phone', 'like', "%{$q}%")
-                        ->orWhere('code', 'like', "%{$q}%");
+                        ->orWhere('code', 'like', "%{$q}%")
+                        ->orWhere('address', 'like', "%{$q}%");
                 });
             })
             ->latest('id')
-            ->take(20)
-            ->get(['id', 'name', 'phone', 'code'])
+            ->take(30)
+            ->get(['id', 'name', 'phone', 'code', 'address'])
             ->map(function ($c) {
+                $name = !empty(trim($c->name)) ? $c->name : 'Pelanggan #' . $c->id;
+                $details = array_filter([$c->phone, $c->code, $c->address ? \Illuminate\Support\Str::limit($c->address, 30) : null]);
                 return [
                     'value' => (string) $c->id,
-                    'label' => $c->name,
-                    'sublabel' => $c->phone . ($c->code ? " ({$c->code})" : ''),
+                    'label' => $name,
+                    'sublabel' => implode(' • ', $details),
                 ];
             })
             ->toArray();
@@ -461,7 +513,7 @@ class Wizard extends Component
     public function searchOdps(string $query = ''): array
     {
         $q = trim($query);
-        return Odp::query()
+        return Odp::withoutGlobalScopes()
             ->when(!empty($q), function ($builder) use ($q) {
                 $builder->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -481,17 +533,56 @@ class Wizard extends Component
             ->toArray();
     }
 
+    public function getSelectedCustomerProperty()
+    {
+        if ($this->is_new_customer) {
+            return (object) [
+                'id' => null,
+                'name' => $this->new_customer_name ?: '(Nama Pelanggan Baru Belum Diisi)',
+                'phone' => $this->new_customer_phone ?: '-',
+                'address' => $this->new_customer_address ?: '-',
+                'code' => 'BARU',
+            ];
+        }
+
+        if (!$this->customer_id) {
+            return null;
+        }
+
+        return Customer::withoutGlobalScopes()->find($this->customer_id);
+    }
+
     public function getSelectedCustomerLabelProperty(): ?string
     {
         if (!$this->customer_id) return null;
-        $c = Customer::withoutGuests()->find($this->customer_id);
-        return $c ? "{$c->name} ({$c->phone})" : null;
+        $c = Customer::withoutGlobalScopes()->find($this->customer_id);
+        if (!$c) return null;
+        $name = !empty(trim($c->name)) ? $c->name : 'Pelanggan #' . $c->id;
+        return "{$name} ({$c->phone})";
+    }
+
+    public function getSelectedServiceProfileProperty()
+    {
+        if (!$this->service_profile_id) return null;
+        return ServiceProfile::find($this->service_profile_id);
+    }
+
+    public function getSelectedOdpProperty()
+    {
+        if (!$this->odp_id) return null;
+        return Odp::withoutGlobalScopes()->find($this->odp_id);
+    }
+
+    public function getSelectedOltProperty()
+    {
+        if (!$this->olt_id) return null;
+        return Olt::withoutGlobalScopes()->find($this->olt_id);
     }
 
     public function getSelectedOdpLabelProperty(): ?string
     {
         if (!$this->odp_id) return null;
-        $odp = Odp::find($this->odp_id);
+        $odp = Odp::withoutGlobalScopes()->find($this->odp_id);
         return $odp ? $odp->name : null;
     }
 

@@ -108,6 +108,37 @@
                         :selected-label="$this->selectedCustomerLabel"
                         :error="$errors->first('customer_id')"
                     />
+
+                    {{-- Detail Pelanggan Terpilih --}}
+                    @if(!$is_new_customer && $this->selectedCustomer)
+                        <div class="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-start justify-between gap-3 animate-fadeIn">
+                            <div class="flex items-start gap-3 min-w-0">
+                                <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                                    {{ strtoupper(substr($this->selectedCustomer->name ?? 'P', 0, 1)) }}
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                                        {{ $this->selectedCustomer->name }}
+                                    </div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1.5 mt-0.5">
+                                        <span>{{ $this->selectedCustomer->phone ?: '-' }}</span>
+                                        @if($this->selectedCustomer->code)
+                                            <span>•</span>
+                                            <span class="font-mono bg-white dark:bg-slate-800 px-1.5 py-0.2 rounded border border-slate-200 dark:border-slate-700 text-[10px]">{{ $this->selectedCustomer->code }}</span>
+                                        @endif
+                                    </div>
+                                    @if($this->selectedCustomer->address)
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+                                            {{ $this->selectedCustomer->address }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0">
+                                Terpilih
+                            </span>
+                        </div>
+                    @endif
                 </div>
             @endif
         @endif
@@ -294,19 +325,34 @@
                 </div>
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Pelanggan</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white">{{ $is_new_customer ? 'Baru' : 'ID: '.$customer_id }}</span>
+                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
+                        @if($this->selectedCustomer)
+                            {{ $this->selectedCustomer->name }}
+                            <span class="block text-xs font-normal text-slate-400">
+                                {{ $this->selectedCustomer->phone ?: ($is_new_customer ? 'Pelanggan Baru' : 'ID: '.$customer_id) }}
+                            </span>
+                        @else
+                            -
+                        @endif
+                    </span>
                 </div>
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Paket</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white">ID: {{ $service_profile_id }}</span>
+                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
+                        {{ $this->selectedServiceProfile?->name ?? ($service_profile_id ? 'ID: '.$service_profile_id : '-') }}
+                    </span>
                 </div>
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ODP</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white">ID: {{ $odp_id }}</span>
+                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
+                        {{ $this->selectedOdp?->name ?? ($odp_id ? 'ID: '.$odp_id : '-') }}
+                    </span>
                 </div>
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">OLT / PON</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white">OLT {{ $olt_id }} / Port {{ $pon_port }}</span>
+                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
+                        {{ $this->selectedOlt?->name ?? ($olt_id ? 'OLT #'.$olt_id : '-') }} / Port {{ $pon_port }}
+                    </span>
                 </div>
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ONU SN</span>
