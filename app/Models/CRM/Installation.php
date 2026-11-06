@@ -38,6 +38,8 @@ class Installation extends Model
         'router_model',
         'router_serial_number',
         'digital_signature',
+        'optical_power',
+        'checklists',
         'photos',
         'notes',
         'created_by',
@@ -49,6 +51,7 @@ class Installation extends Model
         'scheduled_date' => 'date',
         'completed_at' => 'datetime',
         'photos' => 'array',
+        'checklists' => 'array',
     ];
 
     protected static function booted()

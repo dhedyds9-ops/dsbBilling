@@ -588,6 +588,140 @@
                 </div>
             </div>
 
+            {{-- Pengukuran Redaman Optik (OPM dBm) --}}
+            <div class="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-indigo-500">settings_input_antenna</span>
+                        Hasil Redaman Optik (OPM)
+                    </span>
+                    <span class="text-[9px] text-slate-400 font-normal lowercase">standar: -15 s/d -24 dBm</span>
+                </label>
+                <div class="flex items-center gap-2">
+                    <input type="text" wire:model="ticket_optical_power" placeholder="Misal: -19.5 dBm"
+                           class="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
+                    <div class="flex gap-1 shrink-0">
+                        <button type="button" @click="$wire.set('ticket_optical_power', '-18.5 dBm')" class="px-2 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-indigo-50 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300">-18.5</button>
+                        <button type="button" @click="$wire.set('ticket_optical_power', '-19.0 dBm')" class="px-2 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-indigo-50 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300">-19.0</button>
+                        <button type="button" @click="$wire.set('ticket_optical_power', '-21.0 dBm')" class="px-2 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-indigo-50 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300">-21.0</button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Pemakaian Material Lapangan (Stok Saya) --}}
+            <div class="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-indigo-500">inventory_2</span>
+                        Catat Pemakaian Material (Stok)
+                    </span>
+                    <span class="text-[9px] text-slate-400 font-normal lowercase">opsional</span>
+                </label>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                        <select wire:model="ticket_material_id" class="w-full px-2.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <option value="">-- Tanpa Material --</option>
+                            @foreach($availableMaterials as $mat)
+                                <option value="{{ $mat->id }}">{{ $mat->name }} (Sisa: {{ $mat->stock }} {{ $mat->unit }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <input type="number" wire:model="ticket_material_qty" min="0" placeholder="Qty"
+                               class="w-full px-2.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-center bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Checklist SOP Pengerjaan --}}
+            <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm text-emerald-600">checklist</span>
+                    Checklist SOP Pengerjaan
+                </label>
+                <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" wire:model="ticket_checklists.odp_checked" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-[11px]">Redaman ODP & ONT diukur normal</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" wire:model="ticket_checklists.cable_installed" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-[11px]">Kabel dropcore & konektor terpasang rapi</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" wire:model="ticket_checklists.onu_online" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-[11px]">ONT online, lampu PON hijau stabil</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" wire:model="ticket_checklists.speedtest_ok" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-[11px]">Speedtest & browsing di HP pelanggan normal</span>
+                    </label>
+                </div>
+            </div>
+
+            {{-- Tanda Tangan Digital Pelanggan --}}
+            <div class="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800"
+                 x-data="{
+                     isDrawing: false,
+                     canvas: null,
+                     ctx: null,
+                     hasSignature: false,
+                     init() {
+                         this.canvas = this.$refs.myjobsSigCanvas;
+                         this.ctx = this.canvas.getContext('2d');
+                         this.ctx.lineWidth = 2.5;
+                         this.ctx.lineCap = 'round';
+                         this.ctx.strokeStyle = '#0f172a';
+                     },
+                     start(e) {
+                         this.isDrawing = true;
+                         this.draw(e);
+                     },
+                     stop() {
+                         if (!this.isDrawing) return;
+                         this.isDrawing = false;
+                         this.ctx.beginPath();
+                         this.hasSignature = true;
+                         $wire.set('ticket_digital_signature', this.canvas.toDataURL('image/png'));
+                     },
+                     draw(e) {
+                         if (!this.isDrawing) return;
+                         const rect = this.canvas.getBoundingClientRect();
+                         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                         const x = clientX - rect.left;
+                         const y = clientY - rect.top;
+                         this.ctx.lineTo(x, y);
+                         this.ctx.stroke();
+                         this.ctx.beginPath();
+                         this.ctx.moveTo(x, y);
+                     },
+                     clear() {
+                         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                         this.hasSignature = false;
+                         $wire.set('ticket_digital_signature', '');
+                     }
+                 }">
+                <div class="flex items-center justify-between">
+                    <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm text-indigo-500">draw</span>
+                        Tanda Tangan Pelanggan
+                    </label>
+                    <button type="button" @click="clear" class="text-[10px] text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-xs">restart_alt</span>
+                        Hapus
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-400">Mintalah pelanggan membubuhkan tanda tangan langsung di bawah:</p>
+                <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-white overflow-hidden shadow-inner">
+                    <canvas x-ref="myjobsSigCanvas" width="360" height="120"
+                            class="w-full h-28 touch-none bg-white cursor-crosshair"
+                            @mousedown="start($event)" @mouseup="stop()" @mousemove="draw($event)"
+                            @touchstart.prevent="start($event)" @touchend.prevent="stop()" @touchmove.prevent="draw($event)">
+                    </canvas>
+                </div>
+            </div>
+
             {{-- Optional Resolution Notes --}}
             <div>
                 <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">

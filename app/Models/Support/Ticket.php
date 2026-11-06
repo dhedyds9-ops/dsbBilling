@@ -27,12 +27,16 @@ class Ticket extends Model
         'resolved_at',
         'due_date',
         'photos',
+        'optical_power',
+        'digital_signature',
+        'checklists',
     ];
 
     protected $casts = [
         'resolved_at' => 'datetime',
         'due_date' => 'date',
         'photos' => 'array',
+        'checklists' => 'array',
     ];
 
     public function customer(): BelongsTo

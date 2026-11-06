@@ -38,42 +38,52 @@
             <h1 class="text-2xl font-black mb-0.5">{{ auth()->user()->name }}</h1>
             <p class="text-indigo-200 text-sm">{{ now()->translatedFormat('l, d F Y') }}</p>
         </div>
-        <div class="relative z-10 mt-4 flex gap-2">
+        <div class="relative z-10 mt-4 grid grid-cols-4 gap-2">
             @if(!$hasCheckedIn)
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
-                   class="flex-1 py-2.5 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl text-white/80 text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
-                    <span class="material-symbols-outlined" style="font-size:20px">lock</span>
+                   class="py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl text-white/80 text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined" style="font-size:18px">lock</span>
                     Tugas
                 </button>
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
-                   class="flex-1 py-2.5 bg-amber-400/80 hover:bg-amber-400 text-amber-950 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
-                    <span class="material-symbols-outlined" style="font-size:20px">lock</span>
+                   class="py-2 bg-amber-400/80 hover:bg-amber-400 text-amber-950 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:18px">lock</span>
                     Instalasi
                 </button>
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
-                   class="flex-1 py-2.5 bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
-                    <span class="material-symbols-outlined" style="font-size:20px">lock</span>
+                   class="py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:18px">lock</span>
+                    Stok
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
+                   class="py-2 bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:18px">lock</span>
                     Sensus
                 </button>
             @else
                 <a href="{{ route('technician.my-jobs.index') }}"
-                   class="relative flex-1 py-2.5 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors">
+                   class="relative py-2 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors">
                     @if(($activeTicketsCount ?? 0) > 0)
-                        <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow">
+                        <span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center shadow">
                             {{ $activeTicketsCount }}
                         </span>
                     @endif
-                    <span class="material-symbols-outlined" style="font-size:20px">assignment</span>
+                    <span class="material-symbols-outlined" style="font-size:18px">assignment</span>
                     Tugas
                 </a>
                 <a href="{{ route('technician.installation.wizard') }}"
-                   class="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
-                    <span class="material-symbols-outlined" style="font-size:20px">build_circle</span>
+                   class="py-2 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:18px">build_circle</span>
                     Instalasi
                 </a>
+                <a href="{{ route('technician.material.index') }}"
+                   class="py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:18px">inventory_2</span>
+                    Stok
+                </a>
                 <a href="{{ route('technician.audit.form') }}"
-                   class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
-                    <span class="material-symbols-outlined" style="font-size:20px">radar</span>
+                   class="py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:18px">radar</span>
                     Sensus
                 </a>
             @endif

@@ -368,6 +368,28 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Redaman Optik & Pemakaian Material Lapangan --}}
+                <div class="border-t border-slate-200 dark:border-slate-700/60 pt-3 mt-3 space-y-3">
+                    <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-indigo-500" style="font-size:16px">settings_input_antenna</span>
+                        Pengukuran Redaman & Material PSB (Opsional)
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Redaman OPM (dBm)</label>
+                            <input type="text" wire:model="optical_power" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="-19.5 dBm">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Dropcore (Meter)</label>
+                            <input type="number" wire:model="dropcore_meters" min="0" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-center focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Fast Connector (Pcs)</label>
+                            <input type="number" wire:model="fast_connector_qty" min="0" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-center focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="0">
+                        </div>
+                    </div>
+                </div>
             </div>
         @endif
 

@@ -47,6 +47,11 @@ class Wizard extends Component
     public $wifi_ssid = '';
     public $wifi_password = '';
 
+    // Field Service Proof & Material Consumption (P1-1B)
+    public $optical_power = '';
+    public $dropcore_meters = 0;
+    public $fast_connector_qty = 0;
+
     // Step 7 Result Properties (P1-1A)
     public $provisioning_status = 'pending';
     public $provisioning_message = '';
@@ -491,6 +496,52 @@ class Wizard extends Component
 
                 $this->provisioning_status = 'queued';
                 $this->provisioning_message = 'Layanan Hotspot Member & konfigurasi Bridge berhasil dieksekusi.';
+            }
+
+            // Catat pemakaian material kabel dropcore & fast connector jika diisi
+            if (($this->dropcore_meters > 0 || $this->fast_connector_qty > 0) && \Illuminate\Support\Facades\Schema::hasTable('support_maintenance_materials')) {
+                try {
+                    if ($this->dropcore_meters > 0) {
+                        $dc = \Illuminate\Support\Facades\DB::table('support_maintenance_materials')->where('name', 'like', '%Dropcore%')->first();
+                        if ($dc) {
+                            \Illuminate\Support\Facades\DB::table('support_maintenance_materials')->where('id', $dc->id)->decrement('stock', (int) $this->dropcore_meters);
+                        }
+                        \Illuminate\Support\Facades\DB::table('support_maintenance_usages')->insert([
+                            'material_id' => $dc?->id,
+                            'material_name' => $dc?->name ?? 'Kabel Dropcore Optik 1 Core',
+                            'quantity' => (int) $this->dropcore_meters,
+                            'unit' => 'meter',
+                            'technician_id' => $user->id,
+                            'technician_name' => $user->name,
+                            'used_date' => now()->toDateString(),
+                            'notes' => 'PSB Pelanggan ' . ($this->new_customer_name ?? $this->selectedCustomer?->name ?? 'Pelanggan'),
+                            'created_by' => $user->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                    if ($this->fast_connector_qty > 0) {
+                        $fc = \Illuminate\Support\Facades\DB::table('support_maintenance_materials')->where('name', 'like', '%Fast Connector%')->first();
+                        if ($fc) {
+                            \Illuminate\Support\Facades\DB::table('support_maintenance_materials')->where('id', $fc->id)->decrement('stock', (int) $this->fast_connector_qty);
+                        }
+                        \Illuminate\Support\Facades\DB::table('support_maintenance_usages')->insert([
+                            'material_id' => $fc?->id,
+                            'material_name' => $fc?->name ?? 'Fast Connector SC/UPC',
+                            'quantity' => (int) $this->fast_connector_qty,
+                            'unit' => 'pcs',
+                            'technician_id' => $user->id,
+                            'technician_name' => $user->name,
+                            'used_date' => now()->toDateString(),
+                            'notes' => 'PSB Pelanggan ' . ($this->new_customer_name ?? $this->selectedCustomer?->name ?? 'Pelanggan'),
+                            'created_by' => $user->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal catat pemakaian material: ' . $e->getMessage());
+                }
             }
 
             $this->currentStep = 7;

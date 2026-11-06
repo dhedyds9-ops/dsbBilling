@@ -43,6 +43,19 @@ class Index extends Component
     // Upload Foto Bukti Lapangan
     public $upload_photos = [];
 
+    // Bukti Pekerjaan Lanjutan (Redaman OPM, Tanda Tangan, SOP & Material)
+    public string $optical_power = '';
+    public string $digital_signature = '';
+    public array $checklists = [
+        'odp_checked' => true,
+        'cable_installed' => true,
+        'onu_online' => true,
+        'speedtest_ok' => true,
+        'customer_informed' => true,
+    ];
+    public ?int $material_id = null;
+    public int $material_qty = 0;
+
     // Edit Progress Lapangan Sebelum Selesai
     public ?int $progressTicketId = null;
     public string $progress_status = 'in_progress';
@@ -192,6 +205,39 @@ class Index extends Component
         if (Schema::hasColumn('tickets', 'photos')) {
             $payload['photos'] = $photos;
         }
+        if (Schema::hasColumn('tickets', 'optical_power') && !empty(trim($this->optical_power))) {
+            $payload['optical_power'] = trim($this->optical_power);
+        }
+        if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->digital_signature)) {
+            $payload['digital_signature'] = $this->digital_signature;
+        }
+        if (Schema::hasColumn('tickets', 'checklists')) {
+            $payload['checklists'] = $this->checklists;
+        }
+
+        // Catat penggunaan material jika teknisi memilih material terpakai
+        if ($this->material_id && $this->material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+            try {
+                $mat = DB::table('support_maintenance_materials')->where('id', $this->material_id)->first();
+                if ($mat) {
+                    DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->material_qty);
+                    DB::table('support_maintenance_usages')->insert([
+                        'ticket_id' => $ticket->id,
+                        'material_id' => $mat->id,
+                        'material_name' => $mat->name,
+                        'quantity' => $this->material_qty,
+                        'unit' => $mat->unit ?: 'pcs',
+                        'technician_id' => Auth::id(),
+                        'technician_name' => Auth::user()->name,
+                        'used_date' => now()->toDateString(),
+                        'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
+                        'created_by' => Auth::id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable) {}
+        }
 
         $ticket->update($payload);
 
@@ -219,6 +265,17 @@ class Index extends Component
         $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . ($ticket->customer_id ?? '-');
         $this->selectedTicketCustomerId = $ticket->customer_id;
         $this->resolution_notes = (string) ($ticket->resolution_notes ?? '');
+        $this->optical_power = (string) ($ticket->optical_power ?? '');
+        $this->digital_signature = (string) ($ticket->digital_signature ?? '');
+        $this->checklists = is_array($ticket->checklists) && !empty($ticket->checklists) ? $ticket->checklists : [
+            'odp_checked' => true,
+            'cable_installed' => true,
+            'onu_online' => true,
+            'speedtest_ok' => true,
+            'customer_informed' => true,
+        ];
+        $this->material_id = null;
+        $this->material_qty = 0;
         $this->upload_photos = [];
         $this->showResolveModal = true;
     }
@@ -296,6 +353,39 @@ class Index extends Component
         }
         if (Schema::hasColumn('tickets', 'photos')) {
             $payload['photos'] = $photos;
+        }
+        if (Schema::hasColumn('tickets', 'optical_power') && !empty(trim($this->optical_power))) {
+            $payload['optical_power'] = trim($this->optical_power);
+        }
+        if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->digital_signature)) {
+            $payload['digital_signature'] = $this->digital_signature;
+        }
+        if (Schema::hasColumn('tickets', 'checklists')) {
+            $payload['checklists'] = $this->checklists;
+        }
+
+        // Catat penggunaan material jika teknisi memilih material terpakai
+        if ($this->material_id && $this->material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+            try {
+                $mat = DB::table('support_maintenance_materials')->where('id', $this->material_id)->first();
+                if ($mat) {
+                    DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->material_qty);
+                    DB::table('support_maintenance_usages')->insert([
+                        'ticket_id' => $ticket->id,
+                        'material_id' => $mat->id,
+                        'material_name' => $mat->name,
+                        'quantity' => $this->material_qty,
+                        'unit' => $mat->unit ?: 'pcs',
+                        'technician_id' => Auth::id(),
+                        'technician_name' => Auth::user()->name,
+                        'used_date' => now()->toDateString(),
+                        'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
+                        'created_by' => Auth::id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable) {}
         }
 
         $ticket->update($payload);
@@ -453,11 +543,16 @@ class Index extends Component
 
         $tickets = $query->latest('created_at')->paginate(10);
 
+        $availableMaterials = Schema::hasTable('support_maintenance_materials')
+            ? DB::table('support_maintenance_materials')->where('stock', '>', 0)->orderBy('name')->get()
+            : collect();
+
         return view('livewire.isp.technician.tickets.index', compact(
             'tickets',
             'openCount',
             'resolvedCount',
-            'isAdmin'
+            'isAdmin',
+            'availableMaterials'
         ));
     }
 }

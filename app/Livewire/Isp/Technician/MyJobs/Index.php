@@ -64,6 +64,19 @@ class Index extends Component
     // Upload Foto Bukti Lapangan untuk Tiket
     public $ticket_upload_photos = [];
 
+    // Bukti Pekerjaan Lanjutan (Redaman OPM, Tanda Tangan, SOP & Material)
+    public string $ticket_optical_power = '';
+    public string $ticket_digital_signature = '';
+    public array $ticket_checklists = [
+        'odp_checked' => true,
+        'cable_installed' => true,
+        'onu_online' => true,
+        'speedtest_ok' => true,
+        'customer_informed' => true,
+    ];
+    public ?int $ticket_material_id = null;
+    public int $ticket_material_qty = 0;
+
     // Edit Progress Tiket
     public bool $showProgressTicketModal = false;
     public ?int $progressTicketId = null;
@@ -247,6 +260,39 @@ class Index extends Component
         if (Schema::hasColumn('tickets', 'photos')) {
             $payload['photos'] = $photos;
         }
+        if (Schema::hasColumn('tickets', 'optical_power') && !empty(trim($this->ticket_optical_power))) {
+            $payload['optical_power'] = trim($this->ticket_optical_power);
+        }
+        if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->ticket_digital_signature)) {
+            $payload['digital_signature'] = $this->ticket_digital_signature;
+        }
+        if (Schema::hasColumn('tickets', 'checklists')) {
+            $payload['checklists'] = $this->ticket_checklists;
+        }
+
+        // Catat penggunaan material jika teknisi memilih material terpakai
+        if ($this->ticket_material_id && $this->ticket_material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+            try {
+                $mat = DB::table('support_maintenance_materials')->where('id', $this->ticket_material_id)->first();
+                if ($mat) {
+                    DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->ticket_material_qty);
+                    DB::table('support_maintenance_usages')->insert([
+                        'ticket_id' => $ticket->id,
+                        'material_id' => $mat->id,
+                        'material_name' => $mat->name,
+                        'quantity' => $this->ticket_material_qty,
+                        'unit' => $mat->unit ?: 'pcs',
+                        'technician_id' => Auth::id(),
+                        'technician_name' => Auth::user()->name,
+                        'used_date' => now()->toDateString(),
+                        'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
+                        'created_by' => Auth::id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable) {}
+        }
 
         $ticket->update($payload);
 
@@ -272,6 +318,17 @@ class Index extends Component
         $this->selectedTicketCustomer = $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id;
         $this->selectedTicketCustomerId = $ticket->customer_id;
         $this->ticket_resolution_notes = (string) ($ticket->resolution_notes ?? '');
+        $this->ticket_optical_power = (string) ($ticket->optical_power ?? '');
+        $this->ticket_digital_signature = (string) ($ticket->digital_signature ?? '');
+        $this->ticket_checklists = is_array($ticket->checklists) && !empty($ticket->checklists) ? $ticket->checklists : [
+            'odp_checked' => true,
+            'cable_installed' => true,
+            'onu_online' => true,
+            'speedtest_ok' => true,
+            'customer_informed' => true,
+        ];
+        $this->ticket_material_id = null;
+        $this->ticket_material_qty = 0;
         $this->ticket_upload_photos = [];
         $this->showResolveTicketModal = true;
     }
@@ -326,6 +383,39 @@ class Index extends Component
         }
         if (Schema::hasColumn('tickets', 'photos')) {
             $payload['photos'] = $photos;
+        }
+        if (Schema::hasColumn('tickets', 'optical_power') && !empty(trim($this->ticket_optical_power))) {
+            $payload['optical_power'] = trim($this->ticket_optical_power);
+        }
+        if (Schema::hasColumn('tickets', 'digital_signature') && !empty($this->ticket_digital_signature)) {
+            $payload['digital_signature'] = $this->ticket_digital_signature;
+        }
+        if (Schema::hasColumn('tickets', 'checklists')) {
+            $payload['checklists'] = $this->ticket_checklists;
+        }
+
+        // Catat penggunaan material jika teknisi memilih material terpakai
+        if ($this->ticket_material_id && $this->ticket_material_qty > 0 && Schema::hasTable('support_maintenance_materials')) {
+            try {
+                $mat = DB::table('support_maintenance_materials')->where('id', $this->ticket_material_id)->first();
+                if ($mat) {
+                    DB::table('support_maintenance_materials')->where('id', $mat->id)->decrement('stock', $this->ticket_material_qty);
+                    DB::table('support_maintenance_usages')->insert([
+                        'ticket_id' => $ticket->id,
+                        'material_id' => $mat->id,
+                        'material_name' => $mat->name,
+                        'quantity' => $this->ticket_material_qty,
+                        'unit' => $mat->unit ?: 'pcs',
+                        'technician_id' => Auth::id(),
+                        'technician_name' => Auth::user()->name,
+                        'used_date' => now()->toDateString(),
+                        'notes' => 'Penyelesaian Tiket ' . ($this->selectedTicketCode ?? ('#' . $ticket->id)),
+                        'created_by' => Auth::id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable) {}
         }
 
         $ticket->update($payload);
@@ -1066,13 +1156,17 @@ class Index extends Component
         );
 
         $stats = $this->stats;
-        $odps = Odp::all();
+        $odps = Odp::withoutGlobalScopes()->get();
+        $availableMaterials = Schema::hasTable('support_maintenance_materials')
+            ? DB::table('support_maintenance_materials')->where('stock', '>', 0)->orderBy('name')->get()
+            : collect();
 
         return view('livewire.isp.technician.my-jobs.index', [
             'jobs' => $paginatedJobs,
             'stats' => $stats,
             'odps' => $odps,
             'isAdmin' => $this->isAdminOversight(),
+            'availableMaterials' => $availableMaterials,
         ]);
     }
 }
