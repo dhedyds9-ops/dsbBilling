@@ -137,6 +137,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/technician-portal/material', \App\Livewire\Isp\Technician\Material\Index::class)->name('technician.material.index');
             Route::get('/technician-portal/stock', \App\Livewire\Isp\Technician\Material\Index::class)->name('technician.stock.index');
             Route::get('/technician-portal/swap-ont', \App\Livewire\Isp\Technician\Swap\Index::class)->name('technician.swap-ont.index');
+            Route::get('/technician-portal/diagnostic', \App\Livewire\Isp\Technician\Diagnostic\Index::class)->name('technician.diagnostic.index');
+            Route::get('/technician-portal/dismantle', \App\Livewire\Isp\Technician\Dismantle\Index::class)->name('technician.dismantle.index');
         });
 
         // Private Secure Ticket Photos Stream Endpoint (P0-H1)

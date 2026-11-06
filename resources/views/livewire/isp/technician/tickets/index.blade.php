@@ -256,6 +256,12 @@
                                 Kerjakan
                             </button>
                         @endif
+                        <a href="{{ route('technician.diagnostic.index', ['ticket_id' => $ticket->id, 'customer_id' => $ticket->customer_id]) }}"
+                           class="py-2 px-3 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/40 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                           title="Cek Sinyal & Diagnosa ONT">
+                            <span class="material-symbols-outlined text-sm">troubleshoot</span>
+                            <span>Diagnosa</span>
+                        </a>
                         <a href="{{ route('technician.swap-ont.index', ['ticket_id' => $ticket->id, 'customer_id' => $ticket->customer_id]) }}"
                            class="py-2 px-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors"
                            title="Ganti / Swap ONT Pelanggan">
