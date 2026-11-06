@@ -86,13 +86,13 @@
             </div>
 
             {{-- Total --}}
-            <div class="relative overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
-                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-400 to-slate-300 dark:from-slate-600 dark:to-slate-500 rounded-t-xl"></div>
-                <div class="absolute top-3 right-3 opacity-10 text-slate-400 group-hover:scale-110 transition-all">
+            <div wire:click="setActiveTab('all')" class="relative overflow-x-auto rounded-xl border {{ $activeTab === 'all' ? 'border-indigo-500 shadow-md ring-2 ring-indigo-500' : 'border-slate-200 dark:border-slate-700 shadow-sm' }} bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/30 dark:to-slate-800 group hover:shadow-md transition-all cursor-pointer">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-t-xl"></div>
+                <div class="absolute top-3 right-3 opacity-10 text-indigo-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">group</span>
                 </div>
                 <div class="p-4 pt-5">
-                    <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Total Semua</h3>
+                    <h3 class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2">Total Semua</h3>
                     <div class="flex items-baseline gap-2">
                         <span class="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{{ number_format($stats['total']) }}</span>
                         <span class="text-sm font-medium text-slate-500 dark:text-slate-400">Sesi</span>
@@ -127,13 +127,15 @@
 
             <div class="flex items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
                 <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ ucfirst($activeTab) }}</span> online
+                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ $activeTab === 'all' ? 'Semua Sesi' : ucfirst($activeTab) }}</span> online
                 </div>
-                <button wire:click="syncRouters" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate text-sm" wire:loading.class="animate-spin" translate="no">sync</span>
-                    <span wire:loading.remove>Sinkronkan {{ $selectedRouterId ? 'Router Ini' : 'MikroTik' }}</span>
-                    <span wire:loading>Menyinkronkan...</span>
-                </button>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-400 shadow-sm" title="Data diperbarui otomatis secara realtime setiap 10 detik">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>Live Otomatis</span>
+                </div>
             </div>
         </div>
 
@@ -158,9 +160,12 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     @forelse($results as $session)
+                        @php
+                            $currentType = $session->session_type ?? $activeTab;
+                        @endphp
                         <tr class="hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="px-3 py-3 whitespace-nowrap text-center">
-                                @if($activeTab === 'pppoe')
+                                @if($currentType === 'pppoe')
                                     <button wire:click="kickPppoe({{ $session->id }})" wire:confirm="Yakin ingin memutuskan koneksi sesi PPPoE ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer shadow-sm" title="Putuskan Sesi (Kick)">
                                         <span class="material-symbols-outlined notranslate" style="font-size:18px" translate="no">power_settings_new</span>
                                     </button>
@@ -171,27 +176,27 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                                @if($activeTab === 'pppoe')
+                                @if($currentType === 'pppoe')
                                     {{ $session->pppoeUser?->real_customer?->name ?? $session->pppoeUser?->customer?->name ?? $session->pppoeUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
-                                @elseif($activeTab === 'voucher')
+                                @elseif($currentType === 'voucher')
                                     <span class="italic text-slate-500 dark:text-slate-400">Pengguna Voucher</span>
                                 @else
                                     {{ $session->hotspotUser?->real_customer?->name ?? $session->hotspotUser?->customer?->name ?? $session->hotspotUser?->customerService?->customer?->name ?? 'Anonim / Tidak Ditemukan' }}
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs font-semibold">
-                                @if($activeTab === 'pppoe')
+                                @if($currentType === 'pppoe')
                                     {{ $session->name }}
                                 @else
                                     {{ $session->user }}
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                @if($activeTab === 'pppoe')
+                                @if($currentType === 'pppoe')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                                         {{ $session->pppoeUser?->serviceProfile?->name ?? $session->pppoeUser?->customerService?->serviceProfile?->name ?? strtoupper($session->service ?: 'PPPoE') }}
                                     </span>
-                                @elseif($activeTab === 'voucher')
+                                @elseif($currentType === 'voucher')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
                                         {{ $session->voucher?->serviceProfile?->name ?? $session->voucher?->voucherPool?->serviceProfile?->name ?? 'Voucher' }}
                                     </span>
@@ -202,12 +207,12 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400">
-                                @if($activeTab === 'pppoe')
+                                @if($currentType === 'pppoe')
                                     @php
                                         $owner = $session->pppoeUser?->reseller?->name ?? $session->pppoeUser?->customer?->reseller?->name ?? $session->pppoeUser?->customerService?->customer?->reseller?->name ?? 'Pusat (HQ)';
                                     @endphp
                                     <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $owner }}</span>
-                                @elseif($activeTab === 'voucher')
+                                @elseif($currentType === 'voucher')
                                     <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined notranslate text-slate-400" style="font-size:14px" translate="no">storefront</span> {{ $session->voucher?->reseller?->name ?? 'Pusat (HQ)' }}</span>
                                 @else
                                     @php
@@ -223,7 +228,7 @@
                                 {{ $session->address }}
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs">
-                                @if($activeTab === 'pppoe')
+                                @if($currentType === 'pppoe')
                                     {{ $session->caller_id ?: ($session->pppoeUser?->mac_address ?: '-') }}
                                 @else
                                     {{ $session->mac_address ?? '-' }}
@@ -242,15 +247,15 @@
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
                                 @php
                                     $startedAt = $session->session_started_at 
-                                        ?? ($activeTab === 'voucher' ? $session->voucher?->activated_at : null)
-                                        ?? ($activeTab === 'hotspot' ? $session->hotspotUser?->activated_at : null)
-                                        ?? ($activeTab === 'pppoe' ? $session->pppoeUser?->activated_at : null);
+                                        ?? ($currentType === 'voucher' ? $session->voucher?->activated_at : null)
+                                        ?? ($currentType === 'hotspot' ? $session->hotspotUser?->activated_at : null)
+                                        ?? ($currentType === 'pppoe' ? $session->pppoeUser?->activated_at : null);
                                 @endphp
                                 {{ $startedAt ? $startedAt->format('d/m/Y H:i:s') : '-' }}
                             </td>
                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
                                 @php
-                                    $expiresAt = match($activeTab) {
+                                    $expiresAt = match($currentType) {
                                         'pppoe' => $session->pppoeUser?->expires_at,
                                         'voucher' => $session->voucher?->expires_at,
                                         default => $session->hotspotUser?->expires_at,

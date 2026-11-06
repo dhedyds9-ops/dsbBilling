@@ -245,39 +245,42 @@ class Index extends BaseNetworkComponent
         $stats['total'] = $stats['pppoe'] + $stats['hotspot'] + $stats['voucher'];
 
         if ($this->search) {
+            $term = $this->search;
+            $filterPpp = function ($subQuery) use ($term) {
+                $subQuery->where('name', 'like', '%' . $term . '%')
+                    ->orWhere('address', 'like', '%' . $term . '%')
+                    ->orWhere('caller_id', 'like', '%' . $term . '%')
+                    ->orWhere('uptime', 'like', '%' . $term . '%')
+                    ->orWhereHas('router', function ($routerQuery) use ($term) {
+                        $routerQuery->where('name', 'like', '%' . $term . '%');
+                    })
+                    ->orWhereHas('pppoeUser', function ($puQuery) use ($term) {
+                        $puQuery->where('mac_address', 'like', '%' . $term . '%')
+                            ->orWhere('username', 'like', '%' . $term . '%');
+                    });
+            };
+
+            $filterHs = function ($subQuery) use ($term) {
+                $subQuery->where('user', 'like', '%' . $term . '%')
+                    ->orWhere('address', 'like', '%' . $term . '%')
+                    ->orWhere('mac_address', 'like', '%' . $term . '%')
+                    ->orWhere('server', 'like', '%' . $term . '%')
+                    ->orWhereHas('router', function ($routerQuery) use ($term) {
+                        $routerQuery->where('name', 'like', '%' . $term . '%');
+                    });
+            };
+
             if ($this->activeTab === 'pppoe') {
-                $pppoeQuery->where(function ($subQuery) {
-                    $subQuery->where('name', 'like', '%' . $this->search . '%')
-                        ->orWhere('address', 'like', '%' . $this->search . '%')
-                        ->orWhere('caller_id', 'like', '%' . $this->search . '%')
-                        ->orWhere('uptime', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('router', function ($routerQuery) {
-                            $routerQuery->where('name', 'like', '%' . $this->search . '%');
-                        })
-                        ->orWhereHas('pppoeUser', function ($puQuery) {
-                            $puQuery->where('mac_address', 'like', '%' . $this->search . '%');
-                        });
-                });
+                $pppoeQuery->where($filterPpp);
             } elseif ($this->activeTab === 'hotspot') {
-                $hotspotQuery->where(function ($subQuery) {
-                    $subQuery->where('user', 'like', '%' . $this->search . '%')
-                        ->orWhere('address', 'like', '%' . $this->search . '%')
-                        ->orWhere('mac_address', 'like', '%' . $this->search . '%')
-                        ->orWhere('server', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('router', function ($routerQuery) {
-                            $routerQuery->where('name', 'like', '%' . $this->search . '%');
-                        });
-                });
+                $hotspotQuery->where($filterHs);
             } elseif ($this->activeTab === 'voucher') {
-                $voucherQuery->where(function ($subQuery) {
-                    $subQuery->where('user', 'like', '%' . $this->search . '%')
-                        ->orWhere('address', 'like', '%' . $this->search . '%')
-                        ->orWhere('mac_address', 'like', '%' . $this->search . '%')
-                        ->orWhere('server', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('router', function ($routerQuery) {
-                            $routerQuery->where('name', 'like', '%' . $this->search . '%');
-                        });
-                });
+                $voucherQuery->where($filterHs);
+            } else {
+                // Tab 'all': filter semua query
+                $pppoeQuery->where($filterPpp);
+                $hotspotQuery->where($filterHs);
+                $voucherQuery->where($filterHs);
             }
         }
 
@@ -286,8 +289,38 @@ class Index extends BaseNetworkComponent
             $results = $pppoeQuery->orderBy('session_started_at', 'desc')->paginate($this->perPage);
         } elseif ($this->activeTab === 'hotspot') {
             $results = $hotspotQuery->orderBy('session_started_at', 'desc')->paginate($this->perPage);
-        } else {
+        } elseif ($this->activeTab === 'voucher') {
             $results = $voucherQuery->orderBy('session_started_at', 'desc')->paginate($this->perPage);
+        } else {
+            // Tab 'all': gabungkan semua sesi online (PPPoE, Hotspot & Voucher)
+            $pppItems = $pppoeQuery->get()->map(function ($item) {
+                $item->session_type = 'pppoe';
+                return $item;
+            });
+            $hsItems = $hotspotQuery->get()->map(function ($item) {
+                $item->session_type = 'hotspot';
+                return $item;
+            });
+            $vcItems = $voucherQuery->get()->map(function ($item) {
+                $item->session_type = 'voucher';
+                return $item;
+            });
+
+            $merged = $pppItems->concat($hsItems)->concat($vcItems);
+            $sorted = $merged->sortByDesc(fn($s) => $s->session_started_at ?? $s->created_at ?? $s->id)->values();
+
+            $page = $this->getPage();
+            $perPage = (int)$this->perPage;
+            $total = $sorted->count();
+            $items = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
+
+            $results = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $page,
+                ['path' => request()->url(), 'pageName' => 'page']
+            );
         }
 
         return view('livewire.isp.user-online.index', compact('results', 'stats', 'routers'));
