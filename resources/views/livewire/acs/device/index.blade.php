@@ -1,252 +1,269 @@
-<div class="{{ $isNocLayout ? 'noc-bg noc-text h-full flex flex-col w-full' : '' }}" style="{{ $isNocLayout ? 'background-color: #0a0e1a !important; min-height: 100vh;' : '' }}">
-    <!-- Flash Messages -->
-    <div class="mb-4 px-4 sm:px-0">
-        @if(session()->has('success'))
-            <div class="p-4 mb-4 text-sm text-emerald-800 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800" role="alert">
-                <span class="font-medium">Berhasil!</span> {{ session('success') }}
-            </div>
-        @endif
-        @if(session()->has('error'))
-            <div class="p-4 mb-4 text-sm text-rose-800 rounded-lg bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800" role="alert">
-                <span class="font-medium">Gagal!</span> {{ session('error') }}
-            </div>
-        @endif
-        @if(session()->has('info'))
-            <div class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800" role="alert">
-                <span class="font-medium">Info:</span> {{ session('info') }}
-            </div>
-        @endif
-    </div>
-  @include('livewire.acs._tabs')
-
-  <div class="{{ $isNocLayout ? 'h-full flex flex-col' : 'space-y-5 pb-10' }}">
-    
-    {{-- TOOLBAR & FILTER --}}
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div class="flex items-center gap-1.5 sm:gap-2 pb-1 sm:pb-0 w-full lg:w-auto">
-            <button wire:click="syncDevices" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-2.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap" title="Sinkronisasi Perangkat">
-                <span wire:loading.remove wire:target="syncDevices" class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">sync</span>
-                <span wire:loading wire:target="syncDevices" class="material-symbols-outlined notranslate sm:mr-1.5 animate-spin" translate="no" style="font-size:18px">sync</span>
-                <span class="hidden sm:inline">Sinkronisasi</span>
-            </button>
-            <button wire:click="export" class="inline-flex items-center justify-center px-2.5 sm:px-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border hover:brightness-110' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300' }} text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap" title="Export Data">
-                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">download</span>
-                <span class="hidden sm:inline">Export</span>
-            </button>
-            <button wire:click="deleteAllOfflineDevices" wire:confirm="Yakin ingin menghapus semua device ACS yang berstatus offline secara permanen dari aplikasi?" class="inline-flex items-center justify-center px-2.5 sm:px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-rose-200 dark:shadow-none transition-all whitespace-nowrap" title="Hapus Semua Perangkat Offline">
-                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">delete_sweep</span>
-                <span class="hidden sm:inline">Hapus Offline</span>
-            </button>
-        </div>
-        
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
-            {{-- Search --}}
-            <div class="relative w-full sm:w-64">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
-                </span>
-                <input type="text" wire:model.live.debounce.300ms="search"
-                       placeholder="Cari SN, MAC, Model, IP PPPoE/TR069..."
-                       class="w-full pl-9 pr-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border placeholder-gray-500 focus:ring-emerald-500 focus:border-transparent' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 transition-all">
-            </div>
-            
-            {{-- Status Filter & PerPage --}}
-            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-                <select wire:model.live="filters.status"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
-                    <option value="">Semua Status</option>
-                    <option value="online">Online</option>
-                    <option value="offline">Offline</option>
-                </select>
-                
-                <select wire:model.live="perPage"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
-                    <option value="20">20 / hal</option>
-                    <option value="50">50 / hal</option>
-                    <option value="100">100 / hal</option>
-                    <option value="500">500 / hal</option>
-                    <option value="999999">Semua</option>
-                </select>
-                
-                @if($search || count(array_filter($filters)) > 0)
-                <button wire:click="resetFilters"
-                        title="Reset Filter"
-                        class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
-                    <span class="material-symbols-outlined notranslate sm:mr-1" translate="no" style="font-size:16px">filter_alt_off</span>
-                    <span class="hidden sm:inline">Reset</span>
-                </button>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    {{-- DATA TABLE --}}
-    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border flex-1 overflow-auto noc-scroll' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden' }}">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead>
-                    <tr class="border-b {{ $isNocLayout ? 'noc-border noc-text bg-black/20' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80' }} text-xs uppercase tracking-wider">
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Nama Pelanggan</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Serial Number</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">MAC Address</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Model / Vendor</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">OLT / PON</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">IP Address</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Optical Power</th>
-                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Software Ver.</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y {{ $isNocLayout ? 'noc-divide noc-text' : 'divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300' }}">
-                    @forelse($devices as $device)
-                        <tr class="{{ $isNocLayout ? 'hover:bg-emerald-900/10' : 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50' }} transition-colors">
-                            <td class="px-4 py-3 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-1">
-                                    <button wire:click="summon('{{ $device->uuid }}')" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Summon (Refresh Data)">
-                                        <span wire:loading.remove wire:target="summon('{{ $device->uuid }}')" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sensors</span>
-                                        <span wire:loading wire:target="summon('{{ $device->uuid }}')" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
-                                    </button>
-                                    <a href="{{ route('acs.devices.show', $device->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Detail">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
-                                    </a>
-                                    <a href="{{ route('acs.devices.edit', $device->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Edit">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
-                                    </a>
-                                    <button wire:click="delete({{ $device->id }})" wire:confirm="Yakin ingin menghapus device ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Hapus">
-                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
-                                    </button>
-                                </div>
-                            </td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider {{ $device->status === 'online' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400' }}">
-                                    <span class="w-1.5 h-1.5 rounded-full {{ $device->status === 'online' ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
-                                    {{ $device->status }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3">
-                                @php
-                                    $cust = $device->resolved_customer ?? $device->customerService?->customer ?? $device->onu?->customer;
-                                    $uname = $device->customerService?->username ?? $device->onu?->customerService?->username;
-                                @endphp
-                                @if($cust)
-                                    <div>
-                                        <a href="{{ route('crm.customers.show', $cust->id) }}" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                                            {{ $cust->name }}
-                                        </a>
-                                        @if($uname)
-                                            <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                                <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:12px" translate="no">person</span>
-                                                {{ $uname }}
-                                            </div>
-                                        @endif
-                                    </div>
-                                @else
-                                    <span class="inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 italic">
-                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:13px" translate="no">link_off</span>
-                                        Belum terikat
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->serial_number }}</td>
-                            <td class="px-4 py-3 font-mono text-xs">{{ $device->mac_address ?? '-' }}</td>
-                            <td class="px-4 py-3">
-                                <div class="font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->model ?? '-' }}</div>
-                                <div class="text-[11px] {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $device->vendor?->name ?? $device->vendor ?? '-' }}</div>
-                            </td>
-                            <td class="px-4 py-3">
-                                @php
-                                    $resolvedOlt = $device->olt ?? $device->onu?->olt ?? $device->resolved_olt;
-                                    $resolvedOnu = $device->onu ?? $device->resolved_onu;
-                                    $ponName = $resolvedOnu?->ponPort?->name 
-                                        ?? ($resolvedOnu?->pon_port ? 'PON ' . $resolvedOnu->pon_port : null);
-                                @endphp
-                                @if($resolvedOlt)
-                                    <div class="font-medium text-xs {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">
-                                        <span class="inline-flex items-center gap-1">
-                                            <span class="material-symbols-outlined notranslate text-indigo-500" style="font-size:14px" translate="no">hub</span>
-                                            {{ $resolvedOlt->name }}
-                                        </span>
-                                    </div>
-                                    @if($ponName)
-                                        <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                                            {{ $ponName }}
-                                        </div>
-                                    @endif
-                                @else
-                                    <span class="inline-flex items-center gap-1 text-xs text-slate-400 italic">
-                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:13px" translate="no">router</span>
-                                        -
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3">
-                                @php
-                                    $rawTr069 = $device->connection_request_url ? parse_url($device->connection_request_url, PHP_URL_HOST) : null;
-                                    $tr069Ip = ($rawTr069 && $rawTr069 !== '0.0.0.0' && filter_var($rawTr069, FILTER_VALIDATE_IP)) ? $rawTr069 : null;
-                                    $rawPpp = ($device->ip_address && $device->ip_address !== '0.0.0.0') ? $device->ip_address : null;
-                                    $pppoeIp = ($rawPpp && $rawPpp !== $tr069Ip) ? $rawPpp : null;
-                                    if (!$pppoeIp && $rawPpp && !$tr069Ip) {
-                                        $pppoeIp = $rawPpp;
-                                    }
-                                @endphp
-                                @if($pppoeIp)
-                                    <div class="font-mono text-xs font-semibold {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}" title="IP PPPoE">
-                                        <span class="text-[10px] text-blue-500 font-bold uppercase mr-1">PPP:</span>{{ $pppoeIp }}
-                                    </div>
-                                @endif
-                                @if($tr069Ip)
-                                    <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400 {{ $pppoeIp ? 'mt-0.5' : '' }}" title="IP TR-069">
-                                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase mr-1">TR069:</span>{{ $tr069Ip }}
-                                    </div>
-                                @endif
-                                @if(!$pppoeIp && !$tr069Ip)
-                                    <span class="font-mono text-xs text-slate-400">-</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 font-mono text-xs">
-                                @if($device->signal)
-                                    @php
-                                        $sigVal = (float) $device->signal;
-                                        $sigBg = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
-                                        if ($sigVal < -26) {
-                                            $sigBg = "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800"; // Buruk
-                                        } elseif ($sigVal < -23) {
-                                            $sigBg = "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800"; // Sedang
-                                        } elseif ($sigVal <= -8) {
-                                            $sigBg = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"; // Bagus/Baik
-                                        }
-                                    @endphp
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold {{ $sigBg }}">
-                                        {{ $device->signal }} dBm
-                                    </span>
-                                @else
-                                    <span class="text-slate-400">-</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3">{{ $device->software_version ?? '-' }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="10" class="px-4 py-12 text-center">
-                                <div class="flex flex-col items-center justify-center {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">
-                                    <span class="material-symbols-outlined notranslate {{ $isNocLayout ? 'text-gray-500' : 'text-slate-300 dark:text-slate-600 dark:text-slate-400' }} mb-3" translate="no" style="font-size:48px">router</span>
-                                    <div class="text-sm font-medium {{ $isNocLayout ? 'text-gray-200' : 'text-slate-900 dark:text-slate-100' }}">Belum ada data Device</div>
-                                    <div class="text-xs mt-1">Tambahkan device TR-069 baru untuk mulai monitoring.</div>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        @if($devices->hasPages())
-            <div class="px-4 py-3 border-t {{ $isNocLayout ? 'noc-border noc-panel-bg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80' }}">
-                {{ $devices->links() }}
-            </div>
-        @endif
-    </div>
-  </div>
-</div>
-
+<div class="{{ $isNocLayout ? 'noc-bg noc-text h-full flex flex-col w-full' : '' }}" style="{{ $isNocLayout ? 'background-color: #0a0e1a !important; min-height: 100vh;' : '' }}">
+    <!-- Flash Messages -->
+    <div class="mb-4 px-4 sm:px-0">
+        @if(session()->has('success'))
+            <div class="p-4 mb-4 text-sm text-emerald-800 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800" role="alert">
+                <span class="font-medium">Berhasil!</span> {{ session('success') }}
+            </div>
+        @endif
+        @if(session()->has('error'))
+            <div class="p-4 mb-4 text-sm text-rose-800 rounded-lg bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800" role="alert">
+                <span class="font-medium">Gagal!</span> {{ session('error') }}
+            </div>
+        @endif
+        @if(session()->has('info'))
+            <div class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800" role="alert">
+                <span class="font-medium">Info:</span> {{ session('info') }}
+            </div>
+        @endif
+    </div>
+  @include('livewire.acs._tabs')
+
+  <div wire:poll.20s="pollLiveStatus" class="{{ $isNocLayout ? 'h-full flex flex-col' : 'space-y-5 pb-10' }}">
+    
+    {{-- TOOLBAR & FILTER --}}
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex items-center gap-1.5 sm:gap-2 pb-1 sm:pb-0 w-full lg:w-auto">
+            <button wire:click="syncDevices" wire:loading.attr="disabled" class="inline-flex items-center justify-center px-2.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap" title="Sinkronisasi Perangkat">
+                <span wire:loading.remove wire:target="syncDevices" class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">sync</span>
+                <span wire:loading wire:target="syncDevices" class="material-symbols-outlined notranslate sm:mr-1.5 animate-spin" translate="no" style="font-size:18px">sync</span>
+                <span class="hidden sm:inline">Sinkronisasi</span>
+            </button>
+            <button wire:click="export" class="inline-flex items-center justify-center px-2.5 sm:px-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border hover:brightness-110' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300' }} text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap" title="Export Data">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">download</span>
+                <span class="hidden sm:inline">Export</span>
+            </button>
+            <button wire:click="deleteAllOfflineDevices" wire:confirm="Yakin ingin menghapus semua device ACS yang berstatus offline secara permanen dari aplikasi?" class="inline-flex items-center justify-center px-2.5 sm:px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-rose-200 dark:shadow-none transition-all whitespace-nowrap" title="Hapus Semua Perangkat Offline">
+                <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size:18px">delete_sweep</span>
+                <span class="hidden sm:inline">Hapus Offline</span>
+            </button>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800" title="Status online/offline otomatis diperbarui setiap saat langsung dari GenieACS">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="hidden sm:inline">Live Otomatis</span>
+            </span>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
+            {{-- Search --}}
+            <div class="relative w-full sm:w-64">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
+                </span>
+                <input type="text" wire:model.live.debounce.300ms="search"
+                       placeholder="Cari SN, MAC, Model, IP PPPoE/TR069..."
+                       class="w-full pl-9 pr-4 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border placeholder-gray-500 focus:ring-emerald-500 focus:border-transparent' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 transition-all">
+            </div>
+            
+            {{-- Status Filter & PerPage --}}
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <select wire:model.live="filters.status"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
+                    <option value="">Semua Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+                
+                <select wire:model.live="perPage"
+                        class="w-full sm:w-auto pl-3 pr-8 py-2 {{ $isNocLayout ? 'noc-panel-bg noc-text noc-border focus:ring-emerald-500' : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100' }} rounded-lg text-sm focus:outline-none focus:ring-2 cursor-pointer">
+                    <option value="20">20 / hal</option>
+                    <option value="50">50 / hal</option>
+                    <option value="100">100 / hal</option>
+                    <option value="500">500 / hal</option>
+                    <option value="999999">Semua</option>
+                </select>
+                
+                @if($search || count(array_filter($filters)) > 0)
+                <button wire:click="resetFilters"
+                        title="Reset Filter"
+                        class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate sm:mr-1" translate="no" style="font-size:16px">filter_alt_off</span>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- DATA TABLE --}}
+    <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border flex-1 overflow-auto noc-scroll' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden' }}">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead>
+                    <tr class="border-b {{ $isNocLayout ? 'noc-border noc-text bg-black/20' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-800/80' }} text-xs uppercase tracking-wider">
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap text-center">Aksi</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Nama Pelanggan</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Serial Number</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">MAC Address</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Model / Vendor</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">OLT / PON</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">IP Address</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Optical Power</th>
+                        <th class="px-4 py-3 font-semibold whitespace-nowrap">Software Ver.</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y {{ $isNocLayout ? 'noc-divide noc-text' : 'divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300' }}">
+                    @forelse($devices as $device)
+                        <tr class="{{ $isNocLayout ? 'hover:bg-emerald-900/10' : 'hover:bg-slate-50 dark:bg-slate-900/50/50 dark:hover:bg-slate-800/50' }} transition-colors">
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button wire:click="summon('{{ $device->uuid }}')" wire:loading.attr="disabled" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors" title="Summon (Refresh Data)">
+                                        <span wire:loading.remove wire:target="summon('{{ $device->uuid }}')" class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">sensors</span>
+                                        <span wire:loading wire:target="summon('{{ $device->uuid }}')" class="material-symbols-outlined notranslate animate-spin" translate="no" style="font-size:18px">hourglass_empty</span>
+                                    </button>
+                                    <a href="{{ route('acs.devices.show', $device->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors" title="Detail">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">info</span>
+                                    </a>
+                                    <a href="{{ route('acs.devices.edit', $device->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors" title="Edit">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
+                                    </a>
+                                    <button wire:click="delete({{ $device->id }})" wire:confirm="Yakin ingin menghapus device ini?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors" title="Hapus">
+                                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $st = strtolower($device->status ?? '');
+                                    $badge = match($st) {
+                                        'online' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+                                        'stale' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
+                                        default => 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400',
+                                    };
+                                    $dot = match($st) {
+                                        'online' => 'bg-emerald-500',
+                                        'stale' => 'bg-amber-500',
+                                        default => 'bg-rose-500',
+                                    };
+                                @endphp
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider {{ $badge }}">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ $dot }}"></span>
+                                    {{ $device->status }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $cust = $device->resolved_customer ?? $device->customerService?->customer ?? $device->onu?->customer;
+                                    $uname = $device->customerService?->username ?? $device->onu?->customerService?->username;
+                                @endphp
+                                @if($cust)
+                                    <div>
+                                        <a href="{{ route('crm.customers.show', $cust->id) }}" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            {{ $cust->name }}
+                                        </a>
+                                        @if($uname)
+                                            <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:12px" translate="no">person</span>
+                                                {{ $uname }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 italic">
+                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:13px" translate="no">link_off</span>
+                                        Belum terikat
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->serial_number }}</td>
+                            <td class="px-4 py-3 font-mono text-xs">{{ $device->mac_address ?? '-' }}</td>
+                            <td class="px-4 py-3">
+                                <div class="font-medium {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">{{ $device->model ?? '-' }}</div>
+                                <div class="text-[11px] {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">{{ $device->vendor?->name ?? $device->vendor ?? '-' }}</div>
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $resolvedOlt = $device->olt ?? $device->onu?->olt ?? $device->resolved_olt;
+                                    $resolvedOnu = $device->onu ?? $device->resolved_onu;
+                                    $ponName = $resolvedOnu?->ponPort?->name 
+                                        ?? ($resolvedOnu?->pon_port ? 'PON ' . $resolvedOnu->pon_port : null);
+                                @endphp
+                                @if($resolvedOlt)
+                                    <div class="font-medium text-xs {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}">
+                                        <span class="inline-flex items-center gap-1">
+                                            <span class="material-symbols-outlined notranslate text-indigo-500" style="font-size:14px" translate="no">hub</span>
+                                            {{ $resolvedOlt->name }}
+                                        </span>
+                                    </div>
+                                    @if($ponName)
+                                        <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                                            {{ $ponName }}
+                                        </div>
+                                    @endif
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-xs text-slate-400 italic">
+                                        <span class="material-symbols-outlined notranslate text-slate-400" style="font-size:13px" translate="no">router</span>
+                                        -
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $rawTr069 = $device->connection_request_url ? parse_url($device->connection_request_url, PHP_URL_HOST) : null;
+                                    $tr069Ip = ($rawTr069 && $rawTr069 !== '0.0.0.0' && filter_var($rawTr069, FILTER_VALIDATE_IP)) ? $rawTr069 : null;
+                                    $rawPpp = ($device->ip_address && $device->ip_address !== '0.0.0.0') ? $device->ip_address : null;
+                                    $pppoeIp = ($rawPpp && $rawPpp !== $tr069Ip) ? $rawPpp : null;
+                                    if (!$pppoeIp && $rawPpp && !$tr069Ip) {
+                                        $pppoeIp = $rawPpp;
+                                    }
+                                @endphp
+                                @if($pppoeIp)
+                                    <div class="font-mono text-xs font-semibold {{ $isNocLayout ? 'text-gray-100' : 'text-slate-900 dark:text-slate-100' }}" title="IP PPPoE">
+                                        <span class="text-[10px] text-blue-500 font-bold uppercase mr-1">PPP:</span>{{ $pppoeIp }}
+                                    </div>
+                                @endif
+                                @if($tr069Ip)
+                                    <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400 {{ $pppoeIp ? 'mt-0.5' : '' }}" title="IP TR-069">
+                                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase mr-1">TR069:</span>{{ $tr069Ip }}
+                                    </div>
+                                @endif
+                                @if(!$pppoeIp && !$tr069Ip)
+                                    <span class="font-mono text-xs text-slate-400">-</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 font-mono text-xs">
+                                @if($device->signal)
+                                    @php
+                                        $sigVal = (float) $device->signal;
+                                        $sigBg = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+                                        if ($sigVal < -26) {
+                                            $sigBg = "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800"; // Buruk
+                                        } elseif ($sigVal < -23) {
+                                            $sigBg = "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800"; // Sedang
+                                        } elseif ($sigVal <= -8) {
+                                            $sigBg = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"; // Bagus/Baik
+                                        }
+                                    @endphp
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold {{ $sigBg }}">
+                                        {{ $device->signal }} dBm
+                                    </span>
+                                @else
+                                    <span class="text-slate-400">-</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">{{ $device->software_version ?? '-' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" class="px-4 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center {{ $isNocLayout ? 'text-gray-400' : 'text-slate-500 dark:text-slate-400' }}">
+                                    <span class="material-symbols-outlined notranslate {{ $isNocLayout ? 'text-gray-500' : 'text-slate-300 dark:text-slate-600 dark:text-slate-400' }} mb-3" translate="no" style="font-size:48px">router</span>
+                                    <div class="text-sm font-medium {{ $isNocLayout ? 'text-gray-200' : 'text-slate-900 dark:text-slate-100' }}">Belum ada data Device</div>
+                                    <div class="text-xs mt-1">Tambahkan device TR-069 baru untuk mulai monitoring.</div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if($devices->hasPages())
+            <div class="px-4 py-3 border-t {{ $isNocLayout ? 'noc-border noc-panel-bg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80' }}">
+                {{ $devices->links() }}
+            </div>
+        @endif
+    </div>
+  </div>
+</div>
+
