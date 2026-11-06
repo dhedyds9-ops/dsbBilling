@@ -37,6 +37,16 @@ class Index extends Component
     public string $reqUnit = 'pcs';
     public string $reqReason = '';
 
+    // Modal Retur & Lapor Rusak / Hilang
+    public bool $showReturnModal = false;
+    public string $returnAction = 'retur'; // 'retur', 'rusak', 'hilang'
+    public ?int $returnMaterialId = null;
+    public string $returnMaterialName = '';
+    public int $returnQuantity = 1;
+    public string $returnUnit = 'pcs';
+    public string $returnSerial = '';
+    public string $returnReason = '';
+
     public function mount()
     {
         $this->ensureDefaultMaterialsExist();
@@ -196,6 +206,91 @@ class Index extends Component
             $this->activeTab = 'pemakaian';
         } catch (\Throwable $e) {
             session()->flash('error', 'Gagal mengirimkan permintaan: ' . $e->getMessage());
+        }
+    }
+
+    public function openReturnModal(int $materialId, string $action = 'retur')
+    {
+        $mat = DB::table('support_maintenance_materials')->where('id', $materialId)->first();
+        if (!$mat) return;
+
+        $this->returnMaterialId = $mat->id;
+        $this->returnMaterialName = $mat->name;
+        $this->returnUnit = $mat->unit ?: 'pcs';
+        $this->returnQuantity = 1;
+        $this->returnSerial = '';
+        $this->returnReason = '';
+        $this->returnAction = in_array($action, ['retur', 'rusak', 'hilang']) ? $action : 'retur';
+        $this->showReturnModal = true;
+    }
+
+    public function submitReturn()
+    {
+        $this->validate([
+            'returnMaterialId' => 'required|integer',
+            'returnQuantity' => 'required|integer|min:1',
+            'returnAction' => 'required|in:retur,rusak,hilang',
+            'returnReason' => 'nullable|string|max:255',
+        ]);
+
+        $user = Auth::user();
+
+        try {
+            DB::transaction(function () use ($user) {
+                $mat = DB::table('support_maintenance_materials')
+                    ->where('id', $this->returnMaterialId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$mat) {
+                    throw new \RuntimeException('Data material tidak ditemukan.');
+                }
+
+                if ((int) $mat->stock < $this->returnQuantity) {
+                    throw new \RuntimeException("Jumlah melebihi stok yang tersedia (sisa: {$mat->stock} {$mat->unit}).");
+                }
+
+                // Kurangi stok teknisi
+                DB::table('support_maintenance_materials')
+                    ->where('id', $mat->id)
+                    ->update([
+                        'stock' => max(0, (int) $mat->stock - $this->returnQuantity),
+                        'updated_at' => now(),
+                    ]);
+
+                $tag = match($this->returnAction) {
+                    'retur' => '[RETUR KE GUDANG]',
+                    'rusak' => '[BARANG RUSAK/AFKIR]',
+                    'hilang' => '[BARANG HILANG]',
+                };
+
+                $notes = "Status: {$tag}. " . ($this->returnSerial ? "SN: {$this->returnSerial}. " : "") . ($this->returnReason ?: 'Laporan mandiri teknisi');
+
+                DB::table('support_maintenance_usages')->insert([
+                    'material_id' => $mat->id,
+                    'material_name' => "{$tag} {$mat->name}",
+                    'quantity' => $this->returnQuantity,
+                    'unit' => $mat->unit ?: 'pcs',
+                    'technician_id' => $user->id,
+                    'technician_name' => $user->name,
+                    'used_date' => now()->toDateString(),
+                    'notes' => $notes,
+                    'created_by' => $user->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            });
+
+            $label = match($this->returnAction) {
+                'retur' => 'Pengembalian barang ke gudang',
+                'rusak' => 'Laporan barang rusak',
+                'hilang' => 'Laporan barang hilang',
+            };
+
+            session()->flash('success', "{$label} ({$this->returnQuantity} {$this->returnUnit} \"{$this->returnMaterialName}\") berhasil dicatat.");
+            $this->showReturnModal = false;
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
         }
     }
 

@@ -256,6 +256,12 @@
                                 Kerjakan
                             </button>
                         @endif
+                        <a href="{{ route('technician.swap-ont.index', ['ticket_id' => $ticket->id, 'customer_id' => $ticket->customer_id]) }}"
+                           class="py-2 px-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                           title="Ganti / Swap ONT Pelanggan">
+                            <span class="material-symbols-outlined text-sm">sync_alt</span>
+                            <span>Ganti ONT</span>
+                        </a>
                         <button wire:click="openProgressModal({{ $ticket->id }})" type="button"
                                 class="py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors">
                             <span class="material-symbols-outlined text-base text-amber-500">edit_note</span>

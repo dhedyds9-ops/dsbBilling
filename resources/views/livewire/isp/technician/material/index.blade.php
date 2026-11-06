@@ -1,6 +1,6 @@
 @section('header_title', 'Stok Saya (Inventory)')
 
-<div class="space-y-4 p-4 pb-24">
+<div class="space-y-4 p-4 pb-24" x-data="materialManager()">
     @if(session('success'))
         <div class="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">
             <span class="material-symbols-outlined text-sm">check_circle</span>
@@ -36,7 +36,11 @@
         <div class="relative flex-1">
             <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:18px">search</span>
             <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari kabel, ONT, konektor..."
-                   class="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm">
+                   class="w-full pl-10 pr-9 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm">
+            <button type="button" @click="openScanner()" title="Scan Barcode / SN Perangkat"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1">
+                <span class="material-symbols-outlined" style="font-size:18px">photo_camera</span>
+            </button>
         </div>
         <button wire:click="openRequestModal" type="button"
                 class="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors shrink-0">
@@ -99,6 +103,11 @@
                             <button wire:click="openRecordUsageModal({{ $item->id }})" type="button"
                                     class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 transition-colors">
                                 Pakai
+                            </button>
+
+                            <button wire:click="openReturnModal({{ $item->id }}, 'retur')" type="button" title="Kembalikan ke Gudang atau Lapor Rusak"
+                                    class="px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-bold transition-colors">
+                                Retur
                             </button>
                         </div>
                     </div>
@@ -266,4 +275,149 @@
             </div>
         </div>
     @endif
+
+    {{-- MODAL RETUR & LAPOR RUSAK / HILANG --}}
+    @if($showReturnModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 max-w-sm w-full space-y-4 shadow-2xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-600 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-sm">assignment_return</span>
+                        </div>
+                        <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Retur / Lapor Rusak</h3>
+                    </div>
+                    <button wire:click="$set('showReturnModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+
+                {{-- Pilih Tipe Aksi --}}
+                <div class="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-[10px] font-bold text-center">
+                    <button type="button" wire:click="$set('returnAction', 'retur')"
+                            class="py-1.5 rounded-lg transition-colors {{ $returnAction === 'retur' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500' }}">
+                        Retur Gudang
+                    </button>
+                    <button type="button" wire:click="$set('returnAction', 'rusak')"
+                            class="py-1.5 rounded-lg transition-colors {{ $returnAction === 'rusak' ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500' }}">
+                        Barang Rusak
+                    </button>
+                    <button type="button" wire:click="$set('returnAction', 'hilang')"
+                            class="py-1.5 rounded-lg transition-colors {{ $returnAction === 'hilang' ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-slate-500' }}">
+                        Hilang
+                    </button>
+                </div>
+
+                <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
+                    <span class="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-bold">Barang:</span>
+                    <span class="font-bold text-slate-900 dark:text-slate-100">{{ $returnMaterialName }}</span>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah ({{ $returnUnit }})</label>
+                        <input type="number" wire:model="returnQuantity" min="1"
+                               class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-center bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Serial Number (Opsional / Perangkat)</label>
+                        <input type="text" wire:model="returnSerial" placeholder="Contoh: ZTEGC1234567..."
+                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs uppercase font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan / Alasan</label>
+                        <textarea wire:model="returnReason" rows="2" placeholder="Contoh: Sisa PSB dikembalikan ke gudang / Port LAN mati terkena petir..."
+                                  class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button wire:click="$set('showReturnModal', false)" type="button"
+                            class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                        Batal
+                    </button>
+                    <button wire:click="submitReturn" type="button"
+                            class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors">
+                        Konfirmasi Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- MODAL KAMERA SCANNER BARCODE PADA STOK SAYA --}}
+    <div x-show="scannerOpen"
+         style="display: none;"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 max-w-sm w-full space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-sm">photo_camera</span>
+                    </div>
+                    <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Scan Barcode / SN Material</h3>
+                </div>
+                <button type="button" @click="closeScanner()" class="text-slate-400 hover:text-slate-600">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+
+            <div class="rounded-2xl overflow-hidden border-2 border-indigo-500 relative bg-black aspect-video flex items-center justify-center">
+                <div id="mat-camera-reader" class="w-full"></div>
+            </div>
+
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+                Arahkan kamera ke barcode material atau Serial Number modem.
+            </p>
+
+            <button type="button" @click="closeScanner()"
+                    class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                Tutup Kamera
+            </button>
+        </div>
+    </div>
+
+    {{-- Script HTML5 QR Code Scanner --}}
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        function materialManager() {
+            return {
+                scannerOpen: false,
+                html5Scanner: null,
+
+                openScanner() {
+                    this.scannerOpen = true;
+                    this.$nextTick(() => {
+                        if (!this.html5Scanner) {
+                            this.html5Scanner = new Html5Qrcode("mat-camera-reader");
+                        }
+                        this.html5Scanner.start(
+                            { facingMode: "environment" },
+                            { fps: 10, qrbox: { width: 250, height: 120 } },
+                            (decodedText) => {
+                                this.closeScanner();
+                                @this.set('search', decodedText.trim());
+                            },
+                            (err) => {}
+                        ).catch((err) => {
+                            alert("Kamera tidak dapat diakses: " + err);
+                            this.closeScanner();
+                        });
+                    });
+                },
+
+                closeScanner() {
+                    if (this.html5Scanner) {
+                        this.html5Scanner.stop().catch(() => {}).finally(() => {
+                            this.scannerOpen = false;
+                        });
+                    } else {
+                        this.scannerOpen = false;
+                    }
+                }
+            };
+        }
+    </script>
 </div>

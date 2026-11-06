@@ -115,45 +115,62 @@
         </div>
     </div>
 
-    {{-- Layanan Karyawan --}}
+    {{-- Fitur Lapangan & Layanan Karyawan --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div class="px-4 py-3.5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
-            <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">badge</span>
-            <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">Layanan Karyawan</h2>
+        <div class="px-4 py-3.5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">handyman</span>
+                <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">Aksi Lapangan & Tools</h2>
+            </div>
+            <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-full">Field Service</span>
         </div>
-        <div class="p-4 flex gap-3">
-                        <a href="{{ route('technician.payroll.index') }}" class="flex-1 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-indigo-100 dark:border-indigo-800 text-center">
-                <span class="material-symbols-outlined" style="font-size:28px">request_quote</span>
-                <span class="text-xs font-bold">Slip Gaji</span>
-            </a>
-            
+        <div class="p-4 grid grid-cols-3 gap-2.5">
             @if(!$hasCheckedIn)
-                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-center cursor-not-allowed">
-                    <span class="material-symbols-outlined" style="font-size:28px">lock</span>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
+                        class="bg-slate-50 dark:bg-slate-900 text-slate-400 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-800 text-center cursor-not-allowed">
+                    <span class="material-symbols-outlined" style="font-size:26px">lock</span>
+                    <span class="text-xs font-bold">Ganti ONT</span>
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
+                        class="bg-slate-50 dark:bg-slate-900 text-slate-400 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-800 text-center cursor-not-allowed">
+                    <span class="material-symbols-outlined" style="font-size:26px">lock</span>
+                    <span class="text-xs font-bold">Stok Saya</span>
+                </button>
+                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
+                        class="bg-slate-50 dark:bg-slate-900 text-slate-400 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-800 text-center cursor-not-allowed">
+                    <span class="material-symbols-outlined" style="font-size:26px">lock</span>
                     <span class="text-xs font-bold">Scan ONU</span>
-                </button>
-                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-center cursor-not-allowed">
-                    <span class="material-symbols-outlined" style="font-size:28px">lock</span>
-                    <span class="text-xs font-bold">Peta ODP</span>
-                </button>
-                <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';" class="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-center cursor-not-allowed">
-                    <span class="material-symbols-outlined" style="font-size:28px">lock</span>
-                    <span class="text-xs font-bold">Cari ODP</span>
                 </button>
             @else
-                <a href="{{ route('technician.installation.scan') }}" class="flex-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-blue-100 dark:border-blue-800 text-center">
-                    <span class="material-symbols-outlined" style="font-size:28px">qr_code_scanner</span>
+                <a href="{{ route('technician.swap-ont.index') }}"
+                   class="bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-rose-200 dark:border-rose-800 text-center shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:26px">sync_alt</span>
+                    <span class="text-xs font-bold">Ganti ONT</span>
+                </a>
+                <a href="{{ route('technician.material.index') }}"
+                   class="bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-sky-200 dark:border-sky-800 text-center shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:26px">inventory_2</span>
+                    <span class="text-xs font-bold">Stok Saya</span>
+                </a>
+                <a href="{{ route('technician.installation.scan') }}"
+                   class="bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-blue-100 dark:border-blue-800 text-center shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:26px">qr_code_scanner</span>
                     <span class="text-xs font-bold">Scan ONU</span>
                 </a>
-                
-                <a href="{{ route('technician.odp.nearest') }}" class="flex-1 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-emerald-100 dark:border-emerald-800 text-center">
-                    <span class="material-symbols-outlined" style="font-size:28px">share_location</span>
+                <a href="{{ route('technician.odp.nearest') }}"
+                   class="bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-emerald-100 dark:border-emerald-800 text-center shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:26px">share_location</span>
                     <span class="text-xs font-bold">Peta ODP</span>
                 </a>
-
-                <a href="{{ route('technician.odp.search') }}" class="flex-1 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-amber-100 dark:border-amber-800 text-center">
-                    <span class="material-symbols-outlined" style="font-size:28px">search</span>
+                <a href="{{ route('technician.odp.search') }}"
+                   class="bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-amber-100 dark:border-amber-800 text-center shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:26px">search</span>
                     <span class="text-xs font-bold">Cari ODP</span>
+                </a>
+                <a href="{{ route('technician.payroll.index') }}"
+                   class="bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-colors border border-indigo-100 dark:border-indigo-800 text-center shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size:26px">request_quote</span>
+                    <span class="text-xs font-bold">Slip Gaji</span>
                 </a>
             @endif
         </div>
