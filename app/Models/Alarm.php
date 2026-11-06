@@ -3,12 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
 
 class Alarm extends Model
 {
-    use HasUuids;
-    
     protected $fillable = [
         'uuid',
         'level',
@@ -33,6 +31,15 @@ class Alarm extends Model
         'resolved_at' => 'datetime',
         'acknowledged_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Alarm $alarm) {
+            if (empty($alarm->uuid)) {
+                $alarm->uuid = (string) Str::uuid();
+            }
+        });
+    }
     
     public function source()
     {
