@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('software_version', 64)->nullable();
             $table->string('ip_address', 45)->nullable();
             $table->timestamp('last_inform_at')->nullable();
-            $table->timestamp('received_at');
+            $table->timestamp('received_at')->nullable();
             $table->string('processing_status', 32)->default('received')->index();
             $table->timestamp('processed_at')->nullable();
             $table->text('error_message')->nullable();
