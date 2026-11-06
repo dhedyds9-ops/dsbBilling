@@ -125,6 +125,16 @@ class ISPProvisioningService
                                     if ($kicked) $result['kicked']++;
                                 }
                             }
+
+                            // RADIUS PoD kick (RFC 5176) untuk user berbasis FreeRADIUS
+                            try {
+                                $nas = \App\Models\ISP\RadiusNas::withoutGlobalScopes()->where('nas_ip_address', $router->ip_address)->first();
+                                if ($nas) {
+                                    app(\App\Services\ISP\Radius\RFC5176DisconnectService::class)->sendDisconnect($nas, [
+                                        \App\Services\ISP\Radius\RFC5176DisconnectService::ATTR_USER_NAME => $username,
+                                    ]);
+                                }
+                            } catch (Throwable $e) {}
                         } catch (Throwable $e) {
                             $result['errors'][] = sprintf('Router #%d (%s/%s): %s', $router->id, $t['kind'], $username, $e->getMessage());
                         }
@@ -268,6 +278,16 @@ class ISPProvisioningService
                                 $kicked = $driver->disconnectHotspotUser($username);
                                 if ($kicked) $result['kicked']++;
                             }
+
+                            // RADIUS PoD kick (RFC 5176) untuk mengaktifkan kembali sesi
+                            try {
+                                $nas = \App\Models\ISP\RadiusNas::withoutGlobalScopes()->where('nas_ip_address', $router->ip_address)->first();
+                                if ($nas) {
+                                    app(\App\Services\ISP\Radius\RFC5176DisconnectService::class)->sendDisconnect($nas, [
+                                        \App\Services\ISP\Radius\RFC5176DisconnectService::ATTR_USER_NAME => $username,
+                                    ]);
+                                }
+                            } catch (Throwable $e) {}
                         } catch (Throwable $e) {
                             $result['errors'][] = sprintf('Router #%d (%s/%s): %s', $router->id, $t['kind'], $username, $e->getMessage());
                         }

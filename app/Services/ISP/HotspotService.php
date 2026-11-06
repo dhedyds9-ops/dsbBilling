@@ -232,13 +232,12 @@ class HotspotService
         foreach ($routers as $router) {
             try {
                 $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) continue;
-                $driver->setHotspotUserProfile($username, $normalProfile);
-                $driver->disconnectHotspotUser($username);
-                $driver->disconnect();
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("HotspotService provisionToMikrotik error: " . $e->getMessage());
-            }
+                if ($driver->connect()) {
+                    $driver->setHotspotUserProfile($username, $normalProfile);
+                    $driver->disconnect();
+                }
+            } catch (\Throwable $e) {}
+            $this->kickSessionOnRouter($router, $username);
         }
     }
 
@@ -255,13 +254,12 @@ class HotspotService
         foreach ($routers as $router) {
             try {
                 $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) continue;
-                $driver->setHotspotUserProfile($username, $isolirProfile);
-                $driver->disconnectHotspotUser($username);
-                $driver->disconnect();
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("HotspotService provisionIsolationToMikrotik error: " . $e->getMessage());
-            }
+                if ($driver->connect()) {
+                    $driver->setHotspotUserProfile($username, $isolirProfile);
+                    $driver->disconnect();
+                }
+            } catch (\Throwable $e) {}
+            $this->kickSessionOnRouter($router, $username);
         }
     }
 
@@ -288,14 +286,35 @@ class HotspotService
         $username = $hotspotUser->username;
 
         foreach ($routers as $router) {
-            try {
-                $driver = $this->routerOSService->getDriver($router);
-                if (!$driver->connect()) continue;
+            $this->kickSessionOnRouter($router, $username);
+        }
+    }
+
+    private function kickSessionOnRouter(Router $router, string $username): void
+    {
+        // 1. Kirim RADIUS PoD (Packet of Disconnect RFC 5176) via UDP port 3799
+        try {
+            $nas = \App\Models\ISP\RadiusNas::withoutGlobalScopes()
+                ->where('nas_ip_address', $router->ip_address)
+                ->first();
+            if ($nas) {
+                app(\App\Services\ISP\Radius\RFC5176DisconnectService::class)->sendDisconnect($nas, [
+                    \App\Services\ISP\Radius\RFC5176DisconnectService::ATTR_USER_NAME => $username,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Radius PoD hotspot kick failed", ['router' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
+        }
+
+        // 2. Kirim RouterOS API (/ip hotspot active remove)
+        try {
+            $driver = $this->routerOSService->getDriver($router);
+            if ($driver->connect()) {
                 $driver->disconnectHotspotUser($username);
                 $driver->disconnect();
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
             }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("RouterOS API hotspot kick failed", ['router' => $router->id, 'user' => $username, 'err' => $e->getMessage()]);
         }
     }
 }
