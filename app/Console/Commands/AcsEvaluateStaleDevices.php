@@ -23,8 +23,8 @@ class AcsEvaluateStaleDevices extends Command
         $defaultInterval = (int) ($this->option('interval')
             ?: config('genieacs.cpe_defaults.periodic_inform_interval_seconds', 300));
 
-        $onlineThreshold = $defaultInterval + 60;
-        $offlineThreshold = ($defaultInterval * 2) + 120; // Existing threshold rule: (interval * 2) + 120 seconds
+        $onlineThreshold = $defaultInterval + 120; // 420 detik (7 menit)
+        $offlineThreshold = max(1080, ($defaultInterval * 3) + 180); // 1080 detik = 18 menit (toleransi wajar)
 
         $now = now();
         $transitionedOffline = 0;

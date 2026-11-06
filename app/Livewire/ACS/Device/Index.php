@@ -290,7 +290,7 @@ class Index extends BaseACSComponent
         }
         
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 15) ? 'online' : 'offline';
+        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 20) ? 'online' : 'offline';
 
         // Helper pembersih karakter rusak/non-printable (sering terjadi pada VSOL)
         $cleanSn = function ($val) {
@@ -594,8 +594,8 @@ class Index extends BaseACSComponent
     {
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $success = $driver->summonDevice($uuid);
-            if ($success) {
+            $result = $driver->summonDeviceResult($uuid);
+            if ($result['connection_request_success']) {
                 // Tunggu sejenak agar Inform selesai diproses oleh GenieACS, lalu perbarui data lokal
                 try {
                     usleep(1200000); // 1.2 detik
@@ -607,9 +607,11 @@ class Index extends BaseACSComponent
                     // Abaikan jika proses fetch parameters gagal di background
                 }
 
-                session()->flash('success', "Perintah summon berhasil dikirim ke perangkat ($uuid). Data perangkat dan status telah diperbarui.");
+                session()->flash('success', "Perintah summon berhasil dikirim dan perangkat merespons langsung. Data perangkat ($uuid) telah diperbarui.");
+            } elseif ($result['task_queued']) {
+                session()->flash('info', "Perintah refresh parameter berhasil diantrikan ke GenieACS untuk ($uuid). Karena IP modem di jaringan privat/NAT atau diblokir firewall modem, data akan otomatis terupdate saat modem mengirim Inform berkala berikutnya.");
             } else {
-                session()->flash('error', "Gagal melakukan summon. Perangkat mungkin mati atau IP tidak terjangkau.");
+                session()->flash('error', "Gagal melakukan summon. Perangkat tidak ditemukan di GenieACS atau server ACS tidak merespons.");
             }
         } catch (\Exception $e) {
             session()->flash('error', 'Error: ' . $e->getMessage());

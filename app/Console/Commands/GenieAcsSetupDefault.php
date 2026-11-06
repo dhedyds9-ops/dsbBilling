@@ -187,7 +187,9 @@ return null;',
         $this->info("Pushing Default Inform Provision...");
         $provisionScript = '
 // Force device to inform every 300 seconds (5 minutes)
+declare("InternetGatewayDevice.ManagementServer.PeriodicInformEnable", {value: 1}, {value: true});
 declare("InternetGatewayDevice.ManagementServer.PeriodicInformInterval", {value: 1}, {value: 300});
+declare("Device.ManagementServer.PeriodicInformEnable", {value: 1}, {value: true});
 declare("Device.ManagementServer.PeriodicInformInterval", {value: 1}, {value: 300});
 
 // Force refresh of essential parameters when device informs
@@ -199,6 +201,28 @@ declare("Device.Optical.*", {path: 1, value: 1});
             $this->info(' - Provision dsBilling_Inform successfully uploaded.');
         } else {
             $this->error(' - Failed to upload provision dsBilling_Inform.');
+        }
+
+        $this->info("Pushing Default Inform Preset to GenieACS...");
+        $presetData = [
+            'weight' => 10,
+            'events' => [
+                '0 BOOTSTRAP' => true,
+                '1 BOOT' => true,
+                '2 PERIODIC' => true,
+            ],
+            'precondition' => '',
+            'configurations' => [
+                [
+                    'type' => 'provision',
+                    'name' => 'dsBilling_Inform',
+                ],
+            ],
+        ];
+        if ($driver->upsertPreset('dsBilling_Inform_Preset', $presetData)) {
+            $this->info(' - Preset dsBilling_Inform_Preset successfully created & deployed to GenieACS!');
+        } else {
+            $this->warn(' - Failed to auto-create preset via API. Please ensure it is created in GenieACS UI.');
         }
 
         $this->info('');

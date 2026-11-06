@@ -491,29 +491,59 @@ class GenieACSDriver
         return self::calculateStatus($params) !== 'offline';
     }
 
-    public function summonDevice(string $deviceId): bool
+    public function summonDeviceResult(string $deviceId): array
     {
+        $result = [
+            'task_queued' => false,
+            'connection_request_success' => false,
+            'error' => null,
+        ];
+
         try {
             $tasks = [
                 ['name' => 'refreshObject', 'objectName' => 'InternetGatewayDevice.WANDevice'],
                 ['name' => 'refreshObject', 'objectName' => 'Device.WANDevice'],
                 ['name' => 'refreshObject', 'objectName' => 'Device.Optical']
             ];
-            $success = false;
-            foreach ($tasks as $idx => $payload) {
-                $url = "{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks";
-                if ($idx === count($tasks) - 1) {
-                    $url .= "?connection_request";
-                }
-                $response = Http::timeout(5)
-                    ->withBasicAuth($this->username, $this->password)
-                    ->post($url, $payload);
-                if ($response->successful()) $success = true;
+
+            // 1. Antrikan refresh tasks ke antrian GenieACS
+            foreach ($tasks as $payload) {
+                try {
+                    $url = "{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks";
+                    $resp = Http::timeout(8)
+                        ->withBasicAuth($this->username, $this->password)
+                        ->post($url, $payload);
+                    if ($resp->successful() || $resp->status() === 201) {
+                        $result['task_queued'] = true;
+                    }
+                } catch (\Throwable $e) {}
             }
-            return $success;
-        } catch (\Exception $e) {
-            return false;
+
+            // 2. Coba kirim Connection Request ke perangkat
+            try {
+                $crUrl = "{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request";
+                $crResp = Http::timeout(8)
+                    ->withBasicAuth($this->username, $this->password)
+                    ->post($crUrl, ['name' => 'refreshObject', 'objectName' => 'InternetGatewayDevice.DeviceInfo']);
+                if ($crResp->successful() || $crResp->status() === 200 || $crResp->status() === 201) {
+                    $result['connection_request_success'] = true;
+                    $result['task_queued'] = true;
+                }
+            } catch (\Throwable $e) {
+                $result['error'] = $e->getMessage();
+            }
+
+            return $result;
+        } catch (\Throwable $e) {
+            $result['error'] = $e->getMessage();
+            return $result;
         }
+    }
+
+    public function summonDevice(string $deviceId): bool
+    {
+        $res = $this->summonDeviceResult($deviceId);
+        return $res['connection_request_success'] || $res['task_queued'];
     }
 
     public function getTasks(string $deviceId, ?string $status = null): array
