@@ -115,6 +115,9 @@ class MenuRegistry
                             ['label' => 'Master Barang', 'route' => 'inventory.items.index', 'active' => 'inventory.items.*', 'permission' => 'inventory.view'],
                             ['label' => 'Data Gudang', 'route' => 'inventory.warehouses.index', 'active' => 'inventory.warehouses.*', 'permission' => 'warehouse.view'],
                             ['label' => 'Barang Masuk', 'route' => 'inventory.inbounds.index', 'active' => 'inventory.inbounds.*', 'permission' => 'inventory.inbound'],
+                            ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
+                            ['label' => 'Barang Keluar', 'route' => 'inventory.dispatches.index', 'active' => 'inventory.dispatches.*', 'permission' => 'inventory.dispatch'],
+                            ['label' => 'Distribusi & Serah Terima', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
                             ['label' => 'Kartu Stok', 'route' => 'inventory.stock-card.index', 'active' => 'inventory.stock-card.*', 'permission' => 'inventory.stock-card'],
                         ]
                     ],
@@ -307,7 +310,15 @@ class MenuRegistry
                             ['label' => 'Slip Gaji', 'route' => 'technician.payroll.index', 'active' => 'technician.payroll.*'],
                         ]
                     ]
-                ]
+                ],
+                    [
+                        'label' => 'Inventaris & Material',
+                        'icon' => 'inventory',
+                        'items' => [
+                            ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
+                            ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
+                        ]
+                    ]
             ]
         ];
 

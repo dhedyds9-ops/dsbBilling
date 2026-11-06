@@ -2,6 +2,12 @@
 
 namespace App\Services\Inventory;
 
+use App\Models\Inventory\InventoryCustody;
+use App\Models\Inventory\InventoryCustodyTransfer;
+use App\Models\Inventory\InventoryDispatch;
+use App\Models\Inventory\InventoryDispatchItem;
+use App\Models\Inventory\InventoryRequisition;
+use App\Models\Inventory\InventoryRequisitionItem;
 use App\Models\Inventory\InventoryStock;
 use App\Models\Inventory\InventoryStockMutation;
 use App\Models\Inventory\Item;
@@ -104,7 +110,6 @@ class StockMutationService
                             'status' => 'in_warehouse',
                             'condition' => 'good',
                             'branch_id' => $wh->branch_id,
-                            'notes' => 'Penerimaan via ' . $mutation->mutation_number,
                             'updated_by' => $actorId ?: auth()->id(),
                         ]
                     );
@@ -184,6 +189,245 @@ class StockMutationService
             ]);
 
             return $mutation;
+        });
+    }
+
+    /**
+     * Catat Pengeluaran Barang (Dispatch) lengkap dengan pembuatan Custody Tracking
+     */
+    public function recordDispatch(
+        InventoryDispatch $dispatch,
+        array $itemsData,
+        ?int $actorId = null
+    ): void {
+        DB::transaction(function () use ($dispatch, $itemsData, $actorId) {
+            foreach ($itemsData as $row) {
+                $itemId = (int) $row['item_id'];
+                $quantity = (float) $row['quantity'];
+                $serials = $row['serials'] ?? [];
+
+                $item = Item::withoutGlobalScopes()->findOrFail($itemId);
+
+                // 1. Kurangi stok fisik di gudang & catat ledger mutasi
+                $this->recordOutbound(
+                    warehouseId: $dispatch->warehouse_id,
+                    itemId: $itemId,
+                    quantity: $quantity,
+                    referenceType: 'dispatch',
+                    referenceId: $dispatch->id,
+                    notes: "Pengeluaran No. {$dispatch->dispatch_number} ke {$dispatch->recipient->name} ({$dispatch->recipient_type})",
+                    actorId: $actorId ?: auth()->id()
+                );
+
+                // 2. Simpan detail item dispatch
+                InventoryDispatchItem::create([
+                    'dispatch_id' => $dispatch->id,
+                    'item_id' => $itemId,
+                    'quantity' => $quantity,
+                    'serials' => !empty($serials) ? $serials : null,
+                    'notes' => $row['notes'] ?? null,
+                ]);
+
+                // 3. Status kepemilikan sementara (Custody)
+                $custodyStatus = $dispatch->recipient_type === 'reseller'
+                    ? 'in_custody_reseller'
+                    : 'in_custody_technician';
+
+                if ($item->is_serialized && !empty($serials)) {
+                    foreach ($serials as $sn) {
+                        $snClean = trim((string) $sn);
+                        if (empty($snClean)) continue;
+
+                        $serial = ItemSerial::where('item_id', $itemId)
+                            ->where('serial_number', $snClean)
+                            ->first();
+
+                        if (!$serial) {
+                            $serial = ItemSerial::create([
+                                'item_id' => $itemId,
+                                'serial_number' => $snClean,
+                                'warehouse_id' => $dispatch->warehouse_id,
+                                'branch_id' => $dispatch->branch_id,
+                                'status' => 'in_warehouse',
+                                'condition' => 'good',
+                            ]);
+                        }
+
+                        // Update serial unit ke status custody
+                        $serial->update([
+                            'warehouse_id' => null, // keluar dari gudang
+                            'custodian_id' => $dispatch->recipient_id,
+                            'custodian_type' => $dispatch->recipient_type,
+                            'customer_id' => $dispatch->customer_id,
+                            'installation_id' => $dispatch->installation_id,
+                            'ticket_id' => $dispatch->ticket_id,
+                            'status' => $custodyStatus,
+                            'updated_by' => $actorId ?: auth()->id(),
+                        ]);
+
+                        // Catat ke custody tracking per unit serial
+                        InventoryCustody::create([
+                            'dispatch_id' => $dispatch->id,
+                            'requisition_id' => $dispatch->requisition_id,
+                            'item_id' => $itemId,
+                            'item_serial_id' => $serial->id,
+                            'holder_id' => $dispatch->recipient_id,
+                            'holder_type' => $dispatch->recipient_type,
+                            'customer_id' => $dispatch->customer_id,
+                            'installation_id' => $dispatch->installation_id,
+                            'ticket_id' => $dispatch->ticket_id,
+                            'quantity' => 1,
+                            'used_quantity' => 0,
+                            'returned_quantity' => 0,
+                            'status' => 'in_custody',
+                            'branch_id' => $dispatch->branch_id,
+                            'notes' => "SN: {$snClean} diterima via {$dispatch->dispatch_number}",
+                        ]);
+                    }
+                } else {
+                    // Barang non-serial (kabel dropcore, konektor, adaptor, dll.)
+                    InventoryCustody::create([
+                        'dispatch_id' => $dispatch->id,
+                        'requisition_id' => $dispatch->requisition_id,
+                        'item_id' => $itemId,
+                        'item_serial_id' => null,
+                        'holder_id' => $dispatch->recipient_id,
+                        'holder_type' => $dispatch->recipient_type,
+                        'customer_id' => $dispatch->customer_id,
+                        'installation_id' => $dispatch->installation_id,
+                        'ticket_id' => $dispatch->ticket_id,
+                        'quantity' => $quantity,
+                        'used_quantity' => 0,
+                        'returned_quantity' => 0,
+                        'status' => 'in_custody',
+                        'branch_id' => $dispatch->branch_id,
+                        'notes' => "Diterima via {$dispatch->dispatch_number}",
+                    ]);
+                }
+
+                // Update requisition items if attached
+                if ($dispatch->requisition_id) {
+                    $reqItem = InventoryRequisitionItem::where('requisition_id', $dispatch->requisition_id)
+                        ->where('item_id', $itemId)
+                        ->first();
+                    if ($reqItem) {
+                        $reqItem->increment('quantity_dispatched', $quantity);
+                    }
+                }
+            }
+
+            // Update status requisition jika sudah terpenuhi
+            if ($dispatch->requisition_id) {
+                $req = InventoryRequisition::find($dispatch->requisition_id);
+                if ($req) {
+                    $allDispatched = true;
+                    foreach ($req->items as $ri) {
+                        $approvedQty = $ri->quantity_approved ?? $ri->quantity_requested;
+                        if ($ri->quantity_dispatched < $approvedQty) {
+                            $allDispatched = false;
+                            break;
+                        }
+                    }
+                    if ($allDispatched) {
+                        $req->update(['status' => 'dispatched']);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Serah Terima Barang dari Reseller ke Teknisi (Metode A langkah 11)
+     */
+    public function handoverCustody(
+        int $custodyId,
+        int $toUserId,
+        string $toUserType = 'technician',
+        ?string $notes = null
+    ): InventoryCustodyTransfer {
+        return DB::transaction(function () use ($custodyId, $toUserId, $toUserType, $notes) {
+            $custody = InventoryCustody::findOrFail($custodyId);
+
+            if ($custody->status !== 'in_custody' || $custody->available_quantity <= 0) {
+                throw new \RuntimeException('Barang ini tidak dapat diserahterimakan karena sudah tidak berada dalam penguasaan.');
+            }
+
+            return InventoryCustodyTransfer::create([
+                'custody_id' => $custody->id,
+                'from_user_id' => $custody->holder_id,
+                'from_user_type' => $custody->holder_type,
+                'to_user_id' => $toUserId,
+                'to_user_type' => $toUserType,
+                'item_id' => $custody->item_id,
+                'item_serial_id' => $custody->item_serial_id,
+                'quantity' => $custody->available_quantity,
+                'status' => 'pending_acceptance',
+                'notes' => $notes ?: 'Serah terima barang ke teknisi pelaksana',
+                'branch_id' => $custody->branch_id,
+            ]);
+        });
+    }
+
+    /**
+     * Konfirmasi Penerimaan Serah Terima oleh Teknisi (Metode A langkah 12)
+     */
+    public function acceptHandover(int $transferId, int $acceptedByUserId): void
+    {
+        DB::transaction(function () use ($transferId, $acceptedByUserId) {
+            $transfer = InventoryCustodyTransfer::findOrFail($transferId);
+
+            if ($transfer->status !== 'pending_acceptance') {
+                throw new \RuntimeException('Transfer serah terima ini sudah diproses sebelumnya.');
+            }
+
+            if ($transfer->to_user_id !== $acceptedByUserId && !auth()->user()?->hasRole('administrator')) {
+                throw new \RuntimeException('Anda tidak memiliki wewenang untuk menerima serah terima barang ini.');
+            }
+
+            $sourceCustody = $transfer->custody;
+
+            // Update transfer
+            $transfer->update([
+                'status' => 'accepted',
+                'accepted_at' => now(),
+            ]);
+
+            // Update status custody lama menjadi 'handed_over'
+            $sourceCustody->update([
+                'status' => 'handed_over',
+            ]);
+
+            // Buat custody baru untuk pemegang baru (Teknisi)
+            InventoryCustody::create([
+                'dispatch_id' => $sourceCustody->dispatch_id,
+                'requisition_id' => $sourceCustody->requisition_id,
+                'item_id' => $transfer->item_id,
+                'item_serial_id' => $transfer->item_serial_id,
+                'holder_id' => $transfer->to_user_id,
+                'holder_type' => $transfer->to_user_type,
+                'customer_id' => $sourceCustody->customer_id,
+                'installation_id' => $sourceCustody->installation_id,
+                'ticket_id' => $sourceCustody->ticket_id,
+                'quantity' => $transfer->quantity,
+                'used_quantity' => 0,
+                'returned_quantity' => 0,
+                'status' => 'in_custody',
+                'branch_id' => $transfer->branch_id,
+                'notes' => "Diterima via serah terima No. {$transfer->transfer_number} dari {$transfer->fromUser->name}",
+            ]);
+
+            // Jika barang berserial, perbarui pemegang pada ItemSerial
+            if ($transfer->item_serial_id) {
+                $serial = ItemSerial::find($transfer->item_serial_id);
+                if ($serial) {
+                    $serial->update([
+                        'custodian_id' => $transfer->to_user_id,
+                        'custodian_type' => $transfer->to_user_type,
+                        'status' => 'in_custody_technician',
+                        'updated_by' => $acceptedByUserId,
+                    ]);
+                }
+            }
         });
     }
 
