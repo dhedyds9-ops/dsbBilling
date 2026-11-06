@@ -17,9 +17,15 @@ class Index extends Component
     use WithPagination;
 
     #[Url]
-    public string $activeTab = 'stok'; // stok, pemakaian, minta
+    public string $activeTab = 'stok'; // stok, gudang, pemakaian
 
     public string $search = '';
+
+    // Modal Ambil Barang dari Gudang
+    public bool $showTakeModal = false;
+    public ?int $takeWarehouseMaterialId = null;
+    public int $takeQuantity = 1;
+    public string $takeNotes = '';
 
     // Modal Catat Pemakaian Cepat
     public bool $showUsageModal = false;
@@ -59,7 +65,7 @@ class Index extends Component
 
     public function switchTab(string $tab)
     {
-        $this->activeTab = in_array($tab, ['stok', 'pemakaian', 'minta'], true) ? $tab : 'stok';
+        $this->activeTab = in_array($tab, ['stok', 'gudang', 'pemakaian'], true) ? $tab : 'stok';
         $this->resetPage();
     }
 
@@ -70,18 +76,26 @@ class Index extends Component
         }
 
         try {
-            $count = DB::table('support_maintenance_materials')->count();
+            // Pastikan jika ada data default, lokasinya adalah Gudang Utama (bukan langsung di tangan teknisi)
+            if (Schema::hasColumn('support_maintenance_materials', 'technician_id')) {
+                DB::table('support_maintenance_materials')
+                    ->whereNull('technician_id')
+                    ->where('location', 'like', '%Bagasi%')
+                    ->update(['location' => 'Gudang Utama']);
+            }
+
+            $count = DB::table('support_maintenance_materials')->whereNull('technician_id')->count();
             if ($count === 0) {
                 $now = now();
                 $defaults = [
-                    ['sku' => 'MAT-DC-1C', 'name' => 'Kabel Dropcore Optik 1 Core (1000m)', 'category' => 'Kabel', 'stock' => 1000, 'min_stock' => 150, 'unit' => 'meter', 'location' => 'Bagasi Teknisi'],
-                    ['sku' => 'MAT-FC-SC', 'name' => 'Fast Connector SC/UPC', 'category' => 'Konektor', 'stock' => 100, 'min_stock' => 20, 'unit' => 'pcs', 'location' => 'Bagasi Teknisi'],
-                    ['sku' => 'MAT-ROSET-1C', 'name' => 'Roset Optik 1 Core / OTB Mini', 'category' => 'Pasif', 'stock' => 50, 'min_stock' => 10, 'unit' => 'pcs', 'location' => 'Bagasi Teknisi'],
-                    ['sku' => 'MAT-PC-SC-1.5M', 'name' => 'Patchcord Fiber SC/UPC - SC/UPC 1.5m', 'category' => 'Kabel', 'stock' => 30, 'min_stock' => 5, 'unit' => 'pcs', 'location' => 'Bagasi Teknisi'],
-                    ['sku' => 'MAT-CLAMP-S', 'name' => 'S-Clamp / Klem Tarik Kabel Dropcore', 'category' => 'Aksesoris', 'stock' => 150, 'min_stock' => 30, 'unit' => 'pcs', 'location' => 'Bagasi Teknisi'],
-                    ['sku' => 'MAT-ADAPT-SC', 'name' => 'Adapter Fiber SC/UPC Simplex', 'category' => 'Konektor', 'stock' => 50, 'min_stock' => 10, 'unit' => 'pcs', 'location' => 'Bagasi Teknisi'],
-                    ['sku' => 'DEV-ONT-ZTE-F609', 'name' => 'ONT GPON ZTE F609 (Wi-Fi 2.4GHz)', 'category' => 'Perangkat Aktif', 'stock' => 5, 'min_stock' => 2, 'unit' => 'unit', 'location' => 'Bagasi Teknisi'],
-                    ['sku' => 'DEV-ONT-HW-8245H', 'name' => 'ONT GPON Huawei HG8245H', 'category' => 'Perangkat Aktif', 'stock' => 5, 'min_stock' => 2, 'unit' => 'unit', 'location' => 'Bagasi Teknisi'],
+                    ['sku' => 'MAT-DC-1C', 'name' => 'Kabel Dropcore Optik 1 Core (1000m)', 'category' => 'Kabel', 'stock' => 1000, 'min_stock' => 150, 'unit' => 'meter', 'location' => 'Gudang Utama', 'technician_id' => null],
+                    ['sku' => 'MAT-FC-SC', 'name' => 'Fast Connector SC/UPC', 'category' => 'Konektor', 'stock' => 100, 'min_stock' => 20, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
+                    ['sku' => 'MAT-ROSET-1C', 'name' => 'Roset Optik 1 Core / OTB Mini', 'category' => 'Pasif', 'stock' => 50, 'min_stock' => 10, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
+                    ['sku' => 'MAT-PC-SC-1.5M', 'name' => 'Patchcord Fiber SC/UPC - SC/UPC 1.5m', 'category' => 'Kabel', 'stock' => 30, 'min_stock' => 5, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
+                    ['sku' => 'MAT-CLAMP-S', 'name' => 'S-Clamp / Klem Tarik Kabel Dropcore', 'category' => 'Aksesoris', 'stock' => 150, 'min_stock' => 30, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
+                    ['sku' => 'MAT-ADAPT-SC', 'name' => 'Adapter Fiber SC/UPC Simplex', 'category' => 'Konektor', 'stock' => 50, 'min_stock' => 10, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
+                    ['sku' => 'DEV-ONT-ZTE-F609', 'name' => 'ONT GPON ZTE F609 (Wi-Fi 2.4GHz)', 'category' => 'Perangkat Aktif', 'stock' => 5, 'min_stock' => 2, 'unit' => 'unit', 'location' => 'Gudang Utama', 'technician_id' => null],
+                    ['sku' => 'DEV-ONT-HW-8245H', 'name' => 'ONT GPON Huawei HG8245H', 'category' => 'Perangkat Aktif', 'stock' => 5, 'min_stock' => 2, 'unit' => 'unit', 'location' => 'Gudang Utama', 'technician_id' => null],
                 ];
 
                 foreach ($defaults as $item) {
@@ -92,6 +106,108 @@ class Index extends Component
                 }
             }
         } catch (\Throwable) {}
+    }
+
+    public function openTakeModal(?int $warehouseMaterialId = null)
+    {
+        $this->takeWarehouseMaterialId = $warehouseMaterialId;
+        $this->takeQuantity = 1;
+        $this->takeNotes = '';
+        $this->showTakeModal = true;
+    }
+
+    public function submitTake()
+    {
+        $this->validate([
+            'takeWarehouseMaterialId' => 'required|integer',
+            'takeQuantity' => 'required|integer|min:1',
+            'takeNotes' => 'nullable|string|max:255',
+        ]);
+
+        $user = Auth::user();
+
+        try {
+            DB::transaction(function () use ($user) {
+                // 1. Kunci baris material gudang kantor
+                $whMat = DB::table('support_maintenance_materials')
+                    ->where('id', $this->takeWarehouseMaterialId)
+                    ->whereNull('technician_id')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$whMat) {
+                    throw new \RuntimeException('Material di gudang kantor tidak ditemukan.');
+                }
+
+                if ((int) $whMat->stock < $this->takeQuantity) {
+                    throw new \RuntimeException("Stok gudang tidak mencukupi (tersedia: {$whMat->stock} {$whMat->unit}).");
+                }
+
+                // 2. Kurangi stok di gudang kantor
+                DB::table('support_maintenance_materials')
+                    ->where('id', $whMat->id)
+                    ->update([
+                        'stock' => (int) $whMat->stock - $this->takeQuantity,
+                        'updated_at' => now(),
+                    ]);
+
+                // 3. Tambahkan ke stok bagasi teknisi (cari berdasarkan SKU atau buat baru)
+                $myMat = DB::table('support_maintenance_materials')
+                    ->where('technician_id', $user->id)
+                    ->where(function ($q) use ($whMat) {
+                        if ($whMat->sku) {
+                            $q->where('sku', $whMat->sku);
+                        } else {
+                            $q->where('name', $whMat->name);
+                        }
+                    })
+                    ->first();
+
+                if ($myMat) {
+                    DB::table('support_maintenance_materials')
+                        ->where('id', $myMat->id)
+                        ->update([
+                            'stock' => (int) $myMat->stock + $this->takeQuantity,
+                            'updated_at' => now(),
+                        ]);
+                } else {
+                    DB::table('support_maintenance_materials')->insert([
+                        'sku' => $whMat->sku,
+                        'name' => $whMat->name,
+                        'category' => $whMat->category,
+                        'stock' => $this->takeQuantity,
+                        'min_stock' => $whMat->min_stock ?? 5,
+                        'unit' => $whMat->unit ?: 'pcs',
+                        'location' => 'Bagasi Teknisi (' . $user->name . ')',
+                        'technician_id' => $user->id,
+                        'notes' => 'Diambil dari Gudang Kantor',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                // 4. Catat mutasi / transfer ke usage log
+                DB::table('support_maintenance_usages')->insert([
+                    'material_id' => $whMat->id,
+                    'material_name' => '[AMBIL GUDANG] ' . $whMat->name,
+                    'quantity' => $this->takeQuantity,
+                    'unit' => $whMat->unit ?: 'pcs',
+                    'technician_id' => $user->id,
+                    'technician_name' => $user->name,
+                    'used_date' => now()->toDateString(),
+                    'notes' => 'Pengambilan material dari Gudang Kantor ke Bagasi Teknisi' . ($this->takeNotes ? ' (' . $this->takeNotes . ')' : ''),
+                    'created_by' => $user->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            });
+
+            session()->flash('success', "Berhasil mengambil {$this->takeQuantity} barang dari Gudang Kantor ke Bagasi Anda!");
+            $this->showTakeModal = false;
+            $this->activeTab = 'stok';
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+        }
     }
 
     public function openRecordUsageModal(int $materialId)
@@ -258,6 +374,29 @@ class Index extends Component
                         'updated_at' => now(),
                     ]);
 
+                // Jika aksi retur ke gudang kantor, kembalikan stok ke Gudang Utama
+                if ($this->returnAction === 'retur') {
+                    $whMat = DB::table('support_maintenance_materials')
+                        ->whereNull('technician_id')
+                        ->where(function ($q) use ($mat) {
+                            if ($mat->sku) {
+                                $q->where('sku', $mat->sku);
+                            } else {
+                                $q->where('name', $mat->name);
+                            }
+                        })
+                        ->first();
+
+                    if ($whMat) {
+                        DB::table('support_maintenance_materials')
+                            ->where('id', $whMat->id)
+                            ->update([
+                                'stock' => (int) $whMat->stock + $this->returnQuantity,
+                                'updated_at' => now(),
+                            ]);
+                    }
+                }
+
                 $tag = match($this->returnAction) {
                     'retur' => '[RETUR KE GUDANG]',
                     'rusak' => '[BARANG RUSAK/AFKIR]',
@@ -299,10 +438,11 @@ class Index extends Component
         $user = Auth::user();
         $q = trim($this->search);
 
-        // 1. Data Stok Material
+        // 1. Data Stok Bagasi Saya (hanya barang yang dipegang teknisi ini)
         $materials = collect();
         if (Schema::hasTable('support_maintenance_materials')) {
             $builder = DB::table('support_maintenance_materials')
+                ->where('technician_id', $user->id)
                 ->when(!empty($q), function ($b) use ($q) {
                     $b->where(function ($sub) use ($q) {
                         $sub->where('name', 'like', "%{$q}%")
@@ -316,7 +456,25 @@ class Index extends Component
             $materials = $builder->get();
         }
 
-        // 2. Data Riwayat Pemakaian Saya
+        // 2. Data Stok Gudang Kantor (technician_id IS NULL)
+        $warehouseMaterials = collect();
+        if (Schema::hasTable('support_maintenance_materials')) {
+            $whBuilder = DB::table('support_maintenance_materials')
+                ->whereNull('technician_id')
+                ->when(!empty($q), function ($b) use ($q) {
+                    $b->where(function ($sub) use ($q) {
+                        $sub->where('name', 'like', "%{$q}%")
+                            ->orWhere('sku', 'like', "%{$q}%")
+                            ->orWhere('category', 'like', "%{$q}%");
+                    });
+                })
+                ->orderBy('category')
+                ->orderBy('name');
+
+            $warehouseMaterials = $whBuilder->get();
+        }
+
+        // 3. Data Riwayat Pemakaian & Mutasi Saya
         $myUsages = collect();
         if (Schema::hasTable('support_maintenance_usages')) {
             $usageBuilder = DB::table('support_maintenance_usages')
@@ -349,6 +507,7 @@ class Index extends Component
 
         return view('livewire.isp.technician.material.index', [
             'materials' => $materials,
+            'warehouseMaterials' => $warehouseMaterials,
             'myUsages' => $myUsages,
             'activeTickets' => $activeTickets,
         ]);

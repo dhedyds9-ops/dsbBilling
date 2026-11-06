@@ -739,20 +739,34 @@ class Wizard extends Component
     public function render()
     {
         $user = auth()->user();
-        $servicesQuery = ServiceProfile::withoutGlobalScopes();
+        $baseServiceQuery = ServiceProfile::withoutGlobalScopes()
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereIn(\Illuminate\Support\Facades\DB::raw('LOWER(status)'), ['active', 'enabled', '1', 'actived']);
+            });
+
+        $servicesQuery = clone $baseServiceQuery;
         if ($user && $user->branch_id && !$user->isSuperAdmin()) {
             $servicesQuery->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
-                  ->orWhereNull('branch_id');
+                  ->orWhereNull('branch_id')
+                  ->orWhere('visibility', 'global');
             });
         }
-        $servicesQuery->where(function ($q) {
-            $q->whereNull('status')->orWhere('status', 'active');
-        });
 
-        $servicesOptions = $servicesQuery
-            ->orderBy('name')
-            ->get()
+        $serviceRecords = $servicesQuery->orderBy('name')->get();
+
+        // Fallback jika tidak ada paket spesifik branch: ambil semua paket aktif sistem
+        if ($serviceRecords->isEmpty()) {
+            $serviceRecords = $baseServiceQuery->orderBy('name')->get();
+        }
+
+        // Fallback darurat: jika status bukan active, ambil semua profile agar teknisi tidak terblokir
+        if ($serviceRecords->isEmpty()) {
+            $serviceRecords = ServiceProfile::withoutGlobalScopes()->orderBy('name')->get();
+        }
+
+        $servicesOptions = $serviceRecords
             ->map(function ($s) {
                 $price = $s->base_price ?? $s->price ?? $s->cost_price ?? 0;
                 $st = strtoupper($s->service_type ?: 'INTERNET');

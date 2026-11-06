@@ -47,8 +47,8 @@ class AcsEvaluateStaleDevices extends Command
         $defaultInterval = (int) ($this->option('interval')
             ?: config('genieacs.cpe_defaults.periodic_inform_interval_seconds', 300));
 
-        $onlineThreshold = max(21600, $defaultInterval * 12); // Minimal 6 jam toleransi online
-        $offlineThreshold = max(43200, $defaultInterval * 24); // Minimal 12 jam toleransi offline (menghindari false offline pada ONT dengan inform interval panjang)
+        $onlineThreshold = max(86400, $defaultInterval * 24); // Minimal 24 jam toleransi online
+        $offlineThreshold = max(172800, $defaultInterval * 48); // Minimal 48 jam toleransi offline (menghindari false offline pada ONT dengan inform interval panjang)
 
         $now = now();
         $transitionedOnline = 0;

@@ -26,34 +26,75 @@ class Index extends BaseACSComponent
     /**
      * Polling ringan untuk memperbarui status online/offline langsung dari GenieACS tanpa reload halaman
      */
-    public function pollLiveStatus(): void
-    {
-        try {
-            $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $devices = $acsService->listDevices(['projection' => '_id,_lastInform'], 5000);
-            if (!empty($devices)) {
-                $now = now();
-                foreach ($devices as $d) {
-                    $uuid = $d['_id'] ?? null;
-                    if (!$uuid || empty($d['_lastInform'])) continue;
-
-                    try {
-                        $lastInform = \Carbon\Carbon::parse($d['_lastInform']);
-                        $isOnline = abs($now->diffInHours($lastInform)) < 6;
-
-                        \App\Models\ACS\ACSDevice::withoutGlobalScopes()
-                            ->where('uuid', $uuid)
-                            ->update([
-                                'last_inform' => $lastInform,
-                                'last_contact' => $now,
-                                'status' => $isOnline ? 'online' : 'offline',
-                            ]);
-                    } catch (\Throwable) {}
-                }
-            }
-        } catch (\Throwable $e) {
-            // Abaikan error jika GenieACS tidak dapat dihubungi
-        }
+    public function pollLiveStatus(): void
+    {
+        try {
+            $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $devices = $acsService->listDevices(['projection' => '_id,_lastInform,_ip'], 5000);
+            if (!empty($devices)) {
+                $now = now();
+                $activeIps = \App\Models\ISP\OnlineSession::pluck('ip_address')->filter()->all();
+                $activeIpFlip = array_flip($activeIps);
+
+                foreach ($devices as $d) {
+                    $uuid = $d['_id'] ?? null;
+                    if (!$uuid) continue;
+
+                    try {
+                        $isOnline = false;
+
+                        // 1. Cek last inform (toleransi 24 jam untuk ONT dengan interval inform panjang)
+                        if (!empty($d['_lastInform'])) {
+                            $lastInform = \Carbon\Carbon::parse($d['_lastInform']);
+                            if (abs($now->diffInHours($lastInform)) < 24) {
+                                $isOnline = true;
+                            }
+                        }
+
+                        // 2. Cek IP aktif di MikroTik session
+                        $ip = $d['_ip'] ?? null;
+                        if (!$isOnline && !empty($ip) && isset($activeIpFlip[$ip])) {
+                            $isOnline = true;
+                        }
+
+                        $updateData = [
+                            'last_contact' => $now,
+                        ];
+                        if (isset($lastInform)) {
+                            $updateData['last_inform'] = $lastInform;
+                        }
+
+                        if ($isOnline) {
+                            $updateData['status'] = 'online';
+                        } else {
+                            // Cek apakah database mencatat session atau ONU aktif di OLT
+                            $rec = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                                ->where('uuid', $uuid)
+                                ->first(['id', 'ip_address', 'serial_number', 'status']);
+                            if ($rec) {
+                                $hasActiveSession = !empty($rec->ip_address) && isset($activeIpFlip[$rec->ip_address]);
+                                $hasActiveOnu = !empty($rec->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()
+                                    ->where('serial_number', $rec->serial_number)
+                                    ->where('status', 'active')
+                                    ->exists();
+
+                                if ($hasActiveSession || $hasActiveOnu) {
+                                    $updateData['status'] = 'online';
+                                } else {
+                                    $updateData['status'] = 'offline';
+                                }
+                            }
+                        }
+
+                        \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                            ->where('uuid', $uuid)
+                            ->update($updateData);
+                    } catch (\Throwable) {}
+                }
+            }
+        } catch (\Throwable $e) {
+            // Abaikan error jika GenieACS tidak dapat dihubungi
+        }
     }
 
     public function delete($id)
