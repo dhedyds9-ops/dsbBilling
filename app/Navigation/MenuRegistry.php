@@ -112,6 +112,7 @@ class MenuRegistry
                         'label' => 'Inventaris & Gudang',
                         'icon' => 'warehouse',
                         'items' => [
+                            ['label' => 'Dashboard Stok', 'route' => 'inventory.dashboard', 'active' => 'inventory.dashboard', 'permission' => 'inventory.view'],
                             ['label' => 'Master Barang', 'route' => 'inventory.items.index', 'active' => 'inventory.items.*', 'permission' => 'inventory.view'],
                             ['label' => 'Data Gudang', 'route' => 'inventory.warehouses.index', 'active' => 'inventory.warehouses.*', 'permission' => 'warehouse.view'],
                             ['label' => 'Barang Masuk', 'route' => 'inventory.inbounds.index', 'active' => 'inventory.inbounds.*', 'permission' => 'inventory.inbound'],
@@ -120,7 +121,9 @@ class MenuRegistry
                             ['label' => 'Distribusi & Serah Terima', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
                             ['label' => 'Pemakaian Barang', 'route' => 'inventory.usage.index', 'active' => 'inventory.usage.*', 'permission' => 'inventory.usage'],
                             ['label' => 'Retur & Pengembalian', 'route' => 'inventory.returns.index', 'active' => 'inventory.returns.*', 'permission' => 'inventory.return'],
+                            ['label' => 'Stok Opname', 'route' => 'inventory.opnames.index', 'active' => 'inventory.opnames.*', 'permission' => 'inventory.opname'],
                             ['label' => 'Kartu Stok', 'route' => 'inventory.stock-card.index', 'active' => 'inventory.stock-card.*', 'permission' => 'inventory.stock-card'],
+                            ['label' => 'Laporan Inventaris', 'route' => 'inventory.reports.index', 'active' => 'inventory.reports.*', 'permission' => 'inventory.report'],
                         ]
                     ],
                     [
@@ -393,6 +396,14 @@ class MenuRegistry
                         'icon' => 'support_agent',
                         'items' => [
                             ['label' => 'Tiket Gangguan', 'route' => 'reseller-portal.tickets.index', 'active' => ['reseller-portal.tickets*', 'support.ticket*'], 'permission' => 'ticket.view'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Inventaris & Material',
+                        'icon' => 'inventory',
+                        'items' => [
+                            ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
+                            ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
                         ]
                     ]
                 ]
