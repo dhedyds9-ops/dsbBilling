@@ -2,6 +2,8 @@
 
 namespace App\Services\ISP\Radius\Policies;
 
+use App\Models\ISP\SuspendPolicy;
+use App\Models\Setting;
 use App\Services\ISP\Radius\Policies\Contracts\RadiusAccessPolicy;
 use App\Services\ISP\Radius\ValueObjects\PolicyResult;
 use App\Services\ISP\Radius\ValueObjects\RadiusAccessContext;
@@ -19,6 +21,22 @@ class CustomerActivePolicy implements RadiusAccessPolicy
         if ($ctx->hotspotUser !== null) {
             $huStatus = (string)($ctx->hotspotUser->status ?? 'active');
             if ($huStatus !== 'active') {
+                if ($huStatus === 'suspended') {
+                    $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                    if ($suspendMode === 'soft') {
+                        return new PolicyResult(
+                            pass: true,
+                            reason: 'Akun Hotspot sedang disuspend (mode soft isolir)',
+                            policyRuleClass: self::ruleClass(),
+                            failAction: 'apply_suspend_policy',
+                            replyAttributes: [
+                                'MikroTik-Group' => 'ISOLIR',
+                                'Framed-Pool' => 'pool-isolir',
+                                'MikroTik-Address-List' => 'ISOLIR_LIST',
+                            ]
+                        );
+                    }
+                }
                 return PolicyResult::reject("Akun Hotspot Anda sedang tidak aktif ({$huStatus}). Silakan hubungi admin.", self::ruleClass());
             }
             if (!$cs) {
@@ -27,16 +45,73 @@ class CustomerActivePolicy implements RadiusAccessPolicy
             }
         }
 
+        if ($ctx->pppoeUser !== null) {
+            $puStatus = (string)($ctx->pppoeUser->status ?? 'active');
+            if ($puStatus !== 'active') {
+                if ($puStatus === 'suspended') {
+                    $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                    if ($suspendMode === 'soft') {
+                        $suspendPolicy = $cs ? SuspendPolicy::resolveForService($cs) : null;
+                        if ($suspendPolicy) {
+                            return PolicyResult::applySuspendPolicy(
+                                reason: 'Layanan PPPoE sedang disuspend (mode soft isolir)',
+                                ruleClass: self::ruleClass(),
+                                suspendPolicy: $suspendPolicy,
+                            );
+                        }
+                        return new PolicyResult(
+                            pass: true,
+                            reason: 'Layanan PPPoE sedang disuspend (mode soft isolir)',
+                            policyRuleClass: self::ruleClass(),
+                            failAction: 'apply_suspend_policy',
+                            replyAttributes: [
+                                'MikroTik-Group' => 'ISOLIR',
+                                'Framed-Pool' => 'pool-isolir',
+                                'MikroTik-Address-List' => 'ISOLIR_LIST',
+                            ]
+                        );
+                    }
+                }
+                return PolicyResult::reject("Akun PPPoE Anda sedang tidak aktif ({$puStatus}). Silakan hubungi admin.", self::ruleClass());
+            }
+        }
+
         if (!$cs) return PolicyResult::reject('Customer service tidak ditemukan', self::ruleClass());
         $status = is_string($cs->status) ? $cs->status : (string)($cs->status?->value ?? $cs->status);
         if ($status !== 'active') {
+            if ($status === 'suspended') {
+                $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                if ($suspendMode === 'soft') {
+                    $suspendPolicy = SuspendPolicy::resolveForService($cs);
+                    if ($suspendPolicy) {
+                        return PolicyResult::applySuspendPolicy(
+                            reason: 'Layanan Anda saat ini sedang disuspend. Silakan lakukan pembayaran tagihan.',
+                            ruleClass: self::ruleClass(),
+                            suspendPolicy: $suspendPolicy,
+                        );
+                    }
+                    return new PolicyResult(
+                        pass: true,
+                        reason: 'Layanan disuspend (mode soft isolir)',
+                        policyRuleClass: self::ruleClass(),
+                        failAction: 'apply_suspend_policy',
+                        replyAttributes: [
+                            'MikroTik-Group' => 'ISOLIR',
+                            'Framed-Pool' => 'pool-isolir',
+                            'MikroTik-Address-List' => 'ISOLIR_LIST',
+                        ]
+                    );
+                }
+                return PolicyResult::reject('Layanan Anda saat ini sedang suspend. Silakan hubungi CS.', self::ruleClass());
+            }
+
             return match ($status) {
-                'suspended' => PolicyResult::reject('Layanan Anda saat ini sedang suspend. Silakan hubungi CS.', self::ruleClass()),
                 'terminated' => PolicyResult::reject('Layanan Anda sudah di-nonaktifkan permanen.', self::ruleClass()),
                 'pending' => PolicyResult::reject('Aktivasi layanan sedang dalam proses. Mohon tunggu 5-10 menit.', self::ruleClass()),
                 default => PolicyResult::reject("Status akun tidak valid ($status). Hubungi CS ISP.", self::ruleClass()),
             };
         }
+
         $customer = $cs->customer;
         if ($customer && (string)($customer->status ?? 'active') !== 'active') {
             return PolicyResult::reject('Akun pelanggan Anda saat ini dinonaktifkan.', self::ruleClass());

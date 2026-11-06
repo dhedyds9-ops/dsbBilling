@@ -69,7 +69,9 @@ class RouterProvisioningScriptGenerator
         $lines[] = ":do { /ip firewall filter remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
         $lines[] = ":do { /ip firewall filter remove [find comment~\"dsBilling\"] } on-error={}";
         $lines[] = ":do { /ip firewall nat remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
+        $lines[] = ":do { /ip firewall address-list remove [find list=\"ISOLIR_LIST\"] } on-error={}";
         $lines[] = ":do { /ip firewall address-list remove [find list=\"ISOLIR_WHITELIST\"] } on-error={}";
+        $lines[] = ":do { /ip proxy access remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
         $lines[] = "";
 
         // 1. API User Creation
@@ -112,8 +114,8 @@ class RouterProvisioningScriptGenerator
         $lines[] = ":do { /radius incoming set accept=yes port=3799 } on-error={ :put \"Radius incoming configured\" }";
         $lines[] = ":do { /ip pool add name=pool-pppoe ranges=10.20.20.2-10.20.20.254 comment=\"managed-by=dsbilling\" } on-error={}";
         $lines[] = ":do { /ppp profile set [find name=default] local-address=10.20.20.1 remote-address=pool-pppoe dns-server=8.8.8.8,1.1.1.1 } on-error={}";
-        $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=00:05:00 accounting=yes } on-error={ :put \"PPP AAA configured\" }";
-        $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=00:05:00 login-by=http-pap,cookie,mac-cookie [find] } on-error={}";
+        $lines[] = ":do { /ppp aaa set use-radius=yes interim-update=00:02:00 accounting=yes } on-error={ :put \"PPP AAA configured\" }";
+        $lines[] = ":do { /ip hotspot profile set use-radius=yes radius-accounting=yes radius-interim-update=00:02:00 login-by=http-pap,cookie,mac-cookie [find] } on-error={}";
         $lines[] = ":do { /ip hotspot user profile set mac-cookie-timeout=1w [find] } on-error={}";
         $lines[] = ":do { /ip firewall nat add chain=srcnat action=masquerade src-address=10.20.20.0/24 comment=\"managed-by=dsbilling: NAT PPPoE\" } on-error={}";
         $lines[] = "";
@@ -137,19 +139,39 @@ class RouterProvisioningScriptGenerator
         
         $lines[] = "";
         
-        // 4. Walled Garden (Isolir) Firewall Setup
-        $billingPort = parse_url($appUrl, PHP_URL_PORT) ?? 80;
-        $lines[] = "# 4. Walled Garden (Isolir) Firewall Setup";
-        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$host}\" comment=\"managed-by=dsbilling: Server\" } on-error={ :put \"Whitelist Billing exists\" }";
+        // 4. Walled Garden (Isolir) Setup & Halaman Pembayaran
+        $billingDomain = $rawHost;
+        $lines[] = "# 4. Walled Garden (Isolir) Setup & Halaman Pembayaran";
+        $lines[] = "# 4.1 IP Pool & Profile Isolir";
+        $lines[] = ":do { /ip pool add name=pool-isolir ranges=10.100.0.2-10.100.0.254 comment=\"managed-by=dsbilling: Pool Isolir\" } on-error={ :put \"Pool Isolir exists\" }";
+        $lines[] = ":do { /ppp profile add name=ISOLIR local-address=10.100.0.1 remote-address=pool-isolir address-list=ISOLIR_LIST dns-server=8.8.8.8,1.1.1.1 comment=\"managed-by=dsbilling: Profile Isolir\" } on-error={ /ppp profile set [find name=ISOLIR] local-address=10.100.0.1 remote-address=pool-isolir address-list=ISOLIR_LIST dns-server=8.8.8.8,1.1.1.1 }";
+        $lines[] = ":do { /ip firewall nat add chain=srcnat action=masquerade src-address=10.100.0.0/24 comment=\"managed-by=dsbilling: NAT Isolir\" } on-error={}";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_LIST address=\"10.100.0.0/24\" comment=\"managed-by=dsbilling: Subnet Isolir\" } on-error={}";
+        $lines[] = "";
+
+        $lines[] = "# 4.2 Web Proxy Internal MikroTik untuk Redirect ke Halaman Tagihan";
+        $lines[] = ":do { /ip proxy set enabled=yes port=8080 } on-error={}";
+        $lines[] = ":do { /ip proxy access remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
+        $lines[] = ":do { /ip proxy access add action=deny redirect-to=\"{$billingDomain}/bayar-tagihan\" comment=\"managed-by=dsbilling: Redirect Isolir\" } on-error={}";
+        $lines[] = "";
+
+        $lines[] = "# 4.3 Whitelist Billing & Payment Gateway";
+        $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$billingDomain}\" comment=\"managed-by=dsbilling: Server\" } on-error={ :put \"Whitelist Billing exists\" }";
+        if ($host !== $billingDomain) {
+            $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"{$host}\" comment=\"managed-by=dsbilling: Host IP\" } on-error={}";
+        }
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"app.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Midtrans exists\" }";
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"api.midtrans.com\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Midtrans API exists\" }";
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"xendit.co\" comment=\"managed-by=dsbilling: Payment\" } on-error={ :put \"Whitelist Xendit exists\" }";
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"whatsapp.com\" comment=\"managed-by=dsbilling: WA\" } on-error={ :put \"Whitelist WA exists\" }";
         $lines[] = ":do { /ip firewall address-list add list=ISOLIR_WHITELIST address=\"whatsapp.net\" comment=\"managed-by=dsbilling: WA\" } on-error={ :put \"Whitelist WA Net exists\" }";
         $lines[] = "";
-        $lines[] = ":do { /ip firewall nat add chain=dstnat action=dst-nat to-addresses={$host} to-ports={$billingPort} protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=80 comment=\"managed-by=dsbilling: Redirect Isolir HTTP\" } on-error={ :put \"NAT Isolir HTTP exists\" }";
-        $lines[] = ":do { /ip firewall nat add chain=dstnat action=dst-nat to-addresses={$host} to-ports={$billingPort} protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=443 comment=\"managed-by=dsbilling: Redirect Isolir HTTPS\" } on-error={ :put \"NAT Isolir HTTPS exists\" }";
+
+        $lines[] = "# 4.4 Redirect HTTP Port 80 Isolir ke Web Proxy internal";
+        $lines[] = ":do { /ip firewall nat add chain=dstnat action=redirect to-ports=8080 protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=80 comment=\"managed-by=dsbilling: Redirect Isolir HTTP to Proxy\" } on-error={ :put \"NAT Isolir HTTP Proxy exists\" }";
         $lines[] = "";
+
+        $lines[] = "# 4.5 Filter Rules: Allow DNS, Allow Whitelist, Drop Semua Akses Internet Lain";
         $lines[] = ":do { /ip firewall filter add chain=forward action=accept protocol=udp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" } on-error={ :put \"Filter DNS UDP exists\" }";
         $lines[] = ":do { /ip firewall filter add chain=forward action=accept protocol=tcp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" } on-error={ :put \"Filter DNS TCP exists\" }";
         $lines[] = ":do { /ip firewall filter add chain=forward action=accept src-address-list=ISOLIR_LIST dst-address-list=ISOLIR_WHITELIST comment=\"managed-by=dsbilling: Allow Isolir Whitelist\" } on-error={ :put \"Filter Whitelist exists\" }";

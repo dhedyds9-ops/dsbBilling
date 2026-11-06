@@ -206,9 +206,11 @@ class PPPoEService
     private function kickActiveSession(PPPoEUser $pppoeUser): void
     {
         if ($pppoeUser->wasRecentlyCreated) return;
-        if (!$pppoeUser->is_online) return;
 
         $routers = $this->resolveRouters($pppoeUser->serviceProfile);
+        if ($pppoeUser->router_id && $pppoeUser->router) {
+            $routers[$pppoeUser->router_id] = $pppoeUser->router;
+        }
         if (empty($routers)) return;
 
         $username = $pppoeUser->username;
@@ -220,8 +222,8 @@ class PPPoEService
                 $driver->disconnectPppoeUser($username);
                 $driver->disconnect();
             } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
+                \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            }
         }
     }
 }

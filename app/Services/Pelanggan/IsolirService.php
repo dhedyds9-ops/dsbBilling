@@ -33,6 +33,7 @@ class IsolirService
             ->leftJoin('customer_services as cs_p', 'pppoe_users.customer_service_id', '=', 'cs_p.id')
             ->leftJoin("{$customerTable} as m_p", 'cs_p.customer_id', '=', 'm_p.id')
             ->leftJoin('service_profiles as sp_p', 'pppoe_users.service_profile_id', '=', 'sp_p.id')
+            ->leftJoin('routers as r_p', 'pppoe_users.router_id', '=', 'r_p.id')
             ->leftJoin('subscriptions as sub_p', 'cs_p.id', '=', 'sub_p.customer_service_id')
             ->leftJoin('invoices as inv_p', function ($j) {
                 $j->on('sub_p.customer_id', '=', 'inv_p.customer_id')
@@ -48,13 +49,13 @@ class IsolirService
                 'm_p.phone as customer_phone',
                 'm_p.id as customer_id',
                 'sp_p.name as package_name',
-                DB::raw("NULL as router_name"),
+                'r_p.name as router_name',
                 'pppoe_users.status',
                 DB::raw("'Non pembayaran / Billing' as alasan"),
                 'pppoe_users.suspended_at as since_isolir',
                 'inv_p.due_date as last_due_date',
                 'pppoe_users.service_profile_id as package_id',
-                DB::raw("NULL as router_id"),
+                'pppoe_users.router_id as router_id',
                 // Reseller yang memiliki customer (bukan created_by — created_by adalah siapa yang input)
                 'pppoe_users.reseller_id as sales_id',
                 'pppoe_users.reseller_id as reseller_id',
@@ -66,6 +67,7 @@ class IsolirService
             ->leftJoin('customer_services as cs_h', 'hotspot_users.customer_service_id', '=', 'cs_h.id')
             ->leftJoin("{$customerTable} as m_h", 'cs_h.customer_id', '=', 'm_h.id')
             ->leftJoin('service_profiles as sp_h', 'hotspot_users.service_profile_id', '=', 'sp_h.id')
+            ->leftJoin('routers as r_h', 'hotspot_users.router_id', '=', 'r_h.id')
             ->leftJoin('subscriptions as sub_h', 'cs_h.id', '=', 'sub_h.customer_service_id')
             ->leftJoin('invoices as inv_h', function ($j) {
                 $j->on('sub_h.customer_id', '=', 'inv_h.customer_id')
@@ -81,13 +83,13 @@ class IsolirService
                 'm_h.phone as customer_phone',
                 'm_h.id as customer_id',
                 'sp_h.name as package_name',
-                DB::raw("NULL as router_name"),
+                'r_h.name as router_name',
                 'hotspot_users.status',
                 DB::raw("'Non pembayaran / Billing' as alasan"),
                 'hotspot_users.suspended_at as since_isolir',
                 'inv_h.due_date as last_due_date',
                 'hotspot_users.service_profile_id as package_id',
-                DB::raw("NULL as router_id"),
+                'hotspot_users.router_id as router_id',
                 // Reseller yang memiliki customer (bukan created_by — created_by adalah siapa yang input)
                 'hotspot_users.reseller_id as sales_id',
                 'hotspot_users.reseller_id as reseller_id',
@@ -120,6 +122,12 @@ class IsolirService
             });
         }
 
+        if (!empty($filters['router_id'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('pppoe_users.router_id', $filters['router_id'])
+                  ->orWhere('hotspot_users.router_id', $filters['router_id']);
+            });
+        }
         if (!empty($filters['package_id'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('sp_p.id', $filters['package_id'])
@@ -156,6 +164,7 @@ class IsolirService
             'username' => 'username',
             'customer_name' => 'customer_name',
             'package_name' => 'package_name',
+            'router_name' => 'router_name',
             'status' => 'status',
             'alasan' => 'alasan',
             'since_isolir' => 'since_isolir',
@@ -322,7 +331,7 @@ class IsolirService
 
         $handle = fopen($path, 'w+');
         fputcsv($handle, [
-            'Tipe', 'Username', 'Nama Pelanggan', 'Paket', 'Status',
+            'Tipe', 'Username', 'Nama Pelanggan', 'Paket', 'Router', 'Status',
             'Alasan', 'Sejak Isolir', 'Jatuh Tempo Terakhir',
         ]);
 
@@ -332,6 +341,7 @@ class IsolirService
                 $r->username,
                 $r->customer_name,
                 $r->package_name,
+                $r->router_name ?? '-',
                 $r->status,
                 $r->alasan,
                 $r->since_isolir ? (is_string($r->since_isolir) ? $r->since_isolir : \Illuminate\Support\Carbon::parse($r->since_isolir)->format('d/m/Y H:i')) : '',

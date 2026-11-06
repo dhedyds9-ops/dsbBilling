@@ -241,9 +241,11 @@ class HotspotService
     private function kickActiveSession(HotspotUser $hotspotUser): void
     {
         if ($hotspotUser->wasRecentlyCreated) return;
-        if (!($hotspotUser->is_online ?? false)) return;
 
         $routers = $this->resolveRouters($hotspotUser->serviceProfile);
+        if ($hotspotUser->router_id && $hotspotUser->router) {
+            $routers[$hotspotUser->router_id] = $hotspotUser->router;
+        }
         if (empty($routers)) return;
 
         $username = $hotspotUser->username;
@@ -255,8 +257,8 @@ class HotspotService
                 $driver->disconnectHotspotUser($username);
                 $driver->disconnect();
             } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
+                \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
+            }
         }
     }
 }
