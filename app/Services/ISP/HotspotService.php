@@ -220,12 +220,49 @@ class HotspotService
     protected function provisionToMikrotik(HotspotUser $hotspotUser, bool $isCreate = false): void
     {
         if ($isCreate || $hotspotUser->wasRecentlyCreated) return;
-        $this->kickActiveSession($hotspotUser);
+
+        $routers = $this->resolveRouters($hotspotUser->serviceProfile);
+        if ($hotspotUser->router_id && $hotspotUser->router) {
+            $routers[$hotspotUser->router_id] = $hotspotUser->router;
+        }
+
+        $normalProfile = $hotspotUser->serviceProfile?->hotspot_profile ?: ($hotspotUser->serviceProfile?->user_profile ?: 'default');
+        $username = $hotspotUser->username;
+
+        foreach ($routers as $router) {
+            try {
+                $driver = $this->routerOSService->getDriver($router);
+                if (!$driver->connect()) continue;
+                $driver->setHotspotUserProfile($username, $normalProfile);
+                $driver->disconnectHotspotUser($username);
+                $driver->disconnect();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("HotspotService provisionToMikrotik error: " . $e->getMessage());
+            }
+        }
     }
 
     protected function provisionIsolationToMikrotik(HotspotUser $hotspotUser): void
     {
-        $this->kickActiveSession($hotspotUser);
+        $routers = $this->resolveRouters($hotspotUser->serviceProfile);
+        if ($hotspotUser->router_id && $hotspotUser->router) {
+            $routers[$hotspotUser->router_id] = $hotspotUser->router;
+        }
+
+        $isolirProfile = \App\Models\Setting::getValue('billing.isolir_profile', 'ISOLIR');
+        $username = $hotspotUser->username;
+
+        foreach ($routers as $router) {
+            try {
+                $driver = $this->routerOSService->getDriver($router);
+                if (!$driver->connect()) continue;
+                $driver->setHotspotUserProfile($username, $isolirProfile);
+                $driver->disconnectHotspotUser($username);
+                $driver->disconnect();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("HotspotService provisionIsolationToMikrotik error: " . $e->getMessage());
+            }
+        }
     }
 
     protected function disconnectFromMikrotik(HotspotUser $hotspotUser): void

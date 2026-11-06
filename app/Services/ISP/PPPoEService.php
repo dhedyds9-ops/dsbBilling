@@ -190,12 +190,49 @@ class PPPoEService
     protected function provisionToMikrotik(PPPoEUser $pppoeUser, bool $isCreate = false): void
     {
         if ($isCreate || $pppoeUser->wasRecentlyCreated) return;
-        $this->kickActiveSession($pppoeUser);
+
+        $routers = $this->resolveRouters($pppoeUser->serviceProfile);
+        if ($pppoeUser->router_id && $pppoeUser->router) {
+            $routers[$pppoeUser->router_id] = $pppoeUser->router;
+        }
+
+        $normalProfile = $pppoeUser->serviceProfile?->mikrotik_profile ?: ($pppoeUser->serviceProfile?->name ?: 'default');
+        $username = $pppoeUser->username;
+
+        foreach ($routers as $router) {
+            try {
+                $driver = $this->routerOSService->getDriver($router);
+                if (!$driver->connect()) continue;
+                $driver->setPppSecretProfile($username, $normalProfile);
+                $driver->disconnectPppoeUser($username);
+                $driver->disconnect();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("PPPoEService provisionToMikrotik error: " . $e->getMessage());
+            }
+        }
     }
 
     protected function provisionIsolationToMikrotik(PPPoEUser $pppoeUser): void
     {
-        $this->kickActiveSession($pppoeUser);
+        $routers = $this->resolveRouters($pppoeUser->serviceProfile);
+        if ($pppoeUser->router_id && $pppoeUser->router) {
+            $routers[$pppoeUser->router_id] = $pppoeUser->router;
+        }
+
+        $isolirProfile = \App\Models\Setting::getValue('billing.isolir_profile', 'ISOLIR');
+        $username = $pppoeUser->username;
+
+        foreach ($routers as $router) {
+            try {
+                $driver = $this->routerOSService->getDriver($router);
+                if (!$driver->connect()) continue;
+                $driver->setPppSecretProfile($username, $isolirProfile);
+                $driver->disconnectPppoeUser($username);
+                $driver->disconnect();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("PPPoEService provisionIsolationToMikrotik error: " . $e->getMessage());
+            }
+        }
     }
 
     protected function removeFromMikrotik(PPPoEUser $pppoeUser): void
