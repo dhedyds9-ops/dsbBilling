@@ -147,8 +147,7 @@
 
                         <form wire:submit.prevent="{{ $isCreating ? 'saveNewWan' : 'saveWan' }}" class="space-y-4">
                             
-                            {{-- Selection Mode (Only when creating) --}}
-                            @if($isCreating)
+                            {{-- Selection Mode (Available in Create & Edit) --}}
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                                     Pilih Jenis Mode Koneksi & Slot WAN
@@ -160,7 +159,7 @@
                                         <div class="ml-2.5">
                                             <span class="block text-xs font-bold text-slate-900 dark:text-slate-100">PPPoE Dial-up (Route)</span>
                                             <span class="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Modem dial sendiri. (FiberHome: <code class="text-purple-600">PPPoE_Routed</code>, Lainnya: <code class="text-purple-600">IP_Routed</code>).
+                                                Modem dial PPPoE sendiri. Wajib mengisi Username & Password PPPoE di bawah.
                                             </span>
                                         </div>
                                     </label>
@@ -199,19 +198,49 @@
                                     </label>
                                 </div>
                             </div>
-                            @endif
 
-                            {{-- Row: VLAN, NAT, Service List --}}
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                {{-- VLAN --}}
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                                        VLAN ID
+                            {{-- VLAN Tagging Configuration Card --}}
+                            <div class="p-3.5 rounded-2xl border {{ $formVlanEnabled ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/50' : 'bg-slate-50/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700' }} transition-colors">
+                                <div class="flex items-center justify-between">
+                                    <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                                        <input type="checkbox" wire:model.live="formVlanEnabled" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500 dark:bg-slate-900 dark:border-slate-700">
+                                        <div>
+                                            <span class="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span>Aktifkan VLAN Tagging (802.1Q)</span>
+                                            </span>
+                                            <span class="block text-[11px] text-slate-500 dark:text-slate-400">
+                                                Aktifkan jika jalur koneksi WAN di OLT / Mikrotik menggunakan VLAN ID tertentu.
+                                            </span>
+                                        </div>
                                     </label>
-                                    <input type="number" wire:model="formVlan" placeholder="Contoh: 200 (Kosongkan jika untagged)"
-                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                                    <span class="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $formVlanEnabled ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700' }}">
+                                        {{ $formVlanEnabled ? 'VLAN ENABLED (TAGGED)' : 'VLAN DISABLED (UNTAGGED)' }}
+                                    </span>
                                 </div>
 
+                                @if($formVlanEnabled)
+                                <div class="mt-3 pt-3 border-t border-purple-100 dark:border-purple-800/40 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300 mb-1">
+                                            VLAN ID (1 - 4094) <span class="text-rose-500">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="number" wire:model="formVlan" min="1" max="4094" placeholder="Contoh: 200" required
+                                                class="w-full px-3.5 py-2 rounded-xl border border-purple-300 dark:border-purple-700 text-xs font-mono font-bold focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                                            <span class="absolute right-3 top-2 text-[11px] text-slate-400 font-medium">802.1Q</span>
+                                        </div>
+                                        @error('formVlan') <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900/40">
+                                        <p class="font-semibold text-purple-700 dark:text-purple-300">Huawei / ZTE / FiberHome Tagging:</p>
+                                        Sistem mengirim parameter VLAN dan mode Tagged (<code class="text-purple-600">Mode=2 / VLANEnable=1</code>) ke perangkat.
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+
+                            {{-- Row: Service List & NAT Toggle --}}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {{-- Service List --}}
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
@@ -230,7 +259,7 @@
                                 </div>
 
                                 {{-- NAT Toggle --}}
-                                <div class="flex flex-col justify-end pb-1">
+                                <div class="flex flex-col justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
                                     <label class="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" wire:model="formNat" class="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500 dark:bg-slate-900 dark:border-slate-700">
                                         <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Aktifkan NAT (Internet Routing)</span>
@@ -240,22 +269,33 @@
                             </div>
 
                             {{-- Credentials (Only for PPPoE Route) --}}
-                            @if(($isCreating && $formMode === 'pppoe_route') || (!$isCreating && $formType === 'PPPoE'))
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800/40">
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300 mb-1.5">
-                                        Username PPPoE <span class="text-rose-500">*</span>
-                                    </label>
-                                    <input type="text" wire:model="formUsername" placeholder="username@isp" required
-                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-900 dark:text-slate-100">
-                                    @error('formUsername') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
+                            @if($formMode === 'pppoe_route' || $formType === 'PPPoE')
+                            <div class="space-y-2 p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-800/50">
+                                @if(!$isCreating && str_contains($editFullPath, 'WANIPConnection'))
+                                <div class="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200 mb-2">
+                                    <span class="material-symbols-outlined text-[18px] text-amber-600 shrink-0">info</span>
+                                    <div>
+                                        <span class="font-bold">Konversi Bridge ke PPPoE:</span> Slot ini saat ini adalah koneksi Bridge (<code class="font-mono text-amber-900 dark:text-amber-100">{{ $formName }}</code>). Saat Anda menyimpan dengan mode PPPoE, sistem akan otomatis membuat profil dial PPPoE di modem dengan akun di bawah ini.
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300 mb-1.5">
-                                        Password PPPoE
-                                    </label>
-                                    <input type="password" wire:model="formPassword" placeholder="{{ $isEditing ? 'Biarkan kosong jika tidak diubah' : 'Sandi PPPoE' }}"
-                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                                @endif
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300 mb-1.5">
+                                            Username PPPoE <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="text" wire:model="formUsername" placeholder="username@isp" required
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                                        @error('formUsername') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300 mb-1.5">
+                                            Password PPPoE
+                                        </label>
+                                        <input type="password" wire:model="formPassword" placeholder="{{ $isEditing && !empty($formUsername) ? 'Biarkan kosong jika tidak diubah' : 'Sandi PPPoE' }}"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-900 dark:text-slate-100">
+                                    </div>
                                 </div>
                             </div>
                             @endif
