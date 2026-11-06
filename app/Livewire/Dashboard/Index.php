@@ -60,32 +60,50 @@ class Index extends Component
         };
 
         // 1-5. Caching KPI metrics
-        $this->kpi = Cache::remember("dashboard_kpi_{$this->dateRange}", 60, function() use ($startDate, $endDate) {
+        $this->kpi = Cache::remember("dashboard_kpi_{$this->dateRange}", 15, function() use ($startDate, $endDate) {
             // 1. Customer Metrics (hanya pelanggan reguler)
             try {
                 $baseCust         = Customer::withoutGuests();
                 $totalCustomers   = (clone $baseCust)->count();
-                $activeCustomers  = (clone $baseCust)->where('status', 'active')->count();
-                $suspendCustomers = (clone $baseCust)->where('status', 'suspend')->count();
+                $suspendCustomers = (clone $baseCust)->where(function($q) {
+                    $q->whereIn('status', ['suspend', 'suspended'])
+                      ->orWhereHas('customerServices', function($cs) {
+                          $cs->where('status', 'suspended')
+                             ->orWhereNotNull('suspended_at')
+                             ->orWhereHas('pppoeUser', fn($pu) => $pu->where('status', 'suspended'))
+                             ->orWhereHas('hotspotUser', fn($hu) => $hu->where('status', 'suspended'));
+                      });
+                })->count();
+                $activeCustomers  = max(0, $totalCustomers - $suspendCustomers);
                 $newCustomers     = (clone $baseCust)->whereBetween('created_at', [$startDate, $endDate])->count();
             } catch (\Exception $e) {
                 $totalCustomers = 0; $activeCustomers = 0; $suspendCustomers = 0; $newCustomers = 0;
             }
 
-            // 2. Services Metrics
+            // 2. Services Metrics (sinkron dengan halaman PPPoE & Hotspot Users)
             try {
                 $pppoeTotal = PPPoEUser::count();
-                $pppoeOnline = PppActiveSession::count();
-                if ($pppoeOnline === 0) {
-                    $pppoeOnline = OnlineSession::where('protocol', 'pppoe')->count();
-                }
+                $pppoeOnline = PPPoEUser::where('status', 'active')->where(function($q) {
+                    $q->whereHas('radiusAccountings', function($rq) {
+                        $rq->whereNull('acct_stop_time');
+                    })->orWhereExists(function($aq) {
+                        $aq->select(DB::raw(1))
+                           ->from('ppp_active_sessions')
+                           ->whereRaw('ppp_active_sessions.name = pppoe_users.username');
+                    });
+                })->count();
                 $pppoeOffline = max(0, $pppoeTotal - $pppoeOnline);
 
                 $hotspotTotal = HotspotUser::count();
-                $hotspotOnline = HotspotActiveSession::count();
-                if ($hotspotOnline === 0) {
-                    $hotspotOnline = OnlineSession::where('protocol', 'hotspot')->count();
-                }
+                $hotspotOnline = HotspotUser::where('status', 'active')->where(function($q) {
+                    $q->whereHas('radiusAccountings', function($rq) {
+                        $rq->whereNull('acct_stop_time');
+                    })->orWhereExists(function($aq) {
+                        $aq->select(DB::raw(1))
+                           ->from('hotspot_active_sessions')
+                           ->whereRaw('hotspot_active_sessions.user = hotspot_users.username');
+                    });
+                })->count();
             } catch (\Exception $e) {
                 $pppoeTotal = 0; $pppoeOnline = 0; $pppoeOffline = 0; $hotspotTotal = 0; $hotspotOnline = 0;
             }
@@ -225,9 +243,7 @@ class Index extends Component
 
                 $radiusNasCount = RadiusNas::where('status', 'active')->count();
                 $radiusAcctToday = RadiusAccounting::whereDate('created_at', Carbon::today())->count();
-                $radiusActiveSessions = RadiusAccounting::where(function($q) {
-                    $q->where('acct_status_type', 'Start')->orWhereNull('acct_stop_time');
-                })->count();
+                $radiusActiveSessions = RadiusAccounting::whereNull('acct_stop_time')->count();
 
                 $acsCount = ACSDevice::count();
 
