@@ -109,6 +109,22 @@ class HotspotService
                 'updated_by' => $userId,
             ]);
 
+            // Sinkronisasi status ke CustomerService dan Customer
+            if ($hotspotUser->customer_service_id) {
+                $cs = \App\Models\Customer\CustomerService::find($hotspotUser->customer_service_id);
+                if ($cs) {
+                    $cs->update([
+                        'status' => 'active',
+                        'suspended_at' => null,
+                    ]);
+                    if ($cs->customer_id) {
+                        \App\Models\CRM\Customer::where('id', $cs->customer_id)->update([
+                            'status' => 'active',
+                        ]);
+                    }
+                }
+            }
+
             if ($oldStatus !== 'pending') {
                 $this->provisionToMikrotik($hotspotUser);
             }
@@ -136,6 +152,22 @@ class HotspotService
                 'suspended_at' => now(),
                 'updated_by' => $userId,
             ]);
+
+            // Sinkronisasi status ke CustomerService dan Customer
+            if ($hotspotUser->customer_service_id) {
+                $cs = \App\Models\Customer\CustomerService::find($hotspotUser->customer_service_id);
+                if ($cs) {
+                    $cs->update([
+                        'status' => 'suspended',
+                        'suspended_at' => now(),
+                    ]);
+                    if ($cs->customer_id) {
+                        \App\Models\CRM\Customer::where('id', $cs->customer_id)->update([
+                            'status' => 'suspend',
+                        ]);
+                    }
+                }
+            }
 
             $this->provisionIsolationToMikrotik($hotspotUser);
 

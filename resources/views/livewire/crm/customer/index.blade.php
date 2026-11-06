@@ -202,11 +202,18 @@
                             
                             $paket = $svc?->serviceProfile?->name ?? '-';
                             $tglRegister = $customer->created_at?->format('d-m-Y');
-                            $tglIsolir = $svc?->suspended_at?->format('d-m-Y') ?? '-';
+                            $tglIsolir = $svc?->suspended_at?->format('d-m-Y')
+                                ?? ($svc?->pppoeUser?->suspended_at?->format('d-m-Y')
+                                ?? ($svc?->hotspotUser?->suspended_at?->format('d-m-Y') ?? '-'));
                             $reseller = $customer->reseller->name ?? 'Default';
                             $dynamicId = $customer->display_id;
 
-                            $isInactive = $customer->status !== 'active';
+                            $isSuspended = in_array($customer->status, ['suspend', 'suspended'])
+                                || ($svc && ($svc->status === 'suspended' || $svc->suspended_at !== null))
+                                || ($svc?->pppoeUser && $svc->pppoeUser->status === 'suspended')
+                                || ($svc?->hotspotUser && $svc->hotspotUser->status === 'suspended');
+
+                            $isInactive = $isSuspended || $customer->status !== 'active';
                             
                             if ($isInactive) {
                                 $rowBg = 'bg-slate-50/60 dark:bg-slate-800/40 opacity-75 hover:bg-slate-100 dark:hover:bg-slate-800/60';
@@ -266,9 +273,9 @@
                                 </div>
                             </td>
 
-                            {{-- Status Online/Offline --}}
+                            {{-- Status Online/Offline/Suspend --}}
                             <td class="px-4 py-3 whitespace-nowrap text-center">
-                                @if($isInactive || $tglIsolir !== '-')
+                                @if($isSuspended)
                                     <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
                                         <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                         Suspend
@@ -279,8 +286,8 @@
                                         Online
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                                         Offline
                                     </span>
                                 @endif
@@ -290,7 +297,7 @@
                             <td class="px-4 py-3 whitespace-nowrap {{ $idColor }} font-mono text-xs flex items-center gap-2">
                                 <input type="checkbox" wire:change="toggleStatus({{ $customer->id }})" 
                                        class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                                       @if(!$isInactive) checked @endif
+                                       @if(!$isInactive && !$isSuspended) checked @endif
                                        title="Toggle Aktif/Nonaktif">
                                 {{ $dynamicId }}
                             </td>

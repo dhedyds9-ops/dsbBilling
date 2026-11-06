@@ -250,6 +250,15 @@ class IsolirService
                     'updated_by' => $userId,
                 ]);
                 $customerId = $user->customer?->id ?? null;
+                if ($user->customer_service_id) {
+                    $cs = \App\Models\Customer\CustomerService::find($user->customer_service_id);
+                    if ($cs) {
+                        $cs->update(['status' => 'active', 'suspended_at' => null]);
+                        if ($cs->customer_id) {
+                            \App\Models\CRM\Customer::where('id', $cs->customer_id)->update(['status' => 'active']);
+                        }
+                    }
+                }
                 try {
                     app(\App\Services\ISP\PPPoEService::class)->provisionToMikrotik($user);
                 } catch (\Throwable $e) {
@@ -266,6 +275,15 @@ class IsolirService
                     'updated_by' => $userId,
                 ]);
                 $customerId = $user->customer?->id ?? null;
+                if ($user->customer_service_id) {
+                    $cs = \App\Models\Customer\CustomerService::find($user->customer_service_id);
+                    if ($cs) {
+                        $cs->update(['status' => 'active', 'suspended_at' => null]);
+                        if ($cs->customer_id) {
+                            \App\Models\CRM\Customer::where('id', $cs->customer_id)->update(['status' => 'active']);
+                        }
+                    }
+                }
                 try {
                     app(\App\Services\ISP\HotspotService::class)->provisionToMikrotik($user);
                 } catch (\Throwable $e) {

@@ -138,6 +138,22 @@ class PPPoEService
                 'updated_by' => $userId,
             ]);
 
+            // Sinkronisasi status ke CustomerService dan Customer
+            if ($pppoeUser->customer_service_id) {
+                $cs = \App\Models\Customer\CustomerService::find($pppoeUser->customer_service_id);
+                if ($cs) {
+                    $cs->update([
+                        'status' => 'suspended',
+                        'suspended_at' => now(),
+                    ]);
+                    if ($cs->customer_id) {
+                        \App\Models\CRM\Customer::where('id', $cs->customer_id)->update([
+                            'status' => 'suspend',
+                        ]);
+                    }
+                }
+            }
+
             Event::dispatch(new PPPoEUserStatusChangedEvent($pppoeUser, $oldStatus, 'suspended'));
 
             $this->provisionIsolationToMikrotik($pppoeUser);
@@ -157,6 +173,22 @@ class PPPoEService
                 'suspended_at' => null,
                 'updated_by' => $userId,
             ]);
+
+            // Sinkronisasi status ke CustomerService dan Customer
+            if ($pppoeUser->customer_service_id) {
+                $cs = \App\Models\Customer\CustomerService::find($pppoeUser->customer_service_id);
+                if ($cs) {
+                    $cs->update([
+                        'status' => 'active',
+                        'suspended_at' => null,
+                    ]);
+                    if ($cs->customer_id) {
+                        \App\Models\CRM\Customer::where('id', $cs->customer_id)->update([
+                            'status' => 'active',
+                        ]);
+                    }
+                }
+            }
 
             Event::dispatch(new PPPoEUserStatusChangedEvent($pppoeUser, $oldStatus, 'active'));
 

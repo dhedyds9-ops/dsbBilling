@@ -92,9 +92,47 @@ class Index extends BaseCrmComponent
 
     public function toggleStatus($id): void
     {
-        $customer = Customer::findOrFail($id);
-        $customer->status = $customer->status === 'active' ? 'suspend' : 'active';
-        $customer->save();
+        $customer = Customer::with(['customerServices.pppoeUser', 'customerServices.hotspotUser'])->findOrFail($id);
+        
+        // Cek apakah saat ini pelanggan berstatus suspend (baik dari customer, customerService, atau pppoe/hotspot)
+        $isCurrentlySuspended = in_array($customer->status, ['suspend', 'suspended'])
+            || $customer->customerServices->contains(function ($cs) {
+                return $cs->status === 'suspended'
+                    || $cs->suspended_at !== null
+                    || ($cs->pppoeUser && $cs->pppoeUser->status === 'suspended')
+                    || ($cs->hotspotUser && $cs->hotspotUser->status === 'suspended');
+            });
+
+        $newCustomerStatus = $isCurrentlySuspended ? 'active' : 'suspend';
+        $customer->update(['status' => $newCustomerStatus]);
+
+        $userId = auth()->id() ?? 0;
+
+        foreach ($customer->customerServices as $cs) {
+            $cs->update([
+                'status' => $newCustomerStatus === 'suspend' ? 'suspended' : 'active',
+                'suspended_at' => $newCustomerStatus === 'suspend' ? now() : null,
+            ]);
+
+            if ($cs->pppoeUser) {
+                if ($newCustomerStatus === 'suspend') {
+                    app(\App\Services\ISP\PPPoEService::class)->suspendPPPoEUser($cs->pppoeUser->id, $userId);
+                } else {
+                    app(\App\Services\ISP\PPPoEService::class)->reactivatePPPoEUser($cs->pppoeUser->id, $userId);
+                }
+            }
+
+            if ($cs->hotspotUser) {
+                if ($newCustomerStatus === 'suspend') {
+                    app(\App\Services\ISP\HotspotService::class)->suspendHotspotUser($cs->hotspotUser->id, $userId);
+                } else {
+                    app(\App\Services\ISP\HotspotService::class)->activateHotspotUser($cs->hotspotUser->id, $userId);
+                }
+            }
+        }
+
+        $label = $newCustomerStatus === 'suspend' ? 'dinonaktifkan (diisolir)' : 'diaktifkan kembali';
+        session()->flash('success', "Status pelanggan {$customer->name} beserta layanannya berhasil {$label}!");
     }
 
     public function impersonate($id)
@@ -139,7 +177,27 @@ class Index extends BaseCrmComponent
         }
 
         if (!empty($this->statusFilter)) {
-            $query->where('status', $this->statusFilter);
+            if ($this->statusFilter === 'suspend' || $this->statusFilter === 'suspended') {
+                $query->where(function($q) {
+                    $q->whereIn('status', ['suspend', 'suspended'])
+                      ->orWhereHas('customerServices', function($cs) {
+                          $cs->where('status', 'suspended')
+                             ->orWhereNotNull('suspended_at')
+                             ->orWhereHas('pppoeUser', fn($pu) => $pu->where('status', 'suspended'))
+                             ->orWhereHas('hotspotUser', fn($hu) => $hu->where('status', 'suspended'));
+                      });
+                });
+            } elseif ($this->statusFilter === 'active') {
+                $query->where('status', 'active')
+                      ->whereDoesntHave('customerServices', function($cs) {
+                          $cs->where('status', 'suspended')
+                             ->orWhereNotNull('suspended_at')
+                             ->orWhereHas('pppoeUser', fn($pu) => $pu->where('status', 'suspended'))
+                             ->orWhereHas('hotspotUser', fn($hu) => $hu->where('status', 'suspended'));
+                      });
+            } else {
+                $query->where('status', $this->statusFilter);
+            }
         }
 
         if (!empty($this->resellerFilter)) {
@@ -183,8 +241,18 @@ class Index extends BaseCrmComponent
         try {
             $baseKpi          = Customer::withoutGuests();
             $totalCustomers   = (clone $baseKpi)->count();
-            $activeCustomers  = (clone $baseKpi)->where('status', 'active')->count();
-            $suspendCustomers = (clone $baseKpi)->where('status', 'suspend')->count();
+            
+            $suspendCustomers = (clone $baseKpi)->where(function($q) {
+                $q->whereIn('status', ['suspend', 'suspended'])
+                  ->orWhereHas('customerServices', function($cs) {
+                      $cs->where('status', 'suspended')
+                         ->orWhereNotNull('suspended_at')
+                         ->orWhereHas('pppoeUser', fn($pu) => $pu->where('status', 'suspended'))
+                         ->orWhereHas('hotspotUser', fn($hu) => $hu->where('status', 'suspended'));
+                  });
+            })->count();
+
+            $activeCustomers  = max(0, $totalCustomers - $suspendCustomers);
             $newCustomers     = (clone $baseKpi)->whereMonth('created_at', now()->month)
                                                 ->whereYear('created_at', now()->year)
                                                 ->count();

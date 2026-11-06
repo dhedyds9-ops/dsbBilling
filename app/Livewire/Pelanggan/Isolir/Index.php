@@ -336,6 +336,16 @@ class Index extends BaseEnterpriseList
 
         return view('livewire.pelanggan.isolir.index', [
             'rows' => $rows,
+            'summary' => $this->summary,
+            'errorMessage' => $this->errorMessage,
+            'selected' => $this->selected,
+            'sortField' => $this->sortField,
+            'sortDirection' => $this->sortDirection,
+            'showPerpanjangModal' => $this->showPerpanjangModal,
+            'showGantiPaketModal' => $this->showGantiPaketModal,
+            'selectedUser' => $this->selectedUser,
+            'filterOptions' => $this->filterOptions,
+            'formParams' => $this->formParams,
         ]);
     }
 }

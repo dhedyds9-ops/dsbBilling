@@ -1,6 +1,6 @@
 @php
-  $sortIcon = function($field) {
-    $dir = $this->sortField === $field ? ($this->sortDirection === 'asc' ? '↑' : '↓') : '';
+  $sortIcon = function($field) use ($sortField, $sortDirection) {
+    $dir = ($sortField ?? '') === $field ? (($sortDirection ?? '') === 'asc' ? '↑' : '↓') : '';
     return $dir ? " <span class='text-blue-600'>{$dir}</span>" : '';
   };
   $statusBadge = function($status, $since) {
@@ -43,7 +43,7 @@
               <h3 class="text-xs font-bold text-red-500 dark:text-red-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <span class="material-symbols-outlined notranslate text-[16px]" translate="no">block</span> Total Terisolir
               </h3>
-              <div class="text-2xl font-black text-red-700 dark:text-red-300 mb-1">{{ number_format($this->summary['total'] ?? 0) }}</div>
+              <div class="text-2xl font-black text-red-700 dark:text-red-300 mb-1">{{ number_format($summary['total'] ?? 0) }}</div>
               <div class="text-xs text-slate-500 dark:text-slate-400">Semua layanan yang dihentikan sementara</div>
           </div>
       </div>
@@ -53,7 +53,7 @@
               <h3 class="text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <span class="material-symbols-outlined notranslate text-[16px]" translate="no">schedule</span> Isolir Hari Ini
               </h3>
-              <div class="text-2xl font-black text-amber-700 dark:text-amber-300 mb-1">{{ number_format($this->summary['today'] ?? 0) }}</div>
+              <div class="text-2xl font-black text-amber-700 dark:text-amber-300 mb-1">{{ number_format($summary['today'] ?? 0) }}</div>
               <div class="text-xs text-slate-500 dark:text-slate-400">Pelanggan yang baru terisolir dalam 24 jam</div>
           </div>
       </div>
@@ -63,17 +63,17 @@
               <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <span class="material-symbols-outlined notranslate text-[16px]" translate="no">hourglass_bottom</span> Terlama Isolir
               </h3>
-              <div class="text-xl font-black text-slate-700 dark:text-slate-300 mb-1 truncate">{{ $this->summary['terlama'] ?? '-' }}</div>
+              <div class="text-xl font-black text-slate-700 dark:text-slate-300 mb-1 truncate">{{ $summary['terlama'] ?? '-' }}</div>
               <div class="text-xs text-slate-500 dark:text-slate-400">Rekor waktu isolir terlama yang masih aktif</div>
           </div>
       </div>
   </div>
 
   {{-- ERROR MESSAGE ALERT --}}
-  @if($this->errorMessage)
+  @if($errorMessage)
       <div class="mb-6 flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-red-700 dark:text-red-400 text-sm font-medium">
           <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
-          <span>{{ $this->errorMessage }}</span>
+          <span>{{ $errorMessage }}</span>
       </div>
   @endif
 
@@ -91,12 +91,12 @@
           </div>
 
           <div class="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
-              @if(count($this->selected) > 0)
+              @if(count($selected ?? []) > 0)
                   <div class="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
-                      <span class="text-xs font-medium text-indigo-700 dark:text-indigo-400 whitespace-nowrap">{{ count($this->selected) }} terpilih</span>
+                      <span class="text-xs font-medium text-indigo-700 dark:text-indigo-400 whitespace-nowrap">{{ count($selected) }} terpilih</span>
                       <div class="h-4 w-px bg-indigo-200 dark:bg-indigo-700 mx-0.5"></div>
-                      <button wire:click="handleBulkAction('activate', {{ json_encode($this->selected) }})" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded transition-colors whitespace-nowrap">Aktifkan</button>
-                      <button wire:click="handleBulkAction('send-wa', {{ json_encode($this->selected) }})" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 rounded transition-colors whitespace-nowrap">Kirim WA</button>
+                      <button wire:click="handleBulkAction('activate', {{ json_encode($selected) }})" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded transition-colors whitespace-nowrap">Aktifkan</button>
+                      <button wire:click="handleBulkAction('send-wa', {{ json_encode($selected) }})" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 rounded transition-colors whitespace-nowrap">Kirim WA</button>
                   </div>
               @endif
               <select wire:model.live="perPage" class="w-full sm:w-auto py-2 pl-3 pr-8 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
@@ -108,9 +108,9 @@
       </div>
 
       <div class="overflow-x-auto relative">
-    @if ($this->errorMessage)
+    @if ($errorMessage)
       <div class="mx-3 mt-3 p-3 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
-        {{ $this->errorMessage }}
+        {{ $errorMessage }}
       </div>
     @endif
 
@@ -248,7 +248,7 @@
 
   @include('partials.enterprise.confirm-modal')
 
-  @if ($this->showPerpanjangModal)
+  @if ($showPerpanjangModal)
     <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
       <div class="w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
         <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -260,7 +260,7 @@
         <div class="grid grid-cols-1 gap-3 px-5 py-4">
           <div class="p-3 rounded-md bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
             <div class="text-xs text-slate-500 dark:text-slate-400">Pelanggan</div>
-            <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ $this->selectedUser['name'] ?? '-' }}</div>
+            <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ $selectedUser['name'] ?? '-' }}</div>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Janji Bayar (Hari)</label>
@@ -286,7 +286,7 @@
     </div>
   @endif
 
-  @if ($this->showGantiPaketModal)
+  @if ($showGantiPaketModal)
     <div x-data="{ show: true }" x-show="show" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
       <div class="w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
         <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -298,13 +298,13 @@
         <div class="grid grid-cols-1 gap-3 px-5 py-4">
           <div class="p-3 rounded-md bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
             <div class="text-xs text-slate-500 dark:text-slate-400">Pelanggan</div>
-            <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ $this->selectedUser['name'] ?? '-' }}</div>
+            <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ $selectedUser['name'] ?? '-' }}</div>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Pilih Paket Baru</label>
             <select wire:model.live="formParams.package_id" class="w-full text-sm rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:bg-slate-700 dark:text-slate-100 py-1.5 px-2 dark:bg-slate-900 dark:text-slate-100">
               <option value="">Pilih Paket</option>
-              @foreach ($this->filterOptions['packages'] ?? [] as $id => $name)
+              @foreach ($filterOptions['packages'] ?? [] as $id => $name)
                 <option value="{{ $id }}">{{ $name }}</option>
               @endforeach
             </select>
