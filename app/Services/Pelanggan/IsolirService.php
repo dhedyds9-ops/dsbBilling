@@ -191,7 +191,13 @@ class IsolirService
         $longestPppoe = (clone $pppoeBase)->min('suspended_at');
         $longestHotspot = (clone $hotspotBase)->min('suspended_at');
         $longest = collect([$longestPppoe, $longestHotspot])->filter()->min();
-        $terlama = $longest ? now()->diffInDays($longest) . ' hari' : '-';
+        $terlama = '-';
+        if ($longest) {
+            $carbonLongest = \Illuminate\Support\Carbon::parse($longest);
+            $diffDays = max(0, (int) abs(now()->diffInDays($carbonLongest)));
+            $diffHours = max(0, (int) abs(now()->diffInHours($carbonLongest)));
+            $terlama = $diffDays > 0 ? "{$diffDays} hari" : "{$diffHours} jam";
+        }
 
         return [
             'total' => $total,
