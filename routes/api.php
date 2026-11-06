@@ -143,6 +143,9 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 });
 
 Route::post('/webhooks/genieacs', [GenieAcsWebhookController::class, 'handleEvent'])->name('api.webhooks.genieacs');
+Route::post('/webhooks/genieacs/inform', [\App\Http\Controllers\Api\GenieAcs\GenieAcsInformWebhookController::class, 'handle'])
+    ->name('api.webhooks.genieacs.inform')
+    ->middleware('throttle:600,1');
 
 Route::match(['get', 'post'], '/v1/provision/router', [\App\Http\Controllers\Api\Provisioning\RouterBootstrapController::class, 'bootstrap'])->name('api.provision.router');
 Route::match(['get', 'post'], '/v1/router-provision/bootstrap', [\App\Http\Controllers\Api\Provisioning\RouterBootstrapController::class, 'bootstrap'])->name('router-provision.bootstrap');

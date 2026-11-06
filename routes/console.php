@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Jobs\ISP\CheckOverdueInvoicesJob;
 use App\Jobs\Monitoring\RunCollectorJob;
@@ -77,6 +77,12 @@ Schedule::command('acs:monitor-alarms')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping(15)
     ->name('ACS Alarms Polling');
+
+Schedule::command('acs:evaluate-stale-devices')
+    ->everyFiveMinutes()
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping(5)
+    ->name('ACS Database Stale State Evaluator');
 
 Schedule::call(function (OdpOccupancyService $svc) {
     $svc->recalculateAll();

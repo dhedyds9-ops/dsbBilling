@@ -540,6 +540,166 @@ class GenieACSDriver
         }
     }
 
+    public function listPresets(): array
+    {
+        try {
+            $r = Http::withBasicAuth($this->username, $this->password)->timeout($this->timeout)->get("{$this->baseUrl}/presets");
+            return $r->successful() ? $r->json() : [];
+        } catch (Exception) {
+            return [];
+        }
+    }
+
+    public function getPreset(string $presetName): ?array
+    {
+        try {
+            $url = "{$this->baseUrl}/presets/" . urlencode($presetName);
+            $r = Http::withBasicAuth($this->username, $this->password)->timeout($this->timeout)->get($url);
+            return $r->successful() ? $r->json() : null;
+        } catch (Exception) {
+            return null;
+        }
+    }
+
+    public function upsertPreset(string $presetName, array $presetData): bool
+    {
+        try {
+            $url = "{$this->baseUrl}/presets/" . urlencode($presetName);
+            $response = Http::withBasicAuth($this->username, $this->password)
+                ->timeout($this->timeout)
+                ->asJson()
+                ->put($url, $presetData);
+            
+            return $response->successful();
+        } catch (Exception $e) {
+            report($e);
+            return false;
+        }
+    }
+
+    public function deletePreset(string $presetName): bool
+    {
+        try {
+            $url = "{$this->baseUrl}/presets/" . urlencode($presetName);
+            $response = Http::withBasicAuth($this->username, $this->password)
+                ->timeout($this->timeout)
+                ->delete($url);
+            
+            return $response->successful();
+        } catch (Exception $e) {
+            report($e);
+            return false;
+        }
+    }
+
+    public function getEventBridgeProvisionScript(): string
+    {
+        return <<<'JS'
+// dsBilling_Event_Ingestion Provision Script (v1.2.16)
+// Safe, read-only event ingestion without modifying CPE configuration
+const now = Date.now();
+
+// 1. Identify Device
+let idDecl = declare("DeviceID.ID", {value: 1});
+let deviceId = (idDecl && idDecl.value && idDecl.value.length) ? idDecl.value[0] : "";
+if (!deviceId) {
+  let snDecl = declare("DeviceID.SerialNumber", {value: 1});
+  deviceId = (snDecl && snDecl.value && snDecl.value.length) ? snDecl.value[0] : "";
+}
+
+let snDecl = declare("DeviceID.SerialNumber", {value: 1});
+let serialNumber = (snDecl && snDecl.value && snDecl.value.length) ? snDecl.value[0] : "";
+
+let mfgDecl = declare("DeviceID.Manufacturer", {value: 1});
+let manufacturer = (mfgDecl && mfgDecl.value && mfgDecl.value.length) ? mfgDecl.value[0] : "";
+
+let pcDecl = declare("DeviceID.ProductClass", {value: 1});
+let productClass = (pcDecl && pcDecl.value && pcDecl.value.length) ? pcDecl.value[0] : "";
+
+// 2. Collect Inform Events
+let eventCodes = [];
+let eventsDecl = declare("Events.*", {value: 1});
+if (eventsDecl && eventsDecl.path) {
+  for (let p of eventsDecl) {
+    if (p.value && p.value[0]) {
+      eventCodes.push(p.value[0]);
+    }
+  }
+}
+
+// 3. Optional metadata: SoftwareVersion & IP
+let swDecl = declare("InternetGatewayDevice.DeviceInfo.SoftwareVersion", {value: 1});
+if (!swDecl || !swDecl.value || !swDecl.value.length) {
+  swDecl = declare("Device.DeviceInfo.SoftwareVersion", {value: 1});
+}
+let softwareVersion = (swDecl && swDecl.value && swDecl.value.length) ? swDecl.value[0] : "";
+
+let ipDecl = declare("InternetGatewayDevice.ManagementServer.ConnectionRequestURL", {value: 1});
+if (!ipDecl || !ipDecl.value || !ipDecl.value.length) {
+  ipDecl = declare("Device.ManagementServer.ConnectionRequestURL", {value: 1});
+}
+let connUrl = (ipDecl && ipDecl.value && ipDecl.value.length) ? ipDecl.value[0] : "";
+let ipAddress = "";
+if (connUrl) {
+  let match = connUrl.match(/:\/\/([^:\/]+)/);
+  if (match) {
+    ipAddress = match[1];
+  }
+}
+
+// 4. Send Event via Extension
+if (deviceId) {
+  ext("dsbilling-webhook", "inform", JSON.stringify({
+    device_id: deviceId,
+    serial_number: serialNumber,
+    manufacturer: manufacturer,
+    product_class: productClass,
+    software_version: softwareVersion,
+    ip_address: ipAddress,
+    last_inform: new Date(now).toISOString(),
+    event_codes: eventCodes
+  }));
+}
+JS;
+    }
+
+    public function getEventBridgePresetData(): array
+    {
+        return [
+            'weight' => 0,
+            'events' => [
+                '0 BOOTSTRAP' => true,
+                '1 BOOT' => true,
+                '2 PERIODIC' => true,
+                '4 VALUE CHANGE' => true,
+                '6 CONNECTION REQUEST' => true,
+                'M Reboot' => true,
+            ],
+            'precondition' => '',
+            'configurations' => [
+                [
+                    'type' => 'provision',
+                    'name' => 'dsBilling_Event_Ingestion',
+                ],
+            ],
+        ];
+    }
+
+    public function deployEventBridge(): array
+    {
+        $provisionName = 'dsBilling_Event_Ingestion';
+        $presetName = 'dsBilling_Event_Ingestion';
+
+        $provSuccess = $this->upsertProvision($provisionName, $this->getEventBridgeProvisionScript(), 0);
+        $presetSuccess = $this->upsertPreset($presetName, $this->getEventBridgePresetData());
+
+        return [
+            'provision_deployed' => $provSuccess,
+            'preset_deployed' => $presetSuccess,
+            'success' => $provSuccess && $presetSuccess,
+        ];
+    }
+
     public function upsertProvision(string $provisionName, string $javascriptCode, int $weight = 0): bool
     {
         try {

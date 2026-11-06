@@ -5,6 +5,9 @@ return [
     'username' => env('GENIEACS_USERNAME', 'admin'),
     'password' => env('GENIEACS_PASSWORD', 'admin'),
     'timeout'  => (int)env('GENIEACS_TIMEOUT', 30),
+    'webhook_secret' => env('GENIEACS_WEBHOOK_SECRET', env('GENIEACS_WEBHOOK_TOKEN', 'dsbilling-genieacs-secret-key')),
+    'webhook_tolerance_seconds' => (int)env('GENIEACS_WEBHOOK_TOLERANCE', 300),
+    'webhook_max_body_bytes' => (int)env('GENIEACS_WEBHOOK_MAX_BYTES', 65536),
 
     /*
     |--------------------------------------------------------------------------
