@@ -245,6 +245,15 @@ class PermissionRegistry
                     'technician' => 'Portal Teknisi Mandiri',
                 ],
             ],
+            'inventory_warehouse' => [
+                'title' => 'Inventaris & Gudang',
+                'icon' => 'warehouse',
+                'description' => 'Pengelolaan master barang ISP, stok gudang, barang masuk, dan kartu stok.',
+                'modules' => [
+                    'inventory' => 'Master Barang & Inventaris',
+                    'warehouse' => 'Gudang & Lokasi Stok',
+                ],
+            ],
             'system_admin' => [
                 'title' => 'Sistem & Pengaturan',
                 'icon' => 'settings',

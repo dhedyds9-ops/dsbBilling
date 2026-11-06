@@ -430,6 +430,10 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         // === Inventory (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
         Route::prefix('inventory')->name('inventory.')->group(function () {
             Route::get('/assets', \App\Livewire\Inventory\AssetList::class)->name('assets.index');
+            Route::get('/items', \App\Livewire\Inventory\Item\Index::class)->name('items.index');
+            Route::get('/warehouses', \App\Livewire\Inventory\Warehouse\Index::class)->name('warehouses.index');
+            Route::get('/inbounds', \App\Livewire\Inventory\Inbound\Index::class)->name('inbounds.index');
+            Route::get('/stock-card', \App\Livewire\Inventory\StockCard\Index::class)->name('stock-card.index');
         });
 
                 // === NOC ===

@@ -109,6 +109,16 @@ class MenuRegistry
                         ]
                     ],
                     [
+                        'label' => 'Inventaris & Gudang',
+                        'icon' => 'warehouse',
+                        'items' => [
+                            ['label' => 'Master Barang', 'route' => 'inventory.items.index', 'active' => 'inventory.items.*', 'permission' => 'inventory.view'],
+                            ['label' => 'Data Gudang', 'route' => 'inventory.warehouses.index', 'active' => 'inventory.warehouses.*', 'permission' => 'warehouse.view'],
+                            ['label' => 'Barang Masuk', 'route' => 'inventory.inbounds.index', 'active' => 'inventory.inbounds.*', 'permission' => 'inventory.inbound'],
+                            ['label' => 'Kartu Stok', 'route' => 'inventory.stock-card.index', 'active' => 'inventory.stock-card.*', 'permission' => 'inventory.stock-card'],
+                        ]
+                    ],
+                    [
                         'label' => 'Kepegawaian',
                         'icon' => 'badge',
                         'items' => [

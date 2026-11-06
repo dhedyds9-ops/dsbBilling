@@ -2,28 +2,35 @@
 
 namespace App\Models\Inventory;
 
+use App\Models\Master\Branch;
+use App\Models\User;
+use App\Traits\HasBranchScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Warehouse extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasBranchScope;
 
     protected $table = 'warehouses';
 
     protected $fillable = [
+        'uuid',
         'name',
         'code',
-        'type',
+        'type', // main, branch, transit
+        'branch_id',
+        'manager_id',
         'address',
         'city',
         'province',
         'postal_code',
         'phone',
         'email',
-        'manager_id',
         'is_active',
         'allows_returns',
         'capacity',
@@ -39,19 +46,43 @@ class Warehouse extends Model
         'longitude' => 'decimal:8',
     ];
 
-    public function locations(): HasMany
+    protected static function booted()
     {
-        return $this->hasMany(WarehouseLocation::class, 'warehouse_id');
+        static::creating(function ($wh) {
+            if (empty($wh->uuid)) {
+                $wh->uuid = (string) Str::uuid();
+            }
+        });
     }
 
-    public function assets(): HasMany
+    public function branch(): BelongsTo
     {
-        return $this->hasMany(Asset::class, 'warehouse_id');
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
-    public function inventoryItems(): HasMany
+    public function manager(): BelongsTo
     {
-        return $this->hasMany(InventoryItem::class, 'warehouse_id');
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function stocks(): HasMany
+    {
+        return $this->hasMany(InventoryStock::class, 'warehouse_id');
+    }
+
+    public function serials(): HasMany
+    {
+        return $this->hasMany(ItemSerial::class, 'warehouse_id');
+    }
+
+    public function mutations(): HasMany
+    {
+        return $this->hasMany(InventoryStockMutation::class, 'warehouse_id');
+    }
+
+    public function inbounds(): HasMany
+    {
+        return $this->hasMany(InventoryInbound::class, 'warehouse_id');
     }
 
     public function isMain(): bool
@@ -64,20 +95,13 @@ class Warehouse extends Model
         return $this->type === 'branch';
     }
 
-    public function isTechnicianStock(): bool
+    public function isTransit(): bool
     {
-        return $this->type === 'technician';
+        return $this->type === 'transit';
     }
 
-    public function canReceiveStock(): bool
+    public function scopeActive($query)
     {
-        return $this->is_active && in_array($this->type, ['main', 'branch', 'staging']);
-    }
-
-    public function canIssueStock(): bool
-    {
-        return $this->is_active && in_array($this->type, ['main', 'branch', 'staging', 'technician']);
+        return $query->where('is_active', true);
     }
 }
-
-

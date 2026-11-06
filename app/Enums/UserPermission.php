@@ -274,6 +274,14 @@ enum UserPermission: string
     case OnuUnlockExecute = 'onu.unlock.execute';
     case OnuUnlockApprove = 'onu.unlock.approve';
 
+    // ===== Inventory & Warehouse Permissions (Enterprise Module) =====
+    case InventoryView      = 'inventory.view';
+    case InventoryManage    = 'inventory.manage';
+    case WarehouseView      = 'warehouse.view';
+    case WarehouseManage    = 'warehouse.manage';
+    case InventoryInbound   = 'inventory.inbound';
+    case InventoryStockCard = 'inventory.stock-card';
+
     /**
      * Semua nilai permission sebagai array string.
      */
@@ -338,6 +346,9 @@ enum UserPermission: string
             self::TicketUpdate->value,
             self::MonitoringView->value,
             self::GisView->value,
+            self::InventoryView->value,
+            self::WarehouseView->value,
+            self::InventoryStockCard->value,
 
             // NOC Monitoring (view level — Manager = NOC read-only operator)
             self::NocView->value,
@@ -389,6 +400,9 @@ enum UserPermission: string
             self::TicketCreate->value,
             self::TicketUpdate->value,
             self::GisView->value,
+            self::InventoryView->value,
+            self::WarehouseView->value,
+            self::InventoryStockCard->value,
             self::OnuView->value,
             self::OnuReboot->value,
             'olt.view',
