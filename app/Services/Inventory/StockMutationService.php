@@ -13,6 +13,10 @@ use App\Models\Inventory\InventoryStockMutation;
 use App\Models\Inventory\Item;
 use App\Models\Inventory\ItemSerial;
 use App\Models\Inventory\Warehouse;
+use App\Models\Inventory\InventoryUsage;
+use App\Models\Inventory\InventoryUsageItem;
+use App\Models\Inventory\InventoryReturn;
+use App\Models\Inventory\InventoryReturnItem;
 use Illuminate\Support\Facades\DB;
 
 class StockMutationService
@@ -499,6 +503,249 @@ class StockMutationService
                 'actor_id' => $actorId ?: auth()->id(),
                 'branch_id' => $wh->branch_id,
                 'created_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * Catat Pemakaian Aktual Barang di Pelanggan (PSB / Maintenance)
+     */
+    public function recordUsage(
+        InventoryUsage $usage,
+        array $itemsData,
+        ?int $actorId = null
+    ): void {
+        DB::transaction(function () use ($usage, $itemsData, $actorId) {
+            foreach ($itemsData as $row) {
+                $itemId = (int) $row['item_id'];
+                $quantity = (float) $row['quantity'];
+                $custodyId = $row['custody_id'] ?? null;
+                $itemSerialId = !empty($row['item_serial_id']) ? (int) $row['item_serial_id'] : null;
+                $serials = $row['serials'] ?? [];
+
+                // Jika custody_id tidak diberikan langsung, cari custody aktif milik teknisi untuk item ini
+                if (!$custodyId && $usage->technician_id) {
+                    $activeCustody = InventoryCustody::where('holder_id', $usage->technician_id)
+                        ->where('item_id', $itemId)
+                        ->whereIn('status', ['in_custody', 'accepted', 'in_transit'])
+                        ->first();
+                    if ($activeCustody) {
+                        $custodyId = $activeCustody->id;
+                    }
+                }
+
+                if ($custodyId) {
+                    $custody = InventoryCustody::findOrFail($custodyId);
+                    $newUsed = (float) $custody->used_quantity + $quantity;
+                    $custody->update([
+                        'used_quantity' => $newUsed,
+                        'available_quantity' => max(0, (float) $custody->quantity - $newUsed - (float) $custody->returned_quantity),
+                        'status' => ($newUsed + (float) $custody->returned_quantity >= (float) $custody->quantity) ? 'used' : 'in_custody',
+                        'customer_id' => $usage->customer_id ?: $custody->customer_id,
+                        'installation_id' => $usage->installation_id ?: $custody->installation_id,
+                        'ticket_id' => $usage->ticket_id ?: $custody->ticket_id,
+                    ]);
+                }
+
+                // Handle serial number jika diberikan via array serials atau item_serial_id
+                if (!empty($serials)) {
+                    foreach ($serials as $sn) {
+                        $serial = ItemSerial::where('serial_number', $sn)->first();
+                        if ($serial) {
+                            $itemSerialId = $serial->id;
+                            $serial->update([
+                                'status' => 'installed',
+                                'customer_id' => $usage->customer_id,
+                                'installation_id' => $usage->installation_id,
+                                'ticket_id' => $usage->ticket_id,
+                                'updated_by' => $actorId ?: auth()->id(),
+                            ]);
+                        }
+                    }
+                } elseif ($itemSerialId) {
+                    $serial = ItemSerial::find($itemSerialId);
+                    if ($serial) {
+                        $serial->update([
+                            'status' => 'installed',
+                            'customer_id' => $usage->customer_id,
+                            'installation_id' => $usage->installation_id,
+                            'ticket_id' => $usage->ticket_id,
+                            'updated_by' => $actorId ?: auth()->id(),
+                        ]);
+                    }
+                }
+
+                InventoryUsageItem::create([
+                    'usage_id' => $usage->id,
+                    'custody_id' => $custodyId,
+                    'item_id' => $itemId,
+                    'item_serial_id' => $itemSerialId,
+                    'quantity' => $quantity,
+                    'notes' => $row['notes'] ?? null,
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Proses Pengembalian Barang & Inspeksi QC di Gudang
+     */
+    public function processReturnQC(
+        InventoryReturn $return,
+        array $qcItems,
+        int $inspectorId
+    ): void {
+        DB::transaction(function () use ($return, $qcItems, $inspectorId) {
+            $warehouse = Warehouse::withoutGlobalScopes()->findOrFail($return->warehouse_id);
+
+            foreach ($qcItems as $row) {
+                $returnItemId = $row['return_item_id'] ?? null;
+                $returnItem = $returnItemId ? InventoryReturnItem::find($returnItemId) : null;
+
+                $itemId = (int) ($row['item_id'] ?? ($returnItem ? $returnItem->item_id : 0));
+                $quantity = (float) ($row['quantity'] ?? ($returnItem ? $returnItem->quantity : 1));
+                $condition = $row['condition'] ?? ($returnItem ? $returnItem->condition : 'good');
+                $actionTaken = $row['action_taken'] ?? ($condition === 'good' ? 'restock' : 'quarantine');
+                $custodyId = $row['custody_id'] ?? ($returnItem ? $returnItem->custody_id : null);
+                $itemSerialId = !empty($row['item_serial_id']) ? (int) $row['item_serial_id'] : ($returnItem ? $returnItem->item_serial_id : null);
+
+                // Auto resolve custody if null
+                if (!$custodyId && $return->returner_id) {
+                    $activeCustody = InventoryCustody::where('holder_id', $return->returner_id)
+                        ->where('item_id', $itemId)
+                        ->first();
+                    if ($activeCustody) {
+                        $custodyId = $activeCustody->id;
+                    }
+                }
+
+                if ($custodyId) {
+                    $custody = InventoryCustody::findOrFail($custodyId);
+                    $newRet = (float) $custody->returned_quantity + $quantity;
+                    $custody->update([
+                        'returned_quantity' => $newRet,
+                        'available_quantity' => max(0, (float) $custody->quantity - (float) $custody->used_quantity - $newRet),
+                        'status' => ((float) $custody->used_quantity + $newRet >= (float) $custody->quantity) ? 'returned' : 'in_custody',
+                    ]);
+                }
+
+                // If serial not directly on returnItem, check if any ItemSerial is attached to this returnItem
+                if (!$itemSerialId && $returnItem) {
+                    $attachedSerial = ItemSerial::where('return_item_id', $returnItem->id)->first();
+                    if ($attachedSerial) {
+                        $itemSerialId = $attachedSerial->id;
+                    }
+                }
+
+                if ($condition === 'good' && $actionTaken === 'restock') {
+                    $stock = InventoryStock::withoutGlobalScopes()
+                        ->where('warehouse_id', $warehouse->id)
+                        ->where('item_id', $itemId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    $balanceBefore = $stock ? (float) $stock->quantity : 0.0;
+                    $balanceAfter = $balanceBefore + $quantity;
+
+                    if ($stock) {
+                        $stock->update(['quantity' => $balanceAfter, 'updated_at' => now()]);
+                    } else {
+                        InventoryStock::create([
+                            'warehouse_id' => $warehouse->id,
+                            'item_id' => $itemId,
+                            'quantity' => $balanceAfter,
+                            'reserved_quantity' => 0,
+                            'branch_id' => $warehouse->branch_id,
+                        ]);
+                    }
+
+                    InventoryStockMutation::create([
+                        'warehouse_id' => $warehouse->id,
+                        'item_id' => $itemId,
+                        'type' => 'return_good',
+                        'qty_in' => $quantity,
+                        'qty_out' => 0,
+                        'balance_before' => $balanceBefore,
+                        'balance_after' => $balanceAfter,
+                        'reference_type' => 'return',
+                        'reference_id' => $return->id,
+                        'notes' => "Pengembalian barang sisa/baik No. {$return->return_number}",
+                        'actor_id' => $inspectorId,
+                        'branch_id' => $warehouse->branch_id,
+                        'created_at' => now(),
+                    ]);
+
+                    if ($itemSerialId) {
+                        $serial = ItemSerial::find($itemSerialId);
+                        if ($serial) {
+                            $serial->update([
+                                'warehouse_id' => $warehouse->id,
+                                'custodian_id' => null,
+                                'custodian_type' => null,
+                                'status' => 'in_warehouse',
+                                'condition' => 'good',
+                                'updated_by' => $inspectorId,
+                            ]);
+                        }
+                    }
+                } else {
+                    if ($itemSerialId) {
+                        $serial = ItemSerial::find($itemSerialId);
+                        if ($serial) {
+                            $serial->update([
+                                'warehouse_id' => null,
+                                'custodian_id' => null,
+                                'custodian_type' => null,
+                                'status' => $condition === 'damaged' ? 'damaged' : 'returned_check',
+                                'condition' => $condition,
+                                'updated_by' => $inspectorId,
+                            ]);
+                        }
+                    }
+
+                    InventoryStockMutation::create([
+                        'warehouse_id' => $warehouse->id,
+                        'item_id' => $itemId,
+                        'type' => 'return_damaged',
+                        'qty_in' => 0,
+                        'qty_out' => 0,
+                        'balance_before' => 0,
+                        'balance_after' => 0,
+                        'reference_type' => 'return',
+                        'reference_id' => $return->id,
+                        'notes' => "Retur barang rusak/klaim QC No. {$return->return_number} (Kondisi: {$condition})",
+                        'actor_id' => $inspectorId,
+                        'branch_id' => $warehouse->branch_id,
+                        'created_at' => now(),
+                    ]);
+                }
+
+                if ($returnItem) {
+                    $returnItem->update([
+                        'custody_id' => $custodyId,
+                        'item_serial_id' => $itemSerialId,
+                        'condition' => $condition,
+                        'action_taken' => $actionTaken,
+                        'qc_notes' => $row['qc_notes'] ?? null,
+                    ]);
+                } else {
+                    InventoryReturnItem::create([
+                        'return_id' => $return->id,
+                        'custody_id' => $custodyId,
+                        'item_id' => $itemId,
+                        'item_serial_id' => $itemSerialId,
+                        'quantity' => $quantity,
+                        'condition' => $condition,
+                        'action_taken' => $actionTaken,
+                        'qc_notes' => $row['qc_notes'] ?? null,
+                    ]);
+                }
+            }
+
+            $return->update([
+                'status' => 'restocked',
+                'inspected_by' => $inspectorId,
+                'inspected_at' => now(),
             ]);
         });
     }

@@ -437,6 +437,8 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/requisitions', \App\Livewire\Inventory\Requisition\Index::class)->name('requisitions.index');
             Route::get('/dispatches', \App\Livewire\Inventory\Dispatch\Index::class)->name('dispatches.index');
             Route::get('/custodies', \App\Livewire\Inventory\Custody\Index::class)->name('custodies.index');
+            Route::get('/usage', \App\Livewire\Inventory\Usage\Index::class)->name('usage.index');
+            Route::get('/returns', \App\Livewire\Inventory\Returns\Index::class)->name('returns.index');
         });
 
                 // === NOC ===

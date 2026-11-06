@@ -118,6 +118,8 @@ class MenuRegistry
                             ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
                             ['label' => 'Barang Keluar', 'route' => 'inventory.dispatches.index', 'active' => 'inventory.dispatches.*', 'permission' => 'inventory.dispatch'],
                             ['label' => 'Distribusi & Serah Terima', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
+                            ['label' => 'Pemakaian Barang', 'route' => 'inventory.usage.index', 'active' => 'inventory.usage.*', 'permission' => 'inventory.usage'],
+                            ['label' => 'Retur & Pengembalian', 'route' => 'inventory.returns.index', 'active' => 'inventory.returns.*', 'permission' => 'inventory.return'],
                             ['label' => 'Kartu Stok', 'route' => 'inventory.stock-card.index', 'active' => 'inventory.stock-card.*', 'permission' => 'inventory.stock-card'],
                         ]
                     ],
@@ -309,16 +311,18 @@ class MenuRegistry
                             ['label' => 'Audit Pekerjaan', 'route' => 'technician.audit.form', 'active' => 'technician.audit.*'],
                             ['label' => 'Slip Gaji', 'route' => 'technician.payroll.index', 'active' => 'technician.payroll.*'],
                         ]
-                    ]
-                ],
+                    ],
                     [
-                        'label' => 'Inventaris & Material',
+                        'label' => 'Material & Inventaris',
                         'icon' => 'inventory',
                         'items' => [
-                            ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
+                            ['label' => 'Permintaan Material', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
                             ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
+                            ['label' => 'Catat Pemakaian', 'route' => 'inventory.usage.index', 'active' => 'inventory.usage.*'],
+                            ['label' => 'Retur Material', 'route' => 'inventory.returns.index', 'active' => 'inventory.returns.*'],
                         ]
                     ]
+                ]
             ]
         ];
 

@@ -284,6 +284,8 @@ enum UserPermission: string
     case InventoryRequisition = 'inventory.requisition';
     case InventoryDispatch    = 'inventory.dispatch';
     case InventoryCustody     = 'inventory.custody';
+    case InventoryUsage       = 'inventory.usage';
+    case InventoryReturn      = 'inventory.return';
 
     /**
      * Semua nilai permission sebagai array string.
@@ -355,6 +357,8 @@ enum UserPermission: string
             self::InventoryRequisition->value,
             self::InventoryDispatch->value,
             self::InventoryCustody->value,
+            self::InventoryUsage->value,
+            self::InventoryReturn->value,
 
             // NOC Monitoring (view level — Manager = NOC read-only operator)
             self::NocView->value,
@@ -412,6 +416,8 @@ enum UserPermission: string
             self::InventoryRequisition->value,
             self::InventoryDispatch->value,
             self::InventoryCustody->value,
+            self::InventoryUsage->value,
+            self::InventoryReturn->value,
             self::OnuView->value,
             self::OnuReboot->value,
             'olt.view',
