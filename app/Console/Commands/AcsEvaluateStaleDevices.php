@@ -47,8 +47,8 @@ class AcsEvaluateStaleDevices extends Command
         $defaultInterval = (int) ($this->option('interval')
             ?: config('genieacs.cpe_defaults.periodic_inform_interval_seconds', 300));
 
-        $onlineThreshold = $defaultInterval + 120; // 420 detik (7 menit)
-        $offlineThreshold = max(1080, ($defaultInterval * 3) + 180); // 1080 detik = 18 menit (toleransi wajar)
+        $onlineThreshold = max(1800, $defaultInterval * 2); // Minimal 30 menit
+        $offlineThreshold = max(14400, $defaultInterval * 6); // Minimal 4 jam toleransi (menghindari false offline pada ONT dengan inform interval panjang)
 
         $now = now();
         $transitionedOnline = 0;
@@ -58,9 +58,35 @@ class AcsEvaluateStaleDevices extends Command
 
         // Query all devices to evaluate and auto-recover online state
         ACSDevice::withoutGlobalScopes()
+            ->with(['customerService.pppoeUser', 'customerService.hotspotUser', 'onu'])
             ->chunkById(250, function ($devices) use ($now, $onlineThreshold, $offlineThreshold, $stateEngine, &$transitionedOnline, &$transitionedOffline, &$transitionedStale, &$evaluatedCount) {
                 foreach ($devices as $device) {
                     $evaluatedCount++;
+
+                    // 1. Validasi Layanan Terkait (PPPoE / Hotspot / ONU di OLT)
+                    // Jika PPPoE/Hotspot pelanggan sedang aktif di MikroTik atau link optik aktif di OLT,
+                    // modem secara fisik PASTI NYALA & ONLINE!
+                    $isServiceOnline = false;
+                    try {
+                        if ($device->customerService?->pppoeUser?->is_online) {
+                            $isServiceOnline = true;
+                        } elseif ($device->customerService?->hotspotUser?->is_online) {
+                            $isServiceOnline = true;
+                        } elseif ($device->onu && $device->onu->status === 'active') {
+                            $isServiceOnline = true;
+                        }
+                    } catch (\Throwable) {}
+
+                    if ($isServiceOnline) {
+                        if ($device->status !== 'online') {
+                            $oldStatus = $device->status;
+                            $device->update(['status' => 'online']);
+                            $transitionedOnline++;
+                            $this->notifyStatusChange($device, 'online', $now, $stateEngine, $oldStatus);
+                        }
+                        continue;
+                    }
+
                     $lastInform = $device->last_inform ?: $device->last_contact;
 
                     if (!$lastInform) {

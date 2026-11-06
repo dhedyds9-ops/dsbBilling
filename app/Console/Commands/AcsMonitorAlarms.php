@@ -96,11 +96,26 @@ class AcsMonitorAlarms extends Command
             }
 
             $newStatus = 'offline';
-            if ($lastInform) {
+
+            // Jika PPPoE / Hotspot pelanggan atau ONU di OLT aktif, status modem pasti online
+            $isServiceOnline = false;
+            try {
+                if ($device->customerService?->pppoeUser?->is_online) {
+                    $isServiceOnline = true;
+                } elseif ($device->customerService?->hotspotUser?->is_online) {
+                    $isServiceOnline = true;
+                } elseif ($device->onu && $device->onu->status === 'active') {
+                    $isServiceOnline = true;
+                }
+            } catch (\Throwable) {}
+
+            if ($isServiceOnline) {
+                $newStatus = 'online';
+            } elseif ($lastInform) {
                 $diffInSeconds = now()->diffInSeconds(Carbon::parse($lastInform));
-                $offlineThreshold = ($informInterval * 2) + 120; // 2x interval + 2 mins grace period
+                $offlineThreshold = max(14400, ($informInterval * 6)); // Minimal 4 jam toleransi
                 
-                if ($diffInSeconds <= $informInterval + 60) {
+                if ($diffInSeconds <= max(1800, $informInterval * 2)) {
                     $newStatus = 'online';
                 } elseif ($diffInSeconds <= $offlineThreshold) {
                     $newStatus = 'stale';

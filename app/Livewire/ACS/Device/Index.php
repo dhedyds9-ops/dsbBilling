@@ -290,7 +290,7 @@ class Index extends BaseACSComponent
         }
         
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) < 20) ? 'online' : 'offline';
+        $status = ($lastInform && abs(now()->diffInHours($lastInform)) < 6) ? 'online' : 'offline';
 
         // Helper pembersih karakter rusak/non-printable (sering terjadi pada VSOL)
         $cleanSn = function ($val) {
@@ -519,6 +519,20 @@ class Index extends BaseACSComponent
                 if ($pppoe && $pppoe->customer_service_id) {
                     $acsDeviceParams['customer_service_id'] = $pppoe->customer_service_id;
                 }
+            }
+        }
+
+        // Jika layanan PPPoE/Hotspot pelanggan atau ONU di OLT aktif, status modem pasti online
+        if (!empty($acsDeviceParams['customer_service_id'])) {
+            $cs = \App\Models\Customer\CustomerService::find($acsDeviceParams['customer_service_id']);
+            if ($cs?->pppoeUser?->is_online || $cs?->hotspotUser?->is_online) {
+                $acsDeviceParams['status'] = 'online';
+            }
+        }
+        if (!empty($acsDeviceParams['onu_id'])) {
+            $linkedOnu = \App\Models\ISP\Onu::find($acsDeviceParams['onu_id']);
+            if ($linkedOnu && $linkedOnu->status === 'active') {
+                $acsDeviceParams['status'] = 'online';
             }
         }
 
