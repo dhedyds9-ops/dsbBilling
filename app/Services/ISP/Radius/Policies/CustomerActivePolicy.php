@@ -22,7 +22,11 @@ class CustomerActivePolicy implements RadiusAccessPolicy
             $huStatus = (string)($ctx->hotspotUser->status ?? 'active');
             if ($huStatus !== 'active') {
                 if ($huStatus === 'suspended') {
-                    $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                    $suspendMode = 'soft';
+                    try {
+                        $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                    } catch (\Throwable) {}
+
                     if ($suspendMode === 'soft') {
                         return new PolicyResult(
                             pass: true,
@@ -40,7 +44,7 @@ class CustomerActivePolicy implements RadiusAccessPolicy
                 return PolicyResult::reject("Akun Hotspot Anda sedang tidak aktif ({$huStatus}). Silakan hubungi admin.", self::ruleClass());
             }
             if (!$cs) {
-                // Hotspot user mandiri / tanpa langganan customer service
+                // Hotspot user mandiri / voucher mode tanpa langganan customer service
                 return PolicyResult::pass();
             }
         }
@@ -49,16 +53,12 @@ class CustomerActivePolicy implements RadiusAccessPolicy
             $puStatus = (string)($ctx->pppoeUser->status ?? 'active');
             if ($puStatus !== 'active') {
                 if ($puStatus === 'suspended') {
-                    $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                    $suspendMode = 'soft';
+                    try {
+                        $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                    } catch (\Throwable) {}
+
                     if ($suspendMode === 'soft') {
-                        $suspendPolicy = $cs ? SuspendPolicy::resolveForService($cs) : null;
-                        if ($suspendPolicy) {
-                            return PolicyResult::applySuspendPolicy(
-                                reason: 'Layanan PPPoE sedang disuspend (mode soft isolir)',
-                                ruleClass: self::ruleClass(),
-                                suspendPolicy: $suspendPolicy,
-                            );
-                        }
                         return new PolicyResult(
                             pass: true,
                             reason: 'Layanan PPPoE sedang disuspend (mode soft isolir)',
@@ -80,16 +80,12 @@ class CustomerActivePolicy implements RadiusAccessPolicy
         $status = is_string($cs->status) ? $cs->status : (string)($cs->status?->value ?? $cs->status);
         if ($status !== 'active') {
             if ($status === 'suspended') {
-                $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                $suspendMode = 'soft';
+                try {
+                    $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
+                } catch (\Throwable) {}
+
                 if ($suspendMode === 'soft') {
-                    $suspendPolicy = SuspendPolicy::resolveForService($cs);
-                    if ($suspendPolicy) {
-                        return PolicyResult::applySuspendPolicy(
-                            reason: 'Layanan Anda saat ini sedang disuspend. Silakan lakukan pembayaran tagihan.',
-                            ruleClass: self::ruleClass(),
-                            suspendPolicy: $suspendPolicy,
-                        );
-                    }
                     return new PolicyResult(
                         pass: true,
                         reason: 'Layanan disuspend (mode soft isolir)',

@@ -141,6 +141,7 @@ class Index extends BaseEnterpriseList
     {
         $labels = [
             'activate' => 'mengaktifkan kembali',
+            'kick' => 'memutus sesi aktif (kick MikroTik)',
             'perpanjang' => 'memperpanjang masa aktif',
             'ganti-paket' => 'mengganti paket',
             'wa' => 'mengirim WhatsApp',
@@ -202,6 +203,7 @@ class Index extends BaseEnterpriseList
                     $svc = app(IsolirService::class);
                     match ($act) {
                         'activate' => $svc->reactivateUser($id),
+                        'kick' => $svc->kickUserSession($id),
                         default => null,
                     };
                     session()->flash('success', ucfirst($act) . ' berhasil.');
@@ -217,6 +219,33 @@ class Index extends BaseEnterpriseList
         $this->confirmAction = '';
         $this->confirmParams = [];
         $this->resetPage();
+    }
+
+    public function restoreOne(string $sourceType, int $id): void
+    {
+        $displayId = ($sourceType === 'pppoe' ? 'P-' : 'H-') . $id;
+        $this->withLoading(function () use ($displayId) {
+            $svc = app(IsolirService::class);
+            $svc->reactivateUser($displayId);
+            session()->flash('success', 'Pelanggan berhasil diaktifkan kembali.');
+            $this->loadSummary();
+            return null;
+        }, 'Gagal memulihkan pelanggan');
+    }
+
+    public function isolateOne(string $sourceType, int $id): void
+    {
+        $this->withLoading(function () use ($sourceType, $id) {
+            $userId = Auth::id() ?? 0;
+            if ($sourceType === 'pppoe') {
+                app(\App\Services\ISP\PPPoEService::class)->suspendPPPoEUser($id, $userId);
+            } else {
+                app(\App\Services\ISP\HotspotService::class)->suspendHotspotUser($id, $userId);
+            }
+            session()->flash('success', 'Pelanggan berhasil diisolir.');
+            $this->loadSummary();
+            return null;
+        }, 'Gagal mengisolir pelanggan');
     }
 
     public function closeModals(): void

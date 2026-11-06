@@ -179,6 +179,10 @@
                   class="p-1.5 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:bg-emerald-900/30 dark:text-slate-400 dark:hover:bg-emerald-900/30">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
                 </button>
+                <button wire:click="confirmRowAction('kick', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Putus Sesi (Kick MikroTik)"
+                  class="p-1.5 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/30">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </button>
                 <button wire:click="confirmRowAction('perpanjang', '{{ $displayId }}', '{{ $phone }}', '{{ $name }}')" title="Perpanjang"
                   class="p-1.5 rounded-md text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:bg-blue-900/30 dark:text-slate-400 dark:hover:bg-blue-900/30">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>

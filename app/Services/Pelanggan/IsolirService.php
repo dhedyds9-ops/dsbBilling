@@ -33,7 +33,6 @@ class IsolirService
             ->leftJoin('customer_services as cs_p', 'pppoe_users.customer_service_id', '=', 'cs_p.id')
             ->leftJoin("{$customerTable} as m_p", 'cs_p.customer_id', '=', 'm_p.id')
             ->leftJoin('service_profiles as sp_p', 'pppoe_users.service_profile_id', '=', 'sp_p.id')
-            ->leftJoin('routers as r_p', 'pppoe_users.router_id', '=', 'r_p.id')
             ->leftJoin('subscriptions as sub_p', 'cs_p.id', '=', 'sub_p.customer_service_id')
             ->leftJoin('invoices as inv_p', function ($j) {
                 $j->on('sub_p.customer_id', '=', 'inv_p.customer_id')
@@ -49,13 +48,13 @@ class IsolirService
                 'm_p.phone as customer_phone',
                 'm_p.id as customer_id',
                 'sp_p.name as package_name',
-                'r_p.name as router_name',
+                DB::raw("NULL as router_name"),
                 'pppoe_users.status',
                 DB::raw("'Non pembayaran / Billing' as alasan"),
                 'pppoe_users.suspended_at as since_isolir',
                 'inv_p.due_date as last_due_date',
                 'pppoe_users.service_profile_id as package_id',
-                'pppoe_users.router_id as router_id',
+                DB::raw("NULL as router_id"),
                 // Reseller yang memiliki customer (bukan created_by — created_by adalah siapa yang input)
                 'pppoe_users.reseller_id as sales_id',
                 'pppoe_users.reseller_id as reseller_id',
@@ -67,7 +66,6 @@ class IsolirService
             ->leftJoin('customer_services as cs_h', 'hotspot_users.customer_service_id', '=', 'cs_h.id')
             ->leftJoin("{$customerTable} as m_h", 'cs_h.customer_id', '=', 'm_h.id')
             ->leftJoin('service_profiles as sp_h', 'hotspot_users.service_profile_id', '=', 'sp_h.id')
-            ->leftJoin('routers as r_h', 'hotspot_users.router_id', '=', 'r_h.id')
             ->leftJoin('subscriptions as sub_h', 'cs_h.id', '=', 'sub_h.customer_service_id')
             ->leftJoin('invoices as inv_h', function ($j) {
                 $j->on('sub_h.customer_id', '=', 'inv_h.customer_id')
@@ -83,22 +81,19 @@ class IsolirService
                 'm_h.phone as customer_phone',
                 'm_h.id as customer_id',
                 'sp_h.name as package_name',
-                'r_h.name as router_name',
+                DB::raw("NULL as router_name"),
                 'hotspot_users.status',
                 DB::raw("'Non pembayaran / Billing' as alasan"),
                 'hotspot_users.suspended_at as since_isolir',
                 'inv_h.due_date as last_due_date',
                 'hotspot_users.service_profile_id as package_id',
-                'hotspot_users.router_id as router_id',
+                DB::raw("NULL as router_id"),
                 // Reseller yang memiliki customer (bukan created_by — created_by adalah siapa yang input)
                 'hotspot_users.reseller_id as sales_id',
                 'hotspot_users.reseller_id as reseller_id',
                 DB::raw("NULL as wilayah_id"),
                 'hotspot_users.suspended_at',
             ]);
-
-        $pppoe = $this->applyFilters($pppoe, $search, $filters);
-        $hotspot = $this->applyFilters($hotspot, $search, $filters);
 
         if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole(UserRole::Reseller->value)) {
             // Reseller hanya bisa lihat customer miliknya berdasarkan reseller_id
@@ -107,47 +102,6 @@ class IsolirService
         }
 
         return $pppoe->unionAll($hotspot);
-    }
-
-    protected function applyFilters(Builder $query, ?string $search, array $filters): Builder
-    {
-        if ($search) {
-            $query->where(function ($sq) use ($search) {
-                $sq->where('pppoe_users.username', 'like', "%{$search}%")
-                   ->orWhere('hotspot_users.username', 'like', "%{$search}%")
-                   ->orWhere('m_p.name', 'like', "%{$search}%")
-                   ->orWhere('m_h.name', 'like', "%{$search}%")
-                   ->orWhere('sp_p.name', 'like', "%{$search}%")
-                   ->orWhere('sp_h.name', 'like', "%{$search}%");
-            });
-        }
-
-        if (!empty($filters['router_id'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('pppoe_users.router_id', $filters['router_id'])
-                  ->orWhere('hotspot_users.router_id', $filters['router_id']);
-            });
-        }
-        if (!empty($filters['package_id'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('sp_p.id', $filters['package_id'])
-                  ->orWhere('sp_h.id', $filters['package_id']);
-            });
-        }
-        if (!empty($filters['start_date'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->whereDate('pppoe_users.suspended_at', '>=', $filters['start_date'])
-                  ->orWhereDate('hotspot_users.suspended_at', '>=', $filters['start_date']);
-            });
-        }
-        if (!empty($filters['end_date'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->whereDate('pppoe_users.suspended_at', '<=', $filters['end_date'])
-                  ->orWhereDate('hotspot_users.suspended_at', '<=', $filters['end_date']);
-            });
-        }
-
-        return $query;
     }
 
     public function list(
@@ -164,7 +118,6 @@ class IsolirService
             'username' => 'username',
             'customer_name' => 'customer_name',
             'package_name' => 'package_name',
-            'router_name' => 'router_name',
             'status' => 'status',
             'alasan' => 'alasan',
             'since_isolir' => 'since_isolir',
@@ -174,8 +127,34 @@ class IsolirService
         $sortDir = strtolower($dir) === 'asc' ? 'asc' : 'desc';
 
         $wrapped = DB::query()->from(DB::raw("({$union->toSql()}) as iso"))
-            ->mergeBindings($union->getQuery())
-            ->orderBy($sortCol, $sortDir);
+            ->mergeBindings($union->getQuery());
+
+        if (!empty($search)) {
+            $wrapped->where(function ($sq) use ($search) {
+                $sq->where('username', 'like', "%{$search}%")
+                   ->orWhere('customer_name', 'like', "%{$search}%")
+                   ->orWhere('customer_phone', 'like', "%{$search}%")
+                   ->orWhere('package_name', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($filters['package_id'])) {
+            $wrapped->where('package_id', $filters['package_id']);
+        }
+        if (!empty($filters['sales_id'])) {
+            $wrapped->where('sales_id', $filters['sales_id']);
+        }
+        if (!empty($filters['reseller_id'])) {
+            $wrapped->where('reseller_id', $filters['reseller_id']);
+        }
+        if (!empty($filters['start_date'])) {
+            $wrapped->whereDate('since_isolir', '>=', $filters['start_date']);
+        }
+        if (!empty($filters['end_date'])) {
+            $wrapped->whereDate('since_isolir', '<=', $filters['end_date']);
+        }
+
+        $wrapped->orderBy($sortCol, $sortDir);
 
         return $wrapped->paginate($perpage, ['*'], 'page', $page);
     }
@@ -271,6 +250,11 @@ class IsolirService
                     'updated_by' => $userId,
                 ]);
                 $customerId = $user->customer?->id ?? null;
+                try {
+                    app(\App\Services\ISP\PPPoEService::class)->provisionToMikrotik($user);
+                } catch (\Throwable $e) {
+                    Log::warning('Provision reactivate PPPoE to Mikrotik failed', ['err' => $e->getMessage()]);
+                }
             } else {
                 $user = HotspotUser::find($id);
                 if (!$user) {
@@ -282,6 +266,11 @@ class IsolirService
                     'updated_by' => $userId,
                 ]);
                 $customerId = $user->customer?->id ?? null;
+                try {
+                    app(\App\Services\ISP\HotspotService::class)->provisionToMikrotik($user);
+                } catch (\Throwable $e) {
+                    Log::warning('Provision reactivate Hotspot to Mikrotik failed', ['err' => $e->getMessage()]);
+                }
             }
 
             try {
@@ -300,6 +289,31 @@ class IsolirService
             Log::error('Reactivate user failed', ['type' => $type, 'id' => $id, 'err' => $e->getMessage()]);
             return false;
         }
+    }
+
+    public function kickUserSession(mixed $displayId): bool
+    {
+        [$type, $id] = $this->parseDisplayId($displayId);
+        if (!$type || !$id) return false;
+
+        try {
+            if ($type === 'pppoe') {
+                $user = PPPoEUser::find($id);
+                if ($user) {
+                    app(\App\Services\ISP\PPPoEService::class)->kickActiveSession($user);
+                    return true;
+                }
+            } else {
+                $user = HotspotUser::find($id);
+                if ($user) {
+                    app(\App\Services\ISP\HotspotService::class)->kickActiveSession($user);
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Kick user session failed', ['type' => $type, 'id' => $id, 'err' => $e->getMessage()]);
+        }
+        return false;
     }
 
     public function sendWaBulk(array $ids): int

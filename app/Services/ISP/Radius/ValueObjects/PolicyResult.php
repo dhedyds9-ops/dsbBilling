@@ -26,9 +26,13 @@ final readonly class PolicyResult
         public int    $httpStatusCode = 200,
     ) {}
 
-    public static function pass(): self
+    public static function pass(?string $ruleClass = null, ?string $reason = null): self
     {
-        return new self(pass: true);
+        return new self(
+            pass: true,
+            reason: $reason ?? '',
+            policyRuleClass: $ruleClass ?? '',
+        );
     }
 
     public static function reject(string $reason, string $ruleClass, array $reply = []): self

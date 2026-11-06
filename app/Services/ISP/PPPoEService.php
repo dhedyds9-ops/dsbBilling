@@ -187,13 +187,19 @@ class PPPoEService
         });
     }
 
-    protected function provisionToMikrotik(PPPoEUser $pppoeUser, bool $isCreate = false): void
+    public function provisionToMikrotik(PPPoEUser $pppoeUser, bool $isCreate = false): void
     {
         if ($isCreate || $pppoeUser->wasRecentlyCreated) return;
 
         $routers = $this->resolveRouters($pppoeUser->serviceProfile);
-        if ($pppoeUser->router_id && $pppoeUser->router) {
-            $routers[$pppoeUser->router_id] = $pppoeUser->router;
+        try {
+            if (!empty($pppoeUser->router_id) && $pppoeUser->router) {
+                $routers[$pppoeUser->router_id] = $pppoeUser->router;
+            }
+        } catch (\Throwable) {}
+
+        if (empty($routers)) {
+            $routers = Router::active()->get();
         }
 
         $normalProfile = $pppoeUser->serviceProfile?->mikrotik_profile ?: ($pppoeUser->serviceProfile?->name ?: 'default');
@@ -211,11 +217,17 @@ class PPPoEService
         }
     }
 
-    protected function provisionIsolationToMikrotik(PPPoEUser $pppoeUser): void
+    public function provisionIsolationToMikrotik(PPPoEUser $pppoeUser): void
     {
         $routers = $this->resolveRouters($pppoeUser->serviceProfile);
-        if ($pppoeUser->router_id && $pppoeUser->router) {
-            $routers[$pppoeUser->router_id] = $pppoeUser->router;
+        try {
+            if (!empty($pppoeUser->router_id) && $pppoeUser->router) {
+                $routers[$pppoeUser->router_id] = $pppoeUser->router;
+            }
+        } catch (\Throwable) {}
+
+        if (empty($routers)) {
+            $routers = Router::active()->get();
         }
 
         $isolirProfile = \App\Models\Setting::getValue('billing.isolir_profile', 'ISOLIR');
@@ -233,18 +245,24 @@ class PPPoEService
         }
     }
 
-    protected function removeFromMikrotik(PPPoEUser $pppoeUser): void
+    public function removeFromMikrotik(PPPoEUser $pppoeUser): void
     {
         $this->kickActiveSession($pppoeUser);
     }
 
-    private function kickActiveSession(PPPoEUser $pppoeUser): void
+    public function kickActiveSession(PPPoEUser $pppoeUser): void
     {
         if ($pppoeUser->wasRecentlyCreated) return;
 
         $routers = $this->resolveRouters($pppoeUser->serviceProfile);
-        if ($pppoeUser->router_id && $pppoeUser->router) {
-            $routers[$pppoeUser->router_id] = $pppoeUser->router;
+        try {
+            if (!empty($pppoeUser->router_id) && $pppoeUser->router) {
+                $routers[$pppoeUser->router_id] = $pppoeUser->router;
+            }
+        } catch (\Throwable) {}
+
+        if (empty($routers)) {
+            $routers = Router::active()->get();
         }
         if (empty($routers)) return;
 

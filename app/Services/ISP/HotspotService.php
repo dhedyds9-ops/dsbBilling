@@ -217,13 +217,19 @@ class HotspotService
         });
     }
 
-    protected function provisionToMikrotik(HotspotUser $hotspotUser, bool $isCreate = false): void
+    public function provisionToMikrotik(HotspotUser $hotspotUser, bool $isCreate = false): void
     {
         if ($isCreate || $hotspotUser->wasRecentlyCreated) return;
 
         $routers = $this->resolveRouters($hotspotUser->serviceProfile);
-        if ($hotspotUser->router_id && $hotspotUser->router) {
-            $routers[$hotspotUser->router_id] = $hotspotUser->router;
+        try {
+            if (!empty($hotspotUser->router_id) && $hotspotUser->router) {
+                $routers[$hotspotUser->router_id] = $hotspotUser->router;
+            }
+        } catch (\Throwable) {}
+
+        if (empty($routers)) {
+            $routers = Router::active()->get();
         }
 
         $normalProfile = $hotspotUser->serviceProfile?->hotspot_profile ?: ($hotspotUser->serviceProfile?->user_profile ?: 'default');
@@ -241,11 +247,17 @@ class HotspotService
         }
     }
 
-    protected function provisionIsolationToMikrotik(HotspotUser $hotspotUser): void
+    public function provisionIsolationToMikrotik(HotspotUser $hotspotUser): void
     {
         $routers = $this->resolveRouters($hotspotUser->serviceProfile);
-        if ($hotspotUser->router_id && $hotspotUser->router) {
-            $routers[$hotspotUser->router_id] = $hotspotUser->router;
+        try {
+            if (!empty($hotspotUser->router_id) && $hotspotUser->router) {
+                $routers[$hotspotUser->router_id] = $hotspotUser->router;
+            }
+        } catch (\Throwable) {}
+
+        if (empty($routers)) {
+            $routers = Router::active()->get();
         }
 
         $isolirProfile = \App\Models\Setting::getValue('billing.isolir_profile', 'ISOLIR');
@@ -263,23 +275,29 @@ class HotspotService
         }
     }
 
-    protected function disconnectFromMikrotik(HotspotUser $hotspotUser): void
+    public function disconnectFromMikrotik(HotspotUser $hotspotUser): void
     {
         $this->kickActiveSession($hotspotUser);
     }
 
-    protected function removeFromMikrotik(HotspotUser $hotspotUser): void
+    public function removeFromMikrotik(HotspotUser $hotspotUser): void
     {
         $this->kickActiveSession($hotspotUser);
     }
 
-    private function kickActiveSession(HotspotUser $hotspotUser): void
+    public function kickActiveSession(HotspotUser $hotspotUser): void
     {
         if ($hotspotUser->wasRecentlyCreated) return;
 
         $routers = $this->resolveRouters($hotspotUser->serviceProfile);
-        if ($hotspotUser->router_id && $hotspotUser->router) {
-            $routers[$hotspotUser->router_id] = $hotspotUser->router;
+        try {
+            if (!empty($hotspotUser->router_id) && $hotspotUser->router) {
+                $routers[$hotspotUser->router_id] = $hotspotUser->router;
+            }
+        } catch (\Throwable) {}
+
+        if (empty($routers)) {
+            $routers = Router::active()->get();
         }
         if (empty($routers)) return;
 
