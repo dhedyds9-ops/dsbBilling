@@ -25,10 +25,9 @@ return new class extends Migration
                 ->pluck('serial_number');
 
             foreach ($duplicates as $sn) {
-                // Pertahankan record dengan customer_service_id atau ID tertinggi
+                // Pertahankan record dengan ID tertinggi (terbaru)
                 $records = DB::table('onus')
                     ->where('serial_number', $sn)
-                    ->orderByDesc('customer_service_id')
                     ->orderByDesc('id')
                     ->get();
 
