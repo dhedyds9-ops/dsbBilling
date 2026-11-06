@@ -63,7 +63,8 @@ class Wizard extends Component
             ['label' => 'Pemasangan Baru', 'url' => '#'],
         ];
 
-        $this->network_profile_id = NetworkProfile::where('type', 'pppoe')->first()?->id;
+        $this->network_profile_id = NetworkProfile::withoutGlobalScopes()->where('type', 'pppoe')->first()?->id
+            ?? NetworkProfile::withoutGlobalScopes()->first()?->id;
 
         // Auto pre-populate from query parameters (PSB, Work Order, CRM Installation, or Ticket)
         $customerId = request()->query('customer_id');
@@ -101,9 +102,55 @@ class Wizard extends Component
     public function updatedServiceProfileId($value)
     {
         if ($value) {
-            $profile = ServiceProfile::find($value);
-            $this->service_type = $profile ? $profile->service_type : 'pppoe';
-            $this->network_profile_id = NetworkProfile::where('type', $this->service_type)->orderByDesc('vlan_id')->first()?->id;
+            $profile = ServiceProfile::withoutGlobalScopes()->find($value);
+            $rawType = strtolower($profile?->service_type ?? '');
+            $this->service_type = in_array($rawType, ['hotspot', 'voucher']) ? 'hotspot' : 'pppoe';
+            $this->network_profile_id = NetworkProfile::withoutGlobalScopes()
+                ->where('type', $this->service_type)
+                ->orderByDesc('vlan_id')
+                ->first()?->id
+                ?? NetworkProfile::withoutGlobalScopes()->first()?->id;
+        }
+    }
+
+    public function updatedOdpId($value)
+    {
+        if ($value) {
+            $odp = Odp::withoutGlobalScopes()->find($value);
+            if ($odp && !empty($odp->olt_id) && empty($this->olt_id)) {
+                $this->olt_id = (string) $odp->olt_id;
+            }
+            if ($odp && !empty($odp->pon_port_id) && empty($this->pon_port)) {
+                $this->pon_port = (string) $odp->pon_port_id;
+            }
+        }
+    }
+
+    public function updatedOnuSn($value)
+    {
+        $sn = strtoupper(trim($value ?? ''));
+        if (strlen($sn) >= 4) {
+            $prefix = substr($sn, 0, 4);
+            $vendorMap = [
+                'ZTEG' => ['vendor' => 'ZTE', 'model' => 'F609'],
+                'HWTC' => ['vendor' => 'Huawei', 'model' => 'HG8245H'],
+                'FHTT' => ['vendor' => 'FiberHome', 'model' => 'HG6145F'],
+                'ALCL' => ['vendor' => 'Nokia', 'model' => 'G-240W-A'],
+                'CIOT' => ['vendor' => 'C-Data', 'model' => 'FD511G-X'],
+            ];
+            if (isset($vendorMap[$prefix])) {
+                $vName = $vendorMap[$prefix]['vendor'];
+                $v = \App\Models\ISP\Vendor::withoutGlobalScopes()->where('name', 'like', "%{$vName}%")->first();
+                if ($v && empty($this->onu_vendor_id)) {
+                    $this->onu_vendor_id = (string) $v->id;
+                }
+                if (empty($this->onu_model)) {
+                    $this->onu_model = $vendorMap[$prefix]['model'];
+                }
+            }
+            if (empty($this->wifi_ssid) && strlen($sn) >= 4) {
+                $this->wifi_ssid = 'WINETS-' . substr($sn, -4);
+            }
         }
     }
 
@@ -366,7 +413,8 @@ class Wizard extends Component
                 }
 
                 $npId = $this->network_profile_id 
-                    ?: NetworkProfile::where('type', $this->service_type)->orderByDesc('vlan_id')->value('id');
+                    ?: NetworkProfile::withoutGlobalScopes()->where('type', $this->service_type)->orderByDesc('vlan_id')->value('id')
+                    ?: NetworkProfile::withoutGlobalScopes()->value('id');
 
                 $data = [
                     'customer_id' => $customer->id,
@@ -513,21 +561,33 @@ class Wizard extends Component
     public function searchOdps(string $query = ''): array
     {
         $q = trim($query);
-        return Odp::withoutGlobalScopes()
-            ->when(!empty($q), function ($builder) use ($q) {
-                $builder->where(function ($sub) use ($q) {
+        $user = auth()->user();
+        $builder = Odp::withoutGlobalScopes();
+        if ($user && $user->branch_id && !$user->isSuperAdmin()) {
+            $builder->where(function ($b) use ($user) {
+                $b->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        return $builder
+            ->when(!empty($q), function ($b) use ($q) {
+                $b->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('code', 'like', "%{$q}%");
+                        ->orWhere('code', 'like', "%{$q}%")
+                        ->orWhere('address', 'like', "%{$q}%");
                 });
             })
             ->latest('id')
-            ->take(20)
+            ->take(30)
             ->get()
             ->map(function ($odp) {
+                $avail = $odp->availablePortCount ?? $odp->available_ports ?? 0;
+                $total = $odp->port_count ?? 8;
                 return [
                     'value' => (string) $odp->id,
-                    'label' => $odp->name,
-                    'sublabel' => "Sisa: {$odp->available_ports} port",
+                    'label' => $odp->name . ($odp->code ? " ({$odp->code})" : ''),
+                    'sublabel' => "Sisa: {$avail}/{$total} port" . ($odp->address ? ' • ' . \Illuminate\Support\Str::limit($odp->address, 30) : ''),
                 ];
             })
             ->toArray();
@@ -564,7 +624,7 @@ class Wizard extends Component
     public function getSelectedServiceProfileProperty()
     {
         if (!$this->service_profile_id) return null;
-        return ServiceProfile::find($this->service_profile_id);
+        return ServiceProfile::withoutGlobalScopes()->find($this->service_profile_id);
     }
 
     public function getSelectedOdpProperty()
@@ -627,18 +687,37 @@ class Wizard extends Component
 
     public function render()
     {
-        $servicesOptions = ServiceProfile::whereIn('service_type', ['pppoe', 'hotspot'])
+        $user = auth()->user();
+        $servicesQuery = ServiceProfile::withoutGlobalScopes();
+        if ($user && $user->branch_id && !$user->isSuperAdmin()) {
+            $servicesQuery->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+        $servicesQuery->where(function ($q) {
+            $q->whereNull('status')->orWhere('status', 'active');
+        });
+
+        $servicesOptions = $servicesQuery
+            ->orderBy('name')
             ->get()
             ->map(function ($s) {
+                $price = $s->base_price ?? $s->price ?? $s->cost_price ?? 0;
+                $st = strtoupper($s->service_type ?: 'INTERNET');
+                $speed = '';
+                if ($s->download_speed) {
+                    $speed = " • {$s->download_speed} Mbps";
+                }
                 return [
                     'value' => (string) $s->id,
                     'label' => $s->name,
-                    'sublabel' => 'Rp' . number_format($s->base_price, 0, ',', '.'),
+                    'sublabel' => "[{$st}] Rp" . number_format($price, 0, ',', '.') . $speed,
                 ];
             })
             ->toArray();
 
-        $resellersOptions = \App\Models\User::whereHas('roles', function($q) {
+        $resellersOptions = \App\Models\User::withoutGlobalScopes()->whereHas('roles', function($q) {
             $q->where('name', 'reseller');
         })
         ->get()
@@ -651,12 +730,13 @@ class Wizard extends Component
         })
         ->toArray();
 
-        $vendors = \App\Models\ISP\Vendor::all();
+        $olts = Olt::withoutGlobalScopes()->get();
+        $vendors = \App\Models\ISP\Vendor::withoutGlobalScopes()->get();
 
         return view('livewire.isp.technician.installation.wizard', [
             'servicesOptions' => $servicesOptions,
             'resellersOptions' => $resellersOptions,
-            'olts' => Olt::all(),
+            'olts' => $olts,
             'vendors' => $vendors,
         ]);
     }

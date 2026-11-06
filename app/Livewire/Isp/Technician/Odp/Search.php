@@ -33,7 +33,14 @@ class Search extends Component
 
     public function render()
     {
-        $query = Odp::with(['olt', 'branch'])
+        $user = auth()->user();
+        $query = Odp::withoutGlobalScopes()->with(['olt', 'branch'])
+            ->when($user && $user->branch_id && !$user->isSuperAdmin(), function ($q) use ($user) {
+                $q->where(function ($b) use ($user) {
+                    $b->where('branch_id', $user->branch_id)
+                      ->orWhereNull('branch_id');
+                });
+            })
             ->when($this->search, function ($q) {
                 $q->where(function($sub) {
                     $sub->where('code', 'like', '%'.$this->search.'%')
@@ -54,7 +61,7 @@ class Search extends Component
 
         return view('livewire.isp.technician.odp.search', [
             'odps' => $query->paginate(12)
-        ])->layout('layouts.noc', ['slot' => '']);
+        ]);
     }
 }
 

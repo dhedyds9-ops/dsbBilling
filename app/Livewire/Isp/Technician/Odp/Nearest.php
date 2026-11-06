@@ -23,7 +23,14 @@ class Nearest extends Component
 
     public function loadNearestOdps()
     {
-        $this->odps = Odp::with(['olt', 'branch'])
+        $user = auth()->user();
+        $this->odps = Odp::withoutGlobalScopes()->with(['olt', 'branch'])
+            ->when($user && $user->branch_id && !$user->isSuperAdmin(), function ($q) use ($user) {
+                $q->where(function ($b) use ($user) {
+                    $b->where('branch_id', $user->branch_id)
+                      ->orWhereNull('branch_id');
+                });
+            })
             ->active()
             ->near($this->latitude, $this->longitude, $this->radius)
             ->get()

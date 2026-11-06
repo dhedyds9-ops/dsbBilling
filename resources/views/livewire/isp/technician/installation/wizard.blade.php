@@ -156,6 +156,36 @@
                 :error="$errors->first('service_profile_id')"
             />
 
+            {{-- Detail Paket Terpilih --}}
+            @if($this->selectedServiceProfile)
+                @php $sp = $this->selectedServiceProfile; @endphp
+                <div class="mt-4 p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-start justify-between gap-3 animate-fadeIn">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                            <span class="material-symbols-outlined" style="font-size:20px">wifi</span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                                {{ $sp->name }}
+                            </div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
+                                <span class="px-2 py-0.5 rounded font-black text-[10px] uppercase {{ $service_type === 'hotspot' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' }}">
+                                    {{ strtoupper($service_type) }}
+                                </span>
+                                @if($sp->download_speed)
+                                    <span>Bandwidth: <strong>{{ $sp->download_speed }}M / {{ $sp->upload_speed ?? $sp->download_speed }}M</strong></span>
+                                @endif
+                                <span>•</span>
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($sp->base_price ?? $sp->price ?? 0, 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0">
+                        Terpilih
+                    </span>
+                </div>
+            @endif
+
             <div class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center justify-between">
                     <span>Kredensial Layanan PPPoE / Hotspot</span>
@@ -187,6 +217,37 @@
                 :selected-label="$this->selectedOdpLabel"
                 :error="$errors->first('odp_id')"
             />
+
+            {{-- Detail ODP Terpilih --}}
+            @if($this->selectedOdp)
+                @php $odpObj = $this->selectedOdp; @endphp
+                <div class="mt-4 p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50 flex items-start justify-between gap-3 animate-fadeIn">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                            <span class="material-symbols-outlined" style="font-size:20px">hub</span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                                {{ $odpObj->name }}
+                            </div>
+                            <div class="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
+                                <span>Sisa Port: <strong>{{ $odpObj->availablePortCount ?? $odpObj->available_ports ?? '-' }}/{{ $odpObj->port_count ?? '-' }}</strong></span>
+                                @if($odpObj->olt)
+                                    <span>• OLT: <strong>{{ $odpObj->olt->name }}</strong></span>
+                                @endif
+                            </div>
+                            @if($odpObj->address)
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+                                    {{ $odpObj->address }}
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0">
+                        Terpilih
+                    </span>
+                </div>
+            @endif
         @endif
 
         @if($currentStep === 4)

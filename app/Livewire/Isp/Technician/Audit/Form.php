@@ -90,7 +90,7 @@ class Form extends Component
             );
 
             // 2. Buat CustomerService (Soft Link, tanpa dikirim ke Orchestrator)
-            $profile = ServiceProfile::find($this->service_profile_id);
+            $profile = ServiceProfile::withoutGlobalScopes()->find($this->service_profile_id);
             
             $cs = CustomerService::where("customer_id", $customer->id)->where("onu_id", $onu->id)->first();
             if (!$cs) {
@@ -115,9 +115,18 @@ class Form extends Component
     public function searchCustomers(string $query = ''): array
     {
         $q = trim($query);
-        return Customer::withoutGuests()
-            ->when(!empty($q), function ($builder) use ($q) {
-                $builder->where(function ($sub) use ($q) {
+        $user = auth()->user();
+        $builder = Customer::withoutGlobalScopes()->withoutGuests();
+        if ($user && $user->branch_id && !$user->isSuperAdmin()) {
+            $builder->where(function ($b) use ($user) {
+                $b->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        return $builder
+            ->when(!empty($q), function ($b) use ($q) {
+                $b->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
                         ->orWhere('phone', 'like', "%{$q}%")
                         ->orWhere('code', 'like', "%{$q}%");
@@ -138,13 +147,13 @@ class Form extends Component
     public function getSelectedCustomerLabelProperty(): ?string
     {
         if (!$this->customer_id) return null;
-        $c = Customer::withoutGuests()->find($this->customer_id);
+        $c = Customer::withoutGlobalScopes()->withoutGuests()->find($this->customer_id);
         return $c ? "{$c->name} ({$c->phone})" : null;
     }
 
     public function render()
     {
-        $oltsOptions = Olt::all()->map(function ($o) {
+        $oltsOptions = Olt::withoutGlobalScopes()->get()->map(function ($o) {
             return [
                 'value' => (string) $o->id,
                 'label' => $o->name,
@@ -152,13 +161,30 @@ class Form extends Component
             ];
         })->toArray();
 
-        $servicesOptions = ServiceProfile::all()->map(function ($s) {
-            return [
-                'value' => (string) $s->id,
-                'label' => $s->name,
-                'sublabel' => 'Rp' . number_format($s->base_price ?? 0, 0, ',', '.'),
-            ];
-        })->toArray();
+        $user = auth()->user();
+        $servicesQuery = ServiceProfile::withoutGlobalScopes();
+        if ($user && $user->branch_id && !$user->isSuperAdmin()) {
+            $servicesQuery->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+        $servicesQuery->where(function ($q) {
+            $q->whereNull('status')->orWhere('status', 'active');
+        });
+
+        $servicesOptions = $servicesQuery
+            ->orderBy('name')
+            ->get()
+            ->map(function ($s) {
+                $price = $s->base_price ?? $s->price ?? $s->cost_price ?? 0;
+                $st = strtoupper($s->service_type ?: 'INTERNET');
+                return [
+                    'value' => (string) $s->id,
+                    'label' => $s->name,
+                    'sublabel' => "[{$st}] Rp" . number_format($price, 0, ',', '.'),
+                ];
+            })->toArray();
 
         return view("livewire.isp.technician.audit.form", [
             "oltsOptions" => $oltsOptions,

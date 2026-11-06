@@ -2,7 +2,8 @@
     $__isDashboard = request()->routeIs('technician.dashboard');
     $__hasCheckedIn = false;
     if (auth()->check()) {
-        $__hasCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', auth()->id())
+        $__isAdmin = auth()->user()->isSuperAdmin() || auth()->user()->hasRole(['administrator', 'superadmin', 'admin']);
+        $__hasCheckedIn = $__isAdmin || \App\Models\Workforce\Attendance::where('technician_id', auth()->id())
             ->whereDate('date', \Carbon\Carbon::today())
             ->whereNotNull('checked_in_at')
             ->exists();

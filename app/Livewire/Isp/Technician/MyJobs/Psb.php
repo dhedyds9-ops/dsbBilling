@@ -14,10 +14,13 @@ class Psb extends Component
 
     public function render()
     {
+        $user = auth()->user();
+        $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin', 'manager']));
+
         $jobs = Ticket::withoutGlobalScopes()
             ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
             ->whereIn('category', ['psb', 'installation'])
-            ->where('assigned_to', auth()->id())
+            ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $user->id))
             ->whereIn('status', ['open', 'in_progress'])
             ->latest()
             ->paginate(10);

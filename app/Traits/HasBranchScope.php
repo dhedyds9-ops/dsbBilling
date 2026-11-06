@@ -23,7 +23,14 @@ trait HasBranchScope
 
                 // Branch scope logic for Manager (Technician/NOC)
                 if (auth()->user()->branch_id && $hasBranchId && auth()->user()->hasRole(UserRole::Manager->value)) {
-                    $builder->where($table . '.branch_id', auth()->user()->branch_id);
+                    if (in_array($table, ['service_profiles', 'network_profiles', 'vendors', 'olts', 'routers'], true)) {
+                        $builder->where(function ($q) use ($table) {
+                            $q->where($table . '.branch_id', auth()->user()->branch_id)
+                              ->orWhereNull($table . '.branch_id');
+                        });
+                    } else {
+                        $builder->where($table . '.branch_id', auth()->user()->branch_id);
+                    }
                 }
 
                 // Reseller scope logic
