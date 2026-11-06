@@ -139,12 +139,23 @@ class AcsMonitorAlarms extends Command
             $deviceChanged = false;
 
             // Check Offline Alarm (with Mass Outage Suppression)
+            $notifyAcsAlarms = (bool) \App\Models\Setting::getValue('telegram.notify_acs_alarms', true);
+            $notifyAcsOnline = (bool) \App\Models\Setting::getValue('telegram.notify_acs_online', false);
+
             if (in_array($device->status, ['online', 'stale']) && $newStatus === 'offline') {
-                $this->triggerAlarm($device, 'critical', 'Perangkat Offline', "Modem tidak menghubungi server ACS melampaui batas toleransi (Inform Interval).", $telegram, suppressIfIncident: true);
+                if ($notifyAcsAlarms) {
+                    $this->triggerAlarm($device, 'critical', 'Perangkat Offline', "Modem tidak menghubungi server ACS melampaui batas toleransi (Inform Interval).", $telegram, suppressIfIncident: true);
+                } else {
+                    $this->triggerLog($device, 'critical', 'Perangkat Offline', "Modem tidak menghubungi server ACS.");
+                }
                 $deviceChanged = true;
             } elseif ($device->status === 'offline' && in_array($newStatus, ['online', 'stale'])) {
                 $this->triggerLog($device, 'info', 'Perangkat Online Kembali', 'Modem kembali terhubung ke server ACS.');
-                $telegram->sendAlarmNotification($device->serial_number, 'ONLINE', 'Perangkat kembali terhubung.');
+                
+                // Hanya kirim notifikasi Telegram ONLINE jika diaktifkan eksplisit di pengaturan
+                if ($notifyAcsAlarms && $notifyAcsOnline) {
+                    $telegram->sendAlarmNotification($device->serial_number, 'ONLINE', 'Perangkat kembali terhubung.');
+                }
                 
                 // Automatically acknowledge existing offline alarms
                 ACSAlarm::where('acs_device_id', $device->id)
