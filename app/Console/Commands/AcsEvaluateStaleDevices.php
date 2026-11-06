@@ -20,6 +20,30 @@ class AcsEvaluateStaleDevices extends Command
     {
         $this->info('Starting database-driven stale device evaluation...');
 
+        // 1. Auto-refresh last_inform directly from GenieACS NBI (lightweight projection _id, _lastInform)
+        try {
+            $acsDriver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $gDevices = $acsDriver->listDevices(['projection' => '_id,_lastInform'], 5000);
+            if (!empty($gDevices)) {
+                foreach ($gDevices as $gd) {
+                    $gId = $gd['_id'] ?? null;
+                    if ($gId && !empty($gd['_lastInform'])) {
+                        try {
+                            $dt = Carbon::parse($gd['_lastInform']);
+                            ACSDevice::withoutGlobalScopes()
+                                ->where('uuid', $gId)
+                                ->update([
+                                    'last_inform' => $dt,
+                                    'last_contact' => $dt,
+                                ]);
+                        } catch (\Throwable) {}
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info("AcsEvaluateStaleDevices: NBI sync skipped ({$e->getMessage()}), evaluating local records.");
+        }
+
         $defaultInterval = (int) ($this->option('interval')
             ?: config('genieacs.cpe_defaults.periodic_inform_interval_seconds', 300));
 
@@ -27,23 +51,26 @@ class AcsEvaluateStaleDevices extends Command
         $offlineThreshold = max(1080, ($defaultInterval * 3) + 180); // 1080 detik = 18 menit (toleransi wajar)
 
         $now = now();
+        $transitionedOnline = 0;
         $transitionedOffline = 0;
         $transitionedStale = 0;
         $evaluatedCount = 0;
 
-        // Query devices currently considered online or stale
+        // Query all devices to evaluate and auto-recover online state
         ACSDevice::withoutGlobalScopes()
-            ->whereIn('status', ['online', 'stale'])
-            ->chunkById(250, function ($devices) use ($now, $onlineThreshold, $offlineThreshold, $stateEngine, &$transitionedOffline, &$transitionedStale, &$evaluatedCount) {
+            ->chunkById(250, function ($devices) use ($now, $onlineThreshold, $offlineThreshold, $stateEngine, &$transitionedOnline, &$transitionedOffline, &$transitionedStale, &$evaluatedCount) {
                 foreach ($devices as $device) {
                     $evaluatedCount++;
                     $lastInform = $device->last_inform ?: $device->last_contact;
 
                     if (!$lastInform) {
                         // Never contacted or informed
-                        $device->update(['status' => 'offline']);
-                        $transitionedOffline++;
-                        $this->notifyStatusChange($device, 'offline', $now, $stateEngine);
+                        if ($device->status !== 'offline') {
+                            $oldStatus = $device->status;
+                            $device->update(['status' => 'offline']);
+                            $transitionedOffline++;
+                            $this->notifyStatusChange($device, 'offline', $now, $stateEngine, $oldStatus);
+                        }
                         continue;
                     }
 
@@ -56,21 +83,39 @@ class AcsEvaluateStaleDevices extends Command
                         continue;
                     }
 
-                    if ($elapsedSeconds > $offlineThreshold) {
-                        // Passed offline threshold -> Mark offline
-                        $oldStatus = $device->status;
-                        $device->update(['status' => 'offline']);
-                        $transitionedOffline++;
+                    if ($elapsedSeconds <= $onlineThreshold) {
+                        // Recent Inform -> Automatically recover to ONLINE!
+                        if ($device->status !== 'online') {
+                            $oldStatus = $device->status;
+                            $device->update(['status' => 'online']);
+                            $transitionedOnline++;
 
-                        // Also update linked ONU status if present
-                        if ($device->onu_id) {
-                            Onu::withoutGlobalScopes(['branch_isolation'])
-                                ->where('id', $device->onu_id)
-                                ->where('status', 'active')
-                                ->update(['status' => 'inactive']);
+                            if ($device->onu_id) {
+                                Onu::withoutGlobalScopes(['branch_isolation'])
+                                    ->where('id', $device->onu_id)
+                                    ->where('status', 'inactive')
+                                    ->update(['status' => 'active']);
+                            }
+
+                            $this->notifyStatusChange($device, 'online', $now, $stateEngine, $oldStatus);
                         }
+                    } elseif ($elapsedSeconds > $offlineThreshold) {
+                        // Passed offline threshold -> Mark offline
+                        if ($device->status !== 'offline') {
+                            $oldStatus = $device->status;
+                            $device->update(['status' => 'offline']);
+                            $transitionedOffline++;
 
-                        $this->notifyStatusChange($device, 'offline', $now, $stateEngine, $oldStatus);
+                            // Also update linked ONU status if present
+                            if ($device->onu_id) {
+                                Onu::withoutGlobalScopes(['branch_isolation'])
+                                    ->where('id', $device->onu_id)
+                                    ->where('status', 'active')
+                                    ->update(['status' => 'inactive']);
+                            }
+
+                            $this->notifyStatusChange($device, 'offline', $now, $stateEngine, $oldStatus);
+                        }
                     } elseif ($elapsedSeconds > $onlineThreshold && $device->status !== 'stale') {
                         // Passed online threshold but within offline tolerance -> Mark stale
                         $oldStatus = $device->status;
@@ -82,8 +127,8 @@ class AcsEvaluateStaleDevices extends Command
                 }
             });
 
-        $this->info("Evaluation finished. Evaluated: {$evaluatedCount}, Stale: {$transitionedStale}, Offline: {$transitionedOffline}.");
-        Log::info("AcsEvaluateStaleDevices: Evaluated {$evaluatedCount} devices. {$transitionedStale} transitioned to STALE, {$transitionedOffline} transitioned to OFFLINE.");
+        $this->info("Evaluation finished. Evaluated: {$evaluatedCount}, Online: {$transitionedOnline}, Stale: {$transitionedStale}, Offline: {$transitionedOffline}.");
+        Log::info("AcsEvaluateStaleDevices: Evaluated {$evaluatedCount} devices. {$transitionedOnline} transitioned to ONLINE, {$transitionedStale} to STALE, {$transitionedOffline} to OFFLINE.");
 
         return Command::SUCCESS;
     }
