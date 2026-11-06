@@ -11,7 +11,7 @@
         </div>
     @endsection
 
-    <div class="space-y-4" wire:poll.60s>
+    <div class="space-y-4" wire:poll.10s="autoPollSync">
         {{-- ALERTS / NOTIFICATIONS --}}
         @if (session()->has('success'))
             <div class="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-200 text-sm flex items-center gap-2.5 shadow-sm">

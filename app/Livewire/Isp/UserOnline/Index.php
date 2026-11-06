@@ -43,12 +43,20 @@ class Index extends BaseNetworkComponent
             ['label' => 'User Online'],
         ];
 
-        if (HotspotActiveSession::query()->count() === 0 && PppActiveSession::query()->count() === 0) {
-            $lockKey = 'user_online_auto_sync_lock';
-            if (!\Illuminate\Support\Facades\Cache::has($lockKey)) {
-                \Illuminate\Support\Facades\Cache::put($lockKey, true, 60);
-                $this->syncRouters(isAuto: true);
-            }
+        // Otomatis sinkronkan dari router secara realtime saat halaman dibuka (throttle 10s)
+        $lockKey = 'user_online_auto_sync_lock';
+        if (!\Illuminate\Support\Facades\Cache::has($lockKey)) {
+            \Illuminate\Support\Facades\Cache::put($lockKey, true, 10);
+            $this->syncRouters(isAuto: true);
+        }
+    }
+
+    public function autoPollSync()
+    {
+        $lockKey = 'user_online_auto_sync_lock';
+        if (!\Illuminate\Support\Facades\Cache::has($lockKey)) {
+            \Illuminate\Support\Facades\Cache::put($lockKey, true, 10);
+            $this->syncRouters(isAuto: true);
         }
     }
 
@@ -68,37 +76,28 @@ class Index extends BaseNetworkComponent
                 return;
             }
 
-            if ($isAuto) {
-                // Di auto-sync latar belakang, dispatch ke queue agar tidak membebani pemuatan halaman
-                foreach ($routers as $router) {
-                    try {
-                        PollSingleRouterJob::dispatch($router);
-                    } catch (\Throwable $th) {
-                        Log::warning('syncRouters auto dispatch failed', ['id' => $router->id, 'err' => $th->getMessage()]);
-                    }
-                }
-            } else {
-                // Saat user menekan tombol sinkron, jalankan langsung secara realtime agar user mendapat respon instan
-                $successList = [];
-                $failList = [];
-                $driver = app(\App\Services\Adapters\Monitoring\MikroTikDriver::class);
+            // Jalankan langsung sinkronisasi router agar sesi online selalu update seketika
+            $successList = [];
+            $failList = [];
+            $driver = app(\App\Services\Adapters\Monitoring\MikroTikDriver::class);
 
-                foreach ($routers as $router) {
-                    try {
-                        $job = new PollSingleRouterJob($router);
-                        $job->handle($driver);
-                        $successList[] = $router->name;
-                    } catch (\Throwable $th) {
-                        $msg = $th->getMessage() ?: 'Gagal terhubung';
-                        $failList[] = "{$router->name} ({$router->ip_address}): {$msg}";
-                        Log::warning('syncRouters manual poll error', [
-                            'router_id' => $router->id,
-                            'name' => $router->name,
-                            'err' => $msg,
-                        ]);
-                    }
+            foreach ($routers as $router) {
+                try {
+                    $job = new PollSingleRouterJob($router);
+                    $job->handle($driver);
+                    $successList[] = $router->name;
+                } catch (\Throwable $th) {
+                    $msg = $th->getMessage() ?: 'Gagal terhubung';
+                    $failList[] = "{$router->name} ({$router->ip_address}): {$msg}";
+                    Log::warning('syncRouters poll error', [
+                        'router_id' => $router->id,
+                        'name' => $router->name,
+                        'err' => $msg,
+                    ]);
                 }
+            }
 
+            if (!$isAuto) {
                 if (!empty($successList) && empty($failList)) {
                     session()->flash('success', 'Berhasil menyinkronkan data sesi dari router: ' . implode(', ', $successList) . '.');
                 } elseif (!empty($successList) && !empty($failList)) {
