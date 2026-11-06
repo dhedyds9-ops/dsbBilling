@@ -110,9 +110,29 @@ class HotspotUser extends Model
             return false;
         }
 
-        return \App\Models\ISP\HotspotActiveSession::where('user', 'like', $rawUname)->exists()
-            || $this->radiusAccountings()->whereNull('acct_stop_time')->exists()
-            || \App\Models\ISP\RadiusAccounting::where('username', 'like', $rawUname)->whereNull('acct_stop_time')->exists();
+        // 1. Cek sesi aktif langsung dari polling router MikroTik
+        if (\App\Models\ISP\HotspotActiveSession::where('user', 'like', $rawUname)->exists()) {
+            return true;
+        }
+
+        // 2. Cek sesi RADIUS accounting yang masih aktif dan fresh (update dalam 30 menit terakhir)
+        $freshThreshold = now()->subMinutes(30);
+        return $this->radiusAccountings()
+            ->whereNull('acct_stop_time')
+            ->where(function ($q) use ($freshThreshold) {
+                $q->where('updated_at', '>=', $freshThreshold)
+                  ->orWhere('received_at', '>=', $freshThreshold)
+                  ->orWhere('created_at', '>=', $freshThreshold);
+            })
+            ->exists()
+            || \App\Models\ISP\RadiusAccounting::where('username', 'like', $rawUname)
+                ->whereNull('acct_stop_time')
+                ->where(function ($q) use ($freshThreshold) {
+                    $q->where('updated_at', '>=', $freshThreshold)
+                      ->orWhere('received_at', '>=', $freshThreshold)
+                      ->orWhere('created_at', '>=', $freshThreshold);
+                })
+                ->exists();
     }
 
     public function activeSession()

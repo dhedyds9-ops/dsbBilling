@@ -32,10 +32,10 @@ Schedule::command('billing:auto-suspend')
     ->timezone('Asia/Jakarta')
     ->name('Engine Isolir Otomatis - Janji Bayar Check');
 
-Schedule::command('radius:reap-dead-sessions --timeout=3600')
-    ->everyTenMinutes()
+Schedule::command('radius:reap-dead-sessions --timeout=600')
+    ->everyFiveMinutes()
     ->timezone('Asia/Jakarta')
-    ->withoutOverlapping(10)
+    ->withoutOverlapping(5)
     ->name('Reap Dead Radius Accounting Sessions');
 
 Schedule::command('radius:resolve-lifecycle-fk --limit=5000')
@@ -66,11 +66,13 @@ Schedule::call(function (OltPollingService $polling) {
     ->withoutOverlapping(5);
 
 // =================== ROUTER (MIKROTIK) POLLING ===================
-Schedule::job(new RunCollectorJob(RouterCollector::class))
-    ->everyFiveMinutes()
+Schedule::call(function (RouterCollector $collector) {
+    $collector->collect();
+})
+    ->everyMinute()
     ->timezone('Asia/Jakarta')
     ->name('MikroTik Router Status Polling')
-    ->withoutOverlapping(1);
+    ->withoutOverlapping(2);
 
 Schedule::command('acs:monitor-alarms')
     ->everyFifteenMinutes()

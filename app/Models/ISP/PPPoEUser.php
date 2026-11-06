@@ -110,13 +110,32 @@ class PPPoEUser extends Model
         }
         $stripped = str_contains($rawUname, '@') ? explode('@', $rawUname)[0] : $rawUname;
 
-        return \App\Models\ISP\PppActiveSession::where('name', 'like', $rawUname)
+        // 1. Cek sesi aktif langsung dari polling router MikroTik (Paling akurat)
+        if (\App\Models\ISP\PppActiveSession::where('name', 'like', $rawUname)
             ->orWhere('name', 'like', $stripped)
+            ->exists()) {
+            return true;
+        }
+
+        // 2. Cek sesi RADIUS accounting yang masih aktif dan fresh (update dalam 30 menit terakhir)
+        $freshThreshold = now()->subMinutes(30);
+        return $this->radiusAccountings()
+            ->whereNull('acct_stop_time')
+            ->where(function ($q) use ($freshThreshold) {
+                $q->where('updated_at', '>=', $freshThreshold)
+                  ->orWhere('received_at', '>=', $freshThreshold)
+                  ->orWhere('created_at', '>=', $freshThreshold);
+            })
             ->exists()
-            || $this->radiusAccountings()->whereNull('acct_stop_time')->exists()
             || \App\Models\ISP\RadiusAccounting::where(function($q) use ($rawUname, $stripped) {
                 $q->where('username', 'like', $rawUname)->orWhere('username', 'like', $stripped);
-            })->whereNull('acct_stop_time')->exists();
+            })->whereNull('acct_stop_time')
+              ->where(function ($q) use ($freshThreshold) {
+                  $q->where('updated_at', '>=', $freshThreshold)
+                    ->orWhere('received_at', '>=', $freshThreshold)
+                    ->orWhere('created_at', '>=', $freshThreshold);
+              })
+              ->exists();
     }
 
     public function activeSession()
