@@ -36,6 +36,11 @@
                 <span class="truncate" x-show="!sidebarCollapsed">Interface</span>
             </a>
             
+            <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'vlan']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ in_array($activeTab, ['vlan', 'network-profiles']) ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+                <span class="material-symbols-outlined notranslate text-[20px]" translate="no">alt_route</span>
+                <span class="truncate" x-show="!sidebarCollapsed">Network Profile (VLAN)</span>
+            </a>
+            
             <a href="{{ route('isp.routers.show', ['id' => $routerId, 'tab' => 'ppp']) }}" wire:navigate class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ $activeTab === 'ppp' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 font-semibold shadow-xs border border-blue-200/80 dark:border-blue-700/60' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
                 <span class="material-symbols-outlined notranslate text-[20px]" translate="no">account_tree</span>
                 <span class="truncate" x-show="!sidebarCollapsed">PPP</span>

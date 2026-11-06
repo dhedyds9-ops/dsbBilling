@@ -193,6 +193,230 @@
                 </div>
             </div>
 
+        @elseif($activeTab === 'vlan' || $activeTab === 'network-profiles')
+            <div class="space-y-6">
+                {{-- Flash Message --}}
+                @if(session('success'))
+                    <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">check_circle</span>
+                        {{ session('success') }}
+                    </div>
+                @endif
+                @if(session('error'))
+                    <div class="flex items-center gap-3 px-4 py-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-700 dark:text-rose-400 text-sm font-medium">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">error</span>
+                        {{ session('error') }}
+                    </div>
+                @endif
+
+                {{-- Header / Action Bar --}}
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                            <span class="material-symbols-outlined notranslate text-[22px]" translate="no">alt_route</span>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                Network Profile & VLAN
+                                <span class="text-xs font-mono font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                    {{ $router->name }}
+                                </span>
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Profil jaringan (VLAN Tagging, Mode Layanan PPPoE / Hotspot) khusus untuk router ini.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" wire:click="openCreateVlanModal" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined notranslate text-[18px]" translate="no">add</span>
+                            Tambah Profile VLAN
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Table Card --}}
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700 bg-slate-50/75 dark:bg-slate-800/80 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    <th class="px-4 py-3.5 text-center w-24">Aksi</th>
+                                    <th class="px-4 py-3.5">Nama Profile</th>
+                                    <th class="px-4 py-3.5">Tipe Layanan</th>
+                                    <th class="px-4 py-3.5">VLAN Tag</th>
+                                    <th class="px-4 py-3.5">IP Pool</th>
+                                    <th class="px-4 py-3.5">Deskripsi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+                                @forelse($networkProfiles as $profile)
+                                    <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                                        <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <button type="button" wire:click="openEditVlanModal({{ $profile->id }})" 
+                                                        title="Edit Profil VLAN"
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors cursor-pointer">
+                                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">edit</span>
+                                                </button>
+                                                <button type="button" wire:click="deleteVlanProfile({{ $profile->id }})" 
+                                                        wire:confirm="Yakin ingin menghapus profile VLAN '{{ $profile->name }}'?" 
+                                                        title="Hapus"
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-colors cursor-pointer">
+                                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">delete</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap">
+                                            <div class="font-bold text-slate-900 dark:text-white">{{ $profile->name }}</div>
+                                            @if($profile->uuid)
+                                                <div class="text-[10px] font-mono text-slate-400">{{ substr($profile->uuid, 0, 8) }}...</div>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap">
+                                            @php
+                                                $t = strtolower($profile->type ?? '');
+                                                $badge = match($t) {
+                                                    'pppoe'   => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                                    'hotspot' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+                                                    default   => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+                                                };
+                                            @endphp
+                                            <span class="px-2.5 py-1 text-xs font-bold rounded-full uppercase tracking-wider {{ $badge }}">
+                                                {{ $profile->type }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap">
+                                            @if($profile->vlan_id)
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                                    <span class="material-symbols-outlined notranslate text-[14px]" translate="no">tag</span>
+                                                    VLAN {{ $profile->vlan_id }}
+                                                </span>
+                                            @else
+                                                <span class="text-xs text-slate-400 italic">Untagged</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300 font-mono">
+                                            {{ $profile->ipPool?->name ?? '-' }}
+                                        </td>
+                                        <td class="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-300 max-w-xs truncate">
+                                            {{ $profile->description ?: '-' }}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="p-12 text-center">
+                                            <div class="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-700/50 text-slate-400 rounded-full flex items-center justify-center mb-3">
+                                                <span class="material-symbols-outlined notranslate text-[32px]" translate="no">alt_route</span>
+                                            </div>
+                                            <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Belum Ada Network Profile (VLAN) di Router Ini</h3>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                                                Buat Network Profile untuk memetakan VLAN ID (misal VLAN 100, 200, 300) ke router {{ $router->name }} dan ONU pelanggan.
+                                            </p>
+                                            <div class="mt-4">
+                                                <button type="button" wire:click="openCreateVlanModal" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer">
+                                                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">add</span> Tambah Profile Sekarang
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Modal Tambah / Edit VLAN Profile --}}
+                @if($showVlanModal)
+                <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" wire:click="closeVlanModal"></div>
+                        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                        <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-200 dark:border-slate-700">
+                            <form wire:submit.prevent="saveVlanProfile">
+                                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/80">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                            <span class="material-symbols-outlined notranslate text-[18px]" translate="no">alt_route</span>
+                                        </div>
+                                        <h3 class="text-base font-bold text-slate-900 dark:text-white">
+                                            {{ $vlanProfileId ? 'Edit Profile VLAN' : 'Tambah Profile VLAN Baru' }}
+                                        </h3>
+                                    </div>
+                                    <button type="button" wire:click="closeVlanModal" class="text-slate-400 hover:text-slate-500 rounded-lg p-1 transition-colors">
+                                        <span class="material-symbols-outlined notranslate text-[20px]" translate="no">close</span>
+                                    </button>
+                                </div>
+
+                                <div class="p-6 space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                            Nama Profile <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="text" wire:model="vlanName" placeholder="Contoh: PPPoE-VLAN-100" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                        @error('vlanName') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                                Tipe Layanan <span class="text-rose-500">*</span>
+                                            </label>
+                                            <select wire:model="vlanType" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                                <option value="pppoe">PPPoE</option>
+                                                <option value="hotspot">Hotspot</option>
+                                                <option value="static">Static IP</option>
+                                            </select>
+                                            @error('vlanType') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                                VLAN ID (1-4094) <span class="text-rose-500">*</span>
+                                            </label>
+                                            <input type="number" min="1" max="4094" wire:model="vlanTag" placeholder="Contoh: 100" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                            @error('vlanTag') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                            IP Pool (Opsional)
+                                        </label>
+                                        <select wire:model="vlanIpPoolId" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                            <option value="">-- Tanpa IP Pool Khusus --</option>
+                                            @foreach($ipPools as $pool)
+                                                <option value="{{ $pool->id }}">{{ $pool->name }} ({{ $pool->network }})</option>
+                                            @endforeach
+                                        </select>
+                                        @error('vlanIpPoolId') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                            Deskripsi / Keterangan
+                                        </label>
+                                        <textarea wire:model="vlanDescription" rows="2" placeholder="Catatan opsional untuk profil VLAN ini..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                                        @error('vlanDescription') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+
+                                <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 rounded-b-2xl">
+                                    <button type="button" wire:click="closeVlanModal" class="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                        Batal
+                                    </button>
+                                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer">
+                                        <span wire:loading.remove wire:target="saveVlanProfile">Simpan Profile</span>
+                                        <span wire:loading wire:target="saveVlanProfile">Menyimpan...</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </div>
+
         @elseif($activeTab === 'ppp')
             <div class="space-y-6" x-data="{ subTab: 'active' }">
 <div class="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-2">

@@ -34,6 +34,20 @@
         </div>
     </div>
 
+    {{-- Router Hint Banner --}}
+    <div class="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-indigo-800 dark:text-indigo-300">
+        <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined notranslate text-indigo-600 dark:text-indigo-400 text-[20px]" translate="no">info</span>
+            <span>
+                <strong>Info Jaringan:</strong> Network Profile (VLAN) kini dapat dikelola langsung per Router di menu <strong>Router / NAS &gt; Detail Router &gt; Network Profile (VLAN)</strong>.
+            </span>
+        </div>
+        <a href="{{ route('isp.routers.index') }}" class="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors">
+            <span>Buka Router / NAS</span>
+            <span class="material-symbols-outlined notranslate text-[14px]" translate="no">arrow_forward</span>
+        </a>
+    </div>
+
     {{-- Toolbar / Search --}}
     <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div class="relative w-full max-w-md">
@@ -114,8 +128,13 @@
                             {{-- Target Router --}}
                             <td class="px-4 py-3.5 whitespace-nowrap">
                                 @if($profile->router)
-                                    <div class="font-semibold text-slate-800 dark:text-slate-200">{{ $profile->router->name }}</div>
-                                    <div class="text-xs font-mono text-slate-400">{{ $profile->router->ip_address }}</div>
+                                    <a href="{{ route('isp.routers.show', ['id' => $profile->router_id, 'tab' => 'vlan']) }}" class="group flex flex-col hover:opacity-85 transition-opacity" title="Buka Network Profile VLAN di Router ini">
+                                        <div class="font-semibold text-indigo-600 dark:text-indigo-400 group-hover:underline flex items-center gap-1">
+                                            <span>{{ $profile->router->name }}</span>
+                                            <span class="material-symbols-outlined notranslate text-[14px]" translate="no">open_in_new</span>
+                                        </div>
+                                        <div class="text-xs font-mono text-slate-400">{{ $profile->router->ip_address }}</div>
+                                    </a>
                                 @else
                                     <span class="text-xs text-slate-400">-</span>
                                 @endif
