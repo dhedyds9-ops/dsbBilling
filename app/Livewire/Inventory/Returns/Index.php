@@ -71,7 +71,7 @@ class Index extends Component
             $firstUser = User::where(function ($q) {
                 $q->whereHas('roles', function ($rq) {
                     $rq->whereIn('name', ['technician', 'reseller']);
-                })->orWhereIn('role', ['technician', 'reseller']);
+                });
             })->first();
             $this->returner_id = $firstUser?->id;
         }
@@ -268,7 +268,7 @@ class Index extends Component
         $returners = User::where(function ($q) {
             $q->whereHas('roles', function ($rq) {
                 $rq->whereIn('name', ['technician', 'reseller']);
-            })->orWhereIn('role', ['technician', 'reseller']);
+            });
         })->orderBy('name')->get();
 
         // Material di tangan user yang dipilih di modal

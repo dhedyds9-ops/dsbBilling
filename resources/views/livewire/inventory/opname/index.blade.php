@@ -33,25 +33,31 @@
     @endif
 
     <!-- Filter Bar -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div class="w-full md:w-1/3 relative">
-            <span class="material-icons-outlined absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
-            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nomor opname..."
-                class="w-full pl-9 pr-4 py-2 rounded-lg border-slate-300 dark:border-slate-700 text-sm dark:bg-slate-900 dark:text-white">
-        </div>
-        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <select wire:model.live="warehouseFilter" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                <option value="">Semua Gudang</option>
-                @foreach($warehouses as $wh)
-                    <option value="{{ $wh->id }}">{{ $wh->name }}</option>
-                @endforeach
-            </select>
-            <select wire:model.live="statusFilter" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                <option value="">Semua Status</option>
-                <option value="draft">Draft</option>
-                <option value="in_progress">Sedang Dihitung</option>
-                <option value="completed">Selesai (Adjusted)</option>
-            </select>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700/80 shadow-xs">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            <div class="relative flex-1 min-w-[260px]">
+                <span class="material-icons-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nomor opname..."
+                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400">
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                    <select wire:model.live="warehouseFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Gudang</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                    <select wire:model.live="statusFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Status</option>
+                        <option value="draft">Draft</option>
+                        <option value="in_progress">Sedang Dihitung</option>
+                        <option value="completed">Selesai (Adjusted)</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 

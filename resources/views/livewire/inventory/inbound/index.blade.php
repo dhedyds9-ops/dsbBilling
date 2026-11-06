@@ -33,35 +33,39 @@
     @endif
 
     {{-- Filter & Search Card --}}
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs space-y-3">
-        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-            <div class="sm:col-span-5 relative">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            {{-- Search Bar --}}
+            <div class="relative flex-1 min-w-[280px]">
                 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input wire:model.live.debounce.300ms="search" type="text"
                        placeholder="Cari no inbound, supplier, no faktur/PO..."
-                       class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                       class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400">
             </div>
 
-            <div class="sm:col-span-3">
-                <select wire:model.live="warehouseFilter"
-                        class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                    <option value="">Semua Gudang</option>
-                    @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->branch?->name ?? 'Pusat' }})</option>
-                    @endforeach
-                </select>
-            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                {{-- Dropdown Gudang --}}
+                <div class="min-w-[200px] flex-1 sm:flex-initial">
+                    <select wire:model.live="warehouseFilter"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer">
+                        <option value="">Semua Gudang</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->branch?->name ?? 'Pusat' }})</option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <div class="sm:col-span-2">
-                <input wire:model.live="dateFrom" type="date"
-                       class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200"
-                       title="Dari Tanggal">
-            </div>
-
-            <div class="sm:col-span-2">
-                <input wire:model.live="dateTo" type="date"
-                       class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200"
-                       title="Sampai Tanggal">
+                {{-- Date Range Pill --}}
+                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 flex-wrap sm:flex-nowrap">
+                    <span class="material-symbols-outlined text-slate-400 text-base">date_range</span>
+                    <input wire:model.live="dateFrom" type="date"
+                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32"
+                           title="Dari Tanggal">
+                    <span class="text-xs text-slate-400 font-medium">s/d</span>
+                    <input wire:model.live="dateTo" type="date"
+                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32"
+                           title="Sampai Tanggal">
+                </div>
             </div>
         </div>
     </div>

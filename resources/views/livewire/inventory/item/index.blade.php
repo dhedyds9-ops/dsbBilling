@@ -33,32 +33,34 @@
     @endif
 
     {{-- Filter & Search Card --}}
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs space-y-3">
-        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-            <div class="sm:col-span-6 relative">
-                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:18px">search</span>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            <div class="relative flex-1 min-w-[280px]">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama barang, SKU, merek, model..."
-                       class="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                       class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400">
             </div>
 
-            <div class="sm:col-span-3">
-                <select wire:model.live="categoryFilter"
-                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                    <option value="">Semua Kategori</option>
-                    @foreach($categories as $cat)
-                        <option value="{{ $cat }}">{{ $cat }}</option>
-                    @endforeach
-                </select>
-            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                    <select wire:model.live="categoryFilter"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 cursor-pointer">
+                        <option value="">Semua Kategori</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat }}">{{ $cat }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <div class="sm:col-span-3">
-                <select wire:model.live="statusFilter"
-                        class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                    <option value="">Semua Status</option>
-                    <option value="active">Hanya Aktif</option>
-                    <option value="serialized">Perangkat Berserial (SN)</option>
-                    <option value="low_stock">Stok Menipis (Kritis)</option>
-                </select>
+                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                    <select wire:model.live="statusFilter"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 cursor-pointer">
+                        <option value="">Semua Status</option>
+                        <option value="active">Hanya Aktif</option>
+                        <option value="serialized">Perangkat Berserial (SN)</option>
+                        <option value="low_stock">Stok Menipis (Kritis)</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>

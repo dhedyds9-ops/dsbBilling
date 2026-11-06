@@ -278,7 +278,7 @@ class Index extends Component
         $customers = Customer::orderBy('name')->limit(100)->get();
         $technicians = User::whereHas('roles', function ($q) {
             $q->where('name', 'technician');
-        })->orWhere('role', 'technician')->orderBy('name')->get();
+        })->orderBy('name')->get();
 
         $selectedRequisition = null;
         if ($this->selectedRequisitionId) {

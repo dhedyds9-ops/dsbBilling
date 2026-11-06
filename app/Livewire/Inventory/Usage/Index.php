@@ -63,7 +63,7 @@ class Index extends Component
             $firstTech = User::where(function ($q) {
                 $q->whereHas('roles', function ($rq) {
                     $rq->where('name', 'technician');
-                })->orWhere('role', 'technician');
+                });
             })->first();
             $this->technician_id = $firstTech?->id;
         }
@@ -212,7 +212,7 @@ class Index extends Component
         $technicians = User::where(function ($q) {
             $q->whereHas('roles', function ($rq) {
                 $rq->where('name', 'technician');
-            })->orWhere('role', 'technician');
+            });
         })->orderBy('name')->get();
 
         $customers = Customer::orderBy('name')->limit(100)->get();

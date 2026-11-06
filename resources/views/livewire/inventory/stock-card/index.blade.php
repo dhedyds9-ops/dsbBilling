@@ -23,38 +23,40 @@
     </div>
 
     {{-- Filter & Selection Card --}}
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-            <div class="sm:col-span-4">
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Gudang Penyimpanan *</label>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-5 shadow-xs space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 items-end">
+            <div class="lg:col-span-4">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Gudang Penyimpanan *</label>
                 <select wire:model.live="warehouseId"
-                        class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-semibold">
+                        class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer">
                     @foreach($warehouses as $wh)
                         <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->branch?->name ?? 'Pusat' }})</option>
                     @endforeach
                 </select>
             </div>
 
-            <div class="sm:col-span-4">
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Pilih Barang / Material *</label>
+            <div class="lg:col-span-4">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Pilih Barang / Material *</label>
                 <select wire:model.live="itemId"
-                        class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-semibold">
+                        class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-semibold cursor-pointer">
                     @foreach($items as $item)
                         <option value="{{ $item->id }}">[{{ $item->sku }}] {{ $item->name }} ({{ $item->category }})</option>
                     @endforeach
                 </select>
             </div>
 
-            <div class="sm:col-span-2">
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Dari Tanggal</label>
-                <input wire:model.live="dateFrom" type="date"
-                       class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Sampai Tanggal</label>
-                <input wire:model.live="dateTo" type="date"
-                       class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+            <div class="lg:col-span-4">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Periode Tanggal Mutasi</label>
+                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
+                    <span class="material-symbols-outlined text-slate-400 text-base">calendar_month</span>
+                    <input wire:model.live="dateFrom" type="date"
+                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32"
+                           title="Dari Tanggal">
+                    <span class="text-xs text-slate-400 font-medium">s/d</span>
+                    <input wire:model.live="dateTo" type="date"
+                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32"
+                           title="Sampai Tanggal">
+                </div>
             </div>
         </div>
 

@@ -57,17 +57,17 @@
         <div class="space-y-4">
             {{-- Filter --}}
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
-                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    <div class="sm:col-span-8 relative">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div class="relative flex-1 min-w-[280px]">
                         <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                         <input wire:model.live.debounce.300ms="search" type="text"
                                placeholder="Cari barang, serial number, atau nama pemegang..."
-                               class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200">
+                               class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400">
                     </div>
 
-                    <div class="sm:col-span-4">
+                    <div class="min-w-[220px]">
                         <select wire:model.live="holderTypeFilter"
-                                class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200">
+                                class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                             <option value="">Semua Pemegang (Reseller & Teknisi)</option>
                             <option value="reseller">Reseller Saja</option>
                             <option value="technician">Teknisi Saja</option>

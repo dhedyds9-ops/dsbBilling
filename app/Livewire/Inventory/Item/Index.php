@@ -282,6 +282,6 @@ class Index extends Component
             'serials' => $serials,
             'branches' => $branches,
             'categories' => $categories,
-        ])->layout('layouts.enterprise', ['title' => 'Master Barang (Inventaris)']);
+        ])->layout('layouts.enterprise', ['title' => 'Master Barang (Inventaris)'])->layout('layouts.app', ['title' => 'Master Barang - dsBilling']);
     }
 }

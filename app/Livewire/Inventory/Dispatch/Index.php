@@ -298,7 +298,7 @@ class Index extends Component
         $recipients = User::where(function ($q) {
             $q->whereHas('roles', function ($rq) {
                 $rq->whereIn('name', ['reseller', 'technician']);
-            })->orWhereIn('role', ['reseller', 'technician']);
+            });
         })->orderBy('name')->get();
 
         // Available serials per warehouse for selected items in modal

@@ -143,7 +143,7 @@ class Index extends Component
         $technicians = User::where(function ($q) {
             $q->whereHas('roles', function ($rq) {
                 $rq->where('name', 'technician');
-            })->orWhere('role', 'technician');
+            });
         })->orderBy('name')->get();
 
         $selectedCustody = null;

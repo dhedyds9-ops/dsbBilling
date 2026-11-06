@@ -40,18 +40,22 @@
         <!-- Filter Bar -->
         <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-center justify-between">
             <div class="flex flex-wrap items-center gap-3">
-                <select wire:model.live="warehouseId" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <option value="">Semua Gudang</option>
-                    @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
-                    @endforeach
-                </select>
-                <select wire:model.live="categoryFilter" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <option value="">Semua Kategori</option>
-                    @foreach($categories as $cat)
-                        <option value="{{ $cat }}">{{ $cat }}</option>
-                    @endforeach
-                </select>
+                <div class="min-w-[190px]">
+                    <select wire:model.live="warehouseId" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Gudang</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="min-w-[190px]">
+                    <select wire:model.live="categoryFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Kategori</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat }}">{{ $cat }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div class="text-xs text-slate-500">
                 Menampilkan posisi fisik stok per gudang.
@@ -114,27 +118,33 @@
         <!-- Filter Bar -->
         <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-center justify-between">
             <div class="flex flex-wrap items-center gap-3">
-                <div class="flex items-center gap-2 text-xs">
-                    <span class="text-slate-500">Dari:</span>
-                    <input type="date" wire:model.live="startDate" class="text-xs rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <span class="text-slate-500">Sampai:</span>
-                    <input type="date" wire:model.live="endDate" class="text-xs rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
+                    <span class="material-icons-outlined text-slate-400 text-sm">calendar_month</span>
+                    <input type="date" wire:model.live="startDate" class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32" title="Dari Tanggal">
+                    <span class="text-xs text-slate-400 font-medium">s/d</span>
+                    <input type="date" wire:model.live="endDate" class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32" title="Sampai Tanggal">
                 </div>
-                <select wire:model.live="mutationWarehouseId" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <option value="">Semua Gudang</option>
-                    @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
-                    @endforeach
-                </select>
-                <select wire:model.live="mutationType" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <option value="">Semua Tipe Mutasi</option>
-                    <option value="inbound">Barang Masuk (Inbound)</option>
-                    <option value="outbound_dispatch">Pengeluaran (Dispatch)</option>
-                    <option value="return_good">Retur Baik (Restock)</option>
-                    <option value="return_damaged">Retur Rusak (QC)</option>
-                    <option value="adjustment_in">Adjustment Masuk</option>
-                    <option value="adjustment_out">Adjustment Keluar</option>
-                </select>
+
+                <div class="min-w-[190px]">
+                    <select wire:model.live="mutationWarehouseId" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Gudang</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="min-w-[190px]">
+                    <select wire:model.live="mutationType" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Tipe Mutasi</option>
+                        <option value="inbound">Barang Masuk (Inbound)</option>
+                        <option value="outbound_dispatch">Pengeluaran (Dispatch)</option>
+                        <option value="return_good">Retur Baik (Restock)</option>
+                        <option value="return_damaged">Retur Rusak (QC)</option>
+                        <option value="adjustment_in">Adjustment Masuk</option>
+                        <option value="adjustment_out">Adjustment Keluar</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -197,17 +207,21 @@
         <!-- Filter Bar -->
         <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-center justify-between">
             <div class="flex flex-wrap items-center gap-3">
-                <select wire:model.live="custodyHolderType" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <option value="">Semua Pemegang</option>
-                    <option value="technician">Teknisi</option>
-                    <option value="reseller">Reseller</option>
-                </select>
-                <select wire:model.live="custodyStatus" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <option value="">Semua Status</option>
-                    <option value="in_custody">Di Tangan (Aktif)</option>
-                    <option value="used">Habis Terpakai</option>
-                    <option value="returned">Sudah Dikembalikan</option>
-                </select>
+                <div class="min-w-[190px]">
+                    <select wire:model.live="custodyHolderType" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Pemegang</option>
+                        <option value="technician">Teknisi</option>
+                        <option value="reseller">Reseller</option>
+                    </select>
+                </div>
+                <div class="min-w-[190px]">
+                    <select wire:model.live="custodyStatus" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="">Semua Status</option>
+                        <option value="in_custody">Di Tangan (Aktif)</option>
+                        <option value="used">Habis Terpakai</option>
+                        <option value="returned">Sudah Dikembalikan</option>
+                    </select>
+                </div>
             </div>
             <div class="text-xs text-slate-500">
                 Laporan audit tracking kepemilikan aset perusahaan di lapangan.

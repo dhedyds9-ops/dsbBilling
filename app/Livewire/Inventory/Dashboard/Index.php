@@ -121,6 +121,6 @@ class Index extends Component
             'pendingReturnCount' => $pendingReturnCount,
             'recentMutations' => $recentMutations,
             'totalStockValue' => $totalStockValue,
-        ]);
+        ])->layout('layouts.app', ['title' => 'Dashboard Stok & Inventaris - dsBilling']);
     }
 }

@@ -12,8 +12,8 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             @if(count($branches) > 1)
-            <div>
-                <select wire:model.live="branchId" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+            <div class="min-w-[190px]">
+                <select wire:model.live="branchId" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs">
                     <option value="">Semua Cabang</option>
                     @foreach($branches as $b)
                         <option value="{{ $b->id }}">{{ $b->name }}</option>
@@ -21,8 +21,8 @@
                 </select>
             </div>
             @endif
-            <div>
-                <select wire:model.live="warehouseId" class="text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+            <div class="min-w-[190px]">
+                <select wire:model.live="warehouseId" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs">
                     <option value="">Semua Gudang</option>
                     @foreach($warehouses as $wh)
                         <option value="{{ $wh->id }}">{{ $wh->name }}</option>

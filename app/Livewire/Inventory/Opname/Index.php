@@ -198,6 +198,6 @@ class Index extends Component
         return view('livewire.inventory.opname.index', [
             'opnames' => $opnames,
             'warehouses' => $warehouses,
-        ]);
+        ])->layout('layouts.app', ['title' => 'Stok Opname - dsBilling']);
     }
 }
