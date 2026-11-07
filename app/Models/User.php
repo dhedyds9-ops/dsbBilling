@@ -220,18 +220,38 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        // Bypass untuk administrator (Akses penuh)
+        // 1. Bypass untuk administrator (Akses penuh seluruh sistem)
         if ($this->hasRole(\App\Enums\UserRole::Administrator->value)) {
             return true;
         }
 
-        // Jika user memiliki direct permissions spesifik, direct permissions diutamakan
-        // agar user dengan jabatan tertentu (misal Admin Gudang / Kasir) dibatasi sesuai izinnya
+        // 2. Direct permissions spesifik diutamakan jika ada
         if ($this->directPermissions->isNotEmpty()) {
             return $this->directPermissions->contains('name', $permission);
         }
 
-        // Cek permissions dari roles
+        // 3. Proteksi Pembatasan Izin Berdasarkan Jabatan (Job Title)
+        // Mencegah kebocoran menu superadmin/router/keuangan pada staf gudang, kasir, teknisi, dll.
+        $title = strtolower((string)($this->job_title ?? ''));
+        if (str_contains($title, 'gudang') || str_contains($title, 'logistik')) {
+            return str_starts_with($permission, 'inventory.') || str_starts_with($permission, 'warehouse.');
+        }
+
+        if (str_contains($title, 'kasir') || str_contains($title, 'billing')) {
+            return str_starts_with($permission, 'invoice.') || str_starts_with($permission, 'payment.') || $permission === 'customer.view';
+        }
+
+        if (str_contains($title, 'customer service') || $title === 'cs') {
+            return str_starts_with($permission, 'customer.') || str_starts_with($permission, 'ticket.');
+        }
+
+        if (str_contains($title, 'teknisi') || str_contains($title, 'technician')) {
+            return str_starts_with($permission, 'technician.') 
+                || str_starts_with($permission, 'workforce.') 
+                || in_array($permission, ['onu.view', 'onu.diagnose', 'inventory.custody', 'inventory.usage', 'inventory.return', 'inventory.requisition']);
+        }
+
+        // 4. Fallback permissions dari roles jika staf umum (General Manager)
         foreach ($this->roles as $role) {
             if ($role->permissions->contains('name', $permission)) {
                 return true;

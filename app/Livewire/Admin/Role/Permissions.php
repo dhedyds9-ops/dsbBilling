@@ -94,6 +94,26 @@ class Permissions extends AdminComponent
     }
 
     /**
+     * Setel ulang ke izin default rekomendasi sistem untuk role ini.
+     */
+    public function resetToDefault(): void
+    {
+        Gate::authorize('role.manage');
+        if ($this->role->name === 'administrator') {
+            $this->selectedPermissions = Permission::pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($this->role->name === 'manager') {
+            $names = \App\Enums\UserPermission::defaultManagerPermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($this->role->name === 'reseller') {
+            $names = \App\Enums\UserPermission::defaultResellerPermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } else {
+            $this->selectedPermissions = [];
+        }
+        session()->flash('success', "Pilihan hak akses disetel ulang ke rekomendasi standar sistem untuk {$this->role->display_name}. Klik 'Simpan Perubahan' untuk menerapkan.");
+    }
+
+    /**
      * Centang seluruh permission di kategori/seksi tertentu.
      */
     public function selectCategory(array $permissionIds): void

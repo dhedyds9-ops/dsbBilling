@@ -14,20 +14,28 @@ $userEmail = $user ? $user->email : 'admin@example.com';
 $userAvatar = $user ? $user->avatar : null;
 $userRole = 'Karyawan';
 if ($user) {
-    if ($user->hasRole('administrator')) {
+    if (!empty($user->job_title)) {
+        // Prioritaskan nama Posisi / Jabatan spesifik user
+        $userRole = $user->job_title;
+    } elseif ($user->hasRole('administrator')) {
         $userRole = 'Administrator';
     } elseif ($user->hasRole('reseller')) {
         $userRole = 'Reseller';
     } elseif ($user->hasRole('customer')) {
         $userRole = 'Pelanggan';
+    } elseif (!empty($user->job_function)) {
+        $fn = is_object($user->job_function) ? $user->job_function->value : $user->job_function;
+        $userRole = ucwords(strtolower(str_replace('_', ' ', (string)$fn)));
     } elseif ($user->hasRole('manager')) {
-        $userRole = $user->job_function ?: 'Manager';
+        $userRole = 'Staff Internal';
     } else {
-        $userRole = $user->job_function ?: 'Karyawan';
+        $userRole = 'Karyawan';
     }
 }
-$userRole = str_replace('_', ' ', $userRole);
-$userRole = ucwords(strtolower($userRole));
+if (empty($user?->job_title)) {
+    $userRole = str_replace('_', ' ', $userRole);
+    $userRole = ucwords(strtolower($userRole));
+}
 @endphp
 
 <div x-data="{ open: false }" class="relative">

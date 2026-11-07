@@ -104,6 +104,12 @@
                 <span class="material-symbols-outlined notranslate text-[16px]" translate="no">check_box</span>
                 <span>Pilih Semua</span>
             </button>
+            <button type="button" wire:click="resetToDefault" 
+                class="px-3 py-1.5 text-xs font-semibold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded-lg transition-colors flex items-center gap-1"
+                title="Setel ulang ke daftar izin rekomendasi sistem untuk role ini">
+                <span class="material-symbols-outlined notranslate text-[16px]" translate="no">restart_alt</span>
+                <span>Default Sistem</span>
+            </button>
             <button type="button" wire:click="deselectAll" 
                 class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors flex items-center gap-1">
                 <span class="material-symbols-outlined notranslate text-[16px]" translate="no">check_box_outline_blank</span>

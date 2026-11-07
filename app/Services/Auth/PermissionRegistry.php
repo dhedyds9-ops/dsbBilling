@@ -371,10 +371,26 @@ class PermissionRegistry
             $count++;
         }
 
-        // Pastikan Administrator mendapatkan semua permissions
+        // 1. Pastikan Administrator mendapatkan semua permissions
         $adminRole = Role::where('name', UserRole::Administrator->value)->first();
         if ($adminRole) {
             $adminRole->permissions()->sync(Permission::all());
+        }
+
+        // 2. Pastikan Manager mendapatkan default manager permissions (termasuk modul inventory.*)
+        $managerRole = Role::where('name', UserRole::Manager->value)->first();
+        if ($managerRole) {
+            $managerPermNames = UserPermission::defaultManagerPermissions();
+            $managerPerms = Permission::whereIn('name', $managerPermNames)->get();
+            $managerRole->permissions()->sync($managerPerms);
+        }
+
+        // 3. Pastikan Reseller mendapatkan default reseller permissions (khusus portal reseller)
+        $resellerRole = Role::where('name', UserRole::Reseller->value)->first();
+        if ($resellerRole) {
+            $resellerPermNames = UserPermission::defaultResellerPermissions();
+            $resellerPerms = Permission::whereIn('name', $resellerPermNames)->get();
+            $resellerRole->permissions()->sync($resellerPerms);
         }
 
         return $count;

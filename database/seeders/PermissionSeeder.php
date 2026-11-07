@@ -100,13 +100,11 @@ class PermissionSeeder extends Seeder
             $adminRole->permissions()->sync(Permission::all());
         }
 
-        // 4. Assign specific permissions to Manager
+        // 4. Assign default permissions to Manager (termasuk inventory.*)
         $managerRole = Role::where('name', UserRole::Manager->value)->first();
         if ($managerRole) {
-            $managerPermissions = Permission::whereIn('name', [
-                UserPermission::TicketAssign->value,
-                'service-profile.view',
-            ])->orWhere('name', 'like', '%.view')->get();
+            $managerPermNames = UserPermission::defaultManagerPermissions();
+            $managerPermissions = Permission::whereIn('name', $managerPermNames)->get();
             $managerRole->permissions()->sync($managerPermissions);
         }
 
