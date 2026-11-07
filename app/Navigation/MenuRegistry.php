@@ -24,7 +24,102 @@ class MenuRegistry
             return self::buildNocNavigation();
         }
 
+        if (self::isWarehouseStaff()) {
+            return self::buildWarehouseNavigation();
+        }
+
         return self::buildAdminNavigation();
+    }
+
+    public static function isWarehouseStaff(): bool
+    {
+        if (!auth()->check()) {
+            return false;
+        }
+
+        $user = auth()->user();
+
+        // Administrator / Superadmin selalu menggunakan navigasi penuh Admin
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return false;
+        }
+
+        if ($user->hasRole('admin_gudang')) {
+            return true;
+        }
+
+        $title = strtolower((string)($user->job_title ?? ''));
+        if (str_contains($title, 'gudang') || str_contains($title, 'logistik')) {
+            return true;
+        }
+
+        // Jika hanya punya izin inventaris dan tidak punya izin router / pelanggan / billing umum
+        if ($user->hasPermission('inventory.view') 
+            && !$user->hasPermission('router.view') 
+            && !$user->hasPermission('customer.view') 
+            && !$user->hasPermission('invoice.view')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static function buildWarehouseNavigation(): array
+    {
+        $navigation = [
+            [
+                'label' => 'Gudang & Logistik',
+                'icon' => 'warehouse',
+                'icon_color' => 'text-amber-500',
+                'groups' => [
+                    [
+                        'label' => '',
+                        'items' => [
+                            ['label' => 'Dashboard Gudang', 'route' => 'inventory.dashboard', 'icon' => 'space_dashboard', 'active' => 'inventory.dashboard', 'permission' => 'inventory.view'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Katalog Persediaan',
+                        'icon' => 'inventory_2',
+                        'items' => [
+                            ['label' => 'Master Barang', 'route' => 'inventory.items.index', 'active' => 'inventory.items.*', 'permission' => 'inventory.view'],
+                            ['label' => 'Data Gudang', 'route' => 'inventory.warehouses.index', 'active' => 'inventory.warehouses.*', 'permission' => 'warehouse.view'],
+                            ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*', 'permission' => ['vendor.view', 'inventory.view']],
+                        ]
+                    ],
+                    [
+                        'label' => 'Operasional Stok',
+                        'icon' => 'sync_alt',
+                        'items' => [
+                            ['label' => 'Barang Masuk', 'route' => 'inventory.inbounds.index', 'active' => 'inventory.inbounds.*', 'permission' => 'inventory.inbound'],
+                            ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
+                            ['label' => 'Barang Keluar', 'route' => 'inventory.dispatches.index', 'active' => 'inventory.dispatches.*', 'permission' => 'inventory.dispatch'],
+                            ['label' => 'Distribusi & Serah Terima', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
+                            ['label' => 'Pemakaian Lapangan', 'route' => 'inventory.usage.index', 'active' => 'inventory.usage.*', 'permission' => 'inventory.usage'],
+                            ['label' => 'Retur & Pengembalian', 'route' => 'inventory.returns.index', 'active' => 'inventory.returns.*', 'permission' => 'inventory.return'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Audit & Laporan',
+                        'icon' => 'analytics',
+                        'items' => [
+                            ['label' => 'Stok Opname', 'route' => 'inventory.opnames.index', 'active' => 'inventory.opnames.*', 'permission' => 'inventory.opname'],
+                            ['label' => 'Kartu Stok', 'route' => 'inventory.stock-card.index', 'active' => 'inventory.stock-card.*', 'permission' => 'inventory.stock-card'],
+                            ['label' => 'Laporan Inventaris', 'route' => 'inventory.reports.index', 'active' => 'inventory.reports.*', 'permission' => 'inventory.report'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Kepegawaian',
+                        'icon' => 'fingerprint',
+                        'items' => [
+                            ['label' => 'Absensi Mandiri', 'route' => 'admin.attendance.index', 'active' => 'admin.attendance.*', 'permission' => 'workforce.attendance.execute'],
+                        ]
+                    ],
+                ]
+            ]
+        ];
+
+        return self::filterNavigationByPermissions($navigation);
     }
 
     private static function buildAdminNavigation(): array
@@ -38,7 +133,7 @@ class MenuRegistry
                     [
                         'label' => '',
                         'items' => [
-                            ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'dashboard', 'active' => 'dashboard', 'permission' => ['dashboard.view', 'router.view', 'customer.view', 'invoice.view', 'finance.view', 'noc.view', 'report.view', 'inventory.view']],
+                            ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'dashboard', 'active' => 'dashboard', 'permission' => ['dashboard.view', 'router.view', 'customer.view', 'invoice.view', 'finance.view', 'noc.view', 'report.view']],
                             ['label' => 'Portal NOC', 'route' => 'noc.overview', 'icon' => 'monitor_heart', 'permission' => 'noc.view'],
                         ]
                     ],

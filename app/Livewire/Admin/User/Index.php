@@ -23,6 +23,8 @@ class Index extends AdminComponent
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
     public $perPage = 10;
+    public $filterStatus = '';
+    public $filterBranch = '';
     public $filterJobFunction = '';
     public string $activeRole = 'all';
     public $filters = [];
@@ -30,6 +32,8 @@ class Index extends AdminComponent
 
     protected $queryString = [
         'search' => ['except' => ''],
+        'filterStatus' => ['except' => ''],
+        'filterBranch' => ['except' => ''],
         'filterJobFunction' => ['except' => ''],
         'activeRole' => ['except' => 'all'],
     ];
@@ -75,6 +79,8 @@ class Index extends AdminComponent
     public function resetFilters()
     {
         $this->filters = ['status' => ''];
+        $this->filterStatus = '';
+        $this->filterBranch = '';
         $this->filterJobFunction = '';
         $this->search = '';
         $this->activeRole = 'all';
@@ -82,6 +88,26 @@ class Index extends AdminComponent
     }
 
     public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterBranch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterJobFunction()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage()
     {
         $this->resetPage();
     }
@@ -330,11 +356,25 @@ class Index extends AdminComponent
         }
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('email', 'like', '%' . $this->search . '%')
-                    ->orWhere('username', 'like', '%' . $this->search . '%');
+            $term = '%' . trim($this->search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', $term)
+                    ->orWhere('email', 'like', $term)
+                    ->orWhere('username', 'like', $term)
+                    ->orWhere('whatsapp', 'like', $term)
+                    ->orWhere('phone', 'like', $term)
+                    ->orWhere('job_title', 'like', $term);
             });
+        }
+
+        if ($this->filterStatus === 'active') {
+            $query->where('is_active', true);
+        } elseif ($this->filterStatus === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        if (!empty($this->filterBranch)) {
+            $query->where('branch_id', $this->filterBranch);
         }
 
         if ($this->filterJobFunction !== '') {
@@ -359,13 +399,31 @@ class Index extends AdminComponent
             ->orderBy('name')
             ->get()
             ->map(function ($role) use ($baseQuery) {
+                $shortName = match(strtolower($role->name)) {
+                    'administrator' => 'Admin',
+                    'manager' => 'Manager',
+                    'admin_gudang' => 'Gudang',
+                    'teknisi' => 'Teknisi',
+                    'noc' => 'NOC',
+                    'kasir' => 'Kasir',
+                    'customer_service' => 'CS',
+                    'marketing' => 'Marketing',
+                    'reseller' => 'Reseller',
+                    default => \Illuminate\Support\Str::limit($role->display_name ?: ucfirst($role->name), 12),
+                };
+
                 return [
                     'id' => $role->id,
                     'name' => $role->name,
+                    'short_name' => $shortName,
                     'display_name' => $role->display_name ?: ucfirst($role->name),
                     'count' => (clone $baseQuery)->whereHas('roles', fn($q) => $q->where('id', $role->id))->count(),
                 ];
             });
+
+        $branches = class_exists(\App\Models\Master\Branch::class) 
+            ? \App\Models\Master\Branch::orderBy('name')->get(['id', 'name'])
+            : collect();
 
         // Query tabel utama dengan filter & sorting
         $users = $this->buildFilteredQuery()
@@ -377,6 +435,16 @@ class Index extends AdminComponent
             'roleList' => $roleList,
             'totalUsersCount' => $totalUsersCount,
             'unassignedCount' => $unassignedCount,
+            'branches' => $branches,
+            'activeRole' => $this->activeRole,
+            'search' => $this->search,
+            'filterStatus' => $this->filterStatus,
+            'filterBranch' => $this->filterBranch,
+            'filterJobFunction' => $this->filterJobFunction,
+            'perPage' => $this->perPage,
+            'showSummaryModal' => $this->showSummaryModal,
+            'summaryUser' => $this->summaryUser,
+            'summaryData' => $this->summaryData,
         ]);
     }
 }
