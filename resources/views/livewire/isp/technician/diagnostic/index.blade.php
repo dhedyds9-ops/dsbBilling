@@ -2,17 +2,17 @@
 
 <div class="space-y-4 p-4 pb-24" x-data="diagnosticManager()">
     {{-- Alerts --}}
-    @if(session('success') || $successMessage)
+    @if(session('success') || ($successMessage ?? null) || ($this->successMessage ?? null))
         <div class="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">
             <span class="material-symbols-outlined text-sm">check_circle</span>
-            <span>{{ session('success') ?? $successMessage }}</span>
+            <span>{{ session('success') ?? ($successMessage ?? ($this->successMessage ?? '')) }}</span>
         </div>
     @endif
 
-    @if(session('error') || $errorMessage)
+    @if(session('error') || ($errorMessage ?? null) || ($this->errorMessage ?? null))
         <div class="p-3.5 bg-rose-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">
             <span class="material-symbols-outlined text-sm">error</span>
-            <span>{{ session('error') ?? $errorMessage }}</span>
+            <span>{{ session('error') ?? ($errorMessage ?? ($this->errorMessage ?? '')) }}</span>
         </div>
     @endif
 
@@ -88,15 +88,15 @@
             @elseif(strlen(trim($searchQuery)) >= 2)
                 <p class="text-[11px] text-slate-400 text-center py-2">Tidak ditemukan ONT yang cocok.</p>
             @endif
-        @else
+        @elseif($selectedOnuId && $onu)
             {{-- SUMMARY TARGET --}}
             <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
                 <div class="min-w-0">
-                    <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">{{ $customer?->name ?? 'ONT ' . $onu->serial_number }}</h3>
+                    <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">{{ $customer?->name ?? 'ONT ' . ($onu->serial_number ?? '-') }}</h3>
                     <p class="text-[10px] sm:text-[11px] text-slate-500 truncate">
                         {{ $customerService?->pppoeUser?->username ?? 'PPPoE' }} • {{ $customerService?->serviceProfile?->name ?? 'Layanan' }} • {{ $customer?->phone ?? '-' }}
                     </p>
-                    <p class="text-[10px] font-mono font-bold text-sky-600 dark:text-sky-400 truncate">SN: {{ $onu->serial_number }} ({{ $onu->model ?: 'ONT' }})</p>
+                    <p class="text-[10px] font-mono font-bold text-sky-600 dark:text-sky-400 truncate">SN: {{ $onu->serial_number ?? '-' }} ({{ $onu->model ?: 'ONT' }})</p>
                 </div>
                 <span class="px-2 py-1 bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 rounded-xl text-[10px] font-extrabold uppercase shrink-0">
                     Terpilih

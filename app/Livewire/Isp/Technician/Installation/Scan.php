@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Isp\Technician\Installation;
 
+use App\Models\ACS\ACSDevice;
 use App\Models\ISP\Onu;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
@@ -19,25 +20,110 @@ class Scan extends Component
             'serialNumber' => 'required|string|min:4'
         ]);
 
-        $this->serialNumber = strtoupper(trim($this->serialNumber));
-        
-        // Cek database lokal
-        $onu = Onu::with(['odp', 'olt', 'customerService.customer'])->where('serial_number', $this->serialNumber)->orWhere('mac_address', $this->serialNumber)->first();
+        $input = strtoupper(trim($this->serialNumber));
+        $this->serialNumber = $input;
 
-        if ($onu) {
-            $this->scannedOnu = $onu;
+        // Siapkan kandidat pencarian (termasuk konversi HEX <-> ASCII vendor GPON ZTE, HWTC, FHTT)
+        $candidates = [$input];
+        if (str_starts_with($input, 'ZTEG')) {
+            $candidates[] = '5A544547' . substr($input, 4);
+        } elseif (str_starts_with($input, '5A544547')) {
+            $candidates[] = 'ZTEG' . substr($input, 8);
+        }
+        if (str_starts_with($input, 'HWTC')) {
+            $candidates[] = '48575443' . substr($input, 4);
+        } elseif (str_starts_with($input, '48575443')) {
+            $candidates[] = 'HWTC' . substr($input, 8);
+        }
+        if (str_starts_with($input, 'FHTT')) {
+            $candidates[] = '46485454' . substr($input, 4);
+        } elseif (str_starts_with($input, '46485454')) {
+            $candidates[] = 'FHTT' . substr($input, 8);
+        }
+
+        $candidates = array_unique(array_filter($candidates));
+
+        // 1. Cek database lokal Onu (withoutGlobalScopes agar tidak terhalang branch scope/reseller)
+        $onu = Onu::withoutGlobalScopes()
+            ->with([
+                'odp:id,name,code',
+                'olt:id,name,model',
+                'customerService.customer:id,name,code,phone',
+                'customerService.serviceProfile:id,name',
+                'customerService.pppoeUser:id,customer_service_id,username',
+                'acsDevice:id,serial_number,mac_address,ip_address,signal,status'
+            ])
+            ->where(function ($q) use ($candidates) {
+                foreach ($candidates as $cand) {
+                    $q->orWhere('serial_number', 'like', "%{$cand}%")
+                      ->orWhere('mac_address', 'like', "%{$cand}%")
+                      ->orWhere('code', 'like', "%{$cand}%");
+                }
+            })
+            ->first();
+
+        // 2. Cek database GenieACS (ACSDevice) jika belum ada di tabel Onu
+        $acsDevice = null;
+        if (!$onu) {
+            $acsDevice = ACSDevice::withoutGlobalScopes()
+                ->with([
+                    'onu',
+                    'olt:id,name',
+                    'customerService.customer:id,name,code,phone',
+                    'customerService.serviceProfile:id,name'
+                ])
+                ->where(function ($q) use ($candidates) {
+                    foreach ($candidates as $cand) {
+                        $q->orWhere('serial_number', 'like', "%{$cand}%")
+                          ->orWhere('mac_address', 'like', "%{$cand}%");
+                    }
+                })
+                ->first();
+        }
+
+        if ($onu || $acsDevice) {
+            $cs = $onu ? $onu->customerService : $acsDevice->customerService;
+            $cust = $cs?->customer ?? ($onu?->customer ?? null);
+            $olt = $onu?->olt ?? ($acsDevice?->olt ?? null);
+
+            $this->scannedOnu = [
+                'id' => $onu?->id,
+                'is_registered' => true,
+                'source' => $onu ? 'onu' : 'acs',
+                'serial_number' => $onu?->serial_number ?: ($acsDevice?->serial_number ?: $input),
+                'mac_address' => $onu?->mac_address ?: ($acsDevice?->mac_address ?: '-'),
+                'model' => $onu?->model ?: ($acsDevice?->model ?: 'ONT'),
+                'customer_name' => $cust?->name ?? 'Belum Terikat Pelanggan',
+                'customer_code' => $cust?->code ?? ($cust?->customer_code ?? ($cust?->id ? ('ID #' . $cust->id) : '-')),
+                'customer_phone' => $cust?->phone ?? '-',
+                'package_name' => $cs?->serviceProfile?->name ?? 'Layanan Aktif',
+                'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
+                'olt_name' => $olt?->name ?? ($acsDevice?->olt_name ?? 'OLT-Pusat'),
+                'pon_port' => $onu?->pon_port ?? ($acsDevice?->pon_port ?? '-'),
+                'rx_power' => $onu?->rx_power_dbm ?? ($acsDevice?->signal ?? null),
+                'status' => $onu?->status ?? ($acsDevice?->status ?? 'active'),
+            ];
+
             $this->scanResult = 'found';
         } else {
-            // Simulasi hasil scan dari OLT (ONU yang belum diregistrasi)
-            // Dalam implementasi asli, di sini akan memanggil OltPollingService atau RouterOSService
-            // Untuk demo/scaffolding, jika formatnya SN valid kita anggap unregistered
-            if (preg_match('/^[A-Z0-9]{8,16}$/', $this->serialNumber)) {
+            // Perangkat belum terdaftar di database manapun
+            if (preg_match('/^[A-Z0-9_\-]{6,24}$/', $input)) {
                 $this->scanResult = 'unregistered';
                 $this->scannedOnu = [
-                    'serial_number' => $this->serialNumber,
-                    'rx_power' => -rand(150, 250) / 10, // -15.0 to -25.0
-                    'olt_detected' => 'OLT-ZTE-CORE',
-                    'pon_port' => '0/1/'.rand(1,8),
+                    'id' => null,
+                    'is_registered' => false,
+                    'serial_number' => $input,
+                    'mac_address' => '-',
+                    'model' => 'ONT Baru',
+                    'customer_name' => 'Belum Terdaftar',
+                    'customer_code' => '-',
+                    'customer_phone' => '-',
+                    'package_name' => '-',
+                    'pppoe_username' => '-',
+                    'olt_name' => 'Terdeteksi Sinyal Optik',
+                    'pon_port' => 'Port Terkoneksi',
+                    'rx_power' => null,
+                    'status' => 'unregistered',
                 ];
             } else {
                 $this->scanResult = 'not_found';
@@ -53,6 +139,8 @@ class Scan extends Component
         $this->scanResult = null;
     }
 
-    public function render() { return view('livewire.isp.technician.installation.scan'); }
+    public function render()
+    {
+        return view('livewire.isp.technician.installation.scan');
+    }
 }
-

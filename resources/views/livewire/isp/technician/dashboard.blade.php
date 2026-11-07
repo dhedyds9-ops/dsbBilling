@@ -148,43 +148,43 @@
                 </button>
             @else
                 <a href="{{ route('technician.diagnostic.index') }}"
-                   class="bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-indigo-200 dark:border-indigo-800 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-indigo-600" style="font-size:22px">troubleshoot</span>
+                   class="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-indigo-200 dark:border-indigo-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 notranslate shrink-0" translate="no" style="font-size:22px">troubleshoot</span>
                     <span class="text-[11px] font-bold">Diagnosa</span>
                 </a>
                 <a href="{{ route('technician.swap-ont.index') }}"
-                   class="bg-rose-50 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-slate-700 text-rose-700 dark:text-rose-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-rose-200 dark:border-slate-700 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 notranslate" translate="no" style="font-size:22px">sync_alt</span>
+                   class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-rose-200 dark:border-rose-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 notranslate shrink-0" translate="no" style="font-size:22px">sync_alt</span>
                     <span class="text-[11px] font-bold">Ganti ONT</span>
                 </a>
                 <a href="{{ route('technician.dismantle.index') }}"
-                   class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-slate-200 dark:border-slate-700 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-rose-500 notranslate" translate="no" style="font-size:22px">power_off</span>
+                   class="bg-slate-500/10 hover:bg-slate-500/20 text-slate-700 dark:text-slate-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-slate-200 dark:border-slate-700/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-rose-500 notranslate shrink-0" translate="no" style="font-size:22px">power_off</span>
                     <span class="text-[11px] font-bold">Cabut ONT</span>
                 </a>
                 <a href="{{ route('technician.material.index') }}"
-                   class="bg-sky-50 dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-slate-700 text-sky-700 dark:text-sky-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-sky-200 dark:border-slate-700 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-sky-600 dark:text-sky-400 notranslate" translate="no" style="font-size:22px">inventory_2</span>
+                   class="bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-sky-200 dark:border-sky-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-sky-600 dark:text-sky-400 notranslate shrink-0" translate="no" style="font-size:22px">inventory_2</span>
                     <span class="text-[11px] font-bold">Stok</span>
                 </a>
                 <a href="{{ route('technician.installation.scan') }}"
-                   class="bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-blue-100 dark:border-blue-800 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-blue-600" style="font-size:22px">qr_code_scanner</span>
+                   class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-blue-200 dark:border-blue-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 notranslate shrink-0" translate="no" style="font-size:22px">qr_code_scanner</span>
                     <span class="text-[11px] font-bold">Scan ONU</span>
                 </a>
                 <a href="{{ route('technician.odp.nearest') }}"
-                   class="bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-emerald-100 dark:border-emerald-800 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-emerald-600" style="font-size:22px">share_location</span>
+                   class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-emerald-200 dark:border-emerald-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 notranslate shrink-0" translate="no" style="font-size:22px">share_location</span>
                     <span class="text-[11px] font-bold">Peta ODP</span>
                 </a>
                 <a href="{{ route('technician.odp.search') }}"
-                   class="bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-amber-100 dark:border-amber-800 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-amber-600" style="font-size:22px">search</span>
+                   class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-amber-200 dark:border-amber-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 notranslate shrink-0" translate="no" style="font-size:22px">search</span>
                     <span class="text-[11px] font-bold">Cari ODP</span>
                 </a>
                 <a href="{{ route('technician.payroll.index') }}"
-                   class="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-purple-100 dark:border-purple-800 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-purple-600" style="font-size:22px">request_quote</span>
+                   class="bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-purple-200 dark:border-purple-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 notranslate shrink-0" translate="no" style="font-size:22px">request_quote</span>
                     <span class="text-[11px] font-bold">Slip Gaji</span>
                 </a>
             @endif

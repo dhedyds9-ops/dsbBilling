@@ -280,19 +280,66 @@
                                     <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
                                         <div class="md:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih dari Stok Custody Teknisi *</label>
-                                            <select wire:model.live="usageItems.{{ $idx }}.custody_id" required
-                                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
-                                                <option value="">-- Pilih dari Stok Custody --</option>
-                                                @foreach($availableCustodies as $custody)
-                                                    <option value="{{ $custody->id }}">
-                                                        {{ $custody->item?->name }}
-                                                        @if($custody->itemSerial)
-                                                            [SN: {{ $custody->itemSerial->serial_number }}]
-                                                        @endif
-                                                        (Tersedia: {{ number_format($custody->available_quantity, 0) }} {{ $custody->item?->unit }})
-                                                    </option>
-                                                @endforeach
-                                            </select>
+                                            
+                                            <div x-data="{
+                                                open: false,
+                                                search: '',
+                                                selectedId: @entangle('usageItems.' . $idx . '.custody_id'),
+                                                items: {{ json_encode($availableCustodies->map(fn($c) => [
+                                                    'id' => (int)$c->id,
+                                                    'name' => $c->item?->name ?? 'Material',
+                                                    'sn' => $c->itemSerial?->serial_number ?? null,
+                                                    'avail' => (float)$c->available_quantity,
+                                                    'unit' => $c->item?->unit ?? 'unit'
+                                                ])) }},
+                                                get currentItem() {
+                                                    return this.items.find(x => x.id == this.selectedId);
+                                                },
+                                                get filtered() {
+                                                    if (!this.search) return this.items;
+                                                    let q = this.search.toLowerCase();
+                                                    return this.items.filter(x => x.name.toLowerCase().includes(q) || (x.sn && x.sn.toLowerCase().includes(q)));
+                                                },
+                                                select(it) {
+                                                    this.selectedId = it.id;
+                                                    this.open = false;
+                                                    this.search = '';
+                                                    $wire.call('$refresh');
+                                                }
+                                            }" class="relative">
+                                                <button type="button" @click="open = !open"
+                                                        class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-left flex items-center justify-between focus:ring-2 focus:ring-indigo-500 shadow-xs">
+                                                    <span class="truncate font-medium text-slate-800 dark:text-slate-200"
+                                                          x-text="currentItem ? currentItem.name + (currentItem.sn ? ' [SN: ' + currentItem.sn + ']' : '') + ' (' + currentItem.avail + ' ' + currentItem.unit + ')' : '-- Pilih dari Stok Custody --'">
+                                                    </span>
+                                                    <span class="material-symbols-outlined text-slate-400 text-sm shrink-0 notranslate" translate="no">unfold_more</span>
+                                                </button>
+
+                                                <div x-show="open" @click.away="open = false" x-cloak
+                                                     class="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2 space-y-1.5 max-h-60 overflow-hidden flex flex-col">
+                                                    <div class="relative">
+                                                        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs notranslate" translate="no">search</span>
+                                                        <input type="text" x-model="search" placeholder="Cari nama barang atau SN..."
+                                                               class="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                                    </div>
+                                                    <div class="overflow-y-auto flex-1 space-y-0.5 max-h-44">
+                                                        <template x-for="it in filtered" :key="it.id">
+                                                            <button type="button" @click="select(it)"
+                                                                    class="w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center justify-between"
+                                                                    :class="selectedId == it.id ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-slate-700 dark:text-slate-300'">
+                                                                <div class="truncate mr-2">
+                                                                    <span class="font-bold" x-text="it.name"></span>
+                                                                    <span x-show="it.sn" class="font-mono text-[10px] text-indigo-500 block" x-text="'SN: ' + it.sn"></span>
+                                                                </div>
+                                                                <span class="text-[10px] px-1.5 py-0.5 rounded font-black bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0" x-text="it.avail + ' ' + it.unit"></span>
+                                                            </button>
+                                                        </template>
+                                                        <div x-show="filtered.length === 0" class="text-center py-2 text-xs text-slate-400">
+                                                            Tidak ada barang yang cocok di stok teknisi ini.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div class="md:col-span-3">

@@ -21,6 +21,9 @@ class Index extends Component
     public ?int $onu_id = null;
 
     #[Url]
+    public ?string $sn = null;
+
+    #[Url]
     public ?int $customer_id = null;
 
     #[Url]
@@ -61,6 +64,15 @@ class Index extends Component
     {
         if ($this->onu_id) {
             $this->selectOnu($this->onu_id);
+        } elseif (!empty($this->sn)) {
+            $cleaned = strtoupper(trim($this->sn));
+            $foundOnu = Onu::withoutGlobalScopes()
+                ->where('serial_number', 'like', "%{$cleaned}%")
+                ->orWhere('mac_address', 'like', "%{$cleaned}%")
+                ->first();
+            if ($foundOnu) {
+                $this->selectOnu($foundOnu->id);
+            }
         } elseif ($this->customer_id) {
             $this->selectCustomer($this->customer_id);
         } elseif ($this->ticket_id) {
@@ -137,16 +149,19 @@ class Index extends Component
 
     public function selectOnu(int $onuId)
     {
-        $this->selectedOnuId = $onuId;
-        $this->onu = Onu::withoutGlobalScopes()
+        $onu = Onu::withoutGlobalScopes()
             ->with(['customerService.customer', 'customerService.serviceProfile', 'customerService.pppoeUser', 'olt', 'odp', 'vendor', 'acsDevice'])
             ->find($onuId);
 
-        if (!$this->onu) {
+        if (!$onu) {
+            $this->selectedOnuId = null;
+            $this->onu = null;
             $this->errorMessage = "Perangkat ONT ID #{$onuId} tidak ditemukan.";
             return;
         }
 
+        $this->selectedOnuId = $onu->id;
+        $this->onu = $onu;
         $this->customerService = $this->onu->customerService;
         $this->customer = $this->customerService?->customer;
         $this->searchResults = [];
@@ -330,6 +345,9 @@ class Index extends Component
 
     public function render()
     {
-        return view('livewire.isp.technician.diagnostic.index');
+        return view('livewire.isp.technician.diagnostic.index', [
+            'successMessage' => $this->successMessage,
+            'errorMessage' => $this->errorMessage,
+        ]);
     }
 }

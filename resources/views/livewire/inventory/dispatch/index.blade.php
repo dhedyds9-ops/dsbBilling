@@ -252,13 +252,60 @@
                                     <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
                                         <div class="md:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
-                                            <select wire:model.live="dispatchItems.{{ $idx }}.item_id" required
-                                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200">
-                                                <option value="">-- Pilih Barang --</option>
-                                                @foreach($availableItems as $item)
-                                                    <option value="{{ $item->id }}">[{{ $item->sku }}] {{ $item->name }} ({{ $item->category }})</option>
-                                                @endforeach
-                                            </select>
+                                            
+                                            <div x-data="{
+                                                open: false,
+                                                search: '',
+                                                selectedId: @entangle('dispatchItems.' . $idx . '.item_id'),
+                                                items: {{ json_encode($availableItems->map(fn($it) => ['id' => (int)$it->id, 'name' => $it->name, 'sku' => $it->sku, 'cat' => $it->category, 'unit' => $it->unit])) }},
+                                                get currentItem() {
+                                                    return this.items.find(x => x.id == this.selectedId);
+                                                },
+                                                get filtered() {
+                                                    if (!this.search) return this.items;
+                                                    let q = this.search.toLowerCase();
+                                                    return this.items.filter(x => x.name.toLowerCase().includes(q) || x.sku.toLowerCase().includes(q) || (x.cat && x.cat.toLowerCase().includes(q)));
+                                                },
+                                                select(it) {
+                                                    this.selectedId = it.id;
+                                                    this.open = false;
+                                                    this.search = '';
+                                                    $wire.call('$refresh');
+                                                }
+                                            }" class="relative">
+                                                <button type="button" @click="open = !open"
+                                                        class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-left flex items-center justify-between focus:ring-2 focus:ring-blue-500 shadow-xs">
+                                                    <span class="truncate font-medium text-slate-800 dark:text-slate-200"
+                                                          x-text="currentItem ? '[' + currentItem.sku + '] ' + currentItem.name + ' (' + currentItem.cat + ')' : '-- Pilih Barang --'">
+                                                    </span>
+                                                    <span class="material-symbols-outlined text-slate-400 text-sm shrink-0 notranslate" translate="no">unfold_more</span>
+                                                </button>
+
+                                                <div x-show="open" @click.away="open = false" x-cloak
+                                                     class="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2 space-y-1.5 max-h-60 overflow-hidden flex flex-col">
+                                                    <div class="relative">
+                                                        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs notranslate" translate="no">search</span>
+                                                        <input type="text" x-model="search" placeholder="Cari nama atau SKU barang..."
+                                                               class="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                    </div>
+                                                    <div class="overflow-y-auto flex-1 space-y-0.5 max-h-44">
+                                                        <template x-for="it in filtered" :key="it.id">
+                                                            <button type="button" @click="select(it)"
+                                                                    class="w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors hover:bg-blue-50 dark:hover:bg-blue-950/60 flex items-center justify-between"
+                                                                    :class="selectedId == it.id ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold' : 'text-slate-700 dark:text-slate-300'">
+                                                                <div class="truncate mr-2">
+                                                                    <span class="font-mono text-[10px] text-slate-400" x-text="'[' + it.sku + '] '"></span>
+                                                                    <span x-text="it.name"></span>
+                                                                </div>
+                                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 shrink-0" x-text="it.cat"></span>
+                                                            </button>
+                                                        </template>
+                                                        <div x-show="filtered.length === 0" class="text-center py-2 text-xs text-slate-400">
+                                                            Tidak ada barang yang cocok.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div class="md:col-span-3">
