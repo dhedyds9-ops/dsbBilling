@@ -157,14 +157,14 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/income-periode', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('income-periode');
     });
 
-    // ==================== SHARED INVENTORY & CUSTODY (ADMIN, MANAGER, RESELLER) ====================
-    Route::middleware(['role:administrator,manager,reseller'])->prefix('inventory')->name('inventory.')->group(function () {
+    // ==================== SHARED INVENTORY & CUSTODY (ADMIN, MANAGER, RESELLER, ADMIN GUDANG, TECHNICIAN) ====================
+    Route::middleware(['role:administrator,manager,reseller,admin_gudang,technician'])->prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/requisitions', \App\Livewire\Inventory\Requisition\Index::class)->name('requisitions.index');
         Route::get('/custodies', \App\Livewire\Inventory\Custody\Index::class)->name('custodies.index');
     });
 
     // ==================== STAFF / ADMIN AREA ====================
-    Route::middleware(['role:administrator,manager'])->group(function () use ($cs) {
+    Route::middleware(['role:administrator,manager,admin_gudang'])->group(function () use ($cs) {
 
         // ==================== 1. DASHBOARD (TANPA SUBMENU SESUAI SSOT v2.0) ====================
         Route::get('/dashboard', \App\Livewire\Dashboard\Index::class)->name('dashboard');

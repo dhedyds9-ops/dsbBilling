@@ -59,13 +59,50 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function canUserCreateRequisition(): bool
+    {
+        $user = auth()->user();
+        if (!$user) return false;
+
+        // Administrator dan Admin Gudang TIDAK membuat permintaan barang
+        if ($user->isWarehouseAdmin()) return false;
+        if ($user->hasRole('administrator') && !$user->isReseller() && !$user->isTechnician()) return false;
+
+        // Reseller dan Teknisi BISA membuat permintaan barang
+        return $user->isReseller() || $user->isTechnician();
+    }
+
+    public function canUserManageWarehouse(): bool
+    {
+        $user = auth()->user();
+        if (!$user) return false;
+
+        // Reseller atau Teknisi murni TIDAK BOLEH memproses approval/reject/dispatch
+        if ($user->isReseller()) return false;
+        if ($user->isTechnician() && !$user->isWarehouseAdmin()) return false;
+
+        return $user->isWarehouseAdmin() || $user->hasRole('manager') || $user->isSuperAdmin();
+    }
+
     public function openCreateModal()
     {
+        if (!$this->canUserCreateRequisition()) {
+            session()->flash('error', 'Administrator dan Admin Gudang tidak diperkenankan membuat pengajuan permintaan baru.');
+            return;
+        }
+
         $this->resetCreateForm();
         $wh = Warehouse::active()->first();
         if ($wh) {
             $this->warehouse_id = $wh->id;
         }
+
+        // Default untuk reseller adalah pengisian stok umum
+        if (auth()->user()?->isReseller()) {
+            $this->work_order_type = 'stock_topup';
+            $this->distribution_method = 'pickup_reseller';
+        }
+
         $this->addItemRow();
         $this->showCreateModal = true;
     }
@@ -75,7 +112,7 @@ class Index extends Component
         $this->warehouse_id = null;
         $this->distribution_method = 'pickup_reseller';
         $this->customer_id = null;
-        $this->work_order_type = 'psb';
+        $this->work_order_type = auth()->user()?->isReseller() ? 'stock_topup' : 'psb';
         $this->designated_technician_id = null;
         $this->notes = '';
         $this->requisitionItems = [];
@@ -118,21 +155,35 @@ class Index extends Component
         }
     }
 
+    public function updatedWorkOrderType($value)
+    {
+        // Jika jenis permintaan adalah Pengisian Stok Reseller, tidak mewajibkan teknisi / pelanggan
+        if ($value === 'stock_topup') {
+            $this->distribution_method = 'pickup_reseller';
+            $this->customer_id = null;
+            $this->designated_technician_id = null;
+        }
+    }
+
     public function saveRequisition()
     {
+        if (!$this->canUserCreateRequisition()) {
+            abort(403, 'Administrator dan Admin Gudang tidak diperkenankan membuat pengajuan permintaan baru.');
+        }
+
         $this->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
             'distribution_method' => 'required|in:pickup_reseller,direct_technician',
-            'designated_technician_id' => 'required|exists:users,id',
+            'work_order_type' => 'required|in:stock_topup,psb,maintenance,other',
+            'designated_technician_id' => 'nullable|exists:users,id',
             'customer_id' => 'nullable|exists:customers,id',
-            'work_order_type' => 'required|string',
             'notes' => 'nullable|string|max:1000',
             'requisitionItems' => 'required|array|min:1',
             'requisitionItems.*.item_id' => 'required|exists:items,id',
             'requisitionItems.*.quantity' => 'required|numeric|min:0.01',
         ], [
             'warehouse_id.required' => 'Gudang asal wajib dipilih.',
-            'designated_technician_id.required' => 'Teknisi pelaksana wajib ditunjuk.',
+            'work_order_type.required' => 'Jenis pengajuan wajib dipilih.',
             'requisitionItems.required' => 'Minimal harus ada 1 barang yang diminta.',
             'requisitionItems.*.item_id.required' => 'Barang pada setiap baris wajib dipilih.',
             'requisitionItems.*.quantity.min' => 'Jumlah barang harus lebih besar dari 0.',
@@ -150,17 +201,21 @@ class Index extends Component
             }
         }
 
+        // Jika pengisian stok reseller, pastikan teknisi & pelanggan kosong
+        $designatedTechId = ($this->work_order_type === 'stock_topup') ? null : $this->designated_technician_id;
+        $customerId = ($this->work_order_type === 'stock_topup') ? null : $this->customer_id;
+
         try {
-            DB::transaction(function () use ($warehouse, $requesterType, $user) {
+            DB::transaction(function () use ($warehouse, $requesterType, $user, $designatedTechId, $customerId) {
                 $req = InventoryRequisition::create([
                     'requester_id' => $user->id,
                     'requester_type' => $requesterType,
                     'warehouse_id' => $warehouse->id,
                     'branch_id' => $warehouse->branch_id,
                     'distribution_method' => $this->distribution_method,
-                    'customer_id' => $this->customer_id,
+                    'customer_id' => $customerId,
                     'work_order_type' => $this->work_order_type,
-                    'designated_technician_id' => $this->designated_technician_id,
+                    'designated_technician_id' => $designatedTechId,
                     'status' => 'pending',
                     'notes' => $this->notes ?: null,
                 ]);
@@ -186,6 +241,15 @@ class Index extends Component
 
     public function openApprovalModal(int $id)
     {
+        if (!$this->canUserManageWarehouse()) {
+            abort(403, 'Anda tidak memiliki hak otorisasi untuk memproses persetujuan permintaan barang.');
+        }
+
+        $req = InventoryRequisition::findOrFail($id);
+        if ($req->requester_id === auth()->id()) {
+            abort(403, 'Anda tidak dapat memproses persetujuan atas permintaan yang Anda ajukan sendiri.');
+        }
+
         $this->selectedRequisitionId = $id;
         $this->rejection_reason = '';
         $this->showApprovalModal = true;
@@ -195,7 +259,15 @@ class Index extends Component
     {
         if (!$this->selectedRequisitionId) return;
 
+        if (!$this->canUserManageWarehouse()) {
+            abort(403, 'Anda tidak memiliki hak otorisasi untuk memproses persetujuan permintaan barang.');
+        }
+
         $req = InventoryRequisition::findOrFail($this->selectedRequisitionId);
+        if ($req->requester_id === auth()->id()) {
+            abort(403, 'Anda tidak dapat menyetujui permintaan yang Anda ajukan sendiri.');
+        }
+
         $req->update([
             'status' => 'approved',
             'approved_by' => auth()->id(),
@@ -211,6 +283,10 @@ class Index extends Component
     {
         if (!$this->selectedRequisitionId) return;
 
+        if (!$this->canUserManageWarehouse()) {
+            abort(403, 'Anda tidak memiliki hak otorisasi untuk memproses persetujuan permintaan barang.');
+        }
+
         $this->validate([
             'rejection_reason' => 'required|string|min:5|max:500',
         ], [
@@ -219,6 +295,10 @@ class Index extends Component
         ]);
 
         $req = InventoryRequisition::findOrFail($this->selectedRequisitionId);
+        if ($req->requester_id === auth()->id()) {
+            abort(403, 'Anda tidak dapat menolak permintaan yang Anda ajukan sendiri.');
+        }
+
         $req->update([
             'status' => 'rejected',
             'rejection_reason' => $this->rejection_reason,
@@ -229,6 +309,30 @@ class Index extends Component
         session()->flash('success', "Permintaan No. {$req->requisition_number} telah ditolak.");
         $this->showApprovalModal = false;
         $this->selectedRequisitionId = null;
+    }
+
+    public function confirmReceipt(int $requisitionId)
+    {
+        $req = InventoryRequisition::with('dispatches')->findOrFail($requisitionId);
+        $user = auth()->user();
+
+        // Hanya pemohon atau teknisi yang ditunjuk yang dapat konfirmasi terima barang
+        if ($req->requester_id !== $user->id && $req->designated_technician_id !== $user->id && !$user->isSuperAdmin()) {
+            abort(403, 'Anda tidak berwenang mengonfirmasi penerimaan barang untuk permintaan ini.');
+        }
+
+        foreach ($req->dispatches as $dispatch) {
+            if ($dispatch->status === 'dispatched') {
+                $dispatch->update([
+                    'status' => 'received',
+                    'received_at' => now(),
+                ]);
+            }
+        }
+
+        $req->update(['status' => 'received']);
+
+        session()->flash('success', "Konfirmasi penerimaan barang untuk Permintaan No. {$req->requisition_number} berhasil. Stok telah resmi berada dalam penguasaan Anda.");
     }
 
     public function showDetail(int $id)
@@ -245,12 +349,20 @@ class Index extends Component
 
     public function render()
     {
+        $user = auth()->user();
+
         $query = InventoryRequisition::with(['warehouse', 'requester', 'designatedTechnician', 'customer', 'items.item'])
             ->latest('id');
 
         // Reseller hanya melihat permintaannya sendiri
-        if (auth()->user()?->isReseller()) {
-            $query->where('requester_id', auth()->id());
+        if ($user && $user->isReseller()) {
+            $query->where('requester_id', $user->id);
+        } elseif ($user && $user->isTechnician() && !$this->canUserManageWarehouse()) {
+            // Teknisi melihat permintaannya sendiri atau penugasan dirinya
+            $query->where(function ($q) use ($user) {
+                $q->where('requester_id', $user->id)
+                  ->orWhere('designated_technician_id', $user->id);
+            });
         }
 
         if (!empty($this->search)) {
@@ -301,6 +413,10 @@ class Index extends Component
             'showDetailModal' => $this->showDetailModal,
             'requisitionItems' => $this->requisitionItems,
             'distribution_method' => $this->distribution_method,
+            'canCreateRequisition' => $this->canUserCreateRequisition(),
+            'canManageWarehouse' => $this->canUserManageWarehouse(),
+            'isReseller' => (bool) $user?->isReseller(),
+            'isTechnician' => (bool) $user?->isTechnician(),
         ])->layout('layouts.app', ['title' => 'Permintaan Barang - dsBilling']);
     }
 }

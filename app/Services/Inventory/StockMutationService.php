@@ -347,13 +347,28 @@ class StockMutationService
         int $custodyId,
         int $toUserId,
         string $toUserType = 'technician',
-        ?string $notes = null
+        ?string $notes = null,
+        ?float $quantity = null,
+        ?int $customerId = null
     ): InventoryCustodyTransfer {
-        return DB::transaction(function () use ($custodyId, $toUserId, $toUserType, $notes) {
+        return DB::transaction(function () use ($custodyId, $toUserId, $toUserType, $notes, $quantity, $customerId) {
             $custody = InventoryCustody::findOrFail($custodyId);
 
             if ($custody->status !== 'in_custody' || $custody->available_quantity <= 0) {
                 throw new \RuntimeException('Barang ini tidak dapat diserahterimakan karena sudah tidak berada dalam penguasaan.');
+            }
+
+            $qtyToTransfer = $quantity ?? $custody->available_quantity;
+            if ($qtyToTransfer <= 0 || $qtyToTransfer > $custody->available_quantity) {
+                throw new \RuntimeException('Jumlah transfer tidak valid atau melebihi sisa barang yang tersedia.');
+            }
+
+            $notesText = $notes ?: 'Serah terima barang ke teknisi pelaksana';
+            if ($customerId) {
+                $cust = \App\Models\CRM\Customer::find($customerId);
+                if ($cust) {
+                    $notesText .= " [Pelanggan: {$cust->name}]";
+                }
             }
 
             return InventoryCustodyTransfer::create([
@@ -364,9 +379,9 @@ class StockMutationService
                 'to_user_type' => $toUserType,
                 'item_id' => $custody->item_id,
                 'item_serial_id' => $custody->item_serial_id,
-                'quantity' => $custody->available_quantity,
+                'quantity' => $qtyToTransfer,
                 'status' => 'pending_acceptance',
-                'notes' => $notes ?: 'Serah terima barang ke teknisi pelaksana',
+                'notes' => $notesText,
                 'branch_id' => $custody->branch_id,
             ]);
         });
@@ -396,10 +411,26 @@ class StockMutationService
                 'accepted_at' => now(),
             ]);
 
-            // Update status custody lama menjadi 'handed_over'
-            $sourceCustody->update([
-                'status' => 'handed_over',
-            ]);
+            // Jika barang non-serial dan diserahkan sebagian:
+            if (!$sourceCustody->item_serial_id && $transfer->quantity < $sourceCustody->available_quantity) {
+                // Kurangi kuantitas pada custody sumber
+                $sourceCustody->decrement('quantity', $transfer->quantity);
+            } else {
+                // Seluruhnya diserahkan (atau barang berserial yang 1 unit)
+                $sourceCustody->update([
+                    'status' => 'handed_over',
+                ]);
+            }
+
+            // Tentukan customer_id jika ditag di notes
+            $targetCustomerId = $sourceCustody->customer_id;
+            if (preg_match('/\[Pelanggan:\s*([^\]]+)\]/', $transfer->notes, $matches)) {
+                $custName = trim($matches[1]);
+                $cFound = \App\Models\CRM\Customer::where('name', $custName)->first();
+                if ($cFound) {
+                    $targetCustomerId = $cFound->id;
+                }
+            }
 
             // Buat custody baru untuk pemegang baru (Teknisi)
             InventoryCustody::create([
@@ -409,7 +440,7 @@ class StockMutationService
                 'item_serial_id' => $transfer->item_serial_id,
                 'holder_id' => $transfer->to_user_id,
                 'holder_type' => $transfer->to_user_type,
-                'customer_id' => $sourceCustody->customer_id,
+                'customer_id' => $targetCustomerId,
                 'installation_id' => $sourceCustody->installation_id,
                 'ticket_id' => $sourceCustody->ticket_id,
                 'quantity' => $transfer->quantity,
@@ -427,6 +458,7 @@ class StockMutationService
                     $serial->update([
                         'custodian_id' => $transfer->to_user_id,
                         'custodian_type' => $transfer->to_user_type,
+                        'customer_id' => $targetCustomerId,
                         'status' => 'in_custody_technician',
                         'updated_by' => $acceptedByUserId,
                     ]);

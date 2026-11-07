@@ -35,7 +35,10 @@ class RoleMiddleware
             if ($user->hasRole($role)) {
                 return $next($request);
             }
-            if ($role === 'technician' && ($user->hasRole('teknisi') || (method_exists($user, 'isTechnician') && $user->isTechnician()))) {
+            if (($role === 'technician' || $role === 'teknisi') && ($user->hasRole(['technician', 'teknisi']) || (method_exists($user, 'isTechnician') && $user->isTechnician()))) {
+                return $next($request);
+            }
+            if (($role === 'admin_gudang' || $role === 'gudang') && ($user->hasRole(['admin_gudang', 'gudang']) || (method_exists($user, 'isWarehouseAdmin') && $user->isWarehouseAdmin()))) {
                 return $next($request);
             }
             if ($role === 'administrator' && $user->hasRole('superadmin')) {

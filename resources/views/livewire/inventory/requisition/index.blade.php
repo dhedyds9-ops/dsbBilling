@@ -11,11 +11,13 @@
             </p>
         </div>
 
-        <button wire:click="openCreateModal" type="button"
-                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
-            <span class="material-symbols-outlined text-sm">add</span>
-            <span>Ajukan Permintaan Baru</span>
-        </button>
+        @if($canCreateRequisition)
+            <button wire:click="openCreateModal" type="button"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all">
+                <span class="material-symbols-outlined text-sm">add</span>
+                <span>Ajukan Permintaan Baru</span>
+            </button>
+        @endif
     </div>
 
     {{-- Flash Messages --}}
@@ -114,14 +116,37 @@
                                 @endif
                             </td>
                             <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                                <div class="font-semibold text-slate-900 dark:text-slate-100">{{ $req->customer?->name ?? 'Stok Operasional' }}</div>
-                                <div class="text-[11px] text-slate-400 uppercase font-semibold">{{ $req->work_order_type ?? '-' }}</div>
+                                <div class="font-semibold text-slate-900 dark:text-slate-100">
+                                    {{ $req->customer?->name ?? ($req->work_order_type === 'stock_topup' ? 'Stok Cadangan Reseller' : 'Stok Operasional') }}
+                                </div>
+                                @php
+                                    $woLabel = match($req->work_order_type) {
+                                        'stock_topup' => 'Pengisian Stok Reseller',
+                                        'psb' => 'Pemasangan Baru (PSB)',
+                                        'maintenance' => 'Maintenance',
+                                        'other' => 'Operasional Lainnya',
+                                        default => strtoupper($req->work_order_type ?? '-')
+                                    };
+                                    $woColor = match($req->work_order_type) {
+                                        'stock_topup' => 'text-amber-600 dark:text-amber-400 font-bold',
+                                        'psb' => 'text-emerald-600 dark:text-emerald-400 font-semibold',
+                                        default => 'text-slate-500 font-medium'
+                                    };
+                                @endphp
+                                <div class="text-[11px] {{ $woColor }}">{{ $woLabel }}</div>
                             </td>
                             <td class="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                                <div class="font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-xs">engineering</span>
-                                    <span>{{ $req->designatedTechnician?->name ?? '-' }}</span>
-                                </div>
+                                @if($req->designatedTechnician)
+                                    <div class="font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">engineering</span>
+                                        <span>{{ $req->designatedTechnician->name }}</span>
+                                    </div>
+                                @else
+                                    <span class="text-xs text-slate-400 italic flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">person</span>
+                                        <span>Dipegang Reseller</span>
+                                    </span>
+                                @endif
                             </td>
                             <td class="py-3.5 px-4 text-center">
                                 <span class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs">
@@ -133,14 +158,16 @@
                                     $badge = match($req->status) {
                                         'pending' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
                                         'approved' => 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
-                                        'dispatched' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+                                        'dispatched' => 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
+                                        'received' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
                                         'rejected' => 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800',
                                         default => 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                                     };
                                     $lbl = match($req->status) {
                                         'pending' => 'Menunggu Approval',
                                         'approved' => 'Disetujui',
-                                        'dispatched' => 'Dikeluarkan',
+                                        'dispatched' => 'Barang Dikeluarkan',
+                                        'received' => 'Diterima',
                                         'rejected' => 'Ditolak',
                                         default => $req->status
                                     };
@@ -157,20 +184,33 @@
                                         <span class="material-symbols-outlined text-sm">visibility</span>
                                     </button>
 
-                                    @if($req->status === 'pending')
-                                        <button wire:click="openApprovalModal({{ $req->id }})"
-                                                class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1">
-                                            <span class="material-symbols-outlined text-xs">done</span>
-                                            <span>Proses</span>
-                                        </button>
+                                    {{-- Tombol Proses (Approval) HANYA untuk Petugas Gudang / Manager, BUKAN untuk Reseller atau Teknisi --}}
+                                    @if($canManageWarehouse && !$isReseller)
+                                        @if($req->status === 'pending' && $req->requester_id !== auth()->id())
+                                            <button wire:click="openApprovalModal({{ $req->id }})"
+                                                    class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs">
+                                                <span class="material-symbols-outlined text-xs">done</span>
+                                                <span>Proses</span>
+                                            </button>
+                                        @endif
+
+                                        @if($req->status === 'approved')
+                                            <a href="{{ route('inventory.dispatches.index', ['requisition_id' => $req->id]) }}"
+                                               class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs">
+                                                <span class="material-symbols-outlined text-xs">local_shipping</span>
+                                                <span>Dispatch</span>
+                                            </a>
+                                        @endif
                                     @endif
 
-                                    @if($req->status === 'approved')
-                                        <a href="{{ route('inventory.dispatches.index', ['requisition_id' => $req->id]) }}"
-                                           class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1">
-                                            <span class="material-symbols-outlined text-xs">local_shipping</span>
-                                            <span>Dispatch</span>
-                                        </a>
+                                    {{-- Tombol Konfirmasi Terima Barang untuk Pemohon (Reseller / Teknisi) saat barang sudah di-dispatch --}}
+                                    @if(($isReseller || $isTechnician) && $req->status === 'dispatched' && ($req->requester_id === auth()->id() || $req->designated_technician_id === auth()->id()))
+                                        <button wire:click="confirmReceipt({{ $req->id }})"
+                                                class="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-xs animate-pulse"
+                                                title="Konfirmasi bahwa fisik barang telah Anda terima dari Gudang">
+                                            <span class="material-symbols-outlined text-xs">inventory_2</span>
+                                            <span>Konfirmasi Terima</span>
+                                        </button>
                                     @endif
                                 </div>
                             </td>
@@ -241,6 +281,27 @@
 
                     {{-- Form Fields 2-Column Balanced Grid --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Kebutuhan Pengajuan *</label>
+                            <select wire:model.live="work_order_type" required
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-bold focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                <option value="stock_topup">1. Pengisian Stok Reseller (Cadangan Operasional)</option>
+                                <option value="psb">2. Kebutuhan Pekerjaan PSB (Pelanggan Baru)</option>
+                                <option value="maintenance">3. Kebutuhan Maintenance (Gangguan)</option>
+                                <option value="other">4. Kebutuhan Operasional Lainnya</option>
+                            </select>
+                        </div>
+
+                        @if($work_order_type === 'stock_topup')
+                            <div class="sm:col-span-2 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                                <span class="material-symbols-outlined text-base text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">info</span>
+                                <div>
+                                    <strong class="block font-bold">Mode Pengisian Stok Reseller:</strong>
+                                    <span>Material yang diminta akan diserahkan untuk disimpan sebagai stok operasional Reseller. Penunjukan teknisi dan pelanggan tidak diperlukan saat pengajuan ini.</span>
+                                </div>
+                            </div>
+                        @endif
+
                         <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Gudang Sumber *</label>
                             <select wire:model="warehouse_id" required
@@ -254,10 +315,12 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pelanggan Tujuan</label>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Pelanggan Tujuan <span class="text-slate-400 font-normal">(Opsional)</span>
+                            </label>
                             <select wire:model="customer_id"
                                     class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-medium">
-                                <option value="">-- Pilih Pelanggan (Opsional) --</option>
+                                <option value="">-- Tanpa Pelanggan (Stok Reseller) --</option>
                                 @foreach($customers as $c)
                                     @php
                                         $pkg = $c->customerServices->first()?->serviceProfile?->name;
@@ -268,21 +331,12 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Pekerjaan *</label>
-                            <select wire:model="work_order_type" required
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Teknisi Pelaksana <span class="text-slate-400 font-normal">(Opsional)</span>
+                            </label>
+                            <select wire:model="designated_technician_id"
                                     class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="psb">Pemasangan Baru (PSB)</option>
-                                <option value="maintenance">Gangguan / Maintenance</option>
-                                <option value="relocation">Relokasi Pelanggan</option>
-                                <option value="stock_topup">Stok Operasional Teknisi</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Teknisi Pelaksana yang Ditunjuk *</label>
-                            <select wire:model="designated_technician_id" required
-                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="">-- Pilih Teknisi Pelaksana --</option>
+                                <option value="">-- Belum Ditunjuk / Dipegang Reseller --</option>
                                 @foreach($technicians as $tech)
                                     <option value="{{ $tech->id }}">{{ $tech->name }}</option>
                                 @endforeach
@@ -290,9 +344,9 @@
                             @error('designated_technician_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                         </div>
 
-                        <div class="sm:col-span-2">
+                        <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan (Opsional)</label>
-                            <input wire:model="notes" type="text" placeholder="misal: Tarikan kabel dropcore panjang ±150m..."
+                            <input wire:model="notes" type="text" placeholder="misal: Pengisian stok modem awal bulan..."
                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                         </div>
                     </div>

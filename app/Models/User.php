@@ -130,22 +130,31 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->hasRole(\App\Enums\UserRole::Administrator->value);
+        return $this->hasRole(\App\Enums\UserRole::Administrator->value) || $this->hasRole('superadmin');
     }
 
     public function isTechnician(): bool
     {
-        return $this->hasRole('technician') 
+        return $this->hasRole(['technician', 'teknisi']) 
             || strtoupper($this->job_function ?? '') === 'TECHNICIAN'
+            || strtoupper($this->job_function ?? '') === 'TEKNISI'
             || str_contains(strtoupper($this->job_title ?? ''), 'TEKNISI')
             || str_contains(strtoupper($this->job_title ?? ''), 'TECHNICIAN');
     }
 
     public function isReseller(): bool
     {
-        return $this->hasRole('reseller') 
+        return $this->hasRole(['reseller', 'Reseller']) 
             || strtoupper($this->job_function ?? '') === 'RESELLER'
             || !empty($this->reseller_id);
+    }
+
+    public function isWarehouseAdmin(): bool
+    {
+        return $this->hasRole(['admin_gudang', 'gudang'])
+            || strtoupper($this->job_function ?? '') === 'WAREHOUSE'
+            || strtoupper($this->job_function ?? '') === 'GUDANG'
+            || str_contains(strtoupper($this->job_title ?? ''), 'GUDANG');
     }
 
     public function scopeTechnicians($query)

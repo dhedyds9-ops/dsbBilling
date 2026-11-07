@@ -219,11 +219,15 @@
                                 </td>
                                 <td class="py-3.5 px-4 text-right">
                                     @if($trf->status === 'pending_acceptance')
-                                        <button wire:click="acceptTransfer({{ $trf->id }})"
-                                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 ml-auto">
-                                            <span class="material-symbols-outlined text-xs">check_circle</span>
-                                            <span>Konfirmasi Terima</span>
-                                        </button>
+                                        @if($trf->to_user_id === auth()->id() || auth()->user()?->isSuperAdmin())
+                                            <button wire:click="acceptTransfer({{ $trf->id }})"
+                                                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1 ml-auto">
+                                                <span class="material-symbols-outlined text-xs">check_circle</span>
+                                                <span>Konfirmasi Terima</span>
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-amber-600 dark:text-amber-400 font-semibold italic">Menunggu Teknisi</span>
+                                        @endif
                                     @else
                                         <span class="text-xs text-slate-400">Selesai</span>
                                     @endif
@@ -289,7 +293,7 @@
 
                 <form wire:submit="submitHandover" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Teknisi Penerima *</label>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Teknisi Penerima *</label>
                         <select wire:model="handover_to_user_id" required
                                 class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200 font-bold">
                             <option value="">-- Pilih Teknisi Pelaksana --</option>
@@ -300,10 +304,50 @@
                         @error('handover_to_user_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                     </div>
 
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Pelanggan Tujuan <span class="text-slate-400 font-normal">(Opsional)</span>
+                            </label>
+                            <select wire:model="handover_customer_id"
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200 font-medium">
+                                <option value="">-- Tanpa Pelanggan Khusus --</option>
+                                @foreach($customers as $c)
+                                    <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->code ?? ($c->customer_code ?? $c->phone) }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Pekerjaan</label>
+                            <select wire:model="handover_work_order_type"
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200">
+                                <option value="psb">Pemasangan Baru (PSB)</option>
+                                <option value="maintenance">Gangguan / Maintenance</option>
+                                <option value="other">Operasional Lapangan</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Catatan Serah Terima</label>
-                        <input wire:model="handover_notes" type="text" placeholder="Contoh: Diserahkan di lokasi pasang..."
-                               class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Jumlah yang Diserahkan ({{ $selectedCustody->item?->unit ?? 'unit' }}) *
+                        </label>
+                        @if($selectedCustody->itemSerial)
+                            <input type="text" value="1 {{ $selectedCustody->item?->unit ?? 'unit' }} (SN: {{ $selectedCustody->itemSerial->serial_number }})" disabled
+                                   class="w-full py-2 px-3 bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        @else
+                            <input wire:model="handover_quantity" type="number" step="any" min="0.01" max="{{ $selectedCustody->available_quantity }}" required
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200">
+                            <span class="text-[11px] text-slate-400 mt-0.5 block">Tersedia di tangan Anda: <strong>{{ number_format($selectedCustody->available_quantity, 0) }} {{ $selectedCustody->item?->unit }}</strong></span>
+                        @endif
+                        @error('handover_quantity') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Serah Terima</label>
+                        <input wire:model="handover_notes" type="text" placeholder="Contoh: Diserahkan di lokasi pasang untuk penarikan dropcore..."
+                               class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200">
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-700/80">

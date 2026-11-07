@@ -22,6 +22,9 @@ class Index extends Component
     public bool $showHandoverModal = false;
     public ?int $selectedCustodyId = null;
     public ?int $handover_to_user_id = null;
+    public ?int $handover_customer_id = null;
+    public string $handover_work_order_type = 'psb';
+    public float $handover_quantity = 1;
     public string $handover_notes = '';
 
     protected $queryString = [
@@ -49,8 +52,19 @@ class Index extends Component
 
     public function openHandoverModal(int $custodyId)
     {
+        $custody = InventoryCustody::with(['item', 'itemSerial', 'customer'])->findOrFail($custodyId);
+        $user = auth()->user();
+
+        // Keamanan: hanya pemilik stok (holder) atau superadmin yang boleh menyerahkan
+        if ($custody->holder_id !== $user->id && !$user->isSuperAdmin()) {
+            abort(403, 'Anda hanya dapat menyerahkan stok yang berada dalam penguasaan Anda.');
+        }
+
         $this->selectedCustodyId = $custodyId;
         $this->handover_to_user_id = null;
+        $this->handover_customer_id = $custody->customer_id;
+        $this->handover_work_order_type = 'psb';
+        $this->handover_quantity = $custody->itemSerial ? 1 : $custody->available_quantity;
         $this->handover_notes = '';
         $this->showHandoverModal = true;
     }
@@ -59,24 +73,44 @@ class Index extends Component
     {
         $this->validate([
             'handover_to_user_id' => 'required|exists:users,id',
+            'handover_quantity' => 'required|numeric|min:0.01',
+            'handover_customer_id' => 'nullable|exists:customers,id',
+            'handover_work_order_type' => 'required|string',
             'handover_notes' => 'nullable|string|max:500',
         ], [
             'handover_to_user_id.required' => 'Teknisi penerima barang wajib dipilih.',
+            'handover_quantity.min' => 'Jumlah barang yang diserahkan harus lebih besar dari 0.',
         ]);
 
+        $custody = InventoryCustody::findOrFail($this->selectedCustodyId);
+        $user = auth()->user();
+
+        if ($custody->holder_id !== $user->id && !$user->isSuperAdmin()) {
+            abort(403, 'Anda hanya dapat menyerahkan stok yang berada dalam penguasaan Anda.');
+        }
+
+        if ($this->handover_quantity > $custody->available_quantity) {
+            $this->addError('handover_quantity', 'Jumlah melebihi stok yang tersedia (' . $custody->available_quantity . ').');
+            return;
+        }
+
         try {
+            $notesFull = trim(($this->handover_notes ?: 'Alokasi material ke teknisi') . " [Pekerjaan: {$this->handover_work_order_type}]");
+
             $transfer = $service->handoverCustody(
                 custodyId: $this->selectedCustodyId,
                 toUserId: $this->handover_to_user_id,
                 toUserType: 'technician',
-                notes: $this->handover_notes ?: 'Serah terima material ke teknisi pelaksana'
+                notes: $notesFull,
+                quantity: (float) $this->handover_quantity,
+                customerId: $this->handover_customer_id
             );
 
-            session()->flash('success', "Serah terima material No. {$transfer->transfer_number} telah dibuat dan menunggu konfirmasi penerimaan oleh Teknisi.");
+            session()->flash('success', "Alokasi material No. {$transfer->transfer_number} telah dibuat dan menunggu konfirmasi penerimaan oleh Teknisi.");
             $this->showHandoverModal = false;
             $this->selectedCustodyId = null;
         } catch (\Throwable $e) {
-            session()->flash('error', 'Gagal memproses serah terima: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memproses alokasi serah terima: ' . $e->getMessage());
         }
     }
 
@@ -142,6 +176,15 @@ class Index extends Component
         // List Teknisi untuk dropdown modal serah terima
         $technicians = User::getEligibleTechnicians();
 
+        $customers = \App\Models\CRM\Customer::query()
+            ->whereRaw("LOWER(COALESCE(name, '')) NOT LIKE 'guest%'")
+            ->whereRaw("LOWER(COALESCE(code, '')) NOT LIKE 'gst-%'")
+            ->where('status', '!=', 'inactive')
+            ->with(['customerServices.serviceProfile'])
+            ->orderBy('name')
+            ->limit(100)
+            ->get();
+
         $selectedCustody = null;
         if ($this->selectedCustodyId) {
             $selectedCustody = InventoryCustody::with(['item', 'itemSerial', 'holder'])->find($this->selectedCustodyId);
@@ -151,6 +194,7 @@ class Index extends Component
             'custodies' => $custodies,
             'transfers' => $transfers,
             'technicians' => $technicians,
+            'customers' => $customers,
             'selectedCustody' => $selectedCustody,
             'activeTab' => $this->activeTab,
             'showHandoverModal' => $this->showHandoverModal,
