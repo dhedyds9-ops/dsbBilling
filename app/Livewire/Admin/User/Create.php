@@ -40,6 +40,30 @@ class Create extends AdminComponent
             $this->division = \App\Enums\JobFunction::resolveDivision($value);
             $this->updatedJobFunction($this->job_function);
 
+            if (str_contains(strtolower((string)$value), 'gudang') || str_contains(strtolower((string)$value), 'logistik')) {
+                $inventoryPerms = [
+                    \App\Enums\UserPermission::InventoryView->value,
+                    \App\Enums\UserPermission::InventoryManage->value,
+                    \App\Enums\UserPermission::WarehouseView->value,
+                    \App\Enums\UserPermission::WarehouseManage->value,
+                    \App\Enums\UserPermission::InventoryInbound->value,
+                    \App\Enums\UserPermission::InventoryStockCard->value,
+                    \App\Enums\UserPermission::InventoryRequisition->value,
+                    \App\Enums\UserPermission::InventoryDispatch->value,
+                    \App\Enums\UserPermission::InventoryCustody->value,
+                    \App\Enums\UserPermission::InventoryUsage->value,
+                    \App\Enums\UserPermission::InventoryReturn->value,
+                    \App\Enums\UserPermission::InventoryOpname->value,
+                    \App\Enums\UserPermission::InventoryReport->value,
+                ];
+                $perms = Permission::whereIn('name', $inventoryPerms)->get();
+                foreach ($perms as $p) {
+                    if (!in_array((string)$p->id, $this->selectedPermissions)) {
+                        $this->selectedPermissions[] = (string)$p->id;
+                    }
+                }
+            }
+
             // Jika role belum dipilih, otomatis arahkan ke role Manager (Staff Internal)
             if (empty($this->selectedRoles)) {
                 $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();

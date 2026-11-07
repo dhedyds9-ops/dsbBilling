@@ -31,11 +31,14 @@ enum JobFunction: string
     public static function ispPositions(): array
     {
         return [
+            'Admin Gudang / Logistik',
+            'Kepala Gudang',
             'Teknisi Lapangan',
             'NOC / Monitoring',
             'Customer Service',
             'Kasir Billing',
             'Marketing Internet',
+            'Staf Administrasi',
         ];
     }
 
@@ -74,6 +77,10 @@ enum JobFunction: string
      */
     public static function resolveDivision(?string $position = null): string
     {
+        $target = strtolower(trim((string) $position));
+        if (str_contains($target, 'gudang') || str_contains($target, 'logistik')) {
+            return 'Inventaris & Logistik';
+        }
         return 'Layanan Internet & Jaringan';
     }
 }
