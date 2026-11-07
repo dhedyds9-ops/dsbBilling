@@ -325,6 +325,10 @@ class Index extends Component
             'recipients' => $recipients,
             'availableSerials' => $availableSerials,
             'selectedDispatch' => $selectedDispatch,
+            'showCreateModal' => $this->showCreateModal,
+            'showDetailModal' => $this->showDetailModal,
+            'dispatchItems' => $this->dispatchItems,
+            'distribution_method' => $this->distribution_method,
         ])->layout('layouts.app', ['title' => 'Pengeluaran Barang (Dispatch) - dsBilling']);
     }
 }

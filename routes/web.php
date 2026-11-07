@@ -144,11 +144,12 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         // Private Secure Ticket Photos Stream Endpoint (P0-H1)
         Route::get('/technician-portal/tickets/{ticket}/photos/{filename}', [\App\Http\Controllers\Isp\Technician\TicketPhotoController::class, 'show'])->name('technician.tickets.photo');
 
-        // Alias redirect for underscore URL variants (/technician_portal/* -> /technician-portal/*)
-        Route::get('/technician_portal/{path?}', function ($path = null) {
-            return redirect('/technician-portal/' . ($path ? ltrim($path, '/') : 'dashboard'));
-        })->where('path', '.*');
     });
+
+    // Alias redirect for underscore URL variants (/technician_portal/* -> /technician-portal/*)
+    Route::get('/technician_portal/{path?}', function ($path = null) {
+        return redirect('/technician-portal/' . ($path ? ltrim($path, '/') : 'dashboard'));
+    })->where('path', '.*');
 
     // ==================== SHARED FINANCIAL REPORTS (ADMIN, MANAGER, RESELLER) ====================
     Route::middleware(['role:administrator,manager,reseller'])->prefix('keuangan')->name('keuangan.')->group(function () {

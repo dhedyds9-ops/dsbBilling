@@ -35,6 +35,12 @@ class RoleMiddleware
             if ($user->hasRole($role)) {
                 return $next($request);
             }
+            if ($role === 'technician' && ($user->hasRole('teknisi') || (method_exists($user, 'isTechnician') && $user->isTechnician()))) {
+                return $next($request);
+            }
+            if ($role === 'administrator' && $user->hasRole('superadmin')) {
+                return $next($request);
+            }
         }
 
         // Redirect berdasarkan role + job_function user yang sebenarnya

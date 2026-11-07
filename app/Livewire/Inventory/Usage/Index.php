@@ -247,6 +247,9 @@ class Index extends Component
             'customers' => $customers,
             'availableCustodies' => $availableCustodies,
             'selectedUsage' => $selectedUsage,
+            'showCreateModal' => $this->showCreateModal,
+            'showDetailModal' => $this->showDetailModal,
+            'usageItems' => $this->usageItems,
         ])->layout('layouts.app', ['title' => 'Pemakaian Material Lapangan - dsBilling']);
     }
 }

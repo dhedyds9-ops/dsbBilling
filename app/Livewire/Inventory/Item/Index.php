@@ -293,6 +293,11 @@ class Index extends Component
             'branches' => $branches,
             'brandList' => $brandList,
             'categories' => $categories,
+            'itemId' => $this->itemId,
+            'showFormModal' => $this->showFormModal,
+            'showSerialsModal' => $this->showSerialsModal,
+            'selectedItemNameForSerials' => $this->selectedItemNameForSerials,
+            'serialSearch' => $this->serialSearch,
         ])->layout('layouts.app', ['title' => 'Master Barang - dsBilling']);
     }
 }

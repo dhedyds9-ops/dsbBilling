@@ -309,13 +309,6 @@
                                 </div>
                             @endforeach
                         </div>
-                                                <span class="text-xs text-rose-500 font-semibold block mt-1">{{ $message }}</span>
-                                            @enderror
-                                        </div>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/80">

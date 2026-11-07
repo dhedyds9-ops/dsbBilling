@@ -18,17 +18,21 @@ class JobFunctionMiddleware
         $user = Auth::user();
 
         // 0. Administrator bypasses job function restrictions
-        if ($user->hasRole(\App\Enums\UserRole::Administrator->value)) {
+        if ($user->hasRole(\App\Enums\UserRole::Administrator->value) || $user->hasRole('superadmin') || $user->hasRole('administrator')) {
             return $next($request);
         }
 
-        // 1. Job Function hanya berlaku untuk Manager atau Reseller
-        if (!$user->hasRole(\App\Enums\UserRole::Manager->value) && !$user->hasRole(\App\Enums\UserRole::Reseller->value)) {
-            return abort(403, 'Unauthorized portal access.');
+        // 1. Direct role matches (teknisi/technician, noc, dll)
+        $upperFunctions = array_map('strtoupper', $functions);
+        if (in_array('TECHNICIAN', $upperFunctions) && ($user->hasRole(['teknisi', 'technician']) || (method_exists($user, 'isTechnician') && $user->isTechnician()))) {
+            return $next($request);
+        }
+        if (in_array('NOC', $upperFunctions) && $user->hasRole('noc')) {
+            return $next($request);
         }
 
         // 2. Cek apakah Job Function user ada di dalam daftar yang diizinkan
-        if (in_array(strtoupper($user->job_function ?? ''), array_map('strtoupper', $functions))) {
+        if (in_array(strtoupper($user->job_function ?? ''), $upperFunctions)) {
             return $next($request);
         }
 

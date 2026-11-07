@@ -421,7 +421,9 @@
                             { fps: 12, qrbox: { width: 280, height: 140 } },
                             (decodedText) => {
                                 const clean = decodedText.trim();
-                                @this.set('serialSearch', clean);
+                                if (this.$wire) {
+                                    this.$wire.set('serialSearch', clean);
+                                }
                                 this.closeCamera();
                                 if (navigator.vibrate) navigator.vibrate(100);
                             },

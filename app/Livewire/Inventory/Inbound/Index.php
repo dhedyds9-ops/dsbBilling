@@ -280,6 +280,9 @@ class Index extends Component
             'warehouses' => $warehouses,
             'availableItems' => $availableItems,
             'selectedInbound' => $selectedInbound,
+            'showCreateModal' => $this->showCreateModal,
+            'showDetailModal' => $this->showDetailModal,
+            'inboundItems' => $this->inboundItems,
         ])->layout('layouts.app', ['title' => 'Barang Masuk (Inbound) - dsBilling']);
     }
 }

@@ -301,6 +301,11 @@ class Index extends Component
             'customers' => $customers,
             'technicians' => $technicians,
             'selectedRequisition' => $selectedRequisition,
+            'showCreateModal' => $this->showCreateModal,
+            'showApprovalModal' => $this->showApprovalModal,
+            'showDetailModal' => $this->showDetailModal,
+            'requisitionItems' => $this->requisitionItems,
+            'distribution_method' => $this->distribution_method,
         ])->layout('layouts.app', ['title' => 'Permintaan Barang - dsBilling']);
     }
 }
