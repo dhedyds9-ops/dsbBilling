@@ -225,9 +225,10 @@ class User extends Authenticatable
             return true;
         }
 
-        // Cek direct permissions
-        if ($this->directPermissions->contains('name', $permission)) {
-            return true;
+        // Jika user memiliki direct permissions spesifik, direct permissions diutamakan
+        // agar user dengan jabatan tertentu (misal Admin Gudang / Kasir) dibatasi sesuai izinnya
+        if ($this->directPermissions->isNotEmpty()) {
+            return $this->directPermissions->contains('name', $permission);
         }
 
         // Cek permissions dari roles

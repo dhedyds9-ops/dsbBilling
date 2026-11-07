@@ -37,12 +37,23 @@ class AuthenticatedSessionController extends Controller
         }
 
         // 1. Cek Job Function khusus (Portal Spesifik)
-        if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole('technician')) {
+        if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole('technician') || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
             return redirect()->intended(route('technician.dashboard', absolute: false));
         }
         
         if (strtoupper($user->job_function ?? '') === 'NOC' || $user->hasRole('noc')) {
             return redirect()->intended(route('noc.overview', absolute: false));
+        }
+
+        // 1.1 Staff Gudang / Logistik diarahkan langsung ke Dashboard Inventaris
+        if (!$user->isSuperAdmin()) {
+            $isWarehouseStaff = str_contains(strtolower($user->job_title ?? ''), 'gudang')
+                || str_contains(strtolower($user->job_title ?? ''), 'logistik')
+                || ($user->hasPermission('inventory.view') && !$user->hasPermission('router.view') && !$user->hasPermission('customer.view'));
+
+            if ($isWarehouseStaff) {
+                return redirect()->intended(route('inventory.dashboard', absolute: false));
+            }
         }
         
         // 2. Administrator dan Manager (Staff Backoffice Umum)

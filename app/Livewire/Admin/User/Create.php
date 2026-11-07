@@ -40,7 +40,15 @@ class Create extends AdminComponent
             $this->division = \App\Enums\JobFunction::resolveDivision($value);
             $this->updatedJobFunction($this->job_function);
 
-            if (str_contains(strtolower((string)$value), 'gudang') || str_contains(strtolower((string)$value), 'logistik')) {
+            $target = strtolower((string)$value);
+
+            if (str_contains($target, 'gudang') || str_contains($target, 'logistik')) {
+                // Posisi Gudang menggunakan Role Manager (Staff Internal)
+                $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
+                if ($managerRole) {
+                    $this->selectedRoles = (string)$managerRole->id;
+                }
+
                 $inventoryPerms = [
                     \App\Enums\UserPermission::InventoryView->value,
                     \App\Enums\UserPermission::InventoryManage->value,
@@ -57,19 +65,81 @@ class Create extends AdminComponent
                     \App\Enums\UserPermission::InventoryReport->value,
                 ];
                 $perms = Permission::whereIn('name', $inventoryPerms)->get();
-                foreach ($perms as $p) {
-                    if (!in_array((string)$p->id, $this->selectedPermissions)) {
-                        $this->selectedPermissions[] = (string)$p->id;
-                    }
-                }
-            }
-
-            // Jika role belum dipilih, otomatis arahkan ke role Manager (Staff Internal)
-            if (empty($this->selectedRoles)) {
+                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            } elseif (str_contains($target, 'kasir') || str_contains($target, 'billing')) {
                 $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
                 if ($managerRole) {
                     $this->selectedRoles = (string)$managerRole->id;
-                    $this->updatedSelectedRoles($this->selectedRoles);
+                }
+                $cashierPerms = [
+                    \App\Enums\UserPermission::InvoiceView->value,
+                    \App\Enums\UserPermission::InvoiceCreate->value,
+                    \App\Enums\UserPermission::InvoicePayment->value,
+                    \App\Enums\UserPermission::PaymentView->value,
+                    \App\Enums\UserPermission::PaymentCreate->value,
+                    \App\Enums\UserPermission::CustomerView->value,
+                ];
+                $perms = Permission::whereIn('name', $cashierPerms)->get();
+                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            } elseif (str_contains($target, 'customer service') || str_contains($target, 'cs')) {
+                $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
+                if ($managerRole) {
+                    $this->selectedRoles = (string)$managerRole->id;
+                }
+                $csPerms = [
+                    \App\Enums\UserPermission::CustomerView->value,
+                    \App\Enums\UserPermission::CustomerCreate->value,
+                    \App\Enums\UserPermission::CustomerUpdate->value,
+                    \App\Enums\UserPermission::TicketView->value,
+                    \App\Enums\UserPermission::TicketCreate->value,
+                    \App\Enums\UserPermission::TicketUpdate->value,
+                ];
+                $perms = Permission::whereIn('name', $csPerms)->get();
+                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            } elseif (str_contains($target, 'noc') || str_contains($target, 'monitoring')) {
+                $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
+                if ($managerRole) {
+                    $this->selectedRoles = (string)$managerRole->id;
+                }
+                $nocPerms = [
+                    \App\Enums\UserPermission::NocView->value,
+                    \App\Enums\UserPermission::MonitoringView->value,
+                    \App\Enums\UserPermission::RouterView->value,
+                    \App\Enums\UserPermission::OltView->value,
+                    \App\Enums\UserPermission::OnuView->value,
+                    \App\Enums\UserPermission::GisView->value,
+                ];
+                $perms = Permission::whereIn('name', $nocPerms)->get();
+                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            } elseif (str_contains($target, 'teknisi') || str_contains($target, 'technician')) {
+                $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
+                if ($managerRole) {
+                    $this->selectedRoles = (string)$managerRole->id;
+                }
+                $techPerms = [
+                    \App\Enums\UserPermission::TechnicianPortal->value,
+                    \App\Enums\UserPermission::WorkforceJobsView->value,
+                    \App\Enums\UserPermission::WorkforceJobsExecute->value,
+                    \App\Enums\UserPermission::WorkforceQcView->value,
+                    \App\Enums\UserPermission::WorkforceQcExecute->value,
+                    \App\Enums\UserPermission::WorkforceMaterialView->value,
+                    \App\Enums\UserPermission::WorkforceMaterialExecute->value,
+                    \App\Enums\UserPermission::WorkforceAttendanceExecute->value,
+                    \App\Enums\UserPermission::InventoryCustody->value,
+                    \App\Enums\UserPermission::InventoryUsage->value,
+                    \App\Enums\UserPermission::InventoryReturn->value,
+                    \App\Enums\UserPermission::InventoryRequisition->value,
+                ];
+                $perms = Permission::whereIn('name', $techPerms)->get();
+                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            } else {
+                // Posisi umum lainnya: jika role belum dipilih, arahkan ke role Manager (Staff Internal)
+                if (empty($this->selectedRoles)) {
+                    $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
+                    if ($managerRole) {
+                        $this->selectedRoles = (string)$managerRole->id;
+                        $this->updatedSelectedRoles($this->selectedRoles);
+                    }
                 }
             }
         }

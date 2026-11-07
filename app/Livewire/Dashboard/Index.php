@@ -38,6 +38,27 @@ class Index extends Component
 
     public function mount()
     {
+        $user = auth()->user();
+        if ($user && !$user->isSuperAdmin()) {
+            if ($user->hasRole('customer')) {
+                return redirect()->route('customer-portal.dashboard');
+            }
+            if ($user->hasRole('reseller')) {
+                return redirect()->route('reseller-portal.dashboard');
+            }
+            if (method_exists($user, 'isTechnician') && $user->isTechnician()) {
+                return redirect()->route('technician.dashboard');
+            }
+            if (strtoupper($user->job_function ?? '') === 'NOC' || $user->hasRole('noc')) {
+                return redirect()->route('noc.overview');
+            }
+            if (str_contains(strtolower($user->job_title ?? ''), 'gudang') 
+                || str_contains(strtolower($user->job_title ?? ''), 'logistik')
+                || ($user->hasPermission('inventory.view') && !$user->hasPermission('router.view') && !$user->hasPermission('customer.view'))) {
+                return redirect()->route('inventory.dashboard');
+            }
+        }
+
         $this->loadData();
     }
 

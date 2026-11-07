@@ -146,17 +146,23 @@
                 </h3>
                 
                 <div>
-                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Pilih Jabatan (Pilih salah satu) *</label>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Pilih Hak Akses Sistem (Role) *</label>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         @foreach($roles as $role)
                             <label class="relative flex cursor-pointer p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors {{ $selectedRoles == $role->id ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500 dark:border-indigo-500 ring-1 ring-indigo-500' : 'bg-white dark:bg-slate-800' }}">
                                 <input type="radio" wire:model.live="selectedRoles" value="{{ $role->id }}" class="sr-only">
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-sm font-bold text-slate-900 dark:text-white">{{ $role->display_name ?? ucfirst($role->name) }}</span>
+                                    <span class="text-sm font-bold text-slate-900 dark:text-white">
+                                        @if($role->name == 'administrator') Administrator (Superadmin)
+                                        @elseif($role->name == 'manager') Manager (Staff Internal)
+                                        @elseif($role->name == 'reseller') Reseller (Mitra Bisnis)
+                                        @else {{ $role->display_name ?? ucfirst($role->name) }}
+                                        @endif
+                                    </span>
                                     <span class="text-xs text-slate-500 dark:text-slate-400">
-                                        @if($role->name == 'administrator') Akses penuh
-                                        @elseif($role->name == 'manager') Staff internal
-                                        @elseif($role->name == 'reseller') Partner bisnis
+                                        @if($role->name == 'administrator') Akses penuh seluruh sistem (Owner/Superadmin)
+                                        @elseif($role->name == 'manager') Staff internal (Admin Gudang, CS, Kasir, NOC, Teknisi)
+                                        @elseif($role->name == 'reseller') Partner & Mitra bisnis penjualan
                                         @else {{ $role->description ?: 'Akses khusus' }}
                                         @endif
                                     </span>
@@ -168,6 +174,13 @@
                         @endforeach
                     </div>
                     @error('selectedRoles') <p class="text-xs text-red-500 mt-2">{{ $message }}</p> @enderror
+
+                    @if(!empty($job_title) && (str_contains(strtolower($job_title), 'gudang') || str_contains(strtolower($job_title), 'logistik')))
+                        <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+                            <span class="material-symbols-outlined notranslate text-blue-500" translate="no" style="font-size:18px">info</span>
+                            <span>Posisi <strong>Admin Gudang / Logistik</strong> otomatis menggunakan Role <strong>Manager (Staff Internal)</strong> dengan hak akses khusus modul Inventaris & Gudang dan landing page langsung ke Dashboard Stok.</span>
+                        </div>
+                    @endif
                 </div>
                 
                 <div class="flex items-center gap-2 mt-6">

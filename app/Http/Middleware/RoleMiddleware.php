@@ -54,12 +54,17 @@ class RoleMiddleware
         }
 
         if ($user->hasRole(UserRole::Manager->value)) {
-            // Manager diarahkan berdasarkan job_function
+            // Manager diarahkan berdasarkan job_function / job_title / permissions
             if (strtoupper($user->job_function ?? '') === 'NOC') {
                 return new \Illuminate\Http\RedirectResponse(route('noc.overview'));
             }
-            if (strtoupper($user->job_function ?? '') === 'TECHNICIAN') {
+            if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
                 return new \Illuminate\Http\RedirectResponse(route('technician.dashboard'));
+            }
+            if (str_contains(strtolower($user->job_title ?? ''), 'gudang') 
+                || str_contains(strtolower($user->job_title ?? ''), 'logistik')
+                || ($user->hasPermission('inventory.view') && !$user->hasPermission('router.view') && !$user->hasPermission('customer.view'))) {
+                return new \Illuminate\Http\RedirectResponse(route('inventory.dashboard'));
             }
             // Fallback manager portal
             return new \Illuminate\Http\RedirectResponse(route('dashboard'));
