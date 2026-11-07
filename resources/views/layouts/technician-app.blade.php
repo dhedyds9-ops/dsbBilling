@@ -24,8 +24,30 @@
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />
         <style>
             body { overscroll-behavior: none; }
-            .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-            .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+            .material-symbols-outlined {
+                font-family: 'Material Symbols Outlined' !important;
+                font-weight: normal;
+                font-style: normal;
+                font-size: 24px;
+                line-height: 1;
+                letter-spacing: normal;
+                text-transform: none !important;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;
+                word-wrap: normal;
+                direction: ltr;
+                -webkit-font-feature-settings: 'liga';
+                font-feature-settings: 'liga';
+                -webkit-font-smoothing: antialiased;
+                user-select: none;
+                vertical-align: middle;
+                font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
+            .material-symbols-outlined.fill {
+                font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+            }
             @media print { .print-hide { display: none !important; } }
         </style>
     </x-slot:head>
@@ -139,7 +161,22 @@
 
     <x-ui.toast-manager />
 
-    
+    <script>
+        (function() {
+            function protectIcons() {
+                document.querySelectorAll('.material-symbols-outlined, .material-icons-outlined, .material-icons').forEach(function(el) {
+                    el.setAttribute('translate', 'no');
+                    el.classList.add('notranslate');
+                });
+            }
+            document.addEventListener('DOMContentLoaded', protectIcons);
+            document.addEventListener('livewire:navigated', protectIcons);
+            document.addEventListener('livewire:update', protectIcons);
+            if (window.MutationObserver) {
+                new MutationObserver(protectIcons).observe(document.documentElement, { childList: true, subtree: true });
+            }
+        })();
+    </script>
 
 </x-layouts.base>
 

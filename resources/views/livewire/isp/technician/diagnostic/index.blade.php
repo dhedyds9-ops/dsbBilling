@@ -37,10 +37,10 @@
     {{-- PENCARIAN ONT / PELANGGAN --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
-            <span class="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
-                <span class="material-symbols-outlined text-sky-500 text-base">search</span>
-                <span>Pilih Perangkat ONT Pelanggan</span>
-            </span>
+            <div class="flex items-center gap-1.5 text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                <span class="material-symbols-outlined text-sky-500 text-base notranslate" translate="no" style="text-transform: none !important;">search</span>
+                <span class="uppercase tracking-wider">Pilih Perangkat ONT Pelanggan</span>
+            </div>
             @if($selectedOnuId)
                 <button wire:click="resetSelection" type="button"
                         class="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline">
@@ -52,14 +52,14 @@
         @if(!$selectedOnuId)
             <div class="flex gap-2">
                 <div class="relative flex-1">
-                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm notranslate" translate="no">search</span>
                     <input type="text" wire:model.live.debounce.300ms="searchQuery"
                            placeholder="Ketik Nama Pelanggan / SN ONT / PPPoE..."
                            class="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500">
                 </div>
                 <button type="button" @click="openScanner()" title="Scan Barcode / SN ONT"
                         class="px-3.5 py-2.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-xl text-xs font-bold border border-sky-200 dark:border-sky-800 flex items-center gap-1 shrink-0 active:scale-95 transition-all">
-                    <span class="material-symbols-outlined text-sm">photo_camera</span>
+                    <span class="material-symbols-outlined text-sm notranslate" translate="no">photo_camera</span>
                     <span>Scan</span>
                 </button>
             </div>
@@ -110,23 +110,23 @@
         <div class="grid grid-cols-4 gap-2">
             <button wire:click="refreshSignal" type="button"
                     class="py-2.5 px-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm transition-colors">
-                <span wire:loading.remove wire:target="refreshSignal" class="material-symbols-outlined text-lg">sync</span>
-                <span wire:loading wire:target="refreshSignal" class="material-symbols-outlined animate-spin text-lg">autorenew</span>
+                <span wire:loading.remove wire:target="refreshSignal" class="material-symbols-outlined text-lg notranslate" translate="no">sync</span>
+                <span wire:loading wire:target="refreshSignal" class="material-symbols-outlined animate-spin text-lg notranslate" translate="no">autorenew</span>
                 <span>Refresh</span>
             </button>
             <button wire:click="openRebootModal" type="button"
                     class="py-2.5 px-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm transition-colors">
-                <span class="material-symbols-outlined text-lg">restart_alt</span>
+                <span class="material-symbols-outlined text-lg notranslate" translate="no">restart_alt</span>
                 <span>Reboot</span>
             </button>
             <button wire:click="openWifiModal" type="button"
                     class="py-2.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm transition-colors">
-                <span class="material-symbols-outlined text-lg">wifi</span>
+                <span class="material-symbols-outlined text-lg notranslate" translate="no">wifi</span>
                 <span>Ganti Wi-Fi</span>
             </button>
             <a href="{{ route('technician.swap-ont.index', ['onu_id' => $onu->id]) }}"
                class="py-2.5 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm transition-colors">
-                <span class="material-symbols-outlined text-lg">sync_alt</span>
+                <span class="material-symbols-outlined text-lg notranslate" translate="no">sync_alt</span>
                 <span>Ganti ONT</span>
             </a>
         </div>
@@ -147,10 +147,10 @@
         @endphp
         <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
-                    <span class="material-symbols-outlined text-emerald-500 text-sm">optics</span>
-                    <span>Kualitas Sinyal & Redaman Optik (OPM)</span>
-                </span>
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span class="material-symbols-outlined text-emerald-500 text-sm notranslate" translate="no" style="text-transform: none !important;">sensors</span>
+                    <span class="uppercase tracking-wider">Kualitas Sinyal & Redaman Optik (OPM)</span>
+                </div>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-{{ $healthColor }}-100 text-{{ $healthColor }}-800 dark:bg-{{ $healthColor }}-950 dark:text-{{ $healthColor }}-300">
                     {{ $health === 'normal' ? 'Optimal (-18 s/d -24 dBm)' : ($health === 'warning' ? 'Warning (-25 s/d -27 dBm)' : ($health === 'critical' ? 'Kritis / Redaman Buruk' : 'Offline / Standby')) }}
                 </span>
@@ -185,10 +185,10 @@
         {{-- STATUS PERANGKAT & HARDWARE --}}
         <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
-                    <span class="material-symbols-outlined text-indigo-500 text-sm">info</span>
-                    <span>Informasi Hardware & Jaringan</span>
-                </span>
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span class="material-symbols-outlined text-indigo-500 text-sm notranslate" translate="no" style="text-transform: none !important;">info</span>
+                    <span class="uppercase tracking-wider">Informasi Hardware & Jaringan</span>
+                </div>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ ($diagnostics['status'] ?? $onu->status) === 'online' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600' }}">
                     {{ strtoupper($diagnostics['status'] ?? $onu->status) }}
                 </span>
@@ -237,9 +237,9 @@
         @endphp
         <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
-                <div class="flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-indigo-500 text-sm">devices</span>
-                    <span class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Perangkat Terhubung ke Modem</span>
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span class="material-symbols-outlined text-indigo-500 text-sm notranslate" translate="no" style="text-transform: none !important;">devices</span>
+                    <span class="uppercase tracking-wider">Perangkat Terhubung ke Modem</span>
                 </div>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                     {{ count($clients) }} Perangkat
@@ -259,7 +259,7 @@
 
             @if(empty($clients))
                 <div class="py-6 text-center text-slate-400 text-xs">
-                    <span class="material-symbols-outlined text-3xl mb-1 text-slate-300">wifi_off</span>
+                    <span class="material-symbols-outlined text-3xl mb-1 text-slate-300 notranslate" translate="no">wifi_off</span>
                     <p>Belum ada daftar perangkat terhubung atau modem belum mengirimkan inform LAN.</p>
                 </div>
             @else
@@ -268,7 +268,7 @@
                         <div class="p-3 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                             <div class="flex items-center gap-2.5 min-w-0">
                                 <div class="w-8 h-8 rounded-lg {{ $client['interface_type'] === 'Ethernet' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40' }} flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-sm">
+                                    <span class="material-symbols-outlined text-sm notranslate" translate="no">
                                         {{ $client['interface_type'] === 'Ethernet' ? 'lan' : 'smartphone' }}
                                     </span>
                                 </div>
@@ -297,7 +297,7 @@
         <div class="pt-2">
             <a href="{{ route('technician.dismantle.index', ['onu_id' => $onu->id]) }}"
                class="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors">
-                <span class="material-symbols-outlined text-sm text-rose-500">power_off</span>
+                <span class="material-symbols-outlined text-sm text-rose-500 notranslate" translate="no">power_off</span>
                 <span>Pembongkaran / Cabut ONT Pelanggan</span>
             </a>
         </div>
@@ -310,12 +310,12 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-600 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-sm">restart_alt</span>
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">restart_alt</span>
                         </div>
                         <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Reboot Perangkat ONT</h3>
                     </div>
                     <button wire:click="$set('showRebootModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
-                        <span class="material-symbols-outlined text-sm">close</span>
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
                     </button>
                 </div>
 
@@ -358,12 +358,12 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-sm">wifi</span>
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">wifi</span>
                         </div>
                         <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Ubah Konfigurasi Wi-Fi</h3>
                     </div>
                     <button wire:click="$set('showWifiModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
-                        <span class="material-symbols-outlined text-sm">close</span>
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
                     </button>
                 </div>
 
@@ -406,12 +406,12 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/50 text-sky-600 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-sm">photo_camera</span>
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">photo_camera</span>
                     </div>
                     <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Scan Barcode / SN ONT</h3>
                 </div>
                 <button type="button" @click="closeScanner()" class="text-slate-400 hover:text-slate-600">
-                    <span class="material-symbols-outlined text-sm">close</span>
+                    <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
                 </button>
             </div>
 
