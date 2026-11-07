@@ -17,18 +17,19 @@
     @endif
 
     {{-- Header Banner --}}
-    <div class="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
-        <div class="absolute -right-2 -bottom-2 opacity-10 pointer-events-none">
-            <span class="material-symbols-outlined text-8xl">sync_alt</span>
+    <div class="p-4 rounded-2xl shadow-md relative overflow-hidden text-white"
+         style="background: linear-gradient(135deg, #4f46e5 0%, #2563eb 50%, #3730a3 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-2 -bottom-2 opacity-15 pointer-events-none">
+            <span class="material-symbols-outlined text-8xl text-white notranslate" translate="no">sync_alt</span>
         </div>
         <div class="relative z-10 flex items-center justify-between">
             <div>
-                <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider">Field Service Tool</span>
-                <h2 class="text-lg font-black mt-1">Ganti ONT Pelanggan</h2>
+                <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider text-white">Field Service Tool</span>
+                <h2 class="text-lg font-black mt-1 text-white">Ganti ONT Pelanggan</h2>
                 <p class="text-xs text-indigo-100">1-Klik Transfer Akun PPPoE, Wi-Fi & Provisioning ke ONT Baru</p>
             </div>
             <div class="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shrink-0">
-                <span class="material-symbols-outlined text-2xl text-white">router</span>
+                <span class="material-symbols-outlined text-2xl text-white notranslate" translate="no">router</span>
             </div>
         </div>
     </div>

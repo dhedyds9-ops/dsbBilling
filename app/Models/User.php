@@ -152,12 +152,25 @@ class User extends Authenticatable
     {
         return $query->where(function ($q) {
             $q->whereHas('roles', function ($rq) {
-                $rq->whereIn('name', ['technician', 'Technician']);
+                $rq->whereIn('name', ['technician', 'Technician', 'teknisi', 'Teknisi']);
             })
-            ->orWhereRaw('UPPER(COALESCE(job_function, "")) = ?', ['TECHNICIAN'])
+            ->orWhereRaw('UPPER(COALESCE(job_function, "")) IN (?, ?)', ['TECHNICIAN', 'TEKNISI'])
             ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TEKNISI%'])
-            ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TECHNICIAN%']);
+            ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TECHNICIAN%'])
+            ->orWhereRaw('UPPER(COALESCE(name, "")) LIKE ?', ['%TEKNISI%'])
+            ->orWhereRaw('UPPER(COALESCE(name, "")) LIKE ?', ['%TECHNICIAN%']);
         });
+    }
+
+    public static function getEligibleTechnicians()
+    {
+        $techs = static::technicians()->orderBy('name')->get();
+        if ($techs->isEmpty()) {
+            $techs = static::whereDoesntHave('roles', function($q) {
+                $q->where('name', 'customer');
+            })->where('name', '!=', 'Administrator')->orderBy('name')->get();
+        }
+        return $techs;
     }
 
     public function scopeResellers($query)

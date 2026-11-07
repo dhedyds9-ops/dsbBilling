@@ -279,33 +279,114 @@
 
     {{-- MODAL AMBIL BARANG DARI GUDANG KANTOR --}}
     @if($showTakeModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 max-w-sm w-full space-y-4 shadow-2xl">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-sm">move_to_inbox</span>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+             x-data="{
+                query: '',
+                openDropdown: false,
+                selectedId: @entangle('takeWarehouseMaterialId'),
+                items: {{ json_encode($warehouseMaterials->map(fn($w) => [
+                    'id' => $w->id,
+                    'name' => $w->name,
+                    'category' => $w->category ?? 'Material',
+                    'stock' => (float)$w->stock,
+                    'unit' => $w->unit ?? 'pcs',
+                ])->values()) }},
+                get selectedItem() {
+                    return this.items.find(i => i.id == this.selectedId) || null;
+                },
+                get filteredItems() {
+                    if (!this.query.trim()) return this.items;
+                    const q = this.query.toLowerCase();
+                    return this.items.filter(i => 
+                        (i.name && i.name.toLowerCase().includes(q)) ||
+                        (i.category && i.category.toLowerCase().includes(q))
+                    );
+                },
+                selectItem(item) {
+                    this.selectedId = item.id;
+                    this.openDropdown = false;
+                    this.query = '';
+                    $wire.set('takeWarehouseMaterialId', item.id);
+                }
+             }">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
+                            <span class="material-symbols-outlined text-lg notranslate" translate="no">move_to_inbox</span>
                         </div>
-                        <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Ambil Barang dari Gudang</h3>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Ambil Barang dari Gudang</h3>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Pindahkan stok gudang kantor ke bagasi Anda</p>
+                        </div>
                     </div>
-                    <button wire:click="$set('showTakeModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
-                        <span class="material-symbols-outlined text-sm">close</span>
+                    <button wire:click="$set('showTakeModal', false)" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
                     </button>
                 </div>
 
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Material di Gudang</label>
-                        <select wire:model.live="takeWarehouseMaterialId"
-                                class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
+                <div class="space-y-4">
+                    {{-- 1. SEARCHABLE DROPDOWN --}}
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                            <span>Pilih Material di Gudang *</span>
+                            <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold" x-show="selectedItem" x-text="'Stok: ' + selectedItem?.stock + ' ' + selectedItem?.unit"></span>
+                        </label>
+
+                        {{-- Trigger Button --}}
+                        <div @click="openDropdown = !openDropdown"
+                             class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer flex items-center justify-between text-xs hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors shadow-xs">
+                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                <span class="material-symbols-outlined text-slate-400 text-base shrink-0 notranslate" translate="no">inventory_2</span>
+                                <template x-if="selectedItem">
+                                    <span class="font-bold text-slate-900 dark:text-slate-100 truncate" x-text="selectedItem.name"></span>
+                                </template>
+                                <template x-if="!selectedItem">
+                                    <span class="text-slate-400 font-medium">-- Ketik atau Cari Nama Barang --</span>
+                                </template>
+                            </div>
+                            <span class="material-symbols-outlined text-slate-400 text-sm transition-transform notranslate" translate="no" :class="{'rotate-180': openDropdown}">expand_more</span>
+                        </div>
+
+                        {{-- Dropdown Panel with Search Field --}}
+                        <div x-show="openDropdown" @click.away="openDropdown = false" x-cloak
+                             class="absolute left-0 right-0 mt-1 z-30 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2.5 space-y-2 animate-fadeIn">
+                            {{-- Live search input --}}
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm notranslate" translate="no">search</span>
+                                <input type="text" x-model="query" placeholder="Ketik kata kunci (Dropcore, ONT, Fast...)"
+                                       class="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+                            </div>
+
+                            {{-- Filtered list --}}
+                            <div class="max-h-48 overflow-y-auto space-y-1 pr-1">
+                                <template x-for="item in filteredItems" :key="item.id">
+                                    <button type="button" @click="selectItem(item)"
+                                            class="w-full px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-950/60"
+                                            :class="{'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold': selectedId == item.id, 'text-slate-800 dark:text-slate-200': selectedId != item.id}">
+                                        <div class="min-w-0 pr-2">
+                                            <p class="font-bold truncate" x-text="item.name"></p>
+                                            <p class="text-[10px] text-slate-400" x-text="item.category"></p>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black shrink-0"
+                                              :class="item.stock > 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'"
+                                              x-text="item.stock + ' ' + item.unit"></span>
+                                    </button>
+                                </template>
+                                <template x-if="filteredItems.length === 0">
+                                    <p class="text-center text-xs text-slate-400 py-3 font-medium">Barang tidak ditemukan dalam katalog gudang.</p>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- Hidden Native Select for complete form compatibility --}}
+                        <select wire:model.live="takeWarehouseMaterialId" class="hidden">
                             <option value="">-- Pilih Barang --</option>
                             @foreach($warehouseMaterials as $wItem)
-                                <option value="{{ $wItem->id }}">
-                                    {{ $wItem->name }} (Sisa: {{ $wItem->stock }} {{ $wItem->unit }})
-                                </option>
+                                <option value="{{ $wItem->id }}">{{ $wItem->name }}</option>
                             @endforeach
                         </select>
-                        @error('takeWarehouseMaterialId') <span class="text-rose-500 text-[10px] mt-0.5 block">{{ $message }}</span> @enderror
+                        @error('takeWarehouseMaterialId') <span class="text-rose-500 text-[10px] mt-1 block font-semibold">{{ $message }}</span> @enderror
                     </div>
 
                     @php
@@ -313,34 +394,66 @@
                     @endphp
 
                     @if($selectedWh)
-                        <div class="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-800 dark:text-indigo-300 flex items-center justify-between">
-                            <span>Stok Gudang Tersedia:</span>
-                            <span class="font-black text-xs">{{ $selectedWh->stock }} {{ $selectedWh->unit }}</span>
+                        <div class="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-900 dark:text-indigo-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-base notranslate" translate="no">verified</span>
+                                <div>
+                                    <p class="font-bold text-[11px]">Stok Tersedia di Gudang Kantor:</p>
+                                    <p class="text-[10px] text-slate-500 dark:text-slate-400">{{ $selectedWh->category ?? 'Material' }}</p>
+                                </div>
+                            </div>
+                            <span class="font-black text-sm text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-xl shadow-xs border border-indigo-100 dark:border-indigo-900/60">
+                                {{ $selectedWh->stock }} {{ $selectedWh->unit }}
+                            </span>
                         </div>
                     @endif
 
+                    {{-- 2. JUMLAH YANG DIAMBIL DENGAN STEPPER --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah yang Diambil</label>
-                        <input type="number" wire:model="takeQuantity" min="1" max="{{ $selectedWh->stock ?? 9999 }}"
-                               class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-center bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                        @error('takeQuantity') <span class="text-rose-500 text-[10px] mt-0.5 block">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Jumlah yang Diambil ({{ $selectedWh->unit ?? 'unit' }}) *
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" wire:click="$set('takeQuantity', Math.max(1, {{ (int)$takeQuantity }} - 1))"
+                                    class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-lg flex items-center justify-center transition-colors">
+                                -
+                            </button>
+                            <input type="number" wire:model="takeQuantity" min="1" max="{{ $selectedWh->stock ?? 9999 }}"
+                                   class="flex-1 py-2 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-center bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
+                            <button type="button" wire:click="$set('takeQuantity', {{ (int)$takeQuantity }} + 1)"
+                                    class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-lg flex items-center justify-center transition-colors">
+                                +
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1.5">
+                            <span class="text-[10px] text-slate-400 font-semibold">Cepat:</span>
+                            <button type="button" wire:click="$set('takeQuantity', 1)" class="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold hover:bg-indigo-50 hover:text-indigo-600">1</button>
+                            <button type="button" wire:click="$set('takeQuantity', 5)" class="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold hover:bg-indigo-50 hover:text-indigo-600">5</button>
+                            <button type="button" wire:click="$set('takeQuantity', 10)" class="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold hover:bg-indigo-50 hover:text-indigo-600">10</button>
+                            @if($selectedWh && (int)$selectedWh->stock > 0)
+                                <button type="button" wire:click="$set('takeQuantity', {{ (int)$selectedWh->stock }})" class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold hover:bg-indigo-100">Semua ({{ (int)$selectedWh->stock }})</button>
+                            @endif
+                        </div>
+                        @error('takeQuantity') <span class="text-rose-500 text-[10px] mt-1 block font-semibold">{{ $message }}</span> @enderror
                     </div>
 
+                    {{-- 3. CATATAN PENGAMBILAN --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Catatan Pengambilan (Opsional)</label>
-                        <input type="text" wire:model="takeNotes" placeholder="Contoh: Kebutuhan PSB 2 lokasi hari ini..."
-                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Pengambilan (Opsional)</label>
+                        <input type="text" wire:model="takeNotes" placeholder="Contoh: Kebutuhan PSB 2 lokasi atau cadangan bagasi..."
+                               class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
 
-                <div class="flex gap-2 pt-2">
+                <div class="flex gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <button wire:click="$set('showTakeModal', false)" type="button"
-                            class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                            class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                         Batal
                     </button>
                     <button wire:click="submitTake" type="button"
-                            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors">
-                        Ambil ke Bagasi
+                            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">check</span>
+                        <span>Ambil ke Bagasi</span>
                     </button>
                 </div>
             </div>
@@ -406,39 +519,56 @@
         </div>
     @endif
 
-    {{-- MODAL PERMINTAAN BARANG TAMBAHAN --}}
+    {{-- MODAL PERMINTAAN BARANG TAMBAHAN (REQUISITION) --}}
     @if($showRequestModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 max-w-sm w-full space-y-4 shadow-2xl">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+                            <span class="material-symbols-outlined text-lg notranslate" translate="no">add_shopping_cart</span>
                         </div>
-                        <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Minta Barang Tambahan</h3>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Permintaan Barang ke Gudang</h3>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Diajukan ke Pengurus Gudang Pusat untuk persetujuan</p>
+                        </div>
                     </div>
-                    <button wire:click="$set('showRequestModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
-                        <span class="material-symbols-outlined text-sm">close</span>
+                    <button wire:click="$set('showRequestModal', false)" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
                     </button>
                 </div>
 
-                <div class="space-y-3">
+                {{-- Penjelasan Alur Permintaan --}}
+                <div class="p-3 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-base shrink-0 mt-0.5 notranslate" translate="no">info</span>
+                    <p class="text-[11px] leading-relaxed">
+                        Permintaan ini akan masuk ke daftar <strong>Requisition</strong> pengurus gudang. Setelah disetujui & diserahkan fisik, barang akan otomatis masuk ke <strong>Stok Bagasi</strong> Anda.
+                    </p>
+                </div>
+
+                <div class="space-y-3.5">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Nama Barang / Material</label>
-                        <input type="text" wire:model="reqMaterialName" placeholder="Contoh: Fast Connector SC/UPC / Dropcore"
-                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                        @error('reqMaterialName') <span class="text-rose-500 text-[10px] mt-0.5 block">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Barang / Material yang Diminta *</label>
+                        <input type="text" wire:model="reqMaterialName" list="warehouseCatalogList"
+                               placeholder="Ketik atau pilih dari katalog gudang..."
+                               class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                        <datalist id="warehouseCatalogList">
+                            @foreach($warehouseMaterials as $w)
+                                <option value="{{ $w->name }}">{{ $w->category }} (Stok Gudang: {{ $w->stock }} {{ $w->unit }})</option>
+                            @endforeach
+                        </datalist>
+                        @error('reqMaterialName') <span class="text-rose-500 text-[10px] mt-1 block font-semibold">{{ $message }}</span> @enderror
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah</label>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jumlah yang Dibutuhkan *</label>
                             <input type="number" wire:model="reqQuantity" min="1"
-                                   class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-center bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                                   class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-center bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Satuan</label>
-                            <select wire:model="reqUnit" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Satuan *</label>
+                            <select wire:model="reqUnit" class="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 font-bold">
                                 <option value="pcs">pcs</option>
                                 <option value="meter">meter</option>
                                 <option value="unit">unit</option>
@@ -448,20 +578,21 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Alasan / Catatan Permintaan</label>
-                        <textarea wire:model="reqReason" rows="2" placeholder="Contoh: Stok fast connector habis di lapangan, butuh 20 pcs..."
-                                  class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"></textarea>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Alasan / Catatan Kebutuhan</label>
+                        <textarea wire:model="reqReason" rows="2" placeholder="Contoh: Stok fast connector habis di lapangan, butuh restock untuk agenda instalasi besok..."
+                                  class="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"></textarea>
                     </div>
                 </div>
 
-                <div class="flex gap-2 pt-2">
+                <div class="flex gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <button wire:click="$set('showRequestModal', false)" type="button"
-                            class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                            class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                         Batal
                     </button>
                     <button wire:click="submitMaterialRequest" type="button"
-                            class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors">
-                        Kirim Permintaan
+                            class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">send</span>
+                        <span>Kirim Permintaan ke Gudang</span>
                     </button>
                 </div>
             </div>

@@ -153,18 +153,18 @@
                     <span class="text-[11px] font-bold">Diagnosa</span>
                 </a>
                 <a href="{{ route('technician.swap-ont.index') }}"
-                   class="bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-rose-200 dark:border-rose-800 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-rose-600" style="font-size:22px">sync_alt</span>
+                   class="bg-rose-50 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-slate-700 text-rose-700 dark:text-rose-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-rose-200 dark:border-slate-700 text-center shadow-sm">
+                    <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 notranslate" translate="no" style="font-size:22px">sync_alt</span>
                     <span class="text-[11px] font-bold">Ganti ONT</span>
                 </a>
                 <a href="{{ route('technician.dismantle.index') }}"
-                   class="bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-slate-200 dark:border-slate-700 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-rose-500" style="font-size:22px">power_off</span>
+                   class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-slate-200 dark:border-slate-700 text-center shadow-sm">
+                    <span class="material-symbols-outlined text-rose-500 notranslate" translate="no" style="font-size:22px">power_off</span>
                     <span class="text-[11px] font-bold">Cabut ONT</span>
                 </a>
                 <a href="{{ route('technician.material.index') }}"
-                   class="bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-sky-200 dark:border-sky-800 text-center shadow-sm">
-                    <span class="material-symbols-outlined text-sky-600" style="font-size:22px">inventory_2</span>
+                   class="bg-sky-50 dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-slate-700 text-sky-700 dark:text-sky-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-sky-200 dark:border-slate-700 text-center shadow-sm">
+                    <span class="material-symbols-outlined text-sky-600 dark:text-sky-400 notranslate" translate="no" style="font-size:22px">inventory_2</span>
                     <span class="text-[11px] font-bold">Stok</span>
                 </a>
                 <a href="{{ route('technician.installation.scan') }}"

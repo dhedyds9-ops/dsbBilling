@@ -317,36 +317,54 @@
 
                         <div class="space-y-3">
                             @foreach($requisitionItems as $idx => $row)
-                                <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                                    <div class="sm:col-span-6">
-                                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Barang #{{ $idx + 1 }} *</label>
-                                        <select wire:model.live="requisitionItems.{{ $idx }}.item_id" required
-                                                class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                            <option value="">-- Pilih Barang --</option>
-                                            @foreach($availableItems as $item)
-                                                <option value="{{ $item->id }}">[{{ $item->sku }}] {{ $item->name }} ({{ $item->category }})</option>
-                                            @endforeach
-                                        </select>
+                                <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                                    {{-- Header Row: Badge & Delete Button --}}
+                                    <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-black">
+                                                <span class="material-symbols-outlined text-xs notranslate" translate="no">inventory_2</span>
+                                                <span>Barang #{{ $idx + 1 }}</span>
+                                            </span>
+                                            @if(!empty($row['unit']))
+                                                <span class="text-[11px] text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
+                                            @endif
+                                        </div>
+                                        @if(count($requisitionItems) > 1)
+                                            <button wire:click="removeItemRow({{ $idx }})" type="button"
+                                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                                                    title="Hapus baris ini">
+                                                <span class="material-symbols-outlined text-sm notranslate" translate="no">delete</span>
+                                                <span>Hapus</span>
+                                            </button>
+                                        @endif
                                     </div>
 
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
-                                        <input wire:model="requisitionItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required
-                                               class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                    </div>
+                                    {{-- Inputs Grid --}}
+                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                        <div class="md:col-span-6">
+                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
+                                            <select wire:model.live="requisitionItems.{{ $idx }}.item_id" required
+                                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                                <option value="">-- Pilih Barang --</option>
+                                                @foreach($availableItems as $item)
+                                                    <option value="{{ $item->id }}">[{{ $item->sku }}] {{ $item->name }} ({{ $item->category }})</option>
+                                                @endforeach
+                                            </select>
+                                            @error("requisitionItems.{$idx}.item_id") <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                        </div>
 
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">Keterangan</label>
-                                        <input wire:model="requisitionItems.{{ $idx }}.notes" type="text" placeholder="opsional"
-                                               class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                    </div>
+                                        <div class="md:col-span-3">
+                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
+                                            <input wire:model="requisitionItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
+                                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
+                                            @error("requisitionItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                        </div>
 
-                                    <div class="sm:col-span-1 flex justify-end pt-4">
-                                        <button wire:click="removeItemRow({{ $idx }})" type="button"
-                                                class="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors"
-                                                title="Hapus baris">
-                                            <span class="material-symbols-outlined text-lg">delete</span>
-                                        </button>
+                                        <div class="md:col-span-3">
+                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan (Opsional)</label>
+                                            <input wire:model="requisitionItems.{{ $idx }}.notes" type="text" placeholder="misal: pasang baru..."
+                                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach

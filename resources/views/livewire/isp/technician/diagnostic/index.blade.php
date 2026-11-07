@@ -17,18 +17,19 @@
     @endif
 
     {{-- Header Banner --}}
-    <div class="bg-gradient-to-br from-indigo-700 via-sky-700 to-blue-800 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
-        <div class="absolute -right-2 -bottom-2 opacity-10 pointer-events-none">
-            <span class="material-symbols-outlined text-8xl">troubleshoot</span>
+    <div class="p-4 rounded-2xl shadow-md relative overflow-hidden text-white"
+         style="background: linear-gradient(135deg, #4338ca 0%, #0369a1 50%, #1e40af 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-2 -bottom-2 opacity-15 pointer-events-none">
+            <span class="material-symbols-outlined text-8xl text-white notranslate" translate="no">troubleshoot</span>
         </div>
         <div class="relative z-10 flex items-center justify-between">
             <div>
-                <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider">Live Diagnostics</span>
-                <h2 class="text-lg font-black mt-1">Diagnostik ONT & Jaringan</h2>
+                <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider text-white">Live Diagnostics</span>
+                <h2 class="text-lg font-black mt-1 text-white">Diagnostik ONT & Jaringan</h2>
                 <p class="text-xs text-sky-100">Cek Redaman Optik, Status Sinyal, Reboot & Perangkat Terhubung</p>
             </div>
             <div class="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shrink-0">
-                <span class="material-symbols-outlined text-2xl text-white">cell_tower</span>
+                <span class="material-symbols-outlined text-2xl text-white notranslate" translate="no">cell_tower</span>
             </div>
         </div>
     </div>

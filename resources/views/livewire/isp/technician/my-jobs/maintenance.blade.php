@@ -16,7 +16,8 @@
     @endif
 
     {{-- Header --}}
-    <div class="bg-gradient-to-br from-sky-600 via-indigo-700 to-indigo-800 text-white p-4 sm:p-5 rounded-2xl shadow-md">
+    <div class="p-4 sm:p-5 rounded-2xl shadow-md text-white"
+         style="background: linear-gradient(135deg, #0284c7 0%, #4338ca 50%, #3730a3 100%) !important; color: #ffffff !important;">
         <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center shrink-0">

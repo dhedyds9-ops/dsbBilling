@@ -18,7 +18,8 @@
     @endif
 
     {{-- Hero Banner --}}
-    <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+    <div class="p-5 rounded-2xl shadow-lg relative overflow-hidden text-white"
+         style="background: linear-gradient(135deg, #4f46e5 0%, #1d4ed8 100%) !important; color: #ffffff !important;">
         <div class="absolute top-0 right-0 opacity-10 pointer-events-none">
             <span class="material-symbols-outlined" style="font-size:130px">engineering</span>
         </div>

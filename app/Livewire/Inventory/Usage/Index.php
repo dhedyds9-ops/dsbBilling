@@ -66,7 +66,7 @@ class Index extends Component
         if ($user && $user->isTechnician()) {
             $this->technician_id = $user->id;
         } else {
-            $firstTech = User::technicians()->first();
+            $firstTech = User::getEligibleTechnicians()->first();
             $this->technician_id = $firstTech?->id;
         }
         $this->addItemRow();
@@ -211,7 +211,7 @@ class Index extends Component
 
         $usages = $query->paginate(15);
 
-        $technicians = User::technicians()->orderBy('name')->get();
+        $technicians = User::getEligibleTechnicians();
 
         $customers = Customer::orderBy('name')->limit(100)->get();
 

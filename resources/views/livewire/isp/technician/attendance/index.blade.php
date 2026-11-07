@@ -3,7 +3,8 @@
 <div class="space-y-4 p-4">
 
     {{-- Hero Clock Banner --}}
-    <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden text-center"
+    <div class="p-5 rounded-2xl shadow-lg relative overflow-hidden text-center text-white"
+         style="background: linear-gradient(135deg, #4f46e5 0%, #1d4ed8 100%) !important; color: #ffffff !important;"
          x-data="{
              currentTime: '--:--:--',
              init() {
