@@ -213,7 +213,19 @@ class Index extends Component
 
         $technicians = User::getEligibleTechnicians();
 
-        $customers = Customer::orderBy('name')->limit(100)->get();
+        // Pelanggan langganan riil (eksklusifkan voucher guest)
+        $customers = Customer::query()
+            ->where('code', 'not like', 'GST-%')
+            ->where('name', 'not like', 'Guest %')
+            ->where(function ($q) {
+                $q->has('customerServices')
+                  ->orWhereNotNull('email')
+                  ->orWhereNotNull('phone');
+            })
+            ->with(['customerServices.serviceProfile'])
+            ->orderBy('name')
+            ->limit(100)
+            ->get();
 
         // Material yang saat ini dipegang oleh teknisi yang dipilih di form modal
         $availableCustodies = collect();

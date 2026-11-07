@@ -66,28 +66,52 @@ class Index extends Component
             Log::warning('Error counting items: ' . $e->getMessage());
         }
 
-        // 2. Total Stok Gudang
+        // 2. Total Stok Gudang (Dipisahkan Unit vs Meter)
         $totalWarehouseStock = 0.0;
+        $warehouseStockUnits = 0.0;
+        $warehouseStockMeters = 0.0;
         try {
-            $stockQuery = InventoryStock::query();
-            if ($this->warehouseId) {
-                $stockQuery->where('warehouse_id', $this->warehouseId);
-            } elseif ($this->branchId) {
-                $stockQuery->where('branch_id', $this->branchId);
-            }
-            $totalWarehouseStock = (float) $stockQuery->sum('quantity');
+            $stockBaseQuery = InventoryStock::query()
+                ->withoutGlobalScopes()
+                ->join('items', 'inventory_stocks.item_id', '=', 'items.id')
+                ->whereNull('items.deleted_at')
+                ->when($this->warehouseId, fn($q) => $q->where('inventory_stocks.warehouse_id', $this->warehouseId))
+                ->when(!$this->warehouseId && $this->branchId, fn($q) => $q->where('inventory_stocks.branch_id', $this->branchId));
+
+            $warehouseStockMeters = (float) (clone $stockBaseQuery)
+                ->where(fn($q) => $q->whereRaw("LOWER(items.unit) = 'meter'")->orWhereRaw("LOWER(items.unit) LIKE '%meter%'"))
+                ->sum('inventory_stocks.quantity');
+
+            $warehouseStockUnits = (float) (clone $stockBaseQuery)
+                ->where(fn($q) => $q->whereRaw("LOWER(COALESCE(items.unit, '')) != 'meter'")->whereRaw("LOWER(COALESCE(items.unit, '')) NOT LIKE '%meter%'"))
+                ->sum('inventory_stocks.quantity');
+
+            $totalWarehouseStock = $warehouseStockUnits;
         } catch (\Throwable $e) {
             Log::warning('Error summing warehouse stock: ' . $e->getMessage());
         }
 
         // 3. Total Custody (dipegang teknisi & reseller)
         $totalInCustody = 0.0;
+        $custodyStockUnits = 0.0;
+        $custodyStockMeters = 0.0;
         try {
-            $custodyQuery = InventoryCustody::query()->whereIn('status', ['in_custody', 'accepted', 'in_transit']);
-            if ($this->branchId) {
-                $custodyQuery->where('branch_id', $this->branchId);
-            }
-            $totalInCustody = (float) $custodyQuery->sum('available_quantity');
+            $custodyBaseQuery = InventoryCustody::query()
+                ->withoutGlobalScopes()
+                ->join('items', 'inventory_custodies.item_id', '=', 'items.id')
+                ->whereNull('items.deleted_at')
+                ->whereIn('inventory_custodies.status', ['in_custody', 'accepted', 'in_transit'])
+                ->when($this->branchId, fn($q) => $q->where('inventory_custodies.branch_id', $this->branchId));
+
+            $custodyStockMeters = (float) (clone $custodyBaseQuery)
+                ->where(fn($q) => $q->whereRaw("LOWER(items.unit) = 'meter'")->orWhereRaw("LOWER(items.unit) LIKE '%meter%'"))
+                ->sum('inventory_custodies.available_quantity');
+
+            $custodyStockUnits = (float) (clone $custodyBaseQuery)
+                ->where(fn($q) => $q->whereRaw("LOWER(COALESCE(items.unit, '')) != 'meter'")->whereRaw("LOWER(COALESCE(items.unit, '')) NOT LIKE '%meter%'"))
+                ->sum('inventory_custodies.available_quantity');
+
+            $totalInCustody = $custodyStockUnits;
         } catch (\Throwable $e) {
             Log::warning('Error summing custody stock: ' . $e->getMessage());
         }
@@ -179,7 +203,11 @@ class Index extends Component
             'branches' => $branches,
             'totalItems' => $totalItems,
             'totalWarehouseStock' => $totalWarehouseStock,
+            'warehouseStockUnits' => $warehouseStockUnits,
+            'warehouseStockMeters' => $warehouseStockMeters,
             'totalInCustody' => $totalInCustody,
+            'custodyStockUnits' => $custodyStockUnits,
+            'custodyStockMeters' => $custodyStockMeters,
             'lowStockCount' => $lowStockCount,
             'lowStockItems' => $lowStockItems,
             'pendingReqCount' => $pendingReqCount,

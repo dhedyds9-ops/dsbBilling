@@ -226,8 +226,13 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Merek</label>
-                            <input type="text" wire:model="brand" placeholder="ZTE, Huawei, FiberHome..." class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Merek (Vendor)</label>
+                            <select wire:model="brand" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                                <option value="">-- Pilih Vendor / Merek --</option>
+                                @foreach($brandList as $b)
+                                    <option value="{{ $b }}">{{ $b }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <div>
@@ -300,10 +305,47 @@
                     </button>
                 </div>
 
-                <div class="relative">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:16px">search</span>
-                    <input type="text" wire:model.live.debounce.300ms="serialSearch" placeholder="Cari serial number..."
-                           class="w-full pl-9 pr-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                {{-- Search & Barcode Scanner Controls --}}
+                <div x-data="serialScanner()" class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 notranslate" translate="no" style="font-size:16px">search</span>
+                            <input type="text"
+                                   id="serial-scanner-input"
+                                   autofocus
+                                   wire:model.live.debounce.150ms="serialSearch"
+                                   @keydown.enter.prevent="$wire.set('serialSearch', $event.target.value.trim())"
+                                   placeholder="Cari / scan serial number (alat scanner kasir / barcode)..."
+                                   class="w-full pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono focus:ring-2 focus:ring-purple-500 shadow-xs">
+                            @if(!empty($serialSearch))
+                                <button type="button" wire:click="$set('serialSearch', '')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <span class="material-symbols-outlined text-[15px] notranslate" translate="no">cancel</span>
+                                </button>
+                            @endif
+                        </div>
+
+                        {{-- Tombol Scan Kamera HP --}}
+                        <button type="button" @click="openCamera()"
+                                class="inline-flex items-center gap-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                                title="Pindai Barcode menggunakan Kamera HP">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">qr_code_scanner</span>
+                            <span class="hidden sm:inline">Scan HP</span>
+                        </button>
+                    </div>
+
+                    {{-- Camera Scanner Overlay --}}
+                    <div x-show="cameraOpen" x-cloak class="p-3 bg-slate-900 rounded-2xl space-y-2 border border-purple-500/40">
+                        <div class="flex items-center justify-between text-white text-xs">
+                            <span class="flex items-center gap-1.5 font-bold text-purple-300">
+                                <span class="material-symbols-outlined text-xs notranslate" translate="no">photo_camera</span>
+                                Arahkan kamera ke Barcode / QR Serial Number
+                            </span>
+                            <button type="button" @click="closeCamera()" class="text-slate-400 hover:text-white">
+                                <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
+                            </button>
+                        </div>
+                        <div id="sn-barcode-reader" class="rounded-xl overflow-hidden bg-black min-h-[160px] max-h-56"></div>
+                    </div>
                 </div>
 
                 <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
@@ -352,4 +394,55 @@
             </div>
         </div>
     @endif
+
+    {{-- HTML5 QR/Barcode Scanner Script --}}
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        function serialScanner() {
+            return {
+                cameraOpen: false,
+                html5QrCode: null,
+
+                init() {
+                    this.$nextTick(() => {
+                        const input = document.getElementById('serial-scanner-input');
+                        if (input) input.focus();
+                    });
+                },
+
+                openCamera() {
+                    this.cameraOpen = true;
+                    this.$nextTick(() => {
+                        if (!this.html5QrCode) {
+                            this.html5QrCode = new Html5Qrcode("sn-barcode-reader");
+                        }
+                        this.html5QrCode.start(
+                            { facingMode: "environment" },
+                            { fps: 12, qrbox: { width: 280, height: 140 } },
+                            (decodedText) => {
+                                const clean = decodedText.trim();
+                                @this.set('serialSearch', clean);
+                                this.closeCamera();
+                                if (navigator.vibrate) navigator.vibrate(100);
+                            },
+                            () => {}
+                        ).catch((err) => {
+                            alert("Kamera tidak dapat diakses atau izin ditolak: " + err);
+                            this.closeCamera();
+                        });
+                    });
+                },
+
+                closeCamera() {
+                    if (this.html5QrCode) {
+                        this.html5QrCode.stop().catch(() => {}).finally(() => {
+                            this.cameraOpen = false;
+                        });
+                    } else {
+                        this.cameraOpen = false;
+                    }
+                }
+            };
+        }
+    </script>
 </div>

@@ -263,6 +263,16 @@ class Index extends Component
 
         $branches = Branch::where('is_active', true)->orderBy('name')->get();
 
+        $vendorBrands = \App\Models\ISP\Vendor::where('status', 'active')->orderBy('name')->pluck('name')->toArray();
+        $existingBrands = Item::distinct()->whereNotNull('brand')->where('brand', '!=', '')->pluck('brand')->toArray();
+        $brandList = collect(array_merge($vendorBrands, $existingBrands))
+            ->map(fn($b) => trim($b))
+            ->filter()
+            ->unique(fn($b) => strtolower($b))
+            ->sort()
+            ->values()
+            ->all();
+
         $categories = [
             'ONU/ONT',
             'Router',
@@ -281,6 +291,7 @@ class Index extends Component
             'items' => $items,
             'serials' => $serials,
             'branches' => $branches,
+            'brandList' => $brandList,
             'categories' => $categories,
         ])->layout('layouts.app', ['title' => 'Master Barang - dsBilling']);
     }

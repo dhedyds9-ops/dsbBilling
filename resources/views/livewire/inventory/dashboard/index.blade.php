@@ -50,10 +50,16 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
             <div>
                 <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Stok Fisik Gudang</p>
-                <h3 class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ number_format($totalWarehouseStock, 2) }}</h3>
-                <span class="text-xs text-slate-500 font-medium">Unit / Meter persediaan</span>
+                <div class="flex items-baseline gap-1.5 mt-1">
+                    <h3 class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($warehouseStockUnits) }}</h3>
+                    <span class="text-xs font-bold text-emerald-700 dark:text-emerald-300">Unit / Pcs</span>
+                </div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 flex items-center gap-1.5">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span>{{ number_format($warehouseStockMeters) }} Meter Kabel</span>
+                </div>
             </div>
-            <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
                 <span class="material-symbols-outlined notranslate select-none" translate="no" style="font-family: 'Material Symbols Outlined', 'Material Icons' !important; font-size: 26px; line-height: 1;">warehouse</span>
             </div>
         </div>
@@ -62,10 +68,16 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
             <div>
                 <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Custody Lapangan</p>
-                <h3 class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">{{ number_format($totalInCustody, 2) }}</h3>
-                <span class="text-xs text-amber-600 font-medium">Di Tangan Teknisi / Reseller</span>
+                <div class="flex items-baseline gap-1.5 mt-1">
+                    <h3 class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ number_format($custodyStockUnits) }}</h3>
+                    <span class="text-xs font-bold text-amber-700 dark:text-amber-300">Unit / Pcs</span>
+                </div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 flex items-center gap-1.5">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>{{ number_format($custodyStockMeters) }} Meter Kabel</span>
+                </div>
             </div>
-            <div class="w-12 h-12 bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center shrink-0">
                 <span class="material-symbols-outlined notranslate select-none" translate="no" style="font-family: 'Material Symbols Outlined', 'Material Icons' !important; font-size: 26px; line-height: 1;">engineering</span>
             </div>
         </div>

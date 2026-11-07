@@ -275,7 +275,18 @@ class Index extends Component
         $requisitions = $query->paginate(15);
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
-        $customers = Customer::orderBy('name')->limit(100)->get();
+        $customers = Customer::query()
+            ->where('code', 'not like', 'GST-%')
+            ->where('name', 'not like', 'Guest %')
+            ->where(function ($q) {
+                $q->whereHas('customerServices')
+                  ->orWhere(function ($sq) {
+                      $sq->whereNotNull('code')->where('code', '!=', '')->where('code', 'not like', 'GST-%');
+                  });
+            })
+            ->with(['customerServices.serviceProfile'])
+            ->orderBy('name')
+            ->get();
         $technicians = User::getEligibleTechnicians();
 
         $selectedRequisition = null;

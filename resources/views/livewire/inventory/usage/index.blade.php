@@ -154,29 +154,29 @@
 
     {{-- MODAL CATAT PEMAKAIAN --}}
     @if($showCreateModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-4xl w-full p-6 space-y-6">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <span class="material-symbols-outlined">build_circle</span>
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-2xl w-full p-4 sm:p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <span class="material-symbols-outlined text-base">build_circle</span>
                         </div>
                         <div>
-                            <h3 class="text-lg font-black text-slate-900 dark:text-slate-100">Laporan Pemakaian Material Aktual</h3>
-                            <p class="text-xs text-slate-500">Material yang dipegang akan berkurang dan status Serial Number menjadi 'installed'.</p>
+                            <h3 class="text-base font-black text-slate-900 dark:text-slate-100">Laporan Pemakaian Material</h3>
+                            <p class="text-[11px] text-slate-500">Stok custody teknisi berkurang dan SN terpasang ke pelanggan.</p>
                         </div>
                     </div>
-                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
-                        <span class="material-symbols-outlined">close</span>
+                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                        <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
 
-                <form wire:submit="saveUsage" class="space-y-6">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <form wire:submit="saveUsage" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Teknisi Pelaksana *</label>
                             <select wire:model.live="technician_id" required
-                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
                                 <option value="">-- Pilih Teknisi --</option>
                                 @foreach($technicians as $tech)
                                     <option value="{{ $tech->id }}">{{ $tech->name }}</option>
@@ -188,10 +188,15 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Pelanggan Tujuan</label>
                             <select wire:model="customer_id"
-                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
-                                <option value="">-- Pilih Pelanggan --</option>
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+                                <option value="">-- Pilih Pelanggan (Opsional) --</option>
                                 @foreach($customers as $c)
-                                    <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->phone }})</option>
+                                    @php
+                                        $pkg = $c->customerServices->first()?->serviceProfile?->name;
+                                    @endphp
+                                    <option value="{{ $c->id }}">
+                                        {{ $c->name }} ({{ $c->code ?? $c->phone }}){{ $pkg ? ' - ' . $pkg : '' }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -280,66 +285,21 @@
                                     <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
                                         <div class="md:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih dari Stok Custody Teknisi *</label>
-                                            
-                                            <div x-data="{
-                                                open: false,
-                                                search: '',
-                                                selectedId: @entangle('usageItems.' . $idx . '.custody_id'),
-                                                items: {{ json_encode($availableCustodies->map(fn($c) => [
-                                                    'id' => (int)$c->id,
-                                                    'name' => $c->item?->name ?? 'Material',
-                                                    'sn' => $c->itemSerial?->serial_number ?? null,
-                                                    'avail' => (float)$c->available_quantity,
-                                                    'unit' => $c->item?->unit ?? 'unit'
-                                                ])) }},
-                                                get currentItem() {
-                                                    return this.items.find(x => x.id == this.selectedId);
-                                                },
-                                                get filtered() {
-                                                    if (!this.search) return this.items;
-                                                    let q = this.search.toLowerCase();
-                                                    return this.items.filter(x => x.name.toLowerCase().includes(q) || (x.sn && x.sn.toLowerCase().includes(q)));
-                                                },
-                                                select(it) {
-                                                    this.selectedId = it.id;
-                                                    this.open = false;
-                                                    this.search = '';
-                                                    $wire.call('$refresh');
-                                                }
-                                            }" class="relative">
-                                                <button type="button" @click="open = !open"
-                                                        class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-left flex items-center justify-between focus:ring-2 focus:ring-indigo-500 shadow-xs">
-                                                    <span class="truncate font-medium text-slate-800 dark:text-slate-200"
-                                                          x-text="currentItem ? currentItem.name + (currentItem.sn ? ' [SN: ' + currentItem.sn + ']' : '') + ' (' + currentItem.avail + ' ' + currentItem.unit + ')' : '-- Pilih dari Stok Custody --'">
-                                                    </span>
-                                                    <span class="material-symbols-outlined text-slate-400 text-sm shrink-0 notranslate" translate="no">unfold_more</span>
-                                                </button>
-
-                                                <div x-show="open" @click.away="open = false" x-cloak
-                                                     class="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2 space-y-1.5 max-h-60 overflow-hidden flex flex-col">
-                                                    <div class="relative">
-                                                        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs notranslate" translate="no">search</span>
-                                                        <input type="text" x-model="search" placeholder="Cari nama barang atau SN..."
-                                                               class="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                                                    </div>
-                                                    <div class="overflow-y-auto flex-1 space-y-0.5 max-h-44">
-                                                        <template x-for="it in filtered" :key="it.id">
-                                                            <button type="button" @click="select(it)"
-                                                                    class="w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center justify-between"
-                                                                    :class="selectedId == it.id ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-slate-700 dark:text-slate-300'">
-                                                                <div class="truncate mr-2">
-                                                                    <span class="font-bold" x-text="it.name"></span>
-                                                                    <span x-show="it.sn" class="font-mono text-[10px] text-indigo-500 block" x-text="'SN: ' + it.sn"></span>
-                                                                </div>
-                                                                <span class="text-[10px] px-1.5 py-0.5 rounded font-black bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0" x-text="it.avail + ' ' + it.unit"></span>
-                                                            </button>
-                                                        </template>
-                                                        <div x-show="filtered.length === 0" class="text-center py-2 text-xs text-slate-400">
-                                                            Tidak ada barang yang cocok di stok teknisi ini.
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <select wire:model.live="usageItems.{{ $idx }}.custody_id" required
+                                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
+                                                <option value="">-- Pilih Material dari Custody Teknisi --</option>
+                                                @foreach($availableCustodies as $custody)
+                                                    @php
+                                                        $itemName = $custody->item?->name ?? 'Material';
+                                                        $itemSn = $custody->itemSerial?->serial_number;
+                                                        $avail = (float) $custody->available_quantity;
+                                                        $unit = $custody->item?->unit ?? 'unit';
+                                                    @endphp
+                                                    <option value="{{ $custody->id }}">
+                                                        {{ $itemName }}{{ $itemSn ? ' [SN: ' . $itemSn . ']' : '' }} (Tersedia: {{ $avail }} {{ $unit }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </div>
 
                                         <div class="md:col-span-3">
