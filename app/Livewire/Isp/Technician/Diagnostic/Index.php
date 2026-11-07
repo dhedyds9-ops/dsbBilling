@@ -72,6 +72,25 @@ class Index extends Component
                 ->first();
             if ($foundOnu) {
                 $this->selectOnu($foundOnu->id);
+            } else {
+                $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where('serial_number', 'like', "%{$cleaned}%")
+                    ->orWhere('mac_address', 'like', "%{$cleaned}%")
+                    ->first();
+                if ($ad) {
+                    try {
+                        $o = Onu::create([
+                            'serial_number' => $ad->serial_number,
+                            'mac_address'   => $ad->mac_address,
+                            'model'         => $ad->model ?: 'ONT',
+                            'status'        => $ad->status ?: 'active',
+                            'rx_power_dbm'  => $ad->signal,
+                            'olt_id'        => $ad->olt_id ?: \App\Models\ISP\Olt::first()?->id,
+                            'customer_id'   => $ad->customer_id,
+                        ]);
+                        $this->selectOnu($o->id);
+                    } catch (\Throwable) {}
+                }
             }
         } elseif ($this->customer_id) {
             $this->selectCustomer($this->customer_id);
@@ -88,6 +107,18 @@ class Index extends Component
             return;
         }
 
+        $candidates = [$q, strtoupper($q)];
+        $upper = strtoupper($q);
+        if (str_starts_with($upper, 'HWTC')) {
+            $candidates[] = '48575443' . substr($upper, 4);
+        } elseif (str_starts_with($upper, '48575443')) {
+            $candidates[] = 'HWTC' . substr($upper, 8);
+        } elseif (str_starts_with($upper, 'ZTEG')) {
+            $candidates[] = '5A544547' . substr($upper, 4);
+        } elseif (str_starts_with($upper, '5A544547')) {
+            $candidates[] = 'ZTEG' . substr($upper, 8);
+        }
+
         $results = Onu::withoutGlobalScopes()
             ->with([
                 'customerService' => fn($sq) => $sq->withoutGlobalScopes(),
@@ -97,22 +128,62 @@ class Index extends Component
                 'acsDevice' => fn($aq) => $aq->withoutGlobalScopes(),
                 'olt', 'odp'
             ])
-            ->where(function ($sub) use ($q) {
-                $sub->where('serial_number', 'like', "%{$q}%")
-                    ->orWhere('mac_address', 'like', "%{$q}%")
-                    ->orWhereHas('customerService', function ($csq) use ($q) {
-                        $csq->withoutGlobalScopes()->whereHas('customer', function ($cq) use ($q) {
-                            $cq->withoutGlobalScopes()->where('name', 'like', "%{$q}%")
-                               ->orWhere('phone', 'like', "%{$q}%")
-                               ->orWhere('customer_code', 'like', "%{$q}%");
-                        })
-                        ->orWhereHas('pppoeUser', function ($pu) use ($q) {
-                            $pu->withoutGlobalScopes()->where('username', 'like', "%{$q}%");
-                        });
+            ->where(function ($sub) use ($q, $candidates) {
+                foreach ($candidates as $cand) {
+                    $sub->orWhere('serial_number', 'like', "%{$cand}%")
+                        ->orWhere('mac_address', 'like', "%{$cand}%");
+                }
+                $sub->orWhereHas('customerService', function ($csq) use ($q) {
+                    $csq->withoutGlobalScopes()->whereHas('customer', function ($cq) use ($q) {
+                        $cq->withoutGlobalScopes()->where('name', 'like', "%{$q}%")
+                           ->orWhere('phone', 'like', "%{$q}%")
+                           ->orWhere('code', 'like', "%{$q}%");
+                    })
+                    ->orWhereHas('pppoeUser', function ($pu) use ($q) {
+                        $pu->withoutGlobalScopes()->where('username', 'like', "%{$q}%");
                     });
+                });
             })
             ->limit(8)
             ->get();
+
+        // Fallback pencarian langsung ke ACSDevice jika belum terindeks di tabel Onu
+        if ($results->isEmpty()) {
+            $acsMatches = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->with(['customerService.customer', 'customerService.serviceProfile', 'customerService.pppoeUser', 'onu'])
+                ->where(function ($aq) use ($candidates) {
+                    foreach ($candidates as $cand) {
+                        $aq->orWhere('serial_number', 'like', "%{$cand}%")
+                           ->orWhere('mac_address', 'like', "%{$cand}%");
+                    }
+                })
+                ->limit(5)
+                ->get();
+
+            foreach ($acsMatches as $ad) {
+                if ($ad->onu) {
+                    $results->push($ad->onu);
+                } else {
+                    $o = Onu::withoutGlobalScopes()->where('serial_number', $ad->serial_number)->first();
+                    if (!$o && !empty($ad->serial_number)) {
+                        try {
+                            $o = Onu::create([
+                                'serial_number' => $ad->serial_number,
+                                'mac_address'   => $ad->mac_address,
+                                'model'         => $ad->model ?: 'ONT',
+                                'status'        => $ad->status ?: 'active',
+                                'rx_power_dbm'  => $ad->signal,
+                                'olt_id'        => $ad->olt_id ?: \App\Models\ISP\Olt::first()?->id,
+                                'customer_id'   => $ad->customer_id,
+                            ]);
+                        } catch (\Throwable) {}
+                    }
+                    if ($o) {
+                        $results->push($o);
+                    }
+                }
+            }
+        }
 
         $this->searchResults = $results->map(function ($o) {
             $cs = $o->customerService;
@@ -128,7 +199,7 @@ class Index extends Component
                 'model' => $o->model ?: 'ONT',
                 'mac_address' => $o->mac_address ?: '-',
                 'customer_name' => $cust?->name ?? 'Belum Terikat Pelanggan',
-                'customer_code' => $cust?->customer_code ?? ($cust?->code ?? ('ID #' . $cust?->id)),
+                'customer_code' => $cust?->code ?? ('ID #' . ($cust?->id ?? '-')),
                 'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
                 'package' => $cs?->serviceProfile?->name ?? 'Layanan',
                 'status' => $o->status,

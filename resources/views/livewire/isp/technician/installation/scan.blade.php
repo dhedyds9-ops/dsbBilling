@@ -170,7 +170,7 @@
 
                     {{-- Quick Action Buttons Lapangan --}}
                     <div class="grid grid-cols-2 gap-2 pt-1">
-                        <a href="{{ route('technician.diagnostic.index', ['onu_id' => $scannedOnu['id'] ?? null]) }}"
+                        <a href="{{ route('technician.diagnostic.index', array_filter(['onu_id' => $scannedOnu['id'] ?? null, 'sn' => $scannedOnu['serial_number'] ?? null])) }}"
                            class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95">
                             <span class="material-symbols-outlined notranslate text-sm" translate="no">troubleshoot</span>
                             <span>Diagnosa Sinyal</span>
