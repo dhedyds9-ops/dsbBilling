@@ -105,6 +105,12 @@ class Create extends AdminComponent
         parent::mount();
         $this->activeModule = 'admin';
         $this->activePage = 'users';
+
+        // Auto-seed: pastikan seluruh role standar ISP sinkron ke database
+        if (Role::whereIn('name', ['admin_gudang', 'kasir', 'customer_service', 'noc', 'teknisi', 'marketing'])->count() < 6) {
+            \App\Services\Auth\PermissionRegistry::syncAllPermissionsToDatabase();
+        }
+
         $this->breadcrumbs = [
             ['label' => 'Dashboard', 'url' => route('dashboard')],
             ['label' => 'Administration', 'url' => route('admin.users.index')],

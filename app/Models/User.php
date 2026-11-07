@@ -255,30 +255,34 @@ class User extends Authenticatable
             return true;
         }
 
-        // 2. Direct permissions spesifik diutamakan jika ada
-        if ($this->directPermissions->isNotEmpty()) {
-            return $this->directPermissions->contains('name', $permission);
-        }
-
-        // 3. Proteksi Pembatasan Izin Berdasarkan Jabatan (Job Title)
+        // 2. Proteksi Pembatasan Izin Berdasarkan Jabatan (Job Title) & Role Spesifik
         // Mencegah kebocoran menu superadmin/router/keuangan pada staf gudang, kasir, teknisi, dll.
         $title = strtolower((string)($this->job_title ?? ''));
-        if (str_contains($title, 'gudang') || str_contains($title, 'logistik')) {
+        if (str_contains($title, 'gudang') || str_contains($title, 'logistik') || $this->hasRole('admin_gudang')) {
             return str_starts_with($permission, 'inventory.') || str_starts_with($permission, 'warehouse.');
         }
 
-        if (str_contains($title, 'kasir') || str_contains($title, 'billing')) {
+        if (str_contains($title, 'kasir') || str_contains($title, 'billing') || $this->hasRole('kasir')) {
             return str_starts_with($permission, 'invoice.') || str_starts_with($permission, 'payment.') || $permission === 'customer.view';
         }
 
-        if (str_contains($title, 'customer service') || $title === 'cs') {
+        if (str_contains($title, 'customer service') || $title === 'cs' || $this->hasRole('customer_service')) {
             return str_starts_with($permission, 'customer.') || str_starts_with($permission, 'ticket.');
         }
 
-        if (str_contains($title, 'teknisi') || str_contains($title, 'technician')) {
+        if (str_contains($title, 'teknisi') || str_contains($title, 'technician') || $this->hasRole('teknisi')) {
             return str_starts_with($permission, 'technician.') 
                 || str_starts_with($permission, 'workforce.') 
                 || in_array($permission, ['onu.view', 'onu.diagnose', 'inventory.custody', 'inventory.usage', 'inventory.return', 'inventory.requisition']);
+        }
+
+        if (str_contains($title, 'marketing') || str_contains($title, 'sales') || $this->hasRole('marketing')) {
+            return str_starts_with($permission, 'crm.') || str_starts_with($permission, 'customer.');
+        }
+
+        // 3. Direct permissions spesifik diutamakan jika ada
+        if ($this->directPermissions->isNotEmpty()) {
+            return $this->directPermissions->contains('name', $permission);
         }
 
         // 4. Fallback permissions dari roles jika staf umum (General Manager)

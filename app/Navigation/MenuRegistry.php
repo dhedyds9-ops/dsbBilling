@@ -38,7 +38,7 @@ class MenuRegistry
                     [
                         'label' => '',
                         'items' => [
-                            ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'dashboard', 'active' => 'dashboard', 'permission' => ['dashboard.view', 'router.view', 'customer.view', 'invoice.view', 'finance.view', 'noc.view', 'report.view']],
+                            ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'dashboard', 'active' => 'dashboard', 'permission' => ['dashboard.view', 'router.view', 'customer.view', 'invoice.view', 'finance.view', 'noc.view', 'report.view', 'inventory.view']],
                             ['label' => 'Portal NOC', 'route' => 'noc.overview', 'icon' => 'monitor_heart', 'permission' => 'noc.view'],
                         ]
                     ],
