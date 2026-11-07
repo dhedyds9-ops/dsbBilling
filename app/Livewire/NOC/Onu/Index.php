@@ -275,8 +275,12 @@ class Index extends AdminComponent
             ])
             ->when($this->oltFilter, fn ($q) => $q->where('olt_id', $this->oltFilter))
             ->when($this->ponFilter, fn ($q) => $q->where('pon_port_id', $this->ponFilter))
-            ->when($this->statusFilter === 'online', fn ($q) => $q->where('status', 'active'))
-            ->when($this->statusFilter === 'offline', fn ($q) => $q->where('status', 'inactive'))
+            ->when($this->statusFilter === 'online', fn ($q) => $q->where('status', 'active')->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(10)))
+            ->when($this->statusFilter === 'offline', fn ($q) => $q->where(function ($sq) {
+                $sq->where('status', 'inactive')
+                   ->orWhereNull('last_seen_at')
+                   ->orWhere('last_seen_at', '<', now()->subMinutes(10));
+            }))
             ->when($this->statusFilter === 'los', fn ($q) => $q->where(function ($q) use ($rxCrit) {
                 $q->where('status', 'los')->orWhere('rx_power_dbm', '<', $rxCrit);
             }))
@@ -356,7 +360,10 @@ class Index extends AdminComponent
             ->when($this->ponFilter, fn ($q) => $q->where('pon_port_id', $this->ponFilter));
 
         $total = (clone $baseQuery)->count();
-        $online = (clone $baseQuery)->where('status', 'active')->count();
+        $online = (clone $baseQuery)->where('status', 'active')
+            ->whereNotNull('last_seen_at')
+            ->where('last_seen_at', '>=', now()->subMinutes(10))
+            ->count();
 
         $los = (clone $baseQuery)->where(function ($q) {
             $q->where('status', 'los')->orWhere('rx_power_dbm', '<', -30.0);
@@ -378,8 +385,11 @@ class Index extends AdminComponent
     {
         if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -30)) return 'LOS';
         if ($onu->status === 'inactive') return 'OFFLINE';
-        // If an ONU has no optical signal and has never registered on a PON port, it is OFFLINE
-        if ($onu->rx_power_dbm === null && ($onu->pon_port === null || empty($onu->last_seen_at))) {
+        // Jika last_seen_at kosong atau sudah lebih dari 10 menit tidak terlihat, ONU dianggap offline
+        if (empty($onu->last_seen_at) || $onu->last_seen_at->diffInMinutes(now()) > 10) {
+            return 'OFFLINE';
+        }
+        if ($onu->rx_power_dbm === null && $onu->pon_port === null) {
             return 'OFFLINE';
         }
         if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) return 'LOW_RX';

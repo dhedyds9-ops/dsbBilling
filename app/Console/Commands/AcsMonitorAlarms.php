@@ -108,7 +108,7 @@ class AcsMonitorAlarms extends Command
                     $isServiceOnline = true;
                 } elseif (!empty($device->ip_address) && \App\Models\ISP\OnlineSession::where('address', $device->ip_address)->exists()) {
                     $isServiceOnline = true;
-                } elseif (!empty($device->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $device->serial_number)->where('status', 'active')->exists()) {
+                } elseif (!empty($device->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $device->serial_number)->where('status', 'active')->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(10))->exists()) {
                     $isServiceOnline = true;
                 }
             } catch (\Throwable) {}
@@ -117,8 +117,8 @@ class AcsMonitorAlarms extends Command
                 $newStatus = 'online';
             } elseif ($lastInform) {
                 $diffInSeconds = now()->diffInSeconds(Carbon::parse($lastInform));
-                $onlineThreshold = max(21600, ($informInterval * 12)); // Minimal 6 jam toleransi
-                $offlineThreshold = max(43200, ($informInterval * 24)); // Minimal 12 jam toleransi
+                $onlineThreshold = max(600, ($informInterval * 2)); // 10 menit toleransi
+                $offlineThreshold = max(1800, ($informInterval * 6)); // 30 menit toleransi
                 
                 if ($diffInSeconds <= $onlineThreshold) {
                     $newStatus = 'online';

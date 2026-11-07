@@ -43,18 +43,20 @@ class Index extends BaseACSComponent
                     try {
                         $isOnline = false;
 
-                        // 1. Cek last inform (toleransi 24 jam untuk ONT dengan interval inform panjang)
+                        // 1. Cek last inform (toleransi 10 menit untuk interval standar inform 300 detik)
                         if (!empty($d['_lastInform'])) {
                             $lastInform = \Carbon\Carbon::parse($d['_lastInform']);
-                            if (abs($now->diffInHours($lastInform)) < 24) {
+                            if (abs($now->diffInMinutes($lastInform)) <= 10) {
                                 $isOnline = true;
                             }
                         }
 
-                        // 2. Cek IP aktif di MikroTik session
+                        // 2. Cek IP aktif di MikroTik session (harus ada kontak inform dalam 15 menit)
                         $ip = $d['_ip'] ?? null;
                         if (!$isOnline && !empty($ip) && isset($activeIpFlip[$ip])) {
-                            $isOnline = true;
+                            if (isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 15) {
+                                $isOnline = true;
+                            }
                         }
 
                         $updateData = [
@@ -67,15 +69,20 @@ class Index extends BaseACSComponent
                         if ($isOnline) {
                             $updateData['status'] = 'online';
                         } else {
-                            // Cek apakah database mencatat session atau ONU aktif di OLT
+                            // Cek apakah database mencatat session aktif atau link optik ONU aktif di OLT dalam 10 menit terakhir
                             $rec = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
                                 ->where('uuid', $uuid)
                                 ->first(['id', 'ip_address', 'serial_number', 'status']);
                             if ($rec) {
-                                $hasActiveSession = !empty($rec->ip_address) && isset($activeIpFlip[$rec->ip_address]);
+                                $hasActiveSession = !empty($rec->ip_address) 
+                                    && isset($activeIpFlip[$rec->ip_address])
+                                    && isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 15;
+                                    
                                 $hasActiveOnu = !empty($rec->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()
                                     ->where('serial_number', $rec->serial_number)
                                     ->where('status', 'active')
+                                    ->whereNotNull('last_seen_at')
+                                    ->where('last_seen_at', '>=', now()->subMinutes(10))
                                     ->exists();
 
                                 if ($hasActiveSession || $hasActiveOnu) {
@@ -367,7 +374,7 @@ class Index extends BaseACSComponent
         }
         
         $lastInform = isset($deviceData['_lastInform']) ? \Carbon\Carbon::parse($deviceData['_lastInform']) : null;
-        $status = ($lastInform && abs(now()->diffInHours($lastInform)) < 6) ? 'online' : 'offline';
+        $status = ($lastInform && abs(now()->diffInMinutes($lastInform)) <= 10) ? 'online' : 'offline';
 
         // Helper pembersih karakter rusak/non-printable (sering terjadi pada VSOL)
         $cleanSn = function ($val) {

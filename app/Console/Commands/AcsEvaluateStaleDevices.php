@@ -47,8 +47,8 @@ class AcsEvaluateStaleDevices extends Command
         $defaultInterval = (int) ($this->option('interval')
             ?: config('genieacs.cpe_defaults.periodic_inform_interval_seconds', 300));
 
-        $onlineThreshold = max(86400, $defaultInterval * 24); // Minimal 24 jam toleransi online
-        $offlineThreshold = max(172800, $defaultInterval * 48); // Minimal 48 jam toleransi offline (menghindari false offline pada ONT dengan inform interval panjang)
+        $onlineThreshold = max(600, $defaultInterval * 2); // 10 menit toleransi online
+        $offlineThreshold = max(1800, $defaultInterval * 6); // 30 menit toleransi offline
 
         $now = now();
         $transitionedOnline = 0;
@@ -72,11 +72,11 @@ class AcsEvaluateStaleDevices extends Command
                             $isServiceOnline = true;
                         } elseif ($device->customerService?->hotspotUser?->is_online) {
                             $isServiceOnline = true;
-                        } elseif ($device->onu && $device->onu->status === 'active') {
+                        } elseif ($device->onu && $device->onu->status === 'active' && $device->onu->last_seen_at && $device->onu->last_seen_at >= now()->subMinutes(10)) {
                             $isServiceOnline = true;
                         } elseif (!empty($device->ip_address) && \App\Models\ISP\OnlineSession::where('address', $device->ip_address)->exists()) {
                             $isServiceOnline = true;
-                        } elseif (!empty($device->serial_number) && Onu::withoutGlobalScopes()->where('serial_number', $device->serial_number)->where('status', 'active')->exists()) {
+                        } elseif (!empty($device->serial_number) && Onu::withoutGlobalScopes()->where('serial_number', $device->serial_number)->where('status', 'active')->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(10))->exists()) {
                             $isServiceOnline = true;
                         }
                     } catch (\Throwable) {}

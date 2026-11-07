@@ -210,7 +210,10 @@ class Index extends AdminComponent
         if ($onu->status === 'inactive') {
             return 'OFFLINE';
         }
-        if ($onu->rx_power_dbm === null && ($onu->pon_port === null || empty($onu->last_seen_at))) {
+        if (empty($onu->last_seen_at) || $onu->last_seen_at->diffInMinutes(now()) > 10) {
+            return 'OFFLINE';
+        }
+        if ($onu->rx_power_dbm === null && $onu->pon_port === null) {
             return 'OFFLINE';
         }
         if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) {

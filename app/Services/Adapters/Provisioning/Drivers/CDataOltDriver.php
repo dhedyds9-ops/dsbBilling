@@ -1124,25 +1124,49 @@ class CDataOltDriver extends BaseOltDriver
                 $activeVal = is_numeric($rawAct) ? (int)$rawAct : 0;
                 $stVal     = is_numeric($rawSt) ? (int)$rawSt : 0;
 
-                // In GPON: activeVal 1 = active, stVal 5 = operation (O5 state)
-                // In EPON: activeVal / stVal 1 = online/authenticated, 3 = online
-                $isOnline = ($activeVal === 1)
-                    || in_array($stVal, [1, 2, 3, 4, 5, 6, 10, 100, 101], true)
-                    || str_contains($stRaw, 'online')
-                    || str_contains($stRaw, 'up')
-                    || str_contains($stRaw, 'active')
-                    || str_contains($stRaw, 'oper')
-                    || str_contains($stRaw, 'o5')
-                    || str_contains($actRaw, 'active')
-                    || str_contains($actRaw, 'up')
-                    || str_contains($actRaw, 'online')
-                    || str_contains($actRaw, 'enable');
+                // 1. Cek dari CLI cache terlebih dahulu jika ada
+                $cliStatus = null;
+                if (!empty($this->cachedCliParsedOnus)) {
+                    foreach ($this->cachedCliParsedOnus as $cPort => $cOnus) {
+                        foreach ($cOnus as $cData) {
+                            if (!empty($cData['serial_number']) && strtoupper($cData['serial_number']) === strtoupper($sn)) {
+                                $cliStatus = $cData['status'] ?? null;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+
+                if ($cliStatus === 'offline') {
+                    $isOnline = false;
+                } elseif ($cliStatus === 'online') {
+                    $isOnline = true;
+                } else {
+                    // 2. Evaluasi status SNMP
+                    // In GPON: onuRunState: 1=initial, 2=standby, 3=sn, 4=ranging, 5=operation (O5/ONLINE), 6=popup/los
+                    // Hanya state 5 (O5) yang menandakan ONU aktif beroperasi secara optik.
+                    // State 1, 2, 6, 7 adalah offline / mati total / dicabut.
+                    if ($stVal === 5 || $stVal === 101) {
+                        $isOnline = true;
+                    } elseif (in_array($stVal, [1, 2, 3, 4, 6, 7, 102], true)) {
+                        $isOnline = false;
+                    } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5')) {
+                        $isOnline = true;
+                    } elseif (str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'standby') || str_contains($stRaw, 'popup') || str_contains($stRaw, 'los')) {
+                        $isOnline = false;
+                    } else {
+                        // Jika stVal tidak terbaca, gunakan activeVal (1 = active config, 2 = inactive/disabled)
+                        $isOnline = ($activeVal === 1);
+                    }
+                }
 
                 $rxVal = $parsePower($lookupVal($this->cachedOnuRx, (string)$oidKey) ?? 0);
                 $txVal = $parsePower($lookupVal($this->cachedOnuTx, (string)$oidKey) ?? 0);
 
-                if ($rxVal !== null && $rxVal > -39.0 && $rxVal < 5.0) {
-                    $isOnline = true;
+                // Jika ONU offline/mati, bersihkan nilai redaman lama agar tidak dianggap online semu
+                if (!$isOnline) {
+                    $rxVal = null;
+                    $txVal = null;
                 }
 
                 $mac = $parsed['mac'] ?? null;

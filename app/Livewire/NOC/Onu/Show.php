@@ -148,6 +148,9 @@ class Show extends AdminComponent
         $onu = $this->onu;
         if ($onu->status === 'los' || ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -30)) return 'LOS';
         if ($onu->status === 'inactive') return 'OFFLINE';
+        if (empty($onu->last_seen_at) || $onu->last_seen_at->diffInMinutes(now()) > 10) {
+            return 'OFFLINE';
+        }
         if ($onu->rx_power_dbm !== null && $onu->rx_power_dbm < -27) return 'LOW_RX';
         return 'ONLINE';
     }
