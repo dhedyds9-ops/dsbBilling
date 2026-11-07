@@ -197,12 +197,42 @@ class User extends Authenticatable
         });
     }
 
+    public function isStaffRole(): bool
+    {
+        $staffRoles = [
+            'manager',
+            'admin_gudang',
+            'kasir',
+            'customer_service',
+            'noc',
+            'teknisi',
+            'marketing',
+        ];
+        return $this->roles->whereIn('name', $staffRoles)->isNotEmpty();
+    }
+
     public function hasRole(string|array $role): bool
     {
         if (is_array($role)) {
-            return $this->roles->whereIn('name', $role)->isNotEmpty();
+            if ($this->roles->whereIn('name', $role)->isNotEmpty()) {
+                return true;
+            }
+            // Backward-compatibility: staf backoffice otomatis memenuhi izin level manager
+            if (in_array('manager', $role, true) && $this->isStaffRole()) {
+                return true;
+            }
+            return false;
         }
-        return $this->roles->contains('name', $role);
+
+        if ($this->roles->contains('name', $role)) {
+            return true;
+        }
+
+        if ($role === 'manager' && $this->isStaffRole()) {
+            return true;
+        }
+
+        return false;
     }
 
     public function hasAnyRole(...$roles): bool

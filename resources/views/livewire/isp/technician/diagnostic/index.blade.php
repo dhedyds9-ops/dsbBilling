@@ -449,8 +449,8 @@
                             { fps: 10, qrbox: { width: 250, height: 120 } },
                             (decodedText) => {
                                 this.closeScanner();
-                                @this.set('searchQuery', decodedText.trim());
-                                @this.call('updatedSearchQuery');
+                                $wire.set('searchQuery', decodedText.trim());
+                                $wire.call('updatedSearchQuery');
                             },
                             (err) => {}
                         ).catch((err) => {

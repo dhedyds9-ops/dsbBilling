@@ -31,7 +31,7 @@ class Role extends Model
 
     public static function allSystemRoleNames(): array
     {
-        return config('roles.system_roles', ['administrator', 'manager', 'reseller', 'customer']);
+        return config('roles.system_roles', \App\Enums\UserRole::allValues());
     }
 
     public function getIsSystemAttribute(): bool

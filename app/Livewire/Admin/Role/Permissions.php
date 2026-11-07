@@ -99,17 +99,38 @@ class Permissions extends AdminComponent
     public function resetToDefault(): void
     {
         Gate::authorize('role.manage');
-        if ($this->role->name === 'administrator') {
+        $roleName = $this->role->name;
+
+        if ($roleName === UserRole::Administrator->value) {
             $this->selectedPermissions = Permission::pluck('id')->map(fn($id) => (string)$id)->toArray();
-        } elseif ($this->role->name === 'manager') {
+        } elseif ($roleName === UserRole::Manager->value) {
             $names = \App\Enums\UserPermission::defaultManagerPermissions();
             $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
-        } elseif ($this->role->name === 'reseller') {
+        } elseif ($roleName === UserRole::AdminGudang->value) {
+            $names = \App\Enums\UserPermission::defaultAdminGudangPermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($roleName === UserRole::Kasir->value) {
+            $names = \App\Enums\UserPermission::defaultKasirPermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($roleName === UserRole::CustomerService->value) {
+            $names = \App\Enums\UserPermission::defaultCustomerServicePermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($roleName === UserRole::Noc->value) {
+            $names = \App\Enums\UserPermission::defaultNocPermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($roleName === UserRole::Teknisi->value) {
+            $names = \App\Enums\UserPermission::defaultTeknisiPermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($roleName === UserRole::Marketing->value) {
+            $names = \App\Enums\UserPermission::defaultMarketingPermissions();
+            $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } elseif ($roleName === UserRole::Reseller->value) {
             $names = \App\Enums\UserPermission::defaultResellerPermissions();
             $this->selectedPermissions = Permission::whereIn('name', $names)->pluck('id')->map(fn($id) => (string)$id)->toArray();
         } else {
             $this->selectedPermissions = [];
         }
+
         session()->flash('success', "Pilihan hak akses disetel ulang ke rekomendasi standar sistem untuk {$this->role->display_name}. Klik 'Simpan Perubahan' untuk menerapkan.");
     }
 

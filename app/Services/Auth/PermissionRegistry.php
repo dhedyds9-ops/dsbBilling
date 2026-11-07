@@ -371,26 +371,78 @@ class PermissionRegistry
             $count++;
         }
 
-        // 1. Pastikan Administrator mendapatkan semua permissions
-        $adminRole = Role::where('name', UserRole::Administrator->value)->first();
-        if ($adminRole) {
-            $adminRole->permissions()->sync(Permission::all());
-        }
+        // 2. Sinkronkan Role Standar ISP & Hak Akses Masing-Masing
+        $standardRoles = [
+            [
+                'name'         => UserRole::Administrator->value,
+                'display_name' => UserRole::Administrator->label(),
+                'description'  => 'Akses penuh ke seluruh sistem aplikasi dsBilling (Owner / Super-Admin Bypass).',
+                'permissions'  => Permission::all()->pluck('name')->toArray(),
+            ],
+            [
+                'name'         => UserRole::AdminGudang->value,
+                'display_name' => UserRole::AdminGudang->label(),
+                'description'  => 'Khusus pengelolaan modul Inventaris, Master Barang, Stok Gudang, Barang Masuk/Keluar, dan Retur.',
+                'permissions'  => UserPermission::defaultAdminGudangPermissions(),
+            ],
+            [
+                'name'         => UserRole::Kasir->value,
+                'display_name' => UserRole::Kasir->label(),
+                'description'  => 'Khusus penerimaan pembayaran tagihan, invoice pelanggan, dan rekap kas harian.',
+                'permissions'  => UserPermission::defaultKasirPermissions(),
+            ],
+            [
+                'name'         => UserRole::CustomerService->value,
+                'display_name' => UserRole::CustomerService->label(),
+                'description'  => 'Khusus pengelolaan data pelanggan, tiket pengaduan gangguan, dan aktivasi layanan.',
+                'permissions'  => UserPermission::defaultCustomerServicePermissions(),
+            ],
+            [
+                'name'         => UserRole::Noc->value,
+                'display_name' => UserRole::Noc->label(),
+                'description'  => 'Khusus monitoring router core MikroTik, OLT, GenieACS, alarm real-time, dan topologi jaringan.',
+                'permissions'  => UserPermission::defaultNocPermissions(),
+            ],
+            [
+                'name'         => UserRole::Teknisi->value,
+                'display_name' => UserRole::Teknisi->label(),
+                'description'  => 'Khusus portal teknisi lapangan, pengerjaan WO (PSB/Gangguan), scan ONU, dan material custody.',
+                'permissions'  => UserPermission::defaultTeknisiPermissions(),
+            ],
+            [
+                'name'         => UserRole::Marketing->value,
+                'display_name' => UserRole::Marketing->label(),
+                'description'  => 'Khusus prospek calon pelanggan baru (CRM), survey, penawaran, dan pencetakan voucher.',
+                'permissions'  => UserPermission::defaultMarketingPermissions(),
+            ],
+            [
+                'name'         => UserRole::Manager->value,
+                'display_name' => UserRole::Manager->label(),
+                'description'  => 'Akses operasional menyeluruh tanpa pengaturan sistem & konfigurasi sensitif.',
+                'permissions'  => UserPermission::defaultManagerPermissions(),
+            ],
+            [
+                'name'         => UserRole::Reseller->value,
+                'display_name' => UserRole::Reseller->label(),
+                'description'  => 'Akses terbatas untuk mitra penjualan, manajemen voucher, dan pelanggan mandiri.',
+                'permissions'  => UserPermission::defaultResellerPermissions(),
+            ],
+        ];
 
-        // 2. Pastikan Manager mendapatkan default manager permissions (termasuk modul inventory.*)
-        $managerRole = Role::where('name', UserRole::Manager->value)->first();
-        if ($managerRole) {
-            $managerPermNames = UserPermission::defaultManagerPermissions();
-            $managerPerms = Permission::whereIn('name', $managerPermNames)->get();
-            $managerRole->permissions()->sync($managerPerms);
-        }
+        foreach ($standardRoles as $rData) {
+            $role = Role::updateOrCreate(
+                ['name' => $rData['name']],
+                [
+                    'display_name' => $rData['display_name'],
+                    'description'  => $rData['description'],
+                ]
+            );
 
-        // 3. Pastikan Reseller mendapatkan default reseller permissions (khusus portal reseller)
-        $resellerRole = Role::where('name', UserRole::Reseller->value)->first();
-        if ($resellerRole) {
-            $resellerPermNames = UserPermission::defaultResellerPermissions();
-            $resellerPerms = Permission::whereIn('name', $resellerPermNames)->get();
-            $resellerRole->permissions()->sync($resellerPerms);
+            // Sync izin jika role baru dibuat atau belum memiliki permission
+            if ($role->permissions()->count() === 0 || in_array($role->name, [UserRole::Administrator->value, UserRole::AdminGudang->value, UserRole::Kasir->value, UserRole::CustomerService->value, UserRole::Noc->value, UserRole::Teknisi->value, UserRole::Marketing->value])) {
+                $perms = Permission::whereIn('name', $rData['permissions'])->get();
+                $role->permissions()->sync($perms);
+            }
         }
 
         return $count;

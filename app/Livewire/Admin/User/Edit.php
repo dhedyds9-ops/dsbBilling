@@ -51,107 +51,38 @@ class Edit extends AdminComponent
             $this->updatedJobFunction($this->job_function);
 
             $target = strtolower((string)$value);
+            $roleNameToSelect = null;
 
             if (str_contains($target, 'gudang') || str_contains($target, 'logistik')) {
-                // Posisi Gudang menggunakan Role Manager (Staff Internal) untuk user non-root
-                if ($this->userId != 1) {
-                    $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
-                    if ($managerRole) {
-                        $this->selectedRoles = (string)$managerRole->id;
-                    }
-                }
-
-                $inventoryPerms = [
-                    \App\Enums\UserPermission::InventoryView->value,
-                    \App\Enums\UserPermission::InventoryManage->value,
-                    \App\Enums\UserPermission::WarehouseView->value,
-                    \App\Enums\UserPermission::WarehouseManage->value,
-                    \App\Enums\UserPermission::InventoryInbound->value,
-                    \App\Enums\UserPermission::InventoryStockCard->value,
-                    \App\Enums\UserPermission::InventoryRequisition->value,
-                    \App\Enums\UserPermission::InventoryDispatch->value,
-                    \App\Enums\UserPermission::InventoryCustody->value,
-                    \App\Enums\UserPermission::InventoryUsage->value,
-                    \App\Enums\UserPermission::InventoryReturn->value,
-                    \App\Enums\UserPermission::InventoryOpname->value,
-                    \App\Enums\UserPermission::InventoryReport->value,
-                ];
-                $perms = Permission::whereIn('name', $inventoryPerms)->get();
-                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                $roleNameToSelect = \App\Enums\UserRole::AdminGudang->value;
             } elseif (str_contains($target, 'kasir') || str_contains($target, 'billing')) {
-                if ($this->userId != 1) {
-                    $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
-                    if ($managerRole) {
-                        $this->selectedRoles = (string)$managerRole->id;
-                    }
-                }
-                $cashierPerms = [
-                    \App\Enums\UserPermission::InvoiceView->value,
-                    \App\Enums\UserPermission::InvoiceCreate->value,
-                    \App\Enums\UserPermission::InvoicePayment->value,
-                    \App\Enums\UserPermission::PaymentView->value,
-                    \App\Enums\UserPermission::PaymentCreate->value,
-                    \App\Enums\UserPermission::CustomerView->value,
-                ];
-                $perms = Permission::whereIn('name', $cashierPerms)->get();
-                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                $roleNameToSelect = \App\Enums\UserRole::Kasir->value;
             } elseif (str_contains($target, 'customer service') || str_contains($target, 'cs')) {
-                if ($this->userId != 1) {
-                    $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
-                    if ($managerRole) {
-                        $this->selectedRoles = (string)$managerRole->id;
-                    }
-                }
-                $csPerms = [
-                    \App\Enums\UserPermission::CustomerView->value,
-                    \App\Enums\UserPermission::CustomerCreate->value,
-                    \App\Enums\UserPermission::CustomerUpdate->value,
-                    \App\Enums\UserPermission::TicketView->value,
-                    \App\Enums\UserPermission::TicketCreate->value,
-                    \App\Enums\UserPermission::TicketUpdate->value,
-                ];
-                $perms = Permission::whereIn('name', $csPerms)->get();
-                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                $roleNameToSelect = \App\Enums\UserRole::CustomerService->value;
             } elseif (str_contains($target, 'noc') || str_contains($target, 'monitoring')) {
-                if ($this->userId != 1) {
-                    $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
-                    if ($managerRole) {
-                        $this->selectedRoles = (string)$managerRole->id;
-                    }
-                }
-                $nocPerms = [
-                    \App\Enums\UserPermission::NocView->value,
-                    \App\Enums\UserPermission::MonitoringView->value,
-                    \App\Enums\UserPermission::RouterView->value,
-                    \App\Enums\UserPermission::OltView->value,
-                    \App\Enums\UserPermission::OnuView->value,
-                    \App\Enums\UserPermission::GisView->value,
-                ];
-                $perms = Permission::whereIn('name', $nocPerms)->get();
-                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+                $roleNameToSelect = \App\Enums\UserRole::Noc->value;
             } elseif (str_contains($target, 'teknisi') || str_contains($target, 'technician')) {
-                if ($this->userId != 1) {
-                    $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
-                    if ($managerRole) {
-                        $this->selectedRoles = (string)$managerRole->id;
-                    }
+                $roleNameToSelect = \App\Enums\UserRole::Teknisi->value;
+            } elseif (str_contains($target, 'marketing') || str_contains($target, 'sales')) {
+                $roleNameToSelect = \App\Enums\UserRole::Marketing->value;
+            }
+
+            if ($roleNameToSelect && $this->userId != 1) {
+                $matchedRole = Role::where('name', $roleNameToSelect)->first();
+                if ($matchedRole) {
+                    $this->selectedRoles = (string)$matchedRole->id;
+                    $this->updatedSelectedRoles($this->selectedRoles);
+                    return;
                 }
-                $techPerms = [
-                    \App\Enums\UserPermission::TechnicianPortal->value,
-                    \App\Enums\UserPermission::WorkforceJobsView->value,
-                    \App\Enums\UserPermission::WorkforceJobsExecute->value,
-                    \App\Enums\UserPermission::WorkforceQcView->value,
-                    \App\Enums\UserPermission::WorkforceQcExecute->value,
-                    \App\Enums\UserPermission::WorkforceMaterialView->value,
-                    \App\Enums\UserPermission::WorkforceMaterialExecute->value,
-                    \App\Enums\UserPermission::WorkforceAttendanceExecute->value,
-                    \App\Enums\UserPermission::InventoryCustody->value,
-                    \App\Enums\UserPermission::InventoryUsage->value,
-                    \App\Enums\UserPermission::InventoryReturn->value,
-                    \App\Enums\UserPermission::InventoryRequisition->value,
-                ];
-                $perms = Permission::whereIn('name', $techPerms)->get();
-                $this->selectedPermissions = $perms->pluck('id')->map(fn($id) => (string)$id)->toArray();
+            }
+
+            // Fallback jika belum ada role yang cocok
+            if (empty($this->selectedRoles) && $this->userId != 1) {
+                $managerRole = Role::where('name', \App\Enums\UserRole::Manager->value)->first();
+                if ($managerRole) {
+                    $this->selectedRoles = (string)$managerRole->id;
+                    $this->updatedSelectedRoles($this->selectedRoles);
+                }
             }
         }
     }
@@ -246,6 +177,37 @@ class Edit extends AdminComponent
             if ($role) {
                 // Ensure IDs are strings for Livewire checkbox binding
                 $this->selectedPermissions = $role->permissions->pluck('id')->map(fn($id) => (string)$id)->toArray();
+
+                // Sinkronkan Posisi/Jabatan sesuai role jika belum spesifik
+                if ($role->name === \App\Enums\UserRole::AdminGudang->value) {
+                    $this->job_title = 'Admin Gudang / Logistik';
+                    $this->job_function = \App\Enums\JobFunction::PENGURUS->value;
+                    $this->division = 'Logistik & Gudang';
+                } elseif ($role->name === \App\Enums\UserRole::Kasir->value) {
+                    $this->job_title = 'Kasir Billing';
+                    $this->job_function = \App\Enums\JobFunction::PENGURUS->value;
+                    $this->division = 'Layanan Internet & Jaringan';
+                } elseif ($role->name === \App\Enums\UserRole::CustomerService->value) {
+                    $this->job_title = 'Customer Service';
+                    $this->job_function = \App\Enums\JobFunction::PENGURUS->value;
+                    $this->division = 'Layanan Internet & Jaringan';
+                } elseif ($role->name === \App\Enums\UserRole::Noc->value) {
+                    $this->job_title = 'NOC / Monitoring';
+                    $this->job_function = \App\Enums\JobFunction::NOC->value;
+                    $this->division = 'Layanan Internet & Jaringan';
+                } elseif ($role->name === \App\Enums\UserRole::Teknisi->value) {
+                    $this->job_title = 'Teknisi Lapangan';
+                    $this->job_function = \App\Enums\JobFunction::TECHNICIAN->value;
+                    $this->division = 'Layanan Internet & Jaringan';
+                } elseif ($role->name === \App\Enums\UserRole::Marketing->value) {
+                    $this->job_title = 'Marketing Internet';
+                    $this->job_function = \App\Enums\JobFunction::SALES->value;
+                    $this->division = 'Layanan Internet & Jaringan';
+                } elseif ($role->name === \App\Enums\UserRole::Administrator->value) {
+                    $this->job_title = 'Super Administrator';
+                    $this->job_function = \App\Enums\JobFunction::PENGURUS->value;
+                    $this->division = 'Manajemen & IT';
+                }
             }
         } else {
             $this->selectedPermissions = [];

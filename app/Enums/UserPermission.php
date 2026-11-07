@@ -381,6 +381,131 @@ enum UserPermission: string
     }
 
     /**
+     * Permission set default untuk role Admin Gudang & Logistik.
+     * Khusus modul pergudangan dan inventaris.
+     */
+    public static function defaultAdminGudangPermissions(): array
+    {
+        return [
+            self::InventoryView->value,
+            self::InventoryManage->value,
+            self::WarehouseView->value,
+            self::WarehouseManage->value,
+            self::InventoryInbound->value,
+            self::InventoryStockCard->value,
+            self::InventoryRequisition->value,
+            self::InventoryDispatch->value,
+            self::InventoryCustody->value,
+            self::InventoryUsage->value,
+            self::InventoryReturn->value,
+            self::InventoryOpname->value,
+            self::InventoryReport->value,
+        ];
+    }
+
+    /**
+     * Permission set default untuk role Kasir & Billing.
+     * Khusus tagihan, pembayaran, cetak kuitansi, dan data pelanggan.
+     */
+    public static function defaultKasirPermissions(): array
+    {
+        return [
+            self::CustomerView->value,
+            self::InvoiceView->value,
+            self::InvoiceCreate->value,
+            self::InvoicePayment->value,
+            self::PaymentView->value,
+            self::PaymentCreate->value,
+            self::ReportView->value,
+        ];
+    }
+
+    /**
+     * Permission set default untuk role Customer Service (CS).
+     * Khusus pelanggan, tiket bantuan, dan penanganan gangguan dasar ONU.
+     */
+    public static function defaultCustomerServicePermissions(): array
+    {
+        return [
+            self::CustomerView->value,
+            self::CustomerCreate->value,
+            self::CustomerUpdate->value,
+            self::TicketView->value,
+            self::TicketCreate->value,
+            self::TicketUpdate->value,
+            self::OnuView->value,
+            self::OnuDiagnose->value,
+            self::OnuReboot->value,
+        ];
+    }
+
+    /**
+     * Permission set default untuk role NOC & Monitoring Jaringan.
+     * Khusus monitoring router core, OLT, GenieACS, alarm, dan topologi GIS.
+     */
+    public static function defaultNocPermissions(): array
+    {
+        return [
+            self::NocView->value,
+            self::NocPortal->value,
+            self::NocOltView->value,
+            self::NocOnuView->value,
+            self::NocRouterView->value,
+            self::NocPppoeView->value,
+            self::NocAlarmsView->value,
+            self::NocProvisioningView->value,
+            self::NocTopologyView->value,
+            self::MonitoringView->value,
+            'router.view',
+            'olt.view',
+            self::OnuView->value,
+            self::OnuDiagnose->value,
+            self::OnuReboot->value,
+            self::GisView->value,
+        ];
+    }
+
+    /**
+     * Permission set default untuk role Teknisi Lapangan.
+     * Khusus portal teknisi lapangan, pekerjaan WO (PSB/Maintenance), absensi, dan material custody.
+     */
+    public static function defaultTeknisiPermissions(): array
+    {
+        return [
+            self::TechnicianPortal->value,
+            self::WorkforceJobsView->value,
+            self::WorkforceJobsExecute->value,
+            self::WorkforceQcView->value,
+            self::WorkforceQcExecute->value,
+            self::WorkforceMaterialView->value,
+            self::WorkforceMaterialExecute->value,
+            self::WorkforceAttendanceExecute->value,
+            self::OnuView->value,
+            self::OnuDiagnose->value,
+            self::InventoryCustody->value,
+            self::InventoryUsage->value,
+            self::InventoryReturn->value,
+            self::InventoryRequisition->value,
+        ];
+    }
+
+    /**
+     * Permission set default untuk role Marketing & Sales.
+     * Khusus prospek pelanggan, voucher, dan laporan penjualan.
+     */
+    public static function defaultMarketingPermissions(): array
+    {
+        return [
+            self::CustomerView->value,
+            self::CustomerCreate->value,
+            self::VoucherView->value,
+            self::VoucherCreate->value,
+            self::VoucherPrint->value,
+            self::ReportView->value,
+        ];
+    }
+
+    /**
      * Permission set default untuk role Reseller.
      *
      * RESIKOLASI DATA:

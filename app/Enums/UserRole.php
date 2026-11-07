@@ -26,13 +26,31 @@ namespace App\Enums;
 enum UserRole: string
 {
     // =============================================
-    // BACKOFFICE ROLES
+    // BACKOFFICE ROLES (SUPERADMIN & JABATAN OPERASIONAL)
     // =============================================
 
     /** Akses penuh sistem. Menggantikan legacy: super_admin, admin */
     case Administrator = 'administrator';
 
-    /** Staff internal ISP. Akses berdasarkan permission & branch scope. */
+    /** Staff Gudang & Logistik. Akses khusus modul inventaris & pergudangan. */
+    case AdminGudang = 'admin_gudang';
+
+    /** Kasir & Billing. Akses penerimaan pembayaran tagihan dan invoice. */
+    case Kasir = 'kasir';
+
+    /** Customer Service. Akses pelanggan, tiket gangguan, aktivasi. */
+    case CustomerService = 'customer_service';
+
+    /** NOC & Network Monitoring. Akses monitoring router, OLT, GenieACS, alarms. */
+    case Noc = 'noc';
+
+    /** Teknisi Lapangan. Akses portal teknisi, pekerjaan WO, scan ONU, custody. */
+    case Teknisi = 'teknisi';
+
+    /** Marketing & Sales. Akses CRM leads, survey, voucher hotspot. */
+    case Marketing = 'marketing';
+
+    /** Staff internal ISP umum / supervisor. */
     case Manager = 'manager';
 
     /** Business/channel partner. Financial actor. Scope: customer miliknya. */
@@ -60,6 +78,12 @@ enum UserRole: string
     {
         return [
             self::Administrator->value,
+            self::AdminGudang->value,
+            self::Kasir->value,
+            self::CustomerService->value,
+            self::Noc->value,
+            self::Teknisi->value,
+            self::Marketing->value,
             self::Manager->value,
             self::Reseller->value,
         ];
@@ -96,16 +120,32 @@ enum UserRole: string
     public function label(): string
     {
         return match($this) {
-            self::Administrator => 'Administrator',
-            self::Manager       => 'Manager',
-            self::Reseller      => 'Reseller',
-            self::Customer      => 'Customer',
+            self::Administrator   => 'Super Administrator',
+            self::AdminGudang     => 'Admin Gudang & Logistik',
+            self::Kasir           => 'Kasir & Billing',
+            self::CustomerService => 'Customer Service (CS)',
+            self::Noc             => 'NOC & Monitoring Jaringan',
+            self::Teknisi         => 'Teknisi Lapangan',
+            self::Marketing       => 'Marketing & Sales',
+            self::Manager         => 'Manager Operasional',
+            self::Reseller        => 'Mitra Reseller',
+            self::Customer        => 'Customer',
         };
     }
 
     public function isBackoffice(): bool
     {
-        return in_array($this, [self::Administrator, self::Manager, self::Reseller]);
+        return in_array($this, [
+            self::Administrator,
+            self::AdminGudang,
+            self::Kasir,
+            self::CustomerService,
+            self::Noc,
+            self::Teknisi,
+            self::Marketing,
+            self::Manager,
+            self::Reseller,
+        ]);
     }
 
     public function isFinancialActor(): bool

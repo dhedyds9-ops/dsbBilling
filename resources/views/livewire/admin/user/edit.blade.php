@@ -42,19 +42,8 @@
                             <option value="{{ $job_title }}" selected>{{ $job_title }} (Kustom)</option>
                         @endif
                     </select>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Hak akses sistem (Role) dan matriks izin akan otomatis disesuaikan dengan jabatan yang dipilih.</p>
                     @error('job_title') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Job Function (Departemen / Fungsi Tugas)</label>
-                    <select wire:model.live="job_function" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100">
-                        <option value="">-- Tidak Ada / Akses Standar --</option>
-                        @foreach(\App\Enums\JobFunction::cases() as $jobFunc)
-                            <option value="{{ $jobFunc->value }}">{{ $jobFunc->label() }}</option>
-                        @endforeach
-                    </select>
-                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Otomatis terisi sesuai posisi yang dipilih (menentukan portal landing & permission).</p>
-                    @error('job_function') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
@@ -153,17 +142,19 @@
                                 <input type="radio" wire:model.live="selectedRoles" value="{{ $role->id }}" class="sr-only">
                                 <div class="flex flex-col gap-1">
                                     <span class="text-sm font-bold text-slate-900 dark:text-white">
-                                        @if($role->name == 'administrator') Administrator (Superadmin)
-                                        @elseif($role->name == 'manager') Manager (Staff Internal)
-                                        @elseif($role->name == 'reseller') Reseller (Mitra Bisnis)
-                                        @else {{ $role->display_name ?? ucfirst($role->name) }}
-                                        @endif
+                                        {{ $role->display_name ?? ucfirst($role->name) }}
                                     </span>
                                     <span class="text-xs text-slate-500 dark:text-slate-400">
                                         @if($role->name == 'administrator') Akses penuh seluruh sistem (Owner/Superadmin)
-                                        @elseif($role->name == 'manager') Staff internal (Admin Gudang, CS, Kasir, NOC, Teknisi)
-                                        @elseif($role->name == 'reseller') Partner & Mitra bisnis penjualan
-                                        @else {{ $role->description ?: 'Akses khusus' }}
+                                        @elseif($role->name == 'admin_gudang') Manajemen persediaan, stok fisik, material & distribusi
+                                        @elseif($role->name == 'kasir') Pembayaran tagihan, kasir billing & laporan harian
+                                        @elseif($role->name == 'customer_service') Tiket komplain pelanggan & CRM helpdesk
+                                        @elseif($role->name == 'noc') Monitoring router Mikrotik, OLT, GenieACS & jaringan
+                                        @elseif($role->name == 'teknisi') Portal teknisi lapangan, instalasi & perbaikan
+                                        @elseif($role->name == 'marketing') Manajemen prospek, registrasi & promosi penjualan
+                                        @elseif($role->name == 'manager') Laporan eksekutif & monitoring operasional kantor
+                                        @elseif($role->name == 'reseller') Portal mitra penjualan & voucher internet
+                                        @else {{ $role->description ?: 'Hak akses sistem standar' }}
                                         @endif
                                     </span>
                                 </div>
@@ -174,13 +165,6 @@
                         @endforeach
                     </div>
                     @error('selectedRoles') <p class="text-xs text-red-500 mt-2">{{ $message }}</p> @enderror
-
-                    @if(!empty($job_title) && (str_contains(strtolower($job_title), 'gudang') || str_contains(strtolower($job_title), 'logistik')))
-                        <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
-                            <span class="material-symbols-outlined notranslate text-blue-500" translate="no" style="font-size:18px">info</span>
-                            <span>Posisi <strong>Admin Gudang / Logistik</strong> otomatis menggunakan Role <strong>Manager (Staff Internal)</strong> dengan hak akses khusus modul Inventaris & Gudang dan landing page langsung ke Dashboard Stok.</span>
-                        </div>
-                    @endif
                 </div>
                 
                 <div class="flex items-center gap-2 mt-6">
