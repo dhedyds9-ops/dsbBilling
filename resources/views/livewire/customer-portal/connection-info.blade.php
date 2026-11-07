@@ -52,7 +52,7 @@
                             <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100">MAC: <span class="font-mono">{{ $session->calling_station_id ?? '-' }}</span></h3>
                         </div>
                         @if($isOnline)
-                            <span class="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 flex items-center gap-1 shadow-sm">
+                            <span class="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 shadow-sm">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ONLINE
                             </span>
                         @else
@@ -84,7 +84,7 @@
             </div>
         @empty
             <div class="text-center py-10 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-                <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3 block">history</span>
+                <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3 block">history</span>
                 <p class="text-slate-500 dark:text-slate-400 text-sm">Belum ada riwayat koneksi.</p>
             </div>
         @endforelse

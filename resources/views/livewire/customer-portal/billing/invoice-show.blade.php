@@ -4,11 +4,11 @@
     
     <!-- Action Buttons (Print Only) -->
     <div class="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-4 sticky top-0 z-10 print-hide shadow-sm flex gap-2">
-        <button type="button" onclick="window.print()" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-all active:scale-95">
+        <button type="button" onclick="window.print()" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95">
             <span class="material-symbols-outlined text-[18px]">print</span>
             Cetak (A4)
         </button>
-        <a href="{{ route('customer-portal.billing.invoice-print-80mm', $invoice->id) }}" target="_blank" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-all active:scale-95">
+        <a href="{{ route('customer-portal.billing.invoice-print-80mm', $invoice->id) }}" target="_blank" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95">
             <span class="material-symbols-outlined text-[18px]">receipt_long</span>
             Struk (80mm)
         </a>
@@ -24,11 +24,11 @@
                 <h3 class="text-lg font-bold text-white">Pembayaran</h3>
             </div>
             <div class="p-4 sm:p-4 space-y-4">
-                <p class="text-sm text-slate-500">Pilih metode pembayaran di bawah ini untuk melunasi tagihan sebesar <strong class="text-slate-800 dark:text-white">Rp {{ number_format(max(0, $invoice->total_amount - $invoice->paid_amount), 0, ',', '.') }}</strong></p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Pilih metode pembayaran di bawah ini untuk melunasi tagihan sebesar <strong class="text-slate-800 dark:text-white">Rp {{ number_format(max(0, $invoice->total_amount - $invoice->paid_amount), 0, ',', '.') }}</strong></p>
 
                 @forelse($activeGateways ?? [] as $key => $gateway)
                 @empty
-                    <div class="p-4 bg-red-50 dark:bg-red-900/30 text-red-600 text-sm rounded-xl border border-red-100 text-center">
+                    <div class="p-4 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-xl border border-red-100 dark:border-red-800 text-center">
                         Tidak ada metode pembayaran yang dikonfigurasi.
                     </div>
                 @endforelse
@@ -39,7 +39,7 @@
                             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Pilih Payment Gateway</label>
                             <div class="relative">
                                 <select wire:model.live="selectedGateway"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all dark:bg-slate-900 dark:text-slate-100">
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all">
                                     @foreach($gatewayOptions as $k => $label)
                                         <option value="{{ $k }}">{{ $label }}</option>
                                     @endforeach
@@ -52,7 +52,7 @@
                             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 mt-3">Pilih Saluran Pembayaran (Channel)</label>
                             <div class="relative">
                                 <select wire:model.live="selectedPaymentMethod"
-                                        class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all dark:bg-slate-900 dark:text-slate-100">
+                                        class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all">
                                     @foreach($this->groupedPaymentMethodOptions() as $category => $methods)
                                         <optgroup label="{{ $category }}">
                                             @foreach($methods as $m)

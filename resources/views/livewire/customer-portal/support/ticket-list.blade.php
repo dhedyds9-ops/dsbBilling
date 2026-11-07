@@ -7,7 +7,7 @@
     </div>
 
     @if(session('success'))
-        <div class="mb-5 p-4 rounded-xl flex items-start gap-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 border border-emerald-100">
+        <div class="mb-5 p-4 rounded-xl flex items-start gap-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800">
             <span class="material-symbols-outlined shrink-0">check_circle</span>
             <div class="text-sm">{{ session('success') }}</div>
         </div>
@@ -26,7 +26,7 @@
                 <div class="flex justify-between items-start mb-2">
                     <h3 class="font-bold text-slate-900 dark:text-slate-100 text-sm line-clamp-1 pr-2">{{ $ticket->title }}</h3>
                     <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold 
-                        {{ $ticket->status === 'resolved' || $ticket->status === 'closed' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700' }}">
+                        {{ $ticket->status === 'resolved' || $ticket->status === 'closed' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' }}">
                         {{ ucfirst($ticket->status) }}
                     </span>
                 </div>
@@ -47,7 +47,7 @@
         </a>
         @empty
         <div class="text-center py-10 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-            <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3 block">support_agent</span>
+            <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3 block">support_agent</span>
             <p class="text-slate-500 dark:text-slate-400 text-sm">Tidak ada tiket terbuka.</p>
         </div>
         @endforelse

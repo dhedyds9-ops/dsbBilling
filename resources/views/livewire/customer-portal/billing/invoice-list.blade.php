@@ -51,7 +51,7 @@
         </div>
         @empty
         <div class="text-center py-10 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-            <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 dark:text-slate-400 mb-3 block">receipt_long</span>
+            <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-600 mb-3 block">receipt_long</span>
             <p class="text-slate-500 dark:text-slate-400 text-sm">Belum ada tagihan.</p>
         </div>
         @endforelse

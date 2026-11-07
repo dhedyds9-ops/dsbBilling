@@ -76,7 +76,7 @@
     <!-- Action Button -->
     <div class="w-full max-w-sm mt-auto">
         <button type="button" id="st-btn-start" onclick="window.startVanillaSpeedTest()"
-                class="w-full font-black py-4 rounded-2xl transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 overflow-hidden relative group bg-slate-900 text-white dark:bg-white dark:bg-slate-800 dark:text-slate-900 dark:text-slate-100 shadow-lg hover:shadow-xl hover:shadow-slate-900/20">
+                class="w-full font-black py-4 rounded-2xl transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 overflow-hidden relative group bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-500 dark:hover:bg-teal-600 dark:text-white shadow-lg shadow-teal-500/20 hover:shadow-xl">
             
             <div id="st-btn-bg" class="absolute inset-0 bg-gradient-to-r from-teal-500 to-blue-500 transition-opacity duration-300 opacity-0"></div>
             
@@ -264,7 +264,7 @@
                     // Reset Button State
                     window.isSpeedTesting = false;
                     btnStart.disabled = false;
-                    btnStart.className = "w-full font-black py-4 rounded-2xl transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 overflow-hidden relative group bg-slate-900 text-white dark:bg-white dark:bg-slate-800 dark:text-slate-900 dark:text-slate-100 shadow-lg hover:shadow-xl hover:shadow-slate-900/20";
+                    btnStart.className = "w-full font-black py-4 rounded-2xl transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 overflow-hidden relative group bg-teal-600 hover:bg-teal-700 text-white dark:bg-teal-500 dark:hover:bg-teal-600 dark:text-white shadow-lg shadow-teal-500/20 hover:shadow-xl";
                     btnBg.classList.replace('opacity-100', 'opacity-0');
                     btnIcon.classList.remove('animate-spin');
                     btnIcon.classList.add('group-hover:rotate-12');

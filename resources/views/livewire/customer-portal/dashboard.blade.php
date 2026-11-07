@@ -21,15 +21,15 @@
             dark:from-teal-700 dark:via-slate-800 dark:to-emerald-900
             dark:border dark:border-teal-700/50">
             <!-- Background Decorations -->
-            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white dark:bg-slate-800/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-            <div class="absolute bottom-0 left-0 w-40 h-40 bg-emerald-300/20 dark:bg-emerald-900/40 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3"></div>
+            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+            <div class="absolute bottom-0 left-0 w-40 h-40 bg-emerald-300/20 dark:bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3"></div>
             
             <!-- Content -->
             <div class="relative z-10 p-5 sm:p-4 flex items-center justify-between">
                 <div class="flex-1 pr-2">
                     <!-- Status Badge -->
                     <div class="inline-flex items-center gap-1.5 px-2.5 py-1 
-                        bg-white/20 dark:bg-white dark:bg-slate-800/10 
+                        bg-white/20 dark:bg-white/10 
                         text-white text-[10px] font-bold tracking-wider rounded-lg mb-3 
                         backdrop-blur-sm border border-white/20 dark:border-white/10 uppercase shadow-sm">
                         <span class="w-1.5 h-1.5 rounded-full {{ $internet_status['status'] === 'online' ? 'bg-emerald-300 animate-pulse' : 'bg-red-300' }}"></span>
@@ -218,7 +218,7 @@
         <!-- Pusat Bantuan (Troubleshooting) -->
         <a href="{{ route('customer-portal.support.contact-admin') }}" class="mt-4 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 p-4 rounded-2xl shadow-sm text-white flex items-center justify-between transition-all group">
             <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-white dark:bg-slate-800/20 flex items-center justify-center backdrop-blur-sm">
+                <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
                     <span class="material-symbols-outlined text-[24px]">support_agent</span>
                 </div>
                 <div>

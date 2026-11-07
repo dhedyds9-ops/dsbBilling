@@ -91,7 +91,7 @@
         <div>
             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Alasan (Opsional)</label>
             <textarea wire:model="reason" rows="3" placeholder="Contoh: Kecepatan saat ini kurang..."
-                class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition resize-none dark:bg-slate-900 dark:text-slate-100"></textarea>
+                class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition resize-none"></textarea>
         </div>
 
         <button type="submit" wire:loading.attr="disabled"
