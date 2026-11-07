@@ -105,11 +105,11 @@ class Index extends Component
 
             $custodyStockMeters = (float) (clone $custodyBaseQuery)
                 ->where(fn($q) => $q->whereRaw("LOWER(items.unit) = 'meter'")->orWhereRaw("LOWER(items.unit) LIKE '%meter%'"))
-                ->sum('inventory_custodies.available_quantity');
+                ->sum(\Illuminate\Support\Facades\DB::raw('inventory_custodies.quantity - COALESCE(inventory_custodies.used_quantity, 0) - COALESCE(inventory_custodies.returned_quantity, 0)'));
 
             $custodyStockUnits = (float) (clone $custodyBaseQuery)
                 ->where(fn($q) => $q->whereRaw("LOWER(COALESCE(items.unit, '')) != 'meter'")->whereRaw("LOWER(COALESCE(items.unit, '')) NOT LIKE '%meter%'"))
-                ->sum('inventory_custodies.available_quantity');
+                ->sum(\Illuminate\Support\Facades\DB::raw('inventory_custodies.quantity - COALESCE(inventory_custodies.used_quantity, 0) - COALESCE(inventory_custodies.returned_quantity, 0)'));
 
             $totalInCustody = $custodyStockUnits;
         } catch (\Throwable $e) {

@@ -292,7 +292,13 @@ class Index extends Component
         $dispatches = $query->paginate(15);
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
-        $customers = Customer::orderBy('name')->limit(100)->get();
+        $customers = Customer::query()
+            ->whereRaw("LOWER(COALESCE(name, '')) NOT LIKE 'guest%'")
+            ->whereRaw("LOWER(COALESCE(code, '')) NOT LIKE 'gst-%'")
+            ->where('status', '!=', 'inactive')
+            ->orderBy('name')
+            ->limit(100)
+            ->get();
 
         // Penerima options (Teknisi, Reseller, Internal)
         $recipients = User::inventoryRecipients()->orderBy('name')->get();

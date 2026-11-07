@@ -154,26 +154,26 @@
 
     {{-- MODAL CATAT PEMAKAIAN --}}
     @if($showCreateModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-5 my-8">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-4">
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-2xl w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3.5">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <span class="material-symbols-outlined text-xl">build_circle</span>
+                            <span class="material-symbols-outlined text-xl notranslate" translate="no">build_circle</span>
                         </div>
                         <div>
-                            <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Laporan Pemakaian Material Lapangan</h3>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Laporan Pemakaian Material Lapangan</h3>
                             <p class="text-xs text-slate-500 dark:text-slate-400">Stok custody teknisi berkurang dan SN otomatis terpasang ke pelanggan.</p>
                         </div>
                     </div>
                     <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="material-symbols-outlined text-lg">close</span>
+                        <span class="material-symbols-outlined text-lg notranslate" translate="no">close</span>
                     </button>
                 </div>
 
-                <form wire:submit="saveUsage" class="space-y-5">
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
-                        <div class="sm:col-span-5">
+                <form wire:submit="saveUsage" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+                        <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Teknisi Pelaksana *</label>
                             <select wire:model.live="technician_id" required
                                     class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
@@ -185,7 +185,7 @@
                             @error('technician_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                         </div>
 
-                        <div class="sm:col-span-7">
+                        <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pelanggan Tujuan</label>
                             <select wire:model="customer_id"
                                     class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-medium">
@@ -195,13 +195,13 @@
                                         $pkg = $c->customerServices->first()?->serviceProfile?->name;
                                     @endphp
                                     <option value="{{ $c->id }}">
-                                        {{ $c->name }} ({{ $c->code ?? $c->phone }}){{ $pkg ? ' - ' . $pkg : '' }}
+                                        {{ $c->name }} ({{ $c->code ?? $c->phone }}){{ $pkg ? ' - [' . $pkg . ']' : '' }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <div class="sm:col-span-4">
+                        <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Pekerjaan *</label>
                             <select wire:model="work_order_type" required
                                     class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
@@ -212,20 +212,20 @@
                             </select>
                         </div>
 
-                        <div class="sm:col-span-4">
+                        <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Pemakaian *</label>
                             <input wire:model="usage_date" type="date" required
                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
                         </div>
 
-                        <div class="sm:col-span-4">
+                        <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Redaman Optik (OPM)</label>
                             <input wire:model="optical_power" type="text" placeholder="Contoh: -19.5 dBm"
                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-mono">
                         </div>
 
-                        <div class="sm:col-span-12">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan (Opsional)</label>
                             <input wire:model="notes" type="text" placeholder="Keterangan..."
                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
                         </div>

@@ -215,13 +215,9 @@ class Index extends Component
 
         // Pelanggan langganan riil (eksklusifkan voucher guest)
         $customers = Customer::query()
-            ->where('code', 'not like', 'GST-%')
-            ->where('name', 'not like', 'Guest %')
-            ->where(function ($q) {
-                $q->has('customerServices')
-                  ->orWhereNotNull('email')
-                  ->orWhereNotNull('phone');
-            })
+            ->whereRaw("LOWER(COALESCE(name, '')) NOT LIKE 'guest%'")
+            ->whereRaw("LOWER(COALESCE(code, '')) NOT LIKE 'gst-%'")
+            ->where('status', '!=', 'inactive')
             ->with(['customerServices.serviceProfile'])
             ->orderBy('name')
             ->limit(100)

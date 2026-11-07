@@ -276,14 +276,9 @@ class Index extends Component
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
         $customers = Customer::query()
-            ->where('code', 'not like', 'GST-%')
-            ->where('name', 'not like', 'Guest %')
-            ->where(function ($q) {
-                $q->whereHas('customerServices')
-                  ->orWhere(function ($sq) {
-                      $sq->whereNotNull('code')->where('code', '!=', '')->where('code', 'not like', 'GST-%');
-                  });
-            })
+            ->whereRaw("LOWER(COALESCE(name, '')) NOT LIKE 'guest%'")
+            ->whereRaw("LOWER(COALESCE(code, '')) NOT LIKE 'gst-%'")
+            ->where('status', '!=', 'inactive')
             ->with(['customerServices.serviceProfile'])
             ->orderBy('name')
             ->get();
