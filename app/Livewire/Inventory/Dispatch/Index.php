@@ -294,12 +294,8 @@ class Index extends Component
         $availableItems = Item::active()->orderBy('name')->get();
         $customers = Customer::orderBy('name')->limit(100)->get();
 
-        // Penerima options
-        $recipients = User::where(function ($q) {
-            $q->whereHas('roles', function ($rq) {
-                $rq->whereIn('name', ['reseller', 'technician']);
-            });
-        })->orderBy('name')->get();
+        // Penerima options (Teknisi, Reseller, Internal)
+        $recipients = User::inventoryRecipients()->orderBy('name')->get();
 
         // Available serials per warehouse for selected items in modal
         $availableSerials = [];

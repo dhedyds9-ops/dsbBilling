@@ -133,6 +133,57 @@ class User extends Authenticatable
         return $this->hasRole(\App\Enums\UserRole::Administrator->value);
     }
 
+    public function isTechnician(): bool
+    {
+        return $this->hasRole('technician') 
+            || strtoupper($this->job_function ?? '') === 'TECHNICIAN'
+            || str_contains(strtoupper($this->job_title ?? ''), 'TEKNISI')
+            || str_contains(strtoupper($this->job_title ?? ''), 'TECHNICIAN');
+    }
+
+    public function isReseller(): bool
+    {
+        return $this->hasRole('reseller') 
+            || strtoupper($this->job_function ?? '') === 'RESELLER'
+            || !empty($this->reseller_id);
+    }
+
+    public function scopeTechnicians($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereHas('roles', function ($rq) {
+                $rq->whereIn('name', ['technician', 'Technician']);
+            })
+            ->orWhereRaw('UPPER(COALESCE(job_function, "")) = ?', ['TECHNICIAN'])
+            ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TEKNISI%'])
+            ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TECHNICIAN%']);
+        });
+    }
+
+    public function scopeResellers($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereHas('roles', function ($rq) {
+                $rq->whereIn('name', ['reseller', 'Reseller']);
+            })
+            ->orWhereRaw('UPPER(COALESCE(job_function, "")) = ?', ['RESELLER'])
+            ->orWhereNotNull('reseller_id');
+        });
+    }
+
+    public function scopeInventoryRecipients($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereHas('roles', function ($rq) {
+                $rq->whereIn('name', ['technician', 'Technician', 'reseller', 'Reseller', 'administrator', 'manager']);
+            })
+            ->orWhereRaw('UPPER(COALESCE(job_function, "")) IN (?, ?)', ['TECHNICIAN', 'RESELLER'])
+            ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TEKNISI%'])
+            ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TECHNICIAN%'])
+            ->orWhereNotNull('reseller_id');
+        });
+    }
+
     public function hasRole(string|array $role): bool
     {
         if (is_array($role)) {

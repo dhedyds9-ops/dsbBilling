@@ -43,7 +43,7 @@ class Index extends Component
     {
         $this->usage_date = date('Y-m-d');
         $user = auth()->user();
-        if ($user && $user->hasRole('technician')) {
+        if ($user && $user->isTechnician()) {
             $this->technician_id = $user->id;
         }
     }
@@ -53,18 +53,20 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function updatedTechnicianId()
+    {
+        $this->usageItems = [];
+        $this->addItemRow();
+    }
+
     public function openCreateModal()
     {
         $this->resetCreateForm();
         $user = auth()->user();
-        if ($user && $user->hasRole('technician')) {
+        if ($user && $user->isTechnician()) {
             $this->technician_id = $user->id;
         } else {
-            $firstTech = User::where(function ($q) {
-                $q->whereHas('roles', function ($rq) {
-                    $rq->where('name', 'technician');
-                });
-            })->first();
+            $firstTech = User::technicians()->first();
             $this->technician_id = $firstTech?->id;
         }
         $this->addItemRow();
@@ -186,7 +188,7 @@ class Index extends Component
         $query = InventoryUsage::with(['technician', 'customer', 'items.item', 'items.itemSerial'])
             ->latest('id');
 
-        if ($user && $user->hasRole('technician')) {
+        if ($user && $user->isTechnician()) {
             $query->where('technician_id', $user->id);
         } elseif (!empty($this->technicianFilter)) {
             $query->where('technician_id', $this->technicianFilter);
@@ -209,11 +211,7 @@ class Index extends Component
 
         $usages = $query->paginate(15);
 
-        $technicians = User::where(function ($q) {
-            $q->whereHas('roles', function ($rq) {
-                $rq->where('name', 'technician');
-            });
-        })->orderBy('name')->get();
+        $technicians = User::technicians()->orderBy('name')->get();
 
         $customers = Customer::orderBy('name')->limit(100)->get();
 

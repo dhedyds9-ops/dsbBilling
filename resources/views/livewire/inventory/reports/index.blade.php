@@ -3,7 +3,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <span class="material-icons-outlined text-blue-600">summarize</span>
+                <span class="material-symbols-outlined text-blue-600">summarize</span>
                 Laporan & Rekonsiliasi Inventaris
             </h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -12,7 +12,7 @@
         </div>
         <div>
             <button onclick="window.print()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition">
-                <span class="material-icons-outlined text-sm">print</span>
+                <span class="material-symbols-outlined text-sm">print</span>
                 Cetak / Ekspor Laporan
             </button>
         </div>
@@ -21,15 +21,15 @@
     <!-- Navigation Tabs -->
     <div class="flex border-b border-slate-200 dark:border-slate-700 space-x-4">
         <button wire:click="setTab('stock_position')" class="pb-3 text-sm font-medium flex items-center gap-2 border-b-2 transition {{ $activeTab === 'stock_position' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
-            <span class="material-icons-outlined text-base">inventory_2</span>
+            <span class="material-symbols-outlined text-base">inventory_2</span>
             Posisi Stok Persediaan
         </button>
         <button wire:click="setTab('mutations')" class="pb-3 text-sm font-medium flex items-center gap-2 border-b-2 transition {{ $activeTab === 'mutations' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
-            <span class="material-icons-outlined text-base">swap_horiz</span>
+            <span class="material-symbols-outlined text-base">swap_horiz</span>
             Mutasi Barang Masuk & Keluar
         </button>
         <button wire:click="setTab('custody')" class="pb-3 text-sm font-medium flex items-center gap-2 border-b-2 transition {{ $activeTab === 'custody' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
-            <span class="material-icons-outlined text-base">badge</span>
+            <span class="material-symbols-outlined text-base">badge</span>
             Barang di Tangan Tim (Custody)
         </button>
     </div>
@@ -40,7 +40,7 @@
         <!-- Filter Bar -->
         <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-center justify-between">
             <div class="flex flex-wrap items-center gap-3">
-                <div class="min-w-[190px]">
+                <div class="min-w-[220px]">
                     <select wire:model.live="warehouseId" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <option value="">Semua Gudang</option>
                         @foreach($warehouses as $wh)
@@ -48,7 +48,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="min-w-[190px]">
+                <div class="min-w-[220px]">
                     <select wire:model.live="categoryFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <option value="">Semua Kategori</option>
                         @foreach($categories as $cat)
@@ -119,7 +119,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-4 items-center justify-between">
             <div class="flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
-                    <span class="material-icons-outlined text-slate-400 text-sm">calendar_month</span>
+                    <span class="material-symbols-outlined text-slate-400 text-sm">calendar_month</span>
                     <input type="date" wire:model.live="startDate" class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32" title="Dari Tanggal">
                     <span class="text-xs text-slate-400 font-medium">s/d</span>
                     <input type="date" wire:model.live="endDate" class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32" title="Sampai Tanggal">

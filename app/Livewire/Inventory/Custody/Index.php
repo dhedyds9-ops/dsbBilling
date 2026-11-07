@@ -99,9 +99,9 @@ class Index extends Component
             ->activeCustody()
             ->latest('id');
 
-        if ($user && $user->hasRole('reseller')) {
+        if ($user && $user->isReseller()) {
             $custodyQuery->where('holder_id', $user->id);
-        } elseif ($user && $user->hasRole('technician')) {
+        } elseif ($user && $user->isTechnician()) {
             $custodyQuery->where('holder_id', $user->id);
         } else {
             if (!empty($this->holderTypeFilter)) {
@@ -131,20 +131,16 @@ class Index extends Component
         $transferQuery = InventoryCustodyTransfer::with(['fromUser', 'toUser', 'item', 'itemSerial'])
             ->latest('id');
 
-        if ($user && $user->hasRole('reseller')) {
+        if ($user && $user->isReseller()) {
             $transferQuery->where('from_user_id', $user->id);
-        } elseif ($user && $user->hasRole('technician')) {
+        } elseif ($user && $user->isTechnician()) {
             $transferQuery->where('to_user_id', $user->id);
         }
 
         $transfers = $transferQuery->paginate(15);
 
         // List Teknisi untuk dropdown modal serah terima
-        $technicians = User::where(function ($q) {
-            $q->whereHas('roles', function ($rq) {
-                $rq->where('name', 'technician');
-            });
-        })->orderBy('name')->get();
+        $technicians = User::technicians()->orderBy('name')->get();
 
         $selectedCustody = null;
         if ($this->selectedCustodyId) {

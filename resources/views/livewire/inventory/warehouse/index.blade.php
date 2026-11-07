@@ -41,7 +41,7 @@
                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400">
             </div>
 
-            <div class="min-w-[200px]">
+            <div class="min-w-[230px]">
                 <select wire:model.live="typeFilter"
                         class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-slate-100 cursor-pointer">
                     <option value="">Semua Tipe Gudang</option>

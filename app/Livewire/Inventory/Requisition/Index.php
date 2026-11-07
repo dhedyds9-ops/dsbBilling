@@ -143,9 +143,9 @@ class Index extends Component
 
         $requesterType = 'internal';
         if ($user) {
-            if ($user->hasRole('reseller')) {
+            if ($user->isReseller()) {
                 $requesterType = 'reseller';
-            } elseif ($user->hasRole('technician')) {
+            } elseif ($user->isTechnician()) {
                 $requesterType = 'technician';
             }
         }
@@ -249,7 +249,7 @@ class Index extends Component
             ->latest('id');
 
         // Reseller hanya melihat permintaannya sendiri
-        if (auth()->user()?->hasRole('reseller')) {
+        if (auth()->user()?->isReseller()) {
             $query->where('requester_id', auth()->id());
         }
 
@@ -276,9 +276,7 @@ class Index extends Component
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
         $customers = Customer::orderBy('name')->limit(100)->get();
-        $technicians = User::whereHas('roles', function ($q) {
-            $q->where('name', 'technician');
-        })->orderBy('name')->get();
+        $technicians = User::technicians()->orderBy('name')->get();
 
         $selectedRequisition = null;
         if ($this->selectedRequisitionId) {

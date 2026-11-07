@@ -3,7 +3,7 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <span class="material-icons-outlined text-blue-600">dashboard</span>
+                <span class="material-symbols-outlined text-blue-600">dashboard</span>
                 Dashboard Inventaris & Gudang
             </h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -12,7 +12,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             @if(count($branches) > 1)
-            <div class="min-w-[190px]">
+            <div class="min-w-[220px]">
                 <select wire:model.live="branchId" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs">
                     <option value="">Semua Cabang</option>
                     @foreach($branches as $b)
@@ -21,7 +21,7 @@
                 </select>
             </div>
             @endif
-            <div class="min-w-[190px]">
+            <div class="min-w-[220px]">
                 <select wire:model.live="warehouseId" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs">
                     <option value="">Semua Gudang</option>
                     @foreach($warehouses as $wh)
@@ -42,7 +42,7 @@
                 <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">Material & Perangkat</span>
             </div>
             <div class="w-12 h-12 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
-                <span class="material-icons-outlined">category</span>
+                <span class="material-symbols-outlined">category</span>
             </div>
         </div>
 
@@ -54,7 +54,7 @@
                 <span class="text-xs text-slate-500 font-medium">Unit / Meter persediaan</span>
             </div>
             <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
-                <span class="material-icons-outlined">warehouse</span>
+                <span class="material-symbols-outlined">warehouse</span>
             </div>
         </div>
 
@@ -66,7 +66,7 @@
                 <span class="text-xs text-amber-600 font-medium">Di Tangan Teknisi / Reseller</span>
             </div>
             <div class="w-12 h-12 bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center">
-                <span class="material-icons-outlined">engineering</span>
+                <span class="material-symbols-outlined">engineering</span>
             </div>
         </div>
 
@@ -78,7 +78,7 @@
                 <span class="text-xs text-slate-500 font-medium">Berdasarkan HPP / Cost Price</span>
             </div>
             <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
-                <span class="material-icons-outlined">payments</span>
+                <span class="material-symbols-outlined">payments</span>
             </div>
         </div>
     </div>
@@ -86,7 +86,7 @@
     <!-- Alert Bar (Permintaan Pending, Retur Pending, Low Stock) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <a href="{{ route('inventory.requisitions.index') }}" class="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 flex items-center gap-4 hover:shadow-md transition">
-            <span class="material-icons-outlined text-amber-600 text-3xl">pending_actions</span>
+            <span class="material-symbols-outlined text-amber-600 text-3xl">pending_actions</span>
             <div>
                 <h4 class="font-bold text-slate-800 dark:text-white">{{ $pendingReqCount }} Permintaan Barang</h4>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Menunggu persetujuan & pengeluaran gudang</p>
@@ -94,7 +94,7 @@
         </a>
 
         <a href="{{ route('inventory.returns.index') }}" class="p-4 rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50 dark:bg-purple-950/20 flex items-center gap-4 hover:shadow-md transition">
-            <span class="material-icons-outlined text-purple-600 text-3xl">fact_check</span>
+            <span class="material-symbols-outlined text-purple-600 text-3xl">fact_check</span>
             <div>
                 <h4 class="font-bold text-slate-800 dark:text-white">{{ $pendingReturnCount }} Retur Menunggu QC</h4>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Pemeriksaan fisik teknisi & restock barang sisa</p>
@@ -102,7 +102,7 @@
         </a>
 
         <div class="p-4 rounded-xl border {{ $lowStockCount > 0 ? 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/20' : 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20' }} flex items-center gap-4">
-            <span class="material-icons-outlined {{ $lowStockCount > 0 ? 'text-rose-600' : 'text-emerald-600' }} text-3xl">
+            <span class="material-symbols-outlined {{ $lowStockCount > 0 ? 'text-rose-600' : 'text-emerald-600' }} text-3xl">
                 {{ $lowStockCount > 0 ? 'warning' : 'check_circle' }}
             </span>
             <div>
@@ -118,7 +118,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <span class="material-icons-outlined text-rose-500">production_quantity_limits</span>
+                    <span class="material-symbols-outlined text-rose-500">production_quantity_limits</span>
                     Peringatan Stok Minimum (Buffer Alert)
                 </h3>
                 <a href="{{ route('inventory.items.index') }}" class="text-xs text-blue-600 hover:underline">Lihat Semua</a>
@@ -142,7 +142,7 @@
                 </div>
                 @else
                 <div class="text-center py-8 text-slate-400 text-sm">
-                    <span class="material-icons-outlined text-emerald-500 text-4xl block mb-2">thumb_up</span>
+                    <span class="material-symbols-outlined text-emerald-500 text-4xl block mb-2">thumb_up</span>
                     Semua stok barang berada dalam kondisi aman di atas batas minimum.
                 </div>
                 @endif
@@ -153,7 +153,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <span class="material-icons-outlined text-blue-600">receipt_long</span>
+                    <span class="material-symbols-outlined text-blue-600">receipt_long</span>
                     Mutasi Persediaan Terkini (Ledger)
                 </h3>
                 <a href="{{ route('inventory.stock-card.index') }}" class="text-xs text-blue-600 hover:underline">Buka Kartu Stok</a>

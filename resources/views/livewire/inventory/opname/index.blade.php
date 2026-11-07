@@ -3,7 +3,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <span class="material-icons-outlined text-blue-600">checklist_rtl</span>
+                <span class="material-symbols-outlined text-blue-600">checklist_rtl</span>
                 Stok Opname & Penyesuaian Fisik
             </h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -12,7 +12,7 @@
         </div>
         <div>
             <button wire:click="openCreateModal" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition">
-                <span class="material-icons-outlined text-sm">add</span>
+                <span class="material-symbols-outlined text-sm">add</span>
                 Mulai Sesi Opname Baru
             </button>
         </div>
@@ -21,13 +21,13 @@
     <!-- Feedback Message -->
     @if(session()->has('success'))
     <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-sm flex items-center gap-2">
-        <span class="material-icons-outlined text-emerald-600">check_circle</span>
+        <span class="material-symbols-outlined text-emerald-600">check_circle</span>
         {{ session('success') }}
     </div>
     @endif
     @if(session()->has('error'))
     <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-sm flex items-center gap-2">
-        <span class="material-icons-outlined text-rose-600">error</span>
+        <span class="material-symbols-outlined text-rose-600">error</span>
         {{ session('error') }}
     </div>
     @endif
@@ -36,12 +36,12 @@
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700/80 shadow-xs">
         <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             <div class="relative flex-1 min-w-[260px]">
-                <span class="material-icons-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nomor opname..."
                     class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400">
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                <div class="min-w-[220px] flex-1 sm:flex-initial">
                     <select wire:model.live="warehouseFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <option value="">Semua Gudang</option>
                         @foreach($warehouses as $wh)
@@ -49,7 +49,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                <div class="min-w-[220px] flex-1 sm:flex-initial">
                     <select wire:model.live="statusFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <option value="">Semua Status</option>
                         <option value="draft">Draft</option>
@@ -97,24 +97,24 @@
                         <td class="px-5 py-3.5">
                             @if($opn->status === 'completed')
                                 <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 flex items-center gap-1 w-max">
-                                    <span class="material-icons-outlined text-xs">check_circle</span> Selesai
+                                    <span class="material-symbols-outlined text-xs">check_circle</span> Selesai
                                 </span>
                             @else
                                 <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 flex items-center gap-1 w-max">
-                                    <span class="material-icons-outlined text-xs">schedule</span> Draft
+                                    <span class="material-symbols-outlined text-xs">schedule</span> Draft
                                 </span>
                             @endif
                         </td>
                         <td class="px-5 py-3.5 text-right">
                             <div class="flex items-center justify-end gap-2">
                                 <button wire:click="viewDetail({{ $opn->id }})" class="p-1.5 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700" title="Lihat Hasil Opname">
-                                    <span class="material-icons-outlined text-base">visibility</span>
+                                    <span class="material-symbols-outlined text-base">visibility</span>
                                 </button>
                                 @if($opn->status !== 'completed')
                                 <button wire:click="approveAndAdjust({{ $opn->id }})"
                                     wire:confirm="Yakin ingin menyetujui sesi opname ini? Sistem akan otomatis melakukan adjustment stock mutation pada item yang memiliki selisih."
                                     class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm">
-                                    <span class="material-icons-outlined text-xs">done_all</span> Setujui & Sesuaikan
+                                    <span class="material-symbols-outlined text-xs">done_all</span> Setujui & Sesuaikan
                                 </button>
                                 @endif
                             </div>
@@ -123,7 +123,7 @@
                     @empty
                     <tr>
                         <td colspan="7" class="px-5 py-12 text-center text-slate-400">
-                            <span class="material-icons-outlined text-4xl block mb-2 text-slate-300">inventory</span>
+                            <span class="material-symbols-outlined text-4xl block mb-2 text-slate-300">inventory</span>
                             Belum ada sesi stok opname tercatat.
                         </td>
                     </tr>
@@ -142,11 +142,11 @@
         <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-4xl w-full p-6 space-y-6 shadow-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between border-b pb-4 dark:border-slate-700">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <span class="material-icons-outlined text-blue-600">playlist_add_check</span>
+                    <span class="material-symbols-outlined text-blue-600">playlist_add_check</span>
                     Mulai Sesi Stok Opname
                 </h3>
                 <button wire:click="$set('showCreateModal', false)" class="text-slate-400 hover:text-slate-600">
-                    <span class="material-icons-outlined">close</span>
+                    <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
@@ -243,13 +243,13 @@
             <div class="flex items-center justify-between border-b pb-4 dark:border-slate-700">
                 <div>
                     <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <span class="material-icons-outlined text-blue-600">info</span>
+                        <span class="material-symbols-outlined text-blue-600">info</span>
                         Rincian Hasil Opname: {{ $selectedOpname->opname_number }}
                     </h3>
                     <p class="text-xs text-slate-500">Gudang: {{ $selectedOpname->warehouse?->name }} | Tanggal: {{ $selectedOpname->opname_date?->format('d M Y') }}</p>
                 </div>
                 <button wire:click="$set('showDetailModal', false)" class="text-slate-400 hover:text-slate-600">
-                    <span class="material-icons-outlined">close</span>
+                    <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 

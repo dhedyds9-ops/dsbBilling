@@ -44,9 +44,9 @@ class Index extends Component
     public function mount()
     {
         $user = auth()->user();
-        if ($user && ($user->hasRole('technician') || $user->hasRole('reseller'))) {
+        if ($user && ($user->isTechnician() || $user->isReseller())) {
             $this->returner_id = $user->id;
-            $this->returner_type = $user->hasRole('reseller') ? 'reseller' : 'technician';
+            $this->returner_type = $user->isReseller() ? 'reseller' : 'technician';
         }
     }
 
@@ -64,16 +64,13 @@ class Index extends Component
         }
 
         $user = auth()->user();
-        if ($user && ($user->hasRole('technician') || $user->hasRole('reseller'))) {
+        if ($user && ($user->isTechnician() || $user->isReseller())) {
             $this->returner_id = $user->id;
-            $this->returner_type = $user->hasRole('reseller') ? 'reseller' : 'technician';
+            $this->returner_type = $user->isReseller() ? 'reseller' : 'technician';
         } else {
-            $firstUser = User::where(function ($q) {
-                $q->whereHas('roles', function ($rq) {
-                    $rq->whereIn('name', ['technician', 'reseller']);
-                });
-            })->first();
+            $firstUser = User::inventoryRecipients()->first();
             $this->returner_id = $firstUser?->id;
+            $this->returner_type = $firstUser?->isReseller() ? 'reseller' : 'technician';
         }
 
         $this->addItemRow();
@@ -111,6 +108,12 @@ class Index extends Component
         if (empty($this->returnItems)) {
             $this->addItemRow();
         }
+    }
+
+    public function updatedReturnerId()
+    {
+        $this->returnItems = [];
+        $this->addItemRow();
     }
 
     public function updatedReturnItems($value, $key)
@@ -265,11 +268,7 @@ class Index extends Component
         $returns = $query->paginate(15);
         $warehouses = Warehouse::active()->orderBy('name')->get();
 
-        $returners = User::where(function ($q) {
-            $q->whereHas('roles', function ($rq) {
-                $rq->whereIn('name', ['technician', 'reseller']);
-            });
-        })->orderBy('name')->get();
+        $returners = User::inventoryRecipients()->orderBy('name')->get();
 
         // Material di tangan user yang dipilih di modal
         $availableCustodies = collect();

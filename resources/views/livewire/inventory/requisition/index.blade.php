@@ -43,7 +43,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                <div class="min-w-[210px] flex-1 sm:flex-initial">
                     <select wire:model.live="warehouseFilter"
                             class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                         <option value="">Semua Gudang Asal</option>
@@ -53,7 +53,7 @@
                     </select>
                 </div>
 
-                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                <div class="min-w-[210px] flex-1 sm:flex-initial">
                     <select wire:model.live="statusFilter"
                             class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                         <option value="">Semua Status</option>

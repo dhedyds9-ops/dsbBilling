@@ -156,6 +156,12 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/income-periode', \App\Livewire\Keuangan\IncomePeriode\Index::class)->name('income-periode');
     });
 
+    // ==================== SHARED INVENTORY & CUSTODY (ADMIN, MANAGER, RESELLER) ====================
+    Route::middleware(['role:administrator,manager,reseller'])->prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/requisitions', \App\Livewire\Inventory\Requisition\Index::class)->name('requisitions.index');
+        Route::get('/custodies', \App\Livewire\Inventory\Custody\Index::class)->name('custodies.index');
+    });
+
     // ==================== STAFF / ADMIN AREA ====================
     Route::middleware(['role:administrator,manager'])->group(function () use ($cs) {
 
@@ -427,7 +433,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
         Route::get('/api/network/online-paths', [\App\Http\Controllers\Gis\MapApiController::class, 'onlinePaths'])->name('api.network.online-paths');
 
-        // === Inventory (BACKWARD COMPAT - TIDAK DI SIDEBAR) ===
+        // === Enterprise Inventory Management ===
         Route::prefix('inventory')->name('inventory.')->group(function () {
             Route::get('/dashboard', \App\Livewire\Inventory\Dashboard\Index::class)->name('dashboard');
             Route::get('/assets', \App\Livewire\Inventory\AssetList::class)->name('assets.index');
@@ -435,9 +441,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/warehouses', \App\Livewire\Inventory\Warehouse\Index::class)->name('warehouses.index');
             Route::get('/inbounds', \App\Livewire\Inventory\Inbound\Index::class)->name('inbounds.index');
             Route::get('/stock-card', \App\Livewire\Inventory\StockCard\Index::class)->name('stock-card.index');
-            Route::get('/requisitions', \App\Livewire\Inventory\Requisition\Index::class)->name('requisitions.index');
             Route::get('/dispatches', \App\Livewire\Inventory\Dispatch\Index::class)->name('dispatches.index');
-            Route::get('/custodies', \App\Livewire\Inventory\Custody\Index::class)->name('custodies.index');
             Route::get('/usage', \App\Livewire\Inventory\Usage\Index::class)->name('usage.index');
             Route::get('/returns', \App\Livewire\Inventory\Returns\Index::class)->name('returns.index');
             Route::get('/opnames', \App\Livewire\Inventory\Opname\Index::class)->name('opnames.index');

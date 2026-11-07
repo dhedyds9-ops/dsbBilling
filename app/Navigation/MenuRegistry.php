@@ -402,8 +402,8 @@ class MenuRegistry
                         'label' => 'Inventaris & Material',
                         'icon' => 'inventory',
                         'items' => [
-                            ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*', 'permission' => 'inventory.requisition'],
-                            ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
+                            ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*'],
+                            ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*'],
                         ]
                     ]
                 ]

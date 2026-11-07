@@ -9,7 +9,20 @@ use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Models\Inventory\Item;
+use App\Models\Inventory\Warehouse;
+use App\Models\Inventory\InventoryStock;
+use App\Models\Inventory\InventoryStockMutation;
+use App\Models\Inventory\InventoryCustody;
+use App\Models\Inventory\InventoryUsage;
+use App\Models\Inventory\InventoryUsageItem;
+use App\Models\Inventory\InventoryReturn;
+use App\Models\Inventory\InventoryReturnItem;
+use App\Models\Inventory\InventoryRequisition;
+use App\Models\Inventory\InventoryRequisitionItem;
 
 #[Layout('layouts.technician-app')]
 class Index extends Component
@@ -200,6 +213,71 @@ class Index extends Component
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // 5. Sinkronisasi dengan Enterprise Inventory & Custody (SSOT)
+                try {
+                    $item = Item::where('sku', $whMat->sku)->orWhere('name', $whMat->name)->first();
+                    if ($item) {
+                        $wh = Warehouse::where('is_active', true)->first();
+                        $whId = $wh ? $wh->id : 1;
+
+                        // Kurangi stok di inventory_stocks
+                        $stock = InventoryStock::where('warehouse_id', $whId)->where('item_id', $item->id)->first();
+                        $balBefore = $stock ? (float)$stock->quantity : 0;
+                        $balAfter = max(0, $balBefore - $this->takeQuantity);
+                        if ($stock) {
+                            $stock->quantity = $balAfter;
+                            $stock->save();
+                        }
+
+                        // Catat mutasi persediaan resmi
+                        InventoryStockMutation::create([
+                            'company_id' => $user->company_id ?? 1,
+                            'branch_id' => $user->branch_id,
+                            'warehouse_id' => $whId,
+                            'item_id' => $item->id,
+                            'type' => 'outbound_dispatch',
+                            'qty_in' => 0,
+                            'qty_out' => $this->takeQuantity,
+                            'balance_before' => $balBefore,
+                            'balance_after' => $balAfter,
+                            'reference_type' => 'technician_take',
+                            'notes' => 'Diambil langsung oleh teknisi ' . $user->name . ' via Portal Teknisi' . ($this->takeNotes ? ' (' . $this->takeNotes . ')' : ''),
+                            'created_by' => $user->id,
+                        ]);
+
+                        // Catat / Update Custody Teknisi
+                        $custody = InventoryCustody::where('holder_type', 'technician')
+                            ->where('holder_id', $user->id)
+                            ->where('item_id', $item->id)
+                            ->where('status', 'in_custody')
+                            ->first();
+
+                        if ($custody) {
+                            $custody->quantity = (float)$custody->quantity + $this->takeQuantity;
+                            $custody->available_quantity = (float)$custody->available_quantity + $this->takeQuantity;
+                            $custody->save();
+                        } else {
+                            InventoryCustody::create([
+                                'company_id' => $user->company_id ?? 1,
+                                'branch_id' => $user->branch_id,
+                                'item_id' => $item->id,
+                                'holder_type' => 'technician',
+                                'holder_id' => $user->id,
+                                'quantity' => $this->takeQuantity,
+                                'available_quantity' => $this->takeQuantity,
+                                'used_quantity' => 0,
+                                'returned_quantity' => 0,
+                                'damaged_quantity' => 0,
+                                'lost_quantity' => 0,
+                                'status' => 'in_custody',
+                                'notes' => 'Pengambilan mandiri via Portal Teknisi',
+                            ]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Error syncing take to Enterprise Inventory: ' . $e->getMessage());
+                }
             });
 
             session()->flash('success', "Berhasil mengambil {$this->takeQuantity} barang dari Gudang Kantor ke Bagasi Anda!");
@@ -272,6 +350,47 @@ class Index extends Component
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Sinkronisasi dengan Enterprise Inventory Usages & Custody
+                try {
+                    $item = Item::where('sku', $mat->sku)->orWhere('name', $mat->name)->first();
+                    if ($item) {
+                        $custody = InventoryCustody::where('holder_type', 'technician')
+                            ->where('holder_id', $user->id)
+                            ->where('item_id', $item->id)
+                            ->where('status', 'in_custody')
+                            ->first();
+
+                        if ($custody) {
+                            $custody->available_quantity = max(0, (float)$custody->available_quantity - $this->usageQuantity);
+                            $custody->used_quantity = (float)$custody->used_quantity + $this->usageQuantity;
+                            $custody->save();
+                        }
+
+                        $usage = InventoryUsage::create([
+                            'uuid' => (string) Str::uuid(),
+                            'company_id' => $user->company_id ?? 1,
+                            'branch_id' => $user->branch_id,
+                            'ticket_id' => $this->usageTicketId ?: null,
+                            'work_order_type' => 'maintenance',
+                            'used_by' => $user->id,
+                            'usage_date' => now()->toDateString(),
+                            'optical_power_dbm' => null,
+                            'notes' => trim($this->usageNotes) ?: 'Pemakaian lapangan oleh teknisi via Portal Teknisi',
+                        ]);
+
+                        InventoryUsageItem::create([
+                            'usage_id' => $usage->id,
+                            'custody_id' => $custody?->id,
+                            'item_id' => $item->id,
+                            'quantity' => $this->usageQuantity,
+                            'unit' => $mat->unit ?: 'pcs',
+                            'notes' => $this->usageNotes,
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Error syncing usage to Enterprise Inventory: ' . $e->getMessage());
+                }
             });
 
             session()->flash('success', "Pemakaian {$this->usageQuantity} {$this->usageUnit} \"{$this->usageMaterialName}\" berhasil dicatat & stok terpotong.");
@@ -316,6 +435,38 @@ class Index extends Component
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            // Hubungkan otomatis ke Enterprise Inventory Requisition
+            try {
+                $wh = Warehouse::where('is_active', true)->first();
+                $item = Item::where('name', 'like', '%' . trim($this->reqMaterialName) . '%')->first() ?? Item::first();
+
+                $req = InventoryRequisition::create([
+                    'uuid' => (string) Str::uuid(),
+                    'company_id' => $user->company_id ?? 1,
+                    'branch_id' => $user->branch_id,
+                    'warehouse_id' => $wh ? $wh->id : 1,
+                    'requester_id' => $user->id,
+                    'requester_type' => 'technician',
+                    'distribution_method' => 'direct_technician',
+                    'designated_technician_id' => $user->id,
+                    'work_order_type' => 'stock_topup',
+                    'status' => 'pending',
+                    'notes' => 'Permintaan mandiri teknisi: ' . ($this->reqReason ?: 'Kebutuhan pekerjaan operasional lapangan'),
+                ]);
+
+                if ($item) {
+                    InventoryRequisitionItem::create([
+                        'requisition_id' => $req->id,
+                        'item_id' => $item->id,
+                        'requested_quantity' => $this->reqQuantity,
+                        'approved_quantity' => 0,
+                        'notes' => $this->reqMaterialName,
+                    ]);
+                }
+            } catch (\Throwable $re) {
+                Log::warning('Error creating enterprise requisition: ' . $re->getMessage());
+            }
 
             session()->flash('success', "Permintaan tambahan barang \"{$this->reqMaterialName}\" ({$this->reqQuantity} {$this->reqUnit}) telah dikirimkan ke Admin Gudang!");
             $this->showRequestModal = false;
@@ -418,6 +569,66 @@ class Index extends Component
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Sinkronisasi dengan Enterprise Inventory Custody & Returns (QC Pending)
+                try {
+                    $item = Item::where('sku', $mat->sku)->orWhere('name', $mat->name)->first();
+                    if ($item) {
+                        $custody = InventoryCustody::where('holder_type', 'technician')
+                            ->where('holder_id', $user->id)
+                            ->where('item_id', $item->id)
+                            ->where('status', 'in_custody')
+                            ->first();
+
+                        if ($custody) {
+                            $custody->available_quantity = max(0, (float)$custody->available_quantity - $this->returnQuantity);
+                            if ($this->returnAction === 'retur') {
+                                $custody->returned_quantity = (float)$custody->returned_quantity + $this->returnQuantity;
+                            } elseif ($this->returnAction === 'rusak') {
+                                $custody->damaged_quantity = (float)$custody->damaged_quantity + $this->returnQuantity;
+                            } else {
+                                $custody->lost_quantity = (float)$custody->lost_quantity + $this->returnQuantity;
+                            }
+                            $custody->save();
+                        }
+
+                        $wh = Warehouse::where('is_active', true)->first();
+                        $whId = $wh ? $wh->id : 1;
+
+                        $returnDoc = InventoryReturn::create([
+                            'uuid' => (string) Str::uuid(),
+                            'company_id' => $user->company_id ?? 1,
+                            'branch_id' => $user->branch_id,
+                            'warehouse_id' => $whId,
+                            'returner_id' => $user->id,
+                            'returner_type' => 'technician',
+                            'status' => 'pending_qc',
+                            'reason' => "Status: {$tag}. " . ($this->returnReason ?: 'Laporan pengembalian/kondisi material dari teknisi'),
+                        ]);
+
+                        InventoryReturnItem::create([
+                            'return_id' => $returnDoc->id,
+                            'custody_id' => $custody?->id,
+                            'item_id' => $item->id,
+                            'quantity' => $this->returnQuantity,
+                            'condition' => match($this->returnAction) {
+                                'retur' => 'good',
+                                'rusak' => 'damaged',
+                                'hilang' => 'unusable',
+                            },
+                            'action' => match($this->returnAction) {
+                                'retur' => 'restock',
+                                'rusak' => 'repair',
+                                'hilang' => 'scrap',
+                            },
+                            'serial_number' => $this->returnSerial ?: null,
+                            'qc_status' => 'pending',
+                            'notes' => $this->returnReason,
+                        ]);
+                    }
+                } catch (\Throwable $retEx) {
+                    Log::warning('Error syncing return to Enterprise Inventory: ' . $retEx->getMessage());
+                }
             });
 
             $label = match($this->returnAction) {
@@ -454,6 +665,42 @@ class Index extends Component
                 ->orderBy('name');
 
             $materials = $builder->get();
+
+            // Sinkronkan juga item dari Enterprise Custody jika ada dispatch resmi dari gudang
+            try {
+                $custodies = InventoryCustody::with('item')
+                    ->where('holder_id', $user->id)
+                    ->where('holder_type', 'technician')
+                    ->where('status', 'in_custody')
+                    ->where('available_quantity', '>', 0)
+                    ->get();
+
+                $added = false;
+                foreach ($custodies as $c) {
+                    if ($c->item && !$materials->firstWhere('sku', $c->item->sku)) {
+                        DB::table('support_maintenance_materials')->insert([
+                            'sku' => $c->item->sku,
+                            'name' => $c->item->name,
+                            'category' => $c->item->category ?? 'Material',
+                            'stock' => (int) $c->available_quantity,
+                            'min_stock' => $c->item->min_stock ?? 5,
+                            'unit' => $c->item->unit ?: 'pcs',
+                            'location' => 'Bagasi Teknisi (' . $user->name . ')',
+                            'technician_id' => $user->id,
+                            'notes' => 'Dispatched from Central Warehouse',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        $added = true;
+                    }
+                }
+                if ($added) {
+                    $materials = DB::table('support_maintenance_materials')
+                        ->where('technician_id', $user->id)
+                        ->orderBy('name')
+                        ->get();
+                }
+            } catch (\Throwable) {}
         }
 
         // 2. Data Stok Gudang Kantor (technician_id IS NULL)

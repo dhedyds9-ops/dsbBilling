@@ -9,6 +9,7 @@
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
@@ -19,9 +20,9 @@
         .apexcharts-canvas, .apexcharts-svg { background: transparent !important; }
         .apexcharts-tooltip { background: transparent !important; }
 
-        /* Fix Material Symbols icons always rendering as icons (not text) */
-        .material-symbols-outlined {
-            font-family: 'Material Symbols Outlined' !important;
+        /* Fix Material Symbols & Icons always rendering as icons (not text) */
+        .material-symbols-outlined, .material-icons-outlined, .material-icons {
+            font-family: 'Material Symbols Outlined', 'Material Icons Outlined', 'Material Icons' !important;
             font-weight: normal;
             font-style: normal;
             font-size: 24px;

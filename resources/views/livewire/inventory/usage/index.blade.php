@@ -43,7 +43,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                <div class="min-w-[220px] flex-1 sm:flex-initial">
                     <select wire:model.live="workOrderFilter"
                             class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                         <option value="">Semua Jenis Pekerjaan</option>
@@ -53,7 +53,7 @@
                     </select>
                 </div>
 
-                <div class="min-w-[190px] flex-1 sm:flex-initial">
+                <div class="min-w-[220px] flex-1 sm:flex-initial">
                     <select wire:model.live="technicianFilter"
                             class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                         <option value="">Semua Teknisi</option>
@@ -240,7 +240,12 @@
                             </button>
                         </div>
 
-                        @if($availableCustodies->isEmpty())
+                        @if(empty($technician_id))
+                            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm text-slate-400">info</span>
+                                <span>Silakan pilih teknisi pelaksana terlebih dahulu untuk memuat daftar stok material di tangan.</span>
+                            </div>
+                        @elseif($availableCustodies->isEmpty())
                             <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
                                 <span class="material-symbols-outlined text-sm">warning</span>
                                 <span>Teknisi ini belum memiliki stok material di tangan (Custody kosong). Silakan lakukan serah terima atau dispatch dari gudang terlebih dahulu.</span>
