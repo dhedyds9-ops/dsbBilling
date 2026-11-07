@@ -181,6 +181,6 @@ class Index extends Component
             'warehouses' => $warehouses,
             'branches' => $branches,
             'managers' => $managers,
-        ])->layout('layouts.enterprise', ['title' => 'Data Gudang (Inventaris)'])->layout('layouts.app', ['title' => 'Data Gudang - dsBilling']);
+        ])->layout('layouts.app', ['title' => 'Data Gudang - dsBilling']);
     }
 }

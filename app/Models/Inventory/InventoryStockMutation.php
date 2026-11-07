@@ -101,6 +101,11 @@ class InventoryStockMutation extends Model
         return $this->belongsTo(ItemSerial::class, 'item_serial_id');
     }
 
+    public function itemSerial(): BelongsTo
+    {
+        return $this->belongsTo(ItemSerial::class, 'item_serial_id');
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class, 'branch_id');

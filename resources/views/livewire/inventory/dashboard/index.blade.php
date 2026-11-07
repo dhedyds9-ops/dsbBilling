@@ -171,8 +171,8 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                         @forelse($recentMutations as $mut)
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-750">
-                            <td class="px-4 py-2 text-slate-500">{{ $mut->created_at->format('d/m H:i') }}</td>
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-755">
+                            <td class="px-4 py-2 text-slate-500">{{ $mut->created_at?->format('d/m H:i') ?? '-' }}</td>
                             <td class="px-4 py-2 font-medium text-slate-800 dark:text-white">{{ $mut->item?->name ?? '-' }}</td>
                             <td class="px-4 py-2">
                                 <span class="px-2 py-0.5 rounded text-[10px] font-semibold
@@ -180,11 +180,11 @@
                                     {{ strtoupper(str_replace('_', ' ', $mut->type)) }}
                                 </span>
                             </td>
-                            <td class="px-4 py-2 text-right font-mono font-bold {{ $mut->qty_in > 0 ? 'text-emerald-600' : 'text-rose-600' }}">
-                                {{ $mut->qty_in > 0 ? '+'.(float)$mut->qty_in : '-'.(float)$mut->qty_out }}
+                            <td class="px-4 py-2 text-right font-mono font-bold {{ (float)($mut->qty_in ?? 0) > 0 ? 'text-emerald-600' : 'text-rose-600' }}">
+                                {{ (float)($mut->qty_in ?? 0) > 0 ? '+'.(float)$mut->qty_in : '-'.(float)($mut->qty_out ?? 0) }}
                             </td>
                             <td class="px-4 py-2 text-right font-mono text-slate-600 dark:text-slate-300">
-                                {{ (float)$mut->balance_after }}
+                                {{ (float)($mut->balance_after ?? 0) }}
                             </td>
                         </tr>
                         @empty

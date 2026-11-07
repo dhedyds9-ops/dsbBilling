@@ -100,12 +100,14 @@ class Index extends Component
         $recentMutations = $mutationsQuery->limit(10)->get();
 
         // 7. Estimasi Nilai Stok
-        $totalStockValue = InventoryStock::query()
+        $totalStockValue = (float) (InventoryStock::query()
+            ->withoutGlobalScopes()
             ->join('items', 'inventory_stocks.item_id', '=', 'items.id')
+            ->whereNull('items.deleted_at')
             ->when($this->warehouseId, fn($q) => $q->where('inventory_stocks.warehouse_id', $this->warehouseId))
             ->when(!$this->warehouseId && $this->branchId, fn($q) => $q->where('inventory_stocks.branch_id', $this->branchId))
             ->selectRaw('SUM(inventory_stocks.quantity * COALESCE(items.cost_price, 0)) as total_val')
-            ->value('total_val') ?? 0;
+            ->value('total_val') ?? 0);
 
         $branches = Branch::orderBy('name')->get();
 
