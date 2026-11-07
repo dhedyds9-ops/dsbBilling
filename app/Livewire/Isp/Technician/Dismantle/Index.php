@@ -80,7 +80,13 @@ class Index extends Component
         }
 
         $results = Onu::withoutGlobalScopes()
-            ->with(['customerService.customer', 'customerService.serviceProfile', 'customerService.pppoeUser'])
+            ->with([
+                'customerService' => fn($sq) => $sq->withoutGlobalScopes(),
+                'customerService.customer' => fn($cq) => $cq->withoutGlobalScopes(),
+                'customerService.serviceProfile' => fn($pq) => $pq->withoutGlobalScopes(),
+                'customerService.pppoeUser' => fn($puq) => $puq->withoutGlobalScopes(),
+                'acsDevice' => fn($aq) => $aq->withoutGlobalScopes(),
+            ])
             ->where(function ($sub) use ($q) {
                 $sub->where('serial_number', 'like', "%{$q}%")
                     ->orWhere('mac_address', 'like', "%{$q}%")
@@ -97,13 +103,18 @@ class Index extends Component
 
         $this->searchResults = $results->map(function ($o) {
             $cs = $o->customerService;
-            $cust = $cs?->customer;
+            if (!$cs && $o->acsDevice?->customer_service_id) {
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'serviceProfile' => fn($q) => $q->withoutGlobalScopes(), 'pppoeUser' => fn($q) => $q->withoutGlobalScopes()])
+                    ->find($o->acsDevice->customer_service_id);
+            }
+            $cust = $cs?->customer ?? ($o->customer_id ? Customer::withoutGlobalScopes()->find($o->customer_id) : null);
             return [
                 'onu_id' => $o->id,
                 'serial_number' => $o->serial_number,
                 'model' => $o->model ?: 'ONT',
                 'customer_name' => $cust?->name ?? 'Belum Terikat Pelanggan',
-                'customer_code' => $cust?->customer_code ?? ('ID #' . $cust?->id),
+                'customer_code' => $cust?->customer_code ?? ($cust?->code ?? ('ID #' . $cust?->id)),
                 'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
                 'package' => $cs?->serviceProfile?->name ?? 'Layanan',
                 'status' => $o->status,
@@ -143,8 +154,18 @@ class Index extends Component
             ->find($onuId);
 
         if ($this->onu) {
-            $this->customerService = $this->onu->customerService;
-            $this->customer = $this->customerService?->customer;
+            $this->customerService = CustomerService::withoutGlobalScopes()
+                ->with([
+                    'customer' => fn($q) => $q->withoutGlobalScopes(),
+                    'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                    'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                ])
+                ->where('onu_id', $this->onu->id)
+                ->latest('id')
+                ->first();
+
+            $this->customer = $this->customerService?->customer
+                ?? ($this->onu->customer_id ? Customer::withoutGlobalScopes()->find($this->onu->customer_id) : null);
         }
 
         $this->searchResults = [];

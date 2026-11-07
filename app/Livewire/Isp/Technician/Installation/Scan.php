@@ -48,10 +48,12 @@ class Scan extends Component
             ->with([
                 'odp:id,name,code',
                 'olt:id,name,model',
-                'customerService.customer:id,name,code,phone',
-                'customerService.serviceProfile:id,name',
-                'customerService.pppoeUser:id,customer_service_id,username',
-                'acsDevice:id,serial_number,mac_address,ip_address,signal,status'
+                'ponPort:id,name,port_number,port_index',
+                'customerService' => fn($q) => $q->withoutGlobalScopes(),
+                'customerService.customer' => fn($q) => $q->withoutGlobalScopes(),
+                'customerService.serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                'customerService.pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                'acsDevice' => fn($q) => $q->withoutGlobalScopes(),
             ])
             ->where(function ($q) use ($candidates) {
                 foreach ($candidates as $cand) {
@@ -62,29 +64,81 @@ class Scan extends Component
             })
             ->first();
 
-        // 2. Cek database GenieACS (ACSDevice) jika belum ada di tabel Onu
-        $acsDevice = null;
-        if (!$onu) {
-            $acsDevice = ACSDevice::withoutGlobalScopes()
-                ->with([
-                    'onu',
-                    'olt:id,name',
-                    'customerService.customer:id,name,code,phone',
-                    'customerService.serviceProfile:id,name'
-                ])
-                ->where(function ($q) use ($candidates) {
-                    foreach ($candidates as $cand) {
-                        $q->orWhere('serial_number', 'like', "%{$cand}%")
-                          ->orWhere('mac_address', 'like', "%{$cand}%");
-                    }
-                })
-                ->first();
-        }
+        // 2. Cek database GenieACS (ACSDevice)
+        $acsDevice = ACSDevice::withoutGlobalScopes()
+            ->with([
+                'olt:id,name',
+                'customerService' => fn($q) => $q->withoutGlobalScopes(),
+                'customerService.customer' => fn($q) => $q->withoutGlobalScopes(),
+                'customerService.serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                'customerService.pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+            ])
+            ->where(function ($q) use ($candidates, $onu) {
+                if ($onu && !empty($onu->serial_number)) {
+                    $q->orWhere('serial_number', $onu->serial_number);
+                }
+                foreach ($candidates as $cand) {
+                    $q->orWhere('serial_number', 'like', "%{$cand}%")
+                      ->orWhere('mac_address', 'like', "%{$cand}%");
+                }
+            })
+            ->first();
 
         if ($onu || $acsDevice) {
-            $cs = $onu ? $onu->customerService : $acsDevice->customerService;
-            $cust = $cs?->customer ?? ($onu?->customer ?? null);
+            // Resolusi CustomerService lintas model tanpa terhalang isolasi branch/reseller
+            $cs = null;
+            if ($onu) {
+                $cs = $onu->customerService;
+                if (!$cs) {
+                    $cs = CustomerService::withoutGlobalScopes()
+                        ->with([
+                            'customer' => fn($q) => $q->withoutGlobalScopes(),
+                            'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                            'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                        ])
+                        ->where('onu_id', $onu->id)
+                        ->latest('id')
+                        ->first();
+                }
+            }
+            if (!$cs && $acsDevice) {
+                $cs = $acsDevice->customerService;
+                if (!$cs && $acsDevice->customer_service_id) {
+                    $cs = CustomerService::withoutGlobalScopes()
+                        ->with([
+                            'customer' => fn($q) => $q->withoutGlobalScopes(),
+                            'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                            'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                        ])
+                        ->find($acsDevice->customer_service_id);
+                }
+            }
+
+            // Fallback Customer jika tidak ada di CustomerService
+            $cust = $cs?->customer 
+                ?? ($onu?->customer_id ? Customer::withoutGlobalScopes()->find($onu->customer_id) : null)
+                ?? ($acsDevice?->resolved_customer ?? null);
+
             $olt = $onu?->olt ?? ($acsDevice?->olt ?? null);
+
+            // Format PON Port yang user-friendly (resolusi dari nama port, bukan integer mentah)
+            $ponPortDisplay = $onu?->ponPort?->name;
+            if (!$ponPortDisplay && !empty($onu?->pon_port)) {
+                $rawPort = (string) $onu->pon_port;
+                if (is_numeric($rawPort) && (int) $rawPort > 1000) {
+                    $pRec = \App\Models\ISP\PonPort::where('olt_id', $onu->olt_id)
+                        ->where(function($q) use ($onu) {
+                            $q->where('port_index', $onu->pon_port)
+                              ->orWhere('id', $onu->pon_port_id);
+                        })->first();
+                    $ponPortDisplay = $pRec?->name ?? 'GPON (Port Aktif)';
+                } else {
+                    $ponPortDisplay = 'PON ' . $rawPort;
+                }
+            }
+            if (!$ponPortDisplay) {
+                $ponPortDisplay = $acsDevice?->pon_port ?? '-';
+            }
 
             $this->scannedOnu = [
                 'id' => $onu?->id,
@@ -99,7 +153,7 @@ class Scan extends Component
                 'package_name' => $cs?->serviceProfile?->name ?? 'Layanan Aktif',
                 'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
                 'olt_name' => $olt?->name ?? ($acsDevice?->olt_name ?? 'OLT-Pusat'),
-                'pon_port' => $onu?->pon_port ?? ($acsDevice?->pon_port ?? '-'),
+                'pon_port' => $ponPortDisplay,
                 'rx_power' => $onu?->rx_power_dbm ?? ($acsDevice?->signal ?? null),
                 'status' => $onu?->status ?? ($acsDevice?->status ?? 'active'),
             ];

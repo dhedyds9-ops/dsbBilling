@@ -2,29 +2,29 @@
 
 <div class="space-y-4 p-4 pb-24" x-data="diagnosticManager()">
     {{-- Alerts --}}
-    @if(session('success') || ($successMessage ?? null) || ($this->successMessage ?? null))
+    @if(session('success') || !empty($successMessage))
         <div class="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">
             <span class="material-symbols-outlined text-sm">check_circle</span>
-            <span>{{ session('success') ?? ($successMessage ?? ($this->successMessage ?? '')) }}</span>
+            <span>{{ session('success') ?? $successMessage }}</span>
         </div>
     @endif
 
-    @if(session('error') || ($errorMessage ?? null) || ($this->errorMessage ?? null))
+    @if(session('error') || !empty($errorMessage))
         <div class="p-3.5 bg-rose-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">
             <span class="material-symbols-outlined text-sm">error</span>
-            <span>{{ session('error') ?? ($errorMessage ?? ($this->errorMessage ?? '')) }}</span>
+            <span>{{ session('error') ?? $errorMessage }}</span>
         </div>
     @endif
 
     {{-- Header Banner --}}
     <div class="p-4 rounded-2xl shadow-md relative overflow-hidden text-white"
          style="background: linear-gradient(135deg, #4338ca 0%, #0369a1 50%, #1e40af 100%) !important; color: #ffffff !important;">
-        <div class="absolute -right-2 -bottom-2 opacity-15 pointer-events-none">
-            <span class="material-symbols-outlined text-8xl text-white notranslate" translate="no">troubleshoot</span>
-        </div>
         <div class="relative z-10 flex items-center justify-between">
             <div>
-                <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider text-white">Live Diagnostics</span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-white">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Live Diagnostics</span>
+                </span>
                 <h2 class="text-lg font-black mt-1 text-white">Diagnostik ONT & Jaringan</h2>
                 <p class="text-xs text-sky-100">Cek Redaman Optik, Status Sinyal, Reboot & Perangkat Terhubung</p>
             </div>
