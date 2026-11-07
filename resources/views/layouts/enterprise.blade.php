@@ -8,8 +8,10 @@
     <title>@yield('title', $title ?? config('app.name', 'dsBilling Admin'))</title>
 
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined|Material+Icons+Round|Material+Icons+Sharp&display=block" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
@@ -21,22 +23,32 @@
         .apexcharts-tooltip { background: transparent !important; }
 
         /* Fix Material Symbols & Icons always rendering as icons (not text) */
-        .material-symbols-outlined, .material-icons-outlined, .material-icons {
+        .material-symbols-outlined,
+        .material-icons-outlined,
+        .material-icons,
+        .material-icons-round,
+        .material-icons-sharp {
             font-family: 'Material Symbols Outlined', 'Material Icons Outlined', 'Material Icons' !important;
-            font-weight: normal;
-            font-style: normal;
+            font-weight: normal !important;
+            font-style: normal !important;
             font-size: 24px;
-            line-height: 1;
-            letter-spacing: normal;
+            line-height: 1 !important;
+            letter-spacing: normal !important;
             text-transform: none !important;
             display: inline-block;
-            white-space: nowrap;
-            word-wrap: normal;
+            white-space: nowrap !important;
+            word-wrap: normal !important;
             direction: ltr !important;
-            -webkit-font-feature-settings: 'liga';
-            font-feature-settings: 'liga';
+            -webkit-font-feature-settings: 'liga' 1 !important;
+            font-feature-settings: 'liga' 1 !important;
+            font-variant-ligatures: contextual common-ligatures !important;
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .notranslate {
+            translate: no !important;
         }
 
         /* ====================================================
@@ -209,20 +221,20 @@
         })();
     </script>
 
-    <!-- Protect Material Symbols from Google Translate -->
+    <!-- Protect Material Symbols & Icons from Auto-Translation Ligature Corruption -->
     <script>
         function protectIcons() {
-            document.querySelectorAll('.material-symbols-outlined').forEach(function(el) {
+            document.querySelectorAll('.material-symbols-outlined, .material-icons-outlined, .material-icons, .material-icons-round, .material-icons-sharp').forEach(function(el) {
                 el.setAttribute('translate', 'no');
                 el.classList.add('notranslate');
             });
         }
-        // Run on DOM ready
         document.addEventListener('DOMContentLoaded', protectIcons);
-        // Run after Livewire updates
+        document.addEventListener('livewire:navigated', protectIcons);
         document.addEventListener('livewire:update', protectIcons);
-        // Watch for dynamic DOM changes (Google Translate itself)
-        new MutationObserver(protectIcons).observe(document.body, { childList: true, subtree: true });
+        if (window.MutationObserver) {
+            new MutationObserver(protectIcons).observe(document.documentElement, { childList: true, subtree: true });
+        }
     </script>
 @include('components.global-sweetalert')
 </body>

@@ -112,11 +112,15 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-/* ============ Material Symbols ============ */
-.material-symbols-outlined {
-    font-family: 'Material Symbols Outlined' !important;
-    font-weight: normal;
-    font-style: normal;
+/* ============ Material Symbols & Icons ============ */
+.material-symbols-outlined,
+.material-icons-outlined,
+.material-icons,
+.material-icons-round,
+.material-icons-sharp {
+    font-family: 'Material Symbols Outlined', 'Material Icons Outlined', 'Material Icons' !important;
+    font-weight: normal !important;
+    font-style: normal !important;
     font-size: 24px;
     font-variation-settings:
         'FILL' 0,
@@ -126,14 +130,15 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    line-height: 1;
-    text-transform: none;
-    letter-spacing: normal;
-    word-wrap: normal;
-    white-space: nowrap;
-    direction: ltr;
-    -webkit-font-feature-settings: 'liga';
-    font-feature-settings: 'liga';
+    line-height: 1 !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    word-wrap: normal !important;
+    white-space: nowrap !important;
+    direction: ltr !important;
+    -webkit-font-feature-settings: 'liga' 1 !important;
+    font-feature-settings: 'liga' 1 !important;
+    font-variant-ligatures: contextual common-ligatures !important;
     -webkit-font-smoothing: antialiased;
     user-select: none;
     vertical-align: middle;
