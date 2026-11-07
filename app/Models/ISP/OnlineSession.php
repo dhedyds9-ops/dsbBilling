@@ -41,6 +41,7 @@ class OnlineSession extends Model
         'caller_id',
         'mac_address',
         'address',
+        'ip_address',
         'server',
         'login_by',
         'uptime',
@@ -83,6 +84,27 @@ class OnlineSession extends Model
     public function scopeSourceRadius($query)
     {
         return $query->where('source', 'radius_accounting');
+    }
+
+    public function getIpAddressAttribute(): ?string
+    {
+        return $this->attributes['address'] ?? ($this->attributes['ip_address'] ?? null);
+    }
+
+    public function setIpAddressAttribute(?string $value): void
+    {
+        $this->attributes['address'] = $value;
+        $this->attributes['ip_address'] = $value;
+    }
+
+    public function scopeWhereIp($query, string $ip)
+    {
+        return $query->where(function ($q) use ($ip) {
+            $q->where('address', $ip);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('online_sessions', 'ip_address')) {
+                $q->orWhere('ip_address', $ip);
+            }
+        });
     }
 
     public static function buildSessionKey(string $protocol, $nasIp, string $username, ?string $caller, ?string $address): string

@@ -33,7 +33,7 @@ class Index extends BaseACSComponent
             $devices = $acsService->listDevices(['projection' => '_id,_lastInform,_ip'], 5000);
             if (!empty($devices)) {
                 $now = now();
-                $activeIps = \App\Models\ISP\OnlineSession::pluck('ip_address')->filter()->all();
+                $activeIps = \App\Models\ISP\OnlineSession::pluck('address')->filter()->all();
                 $activeIpFlip = array_flip($activeIps);
 
                 foreach ($devices as $d) {
@@ -616,7 +616,7 @@ class Index extends BaseACSComponent
 
         // Validasi tambahan: Jika IP PPPoE aktif di MikroTik session atau ONU di OLT aktif (meski belum terikat pelanggan)
         if (!empty($acsDeviceParams['ip_address'])) {
-            if (\App\Models\ISP\OnlineSession::where('ip_address', $acsDeviceParams['ip_address'])->exists()) {
+            if (\App\Models\ISP\OnlineSession::where('address', $acsDeviceParams['ip_address'])->exists()) {
                 $acsDeviceParams['status'] = 'online';
             }
         }

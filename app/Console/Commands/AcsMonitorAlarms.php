@@ -106,7 +106,7 @@ class AcsMonitorAlarms extends Command
                     $isServiceOnline = true;
                 } elseif ($device->onu && $device->onu->status === 'active') {
                     $isServiceOnline = true;
-                } elseif (!empty($device->ip_address) && \App\Models\ISP\OnlineSession::where('ip_address', $device->ip_address)->exists()) {
+                } elseif (!empty($device->ip_address) && \App\Models\ISP\OnlineSession::where('address', $device->ip_address)->exists()) {
                     $isServiceOnline = true;
                 } elseif (!empty($device->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $device->serial_number)->where('status', 'active')->exists()) {
                     $isServiceOnline = true;

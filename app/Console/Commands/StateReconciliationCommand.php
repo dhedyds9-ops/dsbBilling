@@ -38,7 +38,7 @@ class StateReconciliationCommand extends Command
         // STALE threshold is handled at read-time in the poller, but if poller misses it:
         $this->info('Auditing ACS Device states...');
         // Set offline hanya jika tidak inform > 24 jam DAN tidak memiliki sesi aktif di MikroTik/OLT
-        $activeSessionIps = \App\Models\ISP\OnlineSession::whereNotNull('ip_address')->pluck('ip_address')->all();
+        $activeSessionIps = \App\Models\ISP\OnlineSession::whereNotNull('address')->pluck('address')->all();
 
         $updatedAcs = ACSDevice::whereIn('status', ['online', 'stale'])
             ->where(function ($q) {
