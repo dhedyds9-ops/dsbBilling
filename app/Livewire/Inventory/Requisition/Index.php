@@ -276,7 +276,7 @@ class Index extends Component
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
         $customers = Customer::orderBy('name')->limit(100)->get();
-        $technicians = User::technicians()->orderBy('name')->get();
+        $technicians = User::getEligibleTechnicians();
 
         $selectedRequisition = null;
         if ($this->selectedRequisitionId) {

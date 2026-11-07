@@ -140,7 +140,7 @@ class Index extends Component
         $transfers = $transferQuery->paginate(15);
 
         // List Teknisi untuk dropdown modal serah terima
-        $technicians = User::technicians()->orderBy('name')->get();
+        $technicians = User::getEligibleTechnicians();
 
         $selectedCustody = null;
         if ($this->selectedCustodyId) {
