@@ -103,6 +103,16 @@ class Index extends Component
         }
     }
 
+    public function syncQuantityFromSerials(int $index): void
+    {
+        if (!isset($this->inboundItems[$index])) return;
+        $raw = trim($this->inboundItems[$index]['serials_raw'] ?? '');
+        $snList = array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $raw))));
+        if (!empty($snList)) {
+            $this->inboundItems[$index]['quantity'] = count($snList);
+        }
+    }
+
     public function updatedInboundItems($value, $key)
     {
         // Mendeteksi perubahan item_id untuk mengisi unit dan status serial

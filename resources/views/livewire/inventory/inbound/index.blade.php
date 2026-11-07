@@ -150,15 +150,15 @@
 
     {{-- MODAL FORM BARANG MASUK --}}
     @if($showCreateModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-5 my-8">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-4">
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3.5">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                             <span class="material-symbols-outlined notranslate text-xl" translate="no">add_box</span>
                         </div>
                         <div>
-                            <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Catat Penerimaan Barang Masuk</h3>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Catat Penerimaan Barang Masuk</h3>
                             <p class="text-xs text-slate-500 dark:text-slate-400">Stok gudang akan bertambah dan otomatis dicatat di Kartu Stok.</p>
                         </div>
                     </div>
@@ -167,68 +167,79 @@
                     </button>
                 </div>
 
-                <form wire:submit="saveInbound" class="space-y-5">
-                    {{-- Header Fields --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
-                        <div class="sm:col-span-5">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Gudang Penerima *</label>
-                            <select wire:model="warehouse_id" required
-                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="">-- Pilih Gudang Penerima --</option>
-                                @foreach($warehouses as $wh)
-                                    <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->branch?->name ?? 'Pusat' }})</option>
-                                @endforeach
-                            </select>
-                            @error('warehouse_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
+                <form wire:submit="saveInbound" class="space-y-4">
+                    {{-- Header Fields (Sleek & Compact) --}}
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                            <div class="sm:col-span-5">
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Gudang Penerima *</label>
+                                <select wire:model="warehouse_id" required
+                                        class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                    <option value="">-- Pilih Gudang Penerima --</option>
+                                    @foreach($warehouses as $wh)
+                                        <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->branch?->name ?? 'Pusat' }})</option>
+                                    @endforeach
+                                </select>
+                                @error('warehouse_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div class="sm:col-span-3">
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Terima *</label>
+                                <input wire:model="received_date" type="date" required
+                                       class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                @error('received_date') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div class="sm:col-span-4">
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Supplier / Vendor</label>
+                                <input wire:model="supplier_name" type="text" placeholder="Contoh: Shopee, PT..."
+                                       class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                            </div>
                         </div>
 
-                        <div class="sm:col-span-4">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Sumber Pengadaan *</label>
-                            <select wire:model="source_type"
-                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="supplier">Supplier / Vendor</option>
-                                <option value="purchase">Pembelian Langsung</option>
-                                <option value="initial_stock">Saldo Awal Fisik</option>
-                                <option value="other">Lain-lain</option>
-                            </select>
-                        </div>
+                        {{-- Detail Tambahan (Collapsible / Compact) --}}
+                        <div x-data="{ showExtra: false }">
+                            <button type="button" @click="showExtra = !showExtra"
+                                    class="text-[11px] font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 flex items-center gap-1 transition-colors">
+                                <span class="material-symbols-outlined text-xs notranslate" :class="showExtra ? 'rotate-180' : ''" translate="no">expand_more</span>
+                                <span x-text="showExtra ? 'Sembunyikan No. Surat Jalan & Catatan' : '+ No. Faktur / Surat Jalan & Catatan Tambahan'"></span>
+                            </button>
 
-                        <div class="sm:col-span-3">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Terima *</label>
-                            <input wire:model="received_date" type="date" required
-                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                            @error('received_date') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div class="sm:col-span-6">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Supplier / Vendor</label>
-                            <input wire:model="supplier_name" type="text" placeholder="Contoh: PT Fiber Optik Nusantara"
-                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                        </div>
-
-                        <div class="sm:col-span-6">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">No. Faktur / Surat Jalan</label>
-                            <input wire:model="reference_doc" type="text" placeholder="Contoh: INV-2026/05/998"
-                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                        </div>
-
-                        <div class="sm:col-span-12">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
-                            <input wire:model="notes" type="text" placeholder="Keterangan..."
-                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                            <div x-show="showExtra" x-cloak class="grid grid-cols-1 sm:grid-cols-12 gap-2 mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                <div class="sm:col-span-4">
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Sumber Pengadaan</label>
+                                    <select wire:model="source_type"
+                                            class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                        <option value="supplier">Supplier / Vendor</option>
+                                        <option value="purchase">Pembelian Langsung</option>
+                                        <option value="initial_stock">Saldo Awal Fisik</option>
+                                        <option value="other">Lain-lain</option>
+                                    </select>
+                                </div>
+                                <div class="sm:col-span-4">
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">No. Faktur / Surat Jalan</label>
+                                    <input wire:model="reference_doc" type="text" placeholder="Contoh: INV-2026/05/998"
+                                           class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                </div>
+                                <div class="sm:col-span-4">
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Catatan Tambahan</label>
+                                    <input wire:model="notes" type="text" placeholder="Keterangan..."
+                                           class="w-full py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     {{-- Items Input Section --}}
-                    <div class="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-700/80">
                         <div class="flex items-center justify-between">
-                            <h4 class="text-sm font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-emerald-600">list_alt</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-emerald-600 text-base notranslate" translate="no">inventory_2</span>
                                 <span>Daftar Barang yang Diterima</span>
                             </h4>
                             <button wire:click="addItemRow" type="button"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors">
-                                <span class="material-symbols-outlined text-sm">add</span>
+                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors">
+                                <span class="material-symbols-outlined text-sm notranslate" translate="no">add</span>
                                 <span>Tambah Baris</span>
                             </button>
                         </div>
@@ -239,7 +250,7 @@
 
                         <div class="space-y-3">
                             @foreach($inboundItems as $idx => $row)
-                                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-3">
+                                <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-3">
                                     {{-- Header Row: Badge & Delete Button --}}
                                     <div class="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
                                         <div class="flex items-center gap-2">
@@ -248,6 +259,12 @@
                                             </span>
                                             @if(!empty($row['unit']))
                                                 <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
+                                            @endif
+                                            @if(!empty($row['is_serialized']))
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800">
+                                                    <span class="material-symbols-outlined text-[12px] notranslate" translate="no">qr_code</span>
+                                                    <span>Wajib Lacak SN</span>
+                                                </span>
                                             @endif
                                         </div>
                                         @if(count($inboundItems) > 1)
@@ -261,7 +278,7 @@
                                     </div>
 
                                     {{-- Inputs Grid --}}
-                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-start">
                                         <div class="sm:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
                                             <select wire:model.live="inboundItems.{{ $idx }}.item_id" required
@@ -276,7 +293,7 @@
 
                                         <div class="sm:col-span-3">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
-                                            <input wire:model="inboundItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
+                                            <input wire:model.live.debounce.300ms="inboundItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
                                                    class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
                                             @error("inboundItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
@@ -288,21 +305,184 @@
                                         </div>
                                     </div>
 
-                                    {{-- Serial Number Input jika item berserial --}}
+                                    {{-- Serial Number Input (HERO SECTION KHUSUS BARANG BERSERIAL) --}}
                                     @if(!empty($row['is_serialized']))
-                                        <div class="pt-3 border-t border-dashed border-slate-200 dark:border-slate-700">
-                                            <div class="flex items-center justify-between mb-1.5">
-                                                <label class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                                                    <span class="material-symbols-outlined text-xs">qr_code_scanner</span>
-                                                    <span>Daftar Serial Number (Masukkan 1 SN per baris atau pisahkan koma):</span>
-                                                </label>
-                                                <span class="text-[10px] text-slate-400 font-semibold">Target SN: {{ (int)($row['quantity'] ?? 0) }} SN</span>
+                                        <div x-data="{
+                                            mode: 'scan',
+                                            scanInput: '',
+                                            serials: [],
+                                            get count() { return this.serials.length; },
+                                            targetQty: {{ (int)($row['quantity'] ?? 0) }},
+                                            init() {
+                                                this.parse();
+                                                this.$watch('$wire.inboundItems.{{ $idx }}.serials_raw', () => this.parse());
+                                                this.$watch('$wire.inboundItems.{{ $idx }}.quantity', (val) => { this.targetQty = parseInt(val) || 0; });
+                                            },
+                                            parse() {
+                                                const raw = $wire.get('inboundItems.{{ $idx }}.serials_raw') || '';
+                                                this.serials = raw.split(/[\r\n,]+/).map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+                                            },
+                                            updateWire() {
+                                                $wire.set('inboundItems.{{ $idx }}.serials_raw', this.serials.join('\n'));
+                                            },
+                                            addScan() {
+                                                const sn = this.scanInput.trim().toUpperCase();
+                                                if (!sn) return;
+                                                if (this.serials.includes(sn)) {
+                                                    alert('Serial Number ' + sn + ' sudah terdaftar!');
+                                                } else {
+                                                    this.serials.push(sn);
+                                                    this.updateWire();
+                                                }
+                                                this.scanInput = '';
+                                                this.$nextTick(() => { this.$refs.scannerInput?.focus(); });
+                                            },
+                                            removeSn(index) {
+                                                this.serials.splice(index, 1);
+                                                this.updateWire();
+                                            },
+                                            clearAll() {
+                                                if (confirm('Hapus semua Serial Number yang sudah diinput?')) {
+                                                    this.serials = [];
+                                                    this.updateWire();
+                                                }
+                                            },
+                                            syncQty() {
+                                                if (this.serials.length > 0) {
+                                                    $wire.set('inboundItems.{{ $idx }}.quantity', this.serials.length);
+                                                    this.targetQty = this.serials.length;
+                                                }
+                                            }
+                                        }" class="mt-3 p-3.5 sm:p-4 rounded-2xl bg-slate-900 dark:bg-slate-950 text-white border-2 border-emerald-500/40 shadow-lg space-y-3">
+                                            
+                                            {{-- Header Bar SN: Title & Live Status Counter --}}
+                                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-800">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                                                        <span class="material-symbols-outlined text-lg notranslate" translate="no">qr_code_scanner</span>
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                                                            <span>Input / Scan Serial Number (SN)</span>
+                                                        </h5>
+                                                        <p class="text-[10px] text-slate-400">Scan barcode kardus/perangkat atau paste langsung dari Excel</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex items-center gap-2">
+                                                    {{-- Live Count vs Target Pill --}}
+                                                    <template x-if="count === 0">
+                                                        <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold border border-slate-700">
+                                                            0 / <span x-text="targetQty"></span> SN
+                                                        </span>
+                                                    </template>
+                                                    <template x-if="count > 0 && count < targetQty">
+                                                        <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/40 flex items-center gap-1 animate-pulse">
+                                                            <span class="material-symbols-outlined text-xs notranslate" translate="no">pending</span>
+                                                            <span>Kurang <strong x-text="targetQty - count"></strong> SN (<span x-text="count"></span>/<span x-text="targetQty"></span>)</span>
+                                                        </span>
+                                                    </template>
+                                                    <template x-if="count > 0 && count === targetQty">
+                                                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/40 flex items-center gap-1">
+                                                            <span class="material-symbols-outlined text-xs notranslate" translate="no">check_circle</span>
+                                                            <span>Lengkap (<span x-text="count"></span>/<span x-text="targetQty"></span> SN)</span>
+                                                        </span>
+                                                    </template>
+                                                    <template x-if="count > targetQty">
+                                                        <span class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/40 flex items-center gap-1">
+                                                            <span class="material-symbols-outlined text-xs notranslate" translate="no">warning</span>
+                                                            <span>Kelebihan <strong x-text="count - targetQty"></strong> SN (<span x-text="count"></span>/<span x-text="targetQty"></span>)</span>
+                                                        </span>
+                                                    </template>
+
+                                                    {{-- Tombol Samakan Qty --}}
+                                                    <template x-if="count > 0 && count !== targetQty">
+                                                        <button type="button" @click="syncQty"
+                                                                class="px-2 py-1 rounded-lg bg-indigo-500/30 hover:bg-indigo-500/50 text-indigo-300 border border-indigo-500/40 text-[11px] font-bold transition flex items-center gap-1 shadow-xs"
+                                                                title="Samakan jumlah target barang dengan total SN yang terinput">
+                                                            <span class="material-symbols-outlined text-xs notranslate" translate="no">sync_alt</span>
+                                                            <span>Set Qty = <span x-text="count"></span></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
                                             </div>
-                                            <textarea wire:model="inboundItems.{{ $idx }}.serials_raw" rows="2"
-                                                      placeholder="Contoh:&#10;FHTT9B2172C8&#10;FHTT9B2172C9"
-                                                      class="w-full font-mono text-xs py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200"></textarea>
+
+                                            {{-- Mode Switcher Tabs --}}
+                                            <div class="flex items-center gap-2">
+                                                <button type="button" @click="mode = 'scan'; $nextTick(() => $refs.scannerInput?.focus());"
+                                                        class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                                                        :class="mode === 'scan' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-800 text-slate-400 hover:text-white'">
+                                                    <span class="material-symbols-outlined text-sm notranslate" translate="no">barcode_scanner</span>
+                                                    <span>Scan Barcode Cepat</span>
+                                                </button>
+                                                <button type="button" @click="mode = 'bulk'"
+                                                        class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                                                        :class="mode === 'bulk' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-800 text-slate-400 hover:text-white'">
+                                                    <span class="material-symbols-outlined text-sm notranslate" translate="no">content_paste</span>
+                                                    <span>Paste Daftar SN</span>
+                                                </button>
+                                                <template x-if="count > 0">
+                                                    <button type="button" @click="clearAll"
+                                                            class="ml-auto text-[11px] text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 rounded hover:bg-rose-950/30 transition">
+                                                        Bersihkan Semua
+                                                    </button>
+                                                </template>
+                                            </div>
+
+                                            {{-- MODE 1: SCAN BARCODE CEPAT DENGAN SCANNER GUN / ALAT PINDAI KASIR --}}
+                                            <div x-show="mode === 'scan'" class="space-y-2.5">
+                                                <div class="relative">
+                                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 text-lg notranslate" translate="no">barcode_reader</span>
+                                                    <input x-ref="scannerInput"
+                                                           x-model="scanInput"
+                                                           @keydown.enter.prevent="addScan"
+                                                           type="text"
+                                                           placeholder="Arahkan barcode scanner ke SN perangkat atau ketik lalu tekan Enter..."
+                                                           class="w-full pl-10 pr-24 py-2.5 bg-slate-950 border-2 border-emerald-500/60 rounded-xl font-mono text-sm text-emerald-300 placeholder:text-slate-500 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 shadow-inner">
+                                                    <button type="button" @click="addScan"
+                                                            class="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center gap-1">
+                                                        <span class="material-symbols-outlined text-xs notranslate" translate="no">add</span>
+                                                        <span>Tambah</span>
+                                                    </button>
+                                                </div>
+
+                                                {{-- Chip Tags Daftar SN Terinput --}}
+                                                <div class="min-h-[90px] max-h-[180px] overflow-y-auto p-2.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+                                                    <template x-if="serials.length === 0">
+                                                        <div class="text-center py-6 text-xs text-slate-500 flex flex-col items-center justify-center gap-1">
+                                                            <span class="material-symbols-outlined text-2xl text-slate-600 notranslate" translate="no">qr_code_scanner</span>
+                                                            <span>Belum ada Serial Number yang discan. Tembakkan scanner ke barcode kardus.</span>
+                                                        </div>
+                                                    </template>
+                                                    <div class="flex flex-wrap gap-1.5">
+                                                        <template x-for="(sn, sIdx) in serials" :key="sIdx">
+                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-white font-mono text-xs shadow-xs hover:border-slate-600">
+                                                                <span class="text-[10px] text-slate-400 font-sans" x-text="'#' + (sIdx + 1)"></span>
+                                                                <span class="font-bold text-emerald-300" x-text="sn"></span>
+                                                                <button type="button" @click="removeSn(sIdx)"
+                                                                        class="ml-1 text-slate-400 hover:text-rose-400 transition" title="Hapus SN ini">
+                                                                    <span class="material-symbols-outlined text-xs notranslate" translate="no">close</span>
+                                                                </button>
+                                                            </span>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- MODE 2: PASTE MULTILINE DARI EXCEL / DOKUMEN --}}
+                                            <div x-show="mode === 'bulk'" class="space-y-1.5">
+                                                <textarea wire:model.live.debounce.300ms="inboundItems.{{ $idx }}.serials_raw"
+                                                          rows="5"
+                                                          placeholder="Paste daftar Serial Number di sini (1 SN per baris atau pisahkan dengan koma):&#10;ZTEGC1234567&#10;ZTEGC1234568&#10;ZTEGC1234569"
+                                                          class="w-full font-mono text-xs sm:text-sm py-2.5 px-3 bg-slate-950 border border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400 text-emerald-300 placeholder:text-slate-500 leading-relaxed"></textarea>
+                                                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                                    <span>Dapat dicopy-paste langsung dari kolom Excel atau invoice supplier.</span>
+                                                    <span>Terdeteksi: <strong class="text-emerald-400" x-text="count"></strong> SN</span>
+                                                </div>
+                                            </div>
+
                                             @error("inboundItems.{$idx}.serials_raw")
-                                                <span class="text-xs text-rose-500 font-semibold block mt-1">{{ $message }}</span>
+                                                <span class="text-xs text-rose-400 font-semibold block mt-1">{{ $message }}</span>
                                             @enderror
                                         </div>
                                     @endif
@@ -311,7 +491,7 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/80">
+                    <div class="flex items-center justify-end gap-3 pt-3.5 border-t border-slate-100 dark:border-slate-700/80">
                         <button wire:click="$set('showCreateModal', false)" type="button"
                                 class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                             Batal
