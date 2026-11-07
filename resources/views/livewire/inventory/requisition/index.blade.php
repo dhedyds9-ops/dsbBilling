@@ -198,68 +198,69 @@
 
     {{-- MODAL BUAT PERMINTAAN BARANG --}}
     @if($showCreateModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl max-w-2xl w-full p-4 sm:p-5 space-y-4 my-8">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                            <span class="material-symbols-outlined notranslate text-[18px]" translate="no">assignment_turned_in</span>
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-5 my-8">
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                            <span class="material-symbols-outlined text-xl notranslate" translate="no">assignment_turned_in</span>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Form Permintaan Barang</h3>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Tautkan ke pelanggan & teknisi untuk kepemilikan material.</p>
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Form Permintaan Barang</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Pengajuan barang material gudang untuk kebutuhan PSB atau maintenance pelanggan.</p>
                         </div>
                     </div>
-                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">close</span>
+                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                        <span class="material-symbols-outlined text-lg notranslate" translate="no">close</span>
                     </button>
                 </div>
 
-                <form wire:submit="saveRequisition" class="space-y-4">
+                <form wire:submit="saveRequisition" class="space-y-5">
                     {{-- Metode Distribusi Cards --}}
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1.5">Metode Distribusi Pengambilan Barang *</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            <label class="cursor-pointer p-3 rounded-xl border-2 transition-all flex items-start gap-2.5 {{ $distribution_method === 'pickup_reseller' ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300' }}">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Metode Distribusi Pengambilan Barang *</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="cursor-pointer p-3.5 rounded-xl border-2 transition-all flex items-start gap-3 {{ $distribution_method === 'pickup_reseller' ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/30 ring-1 ring-amber-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-slate-50/50 dark:bg-slate-900/30' }}">
                                 <input type="radio" wire:model.live="distribution_method" value="pickup_reseller" class="mt-0.5 text-amber-600 focus:ring-amber-500">
                                 <div>
-                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs">Metode A: Reseller Ambil Barang</div>
-                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Gudang mengeluarkan ke Reseller (pemegang sementara).
+                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">Metode A: Reseller Ambil Barang</div>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Gudang mengeluarkan ke Reseller (pemegang sementara), lalu reseller menyerahkan ke teknisi.
                                     </p>
                                 </div>
                             </label>
 
-                            <label class="cursor-pointer p-3 rounded-xl border-2 transition-all flex items-start gap-2.5 {{ $distribution_method === 'direct_technician' ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300' }}">
+                            <label class="cursor-pointer p-3.5 rounded-xl border-2 transition-all flex items-start gap-3 {{ $distribution_method === 'direct_technician' ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/30 ring-1 ring-blue-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-slate-50/50 dark:bg-slate-900/30' }}">
                                 <input type="radio" wire:model.live="distribution_method" value="direct_technician" class="mt-0.5 text-blue-600 focus:ring-blue-500">
                                 <div>
-                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs">Metode B: Gudang ke Teknisi Langsung</div>
-                                    <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Fisik barang diserahkan langsung ke Teknisi pelaksana.
+                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">Metode B: Gudang ke Teknisi Langsung</div>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Permintaan atas nama Reseller, tetapi Gudang menyerahkan fisik barang langsung ke Teknisi pelaksana.
                                     </p>
                                 </div>
                             </label>
                         </div>
                     </div>
 
-                    {{-- Form Grid --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Gudang Sumber *</label>
+                    {{-- Form Fields --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
+                        <div class="sm:col-span-5">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Gudang Sumber *</label>
                             <select wire:model="warehouse_id" required
-                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="">-- Pilih Gudang --</option>
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                <option value="">-- Pilih Gudang Sumber --</option>
                                 @foreach($warehouses as $wh)
                                     <option value="{{ $wh->id }}">{{ $wh->name }}</option>
                                 @endforeach
                             </select>
-                            @error('warehouse_id') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                            @error('warehouse_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Pelanggan Tujuan</label>
+                        <div class="sm:col-span-7">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pelanggan Tujuan</label>
                             <select wire:model="customer_id"
-                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-medium">
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-medium">
                                 <option value="">-- Pilih Pelanggan (Opsional) --</option>
                                 @foreach($customers as $c)
                                     @php
@@ -272,10 +273,10 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Jenis Pekerjaan *</label>
+                        <div class="sm:col-span-5">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Pekerjaan *</label>
                             <select wire:model="work_order_type" required
-                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                                 <option value="psb">Pemasangan Baru (PSB)</option>
                                 <option value="maintenance">Gangguan / Maintenance</option>
                                 <option value="relocation">Relokasi Pelanggan</option>
@@ -283,60 +284,30 @@
                             </select>
                         </div>
 
-                        <div class="sm:col-span-2">
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Teknisi Pelaksana yang Ditunjuk *</label>
+                        <div class="sm:col-span-7">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Teknisi Pelaksana yang Ditunjuk *</label>
                             <select wire:model="designated_technician_id" required
-                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="">-- Pilih Teknisi --</option>
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                <option value="">-- Pilih Teknisi Pelaksana --</option>
                                 @foreach($technicians as $tech)
                                     <option value="{{ $tech->id }}">{{ $tech->name }}</option>
                                 @endforeach
                             </select>
-                            @error('designated_technician_id') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                            @error('designated_technician_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Catatan</label>
-                            <input wire:model="notes" type="text" placeholder="Keterangan..."
-                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                        </div>
-                    </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Jenis Pekerjaan *</label>
-                            <select wire:model="work_order_type" required
-                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="psb">Pemasangan Baru (PSB)</option>
-                                <option value="maintenance">Gangguan / Maintenance</option>
-                                <option value="relocation">Relokasi Pelanggan</option>
-                                <option value="stock_topup">Stok Operasional Teknisi</option>
-                            </select>
-                        </div>
-
-                        <div class="sm:col-span-2">
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Teknisi Pelaksana yang Ditunjuk *</label>
-                            <select wire:model="designated_technician_id" required
-                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="">-- Pilih Teknisi --</option>
-                                @foreach($technicians as $tech)
-                                    <option value="{{ $tech->id }}">{{ $tech->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('designated_technician_id') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Catatan</label>
-                            <input wire:model="notes" type="text" placeholder="Keterangan tambahan..."
-                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                        <div class="sm:col-span-12">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
+                            <input wire:model="notes" type="text" placeholder="misal: Tarikan kabel dropcore panjang ±150m..."
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                         </div>
                     </div>
 
                     {{-- Items Input Section --}}
-                    <div class="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700/80">
                         <div class="flex items-center justify-between">
-                            <h4 class="text-sm font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-emerald-600">inventory</span>
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-emerald-600 text-base">inventory</span>
                                 <span>Daftar Barang yang Diminta</span>
                             </h4>
                             <button wire:click="addItemRow" type="button"
@@ -352,53 +323,50 @@
 
                         <div class="space-y-3">
                             @foreach($requisitionItems as $idx => $row)
-                                <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
-                                    {{-- Header Row: Badge & Delete Button --}}
-                                    <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-3">
+                                    <div class="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-black">
-                                                <span class="material-symbols-outlined text-xs notranslate" translate="no">inventory_2</span>
-                                                <span>Barang #{{ $idx + 1 }}</span>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold">
+                                                <span>Item #{{ $idx + 1 }}</span>
                                             </span>
                                             @if(!empty($row['unit']))
-                                                <span class="text-[11px] text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
+                                                <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
                                             @endif
                                         </div>
                                         @if(count($requisitionItems) > 1)
                                             <button wire:click="removeItemRow({{ $idx }})" type="button"
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
                                                     title="Hapus baris ini">
-                                                <span class="material-symbols-outlined text-sm notranslate" translate="no">delete</span>
+                                                <span class="material-symbols-outlined text-sm">delete</span>
                                                 <span>Hapus</span>
                                             </button>
                                         @endif
                                     </div>
 
-                                    {{-- Inputs Grid --}}
-                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                                        <div class="md:col-span-6">
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                                        <div class="sm:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
                                             <select wire:model.live="requisitionItems.{{ $idx }}.item_id" required
-                                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 shadow-xs">
+                                                    class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 shadow-xs">
                                                 <option value="">-- Pilih Barang dari Katalog --</option>
                                                 @foreach($availableItems as $it)
                                                     <option value="{{ $it->id }}">[{{ $it->sku }}] {{ $it->name }} ({{ $it->category }} - {{ $it->unit }})</option>
                                                 @endforeach
                                             </select>
-                                            @error("requisitionItems.{$idx}.item_id") <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                            @error("requisitionItems.{$idx}.item_id") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
 
-                                        <div class="md:col-span-3">
+                                        <div class="sm:col-span-2">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
                                             <input wire:model="requisitionItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
-                                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
-                                            @error("requisitionItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
+                                            @error("requisitionItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
 
-                                        <div class="md:col-span-3">
+                                        <div class="sm:col-span-4">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan (Opsional)</label>
                                             <input wire:model="requisitionItems.{{ $idx }}.notes" type="text" placeholder="misal: pasang baru..."
-                                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                                         </div>
                                     </div>
                                 </div>
@@ -406,13 +374,14 @@
                         </div>
                     </div>
 
+                    {{-- Modal Footer --}}
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/80">
                         <button wire:click="$set('showCreateModal', false)" type="button"
-                                class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 transition-colors">
+                                class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                             Batal
                         </button>
                         <button type="submit"
-                                class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-2">
+                                class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center gap-2">
                             <span class="material-symbols-outlined text-sm">send</span>
                             <span>Kirim Permintaan</span>
                         </button>

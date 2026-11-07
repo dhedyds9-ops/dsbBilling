@@ -154,27 +154,27 @@
 
     {{-- MODAL CATAT PEMAKAIAN --}}
     @if($showCreateModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-2xl w-full p-4 sm:p-5 space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <span class="material-symbols-outlined text-base">build_circle</span>
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-5 my-8">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <span class="material-symbols-outlined text-xl">build_circle</span>
                         </div>
                         <div>
-                            <h3 class="text-base font-black text-slate-900 dark:text-slate-100">Laporan Pemakaian Material</h3>
-                            <p class="text-[11px] text-slate-500">Stok custody teknisi berkurang dan SN terpasang ke pelanggan.</p>
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Laporan Pemakaian Material Lapangan</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Stok custody teknisi berkurang dan SN otomatis terpasang ke pelanggan.</p>
                         </div>
                     </div>
-                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-                        <span class="material-symbols-outlined text-base">close</span>
+                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                        <span class="material-symbols-outlined text-lg">close</span>
                     </button>
                 </div>
 
-                <form wire:submit="saveUsage" class="space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Teknisi Pelaksana *</label>
+                <form wire:submit="saveUsage" class="space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
+                        <div class="sm:col-span-5">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Teknisi Pelaksana *</label>
                             <select wire:model.live="technician_id" required
                                     class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
                                 <option value="">-- Pilih Teknisi --</option>
@@ -182,13 +182,13 @@
                                     <option value="{{ $tech->id }}">{{ $tech->name }}</option>
                                 @endforeach
                             </select>
-                            @error('technician_id') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                            @error('technician_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Pelanggan Tujuan</label>
+                        <div class="sm:col-span-7">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pelanggan Tujuan</label>
                             <select wire:model="customer_id"
-                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-medium">
                                 <option value="">-- Pilih Pelanggan (Opsional) --</option>
                                 @foreach($customers as $c)
                                     @php
@@ -201,10 +201,10 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Jenis Pekerjaan *</label>
+                        <div class="sm:col-span-4">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Pekerjaan *</label>
                             <select wire:model="work_order_type" required
-                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
                                 <option value="psb">Pemasangan Baru (PSB)</option>
                                 <option value="maintenance">Gangguan / Maintenance</option>
                                 <option value="relocation">Relokasi Pelanggan</option>
@@ -212,22 +212,22 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Tanggal Pemakaian *</label>
+                        <div class="sm:col-span-4">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Pemakaian *</label>
                             <input wire:model="usage_date" type="date" required
-                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Redaman Optik (OPM)</label>
+                        <div class="sm:col-span-4">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Redaman Optik (OPM)</label>
                             <input wire:model="optical_power" type="text" placeholder="Contoh: -19.5 dBm"
-                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-mono">
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-mono">
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Catatan</label>
-                            <input wire:model="notes" type="text" placeholder="Keterangan tambahan..."
-                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+                        <div class="sm:col-span-12">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
+                            <input wire:model="notes" type="text" placeholder="Keterangan..."
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
                         </div>
                     </div>
 
@@ -259,21 +259,20 @@
 
                         <div class="space-y-3">
                             @foreach($usageItems as $idx => $row)
-                                <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-3">
                                     {{-- Header Row: Badge & Delete Button --}}
-                                    <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                                    <div class="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-black">
-                                                <span class="material-symbols-outlined text-xs notranslate" translate="no">handyman</span>
-                                                <span>Material Terpakai #{{ $idx + 1 }}</span>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 text-[11px] font-bold">
+                                                <span>Material #{{ $idx + 1 }}</span>
                                             </span>
                                             @if(!empty($row['unit']))
-                                                <span class="text-[11px] text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
+                                                <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
                                             @endif
                                         </div>
                                         @if(count($usageItems) > 1)
                                             <button wire:click="removeItemRow({{ $idx }})" type="button"
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
                                                     title="Hapus baris ini">
                                                 <span class="material-symbols-outlined text-sm notranslate" translate="no">delete</span>
                                                 <span>Hapus</span>
@@ -282,11 +281,11 @@
                                     </div>
 
                                     {{-- Inputs Grid --}}
-                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                                        <div class="md:col-span-6">
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                                        <div class="sm:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih dari Stok Custody Teknisi *</label>
                                             <select wire:model.live="usageItems.{{ $idx }}.custody_id" required
-                                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
+                                                    class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 shadow-xs">
                                                 <option value="">-- Pilih Material dari Custody Teknisi --</option>
                                                 @foreach($availableCustodies as $custody)
                                                     @php
@@ -302,16 +301,16 @@
                                             </select>
                                         </div>
 
-                                        <div class="md:col-span-3">
+                                        <div class="sm:col-span-3">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah Terpakai ({{ $row['unit'] ?? 'unit' }}) *</label>
                                             <input wire:model="usageItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" max="{{ $row['max_available'] ?? 9999 }}" required placeholder="1"
-                                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200 font-bold">
                                         </div>
 
-                                        <div class="md:col-span-3">
+                                        <div class="sm:col-span-3">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan / Lokasi (Opsional)</label>
                                             <input wire:model="usageItems.{{ $idx }}.notes" type="text" placeholder="opsional"
-                                                   class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
                                         </div>
                                     </div>
                                 </div>

@@ -150,31 +150,31 @@
 
     {{-- MODAL FORM BARANG MASUK --}}
     @if($showCreateModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl max-w-2xl w-full p-4 sm:p-5 space-y-4 my-8">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                            <span class="material-symbols-outlined notranslate text-[18px]" translate="no">add_box</span>
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-5 my-8">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                            <span class="material-symbols-outlined notranslate text-xl" translate="no">add_box</span>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Catat Penerimaan Barang Masuk</h3>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Stok gudang akan bertambah dan dicatat di Kartu Stok</p>
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Catat Penerimaan Barang Masuk</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Stok gudang akan bertambah dan otomatis dicatat di Kartu Stok.</p>
                         </div>
                     </div>
-                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1">
-                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">close</span>
+                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                        <span class="material-symbols-outlined notranslate text-lg" translate="no">close</span>
                     </button>
                 </div>
 
-                <form wire:submit="saveInbound" class="space-y-4">
+                <form wire:submit="saveInbound" class="space-y-5">
                     {{-- Header Fields --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Gudang Penerima *</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
+                        <div class="sm:col-span-5">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Gudang Penerima *</label>
                             <select wire:model="warehouse_id" required
-                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
-                                <option value="">-- Pilih Gudang --</option>
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                <option value="">-- Pilih Gudang Penerima --</option>
                                 @foreach($warehouses as $wh)
                                     <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->branch?->name ?? 'Pusat' }})</option>
                                 @endforeach
@@ -182,10 +182,10 @@
                             @error('warehouse_id') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Sumber Pengadaan *</label>
+                        <div class="sm:col-span-4">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Sumber Pengadaan *</label>
                             <select wire:model="source_type"
-                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                    class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                                 <option value="supplier">Supplier / Vendor</option>
                                 <option value="purchase">Pembelian Langsung</option>
                                 <option value="initial_stock">Saldo Awal Fisik</option>
@@ -193,29 +193,29 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Tanggal Terima *</label>
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Terima *</label>
                             <input wire:model="received_date" type="date" required
-                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                             @error('received_date') <span class="text-xs text-rose-500 font-semibold">{{ $message }}</span> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Nama Supplier / Vendor</label>
+                        <div class="sm:col-span-6">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Supplier / Vendor</label>
                             <input wire:model="supplier_name" type="text" placeholder="Contoh: PT Fiber Optik Nusantara"
-                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">No. Faktur / Surat Jalan</label>
+                        <div class="sm:col-span-6">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">No. Faktur / Surat Jalan</label>
                             <input wire:model="reference_doc" type="text" placeholder="Contoh: INV-2026/05/998"
-                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                         </div>
 
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Catatan</label>
+                        <div class="sm:col-span-12">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
                             <input wire:model="notes" type="text" placeholder="Keterangan..."
-                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                   class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                         </div>
                     </div>
 
@@ -239,21 +239,20 @@
 
                         <div class="space-y-3">
                             @foreach($inboundItems as $idx => $row)
-                                <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-3">
                                     {{-- Header Row: Badge & Delete Button --}}
-                                    <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                                    <div class="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-black">
-                                                <span class="material-symbols-outlined text-xs notranslate" translate="no">inventory_2</span>
-                                                <span>Barang #{{ $idx + 1 }}</span>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold">
+                                                <span>Item #{{ $idx + 1 }}</span>
                                             </span>
                                             @if(!empty($row['unit']))
-                                                <span class="text-[11px] text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
+                                                <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Satuan: <strong>{{ $row['unit'] }}</strong></span>
                                             @endif
                                         </div>
                                         @if(count($inboundItems) > 1)
                                             <button wire:click="removeItemRow({{ $idx }})" type="button"
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
                                                     title="Hapus baris ini">
                                                 <span class="material-symbols-outlined text-sm notranslate" translate="no">delete</span>
                                                 <span>Hapus</span>
@@ -262,47 +261,54 @@
                                     </div>
 
                                     {{-- Inputs Grid --}}
-                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                                        <div class="md:col-span-6">
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                                        <div class="sm:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
                                             <select wire:model.live="inboundItems.{{ $idx }}.item_id" required
-                                                    class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 shadow-xs">
+                                                    class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 shadow-xs">
                                                 <option value="">-- Pilih Barang dari Katalog --</option>
                                                 @foreach($availableItems as $it)
                                                     <option value="{{ $it->id }}">[{{ $it->sku }}] {{ $it->name }} ({{ $it->category }} - {{ $it->unit }})</option>
                                                 @endforeach
                                             </select>
-                                            @error("inboundItems.{$idx}.item_id") <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                            @error("inboundItems.{$idx}.item_id") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
 
-                                        <div class="md:col-span-3">
+                                        <div class="sm:col-span-3">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
                                             <input wire:model="inboundItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
-                                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
-                                            @error("inboundItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
+                                            @error("inboundItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
 
-                                        <div class="md:col-span-3">
+                                        <div class="sm:col-span-3">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Harga Beli Satuan (Rp)</label>
                                             <input wire:model="inboundItems.{{ $idx }}.unit_cost" type="number" step="any" placeholder="0"
-                                                   class="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
+                                                   class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                                         </div>
                                     </div>
 
                                     {{-- Serial Number Input jika item berserial --}}
                                     @if(!empty($row['is_serialized']))
-                                        <div class="pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
-                                            <div class="flex items-center justify-between mb-1">
+                                        <div class="pt-3 border-t border-dashed border-slate-200 dark:border-slate-700">
+                                            <div class="flex items-center justify-between mb-1.5">
                                                 <label class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                                                     <span class="material-symbols-outlined text-xs">qr_code_scanner</span>
-                                                    <span>Daftar Serial Number (Masukkan 1 SN per baris atau pisahkan dengan koma):</span>
+                                                    <span>Daftar Serial Number (Masukkan 1 SN per baris atau pisahkan koma):</span>
                                                 </label>
-                                                <span class="text-[10px] text-slate-400 font-semibold">Wajib sama persis dengan Jumlah: {{ (int)($row['quantity'] ?? 0) }} SN</span>
+                                                <span class="text-[10px] text-slate-400 font-semibold">Target SN: {{ (int)($row['quantity'] ?? 0) }} SN</span>
                                             </div>
                                             <textarea wire:model="inboundItems.{{ $idx }}.serials_raw" rows="2"
                                                       placeholder="Contoh:&#10;FHTT9B2172C8&#10;FHTT9B2172C9"
                                                       class="w-full font-mono text-xs py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200"></textarea>
                                             @error("inboundItems.{$idx}.serials_raw")
+                                                <span class="text-xs text-rose-500 font-semibold block mt-1">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
                                                 <span class="text-xs text-rose-500 font-semibold block mt-1">{{ $message }}</span>
                                             @enderror
                                         </div>
