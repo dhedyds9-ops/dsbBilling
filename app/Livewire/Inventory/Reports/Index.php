@@ -88,6 +88,7 @@ class Index extends Component
             'stockData' => $stockData,
             'mutationData' => $mutationData,
             'custodyData' => $custodyData,
+            'activeTab' => $this->activeTab,
         ])->layout('layouts.app', ['title' => 'Laporan Inventaris - dsBilling']);
     }
 }

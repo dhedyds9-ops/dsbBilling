@@ -14,7 +14,7 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 antialiased selection:bg-rose-500 selection:text-white relative overflow-hidden">
 
     <!-- Ambient Glow Background -->
-    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[350px] bg-rose-600/10 blur-[120px] rounded-full pointer-events-none"></div>
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[500px] h-[350px] bg-rose-600/10 blur-[120px] rounded-full pointer-events-none"></div>
 
     <div class="max-w-md w-full relative z-10 text-center">
         <!-- Lock Icon Badge -->

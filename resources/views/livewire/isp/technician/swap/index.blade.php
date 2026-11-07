@@ -311,7 +311,7 @@
                     <input type="file" wire:model="photoBefore" accept="image/*" capture="environment"
                            class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                     @if($photoBefore)
-                        <div class="mt-1.5 h-20 rounded-xl overflow-hidden border border-slate-200">
+                        <div class="mt-1.5 h-20 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                             <img src="{{ $photoBefore->temporaryUrl() }}" class="w-full h-full object-cover">
                         </div>
                     @endif
@@ -321,7 +321,7 @@
                     <input type="file" wire:model="photoAfter" accept="image/*" capture="environment"
                            class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                     @if($photoAfter)
-                        <div class="mt-1.5 h-20 rounded-xl overflow-hidden border border-slate-200">
+                        <div class="mt-1.5 h-20 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                             <img src="{{ $photoAfter->temporaryUrl() }}" class="w-full h-full object-cover">
                         </div>
                     @endif
@@ -339,7 +339,7 @@
                         Hapus / Reset
                     </button>
                 </div>
-                <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-white relative overflow-hidden h-28 touch-none">
+                <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-100 relative overflow-hidden h-28 touch-none">
                     <canvas id="swap-signature-pad" class="w-full h-full"></canvas>
                     <div x-show="!hasSignature" class="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-400 text-xs">
                         Sentuh & goreskan tanda tangan pelanggan di sini

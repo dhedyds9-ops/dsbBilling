@@ -38,15 +38,15 @@
     @endif
 
     {{-- Tabs Navigation --}}
-    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto whitespace-nowrap">
         <button wire:click="setTab('custody')" type="button"
-                class="px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 {{ $activeTab === 'custody' ? 'border-purple-600 text-purple-600 dark:text-purple-400' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
+                class="px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 shrink-0 {{ $activeTab === 'custody' ? 'border-purple-600 text-purple-600 dark:text-purple-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
             <span class="material-symbols-outlined text-sm">inventory_2</span>
             <span>Barang di Tangan (Custody)</span>
         </button>
 
         <button wire:click="setTab('transfers')" type="button"
-                class="px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 {{ $activeTab === 'transfers' ? 'border-purple-600 text-purple-600 dark:text-purple-400' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
+                class="px-4 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 shrink-0 {{ $activeTab === 'transfers' ? 'border-purple-600 text-purple-600 dark:text-purple-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
             <span class="material-symbols-outlined text-sm">swap_horiz</span>
             <span>Riwayat & Konfirmasi Serah Terima</span>
         </button>
@@ -58,14 +58,14 @@
             {{-- Filter --}}
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <div class="relative flex-1 min-w-[280px]">
+                    <div class="relative flex-1 min-w-0">
                         <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                         <input wire:model.live.debounce.300ms="search" type="text"
                                placeholder="Cari barang, serial number, atau nama pemegang..."
                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400">
                     </div>
 
-                    <div class="min-w-[220px]">
+                    <div class="w-full sm:w-auto sm:min-w-[220px]">
                         <select wire:model.live="holderTypeFilter"
                                 class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                             <option value="">Semua Pemegang (Reseller & Teknisi)</option>

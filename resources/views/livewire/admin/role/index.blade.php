@@ -250,7 +250,7 @@
                         </label>
                         <input wire:model="roleName" type="text" placeholder="contoh: admin_billing" 
                             {{ $editingRoleId && \App\Models\Role::find($editingRoleId)?->is_system ? 'disabled' : '' }}
-                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 dark:text-slate-100 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
                         <p class="text-[11px] text-slate-400 mt-1">Hanya huruf kecil, angka, dan garis bawah/strip.</p>
                         @error('roleName') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                     </div>

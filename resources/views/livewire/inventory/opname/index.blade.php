@@ -1,32 +1,32 @@
-<div class="p-6 space-y-6">
+<div class="space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-blue-600">checklist_rtl</span>
-                Stok Opname & Penyesuaian Fisik
+            <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2.5">
+                <span class="material-symbols-outlined text-blue-600 text-3xl">checklist_rtl</span>
+                <span>Stok Opname & Penyesuaian Fisik</span>
             </h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Rekonsiliasi berkala stok fisik gudang terhadap saldo sistem dan penyesuaian selisih otomatis.
             </p>
         </div>
         <div>
-            <button wire:click="openCreateModal" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition">
+            <button wire:click="openCreateModal" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition">
                 <span class="material-symbols-outlined text-sm">add</span>
-                Mulai Sesi Opname Baru
+                <span>Mulai Sesi Opname Baru</span>
             </button>
         </div>
     </div>
 
     <!-- Feedback Message -->
     @if(session()->has('success'))
-    <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-sm flex items-center gap-2">
+    <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-2xl text-xs sm:text-sm flex items-center gap-2">
         <span class="material-symbols-outlined text-emerald-600">check_circle</span>
         {{ session('success') }}
     </div>
     @endif
     @if(session()->has('error'))
-    <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-sm flex items-center gap-2">
+    <div class="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 rounded-2xl text-xs sm:text-sm flex items-center gap-2">
         <span class="material-symbols-outlined text-rose-600">error</span>
         {{ session('error') }}
     </div>
@@ -35,13 +35,13 @@
     <!-- Filter Bar -->
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700/80 shadow-xs">
         <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-            <div class="relative flex-1 min-w-[260px]">
+            <div class="relative flex-1 min-w-0">
                 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nomor opname..."
                     class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400">
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <div class="min-w-[220px] flex-1 sm:flex-initial">
+                <div class="w-full sm:w-auto sm:min-w-[210px] flex-1 sm:flex-initial">
                     <select wire:model.live="warehouseFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <option value="">Semua Gudang</option>
                         @foreach($warehouses as $wh)
@@ -49,7 +49,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="min-w-[220px] flex-1 sm:flex-initial">
+                <div class="w-full sm:w-auto sm:min-w-[210px] flex-1 sm:flex-initial">
                     <select wire:model.live="statusFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <option value="">Semua Status</option>
                         <option value="draft">Draft</option>
@@ -139,9 +139,9 @@
     <!-- Modal Create Opname -->
     @if($showCreateModal)
     <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-4xl w-full p-6 space-y-6 shadow-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-3xl w-full p-5 sm:p-6 space-y-5 shadow-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between border-b pb-4 dark:border-slate-700">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <span class="material-symbols-outlined text-blue-600">playlist_add_check</span>
                     Mulai Sesi Stok Opname
                 </h3>
@@ -152,8 +152,8 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Pilih Gudang Target *</label>
-                    <select wire:model="selectedWarehouseId" wire:change="loadWarehouseItems" class="w-full text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pilih Gudang Target *</label>
+                    <select wire:model="selectedWarehouseId" wire:change="loadWarehouseItems" class="w-full py-2.5 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white">
                         <option value="">-- Pilih Gudang --</option>
                         @foreach($warehouses as $wh)
                             <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->code }})</option>
@@ -162,19 +162,19 @@
                     @error('selectedWarehouseId') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Tanggal Opname *</label>
-                    <input type="date" wire:model="opnameDate" class="w-full text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Opname *</label>
+                    <input type="date" wire:model="opnameDate" class="w-full py-2.5 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white">
                     @error('opnameDate') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Catatan Opname</label>
-                <input type="text" wire:model="notes" placeholder="Contoh: Stok opname akhir bulan cabang pusat" class="w-full text-sm rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Opname</label>
+                <input type="text" wire:model="notes" placeholder="Contoh: Stok opname akhir bulan cabang pusat" class="w-full py-2.5 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white">
             </div>
 
             <!-- List Item Opname Table -->
-            <div class="flex-1 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+            <div class="flex-1 overflow-x-auto overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 dark:bg-slate-900 text-slate-600 sticky top-0 border-b dark:border-slate-700">
                         <tr>

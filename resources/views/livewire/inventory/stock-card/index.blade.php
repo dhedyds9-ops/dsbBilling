@@ -47,14 +47,14 @@
 
             <div class="lg:col-span-4">
                 <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Periode Tanggal Mutasi</label>
-                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
-                    <span class="material-symbols-outlined text-slate-400 text-base">calendar_month</span>
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
+                    <span class="material-symbols-outlined text-slate-400 text-base shrink-0">calendar_month</span>
                     <input wire:model.live="dateFrom" type="date"
-                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32"
+                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 min-w-0 flex-1"
                            title="Dari Tanggal">
-                    <span class="text-xs text-slate-400 font-medium">s/d</span>
+                    <span class="text-xs text-slate-400 font-medium shrink-0">s/d</span>
                     <input wire:model.live="dateTo" type="date"
-                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 w-32"
+                           class="bg-transparent border-0 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-1 min-w-0 flex-1"
                            title="Sampai Tanggal">
                 </div>
             </div>

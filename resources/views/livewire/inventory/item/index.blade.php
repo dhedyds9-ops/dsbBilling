@@ -255,15 +255,15 @@
                     {{-- Toggle Options --}}
                     <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-2 border border-slate-100 dark:border-slate-700">
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" wire:model="is_serialized" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <input type="checkbox" wire:model="is_serialized" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500">
                             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Wajib Lacak Serial Number (Khusus Modem ONT / Router)</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" wire:model="is_reusable" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <input type="checkbox" wire:model="is_reusable" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500">
                             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Barang Reusable (Dapat dibongkar/dismantle & digunakan ulang)</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" wire:model="is_active" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <input type="checkbox" wire:model="is_active" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500">
                             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Status Aktif (Dapat dipilih dalam transaksi)</span>
                         </label>
                     </div>

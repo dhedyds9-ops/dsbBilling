@@ -194,7 +194,7 @@
                                   $el.selectionStart = $el.selectionEnd = start + 4;
                                   $el.dispatchEvent(new Event('input'));
                               "
-                              class="w-full h-[520px] p-4 font-mono text-xs leading-relaxed bg-slate-900 text-slate-100 border-0 focus:ring-0 focus:outline-none resize-y"
+                              class="w-full h-[520px] p-4 font-mono text-xs leading-relaxed bg-slate-900 dark:bg-slate-950 text-slate-100 dark:text-slate-100 border-0 focus:ring-0 focus:outline-none resize-y"
                               spellcheck="false"
                               placeholder="Masukkan kode HTML template voucher di sini..."></textarea>
                 </div>

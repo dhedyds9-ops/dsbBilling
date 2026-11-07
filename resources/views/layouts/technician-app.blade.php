@@ -16,7 +16,9 @@
 >
 
     <x-slot:bodyAttributes>
-        x-data="{ darkMode: localStorage.getItem('dsb_dark_mode') === '1' }" :class="darkMode ? 'dark' : ''"
+        x-data="{ darkMode: localStorage.getItem('dsb_dark_mode') === '1' || localStorage.getItem('darkMode') === 'true' }"
+        x-init="document.documentElement.classList.toggle('dark', darkMode); $watch('darkMode', val => { localStorage.setItem('dsb_dark_mode', val ? '1' : '0'); localStorage.setItem('darkMode', val ? 'true' : 'false'); document.documentElement.classList.toggle('dark', val); })"
+        :class="darkMode ? 'dark' : ''"
     </x-slot:bodyAttributes>
 
     <x-slot:head>

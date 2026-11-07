@@ -35,13 +35,13 @@
     {{-- Filter & Search Card --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div class="relative flex-1 min-w-[280px]">
+            <div class="relative flex-1 min-w-0">
                 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama gudang, kode, kota..."
                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400">
             </div>
 
-            <div class="min-w-[230px]">
+            <div class="w-full sm:w-auto sm:min-w-[220px]">
                 <select wire:model.live="typeFilter"
                         class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-slate-100 cursor-pointer">
                     <option value="">Semua Tipe Gudang</option>
@@ -203,11 +203,11 @@
 
                     <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-2 border border-slate-100 dark:border-slate-700">
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" wire:model="is_active" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                            <input type="checkbox" wire:model="is_active" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-emerald-600 focus:ring-emerald-500">
                             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Gudang Aktif</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" wire:model="allows_returns" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                            <input type="checkbox" wire:model="allows_returns" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-emerald-600 focus:ring-emerald-500">
                             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Menerima Pengembalian / Retur Material</span>
                         </label>
                     </div>

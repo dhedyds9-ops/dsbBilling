@@ -174,7 +174,7 @@
             </div>
 
             {{-- ── IDENTITAS KARYAWAN ── --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 mb-8 text-sm print:grid-cols-2 print:text-black bg-slate-50 dark:bg-slate-800/40 print:bg-transparent rounded-xl p-4 print:p-0 print:border-b print:border-slate-300">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 mb-8 text-sm print:grid-cols-2 print:text-black bg-slate-50 dark:bg-slate-800/40 print:bg-transparent rounded-xl p-4 print:p-0 print:border-b print:border-slate-300 overflow-x-auto">
                 <table class="w-full">
                     <tr><td class="py-1 text-slate-500 dark:text-slate-400 print:text-slate-700 w-36 font-medium">Nama Karyawan</td><td class="py-1 font-bold text-slate-900 dark:text-slate-100 print:text-black">: {{ $emp->name ?? '-' }}</td></tr>
                     <tr><td class="py-1 text-slate-500 dark:text-slate-400 print:text-slate-700 font-medium">NIK</td><td class="py-1 font-semibold text-slate-800 dark:text-slate-200 print:text-black font-mono">: {{ $emp->nik ?? '-' }}</td></tr>
@@ -257,7 +257,7 @@
             @endif
 
             {{-- ── RINCIAN GAJI ── --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10 mb-8 print:grid-cols-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10 mb-8 print:grid-cols-2 overflow-x-auto">
 
                 {{-- A. PENDAPATAN --}}
                 <div>

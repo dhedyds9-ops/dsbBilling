@@ -329,7 +329,7 @@
                                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
                                             @for($i=1; $i<=4; $i++)
                                             <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer">
-                                                <input type="checkbox" wire:model.live="bindLan" value="{{ $i }}" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
+                                                <input type="checkbox" wire:model.live="bindLan" value="{{ $i }}" class="w-4 h-4 text-purple-600 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-purple-500">
                                                 <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">LAN {{ $i }}</span>
                                             </label>
                                             @endfor
@@ -342,7 +342,7 @@
                                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
                                             @for($i=1; $i<=4; $i++)
                                             <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer">
-                                                <input type="checkbox" wire:model.live="bindWlan" value="{{ $i }}" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
+                                                <input type="checkbox" wire:model.live="bindWlan" value="{{ $i }}" class="w-4 h-4 text-purple-600 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-purple-500">
                                                 <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">SSID {{ $i }}</span>
                                             </label>
                                             @endfor
@@ -358,7 +358,7 @@
                                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
                                             @for($i=5; $i<=8; $i++)
                                             <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer">
-                                                <input type="checkbox" wire:model.live="bindWlan" value="{{ $i }}" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
+                                                <input type="checkbox" wire:model.live="bindWlan" value="{{ $i }}" class="w-4 h-4 text-purple-600 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-purple-500">
                                                 <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">SSID {{ $i }} (5G)</span>
                                             </label>
                                             @endfor

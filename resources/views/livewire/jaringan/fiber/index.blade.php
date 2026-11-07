@@ -50,7 +50,7 @@ foreach ($this->tabs as $k => $label) {
             </div>
         </div>
     @else
-        <div class="flex-1 overflow-auto min-h-0">
+        <div class="flex-1 overflow-x-auto overflow-y-auto min-h-0">
             <table class="w-full text-sm">
                 <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
                     <tr class="text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">

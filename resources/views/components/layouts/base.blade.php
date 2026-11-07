@@ -11,8 +11,23 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $htmlClass }}" {!! $htmlAttributes !!}>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <script>
+        (function() {
+            try {
+                var isDark = localStorage.getItem('darkMode') === 'true' || localStorage.getItem('dsb_dark_mode') === '1';
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', 'true');
+                    localStorage.setItem('dsb_dark_mode', '1');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
 
     <title>@yield('title', $title ?? config('app.name', 'dsBilling'))</title>
 

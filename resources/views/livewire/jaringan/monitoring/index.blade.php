@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /** @var \App\Livewire\Jaringan\Monitoring\Index $this */
 /** @var mixed $rows */
 $summaryItems = $this->getSummaryItems();
@@ -122,6 +122,7 @@ $filterConfig = $this->getFilterConfig();
                             @endphp
                             <span class="text-xs text-cyan-600 dark:text-cyan-400 font-medium">{{ round($tot) }} Mbps total</span>
                         </div>
+                        <div class="overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead class="text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/40">
                                 <tr>
@@ -148,12 +149,13 @@ $filterConfig = $this->getFilterConfig();
                                 @endforeach
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 @endforeach
             </div>
         </div>
     @elseif ($this->activeTab === 'resources')
-        <div class="flex-1 overflow-auto min-h-0">
+        <div class="flex-1 overflow-x-auto overflow-y-auto min-h-0">
             <table class="w-full text-sm">
                 <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
                     <tr class="text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">
@@ -195,7 +197,7 @@ $filterConfig = $this->getFilterConfig();
             </table>
         </div>
     @else
-        <div class="flex-1 overflow-auto min-h-0">
+        <div class="flex-1 overflow-x-auto overflow-y-auto min-h-0">
             <table class="w-full text-sm">
                 <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
                     <tr class="text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">

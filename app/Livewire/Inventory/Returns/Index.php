@@ -290,6 +290,13 @@ class Index extends Component
             'returners' => $returners,
             'availableCustodies' => $availableCustodies,
             'selectedReturn' => $selectedReturn,
+            'showCreateModal' => $this->showCreateModal,
+            'showQCModal' => $this->showQCModal,
+            'showDetailModal' => $this->showDetailModal,
+            'selectedReturnId' => $this->selectedReturnId,
+            'returnItems' => $this->returnItems,
+            'qcInspectionItems' => $this->qcInspectionItems,
+            'returner_id' => $this->returner_id,
         ])->layout('layouts.app', ['title' => 'Retur & Pengembalian Material - dsBilling']);
     }
 }

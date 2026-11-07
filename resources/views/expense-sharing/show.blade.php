@@ -11,7 +11,7 @@
     </div>
 
     <div class="card">
-        <div class="card-body">
+        <div class="card-body overflow-x-auto">
             <table class="table table-bordered">
                 <tr>
                     <th style="width: 30%;">Kode</th>

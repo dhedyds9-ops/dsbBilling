@@ -41,7 +41,7 @@ $classes = $baseClasses . ' ' . $stateClasses . ' ' . $disabledClasses;
 
     <textarea
         rows="{{ $rows }}"
-        {{ $attributes->merge(['class' => $classes]) }}
+        {{ $attributes->merge(['class' => $classes . ' dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700']) }}
         placeholder="{{ $placeholder }}"
         @if ($disabled) disabled @endif
         @if ($readonly) readonly @endif

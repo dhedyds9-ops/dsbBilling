@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="bg-slate-50 dark:bg-slate-900" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" :class="{ 'dark': darkMode }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="bg-slate-50 dark:bg-slate-900" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' || localStorage.getItem('dsb_dark_mode') === '1' }" x-init="$watch('darkMode', val => { localStorage.setItem('darkMode', val); localStorage.setItem('dsb_dark_mode', val ? '1' : '0'); document.documentElement.classList.toggle('dark', val); })" :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <script>
+        (function() {
+            try {
+                var isDark = localStorage.getItem('darkMode') === 'true' || localStorage.getItem('dsb_dark_mode') === '1';
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', 'true');
+                    localStorage.setItem('dsb_dark_mode', '1');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
 
     <title>@yield('title', $title ?? config('app.name', 'dsBilling Admin'))</title>
 
@@ -156,7 +171,7 @@
 
     <!-- Main Content Area -->
     <div
-        class="lg:pl-64 print:pl-0 transition-all duration-300 relative flex flex-col min-h-screen"
+        class="lg:pl-64 print:pl-0 transition-all duration-300 relative flex flex-col min-h-screen min-w-0 max-w-full overflow-x-hidden"
         :class="sidebarCollapsed ? 'lg:pl-20 print:pl-0' : 'lg:pl-64 print:pl-0'"
     >
         <!-- Topbar -->
@@ -165,7 +180,7 @@
         </div>
 
         <!-- Page Content -->
-        <main class="flex-1 p-4 print:p-0 print:m-0">
+        <main class="flex-1 p-4 md:p-6 min-w-0 max-w-full print:p-0 print:m-0">
             {{ $slot ?? '' }}
             @yield('content')
         </main>

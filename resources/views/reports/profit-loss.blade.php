@@ -38,7 +38,7 @@
     </div>
     <div class="card-body">
         <div class="row justify-content-center">
-            <div class="col-md-8">
+            <div class="col-md-8 overflow-x-auto">
                 <table class="table table-bordered">
                     <tr class="table-primary">
                         <th colspan="2" class="text-center">PENDAPATAN</th>

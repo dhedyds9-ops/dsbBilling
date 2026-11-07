@@ -22,10 +22,10 @@
 $baseClasses = 'w-full border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 appearance-none bg-no-repeat bg-right pr-10';
 
 $stateClasses = $error
-    ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20'
+    ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
     : ($success
-        ? 'border-success-500 focus:border-success-500 focus:ring-success-500/20'
-        : 'border-slate-300 dark:border-slate-600 focus:border-primary-500 focus:ring-primary-500/20 bg-white dark:bg-slate-800');
+        ? 'border-success-500 focus:border-success-500 focus:ring-success-500/20 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+        : 'border-slate-300 dark:border-slate-700 focus:border-primary-500 focus:ring-primary-500/20 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100');
 
 $disabledClasses = $disabled ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : '';
 
@@ -44,7 +44,7 @@ $classes = $baseClasses . ' ' . $stateClasses . ' ' . $disabledClasses . ' px-4 
 
     <div class="relative">
         <select
-            {{ $attributes->except(['required'])->merge(['class' => $classes]) }}
+            {{ $attributes->except(['required'])->merge(['class' => $classes . ' dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700']) }}
             style="background-image: url(&quot;data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e&quot;); background-position: right 0.5rem center; background-size: 1.5em 1.5em;"
             @if ($disabled) disabled @endif
             @if ($readonly) readonly @endif

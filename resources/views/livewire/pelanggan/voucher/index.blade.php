@@ -60,7 +60,7 @@
     ],
   ])
 
-  <div class="relative overflow-auto bg-white dark:bg-slate-800">
+  <div class="relative overflow-x-auto bg-white dark:bg-slate-800">
     @if ($this->loading)
       <div class="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-slate-900/60 backdrop-blur-[1px]">
         <div class="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 border border-blue-100 dark:border-blue-800">

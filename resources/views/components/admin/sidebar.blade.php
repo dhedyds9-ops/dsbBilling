@@ -148,7 +148,7 @@
                                     </button>
 
                                     <!-- Submenu Tree -->
-                                    <div x-show="isOpen('{{ $groupId }}')" x-collapse class="mt-1 relative">
+                                    <div x-show="!sidebarCollapsed && isOpen('{{ $groupId }}')" x-collapse class="mt-1 relative">
                                         @foreach(($group['items'] ?? []) as $item)
                                             @php
                                                 $itemLabel = $item['label'] ?? '';

@@ -654,19 +654,19 @@
                 </label>
                 <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" wire:model="ticket_checklists.odp_checked" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <input type="checkbox" wire:model="ticket_checklists.odp_checked" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500">
                         <span class="text-[11px]">Redaman ODP & ONT diukur normal</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" wire:model="ticket_checklists.cable_installed" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <input type="checkbox" wire:model="ticket_checklists.cable_installed" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500">
                         <span class="text-[11px]">Kabel dropcore & konektor terpasang rapi</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" wire:model="ticket_checklists.onu_online" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <input type="checkbox" wire:model="ticket_checklists.onu_online" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500">
                         <span class="text-[11px]">ONT online, lampu PON hijau stabil</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" wire:model="ticket_checklists.speedtest_ok" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <input type="checkbox" wire:model="ticket_checklists.speedtest_ok" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500">
                         <span class="text-[11px]">Speedtest & browsing di HP pelanggan normal</span>
                     </label>
                 </div>
@@ -726,9 +726,9 @@
                     </button>
                 </div>
                 <p class="text-[10px] text-slate-400">Mintalah pelanggan membubuhkan tanda tangan langsung di bawah:</p>
-                <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-white overflow-hidden shadow-inner">
+                <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-100 overflow-hidden shadow-inner">
                     <canvas x-ref="myjobsSigCanvas" width="360" height="120"
-                            class="w-full h-28 touch-none bg-white cursor-crosshair"
+                            class="w-full h-28 touch-none bg-white dark:bg-slate-100 cursor-crosshair"
                             @mousedown="start($event)" @mouseup="stop()" @mousemove="draw($event)"
                             @touchstart.prevent="start($event)" @touchend.prevent="stop()" @touchmove.prevent="draw($event)">
                     </canvas>

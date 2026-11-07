@@ -30,7 +30,7 @@
                         <span x-text="clientIp">Mendeteksi IP...</span>
                     </span>
                     <span class="text-slate-300 dark:text-white/20">&bull;</span>
-                    <span class="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[220px] sm:max-w-[340px]">
+                    <span class="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[200px] sm:max-w-xs">
                         <span class="material-symbols-outlined text-[13px] text-purple-500 shrink-0">wifi_tethering</span>
                         <span class="truncate font-semibold" x-text="clientIsp">Mendeteksi ISP...</span>
                         <span class="text-[9px] px-1.5 py-0.2 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded font-mono font-bold shrink-0" 

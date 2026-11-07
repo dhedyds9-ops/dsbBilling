@@ -443,190 +443,27 @@ select:focus {
 }
 
 /* =========================================================
-   DSBILLING NEON THEME OVERRIDES (ENTERPRISE ISP BILLING)
+   DSBILLING GLOBAL THEME & DARK MODE FORM FALLBACKS
    ========================================================= */
 
 :root {
-    --neon-primary: #00e5ff;
-    --neon-secondary: #00f3ff;
-    --neon-success: #10b981;
-    --neon-warning: #f59e0b;
-    --neon-danger: #ef4444;
-    --neon-info: #0ea5e9;
-    
-    --neon-border: #00e5ff;
+    color-scheme: light;
 }
 
-/* --- BACKGROUND GLOW --- */
-html.dark body, body.dark {
-    background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.08), transparent 35%), #05070D !important;
-}
-html:not(.dark) body:not(.dark) {
-    background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.05), transparent 35%), #F8FAFC !important;
+html.dark,
+body.dark {
+    color-scheme: dark;
 }
 
-/* --- CARDS --- */
-/* Target rounded border containers inside the content area */
-.ds-main-content .rounded-lg.border,
-.ds-main-content .rounded-xl.border,
-.ds-main-content .bg-white.border {
-    background: #FFFFFF !important;
-    border-color: rgba(0, 229, 255, 0.18) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
-    transition: all 0.3s ease;
-}
-.ds-main-content .rounded-lg.border:hover,
-.ds-main-content .rounded-xl.border:hover,
-.ds-main-content .bg-white.border:hover {
-    border-color: rgba(0, 229, 255, 0.40) !important;
-    box-shadow: 0 4px 24px rgba(0, 229, 255, 0.10) !important;
+/* Ensure <option> inside <select> is always readable in dark mode */
+.dark select option {
+    background-color: #0f172a;
+    color: #f1f5f9;
 }
 
-.dark .ds-main-content .rounded-lg.border,
-.dark .ds-main-content .rounded-xl.border,
-.dark .ds-main-content .bg-slate-800.border,
-.dark .ds-main-content .bg-slate-900.border {
-    background: rgba(12, 17, 27, 0.92) !important;
-    border-color: rgba(0, 229, 255, 0.22) !important;
-    box-shadow: 0 0 12px rgba(0, 229, 255, 0.06) !important;
-}
-.dark .ds-main-content .rounded-lg.border:hover,
-.dark .ds-main-content .rounded-xl.border:hover,
-.dark .ds-main-content .bg-slate-800.border:hover,
-.dark .ds-main-content .bg-slate-900.border:hover {
-    border-color: rgba(0, 229, 255, 0.45) !important;
-    box-shadow: 0 0 18px rgba(0, 229, 255, 0.12) !important;
-}
-
-/* Exceptions for badges inside cards that might get caught by rounded-lg */
-.ds-main-content span.rounded-lg,
-.ds-main-content span.border,
-.ds-main-content span.rounded-full,
-.ds-main-content svg.rounded-lg {
-    background: inherit !important;
-    border-color: inherit !important;
-    box-shadow: none !important;
-}
-
-/* --- TABLES --- */
-.ds-main-content table {
-    border: 1px solid rgba(0, 229, 255, 0.16) !important;
-    border-collapse: collapse;
-}
-.ds-main-content thead {
-    background: rgba(0, 229, 255, 0.04) !important;
-    border-bottom: 1px solid rgba(0, 229, 255, 0.28) !important;
-}
-.ds-main-content thead th {
-    font-weight: 600 !important;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-}
-.ds-main-content tbody tr {
-    border-bottom: 1px solid rgba(0, 229, 255, 0.08) !important;
-    transition: background 0.2s ease;
-}
-.ds-main-content tbody tr:hover {
-    background: rgba(0, 229, 255, 0.03) !important;
-}
-
-.dark .ds-main-content table {
-    border: 1px solid rgba(0, 229, 255, 0.20) !important;
-}
-.dark .ds-main-content thead {
-    background: rgba(0, 229, 255, 0.06) !important;
-    border-bottom: 1px solid rgba(0, 229, 255, 0.35) !important;
-}
-.dark .ds-main-content tbody tr {
-    border-bottom: 1px solid rgba(0, 229, 255, 0.10) !important;
-}
-.dark .ds-main-content tbody tr:hover {
-    background: rgba(0, 229, 255, 0.05) !important;
-}
-
-/* --- BUTTONS --- */
-.ds-main-content .btn-primary, 
-.ds-main-content button.bg-primary-600,
-.ds-main-content a.bg-primary-600 {
-    background: var(--neon-primary) !important;
-    color: #000000 !important;
-    font-weight: 600;
-    border: none !important;
-    box-shadow: 0 0 12px rgba(0, 229, 255, 0.25) !important;
-    transition: all 0.3s ease;
-}
-.ds-main-content .btn-primary:hover,
-.ds-main-content button.bg-primary-600:hover,
-.ds-main-content a.bg-primary-600:hover {
-    box-shadow: 0 0 18px rgba(0, 229, 255, 0.40) !important;
-    transform: translateY(-1px);
-}
-
-.ds-main-content .btn-secondary {
-    background: transparent !important;
-    border: 1px solid rgba(0, 229, 255, 0.45) !important;
-    color: var(--neon-primary) !important;
-}
-.ds-main-content .btn-secondary:hover {
-    background: rgba(0, 229, 255, 0.08) !important;
-    border-color: var(--neon-primary) !important;
-}
-
-/* --- INPUT & SELECT --- */
-.ds-main-content input:not([type="checkbox"]):not([type="radio"]),
-.ds-main-content select,
-.ds-main-content textarea {
-    transition: all 0.2s ease;
-}
-.ds-main-content input:not([type="checkbox"]):not([type="radio"]):focus,
-.ds-main-content select:focus,
-.ds-main-content textarea:focus {
-    border-color: var(--neon-primary) !important;
-    box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.10), 0 0 10px rgba(0, 229, 255, 0.12) !important;
-    outline: none !important;
-}
-
-/* --- BADGES / STATUS --- */
-.ds-main-content .bg-success-100, .ds-main-content .text-success-700 {
-    background: rgba(16, 185, 129, 0.1) !important;
-    color: var(--neon-success) !important;
-    border: 1px solid rgba(16, 185, 129, 0.3) !important;
-}
-.ds-main-content .bg-warning-100, .ds-main-content .text-warning-700 {
-    background: rgba(245, 158, 11, 0.1) !important;
-    color: var(--neon-warning) !important;
-    border: 1px solid rgba(245, 158, 11, 0.3) !important;
-}
-.ds-main-content .bg-danger-100, .ds-main-content .text-danger-700, .ds-main-content .bg-red-100 {
-    background: rgba(239, 68, 68, 0.1) !important;
-    color: var(--neon-danger) !important;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important;
-}
-
-/* --- MODALS --- */
-.dark .ds-main-content [role="dialog"] .bg-white {
-    background: rgba(12, 17, 27, 0.95) !important;
-    border: 1px solid rgba(0, 229, 255, 0.30) !important;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.50), 0 0 20px rgba(0, 229, 255, 0.08) !important;
-}
-.ds-main-content [role="dialog"] .bg-white {
-    border: 1px solid rgba(0, 229, 255, 0.18) !important;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.10), 0 0 15px rgba(0, 229, 255, 0.05) !important;
-}
-
-/* --- PAGINATION --- */
-.ds-main-content nav[aria-label="Pagination"] span[aria-current="page"] > span {
-    border-color: var(--neon-primary) !important;
-    background: rgba(0, 229, 255, 0.1) !important;
-    color: var(--neon-primary) !important;
-    box-shadow: 0 0 8px rgba(0, 229, 255, 0.15) !important;
-}
-
-/* Exceptions for badges inside cards that might get caught by rounded-lg */
-.ds-main-content .badge,
-.ds-main-content .inline-flex {
-    box-shadow: none !important;
+/* Global responsive safeguard */
+img, svg, video, canvas {
+    max-width: 100%;
 }
 
 /* ====================================================

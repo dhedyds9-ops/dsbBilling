@@ -181,6 +181,8 @@ class Index extends Component
             'warehouses' => $warehouses,
             'branches' => $branches,
             'managers' => $managers,
+            'showFormModal' => $this->showFormModal,
+            'warehouseId' => $this->warehouseId,
         ])->layout('layouts.app', ['title' => 'Data Gudang - dsBilling']);
     }
 }

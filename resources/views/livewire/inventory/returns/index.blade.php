@@ -35,7 +35,7 @@
     {{-- Filter Card --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs">
         <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-            <div class="relative flex-1 min-w-[260px]">
+            <div class="relative flex-1 min-w-0">
                 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input wire:model.live.debounce.300ms="search" type="text"
                        placeholder="Cari no retur, nama pengembali, catatan..."
@@ -43,7 +43,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                <div class="min-w-[210px] flex-1 sm:flex-initial">
+                <div class="w-full sm:w-auto sm:min-w-[210px] flex-1 sm:flex-initial">
                     <select wire:model.live="statusFilter"
                             class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                         <option value="">Semua Status Retur</option>
@@ -53,7 +53,7 @@
                     </select>
                 </div>
 
-                <div class="min-w-[210px] flex-1 sm:flex-initial">
+                <div class="w-full sm:w-auto sm:min-w-[210px] flex-1 sm:flex-initial">
                     <select wire:model.live="warehouseFilter"
                             class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200 cursor-pointer">
                         <option value="">Semua Gudang Tujuan</option>
@@ -169,7 +169,7 @@
     {{-- MODAL AJUKAN RETUR --}}
     @if($showCreateModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-4xl w-full p-6 space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
@@ -267,9 +267,9 @@
                                     </div>
 
                                     {{-- Inputs Grid --}}
-                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                                        <div class="md:col-span-5">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Material di Tangan *</label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                        <div class="sm:col-span-5">
+                                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Material di Tangan *</label>
                                             <select wire:model.live="returnItems.{{ $idx }}.custody_id" required
                                                     class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200">
                                                 <option value="">-- Pilih Material di Tangan --</option>
@@ -283,14 +283,14 @@
                                             </select>
                                         </div>
 
-                                        <div class="md:col-span-2">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah Dikembalikan *</label>
+                                        <div class="sm:col-span-2">
+                                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah *</label>
                                             <input wire:model="returnItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" max="{{ $row['max_available'] ?? 9999 }}" required placeholder="1"
                                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200 font-bold">
                                         </div>
 
-                                        <div class="md:col-span-2">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Kondisi Fisik *</label>
+                                        <div class="sm:col-span-2">
+                                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Kondisi *</label>
                                             <select wire:model="returnItems.{{ $idx }}.condition"
                                                     class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200 font-bold">
                                                 <option value="good">Baik / Layak Pakai</option>
@@ -299,8 +299,8 @@
                                             </select>
                                         </div>
 
-                                        <div class="md:col-span-3">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan (Opsional)</label>
+                                        <div class="sm:col-span-3">
+                                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Keterangan (Opsional)</label>
                                             <input wire:model="returnItems.{{ $idx }}.qc_notes" type="text" placeholder="opsional"
                                                    class="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 text-slate-800 dark:text-slate-200">
                                         </div>

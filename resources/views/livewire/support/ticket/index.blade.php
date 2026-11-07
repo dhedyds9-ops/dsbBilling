@@ -595,7 +595,7 @@ $statusLabels = [
                                     Petugas / Teknisi
                                 </label>
                                 <label class="flex items-center gap-1 cursor-pointer text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 select-none" title="Centang untuk menampilkan semua staff termasuk yang belum absen masuk">
-                                    <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                    <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-indigo-500">
                                     <span>Semua Staff</span>
                                 </label>
                             </div>
@@ -786,7 +786,7 @@ $statusLabels = [
                                 Petugas / Teknisi Lapangan
                             </label>
                             <label class="flex items-center gap-1 cursor-pointer text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 select-none">
-                                <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-indigo-500">
                                 <span>Semua Staff</span>
                             </label>
                         </div>

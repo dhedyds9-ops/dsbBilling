@@ -152,6 +152,8 @@ class Index extends Component
             'transfers' => $transfers,
             'technicians' => $technicians,
             'selectedCustody' => $selectedCustody,
+            'activeTab' => $this->activeTab,
+            'showHandoverModal' => $this->showHandoverModal,
         ])->layout('layouts.app', ['title' => 'Distribusi & Serah Terima Material - dsBilling']);
     }
 }

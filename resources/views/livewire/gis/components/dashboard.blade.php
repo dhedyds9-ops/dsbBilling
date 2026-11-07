@@ -69,7 +69,7 @@
         </div>
         <select 
             wire:model.live="selectedArea"
-            class="w-full md:w-auto text-sm noc-input rounded-md shadow-sm bg-[#0d1326] text-gray-100"
+            class="w-full md:w-auto text-sm noc-input rounded-md shadow-sm bg-[#0d1326] dark:bg-slate-900 text-gray-100 dark:text-slate-100"
         >
             <option value="all">Semua Area (Global)</option>
             @foreach($branches ?? [] as $branch)

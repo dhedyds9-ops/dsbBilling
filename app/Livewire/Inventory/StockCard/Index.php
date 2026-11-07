@@ -143,6 +143,9 @@ class Index extends Component
             'totalOut' => $totalOut,
             'currentPhysicalStock' => $currentPhysicalStock,
             'mutations' => $mutations,
+            'typeFilter' => $this->typeFilter,
+            'dateFrom' => $this->dateFrom,
+            'dateTo' => $this->dateTo,
         ])->layout('layouts.app', ['title' => 'Kartu Stok Material - dsBilling']);
     }
 }
