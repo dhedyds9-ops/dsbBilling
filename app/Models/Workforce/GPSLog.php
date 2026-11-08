@@ -11,6 +11,8 @@ class GPSLog extends Model
 {
     use HasFactory;
 
+    protected $table = 'gps_logs';
+
     protected $fillable = [
         'uuid',
         'user_id',

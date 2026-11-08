@@ -158,4 +158,20 @@ Route::post('/v1/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiCont
     ->name('api.employees.sync');
 Route::post('/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiController::class, 'sync']);
 
+// ========================= GENIEACS MOBILE CLIENT API ========================
+Route::prefix('mobile')->name('api.mobile.')->group(function () {
+    Route::post('/login', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'login'])->name('login');
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::prefix('workforce')->name('workforce.')->group(function () {
+            Route::get('/work-orders', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'workOrders'])->name('work-orders');
+            Route::post('/work-orders/{id}/start', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'startWorkOrder'])->where('id', '\d+')->name('work-orders.start');
+            Route::post('/work-orders/{id}/complete', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'completeWorkOrder'])->where('id', '\d+')->name('work-orders.complete');
+            Route::post('/work-orders/{id}/materials', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addMaterialUsage'])->where('id', '\d+')->name('work-orders.materials');
+            Route::post('/gps/log', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'logGPS'])->name('gps.log');
+        });
+    });
+});
+
+
 
