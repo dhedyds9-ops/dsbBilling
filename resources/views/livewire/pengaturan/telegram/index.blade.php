@@ -105,7 +105,7 @@
               <div class="col-span-4"><input type="text" wire:model="chatIds.{{$i}}.id" placeholder="-100xxxxxx (Group) / id pribadi" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100"></div>
               <div class="col-span-3"><input type="text" wire:model="chatIds.{{$i}}.name" placeholder="Label (Nama Group)" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"></div>
               <div class="col-span-2"><select wire:model="chatIds.{{$i}}.type" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"><option value="supergroup">Supergroup</option><option value="group">Group</option><option value="private">Private</option><option value="channel">Channel</option></select></div>
-              <div class="col-span-2"><input type="text" wire:model="chatIds.{{$i}}.events" placeholder="billing,ticket,alarm" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"></div>
+              <div class="col-span-2"><input type="text" wire:model="chatIds.{{$i}}.events" placeholder="ticket,attendance,alarm" class="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"></div>
               <div class="col-span-1 flex items-center gap-1 justify-end">
                 <label class="inline-flex text-xs"><input type="checkbox" wire:model="chatIds.{{$i}}.enabled" class="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"></label>
                 <button type="button" wire:click="removeChatId({{$i}})" class="p-1 text-slate-400 hover:text-red-600 transition-colors">
@@ -114,6 +114,10 @@
               </div>
             </div>
           @endforeach
+        </div>
+        <div class="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm text-indigo-500">info</span>
+          <span><b>Format Events:</b> <code>all</code> (semua), <code>attendance</code> (absen masuk/keluar), <code>ticket</code>, <code>installation</code>, <code>alarm</code>, <code>billing</code>. Kosongkan untuk menerima seluruh notifikasi.</span>
         </div>
       </div>
 
@@ -143,10 +147,16 @@
         <div class="space-y-2 text-sm">
           <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Chat ID Tujuan</label><input type="text" wire:model="testChatId" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono dark:bg-slate-900 dark:text-slate-100" placeholder="-100xxxx / id user"></div>
           <div><label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Pesan</label><textarea wire:model="testMessage" rows="3" class="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"></textarea></div>
-          <button wire:click="sendTest" class="w-full px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md inline-flex items-center justify-center gap-1.5 transition-colors">
-            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">send</span>
-            Kirim Test
-          </button>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button wire:click="sendTest" type="button" class="w-full px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md inline-flex items-center justify-center gap-1.5 transition-colors">
+              <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">send</span>
+              Kirim Test
+            </button>
+            <button wire:click="sendTestAttendance" type="button" class="w-full px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md inline-flex items-center justify-center gap-1.5 transition-colors" title="Uji coba format notifikasi absensi ke Telegram">
+              <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">badge</span>
+              Test Absensi
+            </button>
+          </div>
           @if($testResult)
             <div class="p-2 rounded {{ str_contains(strtolower($testResult),'ok') || str_contains(strtolower($testResult),'true') || str_contains(strtolower($testResult),'berhasil') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' }} text-[11px] font-mono whitespace-pre-wrap break-words max-h-40 overflow-auto">{{ $testResult }}</div>
           @endif

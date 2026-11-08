@@ -117,7 +117,13 @@ class TelegramService
 
             $events = strtolower((string)($chat['events'] ?? ''));
             // Cocokkan eventType atau jika chat mengaktifkan semua event
-            if ($events === '' || str_contains($events, 'all') || str_contains($events, strtolower($eventType)) || ($eventType === 'installation' && str_contains($events, 'ticket'))) {
+            if (
+                $events === '' 
+                || str_contains($events, 'all') 
+                || str_contains($events, strtolower($eventType)) 
+                || ($eventType === 'installation' && str_contains($events, 'ticket'))
+                || ($eventType === 'attendance' && (str_contains($events, 'absen') || str_contains($events, 'workforce') || count($this->chatIds) === 1))
+            ) {
                 $this->sendDirectOrQueue($message, (string)$chat['id'], $parseMode);
             }
         }
@@ -225,6 +231,78 @@ class TelegramService
             . "<i>Mohon tim teknisi mempersiapkan perangkat & material.</i>";
 
         $this->broadcastEvent('installation', $msg, 'HTML');
+    }
+
+    /**
+     * Notifikasi Absensi Staf / Teknisi ke Bot Telegram
+     */
+    public function sendAttendanceNotification(\App\Models\Workforce\Attendance $attendance, string $action = 'check_in'): void
+    {
+        $attendance->loadMissing(['technician.employee', 'technician.branch']);
+        $user = $attendance->technician;
+        if (!$user) return;
+
+        $name = htmlspecialchars((string)$user->name);
+        $role = htmlspecialchars(ucfirst((string)($user->job_title ?: ($user->job_function ?: ($user->roles->first()?->name ?? 'Staff')))));
+        $branchName = htmlspecialchars((string)($user->branch?->name ?? 'Kantor Utama / Pusat'));
+
+        $rawStatus = is_object($attendance->status) 
+            ? ($attendance->status->value ?? (string) $attendance->status) 
+            : (string) $attendance->status;
+
+        $statusLabel = match (strtolower(trim($rawStatus))) {
+            'late' => '🟡 TERLAMBAT (Late)',
+            'checked_out' => '🏁 CHECK-OUT (Selesai Shift)',
+            'permission' => '📋 IZIN (Permit)',
+            'sick' => '🏥 SAKIT (Sick)',
+            'absent' => '❌ ALPHA (Absent)',
+            default => '🟢 TEPAT WAKTU (Hadir)',
+        };
+
+        $dateFormatted = $attendance->date ? \Carbon\Carbon::parse($attendance->date)->translatedFormat('d F Y') : now()->translatedFormat('d F Y');
+        $notes = !empty($attendance->notes) ? htmlspecialchars((string)$attendance->notes) : '';
+
+        if ($action === 'check_out') {
+            $timeOut = $attendance->checked_out_at ? \Carbon\Carbon::parse($attendance->checked_out_at)->format('H:i:s') . ' WIB' : now()->format('H:i:s') . ' WIB';
+            $timeIn = $attendance->checked_in_at ? \Carbon\Carbon::parse($attendance->checked_in_at)->format('H:i:s') . ' WIB' : '-';
+            
+            $gpsLink = '';
+            if ($attendance->check_out_latitude && $attendance->check_out_longitude) {
+                $gpsLink = "📍 <a href=\"https://www.google.com/maps?q={$attendance->check_out_latitude},{$attendance->check_out_longitude}\">Lihat Lokasi GPS Pulang</a>\n";
+            }
+
+            $msg = "🚪 <b>ABSENSI KELUAR (CHECK-OUT)</b>\n\n"
+                . "👤 <b>Nama:</b> {$name}\n"
+                . "💼 <b>Jabatan:</b> {$role}\n"
+                . "🏢 <b>Cabang:</b> {$branchName}\n"
+                . "🗓️ <b>Tanggal:</b> {$dateFormatted}\n"
+                . "⏰ <b>Jam Masuk:</b> {$timeIn}\n"
+                . "⏰ <b>Jam Pulang:</b> {$timeOut}\n"
+                . "📊 <b>Status:</b> 🏁 CHECKED-OUT\n"
+                . ($notes ? "💬 <b>Catatan:</b> {$notes}\n" : "")
+                . ($gpsLink ? "\n{$gpsLink}" : "\n")
+                . "🚀 <i>dsBilling Workforce Bot</i>";
+        } else {
+            $timeIn = $attendance->checked_in_at ? \Carbon\Carbon::parse($attendance->checked_in_at)->format('H:i:s') . ' WIB' : now()->format('H:i:s') . ' WIB';
+
+            $gpsLink = '';
+            if ($attendance->check_in_latitude && $attendance->check_in_longitude) {
+                $gpsLink = "📍 <a href=\"https://www.google.com/maps?q={$attendance->check_in_latitude},{$attendance->check_in_longitude}\">Lihat Lokasi GPS Masuk</a>\n";
+            }
+
+            $msg = "📍 <b>ABSENSI MASUK (CHECK-IN)</b>\n\n"
+                . "👤 <b>Nama:</b> {$name}\n"
+                . "💼 <b>Jabatan:</b> {$role}\n"
+                . "🏢 <b>Cabang:</b> {$branchName}\n"
+                . "🗓️ <b>Tanggal:</b> {$dateFormatted}\n"
+                . "⏰ <b>Waktu Absen:</b> {$timeIn}\n"
+                . "📊 <b>Status:</b> {$statusLabel}\n"
+                . ($notes ? "💬 <b>Catatan:</b> {$notes}\n" : "")
+                . ($gpsLink ? "\n{$gpsLink}" : "\n")
+                . "🚀 <i>dsBilling Workforce Bot</i>";
+        }
+
+        $this->broadcastEvent('attendance', $msg, 'HTML');
     }
 
     public function sendAlarmNotification(string $deviceSN, string $status, string $details): void

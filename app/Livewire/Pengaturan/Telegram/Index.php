@@ -65,6 +65,18 @@ class Index extends AdminComponent
             'content' => "Rekap Harian {{date}}: Income Rp {{daily_income}}, Expense Rp {{daily_expense}}, Net Rp {{daily_net}}. Tickets Open: {{tickets_open}}. User Online: {{online_users}}.",
             'enabled' => true,
         ],
+        [
+            'code' => 'ATTENDANCE_CHECKIN',
+            'name' => 'Notifikasi Absensi Masuk (Check-In)',
+            'content' => "📍 <b>ABSENSI MASUK</b>\n👤 <b>Nama:</b> {{employee_name}}\n💼 <b>Jabatan:</b> {{role}}\n⏰ <b>Waktu:</b> {{time}}\n📊 <b>Status:</b> {{status}}\n💬 <b>Catatan:</b> {{notes}}",
+            'enabled' => true,
+        ],
+        [
+            'code' => 'ATTENDANCE_CHECKOUT',
+            'name' => 'Notifikasi Absensi Keluar (Check-Out)',
+            'content' => "🚪 <b>ABSENSI KELUAR</b>\n👤 <b>Nama:</b> {{employee_name}}\n💼 <b>Jabatan:</b> {{role}}\n⏰ <b>Waktu:</b> {{time}}\n📊 <b>Status:</b> {{status}}\n💬 <b>Catatan:</b> {{notes}}",
+            'enabled' => true,
+        ],
     ];
 
     public string $testChatId = '';
@@ -296,6 +308,49 @@ class Index extends AdminComponent
                 $this->testResult = 'OK: Peringatan Redaman (Msg #' . ($r['message_id'] ?? '?') . ') terkirim ke ' . $this->testChatId . '.';
             } else {
                 $this->testResult = 'Gagal kirim format Redaman: ' . substr($resp->body(), 0, 250);
+            }
+        } catch (\Throwable $e) {
+            $this->testResult = 'ERROR: ' . $e->getMessage();
+        }
+    }
+
+    public function sendTestAttendance(): void
+    {
+        try {
+            if (empty($this->bot['bot_token']) || empty($this->testChatId)) {
+                $this->testResult = 'Isi Bot Token dan Chat ID terlebih dahulu untuk test Absensi.';
+                return;
+            }
+
+            $user = Auth::user();
+            $name = htmlspecialchars($user ? $user->name : 'Teknisi Lapangan Test');
+            $role = 'Teknisi Lapangan';
+            $branch = 'Cabang Utama';
+            $time = now()->format('H:i:s') . ' WIB';
+            $date = now()->translatedFormat('d F Y');
+
+            $message = "📍 <b>[TEST] ABSENSI MASUK (CHECK-IN)</b>\n\n"
+                . "👤 <b>Nama:</b> {$name}\n"
+                . "💼 <b>Jabatan:</b> {$role}\n"
+                . "🏢 <b>Cabang:</b> {$branch}\n"
+                . "🗓️ <b>Tanggal:</b> {$date}\n"
+                . "⏰ <b>Waktu Absen:</b> {$time}\n"
+                . "📊 <b>Status:</b> 🟢 TEPAT WAKTU (Test Uji Coba)\n"
+                . "💬 <b>Catatan:</b> Uji coba notifikasi bot Telegram dsBilling\n"
+                . "📍 <a href=\"https://www.google.com/maps?q=-6.200000,106.816666\">Lihat Lokasi GPS (Google Maps)</a>\n\n"
+                . "🚀 <i>dsBilling Workforce Bot</i>";
+
+            $resp = \Illuminate\Support\Facades\Http::timeout(10)->withOptions(['force_ip_resolve' => 'v4'])->post('https://api.telegram.org/bot' . $this->bot['bot_token'] . '/sendMessage', [
+                'chat_id' => $this->testChatId,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+            ]);
+
+            if ($resp->successful() && ($resp->json('ok') ?? false)) {
+                $r = $resp->json('result') ?? [];
+                $this->testResult = 'OK: Notifikasi Absensi (Msg #' . ($r['message_id'] ?? '?') . ') berhasil terkirim ke ' . $this->testChatId . '.';
+            } else {
+                $this->testResult = 'Gagal kirim test Absensi: ' . substr($resp->body(), 0, 250);
             }
         } catch (\Throwable $e) {
             $this->testResult = 'ERROR: ' . $e->getMessage();

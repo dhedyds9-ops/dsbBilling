@@ -44,12 +44,13 @@ class Attendance extends Model
     }
 
     /**
-     * Otomatis sinkronkan absensi ke MStore setiap kali data disimpan/diperbarui.
+     * Otomatis sinkronkan absensi ke MStore dan kirim notifikasi ke Bot Telegram setiap kali data disimpan/diperbarui.
      */
     protected static function booted(): void
     {
         static::saved(function ($attendance) {
             \App\Services\Workforce\MstoreAttendanceSyncService::sync($attendance);
+            \App\Services\Telegram\TelegramAttendanceNotifier::notify($attendance);
         });
     }
 }
