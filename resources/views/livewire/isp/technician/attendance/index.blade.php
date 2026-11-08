@@ -112,48 +112,126 @@
         <div class="p-5">
             @if(!$attendance)
                 {{-- Belum Check In --}}
+                @php
+                    $homeBranch = auth()->user()?->branch;
+                @endphp
                 <div class="space-y-4">
-                    <div class="text-center py-2">
+                    <div class="text-center py-1">
                         <span class="inline-block px-4 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full text-xs font-black uppercase tracking-wider">
-                            Belum Hadir
+                            Status: Belum Hadir
                         </span>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Catatan (Opsional)</label>
-                        <input type="text" wire:model="notes"
-                               class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"
-                               placeholder="Kondisi kesehatan, alasan, dll...">
+
+                    {{-- Informasi Cabang & Multi-Site Auto-Detect --}}
+                    <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
+                        <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold">
+                            <span class="material-symbols-outlined text-indigo-500 text-[18px]">domain</span>
+                            <span>Cabang Penugasan: <strong>{{ $homeBranch?->name ?? 'Kantor Pusat' }}</strong></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500 leading-normal">
+                            *Sistem mendukung presensi otomatis di <strong>Kantor Pusat maupun seluruh Kantor Cabang resmi</strong> perusahaan yang terdaftar.
+                        </p>
                     </div>
+
+                    {{-- Toggle Penugasan Lapangan / Tugas Luar --}}
+                    <div class="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 flex items-start justify-between gap-3">
+                        <div>
+                            <label for="isFieldAssignment" class="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-indigo-600 text-[18px]">alt_route</span>
+                                Penugasan Luar / Lapangan
+                            </label>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-normal">
+                                Centang jika Anda ditugaskan langsung ke lokasi pelanggan / ODP tanpa mampir ke kantor cabang.
+                            </p>
+                        </div>
+                        <input type="checkbox" id="isFieldAssignment" wire:model.live="isFieldAssignment" class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer mt-0.5">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">
+                            {{ $isFieldAssignment ? 'Catatan Tugas Luar (Wajib)' : 'Catatan Shift (Opsional)' }}
+                        </label>
+                        <input type="text" wire:model="notes"
+                               class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                               placeholder="{{ $isFieldAssignment ? 'Contoh: No. Tiket TKT-102, perbaikan ODP-03...' : 'Kondisi kesehatan, alasan, dll...' }}">
+                    </div>
+
                     <button wire:click="checkIn"
+                            wire:loading.attr="disabled"
+                            wire:target="checkIn"
                             x-bind:disabled="gpsLoading || gpsError"
-                            class="w-full py-4 bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-black text-base flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-lg shadow-emerald-600/30">
-                        <span class="material-symbols-outlined shrink-0" style="font-size:24px">how_to_reg</span>
-                        CHECK IN SEKARANG
+                            class="w-full py-4 bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-black text-base flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-lg shadow-emerald-600/30 cursor-pointer">
+                        <span wire:loading.remove wire:target="checkIn" class="material-symbols-outlined shrink-0" style="font-size:24px">how_to_reg</span>
+                        <span wire:loading wire:target="checkIn" class="material-symbols-outlined shrink-0 animate-spin" style="font-size:24px">progress_activity</span>
+                        <span>CHECK IN SEKARANG</span>
                     </button>
                 </div>
 
             @elseif($attendance && !$attendance->checked_out_at)
-                {{-- Sudah Check In --}}
+                {{-- Sudah Check In (Mode Shift Aktif) --}}
+                @php
+                    $minutesWorked = $attendance->checked_in_at ? \Carbon\Carbon::parse($attendance->checked_in_at)->diffInMinutes(now()) : 0;
+                    $hoursWorked = floor($minutesWorked / 60);
+                    $remMinutes = $minutesWorked % 60;
+                @endphp
                 <div class="space-y-4">
-                    <div class="text-center py-2">
-                        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Check-In Pukul</p>
-                        <div class="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
-                            <span class="material-symbols-outlined" style="font-size:28px">schedule</span>
-                            <span class="text-4xl font-black font-mono">{{ $attendance->checked_in_at->format('H:i') }}</span>
+                    {{-- Status Card: Sedang Bekerja --}}
+                    <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-center">
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-xs font-black uppercase tracking-wider mb-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Shift Kerja Sedang Aktif
                         </div>
+                        <div class="flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-300">
+                            <span class="material-symbols-outlined" style="font-size:28px">schedule</span>
+                            <span class="text-3xl font-black font-mono">{{ $attendance->checked_in_at->format('H:i') }} WIB</span>
+                        </div>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+                            Durasi Dinas: {{ $hoursWorked > 0 ? "{$hoursWorked} jam {$remMinutes} menit" : "{$remMinutes} menit" }}
+                        </p>
+                        @if(!empty($attendance->notes))
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-emerald-100 dark:border-emerald-900/40 truncate">
+                                {{ $attendance->notes }}
+                            </p>
+                        @endif
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Catatan Akhir Hari (Opsional)</label>
-                        <input type="text" wire:model="notes"
-                               class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100"
-                               placeholder="Laporan kegiatan hari ini...">
+
+                    {{-- Tombol Buka Menu Tugas Hari Ini --}}
+                    <a href="{{ route('technician.dashboard') }}" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md transition cursor-pointer">
+                        <span class="material-symbols-outlined text-[20px]">assignment</span>
+                        <span>Buka Menu Tugas & Pekerjaan</span>
+                    </a>
+
+                    {{-- Check-Out Section dengan Proteksi Time-Lock --}}
+                    <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                        @if($minutesWorked < 15)
+                            {{-- Time Lock Safeguard --}}
+                            <div class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex items-start gap-2.5 text-amber-800 dark:text-amber-300 text-xs">
+                                <span class="material-symbols-outlined text-amber-600 text-[20px] shrink-0 mt-0.5">lock_clock</span>
+                                <div>
+                                    <p class="font-bold">Tombol Check-Out Terkunci Sementara</p>
+                                    <p class="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                                        Untuk mencegah salah tekan / double tap, tombol Check-Out baru dapat digunakan minimal 15 menit setelah Check-In (tersisa <strong>{{ 15 - $minutesWorked }} menit</strong> lagi).
+                                    </p>
+                                </div>
+                            </div>
+                        @else
+                            {{-- Tombol Checkout Aktif Setelah 15 Menit --}}
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Catatan Akhir Hari (Opsional)</label>
+                                    <input type="text" wire:model="notes"
+                                           class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                                           placeholder="Laporan pekerjaan hari ini...">
+                                </div>
+                                <button wire:click="promptCheckOut"
+                                        x-bind:disabled="gpsLoading || gpsError"
+                                        class="w-full py-3.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/20 cursor-pointer">
+                                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                                    <span>Selesaikan Shift & Check-Out</span>
+                                </button>
+                            </div>
+                        @endif
                     </div>
-                    <button wire:click="checkOut"
-                            x-bind:disabled="gpsLoading || gpsError"
-                            class="w-full py-4 bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-black text-base flex items-center justify-center gap-2 hover:bg-amber-600 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/30">
-                        <span class="material-symbols-outlined shrink-0" style="font-size:24px">logout</span>
-                        CHECK OUT SEKARANG
-                    </button>
                 </div>
 
             @else
@@ -178,6 +256,39 @@
                 </div>
             @endif
         </div>
+    </div>
+
+    {{-- MODAL DIALOG KONFIRMASI CHECK-OUT --}}
+    @if($confirmingCheckOut && $attendance)
+        @php
+            $mWorked = $attendance->checked_in_at ? \Carbon\Carbon::parse($attendance->checked_in_at)->diffInMinutes(now()) : 0;
+            $hWorked = floor($mWorked / 60);
+            $rMins = $mWorked % 60;
+        @endphp
+        <div class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform transition-all">
+                <div class="p-5 text-center">
+                    <div class="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
+                        <span class="material-symbols-outlined text-[32px]">warning</span>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Konfirmasi Selesai Dinas</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                        Halo <strong>{{ auth()->user()->name }}</strong>, Anda telah berdinas selama <strong>{{ $hWorked > 0 ? "{$hWorked} jam {$rMins} menit" : "{$rMins} menit" }}</strong> hari ini (Masuk pukul {{ $attendance->checked_in_at->format('H:i') }} WIB).<br><br>
+                        Apakah Anda yakin seluruh pekerjaan telah tuntas dan ingin <strong>Check-Out</strong> sekarang?
+                    </p>
+                </div>
+                <div class="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 flex gap-2.5">
+                    <button type="button" wire:click="cancelCheckOut" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="button" wire:click="checkOut" wire:loading.attr="disabled" wire:target="checkOut" class="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span wire:loading.remove wire:target="checkOut">Ya, Check-Out</span>
+                        <span wire:loading wire:target="checkOut" class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
     </div>
 
     {{-- Riwayat 5 Hari --}}
