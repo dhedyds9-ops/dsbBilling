@@ -222,6 +222,18 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/odps', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'odps'])->name('odps.index');
         });
 
+        // Offline Sync & Notifications (Phase 2E)
+        Route::prefix('sync')->name('sync.')->group(function () {
+            Route::get('/bootstrap', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'bootstrap'])->name('bootstrap');
+            Route::post('/offline-batch', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'syncBatch'])->name('offline-batch');
+        });
+
+        Route::prefix('notifications')->name('notifications.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'notifications'])->name('index');
+            Route::post('/{id}/read', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'markAsRead'])->where('id', '\d+')->name('read');
+            Route::post('/mark-all-read', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'markAllAsRead'])->name('mark-all-read');
+        });
+
         // ACS TR-069 Proxy (Replaces direct NBI access)
         Route::prefix('acs')->name('acs.')->group(function () {
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'listDevices'])->name('devices.index');
