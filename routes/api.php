@@ -234,6 +234,13 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/mark-all-read', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'markAllAsRead'])->name('mark-all-read');
         });
 
+        // Operational Reports & History (Phase 2F)
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/technician-performance', [\App\Http\Controllers\Api\Mobile\MobileReportsApiController::class, 'technicianPerformance'])->name('technician-performance');
+            Route::get('/material-consumption', [\App\Http\Controllers\Api\Mobile\MobileReportsApiController::class, 'materialConsumption'])->name('material-consumption');
+            Route::get('/activity-logs', [\App\Http\Controllers\Api\Mobile\MobileReportsApiController::class, 'activityLogs'])->name('activity-logs');
+        });
+
         // ACS TR-069 Proxy (Replaces direct NBI access)
         Route::prefix('acs')->name('acs.')->group(function () {
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'listDevices'])->name('devices.index');

@@ -1,0 +1,288 @@
+<?php
+
+namespace App\Http\Controllers\Api\Mobile;
+
+use App\Http\Controllers\Controller;
+use App\Models\Inventory\InventoryCustodyTransfer;
+use App\Models\Inventory\InventoryReturn;
+use App\Models\Workforce\MaterialUsage;
+use App\Models\Workforce\WorkOrder;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class MobileReportsApiController extends Controller
+{
+    /**
+     * Technician Performance & KPI Report.
+     */
+    public function technicianPerformance(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $isManager = $user->hasRole('admin') || $user->hasRole('administrator') || $user->hasRole('manager');
+
+        $period = $request->input('period', 'this_month');
+        $techId = $request->input('technician_id');
+
+        // Scope to self if technician
+        if (!$isManager || empty($techId)) {
+            $targetUserId = $user->id;
+            $targetUserName = $user->name;
+        } else {
+            $targetUserId = (int) $techId;
+            $targetUser = \App\Models\User::withoutGlobalScopes()->find($targetUserId);
+            $targetUserName = $targetUser ? $targetUser->name : "Teknisi #{$targetUserId}";
+        }
+
+        $startDate = $this->resolveStartDate($period);
+
+        $baseQuery = WorkOrder::query()->withoutGlobalScopes()
+            ->where(function ($q) use ($targetUserId) {
+                $q->where('assigned_to', $targetUserId);
+            });
+
+        if ($startDate) {
+            $baseQuery->where('created_at', '>=', $startDate);
+        }
+
+        $totalAssigned = (clone $baseQuery)->count();
+        $totalCompleted = (clone $baseQuery)->whereIn('status', ['completed', 'closed'])->count();
+        $inProgress = (clone $baseQuery)->whereIn('status', ['in_progress', 'started'])->count();
+        $pendingApproval = (clone $baseQuery)->where('status', 'pending_approval')->count();
+        $pending = (clone $baseQuery)->whereIn('status', ['pending', 'assigned'])->count();
+
+        $completionRate = $totalAssigned > 0 ? round(($totalCompleted / $totalAssigned) * 100, 1) : 100.0;
+
+        // Calculate average duration in minutes for completed jobs
+        $completedOrders = (clone $baseQuery)
+            ->whereIn('status', ['completed', 'closed'])
+            ->whereNotNull('started_at')
+            ->whereNotNull('completed_at')
+            ->get();
+
+        $avgMinutes = 0;
+        if ($completedOrders->isNotEmpty()) {
+            $totalMins = 0;
+            foreach ($completedOrders as $ord) {
+                $totalMins += abs($ord->completed_at->diffInMinutes($ord->started_at));
+            }
+            $avgMinutes = round($totalMins / $completedOrders->count());
+        }
+
+        // Breakdown by job type
+        $breakdownByType = [
+            'installation' => (clone $baseQuery)->where('type', 'installation')->whereIn('status', ['completed', 'closed'])->count(),
+            'repair' => (clone $baseQuery)->whereIn('type', ['repair', 'troubleshoot'])->whereIn('status', ['completed', 'closed'])->count(),
+            'maintenance' => (clone $baseQuery)->where('type', 'maintenance')->whereIn('status', ['completed', 'closed'])->count(),
+            'upgrade' => (clone $baseQuery)->where('type', 'upgrade')->whereIn('status', ['completed', 'closed'])->count(),
+        ];
+
+        // Evaluation label
+        $scoreLabel = match (true) {
+            $completionRate >= 90.0 => 'Sangat Baik (A)',
+            $completionRate >= 75.0 => 'Baik (B)',
+            $completionRate >= 60.0 => 'Cukup (C)',
+            default => 'Perlu Peningkatan (D)',
+        };
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Laporan performa teknisi berhasil dimuat.',
+            'data' => [
+                'technician_id' => $targetUserId,
+                'technician_name' => $targetUserName,
+                'period' => $period,
+                'period_label' => $this->getPeriodLabel($period),
+                'total_assigned' => $totalAssigned,
+                'total_completed' => $totalCompleted,
+                'in_progress' => $inProgress,
+                'pending_approval' => $pendingApproval,
+                'pending' => $pending,
+                'completion_rate_percent' => $completionRate,
+                'avg_duration_minutes' => $avgMinutes,
+                'avg_duration_formatted' => $this->formatMinutes($avgMinutes),
+                'score_label' => $scoreLabel,
+                'breakdown_by_type' => $breakdownByType,
+            ],
+        ]);
+    }
+
+    /**
+     * Material Consumption Report.
+     */
+    public function materialConsumption(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $period = $request->input('period', 'this_month');
+        $startDate = $this->resolveStartDate($period);
+
+        $query = MaterialUsage::query();
+
+        if ($user->hasRole('technician')) {
+            $query->whereHas('workOrder', function ($q) use ($user) {
+                $q->where('assigned_to', $user->id);
+            });
+        }
+
+        if ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        }
+
+        $allUsages = $query->get();
+
+        $totalUsedItems = $allUsages->sum('quantity');
+
+        // Estimate ONT installed
+        $ontCount = $allUsages->filter(function ($item) {
+            $name = strtolower($item->material_name);
+            return str_contains($name, 'ont') || str_contains($name, 'modem') || str_contains($name, 'onu') || str_contains($name, 'zte') || str_contains($name, 'huawei');
+        })->sum('quantity');
+
+        // Estimate Dropcore meters
+        $dropcoreMeters = $allUsages->filter(function ($item) {
+            $name = strtolower($item->material_name);
+            return str_contains($name, 'dropcore') || str_contains($name, 'drop core') || str_contains($name, 'kabel optik');
+        })->sum('quantity');
+
+        // Top materials grouped by name
+        $topMaterials = $allUsages->groupBy('material_name')->map(function ($items, $name) {
+            return [
+                'material_name' => $name,
+                'total_quantity' => $items->sum('quantity'),
+                'usage_count' => $items->count(),
+            ];
+        })->sortByDesc('total_quantity')->values()->take(10);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Laporan pemakaian material berhasil dimuat.',
+            'data' => [
+                'period' => $period,
+                'period_label' => $this->getPeriodLabel($period),
+                'total_materials_used' => (int) $totalUsedItems,
+                'total_ont_installed' => (int) $ontCount,
+                'total_dropcore_meters' => (int) $dropcoreMeters,
+                'top_materials' => $topMaterials,
+            ],
+        ]);
+    }
+
+    /**
+     * Operational Activity Log Feed.
+     */
+    public function activityLogs(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $limit = min(50, (int) $request->input('limit', 25));
+
+        $feed = collect();
+
+        // 1. Work Orders activity (status changes & completions)
+        $workOrdersQuery = WorkOrder::query()->withoutGlobalScopes();
+        if ($user->hasRole('technician')) {
+            $workOrdersQuery->where('assigned_to', $user->id);
+        } elseif (!empty($user->branch_id)) {
+            $workOrdersQuery->where('branch_id', $user->branch_id);
+        }
+
+        $recentOrders = $workOrdersQuery->with(['customer', 'technician'])
+            ->orderByDesc('updated_at')
+            ->limit($limit)
+            ->get();
+
+        foreach ($recentOrders as $wo) {
+            $techName = $wo->technician?->name ?: 'Teknisi';
+            $custName = $wo->customer?->name ?: 'Pelanggan';
+
+            $feed->push([
+                'id' => "wo-{$wo->id}",
+                'category' => 'work_order',
+                'title' => "SPK #{$wo->id}: " . ($wo->title ?: "Tugas Lapangan"),
+                'description' => "Status: {$wo->status}. Teknisi: {$techName} • Pelanggan: {$custName}",
+                'actor_name' => $techName,
+                'badge' => strtoupper($wo->status),
+                'badge_color' => $this->resolveStatusColor($wo->status),
+                'timestamp' => $wo->updated_at?->format('Y-m-d H:i') ?: now()->format('Y-m-d H:i'),
+                'raw_time' => $wo->updated_at ?: now(),
+            ]);
+        }
+
+        // 2. Material usage activity
+        $usagesQuery = MaterialUsage::query()->with(['workOrder']);
+        if ($user->hasRole('technician')) {
+            $usagesQuery->whereHas('workOrder', function ($q) use ($user) {
+                $q->where('assigned_to', $user->id);
+            });
+        }
+        $recentUsages = $usagesQuery->orderByDesc('created_at')->limit($limit)->get();
+
+        foreach ($recentUsages as $mu) {
+            $feed->push([
+                'id' => "mu-{$mu->id}",
+                'category' => 'material',
+                'title' => "Material: {$mu->material_name} (Qty: {$mu->quantity})",
+                'description' => "Digunakan pada SPK #{$mu->work_order_id}" . ($mu->serial_number ? " [SN: {$mu->serial_number}]" : ""),
+                'actor_name' => 'Teknisi',
+                'badge' => 'MATERIAL',
+                'badge_color' => '#10B981',
+                'timestamp' => $mu->created_at?->format('Y-m-d H:i') ?: now()->format('Y-m-d H:i'),
+                'raw_time' => $mu->created_at ?: now(),
+            ]);
+        }
+
+        // Sort all by time descending
+        $sorted = $feed->sortByDesc('raw_time')->values()->take($limit);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Log aktivitas operasional berhasil dimuat.',
+            'count' => $sorted->count(),
+            'data' => $sorted,
+        ]);
+    }
+
+    private function resolveStartDate(string $period): ?Carbon
+    {
+        return match ($period) {
+            'today' => now()->startOfDay(),
+            'this_week' => now()->startOfWeek(),
+            'this_month' => now()->startOfMonth(),
+            'all_time' => null,
+            default => now()->startOfMonth(),
+        };
+    }
+
+    private function getPeriodLabel(string $period): string
+    {
+        return match ($period) {
+            'today' => 'Hari Ini',
+            'this_week' => 'Minggu Ini',
+            'this_month' => 'Bulan Ini (' . now()->translatedFormat('F Y') . ')',
+            'all_time' => 'Semua Riwayat',
+            default => 'Bulan Ini',
+        };
+    }
+
+    private function formatMinutes(int $minutes): string
+    {
+        if ($minutes < 60) {
+            return "{$minutes} menit";
+        }
+        $hours = floor($minutes / 60);
+        $rem = $minutes % 60;
+        return $rem > 0 ? "{$hours} jam {$rem} mnt" : "{$hours} jam";
+    }
+
+    private function resolveStatusColor(string $status): string
+    {
+        return match (strtolower($status)) {
+            'completed', 'closed' => '#10B981', // green
+            'in_progress', 'started' => '#3B82F6', // blue
+            'pending_approval' => '#F59E0B', // warning amber
+            'assigned' => '#6366F1', // indigo
+            'cancelled' => '#EF4444', // red
+            default => '#6B7280', // gray
+        };
+    }
+}

@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Inventory\InventoryCustody;
 use App\Models\ISP\Odp;
 use App\Models\Notification\Notification;
+use App\Models\Workforce\MaterialUsage;
 use App\Models\Workforce\WorkOrder;
 use App\Models\Workforce\WorkOrderChecklist;
-use App\Models\Workforce\WorkOrderMaterialUsage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -320,14 +320,13 @@ class MobileSyncApiController extends Controller
         $name = trim((string) ($payload['material_name'] ?? ''));
         if (empty($name)) throw new \Exception("Nama material wajib diisi.");
 
-        WorkOrderMaterialUsage::create([
+        MaterialUsage::create([
+            'uuid' => (string) Str::uuid(),
             'work_order_id' => $woId,
             'material_id' => $payload['material_id'] ?? 'MAT-' . Str::random(6),
             'material_name' => $name,
             'quantity' => (int) ($payload['quantity'] ?? 1),
             'serial_number' => $payload['serial_number'] ?? null,
-            'used_by' => $user->id,
-            'used_at' => now(),
         ]);
     }
 }
