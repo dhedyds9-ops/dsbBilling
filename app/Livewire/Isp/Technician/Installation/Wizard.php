@@ -85,7 +85,7 @@ class Wizard extends Component
 
         $user = auth()->user();
         $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin', 'manager', 'dispatcher']));
-        $this->isRestrictedTechnician = !$isAdmin;
+        $this->isRestrictedTechnician = true; // Kunci total di portal teknisi: semua instalasi harus berbasis SPK/Tiket PSB sah
 
         // Auto pre-populate from query parameters (PSB, Work Order, CRM Installation, or Ticket)
         $customerId = request()->query('customer_id');
@@ -93,37 +93,37 @@ class Wizard extends Component
         $installationId = request()->query('installation_id');
         $requisitionId = request()->query('requisition_id');
 
-        if ($this->isRestrictedTechnician && $user) {
-            // Cek seluruh tugas PSB aktif yang ditugaskan kepada teknisi ini
-            $tickets = \App\Models\Support\Ticket::withoutGlobalScopes()
-                ->where('assigned_to', $user->id)
+        if ($user) {
+            // Cek seluruh tugas PSB aktif (Untuk teknisi: tugas dirinya. Untuk admin penguji: tugas sistem atau dirinya)
+            $ticketQuery = \App\Models\Support\Ticket::withoutGlobalScopes()
                 ->whereIn('category', ['psb', 'installation'])
                 ->whereIn('status', ['open', 'in_progress', 'assigned'])
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
-                ->latest()
-                ->get();
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
 
-            $installations = \App\Models\CRM\Installation::withoutGlobalScopes()
-                ->where(function($q) use ($user) {
-                    $q->where('assigned_to', $user->id)
-                      ->orWhere('technician_id', $user->id);
-                })
+            $installationQuery = \App\Models\CRM\Installation::withoutGlobalScopes()
                 ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
-                ->latest()
-                ->get();
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
 
-            $requisitions = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()
-                ->where('designated_technician_id', $user->id)
+            $requisitionQuery = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()
                 ->where('work_order_type', 'psb')
                 ->whereIn('status', ['approved', 'dispatched'])
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
-                ->latest()
-                ->get();
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
+
+            if (!$isAdmin) {
+                $ticketQuery->where('assigned_to', $user->id);
+                $installationQuery->where(function($q) use ($user) {
+                    $q->where('assigned_to', $user->id)->orWhere('technician_id', $user->id);
+                });
+                $requisitionQuery->where('designated_technician_id', $user->id);
+            }
+
+            $tickets = $ticketQuery->latest()->get();
+            $installations = $installationQuery->latest()->get();
+            $requisitions = $requisitionQuery->latest()->get();
 
             $totalWorkOrders = $tickets->count() + $installations->count() + $requisitions->count();
 
-            // 1. Jika teknisi TIDAK MEMILIKI tugas PSB apapun dan tidak ada parameter tiket sah:
+            // 1. KUNCI TOTAL: Jika tidak ada Surat Tugas / SPK PSB apapun di sistem / untuk teknisi:
             if ($totalWorkOrders === 0 && empty($ticketId) && empty($installationId) && empty($requisitionId)) {
                 $this->hasAccess = false;
                 $this->requireWorkOrderSelection = false;
@@ -133,8 +133,8 @@ class Wizard extends Component
             // 2. Jika ada parameter tiket / SPK di URL:
             if ($ticketId) {
                 $validTicket = $tickets->firstWhere('id', (int) $ticketId)
-                    ?? \App\Models\Support\Ticket::withoutGlobalScopes()->where('id', $ticketId)->where('assigned_to', $user->id)->first();
-                if (!$validTicket) {
+                    ?? \App\Models\Support\Ticket::withoutGlobalScopes()->where('id', $ticketId)->first();
+                if (!$validTicket || (!$isAdmin && $validTicket->assigned_to !== $user->id)) {
                     $this->hasAccess = false;
                     session()->flash('error', 'Tiket Tugas PSB ini tidak ditugaskan kepada Anda atau statusnya sudah selesai.');
                     return;
@@ -142,10 +142,10 @@ class Wizard extends Component
                 $this->selectWorkOrder('ticket', $validTicket->id);
             } elseif ($installationId) {
                 $validInst = $installations->firstWhere('id', (int) $installationId)
-                    ?? \App\Models\CRM\Installation::withoutGlobalScopes()->where('id', $installationId)->where(fn($q) => $q->where('assigned_to', $user->id)->orWhere('technician_id', $user->id))->first();
+                    ?? \App\Models\CRM\Installation::withoutGlobalScopes()->where('id', $installationId)->first();
                 if (!$validInst) {
                     $this->hasAccess = false;
-                    session()->flash('error', 'SPK Pemasangan ini tidak ditugaskan kepada Anda.');
+                    session()->flash('error', 'SPK Pemasangan ini tidak valid atau statusnya sudah selesai.');
                     return;
                 }
                 $this->selectWorkOrder('installation', $validInst->id);
@@ -153,32 +153,16 @@ class Wizard extends Component
                 $validReq = $requisitions->firstWhere('id', (int) $requisitionId);
                 if (!$validReq) {
                     $this->hasAccess = false;
-                    session()->flash('error', 'Permintaan Barang / SPK ini tidak ditugaskan kepada Anda.');
+                    session()->flash('error', 'Permintaan Barang / SPK ini tidak ditemukan atau tidak valid.');
                     return;
                 }
                 $this->selectWorkOrder('requisition', $validReq->id);
             } else {
-                // Teknisi membuka form instalasi langsung tanpa parameter URL:
-                // Kunci form dan wajibkan memilih salah satu tugas yang sudah ditugaskan padanya!
+                // Ada tugas aktif: Wajibkan teknisi memilih tugas terlebih dahulu sebelum mulai
                 $this->requireWorkOrderSelection = true;
                 $this->pendingTickets = $tickets;
                 $this->pendingInstallations = $installations;
                 $this->pendingRequisitions = $requisitions;
-            }
-        } else {
-            // Admin flow:
-            if ($ticketId) {
-                $this->selectWorkOrder('ticket', (int) $ticketId);
-            } elseif ($installationId) {
-                $this->selectWorkOrder('installation', (int) $installationId);
-            } elseif ($requisitionId) {
-                $this->selectWorkOrder('requisition', (int) $requisitionId);
-            } elseif ($customerId) {
-                $cust = Customer::withoutGlobalScopes()->find($customerId);
-                if ($cust) {
-                    $this->customer_id = (string) $cust->id;
-                    $this->is_new_customer = false;
-                }
             }
         }
     }

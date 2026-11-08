@@ -108,9 +108,9 @@
                     </div>
 
                     <div class="mt-4">
-                        <a href="{{ route('technician.installation.register') }}?sn={{ $scannedOnu['serial_number'] }}" class="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm text-sm transition-all active:scale-95">
+                        <a href="{{ route('technician.installation.wizard', ['onu_sn' => $scannedOnu['serial_number']]) }}" class="w-full flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm text-sm transition-all active:scale-95">
                             <span class="material-symbols-outlined notranslate text-[18px]" translate="no">add_circle</span>
-                            Registrasi ONU Ini
+                            Registrasi via Wizard PSB
                         </a>
                     </div>
                 </div>

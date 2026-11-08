@@ -24,9 +24,8 @@ class Register extends Component
 
     public function mount()
     {
-        $this->serialNumber = request()->query('sn', '');
-        $this->olts = Olt::active()->get();
-        $this->odps = Odp::active()->get();
+        // Alihkan registrasi mandiri agar wajib melalui alur Wizard dengan pengawalan SPK
+        return redirect()->route('technician.installation.wizard');
     }
 
     public function registerOnu()

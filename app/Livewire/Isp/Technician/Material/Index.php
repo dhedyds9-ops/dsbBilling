@@ -255,21 +255,16 @@ class Index extends Component
 
                         if ($custody) {
                             $custody->quantity = (float)$custody->quantity + $this->takeQuantity;
-                            $custody->available_quantity = (float)$custody->available_quantity + $this->takeQuantity;
                             $custody->save();
                         } else {
                             InventoryCustody::create([
-                                'company_id' => $user->company_id ?? 1,
                                 'branch_id' => $user->branch_id,
                                 'item_id' => $item->id,
                                 'holder_type' => 'technician',
                                 'holder_id' => $user->id,
                                 'quantity' => $this->takeQuantity,
-                                'available_quantity' => $this->takeQuantity,
                                 'used_quantity' => 0,
                                 'returned_quantity' => 0,
-                                'damaged_quantity' => 0,
-                                'lost_quantity' => 0,
                                 'status' => 'in_custody',
                                 'notes' => 'Pengambilan mandiri via Portal Teknisi',
                             ]);
@@ -362,7 +357,6 @@ class Index extends Component
                             ->first();
 
                         if ($custody) {
-                            $custody->available_quantity = max(0, (float)$custody->available_quantity - $this->usageQuantity);
                             $custody->used_quantity = (float)$custody->used_quantity + $this->usageQuantity;
                             $custody->save();
                         }
@@ -581,13 +575,10 @@ class Index extends Component
                             ->first();
 
                         if ($custody) {
-                            $custody->available_quantity = max(0, (float)$custody->available_quantity - $this->returnQuantity);
                             if ($this->returnAction === 'retur') {
                                 $custody->returned_quantity = (float)$custody->returned_quantity + $this->returnQuantity;
-                            } elseif ($this->returnAction === 'rusak') {
-                                $custody->damaged_quantity = (float)$custody->damaged_quantity + $this->returnQuantity;
                             } else {
-                                $custody->lost_quantity = (float)$custody->lost_quantity + $this->returnQuantity;
+                                $custody->used_quantity = (float)$custody->used_quantity + $this->returnQuantity;
                             }
                             $custody->save();
                         }
@@ -668,11 +659,10 @@ class Index extends Component
 
             // Sinkronkan juga item dari Enterprise Custody jika ada dispatch resmi dari gudang
             try {
-                $custodies = InventoryCustody::with('item')
+                $custodies = InventoryCustody::with(['item', 'itemSerial'])
                     ->where('holder_id', $user->id)
                     ->where('holder_type', 'technician')
-                    ->where('status', 'in_custody')
-                    ->where('available_quantity', '>', 0)
+                    ->activeCustody()
                     ->get();
 
                 $added = false;
@@ -757,6 +747,32 @@ class Index extends Component
             'warehouseMaterials' => $warehouseMaterials,
             'myUsages' => $myUsages,
             'activeTickets' => $activeTickets,
+            'activeTab' => $this->activeTab,
+            'search' => $this->search,
+            'showTakeModal' => $this->showTakeModal,
+            'takeWarehouseMaterialId' => $this->takeWarehouseMaterialId,
+            'takeQuantity' => $this->takeQuantity,
+            'takeNotes' => $this->takeNotes,
+            'showUsageModal' => $this->showUsageModal,
+            'selectedMaterialId' => $this->selectedMaterialId,
+            'usageMaterialName' => $this->usageMaterialName,
+            'usageQuantity' => $this->usageQuantity,
+            'usageUnit' => $this->usageUnit,
+            'usageTicketId' => $this->usageTicketId,
+            'usageNotes' => $this->usageNotes,
+            'showRequestModal' => $this->showRequestModal,
+            'reqMaterialName' => $this->reqMaterialName,
+            'reqQuantity' => $this->reqQuantity,
+            'reqUnit' => $this->reqUnit,
+            'reqReason' => $this->reqReason,
+            'showReturnModal' => $this->showReturnModal,
+            'returnAction' => $this->returnAction,
+            'returnMaterialId' => $this->returnMaterialId,
+            'returnMaterialName' => $this->returnMaterialName,
+            'returnQuantity' => $this->returnQuantity,
+            'returnUnit' => $this->returnUnit,
+            'returnSerial' => $this->returnSerial,
+            'returnReason' => $this->returnReason,
         ]);
     }
 }
