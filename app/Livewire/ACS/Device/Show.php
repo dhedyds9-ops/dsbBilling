@@ -11,9 +11,10 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     public $device;
 
     public $wifiEnabled = true;
+    public $wifiHidden = false;
     public $wifiSsid = '';
     public $wifiPassword = '';
-    public $wifiSecurity = 'WPA2PSK';
+    public $wifiSecurity = 'WPA_WPA2'; // WPA_WPA2, WPA2, WPA, OPEN
     public $showWifiModal = false;
     public $connectedDevices = [];
     public $deviceStatus = [];
@@ -138,139 +139,114 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
         ];
     }
 
+    private function parseOpticalPower($val): ?float
+    {
+        if ($val === null || $val === '' || $val === false) return null;
+        $clean = trim(str_ireplace('dBm', '', (string)$val));
+        if (!is_numeric($clean)) return null;
+        $num = (float)$clean;
+        if ($num == 0.0) return null;
+        if ($num < -500.0 || $num > 500.0) {
+            return round($num / 1000.0, 2);
+        }
+        if ($num < -60.0 || $num > 60.0) {
+            return round($num / 100.0, 2);
+        }
+        if ($num > 0.0 && $num < 10000.0) {
+            // Micro-watts to dBm: 10 * log10(uW / 1000)
+            return round(10.0 * log10($num / 1000.0), 2);
+        }
+        return round($num, 2);
+    }
+
     public function loadDeviceStatus()
     {
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $params = $driver->getDeviceParameters($this->device->uuid);
             
-            $extract = function($path) use ($params) {
-                $parts = explode('.', $path);
-                $node = $params;
-                foreach ($parts as $p) {
-                    if (!is_array($node) || !array_key_exists($p, $node)) return null;
-                    $node = $node[$p];
+            // Flatten all parameters for multi-vendor heuristic lookup (matching genieacs-mobile)
+            $flat = [];
+            $flatten = function ($data, $prefix = '') use (&$flatten, &$flat) {
+                if (!is_array($data)) return;
+                foreach ($data as $k => $v) {
+                    if ($k === '_timestamp' || $k === '_object' || $k === '_writable') continue;
+                    $key = $prefix ? "$prefix.$k" : (string) $k;
+                    if (is_array($v)) {
+                        if (isset($v['_value']) && is_scalar($v['_value'])) {
+                            $flat[$key] = (string) $v['_value'];
+                        }
+                        $flatten($v, $key);
+                    } elseif (is_scalar($v)) {
+                        $flat[$key] = (string) $v;
+                    }
                 }
-                return isset($node['_value']) ? $node['_value'] : null;
             };
+            $flatten($params);
 
-            // PPPoE (Dynamic)
-            $pppoeUser = null;
-            $pppoePass = null;
-            $wanIp = null;
-            $wanMac = null;
+            // 1. RX & TX Optical Power (Multi-Vendor + VirtualParameters + uW log10 conversion)
+            $rawRx = $flat['VirtualParameters.RXPower']
+                ?? $flat['VirtualParameters.redaman']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower']
+                ?? $flat['Device.Optical.1.Transceiver.RxPower']
+                ?? collect($flat)->first(fn($v, $k) => (str_contains($k, 'RXPower') || str_contains($k, 'OpticalRxPower') || str_contains($k, 'RxPower')) && !empty($v));
+            $rxPower = $this->parseOpticalPower($rawRx);
 
-            // Common TR-069 Paths for PON
-            $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower')
-                    ?? $extract('VirtualParameters.RXPower');
-            $txPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower')
-                    ?? $extract('InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower')
-                    ?? $extract('VirtualParameters.TXPower');
+            $rawTx = $flat['VirtualParameters.TXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower']
+                ?? $flat['InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower']
+                ?? $flat['Device.Optical.1.Transceiver.TxPower']
+                ?? collect($flat)->first(fn($v, $k) => (str_contains($k, 'TXPower') || str_contains($k, 'OpticalTxPower') || str_contains($k, 'TxPower')) && !empty($v));
+            $txPower = $this->parseOpticalPower($rawTx);
 
-            // Find WAN IP, MAC, PPPoE, and PON stats dynamically
-            $wanDevices = $params['InternetGatewayDevice']['WANDevice'] ?? $params['Device']['WANDevice'] ?? [];
-            if (is_array($wanDevices)) {
-                foreach ($wanDevices as $wdIndex => $wdNode) {
-                    if (!is_numeric($wdIndex) || !is_array($wdNode)) continue;
-                    
-                    // Try to find RX/TX in WANPONInterfaceConfig dynamically
-                    $ponConfig = $wdNode['WANPONInterfaceConfig'] ?? $wdNode['WANEponInterfaceConfig'] ?? [];
-                    if (is_array($ponConfig)) {
-                        foreach ($ponConfig as $pcIndex => $pcNode) {
-                            if (!is_numeric($pcIndex) || !is_array($pcNode)) continue;
-                            if ($rxPower === null) {
-                                $rxPower = $pcNode['X_ZTE-COM_RxPower']['_value'] ?? $pcNode['X_HW_RxPower']['_value'] ?? $pcNode['RxPower']['_value'] ?? null;
-                            }
-                            if ($txPower === null) {
-                                $txPower = $pcNode['X_ZTE-COM_TxPower']['_value'] ?? $pcNode['X_HW_TxPower']['_value'] ?? $pcNode['TxPower']['_value'] ?? null;
-                            }
-                        }
-                    }
+            // 2. PPPoE Credentials
+            $pppoeUser = $flat['VirtualParameters.pppoeUsername']
+                ?? $flat['VirtualParameters.pppUsername']
+                ?? $flat['VirtualParameters.pppoe_username']
+                ?? $flat['VirtualParameters.Username']
+                ?? $flat['VirtualParameters.getpppoeuser']
+                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'WANPPPConnection') && str_ends_with($k, 'Username') && !empty($v))
+                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'PPP.Interface') && str_ends_with($k, 'Username') && !empty($v))
+                ?? '-';
 
-                    $connDevices = $wdNode['WANConnectionDevice'] ?? [];
-                    if (!is_array($connDevices)) continue;
-                    foreach ($connDevices as $cdIndex => $cdNode) {
-                        if (!is_numeric($cdIndex) || !is_array($cdNode)) continue;
-                        
-                        // Check PPPoE
-                        $ppp = $cdNode['WANPPPConnection'] ?? [];
-                        if (is_array($ppp)) {
-                            foreach ($ppp as $pIndex => $pNode) {
-                                if (!is_numeric($pIndex) || !is_array($pNode)) continue;
-                                if (isset($pNode['ExternalIPAddress']['_value']) && $pNode['ExternalIPAddress']['_value'] && $pNode['ExternalIPAddress']['_value'] !== '0.0.0.0') {
-                                    $wanIp = $pNode['ExternalIPAddress']['_value'];
-                                }
-                                if (isset($pNode['MACAddress']['_value']) && $pNode['MACAddress']['_value']) {
-                                    $wanMac = $pNode['MACAddress']['_value'];
-                                }
-                                if (isset($pNode['Username']['_value']) && $pNode['Username']['_value']) {
-                                    $pppoeUser = $pNode['Username']['_value'];
-                                }
-                                if (isset($pNode['Password']['_value']) && $pNode['Password']['_value']) {
-                                    $pppoePass = $pNode['Password']['_value'];
-                                }
-                            }
-                        }
-                        
-                        // Check IPoE
-                        $ip = $cdNode['WANIPConnection'] ?? [];
-                        if (is_array($ip)) {
-                            foreach ($ip as $iIndex => $iNode) {
-                                if (!is_numeric($iIndex) || !is_array($iNode)) continue;
-                                if (isset($iNode['ExternalIPAddress']['_value']) && $iNode['ExternalIPAddress']['_value'] && $iNode['ExternalIPAddress']['_value'] !== '0.0.0.0') {
-                                    $wanIp = $iNode['ExternalIPAddress']['_value'];
-                                }
-                                if (isset($iNode['MACAddress']['_value']) && $iNode['MACAddress']['_value']) {
-                                    $wanMac = $iNode['MACAddress']['_value'];
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // TR-181 Transceiver fallback
-            if ($rxPower === null) $rxPower = $extract('Device.Optical.1.Transceiver.RxPower');
-            if ($txPower === null) $txPower = $extract('Device.Optical.1.Transceiver.TxPower');
+            $pppoePass = $flat['VirtualParameters.pppoePassword']
+                ?? $flat['VirtualParameters.pppPassword']
+                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'WANPPPConnection') && str_ends_with($k, 'Password') && !empty($v))
+                ?? '-';
 
-            if ($rxPower !== null && is_numeric($rxPower)) {
-                $rxPower = (float)$rxPower;
-                if ($rxPower < -500 || $rxPower > 500) {
-                    $rxPower /= 1000;
-                } elseif ($rxPower < -50 || $rxPower > 50) {
-                    $rxPower /= 100;
-                }
-            }
+            // 3. SuperAdmin (Web GUI) Account Extraction
+            $adminUser = $flat['VirtualParameters.superAdmin']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_TeleComAccount.Username']
+                ?? $flat['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.UserName']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CT-COM_TeleComAccount.Username']
+                ?? $flat['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminName']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername']
+                ?? 'admin';
 
-            if ($txPower !== null && is_numeric($txPower)) {
-                $txPower = (float)$txPower;
-                if ($txPower < -500 || $txPower > 500) {
-                    $txPower /= 1000;
-                } elseif ($txPower < -50 || $txPower > 50) {
-                    $txPower /= 100;
-                }
-            }
+            $adminPass = $flat['VirtualParameters.superPassword']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_TeleComAccount.Password']
+                ?? $flat['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.Password']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CT-COM_TeleComAccount.Password']
+                ?? $flat['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminPassword']
+                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperPassword']
+                ?? $flat['InternetGatewayDevice.UserInterface.Password']
+                ?? 'admin';
 
-            // SSIDs (Dynamic search)
-            $ssid1 = null;
-            $ssid2 = null;
-            $wlanNode = $params['InternetGatewayDevice']['LANDevice']['1']['WLANConfiguration'] ?? $params['Device']['WiFi']['SSID'] ?? [];
-            if (is_array($wlanNode)) {
-                foreach ($wlanNode as $key => $node) {
-                    if (is_numeric($key) && is_array($node)) {
-                        if (isset($node['SSID']['_value']) && $node['SSID']['_value']) {
-                            if ($ssid1 === null) {
-                                $ssid1 = $node['SSID']['_value'];
-                            } elseif ($ssid2 === null && $node['SSID']['_value'] !== $ssid1) {
-                                $ssid2 = $node['SSID']['_value'];
-                            }
-                        }
-                    }
-                }
-            }
+            // 4. Customer Name
+            $customerName = $flat['VirtualParameters.customerName']
+                ?? $flat['VirtualParameters.CustomerName']
+                ?? $flat['VirtualParameters.namaPelanggan']
+                ?? $flat['VirtualParameters.nama']
+                ?? $this->device->customerService?->customer?->name
+                ?? '-';
+
+            // 5. WAN IP & PON MAC
+            $wanIp = $flat['VirtualParameters.pppoeIP']
+                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'ExternalIPAddress') && $v !== '0.0.0.0' && !empty($v))
+                ?? '-';
 
             $cleanMac = function ($val) {
                 if (empty($val) || !is_string($val)) return null;
@@ -288,27 +264,42 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 return null;
             };
 
-            $wanMac = $cleanMac($wanMac)
-                   ?? $cleanMac($extract('VirtualParameters.PonMac'))
-                   ?? $cleanMac($extract('VirtualParameters.ponMac'))
-                   ?? $cleanMac($extract('VirtualParameters.pppoeMac'))
-                   ?? $cleanMac($extract('InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'))
-                   ?? $cleanMac($params['VirtualParameters']['PonMac']['_value'] ?? null)
+            $wanMac = $cleanMac($flat['VirtualParameters.PonMac'] ?? null)
+                   ?? $cleanMac($flat['VirtualParameters.ponMac'] ?? null)
+                   ?? $cleanMac($flat['VirtualParameters.pppoeMac'] ?? null)
+                   ?? $cleanMac($flat['VirtualParameters.MacAddress'] ?? null)
+                   ?? $cleanMac($flat['InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.PonMac'] ?? null)
+                   ?? $cleanMac(collect($flat)->first(fn($v, $k) => str_contains($k, 'MACAddress') && !str_contains($k, 'Host') && !empty($v)))
                    ?? $cleanMac($this->device->mac_address);
 
             if ($wanMac && empty($this->device->mac_address)) {
                 $this->device->update(['mac_address' => $wanMac]);
             }
 
+            // 6. SSIDs (2.4G & 5G)
+            $ssid1 = $flat['VirtualParameters.SSID']
+                ?? $flat['VirtualParameters.WlanSSID']
+                ?? $flat['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID']
+                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'WLANConfiguration.1.SSID') && !empty($v))
+                ?? '-';
+
+            $ssid2 = $flat['InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID']
+                ?? $flat['InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID']
+                ?? collect($flat)->first(fn($v, $k) => (str_contains($k, 'WLANConfiguration.5.SSID') || str_contains($k, 'WLANConfiguration.2.SSID')) && !empty($v))
+                ?? '-';
+
             $this->deviceStatus = [
                 'rx_power' => $rxPower !== null ? round((float)$rxPower, 2) . ' dBm' : '-',
                 'tx_power' => $txPower !== null ? round((float)$txPower, 2) . ' dBm' : '-',
-                'pppoe_username' => is_scalar($pppoeUser) && $pppoeUser ? (string)$pppoeUser : '-',
-                'pppoe_password' => is_scalar($pppoePass) && $pppoePass ? (string)$pppoePass : '-',
-                'ssid_1' => is_scalar($ssid1) && $ssid1 ? (string)$ssid1 : '-',
-                'ssid_2' => is_scalar($ssid2) && $ssid2 ? (string)$ssid2 : '-',
-                'wan_ip' => is_scalar($wanIp) && $wanIp ? (string)$wanIp : '-',
-                'wan_mac' => is_scalar($wanMac) && $wanMac ? (string)$wanMac : '-',
+                'pppoe_username' => (string) $pppoeUser,
+                'pppoe_password' => (string) $pppoePass,
+                'superadmin_user' => (string) $adminUser,
+                'superadmin_password' => (string) $adminPass,
+                'customer_name' => (string) $customerName,
+                'ssid_1' => (string) $ssid1,
+                'ssid_2' => (string) $ssid2,
+                'wan_ip' => (string) $wanIp,
+                'wan_mac' => (string) ($wanMac ?? '-'),
             ];
         } catch (\Exception $e) {
             $this->deviceStatus = [];
@@ -490,36 +481,42 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             $params = $this->cachedDeviceParams;
             
             $wlanIndex = $this->wlanTarget;
+            $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.";
             
-            $this->wifiEnabled = (bool) ($this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.Enable") ?? true);
+            $this->wifiEnabled = (bool) ($this->extractParam($params, $prefix . "Enable") ?? true);
+            
+            $hiddenVal = $this->extractParam($params, $prefix . "SSIDAdvertisementEnabled");
+            $this->wifiHidden = ($hiddenVal === false || $hiddenVal === '0' || $hiddenVal === 0 || $hiddenVal === 'false');
             
             $this->wifiSsid = 
-                $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.SSID")
+                $this->extractParam($params, $prefix . "SSID")
                 ?? $this->extractParam($params, "Device.WiFi.SSID.{$wlanIndex}.SSID")
+                ?? ($wlanIndex == 1 ? ($this->extractParam($params, "VirtualParameters.WlanSSID") ?? $this->extractParam($params, "VirtualParameters.SSID")) : '')
                 ?? '';
             
             $this->wifiPassword = 
-                $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.PreSharedKey.1.KeyPassphrase")
-                ?? $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.KeyPassphrase")
+                $this->extractParam($params, $prefix . "PreSharedKey.1.KeyPassphrase")
+                ?? $this->extractParam($params, $prefix . "KeyPassphrase")
+                ?? $this->extractParam($params, $prefix . "PreSharedKey.1.PreSharedKey")
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase")
+                ?? ($wlanIndex == 1 ? $this->extractParam($params, "VirtualParameters.WlanPassword") : '')
                 ?? '';
 
             $rawSecurity = 
-                $this->extractParam($params, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType")
+                $this->extractParam($params, $prefix . "BeaconType")
                 ?? $this->extractParam($params, "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled")
                 ?? '';
             
-            if (in_array($rawSecurity, ['11i', 'WPA2-Personal'])) {
-                $this->wifiSecurity = 'WPA2PSK';
-            } elseif (in_array($rawSecurity, ['WPAand11i', 'WPA-WPA2-Personal', 'WPA-Personal', 'WPA'])) {
-                $this->wifiSecurity = 'WPAPSKWPA2PSK';
-            } elseif (in_array($rawSecurity, ['Basic', 'WEP-128', 'WEP-64'])) {
-                $this->wifiSecurity = 'Basic';
-            } elseif (in_array($rawSecurity, ['None', 'Open'])) {
-                $this->wifiSecurity = 'None';
+            if (in_array($rawSecurity, ['11i', 'WPA2-Personal', 'WPA2', 'WPA2PSK'])) {
+                $this->wifiSecurity = 'WPA2';
+            } elseif (in_array($rawSecurity, ['WPAand11i', 'WPA-WPA2-Personal', 'WPA/WPA2', 'WPAand11i_Personal', 'WPAPSKWPA2PSK'])) {
+                $this->wifiSecurity = 'WPA_WPA2';
+            } elseif (in_array($rawSecurity, ['WPA', 'WPA-Personal'])) {
+                $this->wifiSecurity = 'WPA';
+            } elseif (in_array($rawSecurity, ['None', 'Open', 'Basic'])) {
+                $this->wifiSecurity = 'OPEN';
             } else {
-                // Default ke WPA2PSK jika format tidak dikenal namun ada nilainya (misal 'WPA3', dll)
-                $this->wifiSecurity = $rawSecurity ? 'WPA2PSK' : 'None';
+                $this->wifiSecurity = 'WPA_WPA2';
             }
             
         } catch (\Exception $e) {
@@ -530,100 +527,28 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     public function saveWifi()
     {
         $this->validate([
-            'wifiSsid' => 'required|string|min:3',
-            'wifiPassword' => 'nullable|string|min:8',
-            'wifiSecurity' => 'required|string',
+            'wifiSsid' => 'required|string|min:2|max:32',
+            'wifiPassword' => $this->wifiSecurity === 'OPEN' ? 'nullable' : 'required|string|min:8|max:63',
+            'wifiSecurity' => 'required|in:WPA_WPA2,WPA2,WPA,OPEN',
         ]);
 
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $wlanIndex = $this->wlanTarget;
-            
-            // Fetch parameter device untuk deteksi path yang benar
-            if (!$this->cachedDeviceParams) {
-                $this->cachedDeviceParams = $driver->getDeviceParameters($this->device->uuid);
-            }
-            $params = $this->cachedDeviceParams;
-            
-            // === KIRIM SSID + PASSWORD DALAM 1 TASK (1 connection_request) ===
-            // Ini jauh lebih cepat daripada 2 task terpisah!
-            $paramsToSet = [];
-            
-            // Deteksi path SSID yang benar
-            $ssidCandidates = [
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.SSID",
-                "Device.WiFi.SSID.{$wlanIndex}.SSID",
-            ];
-            foreach ($ssidCandidates as $path) {
-                if ($this->pathExists($params, $path)) {
-                    $paramsToSet[$path] = $this->wifiSsid;
-                    break;
-                }
-            }
-            // Fallback: tetap coba path pertama
-            if (!isset($paramsToSet[$ssidCandidates[0]]) && !isset($paramsToSet[$ssidCandidates[1]])) {
-                $paramsToSet[$ssidCandidates[0]] = $this->wifiSsid;
-            }
-            
-            // Deteksi path Password yang benar jika password diisi (dan bukan Open)
-            if (!empty($this->wifiPassword) && !in_array($this->wifiSecurity, ['None', 'Basic', 'Open'])) {
-                $passCandidates = [
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.PreSharedKey.1.KeyPassphrase",
-                    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.KeyPassphrase",
-                    "Device.WiFi.AccessPoint.{$wlanIndex}.Security.KeyPassphrase",
-                ];
-                $passSet = false;
-                foreach ($passCandidates as $path) {
-                    if ($this->pathExists($params, $path)) {
-                        $paramsToSet[$path] = $this->wifiPassword;
-                        $passSet = true;
-                        break;
-                    }
-                }
-                // Fallback
-                if (!$passSet && count($passCandidates) > 0) {
-                    $paramsToSet[$passCandidates[0]] = $this->wifiPassword;
-                }
-            }
-            
-            // Translasi Security Mode berdasarkan versi TR
-            $secMode = $this->wifiSecurity;
-            $tr098Modes = [
-                'WPA2PSK' => '11i',
-                'WPAPSKWPA2PSK' => 'WPAand11i',
-                'Basic' => 'Basic',
-                'None' => 'None',
-            ];
-            $tr181Modes = [
-                'WPA2PSK' => 'WPA2-Personal',
-                'WPAPSKWPA2PSK' => 'WPA-WPA2-Personal',
-                'Basic' => 'WEP-128',
-                'None' => 'None',
-            ];
+            $wlanIndex = (int) $this->wlanTarget;
+            $vendor = $this->device->vendor?->name ?? 'default';
 
-            $secCandidates = [
-                "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BeaconType" => $tr098Modes,
-                "Device.WiFi.AccessPoint.{$wlanIndex}.Security.ModeEnabled" => $tr181Modes,
-            ];
+            $success = $driver->updateWifiSsidAndPassword(
+                $this->device->uuid,
+                $this->wifiSsid,
+                $this->wifiSecurity === 'OPEN' ? '' : $this->wifiPassword,
+                $vendor,
+                $wlanIndex,
+                $this->wifiSecurity,
+                $this->wifiHidden,
+                $this->wifiEnabled
+            );
 
-            foreach ($secCandidates as $path => $mapping) {
-                if ($this->pathExists($params, $path)) {
-                    $paramsToSet[$path] = $mapping[$secMode] ?? $secMode;
-                    break;
-                }
-            }
-            // Fallback
-            if (!isset($paramsToSet[array_keys($secCandidates)[0]]) && !isset($paramsToSet[array_keys($secCandidates)[1]])) {
-                $paramsToSet[array_keys($secCandidates)[0]] = $tr098Modes[$secMode] ?? $secMode;
-            }
-            
-            // Dapatkan ID device yang sebenarnya (karena bisa jadi uuid/mac bukan OUI-PC-SN)
-            $trueDeviceId = $params['_id'] ?? $this->device->uuid;
-            
-            // Kirim SSID + Password sekaligus dalam 1 task!
-            $success = $driver->setParameterValues($trueDeviceId, $paramsToSet);
-            
-            // Record task dengan status yang sesuai
+            // Record task
             \App\Models\ACS\DeviceTask::create([
                 'uuid' => (string) \Illuminate\Support\Str::uuid(),
                 'acs_device_id' => $this->device->id,
@@ -633,15 +558,15 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             ]);
 
             if ($success) {
-                session()->flash('success', '✅ SSID dan Password WiFi berhasil dikirim dan diterapkan ke perangkat!');
+                session()->flash('success', "✅ Konfigurasi WiFi SSID {$wlanIndex} ({$this->wifiSsid}) berhasil dikirim ke perangkat modem!");
             } else {
-                session()->flash('error', 'Task terkirim ke GenieACS tapi belum dikonfirmasi. Periksa status task di GenieACS.');
+                session()->flash('warning', 'Task terkirim ke antrean GenieACS. Modem akan memperbarui konfigurasi saat check-in.');
             }
             
             $this->showWifiModal = false;
-            $this->cachedDeviceParams = null; // Reset cache
+            $this->cachedDeviceParams = null;
             $this->device->refresh();
-            $this->loadDeviceStatus(); // Refresh status display
+            $this->loadDeviceStatus();
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengganti WiFi: ' . $e->getMessage());
             $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal mengganti WiFi: ' . $e->getMessage()]);

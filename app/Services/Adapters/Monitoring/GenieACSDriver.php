@@ -782,23 +782,108 @@ JS;
     {
         $params = $this->getDeviceParameters($deviceId);
         
+        // 1. Flatten all parameters to key-value map for robust multi-vendor lookups (similar to genieacs-mobile)
+        $flat = [];
+        $flatten = function ($data, $prefix = '') use (&$flatten, &$flat) {
+            if (!is_array($data)) return;
+            foreach ($data as $k => $v) {
+                if ($k === '_timestamp' || $k === '_object' || $k === '_writable') continue;
+                $key = $prefix ? "$prefix.$k" : (string) $k;
+                if (is_array($v)) {
+                    if (isset($v['_value']) && is_scalar($v['_value'])) {
+                        $flat[$key] = (string) $v['_value'];
+                    }
+                    $flatten($v, $key);
+                } elseif (is_scalar($v)) {
+                    $flat[$key] = (string) $v;
+                }
+            }
+        };
+        $flatten($params);
+
+        // 2. Extract AssociatedDevice RSSI and Band mapping by MAC
+        $assocRssiByMac = [];
+        $assocBandByMac = [];
+        foreach ($flat as $k => $v) {
+            if (str_contains($k, 'AssociatedDevice.') && (str_contains($k, 'MACAddress') || str_contains($k, 'AssociatedDeviceMACAddress'))) {
+                if (preg_match('/WLANConfiguration\.(\d+)\.AssociatedDevice\.(\d+)/i', $k, $m)) {
+                    $wlanIdx = (int) $m[1];
+                    $assocIdx = $m[2];
+                    $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIdx}.AssociatedDevice.{$assocIdx}";
+                    
+                    $macVal = strtoupper(trim($v));
+                    if (!empty($macVal) && $macVal !== '00:00:00:00:00:00') {
+                        $rssiStr = $flat["{$prefix}.X_CMCC_RSSI"] 
+                                ?? $flat["{$prefix}.X_HW_RSSI"] 
+                                ?? $flat["{$prefix}.X_ZTE-COM_RSSI"] 
+                                ?? $flat["{$prefix}.X_CT-COM_RSSI"] 
+                                ?? $flat["{$prefix}.SignalStrength"] 
+                                ?? $flat["{$prefix}.RSSI"] 
+                                ?? null;
+
+                        if ($rssiStr !== null) {
+                            $cleanRssi = (int) trim(str_ireplace('dBm', '', $rssiStr));
+                            if ($cleanRssi >= -110 && $cleanRssi <= -1) {
+                                $assocRssiByMac[$macVal] = $cleanRssi;
+                            }
+                        }
+                        $assocBandByMac[$macVal] = $wlanIdx <= 4 ? "WiFi 2.4G (SSID {$wlanIdx})" : "WiFi 5G (SSID {$wlanIdx})";
+                    }
+                }
+            }
+        }
+
+        // 3. Extract Hosts and merge with AssociatedDevices
         $hosts = [];
+        $seenMacs = [];
+
+        // Check standard Hosts.Host
         $landevices = $params['InternetGatewayDevice']['LANDevice'] ?? [];
         foreach ($landevices as $lanIdx => $lanDev) {
-            if ($lanIdx === '_object' || $lanIdx === '_timestamp' || $lanIdx === '_writable') continue;
+            if ($lanIdx === '_object' || $lanIdx === '_timestamp' || $lanIdx === '_writable' || !is_array($lanDev)) continue;
             
-            if (isset($lanDev['Hosts']['Host'])) {
+            if (isset($lanDev['Hosts']['Host']) && is_array($lanDev['Hosts']['Host'])) {
                 foreach ($lanDev['Hosts']['Host'] as $idx => $host) {
-                    if ($idx === '_object' || $idx === '_timestamp' || $idx === '_writable') continue;
+                    if ($idx === '_object' || $idx === '_timestamp' || $idx === '_writable' || !is_array($host)) continue;
+                    
+                    $mac = isset($host['MACAddress']['_value']) ? $host['MACAddress']['_value'] : (is_scalar($host['MACAddress'] ?? null) ? $host['MACAddress'] : 'Unknown');
+                    $normMac = strtoupper(trim((string)$mac));
+                    if ($normMac !== 'UNKNOWN' && in_array($normMac, $seenMacs, true)) continue;
+                    if ($normMac !== 'UNKNOWN') $seenMacs[] = $normMac;
+
+                    $rssi = $assocRssiByMac[$normMac] ?? null;
+                    $ifType = isset($host['InterfaceType']['_value']) ? $host['InterfaceType']['_value'] : (is_scalar($host['InterfaceType'] ?? null) ? $host['InterfaceType'] : 'Unknown');
+                    $band = $assocBandByMac[$normMac] ?? ($ifType === 'Ethernet' ? 'LAN (Kabel)' : ($rssi !== null ? 'WiFi' : $ifType));
+
                     $hosts[] = [
-                        'MACAddress' => isset($host['MACAddress']['_value']) ? $host['MACAddress']['_value'] : (is_scalar($host['MACAddress'] ?? null) ? $host['MACAddress'] : 'Unknown'),
-                        'IPAddress' => isset($host['IPAddress']['_value']) ? $host['IPAddress']['_value'] : (is_scalar($host['IPAddress'] ?? null) ? $host['IPAddress'] : 'Unknown'),
-                        'HostName' => isset($host['HostName']['_value']) ? $host['HostName']['_value'] : (is_scalar($host['HostName'] ?? null) ? $host['HostName'] : 'Unknown'),
+                        'MACAddress' => $normMac,
+                        'IPAddress' => isset($host['IPAddress']['_value']) ? $host['IPAddress']['_value'] : (is_scalar($host['IPAddress'] ?? null) ? $host['IPAddress'] : '-'),
+                        'HostName' => isset($host['HostName']['_value']) ? $host['HostName']['_value'] : (is_scalar($host['HostName'] ?? null) ? $host['HostName'] : 'Perangkat #' . $idx),
                         'Active' => (($host['Active']['_value'] ?? (is_scalar($host['Active'] ?? null) ? $host['Active'] : '0')) == '1' || ($host['Active']['_value'] ?? (is_scalar($host['Active'] ?? null) ? $host['Active'] : '0')) === true),
-                        'InterfaceType' => isset($host['InterfaceType']['_value']) ? $host['InterfaceType']['_value'] : (is_scalar($host['InterfaceType'] ?? null) ? $host['InterfaceType'] : 'Unknown'),
+                        'InterfaceType' => $band,
                         'Layer1Interface' => isset($host['Layer1Interface']['_value']) ? $host['Layer1Interface']['_value'] : (is_scalar($host['Layer1Interface'] ?? null) ? $host['Layer1Interface'] : 'WLAN'),
+                        'RSSI' => $rssi,
+                        'SignalStrength' => $rssi !== null ? "{$rssi} dBm" : null,
                     ];
                 }
+            }
+        }
+
+        // 4. Also add any AssociatedDevice that wasn't listed in Hosts.Host (e.g. static IP clients or ZTE/Huawei without DHCP lease)
+        foreach ($assocBandByMac as $mac => $band) {
+            if (!in_array($mac, $seenMacs, true)) {
+                $seenMacs[] = $mac;
+                $rssi = $assocRssiByMac[$mac] ?? null;
+                $hosts[] = [
+                    'MACAddress' => $mac,
+                    'IPAddress' => '-',
+                    'HostName' => 'Klien Wi-Fi',
+                    'Active' => true,
+                    'InterfaceType' => $band,
+                    'Layer1Interface' => 'WLAN',
+                    'RSSI' => $rssi,
+                    'SignalStrength' => $rssi !== null ? "{$rssi} dBm" : null,
+                ];
             }
         }
         

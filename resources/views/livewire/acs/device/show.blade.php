@@ -50,17 +50,29 @@
     </div>
 
     {{-- KPI DIAGNOSTICS --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {{-- RX Power --}}
         <div class="relative overflow-x-auto rounded-xl border border-indigo-200 shadow-sm bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/40 dark:to-slate-800 group">
             <div class="p-4 pt-5">
                 <h3 class="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                     <span class="material-symbols-outlined notranslate text-[16px]" translate="no">cable</span> RX Power
                 </h3>
-                <div class="text-2xl font-black {{ isset($deviceStatus['rx_power']) && floatval($deviceStatus['rx_power']) < -26 ? 'text-rose-600' : 'text-indigo-700 dark:text-indigo-300' }} mb-1">
+                <div class="text-2xl font-black {{ isset($deviceStatus['rx_power']) && floatval($deviceStatus['rx_power']) < -26 ? 'text-rose-600' : (isset($deviceStatus['rx_power']) && floatval($deviceStatus['rx_power']) !== 0.0 && floatval($deviceStatus['rx_power']) >= -24 ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-700 dark:text-indigo-300') }} mb-1">
                     {{ $deviceStatus['rx_power'] ?? '-' }}
                 </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400">Redaman Fiber (Optical)</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                    <span>Redaman Fiber</span>
+                    @if(isset($deviceStatus['rx_power']) && $deviceStatus['rx_power'] !== '-')
+                        @php $rxVal = floatval($deviceStatus['rx_power']); @endphp
+                        @if($rxVal < -27)
+                            <span class="text-[10px] font-bold text-rose-600">Kritis</span>
+                        @elseif($rxVal < -24)
+                            <span class="text-[10px] font-bold text-amber-500">Cukup</span>
+                        @else
+                            <span class="text-[10px] font-bold text-emerald-600">Bagus</span>
+                        @endif
+                    @endif
+                </div>
             </div>
         </div>
 
@@ -73,7 +85,7 @@
                 <div class="text-2xl font-black text-sky-700 dark:text-sky-300 mb-1">
                     {{ $deviceStatus['tx_power'] ?? '-' }}
                 </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400">Sinyal Pancar (Optical)</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">Sinyal Pancar PON</div>
             </div>
         </div>
 
@@ -81,12 +93,36 @@
         <div class="relative overflow-x-auto rounded-xl border border-emerald-200 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/40 dark:to-slate-800 group">
             <div class="p-4 pt-5">
                 <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">account_circle</span> PPPoE Account
+                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">account_circle</span> PPPoE WAN
                 </h3>
-                <div class="text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-1 truncate" title="{{ $deviceStatus['pppoe_username'] ?? '-' }}">
+                <div class="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1 truncate" title="{{ $deviceStatus['pppoe_username'] ?? '-' }}">
                     {{ $deviceStatus['pppoe_username'] ?? '-' }}
                 </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Pass: {{ $deviceStatus['pppoe_password'] ?? '***' }}</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center justify-between">
+                    <span>Pass:</span>
+                    <span class="font-bold text-slate-700 dark:text-slate-300">{{ $deviceStatus['pppoe_password'] ?? '***' }}</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- Web GUI SuperAdmin (Teknisi) --}}
+        <div class="relative overflow-x-auto rounded-xl border border-amber-200 shadow-sm bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/40 dark:to-slate-800 group" x-data="{ showPass: false }">
+            <div class="p-4 pt-5">
+                <h3 class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">admin_panel_settings</span> Web SuperAdmin
+                </h3>
+                <div class="text-base font-black text-amber-800 dark:text-amber-200 mb-1 font-mono truncate" title="User: {{ $deviceStatus['superadmin_user'] ?? 'admin' }}">
+                    {{ $deviceStatus['superadmin_user'] ?? 'admin' }}
+                </div>
+                <div class="text-[11px] text-slate-600 dark:text-slate-400 font-mono flex items-center justify-between">
+                    <span>Pass:</span>
+                    <div class="flex items-center gap-1">
+                        <span x-text="showPass ? '{{ $deviceStatus['superadmin_password'] ?? 'admin' }}' : '••••••••'" class="font-bold text-slate-800 dark:text-slate-200"></span>
+                        <button type="button" @click="showPass = !showPass" class="text-amber-600 hover:text-amber-800">
+                            <span class="material-symbols-outlined text-[14px]" x-text="showPass ? 'visibility_off' : 'visibility'">visibility</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -96,10 +132,12 @@
                 <h3 class="text-xs font-bold text-purple-500 dark:text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                     <span class="material-symbols-outlined notranslate text-[16px]" translate="no">wifi</span> WiFi Network
                 </h3>
-                <div class="text-xl font-bold text-purple-700 dark:text-purple-300 mb-1 truncate" title="{{ $deviceStatus['ssid_1'] ?? '-' }}">
+                <div class="text-base font-bold text-purple-700 dark:text-purple-300 mb-1 truncate" title="{{ $deviceStatus['ssid_1'] ?? '-' }}">
                     {{ $deviceStatus['ssid_1'] ?? '-' }}
                 </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">SSID Utama</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate" title="5G: {{ $deviceStatus['ssid_2'] ?? '-' }}">
+                    5G: {{ $deviceStatus['ssid_2'] && $deviceStatus['ssid_2'] !== '-' ? $deviceStatus['ssid_2'] : 'Tidak aktif' }}
+                </div>
             </div>
         </div>
     </div>
@@ -113,6 +151,10 @@
                     Informasi Sistem
                 </div>
                 <div class="divide-y divide-slate-100 dark:divide-slate-700 text-sm">
+                    <div class="p-3 flex justify-between bg-indigo-50/50 dark:bg-indigo-900/10">
+                        <span class="text-slate-500 dark:text-slate-400 font-medium">Pelanggan</span>
+                        <span class="font-bold text-indigo-700 dark:text-indigo-400 truncate max-w-[180px]" title="{{ $deviceStatus['customer_name'] ?? '-' }}">{{ $deviceStatus['customer_name'] ?? '-' }}</span>
+                    </div>
                     <div class="p-3 flex justify-between">
                         <span class="text-slate-500 dark:text-slate-400">Manufacturer</span>
                         <span class="font-medium text-slate-900 dark:text-slate-100">{{ $device->manufacturer ?? '-' }}</span>
@@ -155,39 +197,77 @@
                 <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined notranslate text-emerald-500 dark:text-emerald-400" translate="no" style="font-size:18px">devices</span>
-                        Perangkat yang Terhubung ke Modem
+                        <span>Perangkat Klien Tersambung</span>
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                            {{ count($connectedDevices ?? []) }}
+                        </span>
                     </div>
-                    <button wire:click="loadConnectedDevices" class="text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 flex items-center gap-1">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:14px">refresh</span> Refresh
+                    <button wire:click="loadConnectedDevices" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 flex items-center gap-1">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">refresh</span> Refresh Klien
                     </button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
                         <thead class="{{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} text-xs uppercase text-slate-500 dark:text-slate-400">
                             <tr>
-                                <th class="px-4 py-3 font-semibold">Hostname</th>
+                                <th class="px-4 py-3 font-semibold">Hostname / Nama</th>
                                 <th class="px-4 py-3 font-semibold">IP Address</th>
                                 <th class="px-4 py-3 font-semibold">MAC Address</th>
-                                <th class="px-4 py-3 font-semibold">Koneksi</th>
+                                <th class="px-4 py-3 font-semibold">Jaringan</th>
+                                <th class="px-4 py-3 font-semibold text-right">Sinyal (RSSI)</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                             @forelse($connectedDevices ?? [] as $host)
-                                <tr class="hover:{{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }}">
+                                <tr class="hover:{{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} transition-colors">
                                     <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                                        {{ $host['HostName'] ?? 'Unknown Device' }}
+                                        <div class="flex items-center gap-2">
+                                            @if(str_contains(strtolower($host['InterfaceType'] ?? ''), 'lan') || ($host['Layer1Interface'] ?? '') === 'Ethernet')
+                                                <span class="material-symbols-outlined text-blue-500 text-[18px]">lan</span>
+                                            @else
+                                                <span class="material-symbols-outlined text-indigo-500 text-[18px]">wifi</span>
+                                            @endif
+                                            <span class="truncate max-w-[160px]" title="{{ $host['HostName'] ?? 'Perangkat Klien' }}">
+                                                {{ $host['HostName'] ?? 'Perangkat Klien' }}
+                                            </span>
+                                        </div>
                                     </td>
-                                    <td class="px-4 py-3 font-mono text-xs">{{ $host['IPAddress'] ?? '-' }}</td>
-                                    <td class="px-4 py-3 font-mono text-xs">{{ $host['MACAddress'] ?? '-' }}</td>
+                                    <td class="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-300">
+                                        {{ $host['IPAddress'] ?? '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">
+                                        {{ $host['MACAddress'] ?? '-' }}
+                                    </td>
                                     <td class="px-4 py-3">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                            {{ $host['Layer1Interface'] ?? 'WLAN' }}
+                                        @php
+                                            $ifStr = $host['InterfaceType'] ?? $host['Layer1Interface'] ?? 'WiFi';
+                                            $is5G = str_contains($ifStr, '5G');
+                                            $isLan = str_contains(strtolower($ifStr), 'lan') || $ifStr === 'Ethernet';
+                                        @endphp
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider {{ $isLan ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300' : ($is5G ? 'bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300') }}">
+                                            {{ $ifStr }}
                                         </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        @if(isset($host['RSSI']) && $host['RSSI'] !== null)
+                                            @php
+                                                $rssi = (int) $host['RSSI'];
+                                                $rssiColor = $rssi >= -60 ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : ($rssi >= -74 ? 'text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300' : 'text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300');
+                                            @endphp
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold border {{ $rssiColor }}">
+                                                <span class="material-symbols-outlined text-[13px]">signal_cellular_alt</span>
+                                                <span>{{ $rssi }} dBm</span>
+                                            </span>
+                                        @elseif(str_contains(strtolower($host['InterfaceType'] ?? ''), 'lan'))
+                                            <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400 font-mono">1 Gbps</span>
+                                        @else
+                                            <span class="text-slate-400 text-xs">-</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                                    <td colspan="5" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
                                         <span class="material-symbols-outlined notranslate text-3xl mb-2 text-slate-300" translate="no">wifi_tethering_off</span>
                                         <p>Tidak ada perangkat yang terhubung</p>
                                     </td>
@@ -203,71 +283,96 @@
     {{-- MODAL GANTI WIFI --}}
     @if($showWifiModal)
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800' }} rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
-            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ganti Nama/Pass WiFi</h3>
+        <div class="{{ $isNocLayout ? 'noc-panel-bg noc-border' : 'bg-white dark:bg-slate-800' }} rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[22px]">wifi_settings</span>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Pengaturan WiFi & Sandi Modem</h3>
+                </div>
                 <button wire:click="$set('showWifiModal', false)" class="text-slate-400 hover:text-slate-600 dark:text-slate-400">
                     <span class="material-symbols-outlined notranslate" translate="no">close</span>
                 </button>
             </div>
             
             <form wire:submit.prevent="saveWifi">
-                                <div class="p-5 space-y-4">
-                    <div class="flex items-center justify-between p-3 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} rounded-xl border border-slate-100 dark:border-slate-800">
+                <div class="p-6 space-y-4">
+                    {{-- Toggle Status Radio WiFi --}}
+                    <div class="flex items-center justify-between p-3.5 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} rounded-xl border border-slate-200 dark:border-slate-700">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Status WiFi (SSID)</label>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Aktifkan atau matikan pancaran sinyal WiFi ini.</p>
+                            <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">Pancaran Radio WiFi (Enable)</label>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Aktifkan atau matikan sinyal frekuensi WiFi ini.</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" wire:model="wifiEnabled" class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
                     </div>
                     
                     <div x-data="{ enabled: @entangle('wifiEnabled') }" x-show="enabled" x-collapse class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target WLAN</label>
-                        <select wire:model.live="wlanTarget" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                            @if(!empty($availableWlans))
-                                @foreach($availableWlans as $key => $label)
-                                    <option value="{{ $key }}">{{ $label }}</option>
-                                @endforeach
-                            @else
-                                <option value="1">WLAN 1 (Utama - 2.4GHz)</option>
-                                <option value="5">WLAN 5 (Utama - 5GHz)</option>
-                            @endif
-                        </select>
+                        {{-- Target WLAN (Dual-Band) --}}
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pilih Pita Frekuensi (SSID)</label>
+                            <select wire:model.live="wlanTarget" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
+                                @if(!empty($availableWlans))
+                                    @foreach($availableWlans as $key => $label)
+                                        <option value="{{ $key }}">{{ $label }}</option>
+                                    @endforeach
+                                @else
+                                    <option value="1">SSID 1 (2.4 GHz - Jangkauan Luas)</option>
+                                    <option value="5">SSID 5 (5.8 GHz - Kecepatan Tinggi)</option>
+                                @endif
+                            </select>
+                        </div>
+
+                        {{-- SSID Name --}}
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama WiFi (SSID)</label>
+                            <input type="text" wire:model="wifiSsid" required class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100" placeholder="Contoh: MyWifi_2.4G">
+                            @error('wifiSsid') <span class="text-[11px] text-red-500">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Hide SSID Toggle --}}
+                        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">Sembunyikan SSID (Hide SSID)</label>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Nama WiFi tidak akan muncul di pencarian publik (harus tambah manual).</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" wire:model="wifiHidden" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+
+                        {{-- Security Mode --}}
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Mode Keamanan (Security Mode)</label>
+                            <select wire:model.live="wifiSecurity" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
+                                <option value="WPA_WPA2">WPA/WPA2-PSK Mixed (Rekomendasi - Kompatibel Semua HP)</option>
+                                <option value="WPA2">WPA2-PSK (AES Murni - Sangat Aman)</option>
+                                <option value="WPA">WPA-PSK (TKIP - Khusus Perangkat Lama)</option>
+                                <option value="OPEN">Open / Tanpa Password (Hotspot / Captive Portal)</option>
+                            </select>
+                            @error('wifiSecurity') <span class="text-[11px] text-red-500">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- WiFi Password --}}
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Password WiFi</label>
+                            <input type="text" wire:model="wifiPassword" {{ $wifiSecurity === 'OPEN' ? 'disabled' : '' }}
+                                placeholder="{{ $wifiSecurity === 'OPEN' ? 'Tidak aktif (Mode Tanpa Password)' : 'Minimal 8 karakter' }}"
+                                class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800">
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                {{ $wifiSecurity === 'OPEN' ? 'SSID ini terbuka tanpa sandi.' : 'Minimal 8 karakter. Sandi akan langsung disinkronkan ke GenieACS dan modem.' }}
+                            </p>
+                            @error('wifiPassword') <span class="text-[11px] text-red-500">{{ $message }}</span> @enderror
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nama WiFi (SSID)</label>
-                        <input type="text" wire:model="wifiSsid" required class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                        @error('wifiSsid') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Security Mode</label>
-                        <select wire:model.live="wifiSecurity" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100">
-                            <option value="None">Open / None (Tanpa Password)</option>
-                            <option value="WPA2PSK">WPA2-PSK (Standar / 11i)</option>
-                            <option value="WPAPSKWPA2PSK">WPA/WPA2-PSK (Mixed / WPAand11i)</option>
-                            <option value="Basic">WEP (Tidak Disarankan)</option>
-                        </select>
-                        @error('wifiSecurity') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
-                        <input type="text" wire:model="wifiPassword" {{ $wifiSecurity === 'None' ? 'disabled' : '' }}
-                            placeholder="{{ $wifiSecurity === 'None' ? 'Tidak aktif (Mode Tanpa Password)' : 'Minimal 8 karakter' }}"
-                            class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800">
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                            {{ $wifiSecurity === 'None' ? 'SSID ini terbuka tanpa kata sandi (Hotspot / Captive Portal).' : 'Minimal 8 karakter. Biarkan sama jika tidak ingin mengganti sandi.' }}
-                        </p>
-                        @error('wifiPassword') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
-                    </div>
-                </div></div>
-                <div class="px-5 py-3 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
-                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-sm font-medium {{ $isNocLayout ? 'noc-text noc-panel-bg noc-border hover:noc-panel-bg hover:noc-text' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/50' }} rounded-lg">Batal</button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span> Kirim ke Modem
+                </div>
+
+                <div class="px-6 py-4 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
+                    <button type="button" wire:click="$set('showWifiModal', false)" class="px-4 py-2 text-xs font-bold {{ $isNocLayout ? 'noc-text noc-panel-bg noc-border hover:noc-panel-bg hover:noc-text' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/50' }} rounded-xl">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm flex items-center gap-2">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">send</span> Terapkan ke Modem
                     </button>
                 </div>
             </form>
