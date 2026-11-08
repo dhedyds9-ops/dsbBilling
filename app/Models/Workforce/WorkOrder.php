@@ -2,6 +2,8 @@
 
 namespace App\Models\Workforce;
 
+use App\Models\Master\Branch;
+use App\Models\Support\Ticket;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +16,8 @@ class WorkOrder extends Model
 
     protected $fillable = [
         'uuid',
+        'company_id',
+        'branch_id',
         'type',
         'ticket_id',
         'customer_id',
@@ -21,9 +25,12 @@ class WorkOrder extends Model
         'status',
         'title',
         'description',
+        'notes',
         'scheduled_at',
         'started_at',
         'completed_at',
+        'approved_by',
+        'approved_at',
         'priority',
     ];
 
@@ -31,6 +38,7 @@ class WorkOrder extends Model
         'scheduled_at' => 'datetime',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo
@@ -41,6 +49,21 @@ class WorkOrder extends Model
     public function technician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function ticket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'ticket_id');
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     public function checklists(): HasMany

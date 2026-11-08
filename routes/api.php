@@ -167,13 +167,28 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
         Route::post('/logout', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'logout'])->name('logout');
         Route::get('/me', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'me'])->name('me');
 
-        // Workforce (SPK)
+        // Workforce (SPK) - Phase 2A Operational Workflow
         Route::prefix('workforce')->name('workforce.')->group(function () {
             Route::get('/work-orders', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'workOrders'])->name('work-orders');
+            Route::get('/work-orders/{id}', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'show'])->where('id', '\d+')->name('work-orders.show');
+            Route::post('/work-orders/{id}/assign', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'assign'])->where('id', '\d+')->name('work-orders.assign');
+            Route::post('/work-orders/{id}/status', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'updateStatus'])->where('id', '\d+')->name('work-orders.status');
             Route::post('/work-orders/{id}/start', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'startWorkOrder'])->where('id', '\d+')->name('work-orders.start');
             Route::post('/work-orders/{id}/complete', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'completeWorkOrder'])->where('id', '\d+')->name('work-orders.complete');
             Route::post('/work-orders/{id}/materials', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addMaterialUsage'])->where('id', '\d+')->name('work-orders.materials');
+            Route::get('/technicians', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'technicians'])->name('technicians');
             Route::post('/gps/log', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'logGPS'])->name('gps.log');
+        });
+
+        // Direct aliases for /api/mobile/work-orders
+        Route::prefix('work-orders')->name('work-orders.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'workOrders']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'show'])->where('id', '\d+');
+            Route::post('/{id}/assign', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'assign'])->where('id', '\d+');
+            Route::post('/{id}/status', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'updateStatus'])->where('id', '\d+');
+            Route::post('/{id}/start', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'startWorkOrder'])->where('id', '\d+');
+            Route::post('/{id}/complete', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'completeWorkOrder'])->where('id', '\d+');
+            Route::post('/{id}/materials', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addMaterialUsage'])->where('id', '\d+');
         });
 
         // ACS TR-069 Proxy (Replaces direct NBI access)
