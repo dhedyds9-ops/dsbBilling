@@ -162,6 +162,8 @@ Route::post('/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiControl
 Route::prefix('mobile')->name('api.mobile.')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'login'])->name('login');
     Route::post('/auth/login', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'login'])->name('auth.login');
+    Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('app.check-update');
+    Route::get('/version/check', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'logout'])->name('logout');

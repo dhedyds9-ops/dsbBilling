@@ -293,22 +293,34 @@ class MobileNetworkApiController extends Controller
                         'code' => $customer->code ?? $customer->customer_code ?? null,
                     ];
 
-                    // Find or create CustomerService
+                    // Find or associate CustomerService
                     $cs = CustomerService::withoutGlobalScopes()
                         ->where('customer_id', $customerId)
                         ->first();
 
-                    if (!$cs) {
-                        $cs = new CustomerService();
-                        $cs->customer_id = $customerId;
-                        $cs->uuid = (string) Str::uuid();
-                        $cs->status = 'active';
-                        $cs->branch_id = $user->branch_id;
+                    if ($cs) {
+                        $cs->onu_id = $onu->id;
+                        $cs->tr069_status = 'provisioned';
+                        $cs->save();
+                    } else {
+                        // Attempt to link to contract or existing service if present
+                        try {
+                            $newCs = new CustomerService();
+                            $newCs->customer_id = $customerId;
+                            $newCs->uuid = (string) Str::uuid();
+                            $newCs->status = 'active';
+                            $newCs->branch_id = $user->branch_id;
+                            $newCs->onu_id = $onu->id;
+                            $newCs->tr069_status = 'provisioned';
+                            $newCs->username = 'onu_' . strtolower(substr($sn, -6));
+                            $newCs->password = bcrypt(Str::random(12));
+                            $newCs->contract_id = \DB::table('contracts')->where('customer_id', $customerId)->value('id') ?? 1;
+                            $newCs->service_id = \DB::table('services')->value('id') ?? 1;
+                            $newCs->save();
+                        } catch (\Throwable $e) {
+                            \Log::info("Provision ONT: CustomerService link deferred: " . $e->getMessage());
+                        }
                     }
-
-                    $cs->onu_id = $onu->id;
-                    $cs->tr069_status = 'provisioned';
-                    $cs->save();
                 }
             }
 
