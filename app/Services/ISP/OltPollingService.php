@@ -220,14 +220,19 @@ class OltPollingService
                             $macCleaned = strtoupper(preg_replace('/[^A-F0-9]/i', '', trim($item['mac_address'])));
                             $macAddress = strlen($macCleaned) === 12 ? implode(':', str_split($macCleaned, 2)) : null;
                         }
-                        $onu = Onu::withTrashed()->where('olt_id', $olt->id)
-                            ->where(fn ($q) => $q->where('serial_number', $snNormalized))
+                        // 1. Prioritas Utama: Cari secara global berdasarkan serial_number (karena serial_number unik secara global)
+                        $onu = Onu::withTrashed()
+                            ->where('serial_number', $snNormalized)
                             ->first();
+
+                        // 2. Prioritas Kedua: Cari secara global berdasarkan mac_address jika ada
                         if (!$onu && $macAddress) {
-                            $onu = Onu::withTrashed()->where('olt_id', $olt->id)
-                                ->where(fn ($q) => $q->where('mac_address', $macAddress))
+                            $onu = Onu::withTrashed()
+                                ->where('mac_address', $macAddress)
                                 ->first();
                         }
+
+                        // 3. Prioritas Ketiga: Fallback cari berdasarkan port & index pada OLT ini
                         if (!$onu) {
                             $onu = Onu::withTrashed()->where('olt_id', $olt->id)
                                 ->where('pon_port', $idx)
@@ -242,25 +247,34 @@ class OltPollingService
                         $status = $item['status'] ?? 'unknown';
 
                         if (!$onu) {
-                            $onu = Onu::create([
-                                'olt_id' => $olt->id,
-                                'pon_port' => $idx,
-                                'pon_port_id' => $dbPort ? $dbPort->id : null,
-                                'onu_id_on_olt' => (int)($item['onu_index'] ?? 0),
-                                'serial_number' => $snNormalized,
-                                'mac_address' => $macAddress,
-                                'vendor_id' => $olt->vendor_id,
-                                'name' => !empty($item['name']) ? $item['name'] : ($snNormalized ?: ("ONU-{$idx}-" . ($item['onu_index'] ?? 0))),
-                                'model' => $item['model'] ?? null,
-                                'firmware_version' => $item['firmware_version'] ?? null,
-                                'status' => $status === 'online' ? 'active' : 'inactive',
-                                'provision_status' => 'provisioned',
-                            ]);
-                            
-                            try {
-                                app(\App\Services\ISP\CorrelationService::class)->evaluateOnu($onu);
-                            } catch (\Throwable $e) {
-                                Log::error('CorrelationService evaluateOnu error', ['msg' => $e->getMessage()]);
+                            // Cek sekali lagi sebelum create untuk mencegah race condition duplicate serial_number
+                            $existingWithSn = Onu::withTrashed()->where('serial_number', $snNormalized)->first();
+                            if ($existingWithSn) {
+                                $onu = $existingWithSn;
+                                if ($onu->trashed()) {
+                                    $onu->restore();
+                                }
+                            } else {
+                                $onu = Onu::create([
+                                    'olt_id' => $olt->id,
+                                    'pon_port' => $idx,
+                                    'pon_port_id' => $dbPort ? $dbPort->id : null,
+                                    'onu_id_on_olt' => (int)($item['onu_index'] ?? 0),
+                                    'serial_number' => $snNormalized,
+                                    'mac_address' => $macAddress,
+                                    'vendor_id' => $olt->vendor_id,
+                                    'name' => !empty($item['name']) ? $item['name'] : ($snNormalized ?: ("ONU-{$idx}-" . ($item['onu_index'] ?? 0))),
+                                    'model' => $item['model'] ?? null,
+                                    'firmware_version' => $item['firmware_version'] ?? null,
+                                    'status' => $status === 'online' ? 'active' : 'inactive',
+                                    'provision_status' => 'provisioned',
+                                ]);
+                                
+                                try {
+                                    app(\App\Services\ISP\CorrelationService::class)->evaluateOnu($onu);
+                                } catch (\Throwable $e) {
+                                    Log::error('CorrelationService evaluateOnu error', ['msg' => $e->getMessage()]);
+                                }
                             }
                         }
 
@@ -287,6 +301,7 @@ class OltPollingService
                         $oldStatusEnum = $onu->status;
                         
                         $onuUpdate = [
+                            'olt_id' => $olt->id,
                             'pon_port' => $idx,
                             'pon_port_id' => $dbPort ? $dbPort->id : null,
                             'onu_id_on_olt' => (int)($item['onu_index'] ?? $onu->onu_id_on_olt),
@@ -307,12 +322,65 @@ class OltPollingService
                             $onuUpdate['hardware_version'] = $hardware;
                         }
                         if (!empty($model) && empty($onu->model)) {
-                            $onuUpdate['model'] = $model; } if (!empty($item['name']) && trim((string) $item['name']) !== $snNormalized) { $currentName = trim((string) ($onu->name ?? '')); if ($currentName === '' || strtoupper($currentName) === $snNormalized || str_starts_with($currentName, 'ONU-')) { $onuUpdate['name'] = trim((string) $item['name']); }
+                            $onuUpdate['model'] = $model;
                         }
+                        if (!empty($item['name']) && trim((string) $item['name']) !== $snNormalized) {
+                            $currentName = trim((string) ($onu->name ?? ''));
+                            if ($currentName === '' || strtoupper($currentName) === $snNormalized || str_starts_with($currentName, 'ONU-')) {
+                                $onuUpdate['name'] = trim((string) $item['name']);
+                            }
+                        }
+
+                        // Cegah benturan duplicate unique serial_number
                         if (!empty($snNormalized) && $onu->serial_number !== $snNormalized) {
-                            $onuUpdate['serial_number'] = $snNormalized;
+                            $conflict = Onu::withTrashed()->where('serial_number', $snNormalized)->where('id', '!=', $onu->id)->first();
+                            if ($conflict) {
+                                // Record lain sudah memiliki serial_number ini.
+                                // Alihkan pembaruan ke record $conflict tersebut sebagai representasi fisik modem yang sebenarnya.
+                                $staleOnu = $onu;
+                                $onu = $conflict;
+                                if ($onu->trashed()) {
+                                    $onu->restore();
+                                }
+                                $onuUpdate['serial_number'] = $snNormalized;
+                                if ($staleOnu->id !== $onu->id && empty($staleOnu->customer_service_id)) {
+                                    $staleOnu->update(['status' => 'inactive', 'onu_id_on_olt' => null]);
+                                }
+                            } else {
+                                $onuUpdate['serial_number'] = $snNormalized;
+                            }
                         }
-                        $onu->update($onuUpdate);
+
+                        try {
+                            $onu->update($onuUpdate);
+                        } catch (\Illuminate\Database\QueryException $qe) {
+                            // Self-healing jika terjadi benturan 1062 duplicate key serial number
+                            if ($qe->getCode() == 23000 || str_contains($qe->getMessage(), '1062')) {
+                                $dup = Onu::withTrashed()->where('serial_number', $snNormalized)->where('id', '!=', $onu->id)->first();
+                                if ($dup) {
+                                    unset($onuUpdate['serial_number']);
+                                    $onu->update($onuUpdate);
+                                    if ($dup->trashed()) {
+                                        $dup->restore();
+                                    }
+                                    $dup->update([
+                                        'olt_id' => $olt->id,
+                                        'pon_port' => $idx,
+                                        'pon_port_id' => $dbPort ? $dbPort->id : null,
+                                        'onu_id_on_olt' => (int)($item['onu_index'] ?? $dup->onu_id_on_olt),
+                                        'status' => $newStatusEnum,
+                                        'rx_power_dbm' => $rxDbm,
+                                        'tx_power_dbm' => $txDbm,
+                                        'last_seen_at' => $status === 'online' ? now() : $dup->last_seen_at,
+                                    ]);
+                                    $onu = $dup;
+                                } else {
+                                    throw $qe;
+                                }
+                            } else {
+                                throw $qe;
+                            }
+                        }
 
                         if ($oldStatusEnum !== $newStatusEnum) {
                             $oldSt = $oldStatusEnum === 'active' ? 'online' : 'offline';
