@@ -1,20 +1,20 @@
 <div class="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+    <div class="rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e3a8a 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none" style="color: #ffffff;">
             <span class="material-symbols-outlined text-[240px]">menu_book</span>
         </div>
         <div class="relative z-10">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="space-y-2">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/30 backdrop-blur-md rounded-full border border-indigo-400/30 text-indigo-200 text-xs font-semibold">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style="background-color: rgba(99, 102, 241, 0.25); border: 1px solid rgba(129, 140, 248, 0.4); color: #c7d2fe;">
                         <span class="material-symbols-outlined text-sm">verified</span>
                         <span>Standard Operating Procedure (SOP) Gudang & Logistik v2.0</span>
                     </div>
-                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight" style="color: #ffffff !important;">
                         Panduan Lengkap Operasional Gudang & Inventaris
                     </h1>
-                    <p class="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                    <p class="text-xs sm:text-sm max-w-2xl leading-relaxed" style="color: #cbd5e1 !important;">
                         Buku pedoman resmi untuk staf gudang, logistik, dan admin inventaris dalam mengelola siklus persediaan barang, pengawasan hak milik sementara (*Custody Tracking*), serah terima teknisi/reseller, serta audit berkala.
                     </p>
                 </div>

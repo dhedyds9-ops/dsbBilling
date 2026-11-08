@@ -1,18 +1,18 @@
 <div class="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
+    <div class="rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden" style="background: linear-gradient(135deg, #0f172a 0%, #172554 50%, #1e1b4b 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none" style="color: #ffffff;">
             <span class="material-symbols-outlined text-[200px]">admin_panel_settings</span>
         </div>
         <div class="relative z-10 space-y-2">
-            <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 backdrop-blur-md rounded-full border border-blue-400/30 text-blue-200 text-xs font-semibold">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style="background-color: rgba(59, 130, 246, 0.25); border: 1px solid rgba(96, 165, 250, 0.4); color: #93c5fd;">
                 <span class="material-symbols-outlined text-sm">menu_book</span>
                 <span>Portal Master SOP & Standar Kerja Kantor Pusat dsBilling</span>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight" style="color: #ffffff !important;">
                 Pusat Panduan Operasional Staf & Manajemen
             </h1>
-            <p class="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+            <p class="text-xs sm:text-sm max-w-2xl leading-relaxed" style="color: #cbd5e1 !important;">
                 Pusat pedoman kerja terpadu untuk peran Administrator Sistem, Kasir/Billing, Customer Service (CS/Helpdesk), dan Manajemen Eksekutif.
             </p>
         </div>
@@ -111,7 +111,7 @@
                 </div>
             </div>
 
-            <a href="{{ route('billing.payment.create') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+            <a href="{{ route('billing.payments.create') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
                 <span class="material-symbols-outlined text-sm">point_of_sale</span>
                 <span>Buka Menu Kasir Pembayaran</span>
             </a>

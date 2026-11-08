@@ -2,17 +2,17 @@
 
 <div class="space-y-4 p-4 pb-28 max-w-xl mx-auto">
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
-        <div class="absolute -right-4 -bottom-4 opacity-15 pointer-events-none">
+    <div class="rounded-2xl p-5 shadow-md relative overflow-hidden" style="background: linear-gradient(135deg, #d97706 0%, #ea580c 50%, #b45309 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-4 -bottom-4 opacity-15 pointer-events-none" style="color: #ffffff;">
             <span class="material-symbols-outlined text-[130px]">engineering</span>
         </div>
         <div class="relative z-10 space-y-1.5">
-            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-black/20 rounded-full text-[10px] font-bold tracking-wide uppercase text-amber-200">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase" style="background-color: rgba(0, 0, 0, 0.25); color: #fef3c7;">
                 <span class="material-symbols-outlined text-xs">verified</span>
                 <span>Buku Pedoman Kerja Teknisi ISP</span>
             </div>
-            <h1 class="text-xl font-black">Panduan Operasional Lapangan</h1>
-            <p class="text-[11px] text-amber-100 leading-relaxed">
+            <h1 class="text-xl font-black" style="color: #ffffff !important;">Panduan Operasional Lapangan</h1>
+            <p class="text-[11px] leading-relaxed" style="color: #fef3c7 !important;">
                 Panduan resmi tata cara absensi GPS, penyelesaian tiket pasang baru (PSB), perbaikan gangguan, pemakaian kabel/modem, serta pencatatan bukti kerja.
             </p>
         </div>

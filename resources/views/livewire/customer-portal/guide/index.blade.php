@@ -1,18 +1,18 @@
 <div class="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div class="absolute -right-6 -bottom-6 opacity-15 pointer-events-none">
+    <div class="rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden" style="background: linear-gradient(135deg, #1d4ed8 0%, #4338ca 50%, #1e40af 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-6 -bottom-6 opacity-15 pointer-events-none" style="color: #ffffff;">
             <span class="material-symbols-outlined text-[180px]">contact_support</span>
         </div>
         <div class="relative z-10 space-y-2">
-            <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-blue-100 text-xs font-semibold">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style="background-color: rgba(255, 255, 255, 0.2); color: #dbeafe;">
                 <span class="material-symbols-outlined text-sm">support_agent</span>
                 <span>Pusat Bantuan & Layanan Mandiri Pelanggan</span>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight" style="color: #ffffff !important;">
                 Panduan Layanan Internet Anda
             </h1>
-            <p class="text-xs sm:text-sm text-blue-100 max-w-xl leading-relaxed">
+            <p class="text-xs sm:text-sm max-w-xl leading-relaxed" style="color: #dbeafe !important;">
                 Temukan panduan mudah cara pembayaran tagihan, ganti nama & password WiFi rumah, lapor gangguan internet, dan tips koneksi cepat.
             </p>
         </div>
@@ -144,7 +144,7 @@
                 </div>
             </div>
 
-            <a href="{{ route('customer-portal.support.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition">
+            <a href="{{ route('customer-portal.support.ticket-list') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition">
                 <span class="material-symbols-outlined text-sm">headset_mic</span>
                 <span>Buat Tiket Gangguan</span>
             </a>

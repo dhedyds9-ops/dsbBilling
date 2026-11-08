@@ -1,18 +1,18 @@
 <div class="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-emerald-900 via-teal-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
+    <div class="rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden" style="background: linear-gradient(135deg, #064e3b 0%, #042f2e 50%, #0f172a 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none" style="color: #ffffff;">
             <span class="material-symbols-outlined text-[200px]">storefront</span>
         </div>
         <div class="relative z-10 space-y-2">
-            <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 backdrop-blur-md rounded-full border border-emerald-400/30 text-emerald-200 text-xs font-semibold">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style="background-color: rgba(16, 185, 129, 0.25); border: 1px solid rgba(52, 211, 153, 0.4); color: #a7f3d0;">
                 <span class="material-symbols-outlined text-sm">handshake</span>
                 <span>Portal Kemitraan & RT-RW Net dsBilling</span>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight" style="color: #ffffff !important;">
                 Buku Panduan Mitra Reseller
             </h1>
-            <p class="text-xs sm:text-sm text-emerald-100/80 max-w-2xl leading-relaxed">
+            <p class="text-xs sm:text-sm max-w-2xl leading-relaxed" style="color: #cbd5e1 !important;">
                 Panduan praktis untuk mengelola pelanggan, topup deposit saldo, mencetak voucher hotspot, mengelola stok perangkat di area Anda, dan pemantauan modem via GenieACS.
             </p>
         </div>

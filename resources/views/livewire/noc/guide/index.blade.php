@@ -1,18 +1,18 @@
 <div class="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-slate-950 via-purple-950 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
+    <div class="rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden" style="background: linear-gradient(135deg, #020617 0%, #3b0764 50%, #1e1b4b 100%) !important; color: #ffffff !important;">
+        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none" style="color: #ffffff;">
             <span class="material-symbols-outlined text-[200px]">monitor_heart</span>
         </div>
         <div class="relative z-10 space-y-2">
-            <div class="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 backdrop-blur-md rounded-full border border-purple-400/30 text-purple-200 text-xs font-semibold">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style="background-color: rgba(168, 85, 247, 0.25); border: 1px solid rgba(192, 132, 252, 0.4); color: #e9d5ff;">
                 <span class="material-symbols-outlined text-sm">hub</span>
                 <span>Network Operation Center (NOC) Standard Operating Procedure</span>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight" style="color: #ffffff !important;">
                 Buku Panduan & SOP Network Operation Center (NOC)
             </h1>
-            <p class="text-xs sm:text-sm text-purple-200/80 max-w-2xl leading-relaxed">
+            <p class="text-xs sm:text-sm max-w-2xl leading-relaxed" style="color: #cbd5e1 !important;">
                 Panduan komprehensif untuk tim NOC dalam mengawasi stabilitas infrastruktur jaringan fiber optic, OLT GPON/EPON, Router Core Mikrotik, sistem GenieACS TR-069, serta mitigasi insiden jaringan massal.
             </p>
         </div>
