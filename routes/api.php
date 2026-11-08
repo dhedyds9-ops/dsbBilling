@@ -185,6 +185,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/work-orders/{id}/evidence', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'uploadEvidence'])->where('id', '\d+')->name('work-orders.evidence');
             Route::post('/work-orders/{id}/sign', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'saveSignature'])->where('id', '\d+')->name('work-orders.sign');
             Route::get('/technicians', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'technicians'])->name('technicians');
+            Route::get('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'tickets'])->name('tickets');
             Route::post('/gps/log', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'logGPS'])->name('gps.log');
         });
 
@@ -215,13 +216,28 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/returns', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'returnItems'])->name('returns.create');
         });
 
-        // Device & Network Operations (Phase 2D)
+        // Device & Network Operations (Phase 2D & Parity)
         Route::prefix('network')->name('network.')->group(function () {
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'devices'])->name('devices.index');
             Route::get('/devices/{identifier}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'showDevice'])->name('devices.show');
             Route::post('/devices/provision-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'provisionOnt'])->name('devices.provision');
+            Route::post('/devices/swap-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'swapOnt'])->name('devices.swap');
+            Route::post('/devices/dismantle', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'dismantle'])->name('devices.dismantle');
             Route::get('/devices/{serialNumber}/diagnostics', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'diagnostics'])->name('devices.diagnostics');
             Route::get('/odps', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'odps'])->name('odps.index');
+        });
+
+        // Attendance & Daily Shift (Technician Portal Parity)
+        Route::prefix('attendance')->name('attendance.')->group(function () {
+            Route::get('/today', [\App\Http\Controllers\Api\Mobile\MobileAttendanceApiController::class, 'today'])->name('today');
+            Route::post('/check-in', [\App\Http\Controllers\Api\Mobile\MobileAttendanceApiController::class, 'checkIn'])->name('check-in');
+            Route::post('/check-out', [\App\Http\Controllers\Api\Mobile\MobileAttendanceApiController::class, 'checkOut'])->name('check-out');
+        });
+
+        // Payroll & Salary Slips (Technician Portal Parity)
+        Route::prefix('payroll')->name('payroll.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\MobilePayrollApiController::class, 'index'])->name('index');
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\MobilePayrollApiController::class, 'show'])->where('id', '\d+')->name('show');
         });
 
         // Offline Sync & Notifications (Phase 2E)

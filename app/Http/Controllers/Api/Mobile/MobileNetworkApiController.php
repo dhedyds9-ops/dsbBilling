@@ -471,4 +471,127 @@ class MobileNetworkApiController extends Controller
 
         return $earthRadius * $c;
     }
+
+    /**
+     * One-click ONT Swap for replacing damaged/defective customer ONT in field.
+     * Mirrors Web Portal Swap\Index.php.
+     *
+     * POST /api/mobile/network/devices/swap-ont
+     */
+    public function swapOnt(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'old_serial_number' => 'required|string',
+            'new_serial_number' => 'required|string',
+            'new_mac_address' => 'nullable|string',
+            'new_model' => 'nullable|string',
+            'work_order_id' => 'nullable|integer',
+            'notes' => 'nullable|string',
+        ]);
+
+        $user = $request->user();
+        $oldSn = strtoupper(trim($validated['old_serial_number']));
+        $newSn = strtoupper(trim($validated['new_serial_number']));
+
+        return DB::transaction(function () use ($validated, $user, $oldSn, $newSn) {
+            $oldOnu = Onu::withoutGlobalScopes()->where('serial_number', $oldSn)->firstOrFail();
+
+            // Find or create new ONU
+            $newOnu = Onu::withoutGlobalScopes()->where('serial_number', $newSn)->first();
+            if (!$newOnu) {
+                $newOnu = new Onu();
+                $newOnu->serial_number = $newSn;
+                $newOnu->code = 'ONU-' . substr(preg_replace('/[^A-Z0-9]/', '', $newSn), -6);
+                $newOnu->name = ($validated['new_model'] ?? 'ONT') . ' ' . substr($newSn, -6);
+            }
+
+            // Inherit configurations from old ONU
+            $newOnu->mac_address = !empty($validated['new_mac_address']) ? strtoupper(trim($validated['new_mac_address'])) : $newOnu->mac_address;
+            $newOnu->model = $validated['new_model'] ?? $oldOnu->model;
+            $newOnu->odp_id = $oldOnu->odp_id;
+            $newOnu->wifi_ssid = $oldOnu->wifi_ssid;
+            $newOnu->wifi_password = $oldOnu->wifi_password;
+            $newOnu->status = 'active';
+            $newOnu->provision_status = 'provisioned';
+            $newOnu->branch_id = $oldOnu->branch_id ?? $user->branch_id;
+            $newOnu->updated_by = $user->id;
+            $newOnu->save();
+
+            // Update old ONU status
+            $oldOnu->status = 'replaced';
+            $oldOnu->provision_status = 'unprovisioned';
+            $oldOnu->description = ($oldOnu->description ? $oldOnu->description . "\n" : '') . "[SWAP " . now()->format('Y-m-d H:i') . "] Digantikan oleh {$newSn} oleh {$user->name}. " . ($validated['notes'] ?? '');
+            $oldOnu->save();
+
+            // Re-bind CustomerService from old to new ONU
+            $cs = CustomerService::withoutGlobalScopes()->where('onu_id', $oldOnu->id)->first();
+            if ($cs) {
+                $cs->onu_id = $newOnu->id;
+                $cs->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Penggantian ONT berhasil: [{$oldSn}] -> [{$newSn}]",
+                'data' => [
+                    'old_onu' => [
+                        'serial_number' => $oldOnu->serial_number,
+                        'status' => $oldOnu->status,
+                    ],
+                    'new_onu' => $this->formatOnuDevice($newOnu),
+                    'customer_service_id' => $cs?->id,
+                ],
+            ]);
+        });
+    }
+
+    /**
+     * Dismantle ONT/ONU and equipment upon service termination.
+     * Mirrors Web Portal Dismantle\Index.php.
+     *
+     * POST /api/mobile/network/devices/dismantle
+     */
+    public function dismantle(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'serial_number' => 'required|string',
+            'dismantle_reason' => 'nullable|string',
+            'device_condition' => 'required|in:good,damaged',
+            'checklist' => 'nullable|array',
+            'notes' => 'nullable|string',
+            'work_order_id' => 'nullable|integer',
+        ]);
+
+        $user = $request->user();
+        $sn = strtoupper(trim($validated['serial_number']));
+
+        return DB::transaction(function () use ($validated, $user, $sn) {
+            $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->firstOrFail();
+
+            // Unbind CustomerService
+            $cs = CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
+            if ($cs) {
+                $cs->onu_id = null;
+                $cs->status = 'suspended';
+                $cs->save();
+            }
+
+            $onu->status = $validated['device_condition'] === 'good' ? 'dismantled_good' : 'dismantled_damaged';
+            $onu->odp_id = null;
+            $onu->description = ($onu->description ? $onu->description . "\n" : '') . "[DISMANTLE " . now()->format('Y-m-d H:i') . "] Ditarik oleh {$user->name}. Alasan: " . ($validated['dismantle_reason'] ?? 'Berhenti Berlangganan');
+            $onu->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Perangkat ONT {$sn} berhasil ditarik (Dismantle).",
+                'data' => [
+                    'serial_number' => $onu->serial_number,
+                    'status' => $onu->status,
+                    'device_condition' => $validated['device_condition'],
+                    'checklist' => $validated['checklist'] ?? [],
+                    'customer_id' => $cs?->customer_id,
+                ],
+            ]);
+        });
+    }
 }

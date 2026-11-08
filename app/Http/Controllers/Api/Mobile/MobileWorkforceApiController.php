@@ -770,4 +770,70 @@ class MobileWorkforceApiController extends Controller
 
         return $payload;
     }
+
+    /**
+     * Get troubleshooting tickets assigned to technician or open in branch.
+     * Mirrors Web Portal Tickets\Index.php.
+     *
+     * GET /api/mobile/workforce/tickets
+     */
+    public function tickets(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $isManager = $this->isManagerOrAdmin($user);
+
+        $query = \App\Models\Support\Ticket::withoutGlobalScopes();
+
+        if (!$isManager) {
+            $query->where(function ($q) use ($user) {
+                $q->where('assigned_to', $user->id)
+                  ->orWhere(function ($sub) use ($user) {
+                      $sub->whereNull('assigned_to')
+                          ->whereIn('status', ['open', 'pending']);
+                      if ($user->branch_id) {
+                          $sub->where('branch_id', $user->branch_id);
+                      }
+                  });
+            });
+        } elseif ($user->branch_id && !$user->isSuperAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($search = trim((string) $request->input('q', ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $tickets = $query->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'title' => $t->title,
+                    'description' => $t->description,
+                    'status' => $t->status,
+                    'priority' => $t->priority,
+                    'category' => $t->category,
+                    'customer_id' => $t->customer_id,
+                    'assigned_to' => $t->assigned_to,
+                    'created_at' => $t->created_at?->toIso8601String(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'count' => $tickets->count(),
+            'data' => $tickets,
+        ]);
+    }
 }
