@@ -85,39 +85,51 @@
     </div>
 
     {{-- TOOLBAR & FILTER --}}
-    <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto shrink-0">
-            <a href="{{ route('isp.onus.create') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
-                <span>Tambah ONU</span>
-            </a>
-            <button type="button" wire:click="syncFromOlt" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap" title="Sinkronkan data ONU & Redaman dari OLT">
-                <span class="material-symbols-outlined notranslate text-indigo-500" wire:loading.class="animate-spin" wire:target="syncFromOlt,syncAll,syncOlt" translate="no" style="font-size:18px">sync</span>
-                <span wire:loading.remove wire:target="syncFromOlt,syncAll,syncOlt">Sinkronisasi OLT</span>
-                <span wire:loading wire:target="syncFromOlt,syncAll,syncOlt">Sinkronisasi...</span>
-            </button>
-            <button type="button" wire:click="cleanupDuplicates" wire:confirm="Sistem akan otomatis membersihkan baris ONU duplikat dan mempertahankan data ONU yang valid. Lanjutkan?" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">cleaning_services</span>
-                <span>Bersihkan Duplikat</span>
-            </button>
-            <button type="button" wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline / Orphan ({{ $summary['offline'] ?? 0 }} ONU) dari database lokal?" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete_sweep</span>
-                <span>Hapus Offline</span>
-            </button>
+    <div class="bg-white dark:bg-slate-800 p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+        {{-- Row 1: Action Buttons --}}
+        <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('isp.onus.create') }}" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">add</span>
+                    <span>Tambah ONU</span>
+                </a>
+                <button type="button" wire:click="syncFromOlt" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap" title="Sinkronkan data ONU & Redaman dari OLT">
+                    <span class="material-symbols-outlined notranslate text-indigo-500" wire:loading.class="animate-spin" wire:target="syncFromOlt,syncAll,syncOlt" translate="no" style="font-size:18px">sync</span>
+                    <span wire:loading.remove wire:target="syncFromOlt,syncAll,syncOlt">Sinkronisasi OLT</span>
+                    <span wire:loading wire:target="syncFromOlt,syncAll,syncOlt">Sinkronisasi...</span>
+                </button>
+                <button type="button" wire:click="cleanupDuplicates" wire:confirm="Sistem akan otomatis membersihkan baris ONU duplikat dan mempertahankan data ONU yang valid. Lanjutkan?" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">cleaning_services</span>
+                    <span>Bersihkan Duplikat</span>
+                </button>
+                <button type="button" wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline / Orphan ({{ $summary['offline'] ?? 0 }} ONU) dari database lokal?" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete_sweep</span>
+                    <span>Hapus Offline</span>
+                </button>
+            </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full xl:w-auto">
-            <div class="relative w-full sm:w-60">
+        {{-- Row 2: Search & Filters --}}
+        <div class="flex flex-col lg:flex-row lg:items-center gap-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-700/60">
+            {{-- Search Box --}}
+            <div class="relative flex-1 min-w-[220px]">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">search</span>
                 </span>
                 <input type="text" wire:model.live.debounce.400ms="search"
-                       placeholder="Cari SN, MAC, Pelanggan..."
-                       class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                       placeholder="Cari SN, MAC, Nama ONU, Pelanggan..."
+                       class="w-full pl-9 pr-9 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                @if(!empty($search))
+                    <button type="button" wire:click="$set('search', '')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" title="Hapus Pencarian">
+                        <span class="material-symbols-outlined notranslate" style="font-size:18px">close</span>
+                    </button>
+                @endif
             </div>
-            <div class="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 w-full sm:w-auto">
+
+            {{-- Filters & Reset --}}
+            <div class="flex flex-wrap items-center gap-2">
                 <select wire:model.live="oltFilter"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="">Semua OLT</option>
                     @foreach($olts as $olt)
                         <option value="{{ $olt->id }}">{{ $olt->name }}</option>
@@ -126,7 +138,7 @@
 
                 @if(!empty($oltFilter) && $oltFilter !== 'all')
                     <select wire:model.live="ponFilter"
-                            class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                            class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                         <option value="">Semua PON</option>
                         @foreach($ponPorts as $pon)
                             <option value="{{ $pon->id }}">{{ $pon->name }}</option>
@@ -135,7 +147,7 @@
                 @endif
 
                 <select wire:model.live="statusFilter"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="all">Semua Status</option>
                     <option value="online">Online</option>
                     <option value="offline">Offline</option>
@@ -144,7 +156,7 @@
                 </select>
 
                 <select wire:model.live="perPage"
-                        class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        class="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                     <option value="25">25 / hal</option>
                     <option value="50">50 / hal</option>
                     <option value="100">100 / hal</option>
@@ -154,7 +166,7 @@
                 @if($search !== '' || $statusFilter !== 'all' || $oltFilter !== '' || $ponFilter !== '')
                     <button type="button" wire:click="resetFilters"
                             title="Reset Filter"
-                            class="col-span-2 sm:col-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap">
                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">filter_alt_off</span>
                         <span>Reset</span>
                     </button>
@@ -237,8 +249,11 @@
                                         {{ $onu->serial_number ?: ($onu->code ?: '-') }}
                                     </a>
                                 </div>
-                                @if($onu->name)
-                                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ $onu->name }}</div>
+                                @if($onu->name && strtoupper(trim($onu->name)) !== strtoupper(trim($onu->serial_number ?? '')))
+                                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5" title="Nama / Deskripsi ONU di OLT">
+                                        <span class="text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 rounded">Nama</span>
+                                        <span class="font-mono text-slate-600 dark:text-slate-300">{{ $onu->name }}</span>
+                                    </div>
                                 @endif
                             </td>
                             <td class="px-4 py-3.5 whitespace-nowrap">
