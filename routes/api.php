@@ -213,6 +213,15 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/returns', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'returnItems'])->name('returns.create');
         });
 
+        // Device & Network Operations (Phase 2D)
+        Route::prefix('network')->name('network.')->group(function () {
+            Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'devices'])->name('devices.index');
+            Route::get('/devices/{identifier}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'showDevice'])->name('devices.show');
+            Route::post('/devices/provision-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'provisionOnt'])->name('devices.provision');
+            Route::get('/devices/{serialNumber}/diagnostics', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'diagnostics'])->name('devices.diagnostics');
+            Route::get('/odps', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'odps'])->name('odps.index');
+        });
+
         // ACS TR-069 Proxy (Replaces direct NBI access)
         Route::prefix('acs')->name('acs.')->group(function () {
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'listDevices'])->name('devices.index');
