@@ -139,6 +139,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
             Route::get('/technician-portal/swap-ont', \App\Livewire\Isp\Technician\Swap\Index::class)->name('technician.swap-ont.index');
             Route::get('/technician-portal/diagnostic', \App\Livewire\Isp\Technician\Diagnostic\Index::class)->name('technician.diagnostic.index');
             Route::get('/technician-portal/dismantle', \App\Livewire\Isp\Technician\Dismantle\Index::class)->name('technician.dismantle.index');
+            Route::get('/technician-portal/panduan', \App\Livewire\Isp\Technician\Guide\Index::class)->name('technician.guide.index');
         });
 
         // Private Secure Ticket Photos Stream Endpoint (P0-H1)
@@ -169,6 +170,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
         // ==================== 1. DASHBOARD (TANPA SUBMENU SESUAI SSOT v2.0) ====================
         Route::get('/dashboard', \App\Livewire\Dashboard\Index::class)->name('dashboard');
+        Route::get('/admin/panduan', \App\Livewire\Admin\Guide\Index::class)->name('admin.guide.index');
 
         // ==================== ISP CORE CRUD (EXISTING) ====================
         Route::prefix('isp')->name('isp.')->group(function () {
@@ -480,6 +482,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
                 Route::get('/onus/{onu}', \App\Livewire\NOC\Onu\Show::class)->name('onus.show');
                 Route::get('/pppoe', \App\Livewire\NOC\Pppoe\Index::class)->name('pppoe.index');
                 Route::get('/topology', \App\Livewire\NOC\Topology\Index::class)->name('topology.index');
+                Route::get('/panduan', \App\Livewire\NOC\Guide\Index::class)->name('guide.index');
             });
         });
 
@@ -640,6 +643,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/invoices', $comingSoon)->name('invoices.index');
         Route::get('/payments', $comingSoon)->name('payments.index');
         Route::get('/reports', $comingSoon)->name('reports.index');
+        Route::get('/panduan', \App\Livewire\ResellerPortal\Guide\Index::class)->name('guide.index');
     });
 
     // ==================== CUSTOMER PORTAL ====================
@@ -669,6 +673,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/connection-info', \App\Livewire\CustomerPortal\ConnectionInfo::class)->name('self-service.connection-info');
         Route::get('/speed-test', \App\Livewire\CustomerPortal\SelfService\SpeedTest::class)->name('self-service.speed-test');
         Route::get('/profile', \App\Livewire\CustomerPortal\Profile\Profile::class)->name('profile');
+        Route::get('/panduan', \App\Livewire\CustomerPortal\Guide\Index::class)->name('guide.index');
 
         // Tambahan di self-service
         Route::prefix('self-service')->name('self-service.')->group(function () {

@@ -187,6 +187,11 @@
                     <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 notranslate shrink-0" translate="no" style="font-size:22px">request_quote</span>
                     <span class="text-[11px] font-bold">Slip Gaji</span>
                 </a>
+                <a href="{{ route('technician.guide.index') }}"
+                   class="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 transition-colors border border-indigo-200 dark:border-indigo-800/60 text-center shadow-xs">
+                    <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 notranslate shrink-0" translate="no" style="font-size:22px">menu_book</span>
+                    <span class="text-[11px] font-bold">Panduan</span>
+                </a>
             @endif
         </div>
     </div>

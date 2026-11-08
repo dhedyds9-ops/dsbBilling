@@ -137,6 +137,13 @@
                 @endcan
 
                 <li class="nav-item">
+                    <a href="{{ route('reseller-portal.guide.index') }}" class="nav-link {{ request()->routeIs('reseller-portal.guide.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-book-open"></i>
+                        <p>Buku Panduan</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-headset"></i>
                         <p>Support</p>

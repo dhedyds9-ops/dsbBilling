@@ -276,6 +276,13 @@ class MenuRegistry
                             ['label' => 'Download LoginPage', 'route' => 'pengaturan.loginpage', 'active' => 'pengaturan.loginpage*', 'icon' => 'cloud_download', 'permission' => 'voucher.view'],
                             ['label' => 'Audit Log', 'route' => 'admin.audit-trail.index', 'active' => 'admin.audit-trail.*', 'permission' => 'role.view'],
                         ]
+                    ],
+                    [
+                        'label' => 'Bantuan & SOP',
+                        'icon' => 'menu_book',
+                        'items' => [
+                            ['label' => 'Pusat Panduan & SOP Staf', 'route' => 'admin.guide.index', 'active' => 'admin.guide.*'],
+                        ]
                     ]
                 ]
             ]
@@ -361,6 +368,13 @@ class MenuRegistry
                             ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*'],
                             ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
                         ]
+                    ],
+                    [
+                        'label' => 'Bantuan & SOP',
+                        'icon' => 'menu_book',
+                        'items' => [
+                            ['label' => 'SOP & Panduan NOC', 'route' => 'noc.guide.index', 'active' => 'noc.guide.*'],
+                        ]
                     ]
                 ]
             ]
@@ -427,6 +441,13 @@ class MenuRegistry
                             ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*', 'permission' => 'inventory.custody'],
                             ['label' => 'Catat Pemakaian', 'route' => 'inventory.usage.index', 'active' => 'inventory.usage.*'],
                             ['label' => 'Retur Material', 'route' => 'inventory.returns.index', 'active' => 'inventory.returns.*'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Bantuan & SOP',
+                        'icon' => 'menu_book',
+                        'items' => [
+                            ['label' => 'Panduan Teknisi Lapangan', 'route' => 'technician.guide.index', 'active' => 'technician.guide.*'],
                         ]
                     ]
                 ]
@@ -510,6 +531,13 @@ class MenuRegistry
                             ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*'],
                             ['label' => 'Panduan & SOP Material', 'route' => 'inventory.guide.index', 'active' => 'inventory.guide.*'],
                         ]
+                    ],
+                    [
+                        'label' => 'Bantuan & SOP',
+                        'icon' => 'menu_book',
+                        'items' => [
+                            ['label' => 'Buku Panduan Reseller', 'route' => 'reseller-portal.guide.index', 'active' => 'reseller-portal.guide.*'],
+                        ]
                     ]
                 ]
             ]
@@ -558,6 +586,7 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Tiket Bantuan', 'route' => 'customer-portal.support.ticket-list', 'active' => 'customer-portal.support.ticket-*'],
                             ['label' => 'Hubungi Admin', 'route' => 'customer-portal.support.contact-admin', 'active' => 'customer-portal.support.contact-admin'],
+                            ['label' => 'Buku Panduan Layanan', 'route' => 'customer-portal.guide.index', 'active' => 'customer-portal.guide.*'],
                         ]
                     ],
                     [
