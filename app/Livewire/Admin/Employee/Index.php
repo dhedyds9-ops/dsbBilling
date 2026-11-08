@@ -147,10 +147,12 @@ class Index extends BaseAdminComponent
         $jabatan = $employee->position ?: ($employee->department ?: 'Staff');
         $nama = $employee->name;
 
+        $companyName = Setting::getValue('company.name', 'dsBilling');
+
         $msgText = "Halo *{$nama}*,\n\n"
             . "Berikut informasi akun login sistem Anda:\n"
             . "━━━━━━━━━━━━━━━━━━━━\n"
-            . "🏢 *Aplikasi:* dsBilling & MStore\n"
+            . "🏢 *Aplikasi:* {$companyName}\n"
             . "👤 *Nama:* {$nama}\n"
             . "💼 *Jabatan:* {$jabatan}\n"
             . "🌐 *Link Login:* " . url('/login') . "\n\n"

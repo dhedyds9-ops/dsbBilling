@@ -231,10 +231,12 @@ class Index extends AdminComponent
         $username = $user->username ?: $user->email;
         $nama = $user->name;
 
+        $companyName = \App\Models\Setting::getValue('company.name', 'dsBilling');
+
         $msgText = "Halo *{$nama}*,\n\n"
             . "Berikut informasi akun login sistem Anda:\n"
             . "━━━━━━━━━━━━━━━━━━━━\n"
-            . "🏢 *Aplikasi:* dsBilling & MStore\n"
+            . "🏢 *Aplikasi:* {$companyName}\n"
             . "👤 *Nama:* {$nama}\n"
             . "💼 *Peran/Jabatan:* {$jabatan}\n"
             . "🌐 *Link Login:* " . url('/login') . "\n\n"

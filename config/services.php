@@ -43,6 +43,8 @@ return [
 
     'mstore' => [
         'sync_token' => env('MSTORE_SYNC_TOKEN', env('DSBILLING_SYNC_TOKEN', 'mstore-sync-secret-2026')),
+        'sync_url' => env('MSTORE_ATTENDANCE_SYNC_URL', 'https://ms.mstore.id/api/v1/attendance/sync'),
+        'sync_enabled' => env('MSTORE_SYNC_ENABLED', null),
     ],
 
 ];

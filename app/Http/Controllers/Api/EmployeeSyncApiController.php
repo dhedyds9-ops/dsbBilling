@@ -16,6 +16,36 @@ class EmployeeSyncApiController extends Controller
      */
     public function sync(Request $request): JsonResponse
     {
+        // 0. Domain & Tenant Gating: winets.mstore.id adalah subdomain mandiri (tidak dikaitkan ke ms.mstore.id)
+        $host = '';
+        try {
+            $host = $request->header('X-Forwarded-Host') 
+                ?: $request->header('Host') 
+                ?: $request->getHost();
+        } catch (\Throwable) {}
+
+        if (empty($host) && !empty($_SERVER['HTTP_HOST'])) {
+            $host = $_SERVER['HTTP_HOST'];
+        }
+        if (empty($host) && env('APP_URL')) {
+            $host = parse_url(env('APP_URL'), PHP_URL_HOST) ?: '';
+        }
+
+        $tenantHeader = strtolower((string) ($request->header('X-Tenant') ?: $request->input('tenant') ?: ($_SERVER['TENANT_NAME'] ?? '')));
+
+        if (str_contains(strtolower($host), 'winets') || $tenantHeader === 'winets') {
+            Log::info('Employee sync from MStore rejected/skipped: winets.mstore.id is an independent tenant.', [
+                'host' => $host,
+                'tenant' => $tenantHeader,
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Sinkronisasi karyawan dari MStore dinonaktifkan untuk subdomain mandiri winets.mstore.id. Hanya mstore.mstore.id yang terhubung.',
+            ], 403);
+        }
+
         // 1. Verifikasi Secret Token atau Jaringan Lokal Proxmox
         $clientIp = $request->ip();
         $isLocalPrivateIp = str_starts_with($clientIp, '192.168.') 
