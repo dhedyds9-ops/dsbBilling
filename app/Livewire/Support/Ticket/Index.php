@@ -33,7 +33,7 @@ class Index extends BaseEnterpriseList
     public array $newTicket = [];
     public array $editingTicket = [];
     public string $customerSearch = '';
-    public bool $showAllStaff = false;
+    public bool $showAllStaff = true;
     public string $resolveNote = '';
 
     public function getAssigneeOptionsProperty(): array
@@ -345,7 +345,7 @@ class Index extends BaseEnterpriseList
     {
         $this->resetErrorBag();
         $this->customerSearch = '';
-        $this->showAllStaff = false;
+        $this->showAllStaff = true;
 
         $defaultResellerId = '';
         if (Auth::user()?->hasRole('reseller')) {
@@ -478,6 +478,7 @@ class Index extends BaseEnterpriseList
             'due_date' => $ticket->due_date ? (is_string($ticket->due_date) ? substr($ticket->due_date, 0, 10) : $ticket->due_date->format('Y-m-d')) : '',
             'note' => $ticket->resolution_notes ?? '',
         ];
+        $this->showAllStaff = true;
         $this->showEditModal = true;
     }
 

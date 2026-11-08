@@ -615,9 +615,9 @@ $statusLabels = [
                                         Hanya menampilkan teknisi yang sudah absen hadir hari ini.
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                        Mode Darurat: Menampilkan semua staff termasuk yang belum absen.
+                                    <span class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-medium">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                        Menampilkan semua teknisi & staf lapangan.
                                     </span>
                                 @endif
                             </p>

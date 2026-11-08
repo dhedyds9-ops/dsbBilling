@@ -96,15 +96,33 @@ class UserQueryService
 
     /**
      * Dapatkan user yang dapat di-assign untuk ticket/task.
-     * Hanya administrator dan manager yang aktif.
+     * Termasuk Administrator, Manager, NOC, dan Teknisi Lapangan yang aktif.
      * Gunakan untuk: dropdown assignee ticket, tugas teknis, dll.
      */
     public function getEligibleAssignees(bool $activeOnly = true): Collection
     {
-        return User::whereHas('roles', fn($q) => $q->whereIn('name', [
-                UserRole::Administrator->value,
-                UserRole::Manager->value,
-            ]))
+        return User::where(function ($q) {
+                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', [
+                    UserRole::Administrator->value,
+                    UserRole::Manager->value,
+                    UserRole::Teknisi->value,
+                    UserRole::Noc->value,
+                    UserRole::CustomerService->value,
+                    'technician',
+                    'Technician',
+                    'teknisi',
+                    'Teknisi',
+                    'noc',
+                    'Noc',
+                    'helpdesk',
+                ]))
+                ->orWhereRaw('UPPER(COALESCE(job_function, "")) IN (?, ?)', ['TECHNICIAN', 'TEKNISI'])
+                ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TEKNISI%'])
+                ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TECHNICIAN%'])
+                ->orWhereRaw('UPPER(COALESCE(name, "")) LIKE ?', ['%TEKNISI%'])
+                ->orWhereRaw('UPPER(COALESCE(name, "")) LIKE ?', ['%TECHNICIAN%']);
+            })
+            ->whereDoesntHave('roles', fn($q) => $q->where('name', UserRole::Customer->value))
             ->when($activeOnly, fn($q) => $q->where('is_active', true))
             ->orderBy('name')
             ->get();
@@ -216,13 +234,7 @@ class UserQueryService
             ->get(['technician_id', 'checked_in_at', 'status'])
             ->keyBy('technician_id');
 
-        $users = User::whereHas('roles', fn($q) => $q->whereIn('name', [
-                UserRole::Administrator->value,
-                UserRole::Manager->value,
-            ]))
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $users = $this->getEligibleAssignees(true);
 
         // Hitung tiket aktif per petugas
         $activeTicketCounts = \App\Models\Support\Ticket::whereIn('status', ['open', 'in_progress', 'pending_customer'])
@@ -232,15 +244,23 @@ class UserQueryService
             ->pluck('count', 'assigned_to')
             ->toArray();
 
-        $result = [];
+        // Cek apakah ada staff teknis yang sudah absen hadir hari ini
+        $hasAnyAttendance = $attendances->isNotEmpty();
+        // Jika filter attendedOnly aktif tetapi TIDAK ADA SATUPUN staff yang absen hari ini,
+        // jangan sembunyikan semua teknisi agar tiket tetap dapat didelegasikan.
+        $enforceAttendance = $attendedOnly && $hasAnyAttendance;
+
+        $attendedList = [];
+        $unattendedList = [];
+        $adminList = [];
+
         foreach ($users as $u) {
             $isAdmin = $u->hasRole(UserRole::Administrator->value);
             $attRecord = $attendances->get($u->id);
             $hasAttended = !empty($attRecord);
 
-            // Jika filter attendedOnly aktif:
-            // Hanya lolos jika dia sudah absen masuk ATAU dia administrator
-            if ($attendedOnly && !$hasAttended && !$isAdmin) {
+            // Jika filter attendedOnly aktif dan ada data absen hari ini:
+            if ($enforceAttendance && !$hasAttended && !$isAdmin) {
                 continue;
             }
 
@@ -262,10 +282,17 @@ class UserQueryService
                 $label .= " [Senggang]";
             }
 
-            $result[$u->id] = $label;
+            if ($hasAttended) {
+                $attendedList[$u->id] = $label;
+            } elseif ($isAdmin) {
+                $adminList[$u->id] = $label;
+            } else {
+                $unattendedList[$u->id] = $label;
+            }
         }
 
-        return $result;
+        // Urutan: Yang sudah hadir di paling atas, lalu teknisi lainnya, lalu admin/pusat
+        return $attendedList + $unattendedList + $adminList;
     }
     public function getEligibleApproversForDropdown(bool $activeOnly = true): array
     {
