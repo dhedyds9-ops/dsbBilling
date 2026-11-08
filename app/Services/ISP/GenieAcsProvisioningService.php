@@ -237,8 +237,15 @@ JS,
         }
     }
 
-    public function updateSsidAndPassword(Onu $onu, string $ssid, ?string $password = null): array
-    {
+    public function updateSsidAndPassword(
+        Onu $onu, 
+        string $ssid, 
+        ?string $password = null,
+        int $wlanIndex = 1,
+        string $securityMode = 'WPA_WPA2',
+        ?bool $isHidden = null,
+        ?bool $isEnabled = null
+    ): array {
         try {
             $deviceId = null;
             try {
@@ -262,27 +269,38 @@ JS,
 
             $vendor = $onu->vendor?->name ?? 'default';
             
-            // Send both SSID and Password in a connection request if GenieACS is available
+            // Send SSID, Password, Security Mode, and Hidden SSID to GenieACS
             $genieacsSent = false;
             try {
-                $genieacsSent = $this->driver->updateWifiSsidAndPassword($deviceId, $ssid, $password, $vendor);
+                $genieacsSent = $this->driver->updateWifiSsidAndPassword(
+                    $deviceId, 
+                    $ssid, 
+                    $password, 
+                    $vendor, 
+                    $wlanIndex, 
+                    $securityMode, 
+                    $isHidden, 
+                    $isEnabled
+                );
             } catch (Exception $e) {
                 Log::warning("GenieACS task creation failed for ONU {$onu->id}, saving to DB: " . $e->getMessage());
             }
 
-            DB::transaction(function () use ($onu, $ssid, $password) {
-                $onuData = ['wifi_ssid' => $ssid];
-                if (!empty($password)) {
-                    $onuData['wifi_password'] = $password;
-                }
-                $onu->update($onuData);
-                if ($cs = $onu->customerService) {
-                    $attrs = $cs->attributes ?? [];
-                    $attrs['wifi_ssid'] = $ssid;
-                    if (!empty($password)) {
-                        $attrs['wifi_password'] = $password;
+            DB::transaction(function () use ($onu, $ssid, $password, $wlanIndex) {
+                if ($wlanIndex === 1) {
+                    $onuData = ['wifi_ssid' => $ssid];
+                    if ($password !== null) {
+                        $onuData['wifi_password'] = $password;
                     }
-                    $cs->update(['attributes' => $attrs]);
+                    $onu->update($onuData);
+                    if ($cs = $onu->customerService) {
+                        $attrs = $cs->attributes ?? [];
+                        $attrs['wifi_ssid'] = $ssid;
+                        if ($password !== null) {
+                            $attrs['wifi_password'] = $password;
+                        }
+                        $cs->update(['attributes' => $attrs]);
+                    }
                 }
             });
 
@@ -290,8 +308,8 @@ JS,
                 'success' => true,
                 'genieacs_sent' => $genieacsSent,
                 'message' => $genieacsSent 
-                    ? 'Berhasil mengubah konfigurasi WiFi di perangkat dan sistem' 
-                    : 'Konfigurasi WiFi berhasil disimpan di sistem (perangkat akan disinkronkan saat terhubung)',
+                    ? "Berhasil memperbarui konfigurasi WiFi ({$ssid}) di perangkat dan sistem" 
+                    : "Konfigurasi WiFi ({$ssid}) berhasil disimpan di sistem (perangkat akan disinkronkan saat terhubung)",
             ];
         } catch (Exception $e) {
             Log::error('WiFi update failed', ['onu_id' => $onu->id, 'msg' => $e->getMessage()]);

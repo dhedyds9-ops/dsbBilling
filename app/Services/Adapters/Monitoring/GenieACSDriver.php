@@ -884,19 +884,82 @@ JS;
 
 
 
-    public function updateWifiSsidAndPassword(string $deviceId, string $ssid, ?string $password = null, string $vendor = 'default'): bool
-    {
-        $params = [
-            $this->getWifiParameterPath($vendor, 'ssid') => $ssid,
-        ];
-        
+    public function updateWifiSsidAndPassword(
+        string $deviceId, 
+        string $ssid, 
+        ?string $password = null, 
+        string $vendor = 'default',
+        int $wlanIndex = 1,
+        string $securityMode = 'WPA_WPA2',
+        ?bool $isHidden = null,
+        ?bool $isEnabled = null
+    ): bool {
+        $prefix = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.";
+        $params = [];
+
+        // 1. Radio status (Enable)
+        if ($isEnabled !== null) {
+            $params[$prefix . 'Enable'] = (bool) $isEnabled;
+        }
+
+        // 2. SSID Broadcast (Hidden / Visible)
+        if ($isHidden !== null) {
+            $params[$prefix . 'SSIDAdvertisementEnabled'] = !$isHidden;
+        }
+
+        // 3. SSID Name (Vendor + Standard + VirtualParameter sync)
+        $params[$prefix . 'SSID'] = trim($ssid);
+        $vendorSsidPath = $this->getWifiParameterPath($vendor, 'ssid');
+        if (!empty($vendorSsidPath)) {
+            $params[$vendorSsidPath] = trim($ssid);
+        }
+        if ($wlanIndex === 1) {
+            $params['VirtualParameters.WlanSSID'] = trim($ssid);
+        }
+
+        // 4. Security Mode & Password
         if ($password !== null) {
+            $trimmedPass = (string) $password;
+
+            if ($securityMode === 'OPEN') {
+                $params[$prefix . 'BeaconType'] = 'None';
+            } elseif ($securityMode === 'WPA2') {
+                $params[$prefix . 'BeaconType'] = '11i';
+                $params[$prefix . 'WPAEncryptionModes'] = 'AESEncryption';
+                $params[$prefix . 'PreSharedKey.1.KeyPassphrase'] = $trimmedPass;
+                $params[$prefix . 'KeyPassphrase'] = $trimmedPass;
+                $params[$prefix . 'PreSharedKey.1.PreSharedKey'] = $trimmedPass;
+            } elseif ($securityMode === 'WPA') {
+                $params[$prefix . 'BeaconType'] = 'WPA';
+                $params[$prefix . 'WPAEncryptionModes'] = 'TKIPEncryption';
+                $params[$prefix . 'PreSharedKey.1.KeyPassphrase'] = $trimmedPass;
+                $params[$prefix . 'KeyPassphrase'] = $trimmedPass;
+                $params[$prefix . 'PreSharedKey.1.PreSharedKey'] = $trimmedPass;
+            } else { // WPA_WPA2 (Default Rekomendasi)
+                $params[$prefix . 'BeaconType'] = '11i';
+                $params[$prefix . 'WPAEncryptionModes'] = 'TKIPandAESEncryption';
+                $params[$prefix . 'PreSharedKey.1.KeyPassphrase'] = $trimmedPass;
+                $params[$prefix . 'KeyPassphrase'] = $trimmedPass;
+                $params[$prefix . 'PreSharedKey.1.PreSharedKey'] = $trimmedPass;
+            }
+
+            // Vendor-specific paths fallback
             $secPath = $this->getWifiParameterPath($vendor, 'security_mode');
-            $secValue = str_contains($secPath, 'BeaconType') ? '11i' : 'WPA2-Personal';
-            
-            $params[$this->getWifiParameterPath($vendor, 'wpa_passphrase')] = $password;
-            $params[$this->getWifiParameterPath($vendor, 'wpa_pre_shared_key')] = $password;
-            $params[$secPath] = $secValue;
+            if (!empty($secPath)) {
+                $params[$secPath] = str_contains($secPath, 'BeaconType') ? ($securityMode === 'OPEN' ? 'None' : '11i') : 'WPA2-Personal';
+            }
+            $vPass1 = $this->getWifiParameterPath($vendor, 'wpa_passphrase');
+            if (!empty($vPass1)) {
+                $params[$vPass1] = $trimmedPass;
+            }
+            $vPass2 = $this->getWifiParameterPath($vendor, 'wpa_pre_shared_key');
+            if (!empty($vPass2)) {
+                $params[$vPass2] = $trimmedPass;
+            }
+
+            if ($wlanIndex === 1 && $securityMode !== 'OPEN') {
+                $params['VirtualParameters.WlanPassword'] = $trimmedPass;
+            }
         }
 
         return $this->setParameterValues($deviceId, $params);

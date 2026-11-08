@@ -41,13 +41,25 @@ class CustomerSelfServiceService
         );
     }
 
-    public function changeOnuWifiCredentials(int $customerId, int $onuId, string $newSsid, ?string $newPassword = null): array
-    {
+    public function changeOnuWifiCredentials(
+        int $customerId, 
+        int $onuId, 
+        string $newSsid, 
+        ?string $newPassword = null,
+        int $wlanIndex = 1,
+        string $securityMode = 'WPA_WPA2',
+        ?bool $isHidden = null,
+        ?bool $isEnabled = null
+    ): array {
         return $this->genieAcsService->updateWifiSsidAndPassword(
             $customerId,
             $onuId,
             $newSsid,
-            $newPassword
+            $newPassword,
+            $wlanIndex,
+            $securityMode,
+            $isHidden,
+            $isEnabled
         );
     }
 

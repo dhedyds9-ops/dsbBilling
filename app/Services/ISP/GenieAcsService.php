@@ -246,14 +246,30 @@ class GenieAcsService
         return $this->provisioningService->updateSsidAndPassword($onu, $ssid, $newPassword);
     }
 
-    public function updateWifiSsidAndPassword(int $customerId, int $onuId, string $ssid, ?string $password = null): array
-    {
+    public function updateWifiSsidAndPassword(
+        int $customerId, 
+        int $onuId, 
+        string $ssid, 
+        ?string $password = null,
+        int $wlanIndex = 1,
+        string $securityMode = 'WPA_WPA2',
+        ?bool $isHidden = null,
+        ?bool $isEnabled = null
+    ): array {
         $onu = $this->resolveCustomerOnu($customerId, $onuId);
         $deviceId = $this->resolveGenieAcsDeviceId($onu, $customerId);
         if (!empty($deviceId) && empty($onu->genieacs_device_id)) {
             try { $onu->update(['genieacs_device_id' => $deviceId]); } catch (\Throwable) {}
         }
-        return $this->provisioningService->updateSsidAndPassword($onu, $ssid, $password);
+        return $this->provisioningService->updateSsidAndPassword(
+            $onu, 
+            $ssid, 
+            $password, 
+            $wlanIndex, 
+            $securityMode, 
+            $isHidden, 
+            $isEnabled
+        );
     }
 
     public function rebootOnu(int $customerId, int $onuId): array
