@@ -731,6 +731,33 @@ class Index extends BaseACSComponent
             session()->flash('error', 'Error: ' . $e->getMessage());
         }
     }
+
+    public function reboot($uuid)
+    {
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $success = $driver->rebootDevice($uuid);
+            
+            $device = ACSDevice::where('uuid', $uuid)->orWhere('serial_number', $uuid)->first();
+            if ($device) {
+                \App\Models\ACS\DeviceTask::create([
+                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                    'acs_device_id' => $device->id,
+                    'type' => 'reboot',
+                    'status' => $success ? 'completed' : 'pending',
+                    'created_by' => auth()->id()
+                ]);
+            }
+
+            if ($success) {
+                session()->flash('success', "Perintah restart modem ({$uuid}) berhasil dikirim ke perangkat.");
+            } else {
+                session()->flash('info', "Perintah restart modem ({$uuid}) berhasil diantrikan ke GenieACS.");
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal restart modem: ' . $e->getMessage());
+        }
+    }
 }
 
 

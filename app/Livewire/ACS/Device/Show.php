@@ -320,18 +320,29 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     {
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
-            $driver->summonDevice($this->device->uuid);
+            $res = $driver->summonDeviceResult($this->device->uuid);
             
             \App\Models\ACS\DeviceTask::create([
                 'uuid' => (string) \Illuminate\Support\Str::uuid(),
                 'acs_device_id' => $this->device->id,
                 'type' => 'connection_request',
-                'status' => 'pending',
+                'status' => ($res['connection_request_success'] || $res['task_queued']) ? 'completed' : 'pending',
                 'created_by' => auth()->id()
             ]);
 
-            session()->flash('success', 'Perintah Summon (Connection Request) telah dikirim ke perangkat.');
-            $this->dispatch('notify', ['type' => 'success', 'message' => 'Summon dikirim.']);
+            if ($res['connection_request_success']) {
+                session()->flash('success', '📡 Summon live berhasil dikirim! Modem sedang mengirim data live terbaru...');
+                // Jeda 2 detik agar Inform TR-069 masuk ke GenieACS lalu perbarui data di layar (sama seperti dsbilling-mobile)
+                usleep(2000000);
+                $this->cachedDeviceParams = null;
+                $this->loadDeviceStatus();
+                $this->loadConnectedDevices();
+            } elseif ($res['task_queued']) {
+                session()->flash('info', 'Perintah refresh parameter berhasil diantrikan ke antrean GenieACS.');
+            } else {
+                session()->flash('warning', 'Summon dikirim ke GenieACS. Tunggu modem merespons.');
+            }
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Summon selesai diproses.']);
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengirim perintah Summon: ' . $e->getMessage());
         }

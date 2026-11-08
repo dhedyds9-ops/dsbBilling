@@ -500,37 +500,36 @@ class GenieACSDriver
         ];
 
         try {
-            $tasks = [
-                ['name' => 'refreshObject', 'objectName' => 'InternetGatewayDevice.WANDevice'],
-                ['name' => 'refreshObject', 'objectName' => 'Device.WANDevice'],
-                ['name' => 'refreshObject', 'objectName' => 'Device.Optical']
-            ];
+            $realDeviceId = $this->resolveDeviceId($deviceId);
+            $encodedId = urlencode($realDeviceId);
 
-            // 1. Antrikan refresh tasks ke antrian GenieACS
-            foreach ($tasks as $payload) {
-                try {
-                    $url = "{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks";
-                    $resp = Http::timeout(8)
-                        ->withBasicAuth($this->username, $this->password)
-                        ->post($url, $payload);
-                    if ($resp->successful() || $resp->status() === 201) {
-                        $result['task_queued'] = true;
-                    }
-                } catch (\Throwable $e) {}
-            }
-
-            // 2. Coba kirim Connection Request ke perangkat
+            // 1. Pemicu utama: Kirim Connection Request dengan single root refreshObject (persis seperti dsbilling-mobile / genieacs-mobile)
+            // objectName "" (root) memicu seluruh parameter tree modem diperbarui tanpa membebani antrian task
             try {
-                $crUrl = "{$this->baseUrl}/devices/" . urlencode($deviceId) . "/tasks?connection_request";
-                $crResp = Http::timeout(8)
+                $crUrl = "{$this->baseUrl}/devices/{$encodedId}/tasks?connection_request";
+                $crResp = Http::timeout(10)
                     ->withBasicAuth($this->username, $this->password)
-                    ->post($crUrl, ['name' => 'refreshObject', 'objectName' => 'InternetGatewayDevice.DeviceInfo']);
-                if ($crResp->successful() || $crResp->status() === 200 || $crResp->status() === 201) {
+                    ->asJson()
+                    ->post($crUrl, ['name' => 'refreshObject', 'objectName' => '']);
+
+                if ($crResp->successful() || in_array($crResp->status(), [200, 201, 202])) {
                     $result['connection_request_success'] = true;
                     $result['task_queued'] = true;
+                    return $result;
                 }
-            } catch (\Throwable $e) {
-                $result['error'] = $e->getMessage();
+            } catch (\Throwable $ce) {
+                // Connection request timeout jika modem berada di balik IP Privat/NAT
+            }
+
+            // 2. Fallback jika modem berada di balik NAT: antrikan task refreshObject tanpa connection_request
+            $url = "{$this->baseUrl}/devices/{$encodedId}/tasks";
+            $resp = Http::timeout(8)
+                ->withBasicAuth($this->username, $this->password)
+                ->asJson()
+                ->post($url, ['name' => 'refreshObject', 'objectName' => '']);
+
+            if ($resp->successful() || in_array($resp->status(), [200, 201, 202])) {
+                $result['task_queued'] = true;
             }
 
             return $result;
