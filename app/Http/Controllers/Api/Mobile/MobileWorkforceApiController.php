@@ -16,60 +16,42 @@ use Illuminate\Support\Str;
 class MobileWorkforceApiController extends Controller
 {
     /**
-     * Login endpoint for GenieACS Mobile Client.
-     * Accepts either email or username with password.
+     * Backward-compatible login endpoint for GenieACS Mobile Client.
+     * Delegates to MobileAuthController logic.
      */
     public function login(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|string',
-            'password' => 'required|string',
-        ]);
-
-        $login = trim($request->input('email'));
-        $user = User::where('email', $login)
-            ->orWhere('username', $login)
-            ->first();
-
-        if (!$user || !Hash::check($request->input('password'), $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email/Username atau password yang dimasukkan salah.',
-            ], 401);
-        }
-
-        if (isset($user->is_active) && !$user->is_active) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akun pengguna sedang nonaktif. Hubungi Administrator.',
-            ], 403);
-        }
-
-        // Generate Sanctum Personal Access Token
-        $token = $user->createToken('genieacs-mobile')->plainTextToken;
-
-        // ACS NBI config
-        $acsUrl = config('genieacs.base_url', 'http://192.168.150.15:7557');
-        $acsUser = config('genieacs.username', 'admin');
-
-        return response()->json([
-            'success' => true,
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email ?? $user->username,
-                'role' => $user->job_function ?? 'TECHNICIAN',
-            ],
-            'acs_config' => [
-                'url' => $acsUrl,
-                'username' => $acsUser,
-            ],
-        ]);
+        return app(MobileAuthController::class)->login($request);
     }
 
     /**
-     * Get active work orders (SPK) for the authenticated technician.
+     * Check if user is authorized to manage the given Work Order.
+     */
+    protected function authorizeWorkOrderAccess(User $user, WorkOrder $workOrder): ?JsonResponse
+    {
+        // 1. Check branch isolation
+        if ($user->branch_id && $workOrder->branch_id && $user->branch_id !== $workOrder->branch_id && !$user->isSuperAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: SPK ini milik cabang lain.',
+            ], 403);
+        }
+
+        // 2. Check technician assignment ownership
+        if ($user->isTechnician() && !$user->isSuperAdmin()) {
+            if ($workOrder->assigned_to && $workOrder->assigned_to !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: SPK ini ditugaskan kepada teknisi lain.',
+                ], 403);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get active work orders (SPK) for the authenticated technician / staff.
      */
     public function workOrders(Request $request): JsonResponse
     {
@@ -78,6 +60,15 @@ class MobileWorkforceApiController extends Controller
         $query = WorkOrder::with(['customer', 'checklists', 'materialUsages'])
             ->orderBy('id', 'desc');
 
+        // Apply branch scope
+        if ($user->branch_id && !$user->isSuperAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                    ->orWhereNull('branch_id');
+            });
+        }
+
+        // Apply technician scope
         if ($user->job_function === 'TECHNICIAN' || (method_exists($user, 'hasRole') && $user->hasRole('technician'))) {
             $query->where(function ($q) use ($user) {
                 $q->where('assigned_to', $user->id)
@@ -109,6 +100,7 @@ class MobileWorkforceApiController extends Controller
                         'type' => $t->category ?? 'troubleshooting',
                         'customer_id' => $t->customer_id ?? $t->user_id,
                         'assigned_to' => $t->assigned_to ?? $user->id,
+                        'branch_id' => $user->branch_id,
                         'status' => $t->status === 'in_progress' ? 'in_progress' : 'pending',
                         'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
                         'description' => $t->description ?? '',
@@ -174,11 +166,17 @@ class MobileWorkforceApiController extends Controller
      */
     public function startWorkOrder(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
         $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
         $workOrder->update([
             'status' => 'in_progress',
             'started_at' => now(),
-            'assigned_to' => $request->user()->id,
+            'assigned_to' => $workOrder->assigned_to ?? $user->id,
         ]);
 
         if ($workOrder->ticket_id) {
@@ -198,7 +196,13 @@ class MobileWorkforceApiController extends Controller
      */
     public function completeWorkOrder(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
         $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
         $workOrder->update([
             'status' => 'completed',
             'completed_at' => now(),
@@ -221,14 +225,19 @@ class MobileWorkforceApiController extends Controller
      */
     public function addMaterialUsage(Request $request, int $id): JsonResponse
     {
+        $user = $request->user();
+        $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
         $request->validate([
             'material_name' => 'required|string|max:255',
             'quantity' => 'required|integer|min:1',
             'material_id' => 'nullable',
             'serial_number' => 'nullable|string|max:255',
         ]);
-
-        $workOrder = WorkOrder::findOrFail($id);
 
         $usage = $workOrder->materialUsages()->create([
             'uuid' => (string) Str::uuid(),

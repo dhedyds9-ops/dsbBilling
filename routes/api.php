@@ -158,17 +158,39 @@ Route::post('/v1/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiCont
     ->name('api.employees.sync');
 Route::post('/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiController::class, 'sync']);
 
-// ========================= GENIEACS MOBILE CLIENT API ========================
+// ========================= DSBILLING STAFF MOBILE API ========================
 Route::prefix('mobile')->name('api.mobile.')->group(function () {
-    Route::post('/login', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'login'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'login'])->name('login');
+    Route::post('/auth/login', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'login'])->name('auth.login');
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'logout'])->name('logout');
+        Route::get('/me', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'me'])->name('me');
+
+        // Workforce (SPK)
         Route::prefix('workforce')->name('workforce.')->group(function () {
             Route::get('/work-orders', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'workOrders'])->name('work-orders');
             Route::post('/work-orders/{id}/start', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'startWorkOrder'])->where('id', '\d+')->name('work-orders.start');
             Route::post('/work-orders/{id}/complete', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'completeWorkOrder'])->where('id', '\d+')->name('work-orders.complete');
             Route::post('/work-orders/{id}/materials', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addMaterialUsage'])->where('id', '\d+')->name('work-orders.materials');
             Route::post('/gps/log', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'logGPS'])->name('gps.log');
+        });
+
+        // ACS TR-069 Proxy (Replaces direct NBI access)
+        Route::prefix('acs')->name('acs.')->group(function () {
+            Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'listDevices'])->name('devices.index');
+            Route::get('/devices/{id}', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'deviceDetail'])->name('devices.show');
+            Route::post('/devices/{id}/summon', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'summon'])->name('devices.summon');
+            Route::post('/devices/{id}/reboot', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'reboot'])->name('devices.reboot');
+            Route::post('/devices/{id}/wifi', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWifi'])->name('devices.wifi');
+            Route::post('/devices/{id}/wan', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWan'])->name('devices.wan');
+            Route::post('/devices/{id}/admin-account', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setAdminAccount'])->name('devices.admin-account');
+            Route::delete('/devices/{id}/tasks', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'clearTasks'])->name('devices.tasks.clear');
+        });
+
+        // AI Voice Proxy
+        Route::prefix('ai')->name('ai.')->group(function () {
+            Route::post('/ask', [\App\Http\Controllers\Api\Mobile\MobileAiProxyController::class, 'ask'])->name('ask');
         });
     });
 });
