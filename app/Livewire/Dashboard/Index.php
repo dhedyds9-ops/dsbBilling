@@ -36,6 +36,23 @@ class Index extends Component
     public array $topTraffic = [];
     public array $alerts = [];
 
+    // Workforce Attendance Real-Time Tracking
+    public string $workforceTab = 'working'; // 'working' | 'unattended' | 'done' | 'all'
+    public array $workforceStats = [
+        'working' => 0,
+        'done' => 0,
+        'leave' => 0,
+        'unattended' => 0,
+        'total' => 0,
+    ];
+    public array $workforceList = [
+        'working' => [],
+        'done' => [],
+        'leave' => [],
+        'unattended' => [],
+        'all' => [],
+    ];
+
     public function mount()
     {
         $user = auth()->user();
@@ -483,6 +500,217 @@ class Index extends Component
             } catch (\Exception $e) {}
             return $top;
         });
+
+        // 12. Workforce & Attendance Real-time Monitoring
+        $this->loadWorkforceData();
+    }
+
+    public function setWorkforceTab(string $tab): void
+    {
+        $this->workforceTab = $tab;
+    }
+
+    public function refreshWorkforce(): void
+    {
+        Cache::forget('dashboard_workforce_data');
+        $this->loadWorkforceData();
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Data kehadiran dan tugas staf berhasil disegarkan.',
+        ]);
+    }
+
+    public function loadWorkforceData(): void
+    {
+        $workforceData = Cache::remember('dashboard_workforce_data', 20, function () {
+            $today = Carbon::today();
+
+            // 1. Ambil absensi hari ini dengan relasi lengkap
+            try {
+                $attendances = \App\Models\Workforce\Attendance::with([
+                    'technician.employee',
+                    'technician.branch',
+                    'technician.roles',
+                ])
+                ->whereDate('date', $today)
+                ->latest('checked_in_at')
+                ->get();
+            } catch (\Throwable) {
+                $attendances = collect();
+            }
+
+            $attendedUserIds = $attendances->pluck('technician_id')->filter()->unique()->toArray();
+
+            // 2. Ambil penugasan tiket aktif (open, in_progress, pending)
+            $activeTickets = [];
+            try {
+                $rawTickets = \App\Models\Support\Ticket::withoutGlobalScopes()
+                    ->whereIn('status', ['open', 'in_progress', 'pending'])
+                    ->whereNotNull('assigned_to')
+                    ->latest('updated_at')
+                    ->get();
+
+                foreach ($rawTickets as $t) {
+                    if (! isset($activeTickets[$t->assigned_to])) {
+                        $code = ! empty($t->uuid) 
+                            ? ('TKT-' . strtoupper(substr(str_replace('-', '', $t->uuid), 0, 6))) 
+                            : ('#' . $t->id);
+                        $activeTickets[$t->assigned_to] = [
+                            'id' => $t->id,
+                            'code' => $code,
+                            'title' => $t->title,
+                            'status' => $t->status,
+                            'priority' => $t->priority ?? 'medium',
+                        ];
+                    }
+                }
+            } catch (\Throwable) {}
+
+            $workingList = [];
+            $doneList = [];
+            $leaveList = [];
+
+            foreach ($attendances as $att) {
+                $user = $att->technician;
+                if (! $user) continue;
+
+                $emp = $user->employee;
+                $name = $emp?->name ?? $user->name;
+                $role = $user->job_title ?: ($user->job_function ?: ($emp?->position ?: 'Staf Operasional'));
+                $branch = $user->branch?->name ?? ($emp?->branch?->name ?? 'Pusat');
+                $avatar = $user->avatar;
+                $phone = $user->whatsapp ?: ($user->phone ?: $emp?->phone);
+
+                $checkInTime = $att->checked_in_at ? Carbon::parse($att->checked_in_at)->format('H:i') : '-';
+                $checkOutTime = $att->checked_out_at ? Carbon::parse($att->checked_out_at)->format('H:i') : null;
+
+                $duration = '-';
+                if ($att->checked_in_at) {
+                    $end = $att->checked_out_at ? Carbon::parse($att->checked_out_at) : Carbon::now();
+                    $diffMinutes = max(1, Carbon::parse($att->checked_in_at)->diffInMinutes($end));
+                    $hours = floor($diffMinutes / 60);
+                    $mins = $diffMinutes % 60;
+                    $duration = $hours > 0 ? "{$hours}j {$mins}m" : "{$mins}m";
+                }
+
+                $lat = $att->check_in_latitude;
+                $lng = $att->check_in_longitude;
+                $hasGps = ! empty($lat) && ! empty($lng);
+                $gpsUrl = $hasGps ? "https://www.google.com/maps?q={$lat},{$lng}" : null;
+
+                $statusVal = is_object($att->status) 
+                    ? ($att->status->value ?? (string) $att->status) 
+                    : (string) $att->status;
+
+                $cleanPhone = null;
+                if (! empty($phone)) {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', (string) $phone);
+                    if (str_starts_with($cleanPhone, '0')) {
+                        $cleanPhone = '62' . substr($cleanPhone, 1);
+                    }
+                }
+
+                $item = [
+                    'user_id' => $user->id,
+                    'name' => $name,
+                    'role' => $role,
+                    'branch' => $branch,
+                    'avatar' => $avatar,
+                    'phone' => $phone,
+                    'wa_phone' => $cleanPhone,
+                    'status' => $statusVal,
+                    'check_in_time' => $checkInTime,
+                    'check_out_time' => $checkOutTime,
+                    'duration' => $duration,
+                    'has_gps' => $hasGps,
+                    'gps_url' => $gpsUrl,
+                    'notes' => $att->notes,
+                    'active_task' => $activeTickets[$user->id] ?? null,
+                ];
+
+                if (in_array($statusVal, ['permission', 'sick', 'absent'])) {
+                    $leaveList[] = $item;
+                } elseif ($att->checked_out_at || $statusVal === 'checked_out') {
+                    $doneList[] = $item;
+                } else {
+                    $workingList[] = $item;
+                }
+            }
+
+            // 3. Staf yang BELUM absen hari ini
+            $unattendedList = [];
+            try {
+                $staffUsers = \App\Models\User::with(['employee', 'branch'])
+                    ->where('is_active', true)
+                    ->whereNotIn('id', $attendedUserIds)
+                    ->where(function ($q) {
+                        $q->whereHas('employee', fn($e) => $e->where('status', 'active'))
+                          ->orWhereNotNull('job_function')
+                          ->orWhereNotNull('job_title')
+                          ->orWhereHas('roles', fn($r) => $r->whereIn('name', ['technician', 'noc', 'admin_gudang', 'kasir', 'customer_service']));
+                    })
+                    ->whereDoesntHave('roles', function ($r) {
+                        $r->whereIn('name', ['customer', 'reseller']);
+                    })
+                    ->orderBy('name')
+                    ->take(30)
+                    ->get();
+
+                foreach ($staffUsers as $staff) {
+                    if ($staff->isSuperAdmin() && empty($staff->job_function) && empty($staff->job_title)) {
+                        continue;
+                    }
+
+                    $emp = $staff->employee;
+                    $phone = $staff->whatsapp ?: ($staff->phone ?: $emp?->phone);
+                    $cleanPhone = null;
+                    if (! empty($phone)) {
+                        $cleanPhone = preg_replace('/[^0-9]/', '', (string) $phone);
+                        if (str_starts_with($cleanPhone, '0')) {
+                            $cleanPhone = '62' . substr($cleanPhone, 1);
+                        }
+                    }
+
+                    $unattendedList[] = [
+                        'user_id' => $staff->id,
+                        'name' => $emp?->name ?? $staff->name,
+                        'role' => $staff->job_title ?: ($staff->job_function ?: ($emp?->position ?: 'Staf Operasional')),
+                        'branch' => $staff->branch?->name ?? ($emp?->branch?->name ?? 'Pusat'),
+                        'avatar' => $staff->avatar,
+                        'phone' => $phone,
+                        'wa_phone' => $cleanPhone,
+                        'status' => 'unattended',
+                        'check_in_time' => '-',
+                        'check_out_time' => null,
+                        'duration' => '-',
+                        'has_gps' => false,
+                        'gps_url' => null,
+                        'notes' => 'Belum check-in hari ini',
+                        'active_task' => $activeTickets[$staff->id] ?? null,
+                    ];
+                }
+            } catch (\Throwable) {}
+
+            return [
+                'stats' => [
+                    'working' => count($workingList),
+                    'done' => count($doneList),
+                    'leave' => count($leaveList),
+                    'unattended' => count($unattendedList),
+                    'total' => count($workingList) + count($doneList) + count($leaveList) + count($unattendedList),
+                ],
+                'list' => [
+                    'working' => $workingList,
+                    'done' => $doneList,
+                    'leave' => $leaveList,
+                    'unattended' => $unattendedList,
+                    'all' => array_merge($workingList, $doneList, $leaveList, $unattendedList),
+                ],
+            ];
+        });
+
+        $this->workforceStats = $workforceData['stats'] ?? $this->workforceStats;
+        $this->workforceList = $workforceData['list'] ?? $this->workforceList;
     }
 
     public function restartRadius(): void
@@ -508,6 +736,9 @@ class Index extends Component
             'chartData' => $this->chartData,
             'topTraffic' => $this->topTraffic,
             'alerts' => $this->alerts,
+            'workforceStats' => $this->workforceStats,
+            'workforceList' => $this->workforceList,
+            'workforceTab' => $this->workforceTab,
         ]);
     }
 }

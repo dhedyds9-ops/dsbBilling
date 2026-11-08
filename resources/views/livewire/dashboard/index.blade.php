@@ -474,8 +474,251 @@
             </div>
         </div>
     </div>
+
+    {{-- E. MONITORING STAF & KARYAWAN AKTIF HARI INI (WORKFORCE LIVE MONITOR) --}}
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        {{-- Header Bar --}}
+        <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/80">
+            <div>
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-xs">
+                        <span class="material-symbols-outlined text-[20px]">badge</span>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            Pusat Kendali Personel & Karyawan
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1"></span>
+                                Live Hari Ini
+                            </span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Monitoring real-time staf yang sudah absen, sedang bertugas di lapangan/kantor, dan yang belum check-in.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button wire:click="refreshWorkforce" wire:loading.attr="disabled" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer" title="Segarkan Data Kehadiran">
+                    <span wire:loading.remove wire:target="refreshWorkforce" class="material-symbols-outlined text-[16px]">sync</span>
+                    <span wire:loading wire:target="refreshWorkforce" class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                    <span>Segarkan</span>
+                </button>
+                <a href="{{ route('admin.attendance.index') }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold transition" title="Rekap Absensi Lengkap">
+                    <span>Rekap Lengkap</span>
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </a>
+            </div>
+        </div>
+
+        {{-- Interactive Filter Tabs & KPI Stats --}}
+        <div class="px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-800">
+            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <button wire:click="setWorkforceTab('working')" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer {{ $workforceTab === 'working' ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/30' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                    <span class="w-2 h-2 rounded-full {{ $workforceTab === 'working' ? 'bg-white' : 'bg-emerald-500' }}"></span>
+                    <span>Sedang Bekerja</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $workforceTab === 'working' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300' }}">{{ $workforceStats['working'] ?? 0 }}</span>
+                </button>
+
+                <button wire:click="setWorkforceTab('unattended')" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer {{ $workforceTab === 'unattended' ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500/30' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                    <span class="w-2 h-2 rounded-full {{ $workforceTab === 'unattended' ? 'bg-white' : 'bg-rose-500' }}"></span>
+                    <span>Belum Absen</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $workforceTab === 'unattended' ? 'bg-rose-700 text-white' : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300' }}">{{ $workforceStats['unattended'] ?? 0 }}</span>
+                </button>
+
+                <button wire:click="setWorkforceTab('done')" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer {{ $workforceTab === 'done' ? 'bg-sky-600 text-white shadow-sm ring-2 ring-sky-500/30' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                    <span class="w-2 h-2 rounded-full {{ $workforceTab === 'done' ? 'bg-white' : 'bg-sky-500' }}"></span>
+                    <span>Selesai Dinas</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $workforceTab === 'done' ? 'bg-sky-700 text-white' : 'bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300' }}">{{ $workforceStats['done'] ?? 0 }}</span>
+                </button>
+
+                <button wire:click="setWorkforceTab('leave')" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer {{ $workforceTab === 'leave' ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-500/30' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                    <span class="w-2 h-2 rounded-full {{ $workforceTab === 'leave' ? 'bg-white' : 'bg-amber-500' }}"></span>
+                    <span>Izin / Sakit</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $workforceTab === 'leave' ? 'bg-amber-700 text-white' : 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300' }}">{{ $workforceStats['leave'] ?? 0 }}</span>
+                </button>
+
+                <button wire:click="setWorkforceTab('all')" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer {{ $workforceTab === 'all' ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm' : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+                    <span>Semua Personel</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ $workforceTab === 'all' ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200' }}">{{ $workforceStats['total'] ?? 0 }}</span>
+                </button>
+            </div>
+
+            <div class="text-[11px] text-slate-400 font-medium hidden lg:flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px] text-slate-400">info</span>
+                <span>Wajib absen berlaku untuk Teknisi, NOC, Gudang, Kasir & CS</span>
+            </div>
+        </div>
+
+        {{-- Table Content --}}
+        @php
+            $currentList = $workforceList[$workforceTab] ?? [];
+        @endphp
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50/80 dark:bg-slate-800/40 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                        <th class="p-3.5 pl-5 font-bold">Karyawan / Personel</th>
+                        <th class="p-3.5 font-bold">Peran & Cabang</th>
+                        <th class="p-3.5 font-bold">Status Kehadiran</th>
+                        <th class="p-3.5 font-bold">Waktu Masuk & Durasi</th>
+                        <th class="p-3.5 font-bold">Tugas / Aktivitas Berjalan</th>
+                        <th class="p-3.5 pr-5 text-right font-bold">Kontak / Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-sm">
+                    @forelse($currentList as $staf)
+                    @php
+                        $roleLower = strtolower($staf['role']);
+                        $roleColor = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+                        if (str_contains($roleLower, 'teknisi') || str_contains($roleLower, 'technician')) {
+                            $roleColor = 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border-sky-200 dark:border-sky-800';
+                        } elseif (str_contains($roleLower, 'noc')) {
+                            $roleColor = 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+                        } elseif (str_contains($roleLower, 'gudang') || str_contains($roleLower, 'logistik')) {
+                            $roleColor = 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+                        } elseif (str_contains($roleLower, 'kasir') || str_contains($roleLower, 'billing')) {
+                            $roleColor = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+                        } elseif (str_contains($roleLower, 'cs') || str_contains($roleLower, 'service')) {
+                            $roleColor = 'bg-pink-50 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300 border-pink-200 dark:border-pink-800';
+                        }
+                    @endphp
+                    <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-750/50 transition">
+                        {{-- Karyawan --}}
+                        <td class="p-3.5 pl-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs uppercase overflow-hidden">
+                                    @if(!empty($staf['avatar']))
+                                        <img src="{{ $staf['avatar'] }}" alt="{{ $staf['name'] }}" class="w-full h-full object-cover">
+                                    @else
+                                        {{ substr($staf['name'], 0, 2) }}
+                                    @endif
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-900 dark:text-slate-100 text-sm truncate flex items-center gap-1.5">
+                                        {{ $staf['name'] }}
+                                        @if($staf['status'] === 'checked_in' || $staf['status'] === 'present')
+                                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500" title="Aktif Bekerja"></span>
+                                        @endif
+                                    </div>
+                                    <div class="text-[11px] text-slate-400 truncate">{{ $staf['phone'] ?: 'Tanpa No. HP' }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        {{-- Peran & Cabang --}}
+                        <td class="p-3.5">
+                            <div class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border {{ $roleColor }}">
+                                {{ $staf['role'] }}
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[13px]">location_on</span>
+                                <span>{{ $staf['branch'] }}</span>
+                            </div>
+                        </td>
+
+                        {{-- Status Kehadiran --}}
+                        <td class="p-3.5">
+                            @if($staf['status'] === 'unattended')
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    Belum Check-In
+                                </span>
+                            @elseif($staf['status'] === 'checked_out')
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                                    Selesai Dinas
+                                </span>
+                            @elseif(in_array($staf['status'], ['permission', 'sick']))
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    {{ ucfirst($staf['status']) }}
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Sedang Bekerja
+                                </span>
+                            @endif
+                        </td>
+
+                        {{-- Waktu Masuk & Durasi --}}
+                        <td class="p-3.5">
+                            @if($staf['status'] === 'unattended')
+                                <span class="text-xs text-slate-400 italic">Off-Duty</span>
+                            @else
+                                <div class="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                    Masuk: <span class="font-bold text-slate-900 dark:text-slate-100">{{ $staf['check_in_time'] }}</span>
+                                    @if(!empty($staf['check_out_time']))
+                                        <span class="text-slate-400">· Pulang: {{ $staf['check_out_time'] }}</span>
+                                    @endif
+                                </div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[13px] text-slate-400">schedule</span>
+                                    <span>Durasi: {{ $staf['duration'] }}</span>
+                                </div>
+                            @endif
+                        </td>
+
+                        {{-- Tugas / Aktivitas Berjalan --}}
+                        <td class="p-3.5">
+                            @if(!empty($staf['active_task']))
+                                <div class="flex items-center gap-1.5 max-w-xs">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0">
+                                        {{ $staf['active_task']['code'] }}
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-800 dark:text-slate-200 truncate" title="{{ $staf['active_task']['title'] }}">
+                                        {{ $staf['active_task']['title'] }}
+                                    </span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-0.5 capitalize">Status: {{ str_replace('_', ' ', $staf['active_task']['status']) }}</div>
+                            @elseif($staf['status'] === 'unattended')
+                                <span class="text-xs text-slate-400">-</span>
+                            @else
+                                <div class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                    <span class="material-symbols-outlined text-[14px] text-emerald-500">task_alt</span>
+                                    <span>Standby / Tersedia</span>
+                                </div>
+                            @endif
+                        </td>
+
+                        {{-- Kontak / Aksi --}}
+                        <td class="p-3.5 pr-5 text-right">
+                            <div class="inline-flex items-center justify-end gap-1.5">
+                                @if($staf['has_gps'])
+                                    <a href="{{ $staf['gps_url'] }}" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer" title="Lihat Lokasi GPS Absen di Google Maps">
+                                        <span class="material-symbols-outlined text-[16px]">location_on</span>
+                                    </a>
+                                @endif
+
+                                @if(!empty($staf['wa_phone']))
+                                    <a href="https://wa.me/{{ $staf['wa_phone'] }}?text=Halo%20{{ urlencode($staf['name']) }},%20bagaimana%20update%20pekerjaan%20hari%20ini?" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold transition cursor-pointer" title="Hubungi via WhatsApp">
+                                        <span class="material-symbols-outlined text-[14px]">chat</span>
+                                        <span>WA</span>
+                                    </a>
+                                @else
+                                    <span class="text-xs text-slate-300 dark:text-slate-600">-</span>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-slate-400">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">group_off</span>
+                                <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Tidak ada staf dalam kategori ini</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Pilih tab lain di atas untuk melihat status kehadiran karyawan lainnya.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
     
-    {{-- E. RECENT PAYMENTS & TOP TRAFFIC USERS --}}
+    {{-- F. RECENT PAYMENTS & TOP TRAFFIC USERS --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
             <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
