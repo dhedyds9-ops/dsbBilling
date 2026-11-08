@@ -161,6 +161,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
     Route::middleware(['role:administrator,manager,reseller,admin_gudang,technician', 'workforce.checked_in'])->prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/requisitions', \App\Livewire\Inventory\Requisition\Index::class)->name('requisitions.index');
         Route::get('/custodies', \App\Livewire\Inventory\Custody\Index::class)->name('custodies.index');
+        Route::get('/panduan', \App\Livewire\Inventory\Guide\Index::class)->name('guide.index');
     });
 
     // ==================== STAFF / ADMIN AREA ====================

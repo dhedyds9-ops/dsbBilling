@@ -106,6 +106,7 @@ class MenuRegistry
                             ['label' => 'Stok Opname', 'route' => 'inventory.opnames.index', 'active' => 'inventory.opnames.*', 'permission' => 'inventory.opname'],
                             ['label' => 'Kartu Stok', 'route' => 'inventory.stock-card.index', 'active' => 'inventory.stock-card.*', 'permission' => 'inventory.stock-card'],
                             ['label' => 'Laporan Inventaris', 'route' => 'inventory.reports.index', 'active' => 'inventory.reports.*', 'permission' => 'inventory.report'],
+                            ['label' => 'Buku Panduan Gudang', 'route' => 'inventory.guide.index', 'active' => 'inventory.guide.*', 'permission' => 'inventory.view'],
                         ]
                     ],
                     [
@@ -113,6 +114,13 @@ class MenuRegistry
                         'icon' => 'fingerprint',
                         'items' => [
                             ['label' => 'Absensi Mandiri', 'route' => 'admin.attendance.index', 'active' => 'admin.attendance.*', 'permission' => 'workforce.attendance.execute'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Bantuan & SOP',
+                        'icon' => 'menu_book',
+                        'items' => [
+                            ['label' => 'Buku Panduan Gudang', 'route' => 'inventory.guide.index', 'active' => 'inventory.guide.*', 'permission' => 'inventory.view'],
                         ]
                     ],
                 ]
@@ -219,6 +227,7 @@ class MenuRegistry
                             ['label' => 'Stok Opname', 'route' => 'inventory.opnames.index', 'active' => 'inventory.opnames.*', 'permission' => 'inventory.opname'],
                             ['label' => 'Kartu Stok', 'route' => 'inventory.stock-card.index', 'active' => 'inventory.stock-card.*', 'permission' => 'inventory.stock-card'],
                             ['label' => 'Laporan Inventaris', 'route' => 'inventory.reports.index', 'active' => 'inventory.reports.*', 'permission' => 'inventory.report'],
+                            ['label' => 'Buku Panduan Gudang', 'route' => 'inventory.guide.index', 'active' => 'inventory.guide.*', 'permission' => 'inventory.view'],
                         ]
                     ],
                     [
@@ -499,6 +508,7 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Permintaan Barang', 'route' => 'inventory.requisitions.index', 'active' => 'inventory.requisitions.*'],
                             ['label' => 'Stok di Tangan', 'route' => 'inventory.custodies.index', 'active' => 'inventory.custodies.*'],
+                            ['label' => 'Panduan & SOP Material', 'route' => 'inventory.guide.index', 'active' => 'inventory.guide.*'],
                         ]
                     ]
                 ]
