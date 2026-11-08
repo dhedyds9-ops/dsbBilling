@@ -289,7 +289,6 @@
             </div>
         </div>
     @endif
-    </div>
 
     {{-- Riwayat 5 Hari --}}
     <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
