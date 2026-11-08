@@ -191,6 +191,17 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/{id}/materials', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addMaterialUsage'])->where('id', '\d+');
         });
 
+        // Inventory & Material Management (Phase 2B)
+        Route::prefix('inventory')->name('inventory.')->group(function () {
+            Route::get('/my-stock', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'myStock'])->name('my-stock');
+            Route::get('/items', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'items'])->name('items');
+            Route::post('/requisitions', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'createRequisition'])->name('requisitions.create');
+            Route::get('/requisitions', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'requisitions'])->name('requisitions.index');
+            Route::post('/requisitions/{id}/approve', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'approveRequisition'])->where('id', '\d+')->name('requisitions.approve');
+            Route::post('/custody/transfer', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'transferCustody'])->name('custody.transfer');
+            Route::post('/returns', [\App\Http\Controllers\Api\Mobile\MobileInventoryApiController::class, 'returnItems'])->name('returns.create');
+        });
+
         // ACS TR-069 Proxy (Replaces direct NBI access)
         Route::prefix('acs')->name('acs.')->group(function () {
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'listDevices'])->name('devices.index');
