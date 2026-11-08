@@ -448,6 +448,205 @@ class MobileWorkforceApiController extends Controller
     }
 
     /**
+     * Add a new checklist item to the specified work order (Phase 2C).
+     */
+    public function addChecklist(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
+        $request->validate([
+            'item' => 'required|string|max:255',
+        ]);
+
+        $checklist = $workOrder->checklists()->create([
+            'uuid' => (string) Str::uuid(),
+            'item' => $request->input('item'),
+            'completed' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Item checklist berhasil ditambahkan.',
+            'data' => [
+                'id' => $checklist->id,
+                'item' => $checklist->item,
+                'completed' => false,
+            ],
+        ]);
+    }
+
+    /**
+     * Toggle checklist item completion status (Phase 2C).
+     */
+    public function toggleChecklist(Request $request, int $id, int $checklistId): JsonResponse
+    {
+        $user = $request->user();
+        $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
+        $checklist = \App\Models\Workforce\WorkOrderChecklist::where('work_order_id', $id)->findOrFail($checklistId);
+
+        $newCompleted = $request->has('completed') 
+            ? (bool)$request->input('completed') 
+            : !$checklist->completed;
+
+        $checklist->update([
+            'completed' => $newCompleted,
+            'completed_at' => $newCompleted ? now() : null,
+        ]);
+
+        $total = $workOrder->checklists()->count();
+        $completed = $workOrder->checklists()->where('completed', true)->count();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status checklist diperbarui.',
+            'data' => [
+                'id' => $checklist->id,
+                'item' => $checklist->item,
+                'completed' => (bool)$checklist->completed,
+                'completed_at' => $checklist->completed_at?->toIso8601String(),
+                'total_checklists' => $total,
+                'completed_checklists' => $completed,
+            ],
+        ]);
+    }
+
+    /**
+     * Save optical power measurements (RX/TX redaman dBm) (Phase 2C).
+     */
+    public function saveMeasurements(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
+        $request->validate([
+            'optical_rx_power' => 'required|numeric|between:-45,15',
+            'optical_tx_power' => 'nullable|numeric|between:-45,15',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $rx = (float)$request->input('optical_rx_power');
+        $tx = $request->filled('optical_tx_power') ? (float)$request->input('optical_tx_power') : null;
+
+        $updates = [
+            'optical_rx_power' => $rx,
+        ];
+        if ($tx !== null) {
+            $updates['optical_tx_power'] = $tx;
+        }
+        if ($request->filled('notes')) {
+            $updates['notes'] = $workOrder->notes ? ($workOrder->notes . "\n[Redaman RX {$rx} dBm]: " . $request->input('notes')) : "Redaman RX {$rx} dBm: " . $request->input('notes');
+        }
+
+        $workOrder->update($updates);
+
+        $quality = match (true) {
+            $rx >= -23.0 && $rx <= -14.0 => 'Optimal (Bagus)',
+            $rx >= -26.0 && $rx < -23.0 => 'Waspada (Batas Toleransi)',
+            $rx < -26.0 => 'Kritis (Redaman Redup)',
+            default => 'Tinggi',
+        };
+
+        return response()->json([
+            'success' => true,
+            'message' => "Hasil ukur redaman tersimpan: {$rx} dBm ({$quality}).",
+            'data' => [
+                'optical_rx_power' => $rx,
+                'optical_tx_power' => $tx,
+                'quality' => $quality,
+            ],
+        ]);
+    }
+
+    /**
+     * Upload work evidence photo (Phase 2C).
+     */
+    public function uploadEvidence(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
+        $request->validate([
+            'photo' => 'required|file|mimes:jpeg,png,jpg,webp|max:10240',
+            'type' => 'nullable|string|in:before,after,odp,ont,modem,speedtest,general',
+            'caption' => 'nullable|string|max:255',
+        ]);
+
+        $file = $request->file('photo');
+        $photoType = $request->input('type', 'general');
+        $caption = $request->input('caption', '');
+
+        $filename = 'evidence_' . time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('public/evidence/' . $id, $filename);
+        $publicUrl = '/storage/evidence/' . $id . '/' . $filename;
+
+        $photos = $workOrder->evidence_photos ?? [];
+        $photos[] = [
+            'uuid' => (string) Str::uuid(),
+            'type' => $photoType,
+            'caption' => $caption,
+            'url' => $publicUrl,
+            'path' => $path,
+            'uploaded_by' => $user->id,
+            'uploaded_at' => now()->toIso8601String(),
+        ];
+
+        $workOrder->update(['evidence_photos' => $photos]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto bukti pekerjaan berhasil diunggah.',
+            'data' => [
+                'photos' => $photos,
+                'count' => count($photos),
+            ],
+        ]);
+    }
+
+    /**
+     * Save customer digital signature (Phase 2C).
+     */
+    public function saveSignature(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $workOrder = WorkOrder::findOrFail($id);
+
+        if ($authCheck = $this->authorizeWorkOrderAccess($user, $workOrder)) {
+            return $authCheck;
+        }
+
+        $request->validate([
+            'signature' => 'required|string',
+        ]);
+
+        $workOrder->update([
+            'customer_signature' => $request->input('signature'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tanda tangan digital pelanggan berhasil disimpan.',
+        ]);
+    }
+
+    /**
      * Log GPS coordinates of technician.
      */
     public function logGPS(Request $request): JsonResponse
@@ -537,6 +736,10 @@ class MobileWorkforceApiController extends Controller
             'checklists_count' => $wo->checklists->count(),
             'checklists_completed_count' => $wo->checklists->where('completed', true)->count(),
             'materials_count' => $wo->materialUsages->count(),
+            'optical_rx_power' => $wo->optical_rx_power ? (float)$wo->optical_rx_power : null,
+            'optical_tx_power' => $wo->optical_tx_power ? (float)$wo->optical_tx_power : null,
+            'has_signature' => !empty($wo->customer_signature),
+            'evidence_photos_count' => is_array($wo->evidence_photos) ? count($wo->evidence_photos) : 0,
             'permissions' => [
                 'can_start' => ($isAssignedTech || $isManager) && in_array($wo->status, ['pending', 'assigned']),
                 'can_request_approval' => ($isAssignedTech || $isManager) && $wo->status === 'in_progress',
@@ -548,6 +751,8 @@ class MobileWorkforceApiController extends Controller
         ];
 
         if ($includeDetails) {
+            $payload['evidence_photos'] = $wo->evidence_photos ?? [];
+            $payload['customer_signature'] = $wo->customer_signature;
             $payload['checklists'] = $wo->checklists->map(fn($c) => [
                 'id' => $c->id,
                 'item' => $c->item,

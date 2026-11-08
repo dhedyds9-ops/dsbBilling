@@ -176,6 +176,12 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/work-orders/{id}/start', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'startWorkOrder'])->where('id', '\d+')->name('work-orders.start');
             Route::post('/work-orders/{id}/complete', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'completeWorkOrder'])->where('id', '\d+')->name('work-orders.complete');
             Route::post('/work-orders/{id}/materials', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addMaterialUsage'])->where('id', '\d+')->name('work-orders.materials');
+            // Phase 2C Field Service & Work Evidence
+            Route::post('/work-orders/{id}/checklists', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addChecklist'])->where('id', '\d+')->name('work-orders.checklists.add');
+            Route::post('/work-orders/{id}/checklists/{checklistId}/toggle', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'toggleChecklist'])->where('id', '\d+')->where('checklistId', '\d+')->name('work-orders.checklists.toggle');
+            Route::post('/work-orders/{id}/measurements', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'saveMeasurements'])->where('id', '\d+')->name('work-orders.measurements');
+            Route::post('/work-orders/{id}/evidence', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'uploadEvidence'])->where('id', '\d+')->name('work-orders.evidence');
+            Route::post('/work-orders/{id}/sign', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'saveSignature'])->where('id', '\d+')->name('work-orders.sign');
             Route::get('/technicians', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'technicians'])->name('technicians');
             Route::post('/gps/log', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'logGPS'])->name('gps.log');
         });
@@ -189,6 +195,11 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/{id}/start', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'startWorkOrder'])->where('id', '\d+');
             Route::post('/{id}/complete', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'completeWorkOrder'])->where('id', '\d+');
             Route::post('/{id}/materials', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addMaterialUsage'])->where('id', '\d+');
+            Route::post('/{id}/checklists', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'addChecklist'])->where('id', '\d+');
+            Route::post('/{id}/checklists/{checklistId}/toggle', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'toggleChecklist'])->where('id', '\d+')->where('checklistId', '\d+');
+            Route::post('/{id}/measurements', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'saveMeasurements'])->where('id', '\d+');
+            Route::post('/{id}/evidence', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'uploadEvidence'])->where('id', '\d+');
+            Route::post('/{id}/sign', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'saveSignature'])->where('id', '\d+');
         });
 
         // Inventory & Material Management (Phase 2B)

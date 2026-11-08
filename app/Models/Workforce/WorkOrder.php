@@ -32,6 +32,10 @@ class WorkOrder extends Model
         'approved_by',
         'approved_at',
         'priority',
+        'optical_rx_power',
+        'optical_tx_power',
+        'customer_signature',
+        'evidence_photos',
     ];
 
     protected $casts = [
@@ -39,6 +43,9 @@ class WorkOrder extends Model
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'approved_at' => 'datetime',
+        'optical_rx_power' => 'decimal:2',
+        'optical_tx_power' => 'decimal:2',
+        'evidence_photos' => 'array',
     ];
 
     public function customer(): BelongsTo
