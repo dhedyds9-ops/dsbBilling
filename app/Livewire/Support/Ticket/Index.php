@@ -343,6 +343,22 @@ class Index extends BaseEnterpriseList
 
     public function openCreateForm(): void
     {
+        $user = Auth::user();
+        if ($user && ($user->hasRole(['customer_service', 'cs', 'admin_gudang', 'kasir', 'technician']) || strtoupper((string) ($user->job_function ?? '')) === 'CS')) {
+            $hasCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', $user->id)
+                ->whereDate('date', \Carbon\Carbon::today())
+                ->whereNotNull('checked_in_at')
+                ->exists();
+            if (! $hasCheckedIn && ! $user->isSuperAdmin()) {
+                $this->dispatch('open-attendance-prompt');
+                $this->dispatch('toast', [
+                    'type' => 'warning',
+                    'message' => "Halo {$user->name}, Anda belum melakukan Absen Hadir hari ini. Silakan klik tombol Absen Masuk untuk memulai shift dan melayani transaksi.",
+                ]);
+                return;
+            }
+        }
+
         $this->resetErrorBag();
         $this->customerSearch = '';
         $this->showAllStaff = true;
@@ -377,6 +393,22 @@ class Index extends BaseEnterpriseList
 
     public function submitCreate(): void
     {
+        $user = Auth::user();
+        if ($user && ($user->hasRole(['customer_service', 'cs', 'admin_gudang', 'kasir', 'technician']) || strtoupper((string) ($user->job_function ?? '')) === 'CS')) {
+            $hasCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', $user->id)
+                ->whereDate('date', \Carbon\Carbon::today())
+                ->whereNotNull('checked_in_at')
+                ->exists();
+            if (! $hasCheckedIn && ! $user->isSuperAdmin()) {
+                $this->dispatch('open-attendance-prompt');
+                $this->dispatch('toast', [
+                    'type' => 'warning',
+                    'message' => "Halo {$user->name}, Anda belum melakukan Absen Hadir hari ini. Silakan klik tombol Absen Masuk untuk memulai shift dan melayani transaksi.",
+                ]);
+                return;
+            }
+        }
+
         $userId = Auth::id() ?? 0;
         $this->resetErrorBag();
 

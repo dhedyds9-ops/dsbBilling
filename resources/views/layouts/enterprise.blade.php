@@ -181,6 +181,10 @@
 
         <!-- Page Content -->
         <main class="flex-1 p-4 md:p-6 min-w-0 max-w-full print:p-0 print:m-0">
+            @auth
+                <livewire:workforce.attendance-prompt />
+            @endauth
+
             {{ $slot ?? '' }}
             @yield('content')
         </main>

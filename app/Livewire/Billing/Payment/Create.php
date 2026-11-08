@@ -43,6 +43,22 @@ class Create extends AdminComponent
 
     public function save(PaymentService $paymentService)
     {
+        $user = auth()->user();
+        if ($user && ($user->hasRole(['kasir', 'admin_gudang', 'technician', 'customer_service']) || str_contains(strtolower((string) $user->job_title), 'kasir'))) {
+            $hasCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', $user->id)
+                ->whereDate('date', \Carbon\Carbon::today())
+                ->whereNotNull('checked_in_at')
+                ->exists();
+            if (!$hasCheckedIn && !$user->isSuperAdmin()) {
+                $this->dispatch('open-attendance-prompt');
+                $this->dispatch('toast', [
+                    'type' => 'warning',
+                    'message' => "Halo {$user->name}, Anda belum melakukan Absen Hadir hari ini. Silakan klik tombol Absen Masuk untuk memulai shift dan melayani transaksi.",
+                ]);
+                return;
+            }
+        }
+
         $this->validate([
             'customer_id' => 'required|exists:customers,id',
             'amount' => 'required|numeric|min:0',

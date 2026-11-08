@@ -60,8 +60,45 @@ class Index extends Component
         $this->resetPage();
     }
 
+    protected function ensureWorkforceAttendance(): bool
+    {
+        $user = auth()->user();
+        if (! $user) return true;
+
+        if ($user->isSuperAdmin() && empty($user->job_function) && ! $user->hasRole('admin_gudang')) {
+            return true;
+        }
+
+        $isWorkforce = $user->hasRole(['admin_gudang', 'technician', 'noc', 'kasir', 'customer_service'])
+            || in_array(strtoupper((string) ($user->job_function ?? '')), ['TECHNICIAN', 'NOC', 'GUDANG', 'KASIR', 'CS'])
+            || str_contains(strtolower((string) ($user->job_title ?? '')), 'gudang')
+            || str_contains(strtolower((string) ($user->job_title ?? '')), 'logistik');
+
+        if (! $isWorkforce) return true;
+
+        $hasCheckedIn = \App\Models\Workforce\Attendance::where('technician_id', $user->id)
+            ->whereDate('date', \Carbon\Carbon::today())
+            ->whereNotNull('checked_in_at')
+            ->exists();
+
+        if (! $hasCheckedIn) {
+            $this->dispatch('open-attendance-prompt');
+            $this->dispatch('toast', [
+                'type' => 'warning',
+                'message' => "Halo {$user->name}, Anda belum melakukan Absen Hadir hari ini. Silakan klik tombol Absen Masuk untuk memulai shift dan melayani transaksi.",
+            ]);
+            return false;
+        }
+
+        return true;
+    }
+
     public function openCreateModal()
     {
+        if (! $this->ensureWorkforceAttendance()) {
+            return;
+        }
+
         $this->resetCreateForm();
         $firstWh = Warehouse::active()->first();
         if ($firstWh) {
@@ -73,6 +110,10 @@ class Index extends Component
 
     public function openCreateFromRequisition(int $reqId)
     {
+        if (! $this->ensureWorkforceAttendance()) {
+            return;
+        }
+
         $this->resetCreateForm();
         $req = InventoryRequisition::with(['items.item', 'requester', 'designatedTechnician'])->find($reqId);
         if (!$req) return;
@@ -181,6 +222,10 @@ class Index extends Component
 
     public function saveDispatch(StockMutationService $mutationService)
     {
+        if (! $this->ensureWorkforceAttendance()) {
+            return;
+        }
+
         $this->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
             'recipient_id' => 'required|exists:users,id',

@@ -158,7 +158,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
     });
 
     // ==================== SHARED INVENTORY & CUSTODY (ADMIN, MANAGER, RESELLER, ADMIN GUDANG, TECHNICIAN) ====================
-    Route::middleware(['role:administrator,manager,reseller,admin_gudang,technician'])->prefix('inventory')->name('inventory.')->group(function () {
+    Route::middleware(['role:administrator,manager,reseller,admin_gudang,technician', 'workforce.checked_in'])->prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/requisitions', \App\Livewire\Inventory\Requisition\Index::class)->name('requisitions.index');
         Route::get('/custodies', \App\Livewire\Inventory\Custody\Index::class)->name('custodies.index');
     });
@@ -304,7 +304,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
 
         // === Billing / Semua Tagihan (create: dropdown Tipe Service PPPoE / Hotspot Member) ===
-        Route::prefix('billing')->name('billing.')->group(function () {
+        Route::prefix('billing')->name('billing.')->middleware(['workforce.checked_in'])->group(function () {
             Route::get('/periode', \App\Livewire\Billing\PeriodeTagihan\Index::class)->name('periode.index');
             Route::get('/invoices', \App\Livewire\Billing\Invoice\Index::class)->name('invoices.index');
             Route::get('/invoices/create', \App\Livewire\Billing\Invoice\Create::class)->name('invoices.create');
@@ -338,7 +338,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         });
 
         // ==================== 7. SUPPORT ====================
-        Route::prefix('support')->name('support.')->group(function () use ($cs) {
+        Route::prefix('support')->name('support.')->middleware(['workforce.checked_in'])->group(function () use ($cs) {
             // Tiket Support: Kanban | Table | Timeline | Priority | Assignment
             Route::get('/ticket', \App\Livewire\Support\Ticket\Index::class)->name('ticket');
             // Instalasi: Work Order | Schedule | Technician | Map | Checklist
@@ -435,7 +435,7 @@ Route::middleware(['auth'])->group(function () use ($cs) {
         Route::get('/api/network/online-paths', [\App\Http\Controllers\Gis\MapApiController::class, 'onlinePaths'])->name('api.network.online-paths');
 
         // === Enterprise Inventory Management ===
-        Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::prefix('inventory')->name('inventory.')->middleware(['workforce.checked_in'])->group(function () {
             Route::get('/dashboard', \App\Livewire\Inventory\Dashboard\Index::class)->name('dashboard');
             Route::get('/assets', \App\Livewire\Inventory\AssetList::class)->name('assets.index');
             Route::get('/items', \App\Livewire\Inventory\Item\Index::class)->name('items.index');
