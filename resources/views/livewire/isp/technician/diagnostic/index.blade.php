@@ -89,18 +89,63 @@
                 <p class="text-[11px] text-slate-400 text-center py-2">Tidak ditemukan ONT yang cocok.</p>
             @endif
         @elseif($selectedOnuId && $onu)
+            @php
+                $statusStr = strtolower((string) ($diagnostics['online_status'] ?? $diagnostics['status'] ?? $onu->status ?? ''));
+                $optEarly = $diagnostics['optical'] ?? null;
+                $rxEarly = $optEarly['rx_power_display'] 
+                    ?? ($optEarly['rx_power'] ? $optEarly['rx_power'] . ' dBm' : null) 
+                    ?? ($onu->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null);
+                $isTargetOnline = ($diagnostics['is_online'] ?? false)
+                    || in_array($statusStr, ['online', 'active', 'connected'])
+                    || (!empty($rxEarly) && $rxEarly !== 'Tidak Didukung' && $rxEarly !== 'Tidak Ada Sinyal');
+            @endphp
             {{-- SUMMARY TARGET --}}
-            <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
-                <div class="min-w-0">
-                    <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">{{ $customer?->name ?? 'ONT ' . ($onu->serial_number ?? '-') }}</h3>
-                    <p class="text-[10px] sm:text-[11px] text-slate-500 truncate">
-                        {{ $customerService?->pppoeUser?->username ?? 'PPPoE' }} • {{ $customerService?->serviceProfile?->name ?? 'Layanan' }} • {{ $customer?->phone ?? '-' }}
+            <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                            {{ $customer?->name ?? 'ONT ' . ($onu->serial_number ?? '-') }}
+                        </h3>
+                        @if($isTargetOnline)
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                ONLINE
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                OFFLINE
+                            </span>
+                        @endif
+                    </div>
+                    <p class="text-[10px] sm:text-[11px] text-slate-500 truncate mt-0.5">
+                        @if($customerService)
+                            PPPoE: <span class="font-bold text-slate-700 dark:text-slate-300">{{ $customerService->pppoeUser?->username ?? $customerService->username ?? '-' }}</span> • 
+                            {{ $customerService->serviceProfile?->name ?? 'Layanan' }} • 
+                            {{ $customer?->phone ?? '-' }}
+                        @else
+                            <span class="text-amber-600 dark:text-amber-400 font-semibold">Belum Tertaut Pelanggan</span>
+                            @if(!empty($diagnostics['pppoe_username']) && $diagnostics['pppoe_username'] !== '-')
+                                • PPPoE ONT: <span class="font-bold text-sky-600 dark:text-sky-400">{{ $diagnostics['pppoe_username'] }}</span>
+                            @endif
+                        @endif
                     </p>
-                    <p class="text-[10px] font-mono font-bold text-sky-600 dark:text-sky-400 truncate">SN: {{ $onu->serial_number ?? '-' }} ({{ $onu->model ?: 'ONT' }})</p>
+                    <p class="text-[10px] font-mono font-bold text-sky-600 dark:text-sky-400 truncate">
+                        SN: {{ $onu->serial_number ?? '-' }} ({{ $onu->model ?: 'ONT' }})
+                    </p>
                 </div>
-                <span class="px-2 py-1 bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 rounded-xl text-[10px] font-extrabold uppercase shrink-0">
-                    Terpilih
-                </span>
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                    <span class="px-2 py-0.5 bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 rounded-lg text-[10px] font-extrabold uppercase">
+                        Terpilih
+                    </span>
+                    @if(!$customer)
+                        <button wire:click="openLinkCustomerModal" type="button"
+                                class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition-all flex items-center gap-1 active:scale-95">
+                            <span class="material-symbols-outlined text-xs notranslate" translate="no">person_add</span>
+                            <span>Tautkan</span>
+                        </button>
+                    @endif
+                </div>
             </div>
         @endif
     </div>
@@ -140,34 +185,53 @@
             $tx = $opt['tx_power_display'] 
                 ?? ($opt['tx_power'] ? $opt['tx_power'] . ' dBm' : null) 
                 ?? ($onu->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null);
-            $health = $opt['health'] ?? $opt['rx_power_status'] ?? 'unknown';
 
-            if (($health === 'unknown' || empty($health)) && $rx && $rx !== 'Tidak Didukung' && $rx !== 'Tidak Ada Sinyal') {
+            $statusStr = strtolower((string) ($diagnostics['online_status'] ?? $diagnostics['status'] ?? $onu->status ?? ''));
+            $isOnline = ($diagnostics['is_online'] ?? false)
+                || in_array($statusStr, ['online', 'active', 'connected'])
+                || (!empty($rx) && $rx !== 'Tidak Didukung' && $rx !== 'Tidak Ada Sinyal');
+
+            // Hitung status redaman: Bagus, Warning, Buruk, Loos
+            $rxStatus = 'loos';
+            if ($rx && $rx !== 'Tidak Didukung' && $rx !== 'Tidak Ada Sinyal') {
                 $numRx = (float) filter_var($rx, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-                if ($numRx <= -15.0 && $numRx >= -24.0) {
-                    $health = 'normal';
-                } elseif (($numRx < -24.0 && $numRx >= -27.0) || ($numRx > -15.0 && $numRx <= -10.0)) {
-                    $health = 'warning';
-                } elseif ($numRx < -27.0 || $numRx > -10.0) {
-                    $health = 'critical';
+                if ($numRx == 0.0 || $numRx <= -31.0) {
+                    $rxStatus = 'loos';
+                } elseif ($numRx <= -27.0 || $numRx >= -12.0) {
+                    $rxStatus = 'buruk';
+                } elseif ($numRx < -24.0) {
+                    $rxStatus = 'warning';
+                } elseif ($numRx <= -14.0) {
+                    $rxStatus = 'bagus';
+                } else {
+                    $rxStatus = 'warning';
                 }
+            } elseif ($isOnline) {
+                $rxStatus = 'bagus';
             }
 
-            $healthColor = match($health) {
-                'normal' => 'emerald',
+            $badgeLabel = match($rxStatus) {
+                'bagus' => 'Bagus',
+                'warning' => 'Warning',
+                'buruk' => 'Buruk',
+                default => 'Loos',
+            };
+
+            $healthColor = match($rxStatus) {
+                'bagus' => 'emerald',
                 'warning' => 'amber',
-                'critical' => 'rose',
-                default => 'slate'
+                'buruk' => 'rose',
+                default => 'red',
             };
         @endphp
         <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
                     <span class="material-symbols-outlined text-emerald-500 text-sm notranslate" translate="no" style="text-transform: none !important;">sensors</span>
-                    <span class="uppercase tracking-wider">Kualitas Sinyal & Redaman Optik (OPM)</span>
+                    <span class="uppercase tracking-wider">Redaman (OPM)</span>
                 </div>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-{{ $healthColor }}-100 text-{{ $healthColor }}-800 dark:bg-{{ $healthColor }}-950 dark:text-{{ $healthColor }}-300">
-                    {{ $health === 'normal' ? 'Optimal (-18 s/d -24 dBm)' : ($health === 'warning' ? 'Warning (-25 s/d -27 dBm)' : ($health === 'critical' ? 'Kritis / Redaman Buruk' : 'Offline / Standby')) }}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-{{ $healthColor }}-100 text-{{ $healthColor }}-800 dark:bg-{{ $healthColor }}-950 dark:text-{{ $healthColor }}-300">
+                    {{ $badgeLabel }}
                 </span>
             </div>
 
@@ -204,9 +268,17 @@
                     <span class="material-symbols-outlined text-indigo-500 text-sm notranslate" translate="no" style="text-transform: none !important;">info</span>
                     <span class="uppercase tracking-wider">Informasi Hardware & Jaringan</span>
                 </div>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ ($diagnostics['status'] ?? $onu->status) === 'online' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600' }}">
-                    {{ strtoupper($diagnostics['status'] ?? $onu->status) }}
-                </span>
+                @if($isOnline)
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        ONLINE
+                    </span>
+                @else
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        OFFLINE
+                    </span>
+                @endif
             </div>
 
             <div class="grid grid-cols-2 gap-2.5 text-xs">
@@ -225,6 +297,10 @@
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">IP WAN:</span>
                     <span class="font-mono text-slate-800 dark:text-slate-200">{{ $onu->ip_address ?: ($diagnostics['ip_address'] ?? '-') }}</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">PPPoE WAN:</span>
+                    <span class="font-mono font-bold text-sky-600 dark:text-sky-400">{{ $diagnostics['pppoe_username'] ?? $customerService?->pppoeUser?->username ?? $customerService?->username ?? '-' }}</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Uptime (Masa Hidup):</span>
@@ -407,6 +483,67 @@
                             class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors flex items-center justify-center gap-1">
                         <span wire:loading.remove wire:target="saveWifi">Terapkan ke ONT</span>
                         <span wire:loading wire:target="saveWifi">Mengirim...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- MODAL TAUTKAN PELANGGAN --}}
+    @if($showLinkCustomerModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 max-w-md w-full space-y-4 shadow-2xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">person_add</span>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Tautkan ONT ke Pelanggan</h3>
+                            <p class="text-[10px] text-slate-500">SN: {{ $onu->serial_number ?? '-' }}</p>
+                        </div>
+                    </div>
+                    <button wire:click="$set('showLinkCustomerModal', false)" type="button" class="text-slate-400 hover:text-slate-600">
+                        <span class="material-symbols-outlined text-sm notranslate" translate="no">close</span>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm notranslate" translate="no">search</span>
+                        <input type="text" wire:model.live.debounce.300ms="customerSearchQuery"
+                               placeholder="Cari Nama / No HP / PPPoE Pelanggan..."
+                               class="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500">
+                    </div>
+
+                    @if(!empty($customerSearchResults))
+                        <div class="divide-y divide-slate-100 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm bg-white dark:bg-slate-800 max-h-52 overflow-y-auto">
+                            @foreach($customerSearchResults as $csRes)
+                                <div wire:click="linkCustomer({{ $csRes['id'] }})"
+                                     class="p-2.5 hover:bg-emerald-50/70 dark:hover:bg-slate-700 cursor-pointer transition-colors flex items-center justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">{{ $csRes['customer_name'] }}</h4>
+                                        <p class="text-[10px] text-slate-500 truncate">PPPoE: <span class="font-bold text-slate-700 dark:text-slate-300">{{ $csRes['pppoe_username'] }}</span> • {{ $csRes['package'] }}</p>
+                                        <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono truncate">HP: {{ $csRes['phone'] }} ({{ $csRes['customer_code'] }})</p>
+                                    </div>
+                                    <button type="button"
+                                            class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-sm">
+                                        Pilih
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @elseif(strlen(trim($customerSearchQuery)) >= 2)
+                        <p class="text-[11px] text-slate-400 text-center py-3">Tidak ditemukan data pelanggan.</p>
+                    @else
+                        <p class="text-[11px] text-slate-400 text-center py-2">Ketik minimal 2 karakter untuk mencari pelanggan.</p>
+                    @endif
+                </div>
+
+                <div class="pt-2">
+                    <button wire:click="$set('showLinkCustomerModal', false)" type="button"
+                            class="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                        Tutup
                     </button>
                 </div>
             </div>

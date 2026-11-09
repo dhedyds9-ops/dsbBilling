@@ -357,12 +357,89 @@ class GenieAcsDiagnosticService
         // Wi-Fi Diagnostics
         $wifiData = $this->parseWifiDiagnostics($onu, $deviceId, $params);
 
+        // PPPoE Username Extraction
+        $pppoeUsername = $this->extractValue($params, [
+            'VirtualParameters.pppoeUsername',
+            'VirtualParameters.pppoeUsername2',
+            'VirtualParameters.pppUsername',
+            'VirtualParameters.pppoe_username',
+            'VirtualParameters.Username',
+            'VirtualParameters.getpppoeuser',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Username',
+            'Device.PPP.Interface.1.Username',
+            'Device.PPP.Interface.2.Username',
+        ]);
+
+        if (empty($pppoeUsername)) {
+            $flat = [];
+            $flatten = function ($arr, $prefix = '') use (&$flatten, &$flat) {
+                foreach ($arr as $k => $v) {
+                    $key = $prefix ? "{$prefix}.{$k}" : $k;
+                    if (is_array($v)) {
+                        if (isset($v['_value'])) {
+                            $flat[$key] = $v['_value'];
+                        }
+                        $flatten($v, $key);
+                    } else {
+                        $flat[$key] = $v;
+                    }
+                }
+            };
+            $flatten($params);
+
+            foreach ($flat as $k => $v) {
+                if ((str_contains($k, 'WANPPPConnection') || str_contains($k, 'PPP.Interface'))
+                    && str_ends_with($k, 'Username')
+                    && is_scalar($v)
+                    && trim((string)$v) !== '') {
+                    $pppoeUsername = trim((string)$v);
+                    break;
+                }
+            }
+        }
+
+        // IP WAN Extraction
+        $ipWan = $this->extractValue($params, [
+            'VirtualParameters.ipWan',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress',
+            'Device.IP.Interface.1.IPv4Address.1.IPAddress',
+            '_ip',
+        ]) ?? $onu->ip_address;
+
+        // MAC Address Extraction
+        $macAddress = $this->extractValue($params, [
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.MACAddress',
+            'InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress',
+            'Device.Ethernet.Interface.1.MACAddress',
+            '_deviceId._MACAddress',
+        ]) ?? $onu->mac_address;
+
+        // Device is considered online if:
+        // 1. GenieACS calculateStatus returns online or stale, OR
+        // 2. Optical transceiver is receiving valid RX power, OR
+        // 3. ONU status in database is active
+        $hasOpticalSignal = ($opticalData['rx_power'] !== null && $opticalData['rx_power'] !== 0.0);
+        if ($hasOpticalSignal || in_array(strtolower((string)$onu->status), ['active', 'online'])) {
+            $isOnline = true;
+            if ($onlineStatus === 'offline') {
+                $onlineStatus = 'online';
+                $connectionStatus = 'Connected (Online)';
+                $statusBadge = 'green';
+            }
+        }
+
         return [
             'device_id' => $deviceId,
             'onu_id' => $onu->id,
             'serial_number' => $onu->serial_number,
             'is_online' => $isOnline,
             'online_status' => $onlineStatus,
+            'status' => $onlineStatus,
             'status_badge' => $statusBadge,
             'last_inform' => $lastInformDisplay,
             'last_inform_raw' => $lastInformRaw,
@@ -370,6 +447,9 @@ class GenieAcsDiagnosticService
             'uptime' => $uptimeDisplay,
             'uptime_seconds' => $uptimeSeconds,
             'connection_status' => $connectionStatus,
+            'pppoe_username' => $pppoeUsername,
+            'ip_wan' => $ipWan,
+            'mac_address' => $macAddress,
             'updated_at' => now()->format('d M Y, H:i:s'),
             'optical' => $opticalData,
             'hardware' => $hardwareData,
@@ -690,19 +770,27 @@ class GenieAcsDiagnosticService
      */
     protected function formatUnregisteredDiagnostic(Onu $onu): array
     {
+        $hasOptical = !empty($onu->rx_power_dbm) && (float)$onu->rx_power_dbm < 0;
+        $isOnline = in_array(strtolower((string)$onu->status), ['active', 'online']) || $hasOptical;
+        $onlineStatus = $isOnline ? 'online' : 'offline';
+
         return [
             'device_id' => null,
             'onu_id' => $onu->id,
             'serial_number' => $onu->serial_number,
-            'is_online' => false,
-            'online_status' => 'offline',
-            'status_badge' => 'gray',
-            'last_inform' => 'Belum Terdaftar',
-            'last_inform_raw' => null,
+            'is_online' => $isOnline,
+            'online_status' => $onlineStatus,
+            'status' => $onlineStatus,
+            'status_badge' => $isOnline ? 'green' : 'gray',
+            'last_inform' => $onu->last_seen_at ? $onu->last_seen_at->format('d M Y, H:i') : 'Belum Terdaftar',
+            'last_inform_raw' => $onu->last_seen_at?->toIso8601String(),
             'last_boot' => 'Tidak Didukung',
             'uptime' => 'Tidak Didukung',
             'uptime_seconds' => null,
-            'connection_status' => 'Belum Terdaftar di GenieACS',
+            'connection_status' => $isOnline ? 'Connected (OLT Sync)' : 'Belum Terdaftar di GenieACS',
+            'pppoe_username' => null,
+            'ip_wan' => $onu->ip_address,
+            'mac_address' => $onu->mac_address,
             'data_state' => 'unavailable',
             'updated_at' => now()->format('d M Y, H:i:s'),
             'optical' => [
@@ -742,19 +830,27 @@ class GenieAcsDiagnosticService
      */
     protected function formatNotFoundDiagnostic(Onu $onu, string $deviceId): array
     {
+        $hasOptical = !empty($onu->rx_power_dbm) && (float)$onu->rx_power_dbm < 0;
+        $isOnline = in_array(strtolower((string)$onu->status), ['active', 'online']) || $hasOptical;
+        $onlineStatus = $isOnline ? 'online' : 'offline';
+
         return [
             'device_id' => $deviceId,
             'onu_id' => $onu->id,
             'serial_number' => $onu->serial_number,
-            'is_online' => false,
-            'online_status' => 'offline',
-            'status_badge' => 'red',
-            'last_inform' => 'Perangkat Tidak Ditemukan',
-            'last_inform_raw' => null,
+            'is_online' => $isOnline,
+            'online_status' => $onlineStatus,
+            'status' => $onlineStatus,
+            'status_badge' => $isOnline ? 'green' : 'red',
+            'last_inform' => $onu->last_seen_at ? $onu->last_seen_at->format('d M Y, H:i') : 'Perangkat Tidak Ditemukan',
+            'last_inform_raw' => $onu->last_seen_at?->toIso8601String(),
             'last_boot' => 'Tidak Didukung',
             'uptime' => 'Tidak Didukung',
             'uptime_seconds' => null,
-            'connection_status' => 'Perangkat Tidak Ditemukan di GenieACS (404)',
+            'connection_status' => $isOnline ? 'Connected (OLT Sync)' : 'Perangkat Tidak Ditemukan di GenieACS (404)',
+            'pppoe_username' => null,
+            'ip_wan' => $onu->ip_address,
+            'mac_address' => $onu->mac_address,
             'data_state' => 'unavailable',
             'updated_at' => now()->format('d M Y, H:i:s'),
             'optical' => [

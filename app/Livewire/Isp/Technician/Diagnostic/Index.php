@@ -60,6 +60,11 @@ class Index extends Component
     public string $wifi_password = '';
     public bool $isSavingWifi = false;
 
+    // Link Customer Modal State
+    public bool $showLinkCustomerModal = false;
+    public string $customerSearchQuery = '';
+    public array $customerSearchResults = [];
+
     public function mount()
     {
         if ($this->onu_id) {
@@ -248,8 +253,19 @@ class Index extends Component
         $this->selectedOnuId = $onu->id;
         $this->onu = $onu;
 
-        // Resolusi CustomerService tanpa terhalang isolasi branch/reseller
-        $this->customerService = CustomerService::withoutGlobalScopes()
+        // Resolusi multi-layer data pelanggan
+        $this->resolveCustomerForOnu($onu);
+
+        $this->searchResults = [];
+        $this->searchQuery = '';
+
+        $this->loadDiagnostics(false);
+    }
+
+    public function resolveCustomerForOnu(Onu $onu): void
+    {
+        // 1. Cek langsung dari relasi CustomerService pada ONU
+        $cs = CustomerService::withoutGlobalScopes()
             ->with([
                 'customer' => fn($q) => $q->withoutGlobalScopes(),
                 'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
@@ -259,24 +275,83 @@ class Index extends Component
             ->latest('id')
             ->first();
 
-        if (!$this->customerService && $onu->acsDevice?->customer_service_id) {
-            $this->customerService = CustomerService::withoutGlobalScopes()
+        // 2. Cek via ACSDevice relation / tabel acs_devices
+        if (!$cs) {
+            $acsId = $onu->acsDevice?->customer_service_id;
+            if (!$acsId && !empty($onu->serial_number)) {
+                $acsId = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where('serial_number', $onu->serial_number)
+                    ->orWhere('mac_address', $onu->mac_address)
+                    ->value('customer_service_id');
+            }
+            if ($acsId) {
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->with([
+                        'customer' => fn($q) => $q->withoutGlobalScopes(),
+                        'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                        'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                    ])
+                    ->find($acsId);
+            }
+        }
+
+        // 3. Cek via customer_id di ONU
+        if (!$cs && !empty($onu->customer_id)) {
+            $cs = CustomerService::withoutGlobalScopes()
                 ->with([
                     'customer' => fn($q) => $q->withoutGlobalScopes(),
                     'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
                     'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
                 ])
-                ->find($onu->acsDevice->customer_service_id);
+                ->where('customer_id', $onu->customer_id)
+                ->latest('id')
+                ->first();
         }
 
-        $this->customer = $this->customerService?->customer
-            ?? ($onu->customer_id ? Customer::withoutGlobalScopes()->find($onu->customer_id) : null)
-            ?? ($onu->acsDevice?->resolved_customer ?? null);
+        // 4. Cek via MAC Address di PPPoEUser
+        if (!$cs && !empty($onu->mac_address)) {
+            $cleanMac = strtoupper(preg_replace('/[^A-F0-9]/i', '', (string)$onu->mac_address));
+            $formattedMac = strlen($cleanMac) === 12 ? implode(':', str_split($cleanMac, 2)) : $onu->mac_address;
 
-        $this->searchResults = [];
-        $this->searchQuery = '';
+            $pppoe = \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                ->where(function ($mq) use ($cleanMac, $formattedMac) {
+                    $mq->where('mac_address', $formattedMac)
+                       ->orWhere('mac_address', $cleanMac)
+                       ->orWhere('mac_address', 'like', "%{$cleanMac}%");
+                })
+                ->latest('id')
+                ->first();
 
-        $this->loadDiagnostics(false);
+            if ($pppoe && $pppoe->customer_service_id) {
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->with([
+                        'customer' => fn($q) => $q->withoutGlobalScopes(),
+                        'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                        'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                    ])
+                    ->find($pppoe->customer_service_id);
+            }
+        }
+
+        if ($cs) {
+            $this->customerService = $cs;
+            $this->customer = $cs->customer;
+
+            // Auto-link ONU ke CustomerService jika belum terhubung
+            if (empty($cs->onu_id)) {
+                try {
+                    $cs->update(['onu_id' => $onu->id]);
+                } catch (\Throwable) {}
+            }
+            if (empty($onu->customer_id) && !empty($cs->customer_id)) {
+                try {
+                    $onu->update(['customer_id' => $cs->customer_id]);
+                } catch (\Throwable) {}
+            }
+        } else {
+            $this->customerService = null;
+            $this->customer = $onu->customer_id ? Customer::withoutGlobalScopes()->find($onu->customer_id) : null;
+        }
     }
 
     public function loadDiagnostics(bool $forceFresh = false)
@@ -292,6 +367,32 @@ class Index extends Component
         try {
             $service->authorizeTechnician($this->onu, Auth::user());
             $this->diagnostics = $service->getLiveDiagnostics($this->onu, $forceFresh);
+
+            // Cek apakah PPPoE TR-069 dapat membantu identifikasi customer yang belum tertaut
+            if (!$this->customerService && !empty($this->diagnostics['pppoe_username']) && $this->diagnostics['pppoe_username'] !== '-') {
+                $uname = trim($this->diagnostics['pppoe_username']);
+                $matchedCs = CustomerService::withoutGlobalScopes()
+                    ->with([
+                        'customer' => fn($q) => $q->withoutGlobalScopes(),
+                        'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                        'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                    ])
+                    ->where('username', $uname)
+                    ->orWhereHas('pppoeUser', fn($pu) => $pu->withoutGlobalScopes()->where('username', $uname))
+                    ->first();
+
+                if ($matchedCs) {
+                    $this->customerService = $matchedCs;
+                    $this->customer = $matchedCs->customer;
+
+                    try {
+                        $matchedCs->update(['onu_id' => $this->onu->id]);
+                        if (empty($this->onu->customer_id)) {
+                            $this->onu->update(['customer_id' => $matchedCs->customer_id]);
+                        }
+                    } catch (\Throwable) {}
+                }
+            }
 
             $this->wifi_ssid = (string) ($this->diagnostics['wifi']['ssid_24'] !== 'Tidak Didukung'
                 ? $this->diagnostics['wifi']['ssid_24']
@@ -444,36 +545,125 @@ class Index extends Component
         }
     }
 
+    public function openLinkCustomerModal()
+    {
+        $this->customerSearchQuery = '';
+        $this->customerSearchResults = [];
+        $this->showLinkCustomerModal = true;
+    }
+
+    public function updatedCustomerSearchQuery()
+    {
+        $q = trim($this->customerSearchQuery);
+        if (strlen($q) < 2) {
+            $this->customerSearchResults = [];
+            return;
+        }
+
+        $this->customerSearchResults = CustomerService::withoutGlobalScopes()
+            ->with([
+                'customer' => fn($cq) => $cq->withoutGlobalScopes(),
+                'serviceProfile' => fn($sp) => $sp->withoutGlobalScopes(),
+                'pppoeUser' => fn($pu) => $pu->withoutGlobalScopes(),
+            ])
+            ->where(function ($sub) use ($q) {
+                $sub->whereHas('customer', function ($cq) use ($q) {
+                    $cq->withoutGlobalScopes()->where('name', 'like', "%{$q}%")
+                       ->orWhere('phone', 'like', "%{$q}%")
+                       ->orWhere('code', 'like', "%{$q}%");
+                })
+                ->orWhere('username', 'like', "%{$q}%")
+                ->orWhereHas('pppoeUser', function ($pu) use ($q) {
+                    $pu->withoutGlobalScopes()->where('username', 'like', "%{$q}%");
+                });
+            })
+            ->limit(10)
+            ->get()
+            ->map(fn($cs) => [
+                'id' => $cs->id,
+                'customer_id' => $cs->customer_id,
+                'customer_name' => $cs->customer?->name ?? 'Pelanggan #' . $cs->customer_id,
+                'customer_code' => $cs->customer?->code ?? ('ID #' . $cs->customer_id),
+                'phone' => $cs->customer?->phone ?? '-',
+                'pppoe_username' => $cs->pppoeUser?->username ?? $cs->username ?? '-',
+                'package' => $cs->serviceProfile?->name ?? 'Layanan',
+                'is_linked' => !empty($cs->onu_id),
+            ])
+            ->toArray();
+    }
+
+    public function linkCustomer(int $customerServiceId)
+    {
+        if (!$this->onu) return;
+
+        $cs = CustomerService::withoutGlobalScopes()
+            ->with([
+                'customer' => fn($cq) => $cq->withoutGlobalScopes(),
+                'serviceProfile' => fn($sp) => $sp->withoutGlobalScopes(),
+                'pppoeUser' => fn($pu) => $pu->withoutGlobalScopes(),
+            ])
+            ->find($customerServiceId);
+
+        if (!$cs) {
+            $this->errorMessage = 'Data layanan pelanggan tidak ditemukan.';
+            return;
+        }
+
+        try {
+            $cs->update(['onu_id' => $this->onu->id]);
+            $this->onu->update(['customer_id' => $cs->customer_id]);
+
+            $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where('serial_number', $this->onu->serial_number)
+                ->orWhere('mac_address', $this->onu->mac_address)
+                ->first();
+            if ($ad) {
+                $ad->update(['customer_service_id' => $cs->id, 'onu_id' => $this->onu->id]);
+            }
+
+            $this->customerService = $cs;
+            $this->customer = $cs->customer;
+            $this->showLinkCustomerModal = false;
+            $this->successMessage = "Berhasil menautkan ONT dengan pelanggan: " . ($cs->customer?->name ?? 'Pelanggan');
+        } catch (\Throwable $e) {
+            $this->errorMessage = 'Gagal menautkan pelanggan: ' . $e->getMessage();
+        }
+    }
+
     public function resetSelection()
     {
         $this->reset([
             'selectedOnuId', 'onu', 'customer', 'customerService', 'ticket',
-            'diagnostics', 'errorMessage', 'successMessage', 'showRebootModal', 'showWifiModal'
+            'diagnostics', 'errorMessage', 'successMessage', 'showRebootModal', 'showWifiModal',
+            'showLinkCustomerModal', 'customerSearchQuery', 'customerSearchResults'
         ]);
     }
 
     public function render()
     {
         return view('livewire.isp.technician.diagnostic.index', [
-            'selectedOnuId'       => $this->selectedOnuId,
-            'onu'                 => $this->onu,
-            'customer'            => $this->customer,
-            'customerService'     => $this->customerService,
-            'ticket'              => $this->ticket,
-            'diagnostics'         => $this->diagnostics,
-            'isLoading'           => $this->isLoading,
-            'searchQuery'         => $this->searchQuery,
-            'searchResults'       => $this->searchResults,
-            'showRebootModal'     => $this->showRebootModal,
-            'isRebooting'         => $this->isRebooting,
-            'rebootStatusMessage' => $this->rebootStatusMessage,
-            'rebootVerified'      => $this->rebootVerified,
-            'showWifiModal'       => $this->showWifiModal,
-            'wifi_ssid'           => $this->wifi_ssid,
-            'wifi_password'       => $this->wifi_password,
-            'isSavingWifi'        => $this->isSavingWifi,
-            'successMessage'      => $this->successMessage,
-            'errorMessage'        => $this->errorMessage,
+            'selectedOnuId'           => $this->selectedOnuId,
+            'onu'                     => $this->onu,
+            'customer'                => $this->customer,
+            'customerService'         => $this->customerService,
+            'ticket'                  => $this->ticket,
+            'diagnostics'             => $this->diagnostics,
+            'isLoading'               => $this->isLoading,
+            'searchQuery'             => $this->searchQuery,
+            'searchResults'           => $this->searchResults,
+            'showRebootModal'         => $this->showRebootModal,
+            'isRebooting'             => $this->isRebooting,
+            'rebootStatusMessage'     => $this->rebootStatusMessage,
+            'rebootVerified'          => $this->rebootVerified,
+            'showWifiModal'           => $this->showWifiModal,
+            'wifi_ssid'               => $this->wifi_ssid,
+            'wifi_password'           => $this->wifi_password,
+            'isSavingWifi'            => $this->isSavingWifi,
+            'showLinkCustomerModal'   => $this->showLinkCustomerModal,
+            'customerSearchQuery'     => $this->customerSearchQuery,
+            'customerSearchResults'   => $this->customerSearchResults,
+            'successMessage'          => $this->successMessage,
+            'errorMessage'            => $this->errorMessage,
         ]);
     }
 }
