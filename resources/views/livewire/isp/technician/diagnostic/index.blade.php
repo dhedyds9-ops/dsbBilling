@@ -37,19 +37,19 @@
     {{-- PENCARIAN ONT / PELANGGAN --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-sm space-y-3">
         {{-- TOOLBAR SINKRONISASI OLT (UNTUK ONT BARU NYOLOK) --}}
-        <div class="p-3 bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900/90 rounded-xl border border-sky-100 dark:border-slate-700/80 space-y-2">
+        <div class="p-3 bg-gradient-to-r from-sky-50 to-indigo-50/70 dark:from-slate-900 dark:to-slate-900/90 rounded-2xl border border-sky-100 dark:border-slate-700/80 space-y-2.5">
             <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-1.5 min-w-0">
+                <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-sky-600 dark:text-sky-400 text-base notranslate" translate="no" style="text-transform: none !important;">hub</span>
-                    <span class="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider truncate">Sinkronisasi OLT (Modem Baru Nyolok)</span>
+                    <span class="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Sinkronisasi OLT</span>
                 </div>
-                <span class="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:inline">Tarik modem baru langsung dari OLT</span>
+                <span class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Ambil modem baru nyolok</span>
             </div>
 
-            <div class="flex gap-2">
-                <div class="relative flex-1">
+            <div class="flex items-center gap-2">
+                <div class="relative flex-1 min-w-0">
                     <select wire:model.live="selectedOltId"
-                            class="w-full pl-3 pr-8 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 shadow-2xs">
+                            class="w-full h-11 pl-3.5 pr-8 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 shadow-2xs">
                         <option value="">-- Pilih OLT Wilayah --</option>
                         @foreach($olts as $o)
                             <option value="{{ $o->id }}">{{ $o->name }} ({{ $o->code ?: $o->ip_address }})</option>
@@ -57,9 +57,9 @@
                     </select>
                 </div>
                 <button wire:click="syncSelectedOlt" type="button" wire:loading.attr="disabled"
-                        class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 shrink-0 active:scale-95 disabled:opacity-60 cursor-pointer">
-                    <span wire:loading.remove wire:target="syncSelectedOlt" class="material-symbols-outlined text-sm notranslate" translate="no">sync</span>
-                    <span wire:loading wire:target="syncSelectedOlt" class="material-symbols-outlined animate-spin text-sm notranslate" translate="no">autorenew</span>
+                        class="h-11 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0 active:scale-95 disabled:opacity-60 cursor-pointer">
+                    <span wire:loading.remove wire:target="syncSelectedOlt" class="material-symbols-outlined text-base notranslate" translate="no">sync</span>
+                    <span wire:loading wire:target="syncSelectedOlt" class="material-symbols-outlined animate-spin text-base notranslate" translate="no">autorenew</span>
                     <span wire:loading.remove wire:target="syncSelectedOlt">Sync OLT</span>
                     <span wire:loading wire:target="syncSelectedOlt">Sinkron...</span>
                 </button>
@@ -90,7 +90,7 @@
         </div>
 
         <div class="flex items-center justify-between pt-1">
-            <div class="flex items-center gap-1.5 text-xs font-extrabold text-slate-800 dark:text-slate-200">
+            <div class="flex items-center gap-1.5 text-xs font-black text-slate-800 dark:text-slate-200">
                 <span class="material-symbols-outlined text-sky-500 text-base notranslate" translate="no" style="text-transform: none !important;">search</span>
                 <span class="uppercase tracking-wider">Pilih Perangkat ONT Pelanggan</span>
             </div>
@@ -103,16 +103,16 @@
         </div>
 
         @if(!$selectedOnuId)
-            <div class="flex gap-2">
-                <div class="relative flex-1">
+            <div class="flex items-center gap-2">
+                <div class="relative flex-1 min-w-0">
                     <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm notranslate" translate="no">search</span>
                     <input type="text" wire:model.live.debounce.300ms="searchQuery"
                            placeholder="Ketik Nama Pelanggan / SN ONT / PPPoE..."
-                           class="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500">
+                           class="w-full h-11 pl-10 pr-4 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 shadow-2xs">
                 </div>
                 <button type="button" @click="openScanner()" title="Scan Barcode / SN ONT"
-                        class="px-3.5 py-2.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-xl text-xs font-bold border border-sky-200 dark:border-sky-800 flex items-center gap-1 shrink-0 active:scale-95 transition-all">
-                    <span class="material-symbols-outlined text-sm notranslate" translate="no">photo_camera</span>
+                        class="h-11 px-4 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-xl text-xs font-bold border border-sky-200 dark:border-sky-800 flex items-center justify-center gap-1.5 shrink-0 active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-base notranslate" translate="no">photo_camera</span>
                     <span>Scan</span>
                 </button>
             </div>
