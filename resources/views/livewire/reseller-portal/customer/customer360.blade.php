@@ -930,7 +930,279 @@
 
         {{-- ============ RIWAYAT & LOG TAB ============ --}}
         @if($activeTab === 'history')
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="space-y-6">
+
+            {{-- 1. RIWAYAT SESI LOGIN RADIUS (ONLINE / OFFLINE) --}}
+            <x-base.card>
+                <x-slot name="header">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-indigo-500" translate="no" style="font-size:22px">wifi_tethering</span>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                    Riwayat Sesi Login RADIUS
+                                    <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                        PPPoE & Hotspot
+                                    </span>
+                                </h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    Histori lengkap koneksi online (login), offline (logout), durasi aktif, IP, MAC, kuota, serta alasan disconnect.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            @if(!empty($radiusStats['currently_online']))
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 shadow-xs">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Sedang Online
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                    Saat Ini Offline
+                                </span>
+                            @endif
+                            <button type="button" wire:click="$refresh" class="p-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="Segarkan Data Sesi">
+                                <span class="material-symbols-outlined notranslate text-sm" translate="no">refresh</span>
+                            </button>
+                        </div>
+                    </div>
+                </x-slot>
+
+                {{-- STAT KARTU RINGKASAN --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">signal_cellular_alt</span>
+                            Status Terkini
+                        </div>
+                        @if(!empty($radiusStats['currently_online']))
+                            <div class="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                Online (Aktif)
+                            </div>
+                            <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5" title="IP: {{ $radiusStats['current_session']?->framed_ip_address ?? '-' }}">
+                                IP: {{ $radiusStats['current_session']?->framed_ip_address ?? '-' }}
+                            </div>
+                        @else
+                            <div class="text-sm font-bold text-slate-600 dark:text-slate-300">
+                                Terputus (Offline)
+                            </div>
+                            <div class="text-[11px] text-slate-400 truncate mt-0.5">
+                                Tidak ada sesi aktif
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">history</span>
+                            Total Sesi Login
+                        </div>
+                        <div class="text-base font-bold text-slate-900 dark:text-slate-100">
+                            {{ number_format($radiusStats['total_sessions'] ?? 0) }} <span class="text-xs font-normal text-slate-500">kali</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            Histori koneksi tercatat
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">timer</span>
+                            Total Waktu Online
+                        </div>
+                        <div class="text-base font-bold text-slate-900 dark:text-slate-100">
+                            {{ $this->formatSeconds($radiusStats['total_time_seconds'] ?? 0) }}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            Akumulasi uptime sesi
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">swap_vert</span>
+                            Total Trafik Data
+                        </div>
+                        <div class="text-base font-bold text-indigo-600 dark:text-indigo-400">
+                            {{ $this->formatBytes(($radiusStats['total_input_octets'] ?? 0) + ($radiusStats['total_output_octets'] ?? 0)) }}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                            <span>↓ {{ $this->formatBytes($radiusStats['total_output_octets'] ?? 0) }}</span>
+                            <span>•</span>
+                            <span>↑ {{ $this->formatBytes($radiusStats['total_input_octets'] ?? 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TABEL RIWAYAT SESI RADIUS --}}
+                <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60">
+                    <table class="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                        <thead class="bg-slate-50 dark:bg-slate-900/70 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Username & MAC</th>
+                                <th class="px-4 py-3">Tgl & Jam Online (Login)</th>
+                                <th class="px-4 py-3">Tgl & Jam Offline (Logout)</th>
+                                <th class="px-4 py-3">Durasi</th>
+                                <th class="px-4 py-3">IP Address & NAS</th>
+                                <th class="px-4 py-3">Download / Upload</th>
+                                <th class="px-4 py-3">Alasan Putus</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            @forelse($radiusSessions as $sess)
+                                @php
+                                    $isSessOnline = empty($sess->acct_stop_time);
+                                @endphp
+                                <tr class="hover:bg-slate-50/75 dark:hover:bg-slate-800/40 transition-colors">
+                                    {{-- Status --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if($isSessOnline)
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                ONLINE
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                                OFFLINE
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Username & MAC --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="font-semibold text-slate-900 dark:text-slate-100">{{ $sess->username }}</div>
+                                        <div class="text-[11px] font-mono text-slate-400">{{ $sess->calling_station_id ?: '-' }}</div>
+                                    </td>
+
+                                    {{-- Online Start --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if($sess->acct_start_time)
+                                            <div class="font-semibold text-slate-800 dark:text-slate-200">
+                                                {{ \Carbon\Carbon::parse($sess->acct_start_time)->format('d/m/Y H:i:s') }}
+                                            </div>
+                                            <div class="text-[11px] text-slate-400">
+                                                {{ \Carbon\Carbon::parse($sess->acct_start_time)->diffForHumans() }}
+                                            </div>
+                                        @else
+                                            <span class="text-slate-400">-</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Offline Stop --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if($sess->acct_stop_time)
+                                            <div class="font-semibold text-slate-800 dark:text-slate-200">
+                                                {{ \Carbon\Carbon::parse($sess->acct_stop_time)->format('d/m/Y H:i:s') }}
+                                            </div>
+                                            <div class="text-[11px] text-slate-400">
+                                                {{ \Carbon\Carbon::parse($sess->acct_stop_time)->diffForHumans() }}
+                                            </div>
+                                        @elseif($isSessOnline)
+                                            <span class="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] flex items-center gap-1.5">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sedang Berjalan
+                                            </span>
+                                        @else
+                                            <span class="text-slate-400">-</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Durasi --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if($sess->acct_session_time > 0)
+                                            <span class="font-mono font-medium text-slate-800 dark:text-slate-200">
+                                                {{ $this->formatSeconds($sess->acct_session_time) }}
+                                            </span>
+                                        @elseif($isSessOnline && $sess->acct_start_time)
+                                            <span class="font-mono text-emerald-600 dark:text-emerald-400 font-medium">
+                                                {{ $this->formatSeconds(\Carbon\Carbon::parse($sess->acct_start_time)->diffInSeconds(now())) }}
+                                            </span>
+                                        @else
+                                            <span class="text-slate-400">-</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- IP Address & NAS --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="font-mono font-semibold text-slate-900 dark:text-slate-100">
+                                            {{ $sess->framed_ip_address ?: '-' }}
+                                        </div>
+                                        <div class="text-[11px] text-slate-400 truncate max-w-[150px]" title="{{ $sess->nasDevice?->name ?? $sess->radiusNas?->nas_name ?? $sess->nas_ip_address ?? '-' }}">
+                                            NAS: {{ $sess->nasDevice?->name ?? $sess->radiusNas?->nas_name ?? $sess->nas_ip_address ?? '-' }}
+                                        </div>
+                                    </td>
+
+                                    {{-- Upload / Download --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="text-[11px] text-slate-700 dark:text-slate-300">
+                                            <span class="text-blue-500 font-semibold">↓</span> {{ $this->formatBytes($sess->acct_output_octets) }}
+                                        </div>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                                            <span class="text-emerald-500 font-semibold">↑</span> {{ $this->formatBytes($sess->acct_input_octets) }}
+                                        </div>
+                                    </td>
+
+                                    {{-- Alasan Putus (Terminate Cause) --}}
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if($isSessOnline)
+                                            <span class="text-emerald-600 dark:text-emerald-400 text-[11px] font-medium flex items-center gap-1">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Koneksi Aktif
+                                            </span>
+                                        @elseif($sess->acct_terminate_cause)
+                                            @php
+                                                $cause = $sess->acct_terminate_cause;
+                                                $badgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+                                                $desc = $cause;
+                                                if (stripos($cause, 'User-Request') !== false) {
+                                                    $badgeClass = 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300';
+                                                    $desc = 'User Request (Modem dimatikan / logout normal)';
+                                                } elseif (stripos($cause, 'Lost-Carrier') !== false || stripos($cause, 'Lost-Service') !== false) {
+                                                    $badgeClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+                                                    $desc = 'Lost Carrier (Mati lampu / FO putus / modem padam mendadak)';
+                                                } elseif (stripos($cause, 'NAS-Reboot') !== false) {
+                                                    $badgeClass = 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300';
+                                                    $desc = 'NAS Reboot (Router MikroTik restart)';
+                                                } elseif (stripos($cause, 'Admin-Reset') !== false) {
+                                                    $badgeClass = 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+                                                    $desc = 'Admin Reset (Diputus paksa oleh Administrator)';
+                                                } elseif (stripos($cause, 'Session-Timeout') !== false || stripos($cause, 'NAS-Timeout') !== false) {
+                                                    $badgeClass = 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300';
+                                                    $desc = 'Timeout (Batas waktu sesi habis / reaper)';
+                                                }
+                                            @endphp
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium {{ $badgeClass }}" title="{{ $desc }}">
+                                                {{ $cause }}
+                                            </span>
+                                        @else
+                                            <span class="text-slate-400 text-[11px]">-</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="text-center py-8 text-slate-400">
+                                        <span class="material-symbols-outlined notranslate text-4xl mb-1 block" translate="no">wifi_off</span>
+                                        <p class="text-sm font-medium">Belum ada riwayat sesi login RADIUS untuk pelanggan ini</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">Sesi PPPoE atau Hotspot akan otomatis tercatat di sini begitu pelanggan online.</p>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($radiusSessions->hasPages())
+                    <div class="mt-4">
+                        {{ $radiusSessions->links() }}
+                    </div>
+                @endif
+            </x-base.card>
+
+            {{-- 2. TIMELINE PELANGGAN & AKTIVITAS TERBARU --}}
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div class="xl:col-span-2 space-y-6">
                 <x-base.card>
             <x-slot name="header">
@@ -1010,6 +1282,7 @@
                 
                 
             </div>
+        </div>
         </div>
         @endif
 

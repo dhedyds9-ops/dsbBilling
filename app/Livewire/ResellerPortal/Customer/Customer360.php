@@ -4,9 +4,14 @@ namespace App\Livewire\ResellerPortal\Customer;
 
 use App\Livewire\AdminComponent;
 use App\Models\CRM\Customer;
+use App\Models\ISP\RadiusAccounting;
+use Livewire\WithPagination;
 
 class Customer360 extends AdminComponent
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'tailwind';
     public $customerId;
     protected $customer;
     public string $activeTab = 'profile';
@@ -394,7 +399,35 @@ class Customer360 extends AdminComponent
         }
     }
 
-            public function render()
+            public function formatBytes($bytes, $precision = 2): string
+    {
+        $bytes = (float) $bytes;
+        if ($bytes <= 0) return '0 B';
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, $precision) . ' ' . $units[$pow];
+    }
+
+    public function formatSeconds($seconds): string
+    {
+        $seconds = (int) $seconds;
+        if ($seconds <= 0) return '0 detik';
+        $d = floor($seconds / 86400);
+        $h = floor(($seconds % 86400) / 3600);
+        $m = floor(($seconds % 3600) / 60);
+        $s = $seconds % 60;
+        
+        $parts = [];
+        if ($d > 0) $parts[] = "{$d}h";
+        if ($h > 0) $parts[] = "{$h}j";
+        if ($m > 0) $parts[] = "{$m}m";
+        if ($s > 0 || empty($parts)) $parts[] = "{$s}d";
+        return implode(' ', $parts);
+    }
+
+    public function render()
     {
         // Hydrate customer if not set
         if (!$this->customer) {
@@ -552,6 +585,63 @@ class Customer360 extends AdminComponent
             });
         }
 
+        // Collect candidate usernames and service IDs for Radius Session History
+        $serviceIds = $this->getCustomer()->customerServices ? $this->getCustomer()->customerServices->pluck('id')->filter()->values()->all() : [];
+        $candidateUsernames = collect();
+        if (!empty($this->getCustomer()->username)) {
+            $candidateUsernames->push($this->getCustomer()->username);
+        }
+        if (!empty($this->getCustomer()->customer_code)) {
+            $candidateUsernames->push($this->getCustomer()->customer_code);
+        }
+        if ($this->getCustomer()->customerServices) {
+            foreach ($this->getCustomer()->customerServices as $cs) {
+                if (!empty($cs->pppoeUser?->username)) {
+                    $candidateUsernames->push($cs->pppoeUser->username);
+                }
+                if (!empty($cs->hotspotUser?->username)) {
+                    $candidateUsernames->push($cs->hotspotUser->username);
+                }
+            }
+        }
+        $candidateUsernames = $candidateUsernames->filter()->unique()->values()->all();
+
+        $baseRadiusQuery = RadiusAccounting::query()
+            ->where(function ($q) use ($serviceIds, $candidateUsernames) {
+                $hasCond = false;
+                if (!empty($serviceIds)) {
+                    $q->whereIn('customer_service_id', $serviceIds);
+                    $hasCond = true;
+                }
+                if (!empty($candidateUsernames)) {
+                    if ($hasCond) {
+                        $q->orWhereIn('username', $candidateUsernames);
+                    } else {
+                        $q->whereIn('username', $candidateUsernames);
+                        $hasCond = true;
+                    }
+                }
+                if (!$hasCond) {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+
+        $activeRadiusSession = (clone $baseRadiusQuery)->whereNull('acct_stop_time')->latest('acct_start_time')->first();
+        $radiusStats = [
+            'total_sessions'     => (clone $baseRadiusQuery)->count(),
+            'currently_online'   => !empty($activeRadiusSession),
+            'current_session'    => $activeRadiusSession,
+            'total_time_seconds' => (clone $baseRadiusQuery)->sum('acct_session_time') ?: 0,
+            'total_input_octets' => (clone $baseRadiusQuery)->sum('acct_input_octets') ?: 0,
+            'total_output_octets'=> (clone $baseRadiusQuery)->sum('acct_output_octets') ?: 0,
+        ];
+
+        $radiusSessions = (clone $baseRadiusQuery)
+            ->with(['radiusNas', 'nasDevice'])
+            ->orderByDesc('acct_start_time')
+            ->orderByDesc('id')
+            ->paginate(10, ['*'], 'radius_page');
+
         return view('livewire.reseller-portal.customer.customer360', compact(
             'customer', 'monthlyBill', 
             'unpaidBill', 
@@ -564,7 +654,9 @@ class Customer360 extends AdminComponent
             'devices', 
             'installations',
             'notifications',
-            'monitoring'
+            'monitoring',
+            'radiusSessions',
+            'radiusStats'
         ));
     }
 }

@@ -101,7 +101,7 @@ class MobileApiAuthTest extends TestCase
             ]);
     }
 
-    public function test_reseller_is_rejected_from_staff_app()
+    public function test_reseller_can_login_to_staff_app_with_reseller_role()
     {
         $reseller = User::factory()->create([
             'email' => 'reseller_' . uniqid() . '@example.com',
@@ -115,10 +115,17 @@ class MobileApiAuthTest extends TestCase
             'password' => 'Secret123!',
         ]);
 
-        $response->assertStatus(403)
+        $response->assertStatus(200)
             ->assertJson([
-                'success' => false,
+                'success' => true,
+                'user' => [
+                    'role' => 'RESELLER',
+                ],
             ]);
+        $this->assertNotEmpty($response->json('token'));
+        $this->assertContains('customer.create', $response->json('user.permissions'));
+        $this->assertContains('inventory.custody', $response->json('user.permissions'));
+        $this->assertContains('acs.view', $response->json('user.permissions'));
     }
 
     public function test_logout_revokes_token()

@@ -333,7 +333,7 @@ class User extends Authenticatable
      */
     public function getEffectiveResellerId()
     {
-        if ($this->hasRole(\App\Enums\UserRole::Reseller->value)) {
+        if ($this->hasRole(\App\Enums\UserRole::Reseller->value) || strtoupper($this->job_function ?? '') === 'RESELLER' || !empty($this->reseller_id)) {
             // Jika reseller utama, kembalikan ID-nya sendiri
             if (empty($this->reseller_id)) {
                 return $this->id;

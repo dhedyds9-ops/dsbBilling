@@ -23,8 +23,13 @@ class MobileNetworkApiController extends Controller
         $user = $request->user();
         $query = Onu::query()->withoutGlobalScopes();
 
-        // Scope by branch if technician has branch_id
-        if (!empty($user->branch_id)) {
+        // Scope by reseller if user is a reseller, otherwise by branch
+        $effectiveResellerId = $user->getEffectiveResellerId();
+        if ($effectiveResellerId) {
+            $query->where(function ($q) use ($effectiveResellerId) {
+                \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $effectiveResellerId, 'onus');
+            });
+        } elseif (!empty($user->branch_id)) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
                   ->orWhereNull('branch_id');
@@ -224,6 +229,9 @@ class MobileNetworkApiController extends Controller
             }
 
             $onu->branch_id = $user->branch_id ?? $onu->branch_id;
+            if ($effResellerId = $user->getEffectiveResellerId()) {
+                $onu->reseller_id = $effResellerId;
+            }
             $onu->status = 'active';
             $onu->provision_status = 'provisioned';
             $onu->provisioned_at = now();
@@ -514,6 +522,7 @@ class MobileNetworkApiController extends Controller
             $newOnu->status = 'active';
             $newOnu->provision_status = 'provisioned';
             $newOnu->branch_id = $oldOnu->branch_id ?? $user->branch_id;
+            $newOnu->reseller_id = $oldOnu->reseller_id ?? $user->getEffectiveResellerId();
             $newOnu->updated_by = $user->id;
             $newOnu->save();
 

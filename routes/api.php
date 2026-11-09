@@ -240,6 +240,14 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\MobilePayrollApiController::class, 'show'])->where('id', '\d+')->name('show');
         });
 
+        // Customer Management (Reseller & Staff Field Registration)
+        Route::prefix('customers')->name('customers.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'index'])->name('index');
+            Route::get('/service-profiles', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'serviceProfiles'])->name('service-profiles');
+            Route::post('/', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'store'])->name('store');
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'show'])->where('id', '\d+')->name('show');
+        });
+
         // Offline Sync & Notifications (Phase 2E)
         Route::prefix('sync')->name('sync.')->group(function () {
             Route::get('/bootstrap', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'bootstrap'])->name('bootstrap');

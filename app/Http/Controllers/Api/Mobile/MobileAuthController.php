@@ -44,14 +44,13 @@ class MobileAuthController extends Controller
             ], 403);
         }
 
-        // Reject customer and reseller roles
+        // Reject pure customer (end-user) role
         $isCustomer = $user->hasRole('customer') || strtoupper($user->job_function ?? '') === 'CUSTOMER';
-        $isReseller = $user->hasRole(['reseller', 'Reseller']) || strtoupper($user->job_function ?? '') === 'RESELLER' || !empty($user->reseller_id);
 
-        if ($isCustomer || $isReseller) {
+        if ($isCustomer) {
             return response()->json([
                 'success' => false,
-                'message' => 'Akses ditolak. Aplikasi dsBilling Staff khusus staf internal operasional ISP.',
+                'message' => 'Akses ditolak. Pelanggan dapat menggunakan portal dsBilling Connect.',
             ], 403);
         }
 
@@ -82,6 +81,7 @@ class MobileAuthController extends Controller
                 'role' => $role,
                 'job_title' => $user->job_title ?? $role,
                 'branch_id' => $user->branch_id,
+                'reseller_id' => $user->getEffectiveResellerId(),
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
             ],
@@ -112,6 +112,7 @@ class MobileAuthController extends Controller
                 'role' => $role,
                 'job_title' => $user->job_title ?? $role,
                 'branch_id' => $user->branch_id,
+                'reseller_id' => $user->getEffectiveResellerId(),
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
             ],
@@ -153,6 +154,9 @@ class MobileAuthController extends Controller
         }
         if ($user->isTechnician()) {
             return 'TECHNICIAN';
+        }
+        if ($user->hasRole(['reseller', 'Reseller']) || strtoupper($user->job_function ?? '') === 'RESELLER' || !empty($user->reseller_id)) {
+            return 'RESELLER';
         }
         if ($user->hasRole(['customer_service', 'cs']) || strtoupper($user->job_function ?? '') === 'CUSTOMER_SERVICE') {
             return 'CS';
@@ -202,6 +206,16 @@ class MobileAuthController extends Controller
                     'workforce.view', 'workforce.execute',
                     'inventory.view', 'inventory.custody',
                     'acs.view', 'acs.manage', 'acs.reboot', 'acs.wifi'
+                ]);
+                break;
+            case 'RESELLER':
+                $perms = array_merge($perms, [
+                    'workforce.view', 'workforce.execute',
+                    'inventory.view', 'inventory.custody', 'inventory.request',
+                    'acs.view', 'acs.manage', 'acs.reboot', 'acs.wifi',
+                    'customer.view', 'customer.create', 'customer.manage',
+                    'support.view', 'support.create',
+                    'gis.view'
                 ]);
                 break;
             case 'WAREHOUSE':
