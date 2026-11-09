@@ -45,3 +45,8 @@ write_perfect.php
 
 /_legacy_scripts/
 /scratch/
+
+# Agent directives & dev audit documentation
+/.agents/
+/docs/audit/
+
