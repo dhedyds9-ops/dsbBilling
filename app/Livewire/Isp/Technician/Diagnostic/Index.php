@@ -65,6 +65,12 @@ class Index extends Component
     public string $customerSearchQuery = '';
     public array $customerSearchResults = [];
 
+    // OLT Selection & Sync State (Untuk ONT baru colok di lapangan)
+    #[Url]
+    public ?int $selectedOltId = null;
+    public bool $isSyncingOlt = false;
+    public array $newlySyncedOnus = [];
+
     public function mount()
     {
         if ($this->onu_id) {
@@ -101,6 +107,12 @@ class Index extends Component
             $this->selectCustomer($this->customer_id);
         } elseif ($this->ticket_id) {
             $this->loadTicket($this->ticket_id);
+        }
+
+        if (!$this->selectedOltId) {
+            $this->selectedOltId = $this->onu?->olt_id 
+                ?? \App\Models\ISP\Olt::withoutGlobalScopes()->where('status', '!=', 'inactive')->value('id')
+                ?? \App\Models\ISP\Olt::withoutGlobalScopes()->value('id');
         }
     }
 
@@ -252,6 +264,9 @@ class Index extends Component
 
         $this->selectedOnuId = $onu->id;
         $this->onu = $onu;
+        if ($onu->olt_id) {
+            $this->selectedOltId = $onu->olt_id;
+        }
 
         // Resolusi multi-layer data pelanggan
         $this->resolveCustomerForOnu($onu);
@@ -630,6 +645,88 @@ class Index extends Component
         }
     }
 
+    public function syncSelectedOlt()
+    {
+        if (!$this->selectedOltId) {
+            $this->errorMessage = 'Silakan pilih OLT terlebih dahulu untuk disinkronisasi.';
+            return;
+        }
+
+        $olt = \App\Models\ISP\Olt::withoutGlobalScopes()->find($this->selectedOltId);
+        if (!$olt) {
+            $this->errorMessage = 'Perangkat OLT tidak ditemukan.';
+            return;
+        }
+
+        // Rate limit: 15 detik per OLT agar tidak membebani CPU perangkat OLT
+        $lockKey = "rate_limit_olt_sync_{$olt->id}";
+        if (\Illuminate\Support\Facades\Cache::has($lockKey)) {
+            $this->errorMessage = "Sinkronisasi OLT {$olt->name} sedang dalam masa cooldown. Silakan tunggu 15 detik.";
+            return;
+        }
+        \Illuminate\Support\Facades\Cache::put($lockKey, true, 15);
+
+        $this->isSyncingOlt = true;
+        $this->errorMessage = null;
+        $this->successMessage = null;
+
+        // Ambil daftar ID ONU lama sebelum sync untuk membedakan ONT yang baru terdeteksi
+        $previousOnuIds = \App\Models\ISP\Onu::withoutGlobalScopes()
+            ->where('olt_id', $olt->id)
+            ->pluck('id')
+            ->toArray();
+
+        try {
+            $poller = app(\App\Services\ISP\OltPollingService::class);
+            $res = $poller->pollOlt($olt);
+
+            if (isset($res['success']) && !$res['success']) {
+                throw new \Exception($res['error'] ?? $res['message'] ?? 'Gagal menghubungi perangkat OLT.');
+            }
+
+            // Cari ONT yang baru masuk atau baru terupdate dari OLT ini
+            $recentOnus = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->where('olt_id', $olt->id)
+                ->where(function ($q) use ($previousOnuIds) {
+                    $q->whereNotIn('id', $previousOnuIds)
+                      ->orWhere('updated_at', '>=', now()->subMinutes(2));
+                })
+                ->latest('updated_at')
+                ->limit(6)
+                ->get()
+                ->map(fn($o) => [
+                    'id' => $o->id,
+                    'serial_number' => $o->serial_number,
+                    'model' => $o->model ?: 'ONT',
+                    'status' => $o->status,
+                    'rx_power' => $o->rx_power_dbm,
+                    'is_new' => !in_array($o->id, $previousOnuIds),
+                ])
+                ->toArray();
+
+            $this->newlySyncedOnus = $recentOnus;
+
+            $newCount = collect($recentOnus)->where('is_new', true)->count();
+            $newMsg = $newCount > 0 ? " Ditemukan {$newCount} ONT baru terdeteksi!" : " Data ONT diperbarui dari OLT.";
+            $this->successMessage = "✅ Sinkronisasi OLT {$olt->name} berhasil.{$newMsg}";
+
+            // Jika belum ada target yang dipilih dan ada ONT baru, otomatis pilih yang terbaru
+            if (!$this->selectedOnuId && !empty($recentOnus)) {
+                $firstTarget = collect($recentOnus)->firstWhere('is_new', true) ?? $recentOnus[0];
+                if (!empty($firstTarget['id'])) {
+                    $this->selectOnu($firstTarget['id']);
+                }
+            } elseif ($this->selectedOnuId) {
+                // Refresh data target yang sedang dibuka
+                $this->selectOnu($this->selectedOnuId);
+            }
+        } catch (\Throwable $e) {
+            $this->errorMessage = "Gagal sinkronisasi OLT {$olt->name}: " . $e->getMessage();
+        } finally {
+            $this->isSyncingOlt = false;
+        }
+    }
+
     public function resetSelection()
     {
         $this->reset([
@@ -641,7 +738,16 @@ class Index extends Component
 
     public function render()
     {
+        $olts = \App\Models\ISP\Olt::withoutGlobalScopes()
+            ->where('status', '!=', 'inactive')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'ip_address']);
+
         return view('livewire.isp.technician.diagnostic.index', [
+            'olts'                    => $olts,
+            'selectedOltId'           => $this->selectedOltId,
+            'isSyncingOlt'            => $this->isSyncingOlt,
+            'newlySyncedOnus'         => $this->newlySyncedOnus,
             'selectedOnuId'           => $this->selectedOnuId,
             'onu'                     => $this->onu,
             'customer'                => $this->customer,

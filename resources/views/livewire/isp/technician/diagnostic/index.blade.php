@@ -36,7 +36,60 @@
 
     {{-- PENCARIAN ONT / PELANGGAN --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-sm space-y-3">
-        <div class="flex items-center justify-between">
+        {{-- TOOLBAR SINKRONISASI OLT (UNTUK ONT BARU NYOLOK) --}}
+        <div class="p-3 bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-slate-900 dark:to-slate-900/90 rounded-xl border border-sky-100 dark:border-slate-700/80 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="material-symbols-outlined text-sky-600 dark:text-sky-400 text-base notranslate" translate="no" style="text-transform: none !important;">hub</span>
+                    <span class="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider truncate">Sinkronisasi OLT (Modem Baru Nyolok)</span>
+                </div>
+                <span class="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:inline">Tarik modem baru langsung dari OLT</span>
+            </div>
+
+            <div class="flex gap-2">
+                <div class="relative flex-1">
+                    <select wire:model.live="selectedOltId"
+                            class="w-full pl-3 pr-8 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 shadow-2xs">
+                        <option value="">-- Pilih OLT Wilayah --</option>
+                        @foreach($olts as $o)
+                            <option value="{{ $o->id }}">{{ $o->name }} ({{ $o->code ?: $o->ip_address }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button wire:click="syncSelectedOlt" type="button" wire:loading.attr="disabled"
+                        class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 shrink-0 active:scale-95 disabled:opacity-60 cursor-pointer">
+                    <span wire:loading.remove wire:target="syncSelectedOlt" class="material-symbols-outlined text-sm notranslate" translate="no">sync</span>
+                    <span wire:loading wire:target="syncSelectedOlt" class="material-symbols-outlined animate-spin text-sm notranslate" translate="no">autorenew</span>
+                    <span wire:loading.remove wire:target="syncSelectedOlt">Sync OLT</span>
+                    <span wire:loading wire:target="syncSelectedOlt">Sinkron...</span>
+                </button>
+            </div>
+
+            @if(!empty($newlySyncedOnus))
+                <div class="pt-2 border-t border-sky-100 dark:border-slate-800">
+                    <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1.5">Hasil Sync Terakhir:</span>
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                        @foreach($newlySyncedOnus as $syncOnu)
+                            <button wire:click="selectOnu({{ $syncOnu['id'] }})" type="button"
+                                    class="px-2.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-slate-700 border {{ ($selectedOnuId == $syncOnu['id']) ? 'border-sky-500 ring-1 ring-sky-500' : 'border-slate-200 dark:border-slate-700' }} rounded-lg text-left shrink-0 transition-all shadow-2xs cursor-pointer">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ in_array(strtolower($syncOnu['status']), ['active', 'online']) ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
+                                    <span class="text-[10px] font-mono font-bold text-slate-800 dark:text-slate-100">{{ $syncOnu['serial_number'] }}</span>
+                                    @if($syncOnu['rx_power'])
+                                        <span class="text-[9px] font-mono font-extrabold text-emerald-600 dark:text-emerald-400">{{ $syncOnu['rx_power'] }} dBm</span>
+                                    @endif
+                                    @if($syncOnu['is_new'] ?? false)
+                                        <span class="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded text-[8px] font-black uppercase">BARU</span>
+                                    @endif
+                                </div>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
             <div class="flex items-center gap-1.5 text-xs font-extrabold text-slate-800 dark:text-slate-200">
                 <span class="material-symbols-outlined text-sky-500 text-base notranslate" translate="no" style="text-transform: none !important;">search</span>
                 <span class="uppercase tracking-wider">Pilih Perangkat ONT Pelanggan</span>
