@@ -229,9 +229,7 @@ class MobileNetworkApiController extends Controller
             }
 
             $onu->branch_id = $user->branch_id ?? $onu->branch_id;
-            if ($effResellerId = $user->getEffectiveResellerId()) {
-                $onu->reseller_id = $effResellerId;
-            }
+            $onu->created_by = $onu->created_by ?? $user->id;
             $onu->status = 'active';
             $onu->provision_status = 'provisioned';
             $onu->provisioned_at = now();
@@ -522,7 +520,7 @@ class MobileNetworkApiController extends Controller
             $newOnu->status = 'active';
             $newOnu->provision_status = 'provisioned';
             $newOnu->branch_id = $oldOnu->branch_id ?? $user->branch_id;
-            $newOnu->reseller_id = $oldOnu->reseller_id ?? $user->getEffectiveResellerId();
+            $newOnu->created_by = $oldOnu->created_by ?? $user->id;
             $newOnu->updated_by = $user->id;
             $newOnu->save();
 
