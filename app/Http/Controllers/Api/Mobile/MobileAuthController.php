@@ -79,6 +79,7 @@ class MobileAuthController extends Controller
                 'username' => $user->username ?? $user->email,
                 'email' => $user->email,
                 'role' => $role,
+                'job_function' => $user->job_function,
                 'job_title' => $user->job_title ?? $role,
                 'branch_id' => $user->branch_id,
                 'reseller_id' => $user->getEffectiveResellerId(),
@@ -114,6 +115,7 @@ class MobileAuthController extends Controller
                 'username' => $user->username ?? $user->email,
                 'email' => $user->email,
                 'role' => $role,
+                'job_function' => $user->job_function,
                 'job_title' => $user->job_title ?? $role,
                 'branch_id' => $user->branch_id,
                 'reseller_id' => $user->getEffectiveResellerId(),
@@ -147,20 +149,24 @@ class MobileAuthController extends Controller
         if ($user->isSuperAdmin() || $user->hasRole('admin')) {
             return 'ADMINISTRATOR';
         }
-        if ($user->hasRole('manager') || strtoupper($user->job_function ?? '') === 'MANAGER') {
-            return 'MANAGER';
-        }
-        if ($user->hasRole('noc') || strtoupper($user->job_function ?? '') === 'NOC' || str_contains(strtoupper($user->job_title ?? ''), 'NOC')) {
-            return 'NOC';
+        if ($user->isReseller() || $user->hasRole(['reseller', 'Reseller'])) {
+            return 'RESELLER';
         }
         if ($user->isWarehouseAdmin()) {
             return 'WAREHOUSE';
         }
+        // Manager with job_function TECHNICIAN operates as field technician
+        if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || strtoupper($user->job_function ?? '') === 'TEKNISI') {
+            return 'TECHNICIAN';
+        }
+        if ($user->hasRole('manager') || strtoupper($user->job_function ?? '') === 'MANAGER') {
+            return 'MANAGER';
+        }
         if ($user->isTechnician()) {
             return 'TECHNICIAN';
         }
-        if ($user->hasRole(['reseller', 'Reseller']) || strtoupper($user->job_function ?? '') === 'RESELLER' || !empty($user->reseller_id)) {
-            return 'RESELLER';
+        if ($user->hasRole('noc') || strtoupper($user->job_function ?? '') === 'NOC' || str_contains(strtoupper($user->job_title ?? ''), 'NOC')) {
+            return 'NOC';
         }
         if ($user->hasRole(['customer_service', 'cs']) || strtoupper($user->job_function ?? '') === 'CUSTOMER_SERVICE') {
             return 'CS';
@@ -211,6 +217,9 @@ class MobileAuthController extends Controller
                     'inventory.view', 'inventory.custody',
                     'acs.view', 'acs.manage', 'acs.reboot', 'acs.wifi'
                 ]);
+                if ($user->hasRole('manager') || $user->isSuperAdmin()) {
+                    $perms = array_merge($perms, ['workforce.approve', 'inventory.manage', 'billing.view', 'finance.view']);
+                }
                 break;
             case 'RESELLER':
                 $perms = array_merge($perms, [
