@@ -113,7 +113,7 @@ class MenuRegistry
                         'label' => 'Kepegawaian',
                         'icon' => 'fingerprint',
                         'items' => [
-                            ['label' => 'Absensi Mandiri', 'route' => 'admin.attendance.index', 'active' => 'admin.attendance.*', 'permission' => 'workforce.attendance.execute'],
+                            ['label' => 'Absensi Mandiri', 'route' => 'technician.attendance', 'active' => 'technician.attendance', 'permission' => 'workforce.attendance.execute'],
                         ]
                     ],
                     [
@@ -367,6 +367,13 @@ class MenuRegistry
                         'items' => [
                             ['label' => 'Data Vendor', 'route' => 'isp.vendors.index', 'active' => 'isp.vendors.*'],
                             ['label' => 'Network Assets', 'route' => 'inventory.assets.index', 'active' => 'inventory.assets.*'],
+                        ]
+                    ],
+                    [
+                        'label' => 'Kepegawaian',
+                        'icon' => 'fingerprint',
+                        'items' => [
+                            ['label' => 'Absensi Mandiri', 'route' => 'technician.attendance', 'active' => 'technician.attendance', 'permission' => 'workforce.attendance.execute'],
                         ]
                     ],
                     [

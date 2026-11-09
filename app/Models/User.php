@@ -265,7 +265,12 @@ class User extends Authenticatable
             return true;
         }
 
-        // 2. Proteksi Pembatasan Izin Berdasarkan Jabatan (Job Title) & Role Spesifik
+        // 2. Direct permissions spesifik diutamakan jika ada
+        if ($this->directPermissions->isNotEmpty() && $this->directPermissions->contains('name', $permission)) {
+            return true;
+        }
+
+        // 3. Proteksi Pembatasan Izin Berdasarkan Jabatan (Job Title) & Role Spesifik
         // Mencegah kebocoran menu superadmin/router/keuangan pada staf gudang, kasir, teknisi, dll.
         $title = strtolower((string)($this->job_title ?? ''));
         if (str_contains($title, 'gudang') || str_contains($title, 'logistik') || $this->hasRole('admin_gudang')) {
@@ -288,11 +293,6 @@ class User extends Authenticatable
 
         if (str_contains($title, 'marketing') || str_contains($title, 'sales') || $this->hasRole('marketing')) {
             return str_starts_with($permission, 'crm.') || str_starts_with($permission, 'customer.');
-        }
-
-        // 3. Direct permissions spesifik diutamakan jika ada
-        if ($this->directPermissions->isNotEmpty()) {
-            return $this->directPermissions->contains('name', $permission);
         }
 
         // 4. Fallback permissions dari roles jika staf umum (General Manager)

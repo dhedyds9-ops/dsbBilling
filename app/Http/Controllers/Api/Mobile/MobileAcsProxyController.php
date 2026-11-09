@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\User;
 use App\Services\Adapters\Monitoring\GenieACSDriver;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,14 @@ class MobileAcsProxyController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
         }
 
+        // Warehouse staff has zero access to network CPE/ONT operations
+        if ($user->hasRole('admin_gudang') || str_contains(strtolower($user->job_title ?? ''), 'gudang')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Staf gudang tidak memiliki izin untuk mengelola jaringan TR-069.',
+            ], 403);
+        }
+
         $isAuthorized = $user->isSuperAdmin()
             || $user->hasRole(['noc', 'teknisi', 'administrator', 'manager', 'reseller'])
             || in_array(strtoupper($user->job_function ?? ''), ['TECHNICIAN', 'TEKNISI', 'NOC', 'ADMINISTRATOR', 'MANAGER', 'RESELLER'])
@@ -38,6 +47,201 @@ class MobileAcsProxyController extends Controller
                 'success' => false,
                 'message' => 'Akses ditolak. Anda tidak memiliki izin untuk mengelola jaringan TR-069.',
             ], 403);
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate device ownership and role authorization for ACS operations.
+     * Incorporates 3 Layers:
+     * A. Role: Administrator/Superadmin bypasses.
+     * B. Permission: Checks if user has permission for the requested operation.
+     * C. Ownership & Scope: Enforces valid relationship Reseller -> CustomerService -> ONU -> ACSDevice,
+     *    and branch/tenant boundary checks.
+     */
+    protected function validateDeviceAccess(User $user, string $cleanId, string $operation = 'read'): ?JsonResponse
+    {
+        // 1. SuperAdmin & Administrator backoffice have full access
+        if ($user->isSuperAdmin() || $user->hasRole('administrator')) {
+            return null;
+        }
+
+        // 2. Permission Check (Layer B)
+        $requiredPermissions = match ($operation) {
+            'wan'          => ['onu.configure.wan', 'onu.manage', 'noc.onu.manage'],
+            'wifi'         => ['onu.configure.wifi', 'onu.manage', 'noc.onu.manage'],
+            'admin'        => ['onu.configure.admin', 'onu.manage', 'noc.onu.manage'],
+            'tasks.delete' => ['onu.task.delete', 'onu.manage', 'noc.onu.manage'],
+            'tasks.retry'  => ['onu.task.retry', 'onu.manage', 'noc.onu.manage'],
+            'tasks.view'   => ['onu.task.view', 'onu.view', 'onu.manage', 'noc.onu.manage'],
+            'reboot'       => ['onu.reboot', 'onu.manage', 'noc.onu.manage'],
+            'ping'         => ['onu.diagnose', 'onu.manage', 'noc.onu.manage'],
+            'summon'       => ['onu.diagnose', 'onu.view', 'onu.reboot', 'onu.manage', 'noc.onu.manage'],
+            'tags'         => ['onu.view', 'onu.manage', 'noc.onu.manage'],
+            'read'         => ['onu.view', 'noc.onu.view', 'onu.manage', 'noc.onu.manage'],
+            default        => ['onu.view', 'onu.manage', 'noc.onu.manage'],
+        };
+
+        $hasPerm = false;
+        foreach ($requiredPermissions as $perm) {
+            if ($user->hasPermission($perm) || $user->can($perm)) {
+                $hasPerm = true;
+                break;
+            }
+        }
+
+        if (!$hasPerm) {
+            return response()->json([
+                'success' => false,
+                'message' => "Akses ditolak: Anda tidak memiliki permission untuk operasi '{$operation}'.",
+            ], 403);
+        }
+
+        $cleanUpper = strtoupper(trim(urldecode($cleanId)));
+
+        // Reject wildcard/bulk requests for non-admin users
+        if ($cleanUpper === 'ALL' || $cleanUpper === '*' || $cleanUpper === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'ID perangkat spesifik wajib disertakan.',
+            ], 403);
+        }
+
+        // 3. Strict Device Resolution (preventing device ID manipulation / loose substring spoofing)
+        $dbDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where(function ($q) use ($cleanUpper) {
+            $q->where('serial_number', $cleanUpper)
+              ->orWhere('uuid', $cleanUpper)
+              ->orWhere('mac_address', $cleanUpper);
+        })->first();
+
+        $extractedSn = null;
+        if (!$dbDevice && str_contains($cleanUpper, '-')) {
+            $parts = explode('-', $cleanUpper);
+            $candidateSn = end($parts);
+            if (!empty($candidateSn) && strlen($candidateSn) >= 4) {
+                $dbDevice = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where('serial_number', $candidateSn)
+                    ->first();
+                if ($dbDevice) {
+                    $extractedSn = $candidateSn;
+                }
+            }
+        }
+
+        $dbOnu = null;
+        if ($dbDevice && $dbDevice->onu_id) {
+            $dbOnu = \App\Models\ISP\Onu::withoutGlobalScopes()->find($dbDevice->onu_id);
+        }
+        if (!$dbOnu) {
+            $dbOnu = \App\Models\ISP\Onu::withoutGlobalScopes()->where(function ($q) use ($cleanUpper, $extractedSn) {
+                $q->where('serial_number', $cleanUpper)
+                  ->orWhere('code', $cleanUpper)
+                  ->orWhere('mac_address', $cleanUpper);
+                if ($extractedSn) {
+                    $q->orWhere('serial_number', $extractedSn);
+                }
+            })->first();
+        }
+
+        // Must exist in registered database records
+        if (!$dbDevice && !$dbOnu) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perangkat ini tidak terdaftar atau berada di luar cakupan izin akun Anda.',
+            ], 403);
+        }
+
+        // Resolve CustomerService relationship
+        $cs = null;
+        if ($dbDevice && $dbDevice->customer_service_id) {
+            $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()->find($dbDevice->customer_service_id);
+        }
+        if (!$cs && $dbOnu) {
+            $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()->where('onu_id', $dbOnu->id)->first();
+        }
+
+        // 4. Reseller Scope & Ownership Enforcement (Layer C)
+        // Validates chain: Reseller -> CustomerService -> ONU -> ACSDevice
+        if ($user->hasRole('reseller')) {
+            $resellerId = $user->getEffectiveResellerId() ?: $user->id;
+
+            // Reject if explicitly registered to another reseller
+            if ($cs) {
+                $csResellerId = $cs->reseller_id;
+                $custResellerId = $cs->customer_id 
+                    ? \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $cs->customer_id)->value('reseller_id')
+                    : null;
+
+                if (!empty($csResellerId) && (int) $csResellerId !== (int) $resellerId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akses ditolak: Perangkat ini terdaftar pada pelanggan Mitra Reseller lain.',
+                    ], 403);
+                }
+
+                if (!empty($custResellerId) && (int) $custResellerId !== (int) $resellerId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akses ditolak: Perangkat ini terdaftar pada pelanggan Mitra Reseller lain.',
+                    ], 403);
+                }
+            }
+
+            // Assert positive ownership
+            $isOwned = false;
+
+            if ($cs) {
+                if ((int) $cs->reseller_id === (int) $resellerId || (int) $cs->created_by === (int) $resellerId) {
+                    $isOwned = true;
+                } elseif ($cs->customer_id) {
+                    $customer = \App\Models\CRM\Customer::withoutGlobalScopes()->find($cs->customer_id);
+                    if ($customer && ((int) $customer->reseller_id === (int) $resellerId || (int) $customer->created_by === (int) $resellerId)) {
+                        $isOwned = true;
+                    }
+                }
+            }
+
+            if (!$isOwned && $dbOnu) {
+                if ((int) $dbOnu->created_by === (int) $resellerId) {
+                    $isOwned = true;
+                }
+            }
+
+            if (!$isOwned && $dbDevice) {
+                if ((int) $dbDevice->created_by === (int) $resellerId) {
+                    $isOwned = true;
+                }
+            }
+
+            if (!$isOwned && $dbDevice) {
+                $isOwned = \App\Models\ACS\ACSDevice::forReseller($user)->where('id', $dbDevice->id)->exists();
+            }
+
+            if (!$isOwned) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Perangkat ini berada di luar cakupan kepemilikan akun Reseller Anda.',
+                ], 403);
+            }
+        }
+
+        // 5. Branch Scope Isolation (for staff/technicians with branch_id assignment)
+        if ($user->branch_id) {
+            $deviceBranchId = null;
+            if ($cs) {
+                $deviceBranchId = $cs->branch_id ?? ($cs->customer_id ? \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $cs->customer_id)->value('branch_id') : null);
+            }
+            if (!$deviceBranchId && $dbOnu) {
+                $deviceBranchId = $dbOnu->branch_id;
+            }
+
+            if ($deviceBranchId && (int) $deviceBranchId !== (int) $user->branch_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Perangkat ini terdaftar pada cabang/tenant lain.',
+                ], 403);
+            }
         }
 
         return null;
@@ -66,12 +270,12 @@ class MobileAcsProxyController extends Controller
 
                 $devices = array_values(array_filter($devices, function ($dev) use ($allowedSns) {
                     $devSn = strtoupper(trim((string) ($dev['serial_number'] ?? ($dev['_id'] ?? ''))));
-                    foreach ($allowedSns as $sn) {
-                        if ($sn !== '' && (str_contains($devSn, $sn) || str_contains($sn, $devSn))) {
-                            return true;
-                        }
+                    $snToMatch = $devSn;
+                    if (str_contains($devSn, '-')) {
+                        $parts = explode('-', $devSn);
+                        $snToMatch = end($parts);
                     }
-                    return false;
+                    return in_array($devSn, $allowedSns, true) || in_array($snToMatch, $allowedSns, true);
                 }));
             }
 
@@ -97,8 +301,12 @@ class MobileAcsProxyController extends Controller
             return $authCheck;
         }
 
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'read')) {
+            return $devCheck;
+        }
+
         try {
-            $cleanId = urldecode($id);
             $params = $this->driver->getDeviceParameters($cleanId);
 
             if (empty($params)) {
@@ -137,8 +345,12 @@ class MobileAcsProxyController extends Controller
             return $authCheck;
         }
 
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'summon')) {
+            return $devCheck;
+        }
+
         try {
-            $cleanId = urldecode($id);
             $success = $this->driver->summonDeviceResult($cleanId);
 
             // Audit log
@@ -158,6 +370,46 @@ class MobileAcsProxyController extends Controller
     }
 
     /**
+     * Proxy Ping Diagnostics to Device in GenieACS.
+     */
+    public function ping(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'ping')) {
+            return $devCheck;
+        }
+
+        $host = trim((string) $request->input('target_host', '8.8.8.8'));
+        if ($host === '') {
+            $host = '8.8.8.8';
+        }
+
+        try {
+            $kv = [
+                'InternetGatewayDevice.IPPingDiagnostics.Host' => $host,
+                'InternetGatewayDevice.IPPingDiagnostics.NumberOfRepetitions' => 4,
+                'InternetGatewayDevice.IPPingDiagnostics.Timeout' => 2000,
+                'InternetGatewayDevice.IPPingDiagnostics.DiagnosticsState' => 'Requested',
+            ];
+            $this->driver->setParameterValues($cleanId, $kv);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Tes Ping ke {$host} sedang dijalankan oleh modem...",
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menjalankan tes ping: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Proxy Reboot Device.
      */
     public function reboot(Request $request, string $id): JsonResponse
@@ -166,34 +418,13 @@ class MobileAcsProxyController extends Controller
             return $authCheck;
         }
 
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'reboot')) {
+            return $devCheck;
+        }
+
         try {
-            $cleanId = urldecode($id);
             $user = $request->user();
-
-            if ($user && $user->hasRole('reseller')) {
-                $allowedSns = \App\Models\ACS\ACSDevice::forReseller($user)
-                    ->pluck('serial_number')
-                    ->map(fn($s) => strtoupper(trim((string) $s)))
-                    ->filter()
-                    ->toArray();
-
-                $cleanUpper = strtoupper($cleanId);
-                $matches = false;
-                foreach ($allowedSns as $sn) {
-                    if ($sn !== '' && (str_contains($cleanUpper, $sn) || str_contains($sn, $cleanUpper))) {
-                        $matches = true;
-                        break;
-                    }
-                }
-
-                if (!$matches) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Perangkat ini berada di luar cakupan izin akun Reseller Anda.',
-                    ], 403);
-                }
-            }
-
             $success = $this->driver->rebootDevice($cleanId);
 
             Log::info("ACS Reboot: User #{$user->id} ({$user->name}) rebooted device {$cleanId}.");
@@ -230,42 +461,22 @@ class MobileAcsProxyController extends Controller
             return $authCheck;
         }
 
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'wifi')) {
+            return $devCheck;
+        }
+
         $request->validate([
-            'wlan_index' => 'required|integer|min:1',
+            'wlan_index' => 'nullable|integer|min:1|max:8',
             'ssid' => 'nullable|string|max:64',
-            'password' => 'nullable|string|min:8|max:64',
+            'password' => 'nullable|string|max:64',
             'security_mode' => 'nullable|string',
             'enabled' => 'nullable|boolean',
             'hide_ssid' => 'nullable|boolean',
         ]);
 
-        $cleanId = urldecode($id);
         $wlanIndex = (int) $request->input('wlan_index', 1);
         $user = $request->user();
-
-        if ($user && $user->hasRole('reseller')) {
-            $allowedSns = \App\Models\ACS\ACSDevice::forReseller($user)
-                ->pluck('serial_number')
-                ->map(fn($s) => strtoupper(trim((string) $s)))
-                ->filter()
-                ->toArray();
-
-            $cleanUpper = strtoupper($cleanId);
-            $matches = false;
-            foreach ($allowedSns as $sn) {
-                if ($sn !== '' && (str_contains($cleanUpper, $sn) || str_contains($sn, $cleanUpper))) {
-                    $matches = true;
-                    break;
-                }
-            }
-
-            if (!$matches) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Perangkat ini berada di luar cakupan izin akun Reseller Anda.',
-                ], 403);
-            }
-        }
 
         try {
             $kv = [];
@@ -276,6 +487,7 @@ class MobileAcsProxyController extends Controller
                 $kv["{$prefix}.SSID"] = $ssid;
                 if ($wlanIndex === 1) {
                     $kv["VirtualParameters.WlanSsid"] = $ssid;
+                    $kv["VirtualParameters.WlanSSID"] = $ssid;
                 }
             }
 
@@ -297,11 +509,13 @@ class MobileAcsProxyController extends Controller
             }
 
             if ($request->has('security_mode')) {
-                $sec = $request->input('security_mode');
+                $sec = strtoupper((string) $request->input('security_mode'));
                 if ($sec === 'OPEN') {
                     $kv["{$prefix}.BeaconType"] = 'None';
+                    $kv["{$prefix}.BasicAuthenticationMode"] = 'None';
                 } elseif ($sec === 'WPA2') {
                     $kv["{$prefix}.BeaconType"] = '11i';
+                    $kv["{$prefix}.IEEE80211iAuthenticationMode"] = 'PSKAuthentication';
                 } else {
                     $kv["{$prefix}.BeaconType"] = 'WPAand11i';
                 }
@@ -347,33 +561,73 @@ class MobileAcsProxyController extends Controller
             return $authCheck;
         }
 
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'wan')) {
+            return $devCheck;
+        }
+
         $request->validate([
-            'wan_index' => 'required|integer|min:1',
-            'username' => 'nullable|string',
-            'password' => 'nullable|string',
-            'vlan_id' => 'nullable|integer',
-            'connection_type' => 'nullable|string',
+            'wan_index' => 'nullable|integer|min:1|max:8',
+            'connection_type' => 'nullable|string|max:32',
+            'username' => 'nullable|string|max:128',
+            'password' => 'nullable|string|max:128',
+            'vlan_id' => 'nullable|integer|min:0|max:4094',
+            'vlan_enabled' => 'nullable|boolean',
+            'service_type' => 'nullable|string|max:32',
+            'service_list' => 'nullable|string|max:32',
+            'bind_lan1' => 'nullable|boolean',
+            'bind_lan2' => 'nullable|boolean',
+            'bind_lan3' => 'nullable|boolean',
+            'bind_lan4' => 'nullable|boolean',
+            'bind_wlan1' => 'nullable|boolean',
+            'bind_wlan2' => 'nullable|boolean',
+            'bind_wlan3' => 'nullable|boolean',
+            'bind_wlan4' => 'nullable|boolean',
+            'is_new_instance' => 'nullable|boolean',
+            'manufacturer' => 'nullable|string|max:64',
         ]);
 
-        $cleanId = urldecode($id);
         $wanIndex = (int) $request->input('wan_index', 1);
         $user = $request->user();
+        $connType = $request->input('connection_type', 'PPPoE_Routed');
+        $isBridge = str_contains(strtolower($connType), 'bridge');
+        $isPppoe = str_contains(strtolower($connType), 'pppoe') || !str_contains(strtolower($connType), 'ip');
 
         try {
             $kv = [];
-            $prefix = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.{$wanIndex}.WANPPPConnection.1";
+            $slotName = ($isPppoe) ? "WANPPPConnection" : "WANIPConnection";
+            $prefix = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.{$slotName}.{$wanIndex}";
 
-            if ($request->has('username')) {
-                $kv["{$prefix}.Username"] = $request->input('username');
-            }
-            if ($request->has('password')) {
-                $kv["{$prefix}.Password"] = $request->input('password');
-            }
-            if ($request->has('vlan_id')) {
-                $vlan = (int) $request->input('vlan_id');
-                if ($vlan > 0) {
-                    $kv["InternetGatewayDevice.WANDevice.1.WANConnectionDevice.{$wanIndex}.WANEthernetLinkConfig.X_BROADCOM_COM_VLANID"] = $vlan;
+            // Enable connection
+            $kv["{$prefix}.Enable"] = true;
+            $kv["{$prefix}.ConnectionType"] = $connType;
+
+            // Name
+            $vlanId = (int) $request->input('vlan_id', 0);
+            $vlanEnabled = $request->boolean('vlan_enabled', $vlanId > 0);
+            $typeCode = $isBridge ? 'B' : 'R';
+            $connName = ($vlanEnabled && $vlanId > 0)
+                ? "{$wanIndex}_INTERNET_{$typeCode}_VID_{$vlanId}"
+                : "{$wanIndex}_INTERNET_{$typeCode}_VID_";
+            $kv["{$prefix}.Name"] = $connName;
+
+            // PPPoE Credentials
+            if ($isPppoe) {
+                if ($request->has('username')) {
+                    $kv["{$prefix}.Username"] = trim((string) $request->input('username'));
                 }
+                if ($request->has('password') && $request->input('password') !== null) {
+                    $kv["{$prefix}.Password"] = (string) $request->input('password');
+                }
+                $kv["{$prefix}.NATEnabled"] = true;
+            }
+
+            // VLAN Tagging
+            if ($vlanEnabled && $vlanId > 0) {
+                $linkPrefix = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANEthernetLinkConfig";
+                $kv["{$linkPrefix}.X_BROADCOM_COM_VLANID"] = $vlanId;
+                $kv["{$linkPrefix}.X_CT-COM_VLAN"] = $vlanId;
+                $kv["{$prefix}.X_BROADCOM_COM_VLANID"] = $vlanId;
             }
 
             if (empty($kv)) {
@@ -383,6 +637,17 @@ class MobileAcsProxyController extends Controller
             $success = $this->driver->setParameterValues($cleanId, $kv);
 
             Log::info("ACS SetWan: User #{$user->id} ({$user->name}) updated WAN on {$cleanId}.");
+
+            try {
+                AuditLog::create([
+                    'user_id' => $user?->id,
+                    'action' => 'acs_set_wan',
+                    'description' => "Ubah konfigurasi WAN device {$cleanId} (index {$wanIndex}, type {$connType}) via Mobile ACS Proxy.",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
 
             return response()->json([
                 'success' => $success,
@@ -405,12 +670,16 @@ class MobileAcsProxyController extends Controller
             return $authCheck;
         }
 
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'admin')) {
+            return $devCheck;
+        }
+
         $request->validate([
             'username' => 'required|string',
             'password' => 'required|string',
         ]);
 
-        $cleanId = urldecode($id);
         $adminUser = $request->input('username');
         $adminPass = $request->input('password');
         $user = $request->user();
@@ -425,6 +694,17 @@ class MobileAcsProxyController extends Controller
             $success = $this->driver->setParameterValues($cleanId, $kv);
 
             Log::info("ACS SetAdminAccount: User #{$user->id} ({$user->name}) changed admin password on {$cleanId}.");
+
+            try {
+                AuditLog::create([
+                    'user_id' => $user?->id,
+                    'action' => 'acs_set_admin_account',
+                    'description' => "Ubah akun admin device {$cleanId} via Mobile ACS Proxy.",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
 
             return response()->json([
                 'success' => $success,
@@ -448,6 +728,9 @@ class MobileAcsProxyController extends Controller
         }
 
         $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'tasks.delete')) {
+            return $devCheck;
+        }
 
         try {
             // Get pending/fault tasks and delete them via driver
@@ -474,6 +757,200 @@ class MobileAcsProxyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal membersihkan task queue: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Proxy Get Tasks for Device from GenieACS.
+     */
+    public function getTasks(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'tasks.view')) {
+            return $devCheck;
+        }
+
+        try {
+            $tasks = $this->driver->getTasks($cleanId);
+            return response()->json([
+                'success' => true,
+                'data' => $tasks,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil antrean task: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Proxy Delete Single Task from GenieACS.
+     */
+    public function deleteSingleTask(Request $request, string $id, string $taskId): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'tasks.delete')) {
+            return $devCheck;
+        }
+
+        try {
+            $baseUrl = rtrim(config('genieacs.base_url', 'http://localhost:7557'), '/');
+            $resp = \Illuminate\Support\Facades\Http::withBasicAuth(
+                config('genieacs.username', 'admin'),
+                config('genieacs.password', 'admin')
+            )->delete("{$baseUrl}/tasks/" . urlencode($taskId));
+
+            if ($resp->successful() || $resp->status() === 404) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tugas berhasil dihapus.',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus tugas dari GenieACS.',
+            ], $resp->status() ?: 500);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus tugas: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Proxy Retry Task in GenieACS.
+     */
+    public function retryTask(Request $request, string $id, string $taskId): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'tasks.retry')) {
+            return $devCheck;
+        }
+
+        try {
+            $baseUrl = rtrim(config('genieacs.base_url', 'http://localhost:7557'), '/');
+            $resp = \Illuminate\Support\Facades\Http::withBasicAuth(
+                config('genieacs.username', 'admin'),
+                config('genieacs.password', 'admin')
+            )->post("{$baseUrl}/tasks/" . urlencode($taskId) . '/retry');
+
+            if ($resp->successful()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tugas berhasil dijadwalkan ulang.',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengulang tugas di GenieACS.',
+            ], $resp->status() ?: 500);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengulang tugas: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Proxy Add Tag to Device in GenieACS.
+     */
+    public function addTag(Request $request, string $id): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'tag')) {
+            return $devCheck;
+        }
+
+        $tag = trim((string) $request->input('tag'));
+        if ($tag === '') {
+            return response()->json(['success' => false, 'message' => 'Tag tidak boleh kosong.'], 422);
+        }
+
+        try {
+            $baseUrl = rtrim(config('genieacs.base_url', 'http://localhost:7557'), '/');
+            $resp = \Illuminate\Support\Facades\Http::withBasicAuth(
+                config('genieacs.username', 'admin'),
+                config('genieacs.password', 'admin')
+            )->post("{$baseUrl}/devices/" . urlencode($cleanId) . '/tags/' . urlencode($tag));
+
+            if ($resp->successful() || $resp->status() === 200 || $resp->status() === 201) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Tag '{$tag}' berhasil ditambahkan.",
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menambahkan tag di GenieACS.',
+            ], $resp->status() ?: 500);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menambahkan tag: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Proxy Remove Tag from Device in GenieACS.
+     */
+    public function removeTag(Request $request, string $id, string $tag): JsonResponse
+    {
+        if ($authCheck = $this->authorizeAcsAccess($request)) {
+            return $authCheck;
+        }
+
+        $cleanId = urldecode($id);
+        if ($devCheck = $this->validateDeviceAccess($request->user(), $cleanId, 'tag')) {
+            return $devCheck;
+        }
+
+        $cleanTag = trim(urldecode($tag));
+        try {
+            $baseUrl = rtrim(config('genieacs.base_url', 'http://localhost:7557'), '/');
+            $resp = \Illuminate\Support\Facades\Http::withBasicAuth(
+                config('genieacs.username', 'admin'),
+                config('genieacs.password', 'admin')
+            )->delete("{$baseUrl}/devices/" . urlencode($cleanId) . '/tags/' . urlencode($cleanTag));
+
+            if ($resp->successful() || $resp->status() === 404) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Tag '{$cleanTag}' berhasil dihapus.",
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus tag dari GenieACS.',
+            ], $resp->status() ?: 500);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus tag: ' . $e->getMessage(),
             ], 500);
         }
     }

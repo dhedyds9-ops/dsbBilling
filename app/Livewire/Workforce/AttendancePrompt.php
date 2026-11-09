@@ -14,10 +14,12 @@ class AttendancePrompt extends Component
 {
     public bool $isOpen = false;
     public bool $hasCheckedIn = false;
+    public bool $hasCheckedOut = false;
     public bool $isWorkforce = false;
     public ?string $staffName = '';
     public ?string $staffRole = '';
     public ?string $checkInTime = null;
+    public ?string $checkOutTime = null;
     public string $latitude = '';
     public string $longitude = '';
     public string $notes = '';
@@ -74,9 +76,12 @@ class AttendancePrompt extends Component
         if ($attendance) {
             $this->hasCheckedIn = true;
             $this->checkInTime = Carbon::parse($attendance->checked_in_at)->format('H:i');
+            $this->hasCheckedOut = ! empty($attendance->checked_out_at);
+            $this->checkOutTime = $attendance->checked_out_at ? Carbon::parse($attendance->checked_out_at)->format('H:i') : null;
             $this->isOpen = false;
         } else {
             $this->hasCheckedIn = false;
+            $this->hasCheckedOut = false;
             // Jika ada sinyal session atau belum absen sama sekali di modul operasional, buka modal
             if (session('must_check_in_popup') || request()->is('inventory/*') || request()->is('billing/*') || request()->is('support/*')) {
                 $this->isOpen = true;
@@ -130,8 +135,8 @@ class AttendancePrompt extends Component
             $lat = ! empty($this->latitude) ? (float) $this->latitude : null;
             $lng = ! empty($this->longitude) ? (float) $this->longitude : null;
 
-            // Toleransi status keterlambatan (setelah 08:30 WIB)
-            $isLate = $now->format('H:i') > '08:30';
+            // Toleransi status keterlambatan (setelah 09:00 WIB)
+            $isLate = $now->format('H:i') > '09:00';
             $status = $isLate ? AttendanceStatus::LATE : AttendanceStatus::CHECKED_IN;
 
             $notes = trim(($this->notes ? $this->notes . ' | ' : '') . 'IP: ' . $ip);
@@ -169,6 +174,54 @@ class AttendancePrompt extends Component
             $this->js('setTimeout(() => window.location.reload(), 1000);');
         } catch (\Throwable $e) {
             $this->errorMessage = 'Gagal menyimpan presensi: ' . $e->getMessage();
+        }
+    }
+
+    public function checkOut(): void
+    {
+        $user = Auth::user();
+        if (! $user) {
+            $this->errorMessage = 'Sesi login tidak valid. Silakan muat ulang halaman.';
+            return;
+        }
+
+        try {
+            $attendance = Attendance::where('technician_id', $user->id)
+                ->whereDate('date', Carbon::today())
+                ->first();
+
+            if (! $attendance || ! $attendance->checked_in_at) {
+                $this->errorMessage = 'Anda belum melakukan absen masuk hari ini.';
+                return;
+            }
+
+            if (! empty($attendance->checked_out_at)) {
+                $this->hasCheckedOut = true;
+                $this->isOpen = false;
+                $this->dispatch('toast', ['type' => 'info', 'message' => 'Anda sudah melakukan presensi pulang hari ini.']);
+                return;
+            }
+
+            $now = Carbon::now();
+            $checkoutNotes = $attendance->notes ? ($attendance->notes . "\n[Pulang]: " . ($this->notes ?: '-')) : $this->notes;
+
+            $attendance->update([
+                'status' => AttendanceStatus::CHECKED_OUT,
+                'checked_out_at' => $now,
+                'notes' => $checkoutNotes,
+            ]);
+
+            $this->hasCheckedOut = true;
+            $this->checkOutTime = $now->format('H:i');
+            $this->isOpen = false;
+
+            $this->dispatch('toast', [
+                'type' => 'success',
+                'message' => 'Presensi Pulang berhasil dicatat. Terima kasih atas kerja keras Anda hari ini!',
+            ]);
+            $this->js('setTimeout(() => window.location.reload(), 1000);');
+        } catch (\Throwable $e) {
+            $this->errorMessage = 'Gagal menyimpan presensi pulang: ' . $e->getMessage();
         }
     }
 

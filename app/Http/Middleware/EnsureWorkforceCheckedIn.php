@@ -61,6 +61,11 @@ class EnsureWorkforceCheckedIn
 
                 // Jika aksi adalah mutasi data (POST / PUT / PATCH / DELETE), blokir agar tidak dapat mengeksekusi transaksi sebelum absen
                 if (in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
+                    // Pengecualian: Jangan blokir aksi presensi Livewire atau endpoint API absensi
+                    if ($request->is('livewire/*') || $request->is('api/mobile/attendance/*') || $request->routeIs('technician.attendance')) {
+                        return $next($request);
+                    }
+
                     if ($request->expectsJson() || $request->is('api/*')) {
                         return response()->json([
                             'success' => false,

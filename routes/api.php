@@ -233,6 +233,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
         // Attendance & Daily Shift (Technician Portal Parity)
         Route::prefix('attendance')->name('attendance.')->group(function () {
             Route::get('/today', [\App\Http\Controllers\Api\Mobile\MobileAttendanceApiController::class, 'today'])->name('today');
+            Route::get('/history', [\App\Http\Controllers\Api\Mobile\MobileAttendanceApiController::class, 'history'])->name('history');
             Route::post('/check-in', [\App\Http\Controllers\Api\Mobile\MobileAttendanceApiController::class, 'checkIn'])->name('check-in');
             Route::post('/check-out', [\App\Http\Controllers\Api\Mobile\MobileAttendanceApiController::class, 'checkOut'])->name('check-out');
         });
@@ -275,11 +276,17 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'listDevices'])->name('devices.index');
             Route::get('/devices/{id}', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'deviceDetail'])->name('devices.show');
             Route::post('/devices/{id}/summon', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'summon'])->name('devices.summon');
+            Route::post('/devices/{id}/ping', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'ping'])->name('devices.ping');
             Route::post('/devices/{id}/reboot', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'reboot'])->name('devices.reboot');
             Route::post('/devices/{id}/wifi', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWifi'])->name('devices.wifi');
             Route::post('/devices/{id}/wan', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setWan'])->name('devices.wan');
             Route::post('/devices/{id}/admin-account', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'setAdminAccount'])->name('devices.admin-account');
+            Route::get('/devices/{id}/tasks', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'getTasks'])->name('devices.tasks');
             Route::delete('/devices/{id}/tasks', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'clearTasks'])->name('devices.tasks.clear');
+            Route::delete('/devices/{id}/tasks/{taskId}', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'deleteSingleTask'])->name('devices.tasks.delete');
+            Route::post('/devices/{id}/tasks/{taskId}/retry', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'retryTask'])->name('devices.tasks.retry');
+            Route::post('/devices/{id}/tags', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'addTag'])->name('devices.tags.add');
+            Route::delete('/devices/{id}/tags/{tag}', [\App\Http\Controllers\Api\Mobile\MobileAcsProxyController::class, 'removeTag'])->name('devices.tags.remove');
         });
 
         // AI Voice Proxy

@@ -264,6 +264,10 @@ enum UserPermission: string
     case OnuReboot = 'onu.reboot';
     case OnuConfigureWifi = 'onu.configure.wifi';
     case OnuConfigureWan = 'onu.configure.wan';
+    case OnuConfigureAdmin = 'onu.configure.admin';
+    case OnuTaskView = 'onu.task.view';
+    case OnuTaskRetry = 'onu.task.retry';
+    case OnuTaskDelete = 'onu.task.delete';
     case OnuFirmwareUpdate = 'onu.firmware.update';
     case OnuFirmwareDowngrade = 'onu.firmware.downgrade';
     case OnuFactoryReset = 'onu.factory_reset';
@@ -400,6 +404,7 @@ enum UserPermission: string
             self::InventoryReturn->value,
             self::InventoryOpname->value,
             self::InventoryReport->value,
+            self::WorkforceAttendanceExecute->value,
         ];
     }
 
@@ -417,6 +422,7 @@ enum UserPermission: string
             self::PaymentView->value,
             self::PaymentCreate->value,
             self::ReportView->value,
+            self::WorkforceAttendanceExecute->value,
         ];
     }
 
@@ -436,6 +442,7 @@ enum UserPermission: string
             self::OnuView->value,
             self::OnuDiagnose->value,
             self::OnuReboot->value,
+            self::WorkforceAttendanceExecute->value,
         ];
     }
 
@@ -462,6 +469,7 @@ enum UserPermission: string
             self::OnuDiagnose->value,
             self::OnuReboot->value,
             self::GisView->value,
+            self::WorkforceAttendanceExecute->value,
         ];
     }
 
@@ -502,6 +510,7 @@ enum UserPermission: string
             self::VoucherCreate->value,
             self::VoucherPrint->value,
             self::ReportView->value,
+            self::WorkforceAttendanceExecute->value,
         ];
     }
 

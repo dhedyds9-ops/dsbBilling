@@ -28,6 +28,18 @@
                     </button>
                 </div>
             </div>
+        @elseif($hasCheckedIn && ! $hasCheckedOut)
+            {{-- OPTIONAL SLIM STATUS BAR UNTUK SHIFT AKTIF --}}
+            <div class="mb-4 px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/80 dark:bg-emerald-950/30 flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2.5 text-emerald-800 dark:text-emerald-300">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Shift Aktif (Masuk: <strong>{{ $checkInTime }} WIB</strong>)</span>
+                </div>
+                <button wire:click="openModal" type="button" class="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer">
+                    <span class="material-symbols-outlined text-[16px]">logout</span>
+                    <span>Absen Pulang (Check-Out)</span>
+                </button>
+            </div>
         @endif
 
         {{-- 2. POP-UP MODAL INSTRUKSI & FORM ABSEN --}}
@@ -68,11 +80,11 @@
                     <div class="p-5 border-b border-slate-100 dark:border-slate-700/60 bg-gradient-to-r from-indigo-50/50 via-slate-50 to-emerald-50/50 dark:from-slate-800 dark:to-slate-800 flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-xs">
-                                <span class="material-symbols-outlined text-[24px]">alarm_on</span>
+                                <span class="material-symbols-outlined text-[24px]">{{ $hasCheckedIn ? 'logout' : 'alarm_on' }}</span>
                             </div>
                             <div>
                                 <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                    Presensi Masuk Shift Diperlukan
+                                    {{ $hasCheckedIn ? 'Konfirmasi Absen Pulang (Check-Out)' : 'Presensi Masuk Shift Diperlukan' }}
                                 </h3>
                                 <p class="text-xs text-slate-500 dark:text-slate-400">Konfirmasi kehadiran operasional harian dsBilling</p>
                             </div>
@@ -84,18 +96,33 @@
 
                     {{-- Modal Body --}}
                     <div class="p-5 sm:p-6 space-y-4">
-                        {{-- Friendly Message Callout --}}
-                        <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-sm leading-relaxed flex items-start gap-3">
-                            <span class="material-symbols-outlined text-amber-600 text-[22px] shrink-0 mt-0.5">info</span>
-                            <div>
-                                <p class="font-semibold">
-                                    Halo <strong class="font-black">{{ $staffName }}</strong>,
-                                </p>
-                                <p class="mt-1 text-xs text-amber-800 dark:text-amber-300">
-                                    Anda belum melakukan Absen Hadir hari ini. Silakan klik tombol <strong>Absen Masuk</strong> untuk memulai shift dan melayani transaksi operasional.
-                                </p>
+                        @if(! $hasCheckedIn)
+                            {{-- Friendly Message Callout --}}
+                            <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-sm leading-relaxed flex items-start gap-3">
+                                <span class="material-symbols-outlined text-amber-600 text-[22px] shrink-0 mt-0.5">info</span>
+                                <div>
+                                    <p class="font-semibold">
+                                        Halo <strong class="font-black">{{ $staffName }}</strong>,
+                                    </p>
+                                    <p class="mt-1 text-xs text-amber-800 dark:text-amber-300">
+                                        Anda belum melakukan Absen Hadir hari ini. Silakan klik tombol <strong>Absen Masuk</strong> untuk memulai shift dan melayani transaksi operasional.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        @else
+                            {{-- Check-out Confirmation Callout --}}
+                            <div class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 text-sm leading-relaxed flex items-start gap-3">
+                                <span class="material-symbols-outlined text-indigo-600 text-[22px] shrink-0 mt-0.5">verified</span>
+                                <div>
+                                    <p class="font-semibold">
+                                        Shift Aktif: <strong class="font-black">{{ $staffName }}</strong>
+                                    </p>
+                                    <p class="mt-1 text-xs text-indigo-800 dark:text-indigo-300">
+                                        Anda telah check-in pukul <strong>{{ $checkInTime }} WIB</strong>. Pastikan seluruh pekerjaan hari ini telah tercatat sebelum melakukan presensi pulang.
+                                    </p>
+                                </div>
+                            </div>
+                        @endif
 
                         @if($errorMessage)
                             <div class="p-3 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs flex items-center gap-2">
@@ -137,12 +164,12 @@
                         {{-- Catatan Opsional --}}
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Catatan Shift / Keterangan (Opsional)
+                                {{ $hasCheckedIn ? 'Catatan Selesai Shift / Ringkasan Pekerjaan' : 'Catatan Shift / Keterangan (Opsional)' }}
                             </label>
                             <input
                                 wire:model="notes"
                                 type="text"
-                                placeholder="Contoh: Shift Pagi Gudang, Loket Kasir Kantor Pusat..."
+                                placeholder="{{ $hasCheckedIn ? 'Contoh: Selesai shift, semua mutasi barang telah diupdate' : 'Contoh: Shift Pagi Gudang, Loket Kasir Kantor Pusat...' }}"
                                 class="w-full px-3.5 py-2 text-xs rounded-xl bg-white dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             >
                         </div>
@@ -155,19 +182,32 @@
                             type="button"
                             class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
                         >
-                            Nanti Dulu
+                            Tutup
                         </button>
 
-                        <button
-                            wire:click="checkIn"
-                            wire:loading.attr="disabled"
-                            type="button"
-                            class="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer active:scale-95"
-                        >
-                            <span wire:loading.remove wire:target="checkIn" class="material-symbols-outlined text-[18px]">check_circle</span>
-                            <span wire:loading wire:target="checkIn" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                            <span>Absen Masuk Sekarang</span>
-                        </button>
+                        @if(! $hasCheckedIn)
+                            <button
+                                wire:click="checkIn"
+                                wire:loading.attr="disabled"
+                                type="button"
+                                class="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer active:scale-95"
+                            >
+                                <span wire:loading.remove wire:target="checkIn" class="material-symbols-outlined text-[18px]">check_circle</span>
+                                <span wire:loading wire:target="checkIn" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                                <span>Absen Masuk Sekarang</span>
+                            </button>
+                        @elseif($hasCheckedIn && ! $hasCheckedOut)
+                            <button
+                                wire:click="checkOut"
+                                wire:loading.attr="disabled"
+                                type="button"
+                                class="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer active:scale-95"
+                            >
+                                <span wire:loading.remove wire:target="checkOut" class="material-symbols-outlined text-[18px]">logout</span>
+                                <span wire:loading wire:target="checkOut" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                                <span>Absen Pulang Sekarang</span>
+                            </button>
+                        @endif
                     </div>
                 </div>
             </div>

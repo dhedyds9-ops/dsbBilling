@@ -104,6 +104,12 @@ class MobilePortalParityTest extends TestCase
             ->assertJsonPath('data.has_checked_in', true)
             ->assertJsonPath('data.has_checked_out', true)
             ->assertJsonPath('data.is_active_shift', false);
+
+        // 7. Verify history endpoint returns the recorded attendance
+        $histRes = $this->getJson('/api/mobile/attendance/history');
+        $histRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_technician_can_query_troubleshooting_tickets(): void
