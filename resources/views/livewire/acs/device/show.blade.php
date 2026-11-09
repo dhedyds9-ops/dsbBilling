@@ -90,7 +90,7 @@
         </div>
 
         {{-- PPPoE User --}}
-        <div class="relative overflow-x-auto rounded-xl border border-emerald-200 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/40 dark:to-slate-800 group">
+        <div class="relative overflow-x-auto rounded-xl border border-emerald-200 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/40 dark:to-slate-800 group" x-data="{ showPppoePass: false }">
             <div class="p-4 pt-5">
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -100,12 +100,21 @@
                         <span class="material-symbols-outlined notranslate text-[16px]" translate="no">edit</span>
                     </button>
                 </div>
-                <div class="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1 truncate" title="{{ $deviceStatus['pppoe_username'] ?? '-' }}">
-                    {{ $deviceStatus['pppoe_username'] ?? '-' }}
+                <div class="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1 truncate" title="{{ !empty($deviceStatus['pppoe_username']) && $deviceStatus['pppoe_username'] !== '-' ? $deviceStatus['pppoe_username'] : '-' }}">
+                    {{ !empty($deviceStatus['pppoe_username']) && $deviceStatus['pppoe_username'] !== '-' ? $deviceStatus['pppoe_username'] : '-' }}
                 </div>
                 <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center justify-between">
                     <span>Pass:</span>
-                    <span class="font-bold text-slate-700 dark:text-slate-300">{{ $deviceStatus['pppoe_password'] ?? '***' }}</span>
+                    @if(!empty($deviceStatus['pppoe_password']) && $deviceStatus['pppoe_password'] !== '-')
+                        <div class="flex items-center gap-1">
+                            <span x-text="showPppoePass ? '{{ $deviceStatus['pppoe_password'] }}' : '••••••••'" class="font-bold text-slate-700 dark:text-slate-300"></span>
+                            <button type="button" @click="showPppoePass = !showPppoePass" class="text-emerald-600 hover:text-emerald-800">
+                                <span class="material-symbols-outlined text-[14px]" x-text="showPppoePass ? 'visibility_off' : 'visibility'">visibility</span>
+                            </button>
+                        </div>
+                    @else
+                        <span class="font-bold text-slate-700 dark:text-slate-300">-</span>
+                    @endif
                 </div>
             </div>
         </div>

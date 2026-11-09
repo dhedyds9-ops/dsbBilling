@@ -213,40 +213,136 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 ?? collect($flat)->first(fn($v, $k) => (str_contains($k, 'TXPower') || str_contains($k, 'OpticalTxPower') || str_contains($k, 'TxPower')) && !empty($v));
             $txPower = $this->parseOpticalPower($rawTx);
 
-            // 2. PPPoE Credentials
-            $pppoeUser = $flat['VirtualParameters.pppoeUsername']
-                ?? $flat['VirtualParameters.pppUsername']
-                ?? $flat['VirtualParameters.pppoeUsername2']
-                ?? $flat['VirtualParameters.pppoe_username']
-                ?? $flat['VirtualParameters.Username']
-                ?? $flat['VirtualParameters.getpppoeuser']
-                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'WANPPPConnection') && str_ends_with($k, 'Username') && !empty($v))
-                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'PPP.Interface') && str_ends_with($k, 'Username') && !empty($v))
-                ?? '-';
+            // Helper untuk mengambil nilai string pertama yang tidak kosong
+            $firstNonEmpty = function (...$candidates) {
+                foreach ($candidates as $cand) {
+                    if (is_scalar($cand)) {
+                        $cand = trim((string) $cand);
+                        if ($cand !== '' && $cand !== '-' && strtolower($cand) !== 'null' && strtolower($cand) !== 'undefined') {
+                            return $cand;
+                        }
+                    }
+                }
+                return null;
+            };
 
-            $pppoePass = $flat['VirtualParameters.pppoePassword']
-                ?? $flat['VirtualParameters.pppPassword']
-                ?? $flat['VirtualParameters.pppoePassword2']
-                ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'WANPPPConnection') && str_ends_with($k, 'Password') && !empty($v))
-                ?? '-';
+            // Heuristic scan untuk WANPPPConnection.*.Username
+            $scanPppoeUser = collect($flat)->first(function ($v, $k) {
+                return (str_contains($k, 'WANPPPConnection') || str_contains($k, 'PPP.Interface')) 
+                    && str_ends_with($k, 'Username') 
+                    && is_scalar($v) 
+                    && trim((string)$v) !== '';
+            });
+
+            // Fallback database dsBilling (CustomerService / PPPoEUser / ONU)
+            $dbUsername = $this->device->customerService?->username
+                ?? $this->device->customerService?->pppoeUser?->username
+                ?? $this->device->onu?->customerService?->username
+                ?? $this->device->onu?->customerService?->pppoeUser?->username
+                ?? null;
+
+            if (!$dbUsername && !empty($this->device->customer_service_id)) {
+                $cs = \App\Models\Customer\CustomerService::with('pppoeUser')->find($this->device->customer_service_id);
+                $dbUsername = $cs?->username ?? $cs?->pppoeUser?->username;
+            }
+
+            if (!$dbUsername && !empty($this->device->serial_number)) {
+                $onu = \App\Models\ISP\Onu::with('customerService.pppoeUser')->where('serial_number', $this->device->serial_number)->first();
+                $dbUsername = $onu?->customerService?->username ?? $onu?->customerService?->pppoeUser?->username;
+            }
+
+            if (!$dbUsername && !empty($this->device->mac_address)) {
+                $pppoeByMac = \App\Models\ISP\PPPoEUser::where('mac_address', $this->device->mac_address)->first();
+                $dbUsername = $pppoeByMac?->username;
+            }
+
+            // 2. PPPoE Credentials Extraction
+            $pppoeUser = $firstNonEmpty(
+                $flat['VirtualParameters.pppoeUsername'] ?? null,
+                $flat['VirtualParameters.pppoeUsername2'] ?? null,
+                $flat['VirtualParameters.pppUsername'] ?? null,
+                $flat['VirtualParameters.pppoe_username'] ?? null,
+                $flat['VirtualParameters.Username'] ?? null,
+                $flat['VirtualParameters.getpppoeuser'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Username'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Username'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Username'] ?? null,
+                $flat['Device.PPP.Interface.1.Username'] ?? null,
+                $flat['Device.PPP.Interface.2.Username'] ?? null,
+                $scanPppoeUser,
+                $dbUsername,
+                '-'
+            );
+
+            // Heuristic scan untuk WANPPPConnection.*.Password
+            $scanPppoePass = collect($flat)->first(function ($v, $k) {
+                return (str_contains($k, 'WANPPPConnection') || str_contains($k, 'PPP.Interface')) 
+                    && str_ends_with($k, 'Password') 
+                    && is_scalar($v) 
+                    && trim((string)$v) !== '';
+            });
+
+            // Fallback database dsBilling untuk Password
+            $dbPassword = $this->device->customerService?->pppoeUser?->cleartext_password
+                ?? $this->device->customerService?->pppoeUser?->password
+                ?? $this->device->customerService?->password
+                ?? $this->device->onu?->customerService?->pppoeUser?->cleartext_password
+                ?? $this->device->onu?->customerService?->pppoeUser?->password
+                ?? null;
+
+            if (!$dbPassword && !empty($this->device->customer_service_id)) {
+                $cs = \App\Models\Customer\CustomerService::with('pppoeUser')->find($this->device->customer_service_id);
+                $dbPassword = $cs?->pppoeUser?->cleartext_password ?? $cs?->pppoeUser?->password ?? $cs?->password;
+            }
+
+            if (!$dbPassword && !empty($this->device->serial_number)) {
+                $onu = \App\Models\ISP\Onu::with('customerService.pppoeUser')->where('serial_number', $this->device->serial_number)->first();
+                $dbPassword = $onu?->customerService?->pppoeUser?->cleartext_password ?? $onu?->customerService?->pppoeUser?->password ?? $onu?->customerService?->password;
+            }
+
+            if (!$dbPassword && !empty($this->device->mac_address)) {
+                $pppoeByMac = \App\Models\ISP\PPPoEUser::where('mac_address', $this->device->mac_address)->first();
+                $dbPassword = $pppoeByMac?->cleartext_password ?? $pppoeByMac?->password;
+            }
+
+            $pppoePass = $firstNonEmpty(
+                $flat['VirtualParameters.pppoePassword'] ?? null,
+                $flat['VirtualParameters.pppoePassword2'] ?? null,
+                $flat['VirtualParameters.pppPassword'] ?? null,
+                $flat['VirtualParameters.pppoe_password'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Password'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Password'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Password'] ?? null,
+                $flat['InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Password'] ?? null,
+                $flat['Device.PPP.Interface.1.Password'] ?? null,
+                $flat['Device.PPP.Interface.2.Password'] ?? null,
+                $scanPppoePass,
+                $dbPassword,
+                '-'
+            );
 
             // 3. SuperAdmin (Web GUI) Account Extraction
-            $adminUser = $flat['VirtualParameters.superAdmin']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_TeleComAccount.Username']
-                ?? $flat['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.UserName']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CT-COM_TeleComAccount.Username']
-                ?? $flat['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminName']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername']
-                ?? 'admin';
+            $adminUser = $firstNonEmpty(
+                $flat['VirtualParameters.superAdmin'] ?? null,
+                $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_TeleComAccount.Username'] ?? null,
+                $flat['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.UserName'] ?? null,
+                $flat['InternetGatewayDevice.DeviceInfo.X_CT-COM_TeleComAccount.Username'] ?? null,
+                $flat['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminName'] ?? null,
+                $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername'] ?? null,
+                'admin'
+            );
 
-            $adminPass = $flat['VirtualParameters.superPassword']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_TeleComAccount.Password']
-                ?? $flat['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.Password']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_CT-COM_TeleComAccount.Password']
-                ?? $flat['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminPassword']
-                ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperPassword']
-                ?? $flat['InternetGatewayDevice.UserInterface.Password']
-                ?? 'admin';
+            $adminPass = $firstNonEmpty(
+                $flat['VirtualParameters.superPassword'] ?? null,
+                $flat['InternetGatewayDevice.DeviceInfo.X_CMCC_TeleComAccount.Password'] ?? null,
+                $flat['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.Password'] ?? null,
+                $flat['InternetGatewayDevice.DeviceInfo.X_CT-COM_TeleComAccount.Password'] ?? null,
+                $flat['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminPassword'] ?? null,
+                $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperPassword'] ?? null,
+                $flat['InternetGatewayDevice.UserInterface.Password'] ?? null,
+                'admin'
+            );
 
             // Sanitize: Jika adminUser ternyata berisi string password FiberHome default (%0|F?H@f!berh03e) atau sama dengan adminPass,
             // itu berarti VirtualParameter superAdmin salah mapping ke field password di GenieACS. Kembalikan ke 'admin'.
@@ -607,8 +703,12 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
 
     public function openPppoeModal()
     {
-        $this->pppoeEditUsername = ($this->deviceStatus['pppoe_username'] ?? '') !== '-' ? $this->deviceStatus['pppoe_username'] : '';
-        $this->pppoeEditPassword = ($this->deviceStatus['pppoe_password'] ?? '') !== '***' && ($this->deviceStatus['pppoe_password'] ?? '') !== '-' ? $this->deviceStatus['pppoe_password'] : '';
+        $this->pppoeEditUsername = (!empty($this->deviceStatus['pppoe_username']) && $this->deviceStatus['pppoe_username'] !== '-') 
+            ? $this->deviceStatus['pppoe_username'] 
+            : '';
+        $this->pppoeEditPassword = (!empty($this->deviceStatus['pppoe_password']) && $this->deviceStatus['pppoe_password'] !== '***' && $this->deviceStatus['pppoe_password'] !== '-') 
+            ? $this->deviceStatus['pppoe_password'] 
+            : '';
         $this->showPppoeModal = true;
     }
 
@@ -633,9 +733,14 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             }
         }
 
+        // Jika FiberHome, WAN PPP route default umumnya berada di WANConnectionDevice.2 atau .1
+        $isFh = str_contains(strtolower($this->device->manufacturer ?? ''), 'fiberhome') 
+             || str_starts_with(strtoupper($this->device->serial_number ?? ''), 'FHTT');
+        $candIndex = $isFh ? '2' : '1';
+
         return [
-            'username' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username',
-            'password' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Password',
+            'username' => "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.{$candIndex}.WANPPPConnection.1.Username",
+            'password' => "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.{$candIndex}.WANPPPConnection.1.Password",
         ];
     }
 
@@ -659,14 +764,6 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 $paths['password'] => (string) $this->pppoeEditPassword,
             ];
 
-            // Coba juga set VirtualParameters jika didukung
-            if ($this->pathExists($params, 'VirtualParameters.pppoeUsername')) {
-                $paramsToSet['VirtualParameters.pppoeUsername'] = trim($this->pppoeEditUsername);
-            }
-            if ($this->pathExists($params, 'VirtualParameters.pppoePassword')) {
-                $paramsToSet['VirtualParameters.pppoePassword'] = (string) $this->pppoeEditPassword;
-            }
-
             $success = $driver->setParameterValues($this->device->uuid, $paramsToSet);
 
             // Record task
@@ -678,13 +775,32 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 'created_by' => auth()->id()
             ]);
 
-            // Sync to PPPoE User record in database if matched or linked
-            if ($this->device->customerService?->pppoeUser) {
-                $this->device->customerService->pppoeUser->update([
+            // Sync to PPPoE User & CustomerService record in database
+            if ($this->device->customerService) {
+                $this->device->customerService->update([
                     'username' => trim($this->pppoeEditUsername),
                     'password' => (string) $this->pppoeEditPassword,
-                    'cleartext_password' => (string) $this->pppoeEditPassword,
                 ]);
+                if ($this->device->customerService->pppoeUser) {
+                    $this->device->customerService->pppoeUser->update([
+                        'username' => trim($this->pppoeEditUsername),
+                        'password' => (string) $this->pppoeEditPassword,
+                        'cleartext_password' => (string) $this->pppoeEditPassword,
+                    ]);
+                }
+            } elseif (!empty($this->device->customer_service_id)) {
+                $cs = \App\Models\Customer\CustomerService::with('pppoeUser')->find($this->device->customer_service_id);
+                if ($cs) {
+                    $cs->update([
+                        'username' => trim($this->pppoeEditUsername),
+                        'password' => (string) $this->pppoeEditPassword,
+                    ]);
+                    $cs->pppoeUser?->update([
+                        'username' => trim($this->pppoeEditUsername),
+                        'password' => (string) $this->pppoeEditPassword,
+                        'cleartext_password' => (string) $this->pppoeEditPassword,
+                    ]);
+                }
             }
 
             $this->showPppoeModal = false;
@@ -700,8 +816,12 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
 
     public function openSuperadminModal()
     {
-        $this->superadminEditUser = ($this->deviceStatus['superadmin_user'] ?? '') !== '-' ? $this->deviceStatus['superadmin_user'] : 'admin';
-        $this->superadminEditPassword = ($this->deviceStatus['superadmin_password'] ?? '') !== '-' ? $this->deviceStatus['superadmin_password'] : '';
+        $this->superadminEditUser = (!empty($this->deviceStatus['superadmin_user']) && $this->deviceStatus['superadmin_user'] !== '-') 
+            ? $this->deviceStatus['superadmin_user'] 
+            : 'admin';
+        $this->superadminEditPassword = (!empty($this->deviceStatus['superadmin_password']) && $this->deviceStatus['superadmin_password'] !== '-') 
+            ? $this->deviceStatus['superadmin_password'] 
+            : '';
         $this->showSuperadminModal = true;
     }
 
@@ -720,19 +840,18 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             $u = trim($this->superadminEditUser);
             $p = (string) $this->superadminEditPassword;
 
-            if (str_contains($manufacturer, 'fiberhome') || str_contains($manufacturer, 'fh')) {
+            if (str_contains($manufacturer, 'fiberhome') || str_contains($manufacturer, 'fh') || str_starts_with(strtoupper($this->device->serial_number ?? ''), 'FHTT')) {
                 $paramsToSet['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername'] = $u;
                 $paramsToSet['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperPassword'] = $p;
-            } elseif (str_contains($manufacturer, 'huawei') || str_contains($manufacturer, 'hw')) {
+            } elseif (str_contains($manufacturer, 'huawei') || str_contains($manufacturer, 'hw') || str_starts_with(strtoupper($this->device->serial_number ?? ''), 'HWTC')) {
                 $paramsToSet['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.UserName'] = $u;
                 $paramsToSet['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.Password'] = $p;
-            } elseif (str_contains($manufacturer, 'zte')) {
+            } elseif (str_contains($manufacturer, 'zte') || str_starts_with(strtoupper($this->device->serial_number ?? ''), 'ZTEG')) {
                 $paramsToSet['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminName'] = $u;
                 $paramsToSet['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminPassword'] = $p;
+            } else {
+                $paramsToSet['InternetGatewayDevice.UserInterface.Password'] = $p;
             }
-
-            // Universal fallback
-            $paramsToSet['InternetGatewayDevice.UserInterface.Password'] = $p;
 
             $success = $driver->setParameterValues($this->device->uuid, $paramsToSet);
 

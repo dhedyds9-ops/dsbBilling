@@ -408,9 +408,33 @@ class Index extends BaseACSComponent
         $firmware = $extract('InternetGatewayDevice.DeviceInfo.SoftwareVersion') ?? $extract('Device.DeviceInfo.SoftwareVersion') ?? $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion');
         $hardware = $extract('InternetGatewayDevice.DeviceInfo.HardwareVersion') ?? $extract('Device.DeviceInfo.HardwareVersion');
         
-        $pppoeUsername = $extract('VirtualParameters.pppoeUsername') ?? 
-                         $extract('InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username') ?? 
-                         $extract('Device.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username');
+        $rawPppoeUser = $extract('VirtualParameters.pppoeUsername') 
+                     ?? $extract('VirtualParameters.pppoeUsername2')
+                     ?? $extract('VirtualParameters.pppUsername');
+        $pppoeUsername = (is_scalar($rawPppoeUser) && trim((string)$rawPppoeUser) !== '') ? trim((string)$rawPppoeUser) : null;
+
+        if (!$pppoeUsername && is_array($wanDevices)) {
+            foreach ($wanDevices as $wdIdx => $wdNode) {
+                if ($wdIdx === '_object' || !is_array($wdNode)) continue;
+                $connDevs = $wdNode['WANConnectionDevice'] ?? [];
+                if (is_array($connDevs)) {
+                    foreach ($connDevs as $cdIdx => $cdNode) {
+                        if ($cdIdx === '_object' || !is_array($cdNode)) continue;
+                        $pppConns = $cdNode['WANPPPConnection'] ?? [];
+                        if (is_array($pppConns)) {
+                            foreach ($pppConns as $pppIdx => $pppNode) {
+                                if ($pppIdx === '_object' || !is_array($pppNode)) continue;
+                                $candUser = $pppNode['Username']['_value'] ?? null;
+                                if (is_scalar($candUser) && trim((string)$candUser) !== '') {
+                                    $pppoeUsername = trim((string)$candUser);
+                                    break 3;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Mencari RX Power lebih cerdas (Iterasi WANDevice)
         $rxPower = $extract('InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower')

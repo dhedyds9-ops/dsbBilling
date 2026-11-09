@@ -53,9 +53,13 @@ for (let p of paths) {
 return null;',
             'pppoeUsername' => '
 let paths = [
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Username",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Username",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Username",
     "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username",
-    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username",
-    "Device.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username",
+    "Device.PPP.Interface.1.Username",
+    "Device.PPP.Interface.2.Username",
     "Device.PPP.Interface.*.Username",
     "Device.IP.Interface.*.X_WANPPPConnection.Username"
 ];
@@ -67,12 +71,16 @@ for (let p of paths) {
         }
     }
 }
-return {writable: true, value: ["", "xsd:string"]};',
+return null;',
             'pppoePassword' => '
 let paths = [
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Password",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Password",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Password",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Password",
     "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Password",
-    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Password",
-    "Device.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Password",
+    "Device.PPP.Interface.1.Password",
+    "Device.PPP.Interface.2.Password",
     "Device.PPP.Interface.*.Password"
 ];
 for (let p of paths) {
@@ -83,7 +91,7 @@ for (let p of paths) {
         }
     }
 }
-return {writable: true, value: ["", "xsd:string"]};',
+return null;',
             'superAdmin' => '
 // 1. FiberHome Web SuperAdmin Username
 let fhUser = declare("InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername", {value: 1});
