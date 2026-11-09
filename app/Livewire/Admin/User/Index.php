@@ -364,8 +364,10 @@ class Index extends AdminComponent
                     ->orWhere('email', 'like', $term)
                     ->orWhere('username', 'like', $term)
                     ->orWhere('whatsapp', 'like', $term)
-                    ->orWhere('phone', 'like', $term)
-                    ->orWhere('job_title', 'like', $term);
+                    ->orWhere('job_title', 'like', $term)
+                    ->orWhereHas('employee', function ($eq) use ($term) {
+                        $eq->where('phone', 'like', $term);
+                    });
             });
         }
 
