@@ -221,8 +221,11 @@
                             {{ count($connectedDevices ?? []) }}
                         </span>
                     </div>
-                    <button wire:click="loadConnectedDevices" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 flex items-center gap-1">
-                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">refresh</span> Refresh Klien
+                    <button wire:click="loadConnectedDevices" wire:loading.attr="disabled" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors disabled:opacity-50">
+                        <span wire:loading.remove wire:target="loadConnectedDevices" class="material-symbols-outlined notranslate" translate="no" style="font-size:16px">refresh</span>
+                        <span wire:loading wire:target="loadConnectedDevices" class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                        <span wire:loading.remove wire:target="loadConnectedDevices">Refresh Klien</span>
+                        <span wire:loading wire:target="loadConnectedDevices">Memperbarui...</span>
                     </button>
                 </div>
                 <div class="overflow-x-auto">

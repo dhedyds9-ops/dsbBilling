@@ -426,9 +426,34 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     {
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            
+            // 1. Kirim instruksi refresh Hosts & WLAN ke modem via TR-069 Connection Request
+            $driver->refreshConnectedDevicesTask($this->device->uuid);
+
+            // 2. Ambil data klien terhubung dari GenieACS
             $this->connectedDevices = $driver->getConnectedDevices($this->device->uuid);
+
+            // Catat task
+            \App\Models\ACS\DeviceTask::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'acs_device_id' => $this->device->id,
+                'type' => 'refresh_hosts',
+                'status' => 'completed',
+                'created_by' => auth()->id()
+            ]);
+
+            $count = count($this->connectedDevices);
+            session()->flash('success', "📡 Permintaan refresh klien berhasil dikirim ke modem! ({$count} klien aktif)");
+            $this->dispatch('notify', [
+                'type' => 'success', 
+                'message' => "📡 Permintaan refresh klien berhasil dikirim ke modem! ({$count} klien aktif)"
+            ]);
         } catch (\Exception $e) {
-            $this->connectedDevices = [];
+            session()->flash('error', 'Gagal merefresh klien: ' . $e->getMessage());
+            $this->dispatch('notify', [
+                'type' => 'error', 
+                'message' => 'Gagal merefresh klien: ' . $e->getMessage()
+            ]);
         }
     }
 

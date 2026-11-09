@@ -242,6 +242,7 @@ class Show extends AdminComponent
         try {
             $driver = app(GenieACSDriver::class);
             $targetId = $this->device->uuid ?: $this->device->serial_number;
+            $driver->refreshConnectedDevicesTask((string) $targetId);
             $this->connectedDevices = $driver->getConnectedDevices((string) $targetId);
         } catch (\Throwable $e) {
             $this->connectedDevices = [];
