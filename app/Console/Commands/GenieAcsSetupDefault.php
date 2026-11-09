@@ -54,17 +54,88 @@ return null;',
             'pppoeUsername' => '
 let paths = [
     "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username",
-    "Device.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username"
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username",
+    "Device.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username",
+    "Device.PPP.Interface.*.Username",
+    "Device.IP.Interface.*.X_WANPPPConnection.Username"
 ];
 for (let p of paths) {
     let d = declare(p, {value: 1});
     for (let item of d) {
-        if (item.value && item.value[0]) {
-            return {writable: false, value: [item.value[0], "xsd:string"]};
+        if (item.value && item.value[0] && item.value[0].trim() !== "") {
+            return {writable: true, value: [item.value[0].trim(), "xsd:string"]};
         }
     }
 }
-return null;',
+return {writable: true, value: ["", "xsd:string"]};',
+            'pppoePassword' => '
+let paths = [
+    "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Password",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Password",
+    "Device.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Password",
+    "Device.PPP.Interface.*.Password"
+];
+for (let p of paths) {
+    let d = declare(p, {value: 1});
+    for (let item of d) {
+        if (item.value && item.value[0] && item.value[0].trim() !== "") {
+            return {writable: true, value: [item.value[0].trim(), "xsd:string"]};
+        }
+    }
+}
+return {writable: true, value: ["", "xsd:string"]};',
+            'superAdmin' => '
+// 1. FiberHome Web SuperAdmin Username
+let fhUser = declare("InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername", {value: 1});
+if (fhUser.value && fhUser.value[0] && fhUser.value[0].trim() !== "" && fhUser.value[0].trim() !== "%0|F?H@f!berh03e") {
+    return {writable: true, value: [fhUser.value[0].trim(), "xsd:string"]};
+}
+
+// 2. Huawei Web SuperAdmin Username
+let hwUser = declare("InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.UserName", {value: 1});
+if (hwUser.value && hwUser.value[0] && hwUser.value[0].trim() !== "") {
+    return {writable: true, value: [hwUser.value[0].trim(), "xsd:string"]};
+}
+
+// 3. ZTE Web SuperAdmin Username
+let zteUser = declare("InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminName", {value: 1});
+if (zteUser.value && zteUser.value[0] && zteUser.value[0].trim() !== "") {
+    return {writable: true, value: [zteUser.value[0].trim(), "xsd:string"]};
+}
+
+// 4. Default / Standard Admin User
+let stdUser = declare("InternetGatewayDevice.UserInterface.X_CT-COM_TeleComAccount.Username", {value: 1});
+if (stdUser.value && stdUser.value[0] && stdUser.value[0].trim() !== "") {
+    return {writable: true, value: [stdUser.value[0].trim(), "xsd:string"]};
+}
+
+return {writable: true, value: ["admin", "xsd:string"]};',
+            'superPassword' => '
+// 1. FiberHome Web SuperAdmin Password
+let fhPass = declare("InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperPassword", {value: 1});
+if (fhPass.value && fhPass.value[0] && fhPass.value[0].trim() !== "") {
+    return {writable: true, value: [fhPass.value[0].trim(), "xsd:string"]};
+}
+
+// 2. Huawei Web SuperAdmin Password
+let hwPass = declare("InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.Password", {value: 1});
+if (hwPass.value && hwPass.value[0] && hwPass.value[0].trim() !== "") {
+    return {writable: true, value: [hwPass.value[0].trim(), "xsd:string"]};
+}
+
+// 3. ZTE Web SuperAdmin Password
+let ztePass = declare("InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminPassword", {value: 1});
+if (ztePass.value && ztePass.value[0] && ztePass.value[0].trim() !== "") {
+    return {writable: true, value: [ztePass.value[0].trim(), "xsd:string"]};
+}
+
+// 4. Standard UserInterface Password
+let stdPass = declare("InternetGatewayDevice.UserInterface.Password", {value: 1});
+if (stdPass.value && stdPass.value[0] && stdPass.value[0].trim() !== "") {
+    return {writable: true, value: [stdPass.value[0].trim(), "xsd:string"]};
+}
+
+return {writable: true, value: ["admin", "xsd:string"]};',
             'pppoeMac' => '
 let paths = [
     "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.MACAddress",

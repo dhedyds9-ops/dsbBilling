@@ -92,9 +92,14 @@
         {{-- PPPoE User --}}
         <div class="relative overflow-x-auto rounded-xl border border-emerald-200 shadow-sm bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/40 dark:to-slate-800 group">
             <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">account_circle</span> PPPoE WAN
-                </h3>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <span class="material-symbols-outlined notranslate text-[16px]" translate="no">account_circle</span> PPPoE WAN
+                    </h3>
+                    <button type="button" wire:click="openPppoeModal" class="p-1 rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors" title="Ubah Akun PPPoE WAN">
+                        <span class="material-symbols-outlined notranslate text-[16px]" translate="no">edit</span>
+                    </button>
+                </div>
                 <div class="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1 truncate" title="{{ $deviceStatus['pppoe_username'] ?? '-' }}">
                     {{ $deviceStatus['pppoe_username'] ?? '-' }}
                 </div>
@@ -108,9 +113,14 @@
         {{-- Web GUI SuperAdmin (Teknisi) --}}
         <div class="relative overflow-x-auto rounded-xl border border-amber-200 shadow-sm bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/40 dark:to-slate-800 group" x-data="{ showPass: false }">
             <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined notranslate text-[16px]" translate="no">admin_panel_settings</span> Web SuperAdmin
-                </h3>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <span class="material-symbols-outlined notranslate text-[16px]" translate="no">admin_panel_settings</span> Web SuperAdmin
+                    </h3>
+                    <button type="button" wire:click="openSuperadminModal" class="p-1 rounded-lg text-amber-600 dark:text-amber-400 hover:text-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors" title="Ubah Akun SuperAdmin Web">
+                        <span class="material-symbols-outlined notranslate text-[16px]" translate="no">edit</span>
+                    </button>
+                </div>
                 <div class="text-base font-black text-amber-800 dark:text-amber-200 mb-1 font-mono truncate" title="User: {{ $deviceStatus['superadmin_user'] ?? 'admin' }}">
                     {{ $deviceStatus['superadmin_user'] ?? 'admin' }}
                 </div>
@@ -379,4 +389,115 @@
         </div>
     </div>
     @endif
+
+    {{-- MODAL EDIT PPPOE WAN --}}
+    @if($showPppoeModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" wire:click.self="$set('showPppoeModal', false)">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-200" @click.stop>
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }}">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-emerald-600 notranslate" translate="no">account_circle</span>
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Ubah Akun PPPoE WAN</h3>
+                </div>
+                <button type="button" wire:click="$set('showPppoeModal', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined text-lg notranslate" translate="no">close</span>
+                </button>
+            </div>
+
+            <form wire:submit="savePppoe">
+                <div class="p-6 space-y-4">
+                    <div class="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl text-xs text-emerald-800 dark:text-emerald-300">
+                        Perubahan akun PPPoE akan dikirim langsung ke modem via TR-069 dan otomatis disinkronkan ke akun PPPoE pelanggan di dsBilling.
+                    </div>
+
+                    {{-- Username PPPoE --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Username PPPoE</label>
+                        <input type="text" wire:model="pppoeEditUsername" placeholder="Username PPPoE"
+                            class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:text-slate-100">
+                        @error('pppoeEditUsername') <span class="text-[11px] text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- Password PPPoE --}}
+                    <div x-data="{ showPppPass: false }">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Password PPPoE</label>
+                        <div class="relative">
+                            <input :type="showPppPass ? 'text' : 'password'" wire:model="pppoeEditPassword" placeholder="Password PPPoE"
+                                class="w-full px-3 py-2 pr-10 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:text-slate-100">
+                            <button type="button" @click="showPppPass = !showPppPass" class="absolute right-3 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                <span class="material-symbols-outlined text-sm" x-text="showPppPass ? 'visibility_off' : 'visibility'">visibility</span>
+                            </button>
+                        </div>
+                        @error('pppoeEditPassword') <span class="text-[11px] text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
+                    <button type="button" wire:click="$set('showPppoeModal', false)" class="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 rounded-xl">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 shadow-sm flex items-center gap-2">
+                        <span wire:loading.remove wire:target="savePppoe" class="material-symbols-outlined notranslate text-sm" translate="no">send</span>
+                        <span wire:loading wire:target="savePppoe" class="animate-spin material-symbols-outlined notranslate text-sm" translate="no">refresh</span>
+                        <span>Simpan ke Modem</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    {{-- MODAL EDIT WEB SUPERADMIN --}}
+    @if($showSuperadminModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" wire:click.self="$set('showSuperadminModal', false)">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-200" @click.stop>
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }}">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-600 notranslate" translate="no">admin_panel_settings</span>
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Ubah Akun Web SuperAdmin</h3>
+                </div>
+                <button type="button" wire:click="$set('showSuperadminModal', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined text-lg notranslate" translate="no">close</span>
+                </button>
+            </div>
+
+            <form wire:submit="saveSuperadmin">
+                <div class="p-6 space-y-4">
+                    <div class="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-xs text-amber-800 dark:text-amber-300">
+                        Kredensial ini digunakan teknisi untuk login ke Web GUI modem (port 80). Perubahan akan dikirim via TR-069.
+                    </div>
+
+                    {{-- Username SuperAdmin --}}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Username SuperAdmin</label>
+                        <input type="text" wire:model="superadminEditUser" placeholder="admin"
+                            class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-amber-500 dark:bg-slate-900 dark:text-slate-100">
+                        @error('superadminEditUser') <span class="text-[11px] text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- Password SuperAdmin --}}
+                    <div x-data="{ showAdminPass: false }">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Password SuperAdmin</label>
+                        <div class="relative">
+                            <input :type="showAdminPass ? 'text' : 'password'" wire:model="superadminEditPassword" placeholder="Password SuperAdmin"
+                                class="w-full px-3 py-2 pr-10 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-semibold focus:ring-2 focus:ring-amber-500 dark:bg-slate-900 dark:text-slate-100">
+                            <button type="button" @click="showAdminPass = !showAdminPass" class="absolute right-3 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                <span class="material-symbols-outlined text-sm" x-text="showAdminPass ? 'visibility_off' : 'visibility'">visibility</span>
+                            </button>
+                        </div>
+                        @error('superadminEditPassword') <span class="text-[11px] text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 {{ $isNocLayout ? 'noc-panel-bg noc-text' : 'bg-slate-50 dark:bg-slate-900/50' }} border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3">
+                    <button type="button" wire:click="$set('showSuperadminModal', false)" class="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 rounded-xl">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="px-5 py-2 text-xs font-bold text-white bg-amber-600 rounded-xl hover:bg-amber-700 shadow-sm flex items-center gap-2">
+                        <span wire:loading.remove wire:target="saveSuperadmin" class="material-symbols-outlined notranslate text-sm" translate="no">send</span>
+                        <span wire:loading wire:target="saveSuperadmin" class="animate-spin material-symbols-outlined notranslate text-sm" translate="no">refresh</span>
+                        <span>Simpan ke Modem</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
 </div>
+(no newline at end of file)

@@ -16,6 +16,17 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
     public $wifiPassword = '';
     public $wifiSecurity = 'WPA_WPA2'; // WPA_WPA2, WPA2, WPA, OPEN
     public $showWifiModal = false;
+
+    // PPPoE WAN Configuration State
+    public $showPppoeModal = false;
+    public $pppoeEditUsername = '';
+    public $pppoeEditPassword = '';
+
+    // Superadmin Configuration State
+    public $showSuperadminModal = false;
+    public $superadminEditUser = '';
+    public $superadminEditPassword = '';
+
     public $connectedDevices = [];
     public $deviceStatus = [];
 
@@ -205,6 +216,7 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             // 2. PPPoE Credentials
             $pppoeUser = $flat['VirtualParameters.pppoeUsername']
                 ?? $flat['VirtualParameters.pppUsername']
+                ?? $flat['VirtualParameters.pppoeUsername2']
                 ?? $flat['VirtualParameters.pppoe_username']
                 ?? $flat['VirtualParameters.Username']
                 ?? $flat['VirtualParameters.getpppoeuser']
@@ -214,6 +226,7 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
 
             $pppoePass = $flat['VirtualParameters.pppoePassword']
                 ?? $flat['VirtualParameters.pppPassword']
+                ?? $flat['VirtualParameters.pppoePassword2']
                 ?? collect($flat)->first(fn($v, $k) => str_contains($k, 'WANPPPConnection') && str_ends_with($k, 'Password') && !empty($v))
                 ?? '-';
 
@@ -234,6 +247,13 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 ?? $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperPassword']
                 ?? $flat['InternetGatewayDevice.UserInterface.Password']
                 ?? 'admin';
+
+            // Sanitize: Jika adminUser ternyata berisi string password FiberHome default (%0|F?H@f!berh03e) atau sama dengan adminPass,
+            // itu berarti VirtualParameter superAdmin salah mapping ke field password di GenieACS. Kembalikan ke 'admin'.
+            if ($adminUser === '%0|F?H@f!berh03e' || (strlen($adminUser) > 10 && $adminUser === $adminPass)) {
+                $fhUser = $flat['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername'] ?? null;
+                $adminUser = ($fhUser && $fhUser !== '%0|F?H@f!berh03e') ? $fhUser : 'admin';
+            }
 
             // 4. Customer Name
             $customerName = $flat['VirtualParameters.customerName']
@@ -582,6 +602,157 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
             session()->flash('error', 'Gagal mengganti WiFi: ' . $e->getMessage());
             $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal mengganti WiFi: ' . $e->getMessage()]);
             $this->showWifiModal = false;
+        }
+    }
+
+    public function openPppoeModal()
+    {
+        $this->pppoeEditUsername = ($this->deviceStatus['pppoe_username'] ?? '') !== '-' ? $this->deviceStatus['pppoe_username'] : '';
+        $this->pppoeEditPassword = ($this->deviceStatus['pppoe_password'] ?? '') !== '***' && ($this->deviceStatus['pppoe_password'] ?? '') !== '-' ? $this->deviceStatus['pppoe_password'] : '';
+        $this->showPppoeModal = true;
+    }
+
+    private function findPppoePaths(array $params): array
+    {
+        $candidates = [
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1',
+            'InternetGatewayDevice.WANDevice.2.WANConnectionDevice.1.WANPPPConnection.1',
+            'Device.PPP.Interface.1',
+            'Device.PPP.Interface.2',
+        ];
+
+        foreach ($candidates as $cand) {
+            if ($this->pathExists($params, $cand . '.Username') || $this->pathExists($params, $cand . '.Enable')) {
+                return [
+                    'username' => $cand . '.Username',
+                    'password' => $cand . '.Password',
+                ];
+            }
+        }
+
+        return [
+            'username' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username',
+            'password' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Password',
+        ];
+    }
+
+    public function savePppoe()
+    {
+        $this->validate([
+            'pppoeEditUsername' => 'required|string|min:2|max:64',
+            'pppoeEditPassword' => 'required|string|min:3|max:64',
+        ]);
+
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            if (!$this->cachedDeviceParams) {
+                $this->cachedDeviceParams = $driver->getDeviceParameters($this->device->uuid);
+            }
+            $params = $this->cachedDeviceParams;
+            $paths = $this->findPppoePaths($params);
+
+            $paramsToSet = [
+                $paths['username'] => trim($this->pppoeEditUsername),
+                $paths['password'] => (string) $this->pppoeEditPassword,
+            ];
+
+            // Coba juga set VirtualParameters jika didukung
+            if ($this->pathExists($params, 'VirtualParameters.pppoeUsername')) {
+                $paramsToSet['VirtualParameters.pppoeUsername'] = trim($this->pppoeEditUsername);
+            }
+            if ($this->pathExists($params, 'VirtualParameters.pppoePassword')) {
+                $paramsToSet['VirtualParameters.pppoePassword'] = (string) $this->pppoeEditPassword;
+            }
+
+            $success = $driver->setParameterValues($this->device->uuid, $paramsToSet);
+
+            // Record task
+            \App\Models\ACS\DeviceTask::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'acs_device_id' => $this->device->id,
+                'type' => 'change_pppoe_credentials',
+                'status' => $success ? 'completed' : 'pending',
+                'created_by' => auth()->id()
+            ]);
+
+            // Sync to PPPoE User record in database if matched or linked
+            if ($this->device->customerService?->pppoeUser) {
+                $this->device->customerService->pppoeUser->update([
+                    'username' => trim($this->pppoeEditUsername),
+                    'password' => (string) $this->pppoeEditPassword,
+                    'cleartext_password' => (string) $this->pppoeEditPassword,
+                ]);
+            }
+
+            $this->showPppoeModal = false;
+            $this->cachedDeviceParams = null;
+            $this->loadDeviceStatus();
+            session()->flash('success', '✅ Konfigurasi PPPoE WAN berhasil dikirim ke modem via TR-069!');
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Konfigurasi PPPoE WAN berhasil dikirim ke modem!']);
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengubah PPPoE: ' . $e->getMessage());
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal mengubah PPPoE: ' . $e->getMessage()]);
+        }
+    }
+
+    public function openSuperadminModal()
+    {
+        $this->superadminEditUser = ($this->deviceStatus['superadmin_user'] ?? '') !== '-' ? $this->deviceStatus['superadmin_user'] : 'admin';
+        $this->superadminEditPassword = ($this->deviceStatus['superadmin_password'] ?? '') !== '-' ? $this->deviceStatus['superadmin_password'] : '';
+        $this->showSuperadminModal = true;
+    }
+
+    public function saveSuperadmin()
+    {
+        $this->validate([
+            'superadminEditUser' => 'required|string|min:2|max:32',
+            'superadminEditPassword' => 'required|string|min:3|max:32',
+        ]);
+
+        try {
+            $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+            $manufacturer = strtolower((string)($this->device->manufacturer ?? ''));
+
+            $paramsToSet = [];
+            $u = trim($this->superadminEditUser);
+            $p = (string) $this->superadminEditPassword;
+
+            if (str_contains($manufacturer, 'fiberhome') || str_contains($manufacturer, 'fh')) {
+                $paramsToSet['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperUsername'] = $u;
+                $paramsToSet['InternetGatewayDevice.DeviceInfo.X_FH_Account.X_FH_WebUserInfo.WebSuperPassword'] = $p;
+            } elseif (str_contains($manufacturer, 'huawei') || str_contains($manufacturer, 'hw')) {
+                $paramsToSet['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.UserName'] = $u;
+                $paramsToSet['InternetGatewayDevice.UserInterface.X_HW_WebUserInfo.2.Password'] = $p;
+            } elseif (str_contains($manufacturer, 'zte')) {
+                $paramsToSet['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminName'] = $u;
+                $paramsToSet['InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminPassword'] = $p;
+            }
+
+            // Universal fallback
+            $paramsToSet['InternetGatewayDevice.UserInterface.Password'] = $p;
+
+            $success = $driver->setParameterValues($this->device->uuid, $paramsToSet);
+
+            // Record task
+            \App\Models\ACS\DeviceTask::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'acs_device_id' => $this->device->id,
+                'type' => 'change_superadmin_credentials',
+                'status' => $success ? 'completed' : 'pending',
+                'created_by' => auth()->id()
+            ]);
+
+            $this->showSuperadminModal = false;
+            $this->cachedDeviceParams = null;
+            $this->loadDeviceStatus();
+            session()->flash('success', '✅ Kredensial Web SuperAdmin berhasil dikirim ke modem via TR-069!');
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Kredensial Web SuperAdmin berhasil dikirim ke modem!']);
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengubah SuperAdmin: ' . $e->getMessage());
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Gagal mengubah SuperAdmin: ' . $e->getMessage()]);
         }
     }
 
