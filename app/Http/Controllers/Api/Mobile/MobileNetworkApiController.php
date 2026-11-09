@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\Odp;
+use App\Models\ISP\Olt;
 use App\Models\ISP\Onu;
+use App\Models\ISP\PonPort;
 use App\Models\Workforce\WorkOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,190 @@ use Illuminate\Support\Str;
 
 class MobileNetworkApiController extends Controller
 {
+    /**
+     * List OLTs accessible to the authenticated staff/reseller.
+     * GET /api/mobile/network/olts
+     */
+    public function olts(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $query = Olt::query()->withoutGlobalScopes();
+
+        $effectiveResellerId = $user->getEffectiveResellerId();
+        if ($effectiveResellerId || $user->hasRole('reseller')) {
+            $query->forReseller($user);
+        } elseif (!empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        if ($search = trim((string) $request->input('q', ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('code', 'LIKE', "%{$search}%")
+                  ->orWhere('ip_address', 'LIKE', "%{$search}%")
+                  ->orWhere('model', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $olts = $query->withCount([
+            'ponPorts',
+            'onus' => function ($q) use ($effectiveResellerId) {
+                if ($effectiveResellerId) {
+                    \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $effectiveResellerId, 'onus');
+                }
+            },
+        ])->get()->map(function (Olt $olt) use ($effectiveResellerId) {
+            $onusQuery = Onu::withoutGlobalScopes()->where('olt_id', $olt->id);
+            if ($effectiveResellerId) {
+                \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($onusQuery, $effectiveResellerId, 'onus');
+            }
+            $onlineCount = (clone $onusQuery)->where('status', 'online')->count();
+
+            return [
+                'id' => $olt->id,
+                'name' => $olt->name,
+                'code' => $olt->code,
+                'ip_address' => $olt->ip_address,
+                'brand' => $olt->brand ?? $olt->vendor,
+                'model' => $olt->model,
+                'status' => $olt->status ?? 'active',
+                'pon_ports_count' => $olt->pon_ports_count,
+                'total_onus_count' => $olt->onus_count,
+                'online_onus_count' => $onlineCount,
+                'branch_id' => $olt->branch_id,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar OLT berhasil dimuat.',
+            'count' => $olts->count(),
+            'data' => $olts,
+        ]);
+    }
+
+    /**
+     * Show detail of single OLT with its PON ports.
+     * GET /api/mobile/network/olts/{id}
+     */
+    public function showOlt(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $query = Olt::withoutGlobalScopes()->where('id', $id);
+
+        $effectiveResellerId = $user->getEffectiveResellerId();
+        if ($effectiveResellerId || $user->hasRole('reseller')) {
+            $query->forReseller($user);
+        } elseif (!empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $olt = $query->with(['ponPorts'])->first();
+        if (!$olt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OLT tidak ditemukan atau berada di luar cakupan akses Anda.',
+            ], 404);
+        }
+
+        $ports = $olt->ponPorts->map(function ($port) use ($effectiveResellerId) {
+            $onuQuery = Onu::withoutGlobalScopes()->where('pon_port_id', $port->id);
+            if ($effectiveResellerId) {
+                \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($onuQuery, $effectiveResellerId, 'onus');
+            }
+            $totalOnus = (clone $onuQuery)->count();
+            $onlineOnus = (clone $onuQuery)->where('status', 'online')->count();
+
+            return [
+                'id' => $port->id,
+                'port_number' => $port->port_number,
+                'port_index' => $port->port_index,
+                'name' => $port->name ?? "PON {$port->port_number}",
+                'status' => $port->status ?? 'active',
+                'total_onus' => $totalOnus,
+                'online_onus' => $onlineOnus,
+                'max_onus' => $port->max_onus ?? 128,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Detail OLT berhasil dimuat.',
+            'data' => [
+                'id' => $olt->id,
+                'name' => $olt->name,
+                'code' => $olt->code,
+                'ip_address' => $olt->ip_address,
+                'brand' => $olt->brand ?? $olt->vendor,
+                'model' => $olt->model,
+                'status' => $olt->status ?? 'active',
+                'ports' => $ports,
+            ],
+        ]);
+    }
+
+    /**
+     * Get PON ports of an OLT.
+     * GET /api/mobile/network/olts/{id}/pon-ports
+     */
+    public function ponPorts(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $query = Olt::withoutGlobalScopes()->where('id', $id);
+
+        $effectiveResellerId = $user->getEffectiveResellerId();
+        if ($effectiveResellerId || $user->hasRole('reseller')) {
+            $query->forReseller($user);
+        } elseif (!empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $olt = $query->first();
+        if (!$olt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OLT tidak ditemukan atau berada di luar cakupan akses Anda.',
+            ], 404);
+        }
+
+        $ports = $olt->ponPorts()->orderBy('port_number')->get()->map(function ($port) use ($effectiveResellerId) {
+            $onuQuery = Onu::withoutGlobalScopes()->where('pon_port_id', $port->id);
+            if ($effectiveResellerId) {
+                \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($onuQuery, $effectiveResellerId, 'onus');
+            }
+            $totalOnus = (clone $onuQuery)->count();
+            $onlineOnus = (clone $onuQuery)->where('status', 'online')->count();
+
+            return [
+                'id' => $port->id,
+                'olt_id' => $port->olt_id,
+                'port_number' => $port->port_number,
+                'port_index' => $port->port_index,
+                'name' => $port->name ?? "PON {$port->port_number}",
+                'status' => $port->status ?? 'active',
+                'total_onus' => $totalOnus,
+                'online_onus' => $onlineOnus,
+                'max_onus' => $port->max_onus ?? 128,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar PON port berhasil dimuat.',
+            'count' => $ports->count(),
+            'data' => $ports,
+        ]);
+    }
+
     /**
      * Search and list ONT/ONU devices with customer and ODP information.
      */
@@ -57,7 +243,17 @@ class MobileNetworkApiController extends Controller
             $query->where('odp_id', $odpId);
         }
 
-        $devices = $query->with(['odp'])
+        // OLT filter
+        if ($oltId = $request->input('olt_id')) {
+            $query->where('olt_id', $oltId);
+        }
+
+        // PON Port filter
+        if ($ponPortId = $request->input('pon_port_id')) {
+            $query->where('pon_port_id', $ponPortId);
+        }
+
+        $devices = $query->with(['odp', 'olt', 'ponPort'])
             ->orderByDesc('updated_at')
             ->limit(50)
             ->get()
@@ -346,12 +542,12 @@ class MobileNetworkApiController extends Controller
     /**
      * Get live device diagnostics (Optical RX/TX power, online status, GenieACS link).
      */
-    public function diagnostics(string $serialNumber): JsonResponse
+    public function diagnostics(Request $request, string $serialNumber): JsonResponse
     {
         $sn = strtoupper(trim($serialNumber));
         $onu = Onu::withoutGlobalScopes()
             ->where('serial_number', $sn)
-            ->with(['odp'])
+            ->with(['odp', 'olt', 'ponPort'])
             ->first();
 
         if (!$onu) {
@@ -359,6 +555,26 @@ class MobileNetworkApiController extends Controller
                 'success' => false,
                 'message' => "Perangkat ONT dengan Serial Number '{$sn}' tidak ditemukan.",
             ], 404);
+        }
+
+        $user = $request->user();
+        if ($user) {
+            $effectiveResellerId = $user->getEffectiveResellerId() ?: ($user->hasRole('reseller') ? $user->id : null);
+            if ($effectiveResellerId) {
+                $allowed = Onu::withoutGlobalScopes()
+                    ->where('id', $onu->id)
+                    ->where(function ($q) use ($effectiveResellerId) {
+                        \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $effectiveResellerId, 'onus');
+                    })
+                    ->exists();
+
+                if (!$allowed) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Perangkat ini berada di luar cakupan izin akun Reseller Anda.',
+                    ], 403);
+                }
+            }
         }
 
         $rx = $onu->rx_power_dbm !== null ? (float) $onu->rx_power_dbm : null;
@@ -378,6 +594,17 @@ class MobileNetworkApiController extends Controller
         $isOnline = in_array(strtolower((string) $onu->status), ['online', 'active']) 
             && ($onu->last_seen_at ? now()->diffInMinutes($onu->last_seen_at) < 30 : false);
 
+        try {
+            \App\Models\AuditLog::create([
+                'user_id' => $user?->id,
+                'action' => 'onu_diagnostics',
+                'description' => "Diagnostik perangkat ONT {$sn} via mobile API.",
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -391,6 +618,15 @@ class MobileNetworkApiController extends Controller
                 'optical_quality' => $quality,
                 'last_seen_at' => $onu->last_seen_at ? $onu->last_seen_at->format('Y-m-d H:i:s') : null,
                 'wifi_ssid' => $onu->wifi_ssid,
+                'olt' => $onu->olt ? [
+                    'id' => $onu->olt->id,
+                    'name' => $onu->olt->name,
+                    'code' => $onu->olt->code,
+                ] : null,
+                'pon_port' => $onu->ponPort ? [
+                    'id' => $onu->ponPort->id,
+                    'port_number' => $onu->ponPort->port_number,
+                ] : null,
                 'odp' => $onu->odp ? [
                     'id' => $onu->odp->id,
                     'code' => $onu->odp->code,
@@ -451,6 +687,11 @@ class MobileNetworkApiController extends Controller
             'odp_id' => $onu->odp_id,
             'odp_code' => $onu->odp?->code,
             'odp_name' => $onu->odp?->name,
+            'olt_id' => $onu->olt_id,
+            'olt_name' => $onu->olt?->name,
+            'olt_code' => $onu->olt?->code,
+            'pon_port_id' => $onu->pon_port_id,
+            'pon_port_number' => $onu->ponPort?->port_number,
             'customer_name' => $customerName,
             'customer_code' => $customerCode,
             'last_seen_at' => $onu->last_seen_at ? $onu->last_seen_at->format('Y-m-d H:i:s') : null,

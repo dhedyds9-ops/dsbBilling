@@ -27,10 +27,11 @@ class MobileAcsProxyController extends Controller
         }
 
         $isAuthorized = $user->isSuperAdmin()
-            || $user->hasRole(['noc', 'teknisi', 'administrator', 'manager'])
-            || in_array(strtoupper($user->job_function ?? ''), ['TECHNICIAN', 'TEKNISI', 'NOC', 'ADMINISTRATOR', 'MANAGER'])
+            || $user->hasRole(['noc', 'teknisi', 'administrator', 'manager', 'reseller'])
+            || in_array(strtoupper($user->job_function ?? ''), ['TECHNICIAN', 'TEKNISI', 'NOC', 'ADMINISTRATOR', 'MANAGER', 'RESELLER'])
             || str_contains(strtoupper($user->job_title ?? ''), 'NOC')
-            || str_contains(strtoupper($user->job_title ?? ''), 'TEKNISI');
+            || str_contains(strtoupper($user->job_title ?? ''), 'TEKNISI')
+            || str_contains(strtoupper($user->job_title ?? ''), 'RESELLER');
 
         if (!$isAuthorized) {
             return response()->json([
@@ -54,6 +55,25 @@ class MobileAcsProxyController extends Controller
         try {
             $limit = (int) $request->input('limit', 100);
             $devices = $this->driver->listDevices([], $limit);
+
+            $user = $request->user();
+            if ($user && $user->hasRole('reseller')) {
+                $allowedSns = \App\Models\ACS\ACSDevice::forReseller($user)
+                    ->pluck('serial_number')
+                    ->map(fn($s) => strtoupper(trim((string) $s)))
+                    ->filter()
+                    ->toArray();
+
+                $devices = array_values(array_filter($devices, function ($dev) use ($allowedSns) {
+                    $devSn = strtoupper(trim((string) ($dev['serial_number'] ?? ($dev['_id'] ?? ''))));
+                    foreach ($allowedSns as $sn) {
+                        if ($sn !== '' && (str_contains($devSn, $sn) || str_contains($sn, $devSn))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }));
+            }
 
             return response()->json([
                 'success' => true,
@@ -148,10 +168,46 @@ class MobileAcsProxyController extends Controller
 
         try {
             $cleanId = urldecode($id);
+            $user = $request->user();
+
+            if ($user && $user->hasRole('reseller')) {
+                $allowedSns = \App\Models\ACS\ACSDevice::forReseller($user)
+                    ->pluck('serial_number')
+                    ->map(fn($s) => strtoupper(trim((string) $s)))
+                    ->filter()
+                    ->toArray();
+
+                $cleanUpper = strtoupper($cleanId);
+                $matches = false;
+                foreach ($allowedSns as $sn) {
+                    if ($sn !== '' && (str_contains($cleanUpper, $sn) || str_contains($sn, $cleanUpper))) {
+                        $matches = true;
+                        break;
+                    }
+                }
+
+                if (!$matches) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Perangkat ini berada di luar cakupan izin akun Reseller Anda.',
+                    ], 403);
+                }
+            }
+
             $success = $this->driver->rebootDevice($cleanId);
 
-            $user = $request->user();
             Log::info("ACS Reboot: User #{$user->id} ({$user->name}) rebooted device {$cleanId}.");
+
+            try {
+                AuditLog::create([
+                    'user_id' => $user?->id,
+                    'action' => 'acs_reboot',
+                    'description' => "Reboot device {$cleanId} via mobile ACS Proxy.",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
 
             return response()->json([
                 'success' => $success,
@@ -186,6 +242,30 @@ class MobileAcsProxyController extends Controller
         $cleanId = urldecode($id);
         $wlanIndex = (int) $request->input('wlan_index', 1);
         $user = $request->user();
+
+        if ($user && $user->hasRole('reseller')) {
+            $allowedSns = \App\Models\ACS\ACSDevice::forReseller($user)
+                ->pluck('serial_number')
+                ->map(fn($s) => strtoupper(trim((string) $s)))
+                ->filter()
+                ->toArray();
+
+            $cleanUpper = strtoupper($cleanId);
+            $matches = false;
+            foreach ($allowedSns as $sn) {
+                if ($sn !== '' && (str_contains($cleanUpper, $sn) || str_contains($sn, $cleanUpper))) {
+                    $matches = true;
+                    break;
+                }
+            }
+
+            if (!$matches) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat ini berada di luar cakupan izin akun Reseller Anda.',
+                ], 403);
+            }
+        }
 
         try {
             $kv = [];
@@ -234,6 +314,17 @@ class MobileAcsProxyController extends Controller
             $success = $this->driver->setParameterValues($cleanId, $kv);
 
             Log::info("ACS SetWifi: User #{$user->id} ({$user->name}) updated WiFi index {$wlanIndex} on {$cleanId}.");
+
+            try {
+                AuditLog::create([
+                    'user_id' => $user?->id,
+                    'action' => 'acs_set_wifi',
+                    'description' => "Ubah konfigurasi Wi-Fi device {$cleanId} (wlan {$wlanIndex}) via Mobile ACS Proxy.",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
 
             return response()->json([
                 'success' => $success,

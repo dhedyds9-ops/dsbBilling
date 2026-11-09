@@ -218,6 +218,9 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
 
         // Device & Network Operations (Phase 2D & Parity)
         Route::prefix('network')->name('network.')->group(function () {
+            Route::get('/olts', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'olts'])->name('olts.index');
+            Route::get('/olts/{id}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'showOlt'])->where('id', '\d+')->name('olts.show');
+            Route::get('/olts/{id}/pon-ports', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'ponPorts'])->where('id', '\d+')->name('olts.pon-ports');
             Route::get('/devices', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'devices'])->name('devices.index');
             Route::get('/devices/{identifier}', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'showDevice'])->name('devices.show');
             Route::post('/devices/provision-ont', [\App\Http\Controllers\Api\Mobile\MobileNetworkApiController::class, 'provisionOnt'])->name('devices.provision');
