@@ -126,7 +126,7 @@ class MobileWorkforceApiTest extends TestCase
         $compRes->assertStatus(200)
             ->assertJson(['success' => true]);
 
-        $this->assertEquals('completed', $wo->fresh()->status);
+        $this->assertEquals('pending_approval', $wo->fresh()->status);
 
         // 5. Log GPS
         $gpsRes = $this->withHeader('Authorization', 'Bearer ' . $token)

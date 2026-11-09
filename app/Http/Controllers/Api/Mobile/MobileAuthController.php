@@ -85,6 +85,10 @@ class MobileAuthController extends Controller
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
             ],
+            'acs_config' => [
+                'url' => config('services.genieacs.url', env('GENIEACS_URL', 'http://127.0.0.1:7557')),
+                'username' => config('services.genieacs.username', env('GENIEACS_USERNAME', '')),
+            ],
             'server_time' => now()->toIso8601String(),
         ]);
     }
