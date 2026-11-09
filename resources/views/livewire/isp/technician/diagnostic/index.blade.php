@@ -134,9 +134,24 @@
         {{-- STATUS & REDAMAN OPTIK (SIGNAL HEALTH METER) --}}
         @php
             $opt = $diagnostics['optical'] ?? null;
-            $rx = $opt['rx_power'] ?? ($onu->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null);
-            $tx = $opt['tx_power'] ?? ($onu->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null);
-            $health = $opt['health'] ?? 'unknown';
+            $rx = $opt['rx_power_display'] 
+                ?? ($opt['rx_power'] ? $opt['rx_power'] . ' dBm' : null) 
+                ?? ($onu->rx_power_dbm ? $onu->rx_power_dbm . ' dBm' : null);
+            $tx = $opt['tx_power_display'] 
+                ?? ($opt['tx_power'] ? $opt['tx_power'] . ' dBm' : null) 
+                ?? ($onu->tx_power_dbm ? $onu->tx_power_dbm . ' dBm' : null);
+            $health = $opt['health'] ?? $opt['rx_power_status'] ?? 'unknown';
+
+            if (($health === 'unknown' || empty($health)) && $rx && $rx !== 'Tidak Didukung' && $rx !== 'Tidak Ada Sinyal') {
+                $numRx = (float) filter_var($rx, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+                if ($numRx <= -15.0 && $numRx >= -24.0) {
+                    $health = 'normal';
+                } elseif (($numRx < -24.0 && $numRx >= -27.0) || ($numRx > -15.0 && $numRx <= -10.0)) {
+                    $health = 'warning';
+                } elseif ($numRx < -27.0 || $numRx > -10.0) {
+                    $health = 'critical';
+                }
+            }
 
             $healthColor = match($health) {
                 'normal' => 'emerald',

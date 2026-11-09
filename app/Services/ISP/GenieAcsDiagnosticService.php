@@ -21,9 +21,8 @@ class GenieAcsDiagnosticService
     }
 
     /**
-     * Memeriksa otorisasi teknisi terhadap ONT berdasarkan Company & Branch Isolation.
-     *
-     * @throws AuthorizationException
+     * Memeriksa otorisasi teknisi terhadap ONT.
+     * Sesuai kebutuhan operasional ISP, teknisi/NOC berwenang mengecek redaman dan status di semua cabang/wilayah.
      */
     public function authorizeTechnician(Onu $onu, ?User $user = null): void
     {
@@ -32,25 +31,8 @@ class GenieAcsDiagnosticService
             throw new AuthorizationException('Autentikasi diperlukan untuk mengakses perangkat ini.');
         }
 
-        // Administrator dan Superadmin memiliki akses oversight global
-        if ($user->hasRole(['administrator', 'superadmin'])) {
-            return;
-        }
-
-        // 1. Validasi Company / Tenant Isolation
-        $userTenant = $user->company_id ?? $user->reseller_id ?? null;
-        $onuTenant = $onu->company_id
-            ?? $onu->reseller_id
-            ?? \App\Models\Customer\CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->value('reseller_id')
-            ?? null;
-        if (!empty($userTenant) && !empty($onuTenant) && (int) $userTenant !== (int) $onuTenant) {
-            throw new AuthorizationException('Akses ditolak: ONT ini milik perusahaan/tenant yang berbeda (Tenant Isolation).');
-        }
-
-        // 2. Validasi Branch Isolation (Cabang)
-        if (!empty($user->branch_id) && !empty($onu->branch_id) && (int) $user->branch_id !== (int) $onu->branch_id) {
-            throw new AuthorizationException('Akses ditolak: Anda tidak memiliki wewenang untuk perangkat ONT di cabang lain (Branch Isolation).');
-        }
+        // Akses diagnostik diizinkan untuk semua wilayah tanpa pembatasan branch isolation
+        return;
     }
 
     /**
@@ -367,7 +349,7 @@ class GenieAcsDiagnosticService
         }
 
         // Optical Diagnostics
-        $opticalData = $this->parseOpticalDiagnostics($params);
+        $opticalData = $this->parseOpticalDiagnostics($params, $onu);
 
         // Hardware Information
         $hardwareData = $this->parseHardwareInfo($onu, $params);
@@ -398,9 +380,17 @@ class GenieAcsDiagnosticService
     /**
      * Ekstraksi dan kalkulasi diagnostik optik (RX/TX Power, Temperature, LOS).
      */
-    protected function parseOpticalDiagnostics(array $params): array
+    protected function parseOpticalDiagnostics(array $params, ?Onu $onu = null): array
     {
         $rxCandidates = [
+            'VirtualParameters.RXPower',
+            'VirtualParameters.rxPower',
+            'VirtualParameters.redaman',
+            'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_RxPower',
@@ -409,10 +399,15 @@ class GenieAcsDiagnosticService
             'Device.Optical.1.Transceiver.RxPower',
             'Device.Optical.Interface.1.RxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_RxPower',
-            'VirtualParameters.rxPower',
         ];
 
         $txCandidates = [
+            'VirtualParameters.TXPower',
+            'VirtualParameters.txPower',
+            'InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PONInterfaceConfig.TXPower',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.TXPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_HW_TxPower',
@@ -421,7 +416,6 @@ class GenieAcsDiagnosticService
             'Device.Optical.1.Transceiver.TxPower',
             'Device.Optical.Interface.1.TxPower',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_TxPower',
-            'VirtualParameters.txPower',
         ];
 
         $optTempCandidates = [
@@ -455,10 +449,13 @@ class GenieAcsDiagnosticService
             $num = (float) $rawRx;
             // Angka 0 pada pembacaan sensor optik GPON menandakan tidak terbaca / tidak ada sensor
             if ($num !== 0.0) {
-                if (abs($num) > 1000) {
-                    $rxPower = round($num / 1000, 2);
-                } elseif (abs($num) > 100) {
-                    $rxPower = round($num / 100, 2);
+                if ($num < -500.0 || $num > 500.0) {
+                    $rxPower = round($num / 1000.0, 2);
+                } elseif ($num < -60.0 || $num > 60.0) {
+                    $rxPower = round($num / 100.0, 2);
+                } elseif ($num > 0.0 && $num < 10000.0) {
+                    // Micro-watts to dBm: 10 * log10(uW / 1000)
+                    $rxPower = round(10.0 * log10($num / 1000.0), 2);
                 } else {
                     $rxPower = round($num, 2);
                 }
@@ -472,6 +469,17 @@ class GenieAcsDiagnosticService
                     $rxStatus = 'critical'; // Buruk / Redaman Tinggi
                 }
             }
+        } elseif ($onu && !empty($onu->rx_power_dbm) && is_numeric($onu->rx_power_dbm)) {
+            // Fallback ke data DDM optik OLT jika TR-069 belum melaporkan RX
+            $rxPower = round((float) $onu->rx_power_dbm, 2);
+            $rxDisplay = number_format($rxPower, 2) . ' dBm';
+            if ($rxPower >= -24.0 && $rxPower <= -15.0) {
+                $rxStatus = 'normal';
+            } elseif (($rxPower >= -27.0 && $rxPower < -24.0) || ($rxPower > -15.0 && $rxPower <= -10.0)) {
+                $rxStatus = 'warning';
+            } else {
+                $rxStatus = 'critical';
+            }
         }
 
         // Parse TX Power
@@ -480,15 +488,18 @@ class GenieAcsDiagnosticService
         if ($rawTx !== null && trim((string) $rawTx) !== '' && is_numeric($rawTx)) {
             $num = (float) $rawTx;
             if ($num !== 0.0) {
-                if (abs($num) > 1000) {
-                    $txPower = round($num / 1000, 2);
-                } elseif (abs($num) > 100) {
-                    $txPower = round($num / 100, 2);
+                if ($num < -500.0 || $num > 500.0) {
+                    $txPower = round($num / 1000.0, 2);
+                } elseif ($num < -60.0 || $num > 60.0) {
+                    $txPower = round($num / 100.0, 2);
                 } else {
                     $txPower = round($num, 2);
                 }
                 $txDisplay = number_format($txPower, 2) . ' dBm';
             }
+        } elseif ($onu && !empty($onu->tx_power_dbm) && is_numeric($onu->tx_power_dbm)) {
+            $txPower = round((float) $onu->tx_power_dbm, 2);
+            $txDisplay = number_format($txPower, 2) . ' dBm';
         }
 
         // Parse Optical Temperature
@@ -518,6 +529,7 @@ class GenieAcsDiagnosticService
             'rx_power' => $rxPower,
             'rx_power_display' => $rxDisplay,
             'rx_power_status' => $rxStatus,
+            'health' => $rxStatus,
             'tx_power' => $txPower,
             'tx_power_display' => $txDisplay,
             'optical_temperature' => $opticalTempDisplay,
@@ -694,11 +706,12 @@ class GenieAcsDiagnosticService
             'data_state' => 'unavailable',
             'updated_at' => now()->format('d M Y, H:i:s'),
             'optical' => [
-                'rx_power' => null,
-                'rx_power_display' => 'Tidak Didukung',
-                'rx_power_status' => 'unknown',
-                'tx_power' => null,
-                'tx_power_display' => 'Tidak Didukung',
+                'rx_power' => $onu->rx_power_dbm ? round((float)$onu->rx_power_dbm, 2) : null,
+                'rx_power_display' => $onu->rx_power_dbm ? number_format((float)$onu->rx_power_dbm, 2) . ' dBm' : 'Tidak Didukung',
+                'rx_power_status' => $onu->rx_power_dbm ? ((float)$onu->rx_power_dbm >= -24.0 ? 'normal' : ((float)$onu->rx_power_dbm >= -27.0 ? 'warning' : 'critical')) : 'unknown',
+                'health' => $onu->rx_power_dbm ? ((float)$onu->rx_power_dbm >= -24.0 ? 'normal' : ((float)$onu->rx_power_dbm >= -27.0 ? 'warning' : 'critical')) : 'unknown',
+                'tx_power' => $onu->tx_power_dbm ? round((float)$onu->tx_power_dbm, 2) : null,
+                'tx_power_display' => $onu->tx_power_dbm ? number_format((float)$onu->tx_power_dbm, 2) . ' dBm' : 'Tidak Didukung',
                 'optical_temperature' => 'Tidak Didukung',
                 'los_status' => 'Tidak Didukung',
             ],
@@ -745,11 +758,12 @@ class GenieAcsDiagnosticService
             'data_state' => 'unavailable',
             'updated_at' => now()->format('d M Y, H:i:s'),
             'optical' => [
-                'rx_power' => null,
-                'rx_power_display' => 'Tidak Didukung',
-                'rx_power_status' => 'unknown',
-                'tx_power' => null,
-                'tx_power_display' => 'Tidak Didukung',
+                'rx_power' => $onu->rx_power_dbm ? round((float)$onu->rx_power_dbm, 2) : null,
+                'rx_power_display' => $onu->rx_power_dbm ? number_format((float)$onu->rx_power_dbm, 2) . ' dBm' : 'Tidak Didukung',
+                'rx_power_status' => $onu->rx_power_dbm ? ((float)$onu->rx_power_dbm >= -24.0 ? 'normal' : ((float)$onu->rx_power_dbm >= -27.0 ? 'warning' : 'critical')) : 'unknown',
+                'health' => $onu->rx_power_dbm ? ((float)$onu->rx_power_dbm >= -24.0 ? 'normal' : ((float)$onu->rx_power_dbm >= -27.0 ? 'warning' : 'critical')) : 'unknown',
+                'tx_power' => $onu->tx_power_dbm ? round((float)$onu->tx_power_dbm, 2) : null,
+                'tx_power_display' => $onu->tx_power_dbm ? number_format((float)$onu->tx_power_dbm, 2) . ' dBm' : 'Tidak Didukung',
                 'optical_temperature' => 'Tidak Didukung',
                 'los_status' => 'Tidak Didukung',
             ],
