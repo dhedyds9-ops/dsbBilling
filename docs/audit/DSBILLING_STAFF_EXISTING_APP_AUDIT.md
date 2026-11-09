@@ -65,7 +65,7 @@ Kami menemukan **6 kerentanan keamanan signifikan** pada arsitektur existing yan
 
 ### 🔴 VULN-01: Hardcoded Google Gemini API Key di Kode Sumber (Severity: HIGH)
 - **Lokasi:** [`AppPreferences.kt` Baris 29](file:///D:/dsbilling-mobile/app/src/main/java/com/genieacs/client/data/pref/AppPreferences.kt#L29)
-- **Temuan:** `const val DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6JZq03oMKUYh9IvVJQMpuZYNkOzqtQsvmy8SlwfKpTOig"`
+- **Temuan:** `const val DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6...[REDACTED_DUMMY_KEY]"`
 - **Dampak:** Kunci API Gemini tersimpan permanen di dalam bytecode APK dan dapat diekstraksi dengan mudah via dekompilasi (APKTool / Jadx), berisiko kuota disalahgunakan pihak ketiga.
 - **Rekomendasi:** Hapus API Key dari klien Android. Layanan Voice AI harus diproxy melalui backend dsBilling (`POST /api/mobile/ai/ask`) menggunakan server-side secret key yang aman.
 
