@@ -37,17 +37,22 @@ class MobileWorkforceApiController extends Controller
             ], 403);
         }
 
-        // 2. Check branch isolation
-        if ($user->branch_id && $workOrder->branch_id && $user->branch_id !== $workOrder->branch_id && !$user->isSuperAdmin()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akses ditolak: SPK ini milik cabang lain.',
-            ], 403);
+        // 2. Cross-branch and assignment authorization (Directive Section 6)
+        $isAssigned = $workOrder->assigned_to && (int)$workOrder->assigned_to === (int)$user->id;
+        $isManagerOrAdmin = $this->isManagerOrAdmin($user);
+
+        if ($user->branch_id && $workOrder->branch_id && (int)$user->branch_id !== (int)$workOrder->branch_id && !$user->isSuperAdmin()) {
+            if (!$isAssigned && !$isManagerOrAdmin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: SPK ini milik cabang lain dan tidak ditugaskan kepada Anda.',
+                ], 403);
+            }
         }
 
-        // 3. Check technician assignment ownership (VULN-06)
-        if ($user->isTechnician() && !$user->isSuperAdmin() && !$this->isManagerOrAdmin($user)) {
-            if ($workOrder->assigned_to && (int)$workOrder->assigned_to !== (int)$user->id) {
+        // 3. Check technician assignment ownership
+        if ($user->isTechnician() && !$user->isSuperAdmin() && !$isManagerOrAdmin) {
+            if ($workOrder->assigned_to && !$isAssigned) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Akses ditolak: SPK ini ditugaskan kepada teknisi lain.',
@@ -91,19 +96,23 @@ class MobileWorkforceApiController extends Controller
             });
         }
 
-        // Apply branch scope
-        if ($user->branch_id && !$user->isSuperAdmin()) {
+        // Apply branch & assignment scope (Cross-branch assignment supported per Directive Section 6)
+        if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
+            $query->where(function ($q) use ($user) {
+                // 1. Show work orders assigned to this technician (regardless of branch)
+                $q->where('assigned_to', $user->id);
+                // 2. Or unassigned work orders in their home branch
+                if ($user->branch_id) {
+                    $q->orWhere(function ($sub) use ($user) {
+                        $sub->where('branch_id', $user->branch_id)
+                            ->whereNull('assigned_to');
+                    });
+                }
+            });
+        } elseif ($user->branch_id && !$user->isSuperAdmin()) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
                     ->orWhereNull('branch_id');
-            });
-        }
-
-        // Apply technician scope (if technician, show assigned to them or unassigned pending)
-        if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
-            $query->where(function ($q) use ($user) {
-                $q->where('assigned_to', $user->id)
-                    ->orWhereNull('assigned_to');
             });
         }
 

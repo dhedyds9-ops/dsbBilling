@@ -165,7 +165,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
     Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('app.check-update');
     Route::get('/version/check', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'workforce.checked_in'])->group(function () {
         Route::post('/logout', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'logout'])->name('logout');
         Route::get('/me', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'me'])->name('me');
 

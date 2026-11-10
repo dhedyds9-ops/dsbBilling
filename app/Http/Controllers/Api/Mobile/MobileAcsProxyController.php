@@ -226,21 +226,30 @@ class MobileAcsProxyController extends Controller
             }
         }
 
-        // 5. Branch Scope Isolation (for staff/technicians with branch_id assignment)
+        // 5. Cross-Branch & Tenant Boundary Check (Directive: Cross-Branch Allowed with Audit Trail)
         if ($user->branch_id) {
             $deviceBranchId = null;
+            $deviceCompanyId = null;
             if ($cs) {
                 $deviceBranchId = $cs->branch_id ?? ($cs->customer_id ? \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $cs->customer_id)->value('branch_id') : null);
+                $deviceCompanyId = $cs->customer_id ? \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $cs->customer_id)->value('company_id') : null;
             }
             if (!$deviceBranchId && $dbOnu) {
                 $deviceBranchId = $dbOnu->branch_id;
+                $deviceCompanyId = $dbOnu->company_id;
             }
 
-            if ($deviceBranchId && (int) $deviceBranchId !== (int) $user->branch_id) {
+            // Strictly enforce multi-tenant company isolation
+            if ($user->company_id && $deviceCompanyId && (int) $user->company_id !== (int) $deviceCompanyId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Akses ditolak: Perangkat ini terdaftar pada cabang/tenant lain.',
+                    'message' => 'Akses ditolak: Perangkat ini terdaftar pada tenant/perusahaan yang berbeda.',
                 ], 403);
+            }
+
+            // Cross-branch operation is permitted for checked-in staff with audit trail
+            if ($deviceBranchId && (int) $deviceBranchId !== (int) $user->branch_id) {
+                \Illuminate\Support\Facades\Log::info("[CROSS-BRANCH: Tech Cabang #{$user->branch_id} -> Device Cabang #{$deviceBranchId}] Staff: {$user->name} ({$user->id}) performed ACS operation '{$operation}' on device '{$cleanUpper}'.");
             }
         }
 

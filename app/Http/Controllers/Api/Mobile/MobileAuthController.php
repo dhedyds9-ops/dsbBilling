@@ -106,6 +106,9 @@ class MobileAuthController extends Controller
 
         $role = $this->determinePrimaryRole($user);
         $permissions = $this->collectPermissions($user, $role);
+        $hasActiveAttendance = \App\Services\Workforce\AttendanceAuthorizationService::hasActiveAttendance($user);
+        $activeAttendance = \App\Services\Workforce\AttendanceAuthorizationService::getActiveAttendance($user);
+        $canOperate = \App\Services\Workforce\AttendanceAuthorizationService::canPerformOperations($user);
 
         return response()->json([
             'success' => true,
@@ -121,6 +124,15 @@ class MobileAuthController extends Controller
                 'reseller_id' => $user->getEffectiveResellerId(),
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
+                'has_active_attendance' => $hasActiveAttendance,
+                'can_operate' => $canOperate,
+                'active_attendance_id' => $activeAttendance?->id,
+                'active_shift' => $activeAttendance ? [
+                    'id' => $activeAttendance->id,
+                    'checked_in_at' => $activeAttendance->checked_in_at?->toIso8601String(),
+                    'checked_in_time' => $activeAttendance->checked_in_at?->format('H:i'),
+                    'date' => $activeAttendance->date?->toDateString(),
+                ] : null,
             ],
         ]);
     }

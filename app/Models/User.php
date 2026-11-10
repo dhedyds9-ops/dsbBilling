@@ -285,10 +285,11 @@ class User extends Authenticatable
             return str_starts_with($permission, 'customer.') || str_starts_with($permission, 'ticket.');
         }
 
-        if (str_contains($title, 'teknisi') || str_contains($title, 'technician') || $this->hasRole('teknisi')) {
+        if (str_contains($title, 'teknisi') || str_contains($title, 'technician') || $this->hasRole('teknisi') || $this->hasRole('technician')) {
             return str_starts_with($permission, 'technician.') 
                 || str_starts_with($permission, 'workforce.') 
-                || in_array($permission, ['onu.view', 'onu.diagnose', 'inventory.custody', 'inventory.usage', 'inventory.return', 'inventory.requisition']);
+                || in_array($permission, \App\Enums\UserPermission::defaultTeknisiPermissions())
+                || in_array($permission, ['onu.view', 'onu.diagnose', 'onu.configure.wifi', 'onu.configure.wan', 'onu.reboot', 'inventory.custody', 'inventory.usage', 'inventory.return', 'inventory.requisition']);
         }
 
         if (str_contains($title, 'marketing') || str_contains($title, 'sales') || $this->hasRole('marketing')) {

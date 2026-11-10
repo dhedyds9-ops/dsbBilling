@@ -930,6 +930,15 @@ class MobileNetworkApiController extends Controller
         return DB::transaction(function () use ($validated, $user, $oldSn, $newSn) {
             $oldOnu = Onu::withoutGlobalScopes()->where('serial_number', $oldSn)->firstOrFail();
 
+            // Reseller / Tenant boundary check
+            $userResellerId = $user->getEffectiveResellerId();
+            if ($userResellerId && $oldOnu->reseller_id && (int)$oldOnu->reseller_id !== (int)$userResellerId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.'
+                ], 403);
+            }
+
             // Find or create new ONU
             $newOnu = Onu::withoutGlobalScopes()->where('serial_number', $newSn)->first();
             if (!$newOnu) {
@@ -939,7 +948,7 @@ class MobileNetworkApiController extends Controller
                 $newOnu->name = ($validated['new_model'] ?? 'ONT') . ' ' . substr($newSn, -6);
             }
 
-            // Inherit configurations from old ONU
+            // Inherit configurations from old ONU & PRESERVE target branch
             $newOnu->mac_address = !empty($validated['new_mac_address']) ? strtoupper(trim($validated['new_mac_address'])) : $newOnu->mac_address;
             $newOnu->model = $validated['new_model'] ?? $oldOnu->model;
             $newOnu->odp_id = $oldOnu->odp_id;
@@ -948,14 +957,21 @@ class MobileNetworkApiController extends Controller
             $newOnu->status = 'active';
             $newOnu->provision_status = 'provisioned';
             $newOnu->branch_id = $oldOnu->branch_id ?? $user->branch_id;
+            $newOnu->reseller_id = $oldOnu->reseller_id;
             $newOnu->created_by = $oldOnu->created_by ?? $user->id;
             $newOnu->updated_by = $user->id;
             $newOnu->save();
 
-            // Update old ONU status
+            // Update old ONU status with cross-branch audit trail
             $oldOnu->status = 'replaced';
             $oldOnu->provision_status = 'unprovisioned';
-            $oldOnu->description = ($oldOnu->description ? $oldOnu->description . "\n" : '') . "[SWAP " . now()->format('Y-m-d H:i') . "] Digantikan oleh {$newSn} oleh {$user->name}. " . ($validated['notes'] ?? '');
+            $auditText = \App\Services\Workforce\AttendanceAuthorizationService::formatAuditTrail(
+                'SWAP',
+                $user,
+                $oldOnu->branch_id,
+                "Digantikan oleh {$newSn}. " . ($validated['notes'] ?? '')
+            );
+            $oldOnu->description = ($oldOnu->description ? $oldOnu->description . "\n" : '') . $auditText;
             $oldOnu->save();
 
             // Re-bind CustomerService from old to new ONU
@@ -1003,6 +1019,15 @@ class MobileNetworkApiController extends Controller
         return DB::transaction(function () use ($validated, $user, $sn) {
             $onu = Onu::withoutGlobalScopes()->where('serial_number', $sn)->firstOrFail();
 
+            // Reseller / Tenant boundary check
+            $userResellerId = $user->getEffectiveResellerId();
+            if ($userResellerId && $onu->reseller_id && (int)$onu->reseller_id !== (int)$userResellerId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Perangkat ONT bukan milik reseller/tenant Anda.'
+                ], 403);
+            }
+
             // Unbind CustomerService
             $cs = CustomerService::withoutGlobalScopes()->where('onu_id', $onu->id)->first();
             if ($cs) {
@@ -1013,7 +1038,14 @@ class MobileNetworkApiController extends Controller
 
             $onu->status = $validated['device_condition'] === 'good' ? 'dismantled_good' : 'dismantled_damaged';
             $onu->odp_id = null;
-            $onu->description = ($onu->description ? $onu->description . "\n" : '') . "[DISMANTLE " . now()->format('Y-m-d H:i') . "] Ditarik oleh {$user->name}. Alasan: " . ($validated['dismantle_reason'] ?? 'Berhenti Berlangganan');
+
+            $auditText = \App\Services\Workforce\AttendanceAuthorizationService::formatAuditTrail(
+                'DISMANTLE',
+                $user,
+                $onu->branch_id,
+                "Alasan: " . ($validated['dismantle_reason'] ?? 'Berhenti Berlangganan')
+            );
+            $onu->description = ($onu->description ? $onu->description . "\n" : '') . $auditText;
             $onu->save();
 
             return response()->json([

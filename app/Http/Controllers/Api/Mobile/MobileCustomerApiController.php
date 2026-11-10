@@ -31,7 +31,8 @@ class MobileCustomerApiController extends Controller
             });
         }
 
-        if ($search = trim((string) $request->input('q', ''))) {
+        $search = trim((string) ($request->input('q') ?? $request->input('search') ?? ''));
+        if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
                   ->orWhere('code', 'LIKE', "%{$search}%")
@@ -45,7 +46,7 @@ class MobileCustomerApiController extends Controller
             $query->where('status', $status);
         }
 
-        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $perPage = min(100, max(1, (int) $request->input('per_page', 50)));
         $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         $items = collect($paginator->items())->map(function (Customer $c) {
