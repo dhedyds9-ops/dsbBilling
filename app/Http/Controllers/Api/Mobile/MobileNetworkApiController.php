@@ -202,6 +202,57 @@ class MobileNetworkApiController extends Controller
     }
 
     /**
+     * Poll and synchronize OLT to discover newly connected ONUs.
+     * POST /api/mobile/network/olts/{id}/sync
+     */
+    public function syncOlt(Request $request, int $id): JsonResponse
+    {
+        $olt = \App\Models\ISP\Olt::withoutGlobalScopes()->find($id);
+        if (!$olt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perangkat OLT tidak ditemukan.',
+            ], 404);
+        }
+
+        $lockKey = "rate_limit_olt_sync_{$olt->id}";
+        if (\Illuminate\Support\Facades\Cache::has($lockKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Sinkronisasi OLT {$olt->name} sedang cooldown. Silakan tunggu 15 detik.",
+            ], 429);
+        }
+        \Illuminate\Support\Facades\Cache::put($lockKey, true, 15);
+
+        try {
+            $poller = app(\App\Services\ISP\OltPollingService::class);
+            $res = $poller->pollOlt($olt);
+
+            if (isset($res['success']) && !$res['success']) {
+                throw new \Exception($res['error'] ?? $res['message'] ?? 'Gagal menghubungi perangkat OLT.');
+            }
+
+            $recentOnus = Onu::withoutGlobalScopes()
+                ->where('olt_id', $olt->id)
+                ->latest('updated_at')
+                ->limit(10)
+                ->get()
+                ->map(fn($o) => $this->formatOnuDevice($o));
+
+            return response()->json([
+                'success' => true,
+                'message' => "✅ Sinkronisasi OLT {$olt->name} berhasil.",
+                'data' => $recentOnus,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => "Gagal sinkronisasi OLT {$olt->name}: " . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Search and list ONT/ONU devices with customer and ODP information.
      */
     public function devices(Request $request): JsonResponse
@@ -210,26 +261,50 @@ class MobileNetworkApiController extends Controller
         $query = Onu::query()->withoutGlobalScopes();
 
         // Scope by reseller if user is a reseller, otherwise by branch
-        $effectiveResellerId = $user->getEffectiveResellerId();
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
         if ($effectiveResellerId) {
             $query->where(function ($q) use ($effectiveResellerId) {
                 \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $effectiveResellerId, 'onus');
             });
-        } elseif (!empty($user->branch_id)) {
+        } elseif ($user && !empty($user->branch_id)) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
                   ->orWhereNull('branch_id');
             });
         }
 
-        // Search query
+        // Multi-candidate search query (prefix matching HWTC, ZTEG, customer, etc.)
         if ($search = trim((string) $request->input('q', ''))) {
-            $query->where(function ($q) use ($search) {
-                $q->where('serial_number', 'LIKE', "%{$search}%")
-                  ->orWhere('mac_address', 'LIKE', "%{$search}%")
-                  ->orWhere('name', 'LIKE', "%{$search}%")
+            $upper = strtoupper($search);
+            $candidates = [$search, $upper];
+            if (str_starts_with($upper, 'HWTC')) {
+                $candidates[] = '48575443' . substr($upper, 4);
+            } elseif (str_starts_with($upper, '48575443')) {
+                $candidates[] = 'HWTC' . substr($upper, 8);
+            } elseif (str_starts_with($upper, 'ZTEG')) {
+                $candidates[] = '5A544547' . substr($upper, 4);
+            } elseif (str_starts_with($upper, '5A544547')) {
+                $candidates[] = 'ZTEG' . substr($upper, 8);
+            }
+
+            $query->where(function ($q) use ($search, $candidates) {
+                foreach ($candidates as $cand) {
+                    $q->orWhere('serial_number', 'LIKE', "%{$cand}%")
+                      ->orWhere('mac_address', 'LIKE', "%{$cand}%");
+                }
+                $q->orWhere('name', 'LIKE', "%{$search}%")
                   ->orWhere('code', 'LIKE', "%{$search}%")
-                  ->orWhere('model', 'LIKE', "%{$search}%");
+                  ->orWhere('model', 'LIKE', "%{$search}%")
+                  ->orWhereHas('customerService', function ($csq) use ($search) {
+                      $csq->withoutGlobalScopes()->whereHas('customer', function ($cq) use ($search) {
+                          $cq->withoutGlobalScopes()->where('name', 'LIKE', "%{$search}%")
+                             ->orWhere('phone', 'LIKE', "%{$search}%")
+                             ->orWhere('code', 'LIKE', "%{$search}%");
+                      })
+                      ->orWhereHas('pppoeUser', function ($pu) use ($search) {
+                          $pu->withoutGlobalScopes()->where('username', 'LIKE', "%{$search}%");
+                      });
+                  });
             });
         }
 
@@ -260,6 +335,53 @@ class MobileNetworkApiController extends Controller
             ->map(function (Onu $onu) {
                 return $this->formatOnuDevice($onu);
             });
+
+        // Fallback: search ACSDevice table if empty and search query provided
+        if ($devices->isEmpty() && !empty($search)) {
+            $acsMatches = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->with(['olt', 'customerService.customer'])
+                ->where(function ($aq) use ($search, $candidates) {
+                    foreach ($candidates as $cand) {
+                        $aq->orWhere('serial_number', 'LIKE', "%{$cand}%")
+                           ->orWhere('mac_address', 'LIKE', "%{$cand}%");
+                    }
+                    $aq->orWhere('model', 'LIKE', "%{$search}%");
+                })
+                ->limit(20)
+                ->get()
+                ->map(function ($ad) {
+                    $rx = $ad->signal !== null ? (float) $ad->signal : null;
+                    return [
+                        'id' => $ad->id,
+                        'serial_number' => $ad->serial_number,
+                        'mac_address' => $ad->mac_address,
+                        'model' => $ad->model ?: 'ONT',
+                        'name' => $ad->model,
+                        'code' => $ad->serial_number,
+                        'status' => $ad->status ?: 'offline',
+                        'provision_status' => 'provisioned',
+                        'rx_power_dbm' => $rx,
+                        'tx_power_dbm' => null,
+                        'optical_quality' => $rx !== null ? ($rx >= -23.0 ? 'Optimal' : ($rx < -26.0 ? 'Loss/Kritis' : 'Toleransi')) : 'Belum Diukur',
+                        'wifi_ssid' => $ad->wifi_ssid ?? 'dsBilling_WiFi',
+                        'odp_id' => null,
+                        'odp_code' => null,
+                        'odp_name' => null,
+                        'olt_id' => $ad->olt_id,
+                        'olt_name' => $ad->olt?->name ?? 'OLT',
+                        'olt_code' => $ad->olt?->code,
+                        'pon_port_id' => null,
+                        'pon_port_number' => null,
+                        'customer_name' => $ad->customerService?->customer?->name,
+                        'customer_code' => $ad->customerService?->customer?->code,
+                        'last_seen_at' => $ad->last_inform ? $ad->last_inform->format('Y-m-d H:i:s') : null,
+                    ];
+                });
+
+            if ($acsMatches->isNotEmpty()) {
+                $devices = $acsMatches;
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -547,13 +669,64 @@ class MobileNetworkApiController extends Controller
         $sn = strtoupper(trim($serialNumber));
         $onu = Onu::withoutGlobalScopes()
             ->where('serial_number', $sn)
+            ->orWhere('mac_address', $sn)
             ->with(['odp', 'olt', 'ponPort'])
             ->first();
 
+        // Fallback: search ACSDevice if not registered in Onu
         if (!$onu) {
+            $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->where('serial_number', 'like', "%{$sn}%")
+                ->orWhere('mac_address', 'like', "%{$sn}%")
+                ->with(['olt', 'customerService.customer'])
+                ->first();
+
+            if ($ad) {
+                $rx = $ad->signal !== null ? (float) $ad->signal : null;
+                $quality = 'Belum Diukur';
+                if ($rx !== null) {
+                    if ($rx >= -23.0 && $rx <= -14.0) {
+                        $quality = 'Optimal';
+                    } elseif ($rx < -26.0 || $rx > -8.0) {
+                        $quality = 'Loss/Kritis';
+                    } else {
+                        $quality = 'Waspada/Toleransi';
+                    }
+                }
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'serial_number' => $ad->serial_number,
+                        'mac_address' => $ad->mac_address,
+                        'model' => $ad->model ?: 'ONT Terminal',
+                        'is_online' => strtolower((string) $ad->status) === 'online',
+                        'status' => $ad->status ?: 'unknown',
+                        'rx_power_dbm' => $rx,
+                        'tx_power_dbm' => null,
+                        'optical_quality' => $quality,
+                        'last_seen_at' => $ad->last_inform ? $ad->last_inform->format('Y-m-d H:i:s') : null,
+                        'wifi_ssid' => $ad->wifi_ssid ?? 'dsBilling_WiFi',
+                        'olt' => $ad->olt ? [
+                            'id' => $ad->olt->id,
+                            'name' => $ad->olt->name,
+                            'code' => $ad->olt->code,
+                        ] : null,
+                        'pon_port' => null,
+                        'odp' => null,
+                        'customer' => $ad->customerService?->customer ? [
+                            'name' => $ad->customerService->customer->name,
+                            'code' => $ad->customerService->customer->code,
+                            'phone' => $ad->customerService->customer->phone,
+                            'address' => $ad->customerService->customer->address,
+                        ] : null,
+                        'pppoe_username' => $ad->customerService?->username,
+                    ],
+                ]);
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => "Perangkat ONT dengan Serial Number '{$sn}' tidak ditemukan.",
+                'message' => "Perangkat ONT dengan Serial Number '{$sn}' tidak ditemukan di OLT maupun ACS.",
             ], 404);
         }
 
@@ -594,6 +767,12 @@ class MobileNetworkApiController extends Controller
         $isOnline = in_array(strtolower((string) $onu->status), ['online', 'active']) 
             && ($onu->last_seen_at ? now()->diffInMinutes($onu->last_seen_at) < 30 : false);
 
+        // Fetch customer info connected to this ONU
+        $cs = CustomerService::withoutGlobalScopes()
+            ->where('onu_id', $onu->id)
+            ->with(['customer', 'serviceProfile', 'pppoeUser'])
+            ->first();
+
         try {
             \App\Models\AuditLog::create([
                 'user_id' => $user?->id,
@@ -632,6 +811,14 @@ class MobileNetworkApiController extends Controller
                     'code' => $onu->odp->code,
                     'name' => $onu->odp->name,
                 ] : null,
+                'customer' => $cs?->customer ? [
+                    'name' => $cs->customer->name,
+                    'code' => $cs->customer->code,
+                    'phone' => $cs->customer->phone,
+                    'address' => $cs->customer->address,
+                ] : null,
+                'pppoe_username' => $cs?->username,
+                'service_profile_name' => $cs?->serviceProfile?->name,
             ],
         ]);
     }
