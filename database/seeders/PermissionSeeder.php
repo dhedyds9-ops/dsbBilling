@@ -91,7 +91,7 @@ class PermissionSeeder extends Seeder
             Permission::updateOrCreate(['name' => $perm['name']], $perm);
         }
 
-        // Sinkronkan seluruh UserPermission enum via registry
+        // Sinkronkan seluruh UserPermission enum & roles via registry
         \App\Services\Auth\PermissionRegistry::syncAllPermissionsToDatabase();
 
         // 3. Assign all permissions to Administrator

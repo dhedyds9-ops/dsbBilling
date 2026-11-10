@@ -69,18 +69,18 @@ class MobileAcsProxyController extends Controller
 
         // 2. Permission Check (Layer B)
         $requiredPermissions = match ($operation) {
-            'wan'          => ['onu.configure.wan', 'onu.manage', 'noc.onu.manage'],
-            'wifi'         => ['onu.configure.wifi', 'onu.manage', 'noc.onu.manage'],
+            'wan'          => ['onu.configure.wan', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
+            'wifi'         => ['onu.configure.wifi', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
             'admin'        => ['onu.configure.admin', 'onu.manage', 'noc.onu.manage'],
             'tasks.delete' => ['onu.task.delete', 'onu.manage', 'noc.onu.manage'],
             'tasks.retry'  => ['onu.task.retry', 'onu.manage', 'noc.onu.manage'],
-            'tasks.view'   => ['onu.task.view', 'onu.view', 'onu.manage', 'noc.onu.manage'],
-            'reboot'       => ['onu.reboot', 'onu.manage', 'noc.onu.manage'],
-            'ping'         => ['onu.diagnose', 'onu.manage', 'noc.onu.manage'],
-            'summon'       => ['onu.diagnose', 'onu.view', 'onu.reboot', 'onu.manage', 'noc.onu.manage'],
+            'tasks.view'   => ['onu.task.view', 'onu.view', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
+            'reboot'       => ['onu.reboot', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
+            'ping'         => ['onu.diagnose', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
+            'summon'       => ['onu.diagnose', 'onu.view', 'onu.reboot', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
             'tags'         => ['onu.view', 'onu.manage', 'noc.onu.manage'],
-            'read'         => ['onu.view', 'noc.onu.view', 'onu.manage', 'noc.onu.manage'],
-            default        => ['onu.view', 'onu.manage', 'noc.onu.manage'],
+            'read'         => ['onu.view', 'noc.onu.view', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
+            default        => ['onu.view', 'onu.manage', 'noc.onu.manage', 'technician.portal'],
         };
 
         $hasPerm = false;
