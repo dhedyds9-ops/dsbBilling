@@ -52,11 +52,14 @@ class ProcessGenieAcsInformEventJob implements ShouldQueue
             $lastInformAt = $event->last_inform_at ?: ($event->received_at ?: now());
 
             $isBootEvent = false;
+            $isBootstrapEvent = false;
             foreach ($eventCodes as $code) {
                 $codeUpper = strtoupper((string)$code);
-                if (str_contains($codeUpper, '0 BOOTSTRAP') || str_contains($codeUpper, '1 BOOT') || str_contains($codeUpper, 'M REBOOT') || str_contains($codeUpper, 'REBOOT')) {
+                if (str_contains($codeUpper, '0 BOOTSTRAP')) {
+                    $isBootstrapEvent = true;
                     $isBootEvent = true;
-                    break;
+                } elseif (str_contains($codeUpper, '1 BOOT') || str_contains($codeUpper, 'M REBOOT') || str_contains($codeUpper, 'REBOOT')) {
+                    $isBootEvent = true;
                 }
             }
 
@@ -167,10 +170,34 @@ class ProcessGenieAcsInformEventJob implements ShouldQueue
                 }
             }
 
-            // 10. Dispatch Tr069StatusChanged event
+            // 10. Zero-Touch Auto-Provisioning on Factory Reset (0 BOOTSTRAP)
+            // Jika modem di-reset pabrik, kembalikan otomatis konfigurasi PPPoE dan Wi-Fi pelanggan
+            if ($isBootstrapEvent) {
+                $isRegisteredDevice = ($onu->provision_status === 'success' || !empty($onu->provisioned_at) || $cs !== null || !empty($onu->wifi_ssid));
+                if ($isRegisteredDevice) {
+                    try {
+                        Log::info("ProcessGenieAcsInformEventJob: Detected 0 BOOTSTRAP on registered ONU #{$onu->id} (SN: {$onu->serial_number}). Triggering Zero-Touch Auto-Reprovisioning.");
+                        $provisioningService = app(\App\Services\ISP\GenieAcsProvisioningService::class);
+                        $res = $provisioningService->provisionOnt($onu, [
+                            'customer_service' => $cs,
+                            'force_retry' => true,
+                        ]);
+                        Log::info("ProcessGenieAcsInformEventJob: Zero-Touch Auto-Provisioning executed for ONU #{$onu->id}", [
+                            'status' => $res['status'] ?? 'unknown',
+                            'message' => $res['message'] ?? ($res['error'] ?? ''),
+                        ]);
+                    } catch (\Throwable $e) {
+                        Log::error("ProcessGenieAcsInformEventJob: Zero-touch auto-reprovisioning error on ONU #{$onu->id}", [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            // 11. Dispatch Tr069StatusChanged event
             event(new Tr069StatusChanged($deviceId, $oldAcsStatus, 'online', $lastInformAt));
 
-            // 11. Mark event processed
+            // 12. Mark event processed
             $event->update([
                 'processing_status' => GenieAcsWebhookEvent::STATUS_PROCESSED,
                 'processed_at' => now(),

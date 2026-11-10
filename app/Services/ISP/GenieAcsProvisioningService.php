@@ -111,6 +111,10 @@ let brand = (brandDecl.value !== undefined) ? brandDecl.value[0] : "";
 let pppPath = "";
 let wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*.Username", {path: 1});
 
+if (!wanDevices.size) {
+    wanDevices = declare("InternetGatewayDevice.WANDevice.1.WANConnectionDevice.*.WANPPPConnection.*", {path: 1});
+}
+
 if (wanDevices.size) {
     for (let p of wanDevices) {
         pppPath = p.path.replace(".Username", "");
@@ -119,6 +123,9 @@ if (wanDevices.size) {
 }
 
 if (pppPath !== "") {
+    declare(pppPath + ".Enable", {value: Date.now()}, {value: true});
+    declare(pppPath + ".ConnectionType", {value: Date.now()}, {value: (brand.indexOf("FiberHome") !== -1 ? "PPPoE_Routed" : "IP_Routed")});
+    declare(pppPath + ".NATEnabled", {value: Date.now()}, {value: true});
     declare(pppPath + ".Username", {value: Date.now()}, {value: pppoeUser});
     declare(pppPath + ".Password", {value: Date.now()}, {value: pppoePass});
     declare(pppPath + ".ConnectionTrigger", {value: Date.now()}, {value: "AlwaysOn"});
@@ -131,6 +138,8 @@ if (vlanId && pppPath !== "") {
         let vlanPath = "";
         
         if (brand.indexOf("ZTE") !== -1) {
+            declare(pppPath + ".X_ZTE-COM_VLANID", {value: Date.now()}, {value: parseInt(vlanId)});
+            declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: Date.now()}, {value: 1});
             vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".X_ZTE-COM_VLANID";
         } else if (brand.indexOf("Huawei") !== -1 || brand.indexOf("EcomTech") !== -1) {
             vlanPath = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice." + wanIdx + ".WANEthernetLinkConfig.X_HW_VLAN";
