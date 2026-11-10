@@ -512,6 +512,19 @@ if (!basePath) {
     declare(basePath, {path: 1}, {path: 1});
 }
 
+// Add Connection Object (dideklarasikan lebih awal agar pppPath valid di semua blok di bawah)
+let pppPath = basePath + ".{$connObj}.1";
+declare(pppPath, {path: 1}, {path: 1});
+
+declare(pppPath + ".ConnectionType", {value: now}, {value: "{$connType}"});
+declare(pppPath + ".NATEnabled", {value: now}, {value: {$natEnabled}});
+declare(pppPath + ".Enable", {value: now}, {value: true});
+declare(pppPath + ".Name", {value: now}, {value: "dsBilling_{$connType}_{$vlanId}"});
+
+if ("{$connObj}" === "WANIPConnection" && "{$connType}" === "IP_Routed") {
+    declare(pppPath + ".AddressingType", {value: now}, {value: "DHCP"});
+}
+
 // Vendor specific VLAN
 if ({$vlanEnabled} && {$vlanId} > 0) {
     if ("{$vendor}".includes("fiberhome")) {
@@ -537,19 +550,6 @@ if ({$vlanEnabled} && {$vlanId} > 0) {
         declare(pppPath + ".X_ZTE-COM_VLANEnable", {value: now}, {value: 0});
         declare(pppPath + ".X_ZTE-COM_VLANID", {value: now}, {value: 0});
     }
-}
-
-// Add Connection Object
-let pppPath = basePath + ".{$connObj}.1";
-declare(pppPath, {path: 1}, {path: 1});
-
-declare(pppPath + ".ConnectionType", {value: now}, {value: "{$connType}"});
-declare(pppPath + ".NATEnabled", {value: now}, {value: {$natEnabled}});
-declare(pppPath + ".Enable", {value: now}, {value: true});
-declare(pppPath + ".Name", {value: now}, {value: "dsBilling_{$connType}_{$vlanId}"});
-
-if ("{$connObj}" === "WANIPConnection" && "{$connType}" === "IP_Routed") {
-    declare(pppPath + ".AddressingType", {value: now}, {value: "DHCP"});
 }
 
 // Service List
@@ -751,7 +751,23 @@ JS;
         // CASE 2: Standard parameter update via SetParameterValues
         $parameters = [];
 
-        // Username & Password for PPPoE
+        // 1. Pastikan koneksi diaktifkan (Enable = true)
+        $parameters["{$this->editFullPath}.Enable"] = true;
+
+        // 2. ConnectionType & Mode (TR-098 & Vendor-specific)
+        // Jika user memilih PPPoE Route, ubah ConnectionType ke IP_Routed (atau PPPoE_Routed di FiberHome)
+        if ($isPppoeMode) {
+            $connType = $isFiberHome ? "PPPoE_Routed" : "IP_Routed";
+            $parameters["{$this->editFullPath}.ConnectionType"] = $connType;
+        } elseif ($this->formMode === 'bridge_ppp') {
+            $parameters["{$this->editFullPath}.ConnectionType"] = "PPPoE_Bridged";
+        } elseif ($this->formMode === 'bridge_ip') {
+            $parameters["{$this->editFullPath}.ConnectionType"] = "IP_Bridged";
+        } elseif ($this->formMode === 'dhcp_route') {
+            $parameters["{$this->editFullPath}.ConnectionType"] = "IP_Routed";
+        }
+
+        // 3. Username & Password for PPPoE
         if ($isPppoeMode || $this->formType === 'PPPoE') {
             if (!empty($this->formUsername)) {
                 $parameters["{$this->editFullPath}.Username"] = $this->formUsername;
@@ -761,10 +777,11 @@ JS;
             }
         }
 
-        // NAT
-        $parameters["{$this->editFullPath}.NATEnabled"] = (bool) $this->formNat;
+        // 4. NAT (Bridge tidak boleh NAT enabled pada ONU tertentu)
+        $isBridge = in_array($this->formMode, ['bridge_ppp', 'bridge_ip']);
+        $parameters["{$this->editFullPath}.NATEnabled"] = $isBridge ? false : (bool) $this->formNat;
 
-        // Service List
+        // 5. Service List (Pastikan didukung di tree)
         if (!empty($serviceVal)) {
             if ($isFiberHome) {
                 $parameters["{$this->editFullPath}.X_FH_ServiceList"] = $serviceVal;
@@ -775,15 +792,21 @@ JS;
             }
         }
 
-        // Port Binding
+        // 6. Port Binding (Hanya set jika path benar-benar ada di data model perangkat)
         if (!empty($bindString)) {
-            if ($isFiberHome) {
+            if ($isFiberHome && $this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_FH_LanInterface")) {
                 $parameters["{$this->editFullPath}.X_FH_LanInterface"] = $bindString;
             } elseif ($isHuawei) {
-                $parameters["{$this->editFullPath}.X_HW_LANBIND"] = $bindString;
-                $parameters["{$this->editFullPath}.X_HW_LANBinding"] = $bindString;
+                if ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_HW_LANBIND")) {
+                    $parameters["{$this->editFullPath}.X_HW_LANBIND"] = $bindString;
+                }
+                if ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_HW_LANBinding")) {
+                    $parameters["{$this->editFullPath}.X_HW_LANBinding"] = $bindString;
+                }
             } elseif ($isZte) {
-                $parameters["{$this->editFullPath}.X_ZTE-COM_PortBind"] = $bindString;
+                if ($this->pathExistsInTree($this->rawParams, "{$this->editFullPath}.X_ZTE-COM_PortBind")) {
+                    $parameters["{$this->editFullPath}.X_ZTE-COM_PortBind"] = $bindString;
+                }
             }
         }
 
