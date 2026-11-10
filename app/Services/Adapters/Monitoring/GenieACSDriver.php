@@ -606,6 +606,18 @@ class GenieACSDriver
         }
     }
 
+    public function deleteDevice(string $deviceId): bool
+    {
+        try {
+            $url = rtrim($this->baseUrl, '/') . '/devices/' . urlencode($deviceId);
+            $response = \Illuminate\Support\Facades\Http::timeout($this->timeout)->delete($url);
+            return $response->successful();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("GenieACSDriver: Failed to delete device {$deviceId}: " . $e->getMessage());
+            return false;
+        }
+    }
+
     public function deletePreset(string $presetName): bool
     {
         try {

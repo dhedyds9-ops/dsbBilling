@@ -1,263 +1,264 @@
-<?php
-
-namespace App\Console\Commands;
-
-use Illuminate\Console\Command;
-use App\Services\Adapters\Monitoring\GenieACSDriver;
-use App\Models\ACS\ACSDevice;
-use App\Models\ACS\ACSAlarm;
-use App\Models\ACS\ACSLog;
-use App\Services\Telegram\TelegramService;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
-
-class AcsMonitorAlarms extends Command
-{
-    protected $signature = 'acs:monitor-alarms';
-    protected $description = 'Monitor ACS devices for alarms (Offline, bad RX Power) and notify via Telegram';
-
-    public function handle(TelegramService $telegram)
-    {
-        $this->info('Starting ACS alarm monitoring...');
-        
-        $acs = new GenieACSDriver();
-        
-        try {
-            // Fetch devices from GenieACS in bulk to avoid hammering the API
-            $acsDevices = $acs->listDevices([], 5000);
-        } catch (\Exception $e) {
-            $this->error('Failed to connect to GenieACS: ' . $e->getMessage());
-            return 1;
-        }
-
-        $localDevices = ACSDevice::withTrashed()->get()->keyBy('uuid');
-
-        foreach ($acsDevices as $deviceData) {
-            $deviceId = $deviceData['_id'];
-            if (!$localDevices->has($deviceId)) {
-                // Auto-discover new ACS Device
-                $sn = $deviceData['_deviceId']['_SerialNumber'] ?? null;
-                $mac = null; // Can extract from WANDevice or let the system update later
-                if (isset($deviceData['InternetGatewayDevice']['WANDevice']['1']['WANConnectionDevice']['1']['WANIPConnection']['1']['MACAddress']['_value'])) {
-                    $mac = $deviceData['InternetGatewayDevice']['WANDevice']['1']['WANConnectionDevice']['1']['WANIPConnection']['1']['MACAddress']['_value'];
-                }
-                
-                $ip = null;
-                $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
-                              $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
-                if ($connReqUrl) {
-                    $parsedUrl = parse_url($connReqUrl);
-                    $ip = $parsedUrl['host'] ?? null;
-                }
-                
-                try {
-                    $device = ACSDevice::withTrashed()->updateOrCreate(
-                        ['uuid' => $deviceId],
-                        [
-                            'serial_number' => $sn,
-                            'mac_address' => $mac,
-                            'ip_address' => $ip,
-                            'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
-                            'product_class' => $deviceData['_deviceId']['_ProductClass'] ?? null,
-                            'status' => 'online', // Initial assumption if we just got it
-                            'deleted_at' => null, // Restore if soft deleted
-                        ]
-                    );
-                    $localDevices->put($deviceId, $device);
-                } catch (\Illuminate\Database\QueryException $e) {
-                    if ($e->getCode() == 23000) {
-                        // Race condition with another process (like the Web UI) creating the device at the exact same time
-                        // We can just fetch it from the DB now
-                        $device = ACSDevice::withTrashed()->where('uuid', $deviceId)->first();
-                        if ($device) {
-                            $localDevices->put($deviceId, $device);
-                        }
-                    } else {
-                        throw $e;
-                    }
-                }
-                
-                try {
-                    app(\App\Services\ISP\CorrelationService::class)->evaluateAcsDevice($device);
-                } catch (\Throwable $e) {
-                    Log::error('CorrelationService evaluateAcsDevice error', ['msg' => $e->getMessage()]);
-                }
-            }
-
-            $device = $localDevices->get($deviceId);
-            $lastInform = $deviceData['_lastInform'] ?? null;
-            
-            // Extract PeriodicInformInterval
-            $informInterval = 300; // Default 5 mins
-            if (isset($deviceData['InternetGatewayDevice']['ManagementServer']['PeriodicInformInterval']['_value'])) {
-                $informInterval = (int)$deviceData['InternetGatewayDevice']['ManagementServer']['PeriodicInformInterval']['_value'];
-            } elseif (isset($deviceData['Device']['ManagementServer']['PeriodicInformInterval']['_value'])) {
-                $informInterval = (int)$deviceData['Device']['ManagementServer']['PeriodicInformInterval']['_value'];
-            }
-
-            $newStatus = 'offline';
-
-            // Jika PPPoE / Hotspot pelanggan atau ONU di OLT aktif, status modem pasti online
-            $isServiceOnline = false;
-            try {
-                if ($device->customerService?->pppoeUser?->is_online) {
-                    $isServiceOnline = true;
-                } elseif ($device->customerService?->hotspotUser?->is_online) {
-                    $isServiceOnline = true;
-                } elseif ($device->onu && $device->onu->status === 'active') {
-                    $isServiceOnline = true;
-                } elseif (!empty($device->ip_address) && \App\Models\ISP\OnlineSession::where('address', $device->ip_address)->exists()) {
-                    $isServiceOnline = true;
-                } elseif (!empty($device->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()->where('serial_number', $device->serial_number)->where('status', 'active')->whereNotNull('last_seen_at')->where('last_seen_at', '>=', now()->subMinutes(10))->exists()) {
-                    $isServiceOnline = true;
-                }
-            } catch (\Throwable) {}
-
-            if ($isServiceOnline) {
-                $newStatus = 'online';
-            } elseif ($lastInform) {
-                $diffInSeconds = now()->diffInSeconds(Carbon::parse($lastInform));
-                $onlineThreshold = max(600, ($informInterval * 2)); // 10 menit toleransi
-                $offlineThreshold = max(1800, ($informInterval * 6)); // 30 menit toleransi
-                
-                if ($diffInSeconds <= $onlineThreshold) {
-                    $newStatus = 'online';
-                } elseif ($diffInSeconds <= $offlineThreshold) {
-                    $newStatus = 'stale';
-                }
-            }
-
-            // Extract RX Power from bulk device data
-            $rxPower = null;
-            $rxPaths = [
-                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower._value',
-                'Device.Optical.1.Transceiver.RxPower._value',
-                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_RxPower._value'
-            ];
-
-            foreach ($rxPaths as $path) {
-                $parts = explode('.', $path);
-                $node = $deviceData;
-                $found = true;
-                foreach ($parts as $p) {
-                    if (!isset($node[$p])) {
-                        $found = false;
-                        break;
-                    }
-                    $node = $node[$p];
-                }
-                if ($found && $node !== '') {
-                    // Convert to dBm if needed
-                    $val = is_numeric($node) ? (float)$node / (($node > 1000 || $node < -1000) ? 1000 : 1) : null;
-                    if ($val !== null && $val != 0) {
-                        $rxPower = $val;
-                        break;
-                    }
-                }
-            }
-
-            $deviceChanged = false;
-
-            // Check Offline Alarm (with Mass Outage Suppression)
-            $notifyAcsAlarms = (bool) \App\Models\Setting::getValue('telegram.notify_acs_alarms', true);
-            $notifyAcsOnline = (bool) \App\Models\Setting::getValue('telegram.notify_acs_online', false);
-
-            if (in_array($device->status, ['online', 'stale']) && $newStatus === 'offline') {
-                if ($notifyAcsAlarms) {
-                    $this->triggerAlarm($device, 'critical', 'Perangkat Offline', "Modem tidak menghubungi server ACS melampaui batas toleransi (Inform Interval).", $telegram, suppressIfIncident: true);
-                } else {
-                    $this->triggerLog($device, 'critical', 'Perangkat Offline', "Modem tidak menghubungi server ACS.");
-                }
-                $deviceChanged = true;
-            } elseif ($device->status === 'offline' && in_array($newStatus, ['online', 'stale'])) {
-                $this->triggerLog($device, 'info', 'Perangkat Online Kembali', 'Modem kembali terhubung ke server ACS.');
-                
-                // Hanya kirim notifikasi Telegram ONLINE jika diaktifkan eksplisit di pengaturan
-                if ($notifyAcsAlarms && $notifyAcsOnline) {
-                    $telegram->sendAlarmNotification($device->serial_number, 'ONLINE', 'Perangkat kembali terhubung.');
-                }
-                
-                // Automatically acknowledge existing offline alarms
-                ACSAlarm::where('acs_device_id', $device->id)
-                    ->where('status', 'active')
-                    ->where('message', 'Perangkat Offline')
-                    ->update(['status' => 'resolved', 'acknowledged_at' => now(), 'updated_at' => now()]);
-                
-                $deviceChanged = true;
-            }
-
-            // Check RX Power Alarm (Only if online to avoid false alarms)
-            if ($newStatus === 'online' && $rxPower !== null) {
-                if ($rxPower < -27) {
-                    // Check if we already have an active alarm for this
-                    $existingAlarm = clone ACSAlarm::where('acs_device_id', $device->id)
-                        ->where('status', 'active')
-                        ->where('message', 'LIKE', '%Redaman Buruk%')
-                        ->first();
-                        
-                    if (!$existingAlarm) {
-                        $this->triggerAlarm($device, 'warning', 'Redaman Buruk (LOS Risk)', "Sinyal RX Power terdeteksi: {$rxPower} dBm", $telegram);
-                    }
-                } else {
-                    // Resolve bad rx power alarms if rx is good again
-                    ACSAlarm::where('acs_device_id', $device->id)
-                        ->where('status', 'active')
-                        ->where('message', 'LIKE', '%Redaman Buruk%')
-                        ->update(['status' => 'resolved', 'acknowledged_at' => now(), 'updated_at' => now()]);
-                }
-            }
-
-            // Update local DB
-            if ($deviceChanged || $device->status !== $newStatus) {
-                $oldStatus = $device->status;
-                $device->status = $newStatus;
-                $device->last_contact = now();
-                if ($lastInform) $device->last_inform = Carbon::parse($lastInform);
-                $device->save();
-                
-                if ($oldStatus !== $newStatus) {
-                    $ident = $device->serial_number ?: $device->mac_address ?: $device->uuid;
-                    event(new \App\Events\ISP\Tr069StatusChanged($ident, $oldStatus, $newStatus));
-                }
-            }
-        }
-        
-        $this->info('Monitoring completed.');
-        return 0;
-    }
-
-    protected function triggerAlarm(ACSDevice $device, string $severity, string $message, string $details, TelegramService $telegram, bool $suppressIfIncident = false)
-    {
-        ACSAlarm::create([
-            'uuid' => (string) Str::uuid(),
-            'acs_device_id' => $device->id,
-            'severity' => $severity,
-            'message' => $message,
-            'details' => ['description' => $details],
-            'status' => 'active',
-            'triggered_at' => now(),
-        ]);
-
-        // Suppress individual Telegram notifications if a Mass Outage incident is active
-        if ($suppressIfIncident) {
-            $hasActiveIncident = \App\Models\ISP\NetworkIncident::where('status', 'active')->exists();
-            if ($hasActiveIncident) {
-                return; // Alarm recorded in DB, but Telegram is suppressed
-            }
-        }
-        
-        $statusText = $severity === 'critical' ? 'OFFLINE' : 'WARNING';
-        $telegram->sendAlarmNotification($device->serial_number, $statusText, $message . ' - ' . $details);
-    }
-    
-    protected function triggerLog(ACSDevice $device, string $type, string $message, string $details)
-    {
-        ACSLog::create([
-            'uuid' => (string) Str::uuid(),
-            'acs_device_id' => $device->id,
-            'type' => $type,
-            'message' => $message,
-            'details' => ['description' => $details],
-        ]);
-    }
-}
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use App\Services\Adapters\Monitoring\GenieACSDriver;
+use App\Models\ACS\ACSDevice;
+use App\Models\ACS\ACSAlarm;
+use App\Models\ACS\ACSLog;
+use App\Services\Telegram\TelegramService;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+
+class AcsMonitorAlarms extends Command
+{
+    protected $signature = 'acs:monitor-alarms';
+    protected $description = 'Monitor ACS devices for alarms (Offline, bad RX Power) and notify via Telegram';
+
+    public function handle(TelegramService $telegram)
+    {
+        $this->info('Starting ACS alarm monitoring...');
+        
+        $acs = new GenieACSDriver();
+        
+        try {
+            // Fetch devices from GenieACS in bulk to avoid hammering the API
+            $acsDevices = $acs->listDevices([], 5000);
+        } catch (\Exception $e) {
+            $this->error('Failed to connect to GenieACS: ' . $e->getMessage());
+            return 1;
+        }
+
+        $localDevices = ACSDevice::withTrashed()->get()->keyBy('uuid');
+
+        foreach ($acsDevices as $deviceData) {
+            $deviceId = $deviceData['_id'];
+            if (!$localDevices->has($deviceId)) {
+                // Auto-discover new ACS Device
+                $sn = $deviceData['_deviceId']['_SerialNumber'] ?? null;
+                $mac = null; // Can extract from WANDevice or let the system update later
+                if (isset($deviceData['InternetGatewayDevice']['WANDevice']['1']['WANConnectionDevice']['1']['WANIPConnection']['1']['MACAddress']['_value'])) {
+                    $mac = $deviceData['InternetGatewayDevice']['WANDevice']['1']['WANConnectionDevice']['1']['WANIPConnection']['1']['MACAddress']['_value'];
+                }
+                
+                $ip = null;
+                $connReqUrl = $deviceData['InternetGatewayDevice']['ManagementServer']['ConnectionRequestURL']['_value'] ?? 
+                              $deviceData['Device']['ManagementServer']['ConnectionRequestURL']['_value'] ?? null;
+                if ($connReqUrl) {
+                    $parsedUrl = parse_url($connReqUrl);
+                    $ip = $parsedUrl['host'] ?? null;
+                }
+                
+                try {
+                    $device = ACSDevice::withTrashed()->updateOrCreate(
+                        ['uuid' => $deviceId],
+                        [
+                            'serial_number' => $sn,
+                            'mac_address' => $mac,
+                            'ip_address' => $ip,
+                            'manufacturer' => $deviceData['_deviceId']['_Manufacturer'] ?? null,
+                            'product_class' => $deviceData['_deviceId']['_ProductClass'] ?? null,
+                            'status' => 'online', // Initial assumption if we just got it
+                            'deleted_at' => null, // Restore if soft deleted
+                        ]
+                    );
+                    $localDevices->put($deviceId, $device);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->getCode() == 23000) {
+                        // Race condition with another process (like the Web UI) creating the device at the exact same time
+                        // We can just fetch it from the DB now
+                        $device = ACSDevice::withTrashed()->where('uuid', $deviceId)->first();
+                        if ($device) {
+                            $localDevices->put($deviceId, $device);
+                        }
+                    } else {
+                        throw $e;
+                    }
+                }
+                
+                try {
+                    app(\App\Services\ISP\CorrelationService::class)->evaluateAcsDevice($device);
+                } catch (\Throwable $e) {
+                    Log::error('CorrelationService evaluateAcsDevice error', ['msg' => $e->getMessage()]);
+                }
+            }
+
+            $device = $localDevices->get($deviceId);
+            $lastInform = $deviceData['_lastInform'] ?? null;
+            
+            // Extract PeriodicInformInterval
+            $informInterval = 300; // Default 5 mins
+            if (isset($deviceData['InternetGatewayDevice']['ManagementServer']['PeriodicInformInterval']['_value'])) {
+                $informInterval = (int)$deviceData['InternetGatewayDevice']['ManagementServer']['PeriodicInformInterval']['_value'];
+            } elseif (isset($deviceData['Device']['ManagementServer']['PeriodicInformInterval']['_value'])) {
+                $informInterval = (int)$deviceData['Device']['ManagementServer']['PeriodicInformInterval']['_value'];
+            }
+
+            $newStatus = 'offline';
+
+            if ($lastInform) {
+                $diffInSeconds = now()->diffInSeconds(Carbon::parse($lastInform));
+                $onlineThreshold = max(600, ($informInterval * 2)); // 10 menit toleransi
+                $offlineThreshold = max(720, ($informInterval * 2) + 120); // 12 menit toleransi
+                
+                if ($diffInSeconds <= $onlineThreshold) {
+                    $newStatus = 'online';
+                } elseif ($diffInSeconds <= $offlineThreshold) {
+                    $newStatus = 'stale';
+                }
+            }
+
+            // Fallback: jika link optik ONU aktif di OLT dalam 10 menit terakhir dan inform masih wajar (<= 30 menit)
+            if ($newStatus !== 'online') {
+                $hasActiveOnu = false;
+                if ($device->onu && $device->onu->status === 'active' && $device->onu->last_seen_at && abs(now()->diffInMinutes($device->onu->last_seen_at)) <= 10) {
+                    $hasActiveOnu = true;
+                } elseif (!empty($device->serial_number)) {
+                    $hasActiveOnu = \App\Models\ISP\Onu::withoutGlobalScopes()
+                        ->where('serial_number', $device->serial_number)
+                        ->where('status', 'active')
+                        ->whereNotNull('last_seen_at')
+                        ->where('last_seen_at', '>=', now()->subMinutes(10))
+                        ->exists();
+                }
+
+                if ($hasActiveOnu && $lastInform && abs(now()->diffInMinutes(Carbon::parse($lastInform))) <= 30) {
+                    $newStatus = 'online';
+                }
+            }
+
+            // Extract RX Power from bulk device data
+            $rxPower = null;
+            $rxPaths = [
+                'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.1.X_ZTE-COM_RxPower._value',
+                'Device.Optical.1.Transceiver.RxPower._value',
+                'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.X_ALG-COM_RxPower._value'
+            ];
+
+            foreach ($rxPaths as $path) {
+                $parts = explode('.', $path);
+                $node = $deviceData;
+                $found = true;
+                foreach ($parts as $p) {
+                    if (!isset($node[$p])) {
+                        $found = false;
+                        break;
+                    }
+                    $node = $node[$p];
+                }
+                if ($found && $node !== '') {
+                    // Convert to dBm if needed
+                    $val = is_numeric($node) ? (float)$node / (($node > 1000 || $node < -1000) ? 1000 : 1) : null;
+                    if ($val !== null && $val != 0) {
+                        $rxPower = $val;
+                        break;
+                    }
+                }
+            }
+
+            $deviceChanged = false;
+
+            // Check Offline Alarm (with Mass Outage Suppression)
+            $notifyAcsAlarms = (bool) \App\Models\Setting::getValue('telegram.notify_acs_alarms', true);
+            $notifyAcsOnline = (bool) \App\Models\Setting::getValue('telegram.notify_acs_online', false);
+
+            if (in_array($device->status, ['online', 'stale']) && $newStatus === 'offline') {
+                if ($notifyAcsAlarms) {
+                    $this->triggerAlarm($device, 'critical', 'Perangkat Offline', "Modem tidak menghubungi server ACS melampaui batas toleransi (Inform Interval).", $telegram, suppressIfIncident: true);
+                } else {
+                    $this->triggerLog($device, 'critical', 'Perangkat Offline', "Modem tidak menghubungi server ACS.");
+                }
+                $deviceChanged = true;
+            } elseif ($device->status === 'offline' && in_array($newStatus, ['online', 'stale'])) {
+                $this->triggerLog($device, 'info', 'Perangkat Online Kembali', 'Modem kembali terhubung ke server ACS.');
+                
+                // Hanya kirim notifikasi Telegram ONLINE jika diaktifkan eksplisit di pengaturan
+                if ($notifyAcsAlarms && $notifyAcsOnline) {
+                    $telegram->sendAlarmNotification($device->serial_number, 'ONLINE', 'Perangkat kembali terhubung.');
+                }
+                
+                // Automatically acknowledge existing offline alarms
+                ACSAlarm::where('acs_device_id', $device->id)
+                    ->where('status', 'active')
+                    ->where('message', 'Perangkat Offline')
+                    ->update(['status' => 'resolved', 'acknowledged_at' => now(), 'updated_at' => now()]);
+                
+                $deviceChanged = true;
+            }
+
+            // Check RX Power Alarm (Only if online to avoid false alarms)
+            if ($newStatus === 'online' && $rxPower !== null) {
+                if ($rxPower < -27) {
+                    // Check if we already have an active alarm for this
+                    $existingAlarm = clone ACSAlarm::where('acs_device_id', $device->id)
+                        ->where('status', 'active')
+                        ->where('message', 'LIKE', '%Redaman Buruk%')
+                        ->first();
+                        
+                    if (!$existingAlarm) {
+                        $this->triggerAlarm($device, 'warning', 'Redaman Buruk (LOS Risk)', "Sinyal RX Power terdeteksi: {$rxPower} dBm", $telegram);
+                    }
+                } else {
+                    // Resolve bad rx power alarms if rx is good again
+                    ACSAlarm::where('acs_device_id', $device->id)
+                        ->where('status', 'active')
+                        ->where('message', 'LIKE', '%Redaman Buruk%')
+                        ->update(['status' => 'resolved', 'acknowledged_at' => now(), 'updated_at' => now()]);
+                }
+            }
+
+            // Update local DB
+            if ($deviceChanged || $device->status !== $newStatus) {
+                $oldStatus = $device->status;
+                $device->status = $newStatus;
+                $device->last_contact = now();
+                if ($lastInform) $device->last_inform = Carbon::parse($lastInform);
+                $device->save();
+                
+                if ($oldStatus !== $newStatus) {
+                    $ident = $device->serial_number ?: $device->mac_address ?: $device->uuid;
+                    event(new \App\Events\ISP\Tr069StatusChanged($ident, $oldStatus, $newStatus));
+                }
+            }
+        }
+        
+        $this->info('Monitoring completed.');
+        return 0;
+    }
+
+    protected function triggerAlarm(ACSDevice $device, string $severity, string $message, string $details, TelegramService $telegram, bool $suppressIfIncident = false)
+    {
+        ACSAlarm::create([
+            'uuid' => (string) Str::uuid(),
+            'acs_device_id' => $device->id,
+            'severity' => $severity,
+            'message' => $message,
+            'details' => ['description' => $details],
+            'status' => 'active',
+            'triggered_at' => now(),
+        ]);
+
+        // Suppress individual Telegram notifications if a Mass Outage incident is active
+        if ($suppressIfIncident) {
+            $hasActiveIncident = \App\Models\ISP\NetworkIncident::where('status', 'active')->exists();
+            if ($hasActiveIncident) {
+                return; // Alarm recorded in DB, but Telegram is suppressed
+            }
+        }
+        
+        $statusText = $severity === 'critical' ? 'OFFLINE' : 'WARNING';
+        $telegram->sendAlarmNotification($device->serial_number, $statusText, $message . ' - ' . $details);
+    }
+    
+    protected function triggerLog(ACSDevice $device, string $type, string $message, string $details)
+    {
+        ACSLog::create([
+            'uuid' => (string) Str::uuid(),
+            'acs_device_id' => $device->id,
+            'type' => $type,
+            'message' => $message,
+            'details' => ['description' => $details],
+        ]);
+    }
+}

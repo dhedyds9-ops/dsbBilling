@@ -59,25 +59,20 @@ class Index extends BaseACSComponent
                             }
                         }
 
-                        $updateData = [
-                            'last_contact' => $now,
-                        ];
+                        $updateData = [];
                         if (isset($lastInform)) {
                             $updateData['last_inform'] = $lastInform;
                         }
 
                         if ($isOnline) {
                             $updateData['status'] = 'online';
+                            $updateData['last_contact'] = $lastInform ?? $now;
                         } else {
-                            // Cek apakah database mencatat session aktif atau link optik ONU aktif di OLT dalam 10 menit terakhir
+                            // Cek apakah database mencatat link optik ONU aktif di OLT dalam 10 menit terakhir DAN inform masih wajar (<= 30 menit)
                             $rec = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
                                 ->where('uuid', $uuid)
                                 ->first(['id', 'ip_address', 'serial_number', 'status']);
                             if ($rec) {
-                                $hasActiveSession = !empty($rec->ip_address) 
-                                    && isset($activeIpFlip[$rec->ip_address])
-                                    && isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 15;
-                                    
                                 $hasActiveOnu = !empty($rec->serial_number) && \App\Models\ISP\Onu::withoutGlobalScopes()
                                     ->where('serial_number', $rec->serial_number)
                                     ->where('status', 'active')
@@ -85,8 +80,9 @@ class Index extends BaseACSComponent
                                     ->where('last_seen_at', '>=', now()->subMinutes(10))
                                     ->exists();
 
-                                if ($hasActiveSession || $hasActiveOnu) {
+                                if ($hasActiveOnu && isset($lastInform) && abs($now->diffInMinutes($lastInform)) <= 30) {
                                     $updateData['status'] = 'online';
+                                    $updateData['last_contact'] = $now;
                                 } else {
                                     $updateData['status'] = 'offline';
                                 }
@@ -107,17 +103,35 @@ class Index extends BaseACSComponent
     public function delete($id)
     {
         $device = ACSDevice::findOrFail($id);
+        $uuid = $device->uuid;
         $device->delete();
-        session()->flash('success', 'Device berhasil dihapus!');
+
+        if ($uuid) {
+            try {
+                $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+                $acsService->deleteDevice($uuid);
+            } catch (\Throwable) {}
+        }
+
+        session()->flash('success', 'Device berhasil dihapus dari dsBilling dan server GenieACS!');
     }
 
     public function deleteAllOfflineDevices()
     {
         try {
-            $count = ACSDevice::where('status', 'offline')->count();
+            $offlineDevices = ACSDevice::where('status', 'offline')->get();
+            $count = $offlineDevices->count();
             if ($count > 0) {
-                ACSDevice::where('status', 'offline')->delete();
-                session()->flash('success', "Berhasil menghapus {$count} device offline!");
+                $acsService = new \App\Services\Adapters\Monitoring\GenieACSDriver();
+                foreach ($offlineDevices as $dev) {
+                    if ($dev->uuid) {
+                        try {
+                            $acsService->deleteDevice($dev->uuid);
+                        } catch (\Throwable) {}
+                    }
+                    $dev->delete();
+                }
+                session()->flash('success', "Berhasil menghapus {$count} device offline dari dsBilling dan server GenieACS!");
             } else {
                 session()->flash('info', 'Tidak ada device offline yang ditemukan.');
             }
@@ -598,12 +612,16 @@ class Index extends BaseACSComponent
                     }
                     
                     // Bind Onu ke CustomerService jika berbeda (Modem Baru)
+                    // HANYA jika modem ini aktif/online atau CustomerService belum punya ONU aktif
                     if ($customerService->onu_id !== $onu->id) {
-                        // Putuskan Onu lama
-                        if ($customerService->onu_id) {
-                            \App\Models\ISP\Onu::where('id', $customerService->onu_id)->update(['status' => 'inactive']); // Opsional menandai ONU lama inactive
+                        $currentOnu = $customerService->onu;
+                        $isCurrentOnuActive = $currentOnu && $currentOnu->status === 'active';
+                        if (!$isCurrentOnuActive || $status === 'online') {
+                            if ($customerService->onu_id) {
+                                \App\Models\ISP\Onu::where('id', $customerService->onu_id)->update(['status' => 'inactive']);
+                            }
+                            $customerService->update(['onu_id' => $onu->id]);
                         }
-                        $customerService->update(['onu_id' => $onu->id]);
                     }
                 }
             }
@@ -631,33 +649,29 @@ class Index extends BaseACSComponent
             }
         }
 
-        // Jika layanan PPPoE/Hotspot pelanggan atau ONU di OLT aktif, status modem pasti online
-        if (!empty($acsDeviceParams['customer_service_id'])) {
-            $cs = \App\Models\Customer\CustomerService::find($acsDeviceParams['customer_service_id']);
-            if ($cs?->pppoeUser?->is_online || $cs?->hotspotUser?->is_online) {
-                $acsDeviceParams['status'] = 'online';
+        // Validasi status: utamakan lastInform TR-069.
+        // JANGAN blind override jika PPPoE online (karena pelanggan bisa jadi sedang pakai modem baru, sedangkan modem ini modem lama!)
+        if ($status !== 'online') {
+            $hasActiveOnu = false;
+            if (!empty($acsDeviceParams['onu_id'])) {
+                $linkedOnu = \App\Models\ISP\Onu::find($acsDeviceParams['onu_id']);
+                if ($linkedOnu && $linkedOnu->status === 'active' && $linkedOnu->last_seen_at && abs(now()->diffInMinutes($linkedOnu->last_seen_at)) <= 10) {
+                    $hasActiveOnu = true;
+                }
+            } elseif (!empty($serialNumber)) {
+                $matchedOnu = $findOnu($serialNumber, $mac);
+                if ($matchedOnu && $matchedOnu->status === 'active' && $matchedOnu->last_seen_at && abs(now()->diffInMinutes($matchedOnu->last_seen_at)) <= 10) {
+                    $hasActiveOnu = true;
+                }
             }
-        }
-        if (!empty($acsDeviceParams['onu_id'])) {
-            $linkedOnu = \App\Models\ISP\Onu::find($acsDeviceParams['onu_id']);
-            // Hanya tandai online jika ONU active DAN GenieACS lastInform masih baru (<= 15 menit)
-            if ($linkedOnu && $linkedOnu->status === 'active' && $lastInform && abs(now()->diffInMinutes($lastInform)) <= 15) {
-                $acsDeviceParams['status'] = 'online';
-            }
-        }
 
-        // Validasi tambahan: Jika IP PPPoE aktif di MikroTik session atau ONU di OLT aktif (meski belum terikat pelanggan)
-        if (!empty($acsDeviceParams['ip_address'])) {
-            if (\App\Models\ISP\OnlineSession::where('address', $acsDeviceParams['ip_address'])->exists()) {
+            if ($hasActiveOnu && $lastInform && abs(now()->diffInMinutes($lastInform)) <= 30) {
                 $acsDeviceParams['status'] = 'online';
+            } else {
+                $acsDeviceParams['status'] = 'offline';
             }
-        }
-        if (!empty($serialNumber)) {
-            $matchedOnu = $findOnu($serialNumber, $mac);
-            // Hanya tandai online jika ONU active DAN GenieACS lastInform masih baru (<= 15 menit)
-            if ($matchedOnu && $matchedOnu->status === 'active' && $lastInform && abs(now()->diffInMinutes($lastInform)) <= 15) {
-                $acsDeviceParams['status'] = 'online';
-            }
+        } else {
+            $acsDeviceParams['status'] = 'online';
         }
 
         // Penanganan SoftDeletes + Unique Constraint
@@ -733,26 +747,32 @@ class Index extends BaseACSComponent
         try {
             $driver = new \App\Services\Adapters\Monitoring\GenieACSDriver();
             $result = $driver->summonDeviceResult($uuid);
-            if ($result['connection_request_success']) {
-                // Tunggu sejenak agar Inform selesai diproses oleh GenieACS, lalu perbarui data lokal
+
+            if ($result['connection_request_success'] || $result['task_queued']) {
+                // Tunggu jeda toleransi handshake Inform agar GenieACS memperbarui parameter
+                usleep(1500000); // 1.5 detik
                 try {
-                    usleep(1200000); // 1.2 detik
                     $latest = $driver->getDeviceParameters($uuid);
                     if (!empty($latest)) {
                         $this->saveDeviceData($latest);
                     }
-                } catch (\Throwable $te) {
-                    // Abaikan jika proses fetch parameters gagal di background
-                }
+                } catch (\Throwable $te) {}
 
-                session()->flash('success', "Perintah summon berhasil dikirim dan perangkat merespons langsung. Data perangkat ($uuid) telah diperbarui.");
-            } elseif ($result['task_queued']) {
-                session()->flash('info', "Perintah refresh parameter berhasil diantrikan ke GenieACS untuk ($uuid). Karena IP modem di jaringan privat/NAT atau diblokir firewall modem, data akan otomatis terupdate saat modem mengirim Inform berkala berikutnya.");
+                $device = ACSDevice::where('uuid', $uuid)->first();
+                $isNowOnline = $device && $device->status === 'online';
+
+                if ($isNowOnline) {
+                    session()->flash('success', "Perangkat ($uuid) berhasil disummon dan langsung ONLINE! Data parameter terbaru telah diperbarui.");
+                } elseif ($result['connection_request_success']) {
+                    session()->flash('success', "Perintah summon terkirim ke perangkat ($uuid). Menunggu proses Inform lengkap dari modem.");
+                } else {
+                    session()->flash('info', "Perintah summon telah diantrikan di server GenieACS untuk ($uuid). Data akan otomatis diperbarui saat modem terhubung.");
+                }
             } else {
-                session()->flash('error', "Gagal melakukan summon. Perangkat tidak ditemukan di GenieACS atau server ACS tidak merespons.");
+                session()->flash('error', "Gagal melakukan summon. " . ($result['error'] ?? 'Perangkat tidak ditemukan di GenieACS atau server ACS tidak merespons.'));
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Error: ' . $e->getMessage());
+            session()->flash('error', 'Error saat summon: ' . $e->getMessage());
         }
     }
 
