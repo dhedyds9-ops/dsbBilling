@@ -665,7 +665,7 @@ class Show extends \App\Livewire\ACS\BaseACSComponent
                 $this->wifiSecurity = 'WPA_WPA2';
             } elseif (in_array($rawSecurity, ['WPA', 'WPA-Personal'])) {
                 $this->wifiSecurity = 'WPA';
-            } elseif (in_array($rawSecurity, ['None', 'Open', 'Basic'])) {
+            } elseif (in_array(strtolower((string) $rawSecurity), ['none', 'open', 'basic'], true)) {
                 $this->wifiSecurity = 'OPEN';
             } else {
                 $this->wifiSecurity = 'WPA_WPA2';

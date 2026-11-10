@@ -415,7 +415,7 @@ class Show extends AdminComponent
                 $this->wifiSecurity = 'WPAPSKWPA2PSK';
             } elseif (in_array($rawSecurity, ['Basic', 'WEP-128', 'WEP-64'])) {
                 $this->wifiSecurity = 'Basic';
-            } elseif (in_array($rawSecurity, ['None', 'Open'])) {
+            } elseif (in_array(strtolower((string) $rawSecurity), ['none', 'open'], true)) {
                 $this->wifiSecurity = 'None';
             } else {
                 $this->wifiSecurity = $rawSecurity ? 'WPA2PSK' : 'None';
@@ -479,11 +479,15 @@ class Show extends AdminComponent
             }
             
             $secMode = $this->wifiSecurity;
+            $openBeacon = $driver->resolveOpenBeaconValue(
+                (string) ($this->device->vendor?->name ?? 'default'),
+                (string) ($params['_id'] ?? $targetId)
+            );
             $tr098Modes = [
                 'WPA2PSK' => '11i',
                 'WPAPSKWPA2PSK' => 'WPAand11i',
                 'Basic' => 'Basic',
-                'None' => 'None',
+                'None' => $openBeacon,
             ];
             $tr181Modes = [
                 'WPA2PSK' => 'WPA2-Personal',
@@ -505,6 +509,10 @@ class Show extends AdminComponent
             }
             if (!isset($paramsToSet[array_keys($secCandidates)[0]]) && !isset($paramsToSet[array_keys($secCandidates)[1]])) {
                 $paramsToSet[array_keys($secCandidates)[0]] = $tr098Modes[$secMode] ?? $secMode;
+            }
+            if ($secMode === 'None' && $openBeacon === 'Basic' && isset($paramsToSet[array_keys($secCandidates)[0]])) {
+                // Huawei/FiberHome: Open = Basic tanpa enkripsi WEP.
+                $paramsToSet["InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wlanIndex}.BasicEncryptionModes"] = 'None';
             }
             
             $trueDeviceId = $params['_id'] ?? $targetId;

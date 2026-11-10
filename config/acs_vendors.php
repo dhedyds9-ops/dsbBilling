@@ -17,6 +17,7 @@ return [
         'wpa_passphrase' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'wpa_pre_shared_key' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'security_mode' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType',
+        'open_beacon_value' => 'None',
         
         // WAN Paths Base
         'wan_device' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice',
@@ -28,6 +29,8 @@ return [
         'wpa_passphrase' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'wpa_pre_shared_key' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'security_mode' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType',
+        // BeaconType untuk mode Open (tanpa sandi) pada ZTE.
+        'open_beacon_value' => 'None',
         
         'wan_device' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice',
         'port_bind' => 'X_ZTE-COM_PortBind',
@@ -40,6 +43,8 @@ return [
         'wpa_passphrase' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'wpa_pre_shared_key' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'security_mode' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType',
+        // Huawei: mode Open = 'Basic' (+ BasicEncryptionModes None)
+        'open_beacon_value' => 'Basic',
 
         'wan_device' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice',
         'port_bind' => 'X_HW_LANBinding',
@@ -52,6 +57,8 @@ return [
         'wpa_passphrase' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'wpa_pre_shared_key' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
         'security_mode' => 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType', // Seringkali WPAEncryptionModes di FH
+        // FiberHome: mode Open = 'Basic' (+ BasicEncryptionModes None)
+        'open_beacon_value' => 'Basic',
 
         'wan_device' => 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice',
         'port_bind' => 'X_FH_PortBind', // Asumsi path FiberHome

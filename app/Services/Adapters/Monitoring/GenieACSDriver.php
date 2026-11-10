@@ -1124,7 +1124,7 @@ JS;
 
         // 3. SSID Name (Vendor + Standard + VirtualParameter sync)
         $params[$prefix . 'SSID'] = trim($ssid);
-        $vendorSsidPath = $this->getWifiParameterPath($vendor, 'ssid');
+        $vendorSsidPath = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'ssid'), $wlanIndex);
         if (!empty($vendorSsidPath)) {
             $params[$vendorSsidPath] = trim($ssid);
         }
@@ -1135,9 +1135,17 @@ JS;
         // 4. Security Mode & Password
         if ($password !== null) {
             $trimmedPass = (string) $password;
+            $openBeacon = $this->resolveOpenBeaconValue($vendor, $deviceId);
 
             if ($securityMode === 'OPEN') {
-                $params[$prefix . 'BeaconType'] = 'None';
+                // Mode Open: JANGAN kirim parameter password/PSK kosong.
+                // SetParameterValues bersifat atomik — PreSharedKey '' ditolak ONU (fault 9007)
+                // sehingga BeaconType ikut batal diterapkan.
+                $params[$prefix . 'BeaconType'] = $openBeacon;
+                if ($openBeacon === 'Basic') {
+                    // Huawei/FiberHome: Open = Basic tanpa enkripsi WEP.
+                    $params[$prefix . 'BasicEncryptionModes'] = 'None';
+                }
             } elseif ($securityMode === 'WPA2') {
                 $params[$prefix . 'BeaconType'] = '11i';
                 $params[$prefix . 'WPAEncryptionModes'] = 'AESEncryption';
@@ -1158,18 +1166,21 @@ JS;
                 $params[$prefix . 'PreSharedKey.1.PreSharedKey'] = $trimmedPass;
             }
 
-            // Vendor-specific paths fallback
-            $secPath = $this->getWifiParameterPath($vendor, 'security_mode');
-            if (!empty($secPath)) {
-                $params[$secPath] = str_contains($secPath, 'BeaconType') ? ($securityMode === 'OPEN' ? 'None' : '11i') : 'WPA2-Personal';
+            // Vendor-specific paths fallback (path di config di-hardcode index 1 → sesuaikan ke WLAN target)
+            $secPath = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'security_mode'), $wlanIndex);
+            if (!empty($secPath) && !isset($params[$secPath])) {
+                $params[$secPath] = str_contains($secPath, 'BeaconType') ? ($securityMode === 'OPEN' ? $openBeacon : '11i') : 'WPA2-Personal';
             }
-            $vPass1 = $this->getWifiParameterPath($vendor, 'wpa_passphrase');
-            if (!empty($vPass1)) {
-                $params[$vPass1] = $trimmedPass;
-            }
-            $vPass2 = $this->getWifiParameterPath($vendor, 'wpa_pre_shared_key');
-            if (!empty($vPass2)) {
-                $params[$vPass2] = $trimmedPass;
+
+            if ($securityMode !== 'OPEN') {
+                $vPass1 = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'wpa_passphrase'), $wlanIndex);
+                if (!empty($vPass1)) {
+                    $params[$vPass1] = $trimmedPass;
+                }
+                $vPass2 = $this->wlanIndexedPath($this->getWifiParameterPath($vendor, 'wpa_pre_shared_key'), $wlanIndex);
+                if (!empty($vPass2)) {
+                    $params[$vPass2] = $trimmedPass;
+                }
             }
 
             if ($wlanIndex === 1 && $securityMode !== 'OPEN') {
@@ -1178,6 +1189,52 @@ JS;
         }
 
         return $this->setParameterValues($deviceId, $params);
+    }
+
+    /**
+     * Nilai BeaconType untuk mode Open (tanpa sandi), per vendor:
+     *  - ZTE              → 'None'
+     *  - Huawei/FiberHome → 'Basic' (disertai BasicEncryptionModes = 'None')
+     * Bisa di-override via config acs_vendors.{vendor}.open_beacon_value.
+     * Vendor dideteksi dari nama vendor, lalu fallback ke Device ID GenieACS (OUI-ProductClass-Serial).
+     */
+    public function resolveOpenBeaconValue(string $vendor = 'default', ?string $deviceId = null): string
+    {
+        $vendorKey = strtolower(trim($vendor));
+        $configured = $vendorKey !== 'default' ? config("acs_vendors.{$vendorKey}.open_beacon_value") : null;
+        if (is_string($configured) && $configured !== '') {
+            return $configured;
+        }
+
+        $haystack = $vendorKey . ' ' . strtolower((string) $deviceId);
+        $signatures = [
+            'zte' => ['zte'],
+            'huawei' => ['huawei', 'hwtc', 'hg8'],
+            'fiberhome' => ['fiberhome', 'fhtt', 'an55'],
+        ];
+        foreach ($signatures as $key => $needles) {
+            foreach ($needles as $needle) {
+                if (str_contains($haystack, $needle)) {
+                    $value = config("acs_vendors.{$key}.open_beacon_value");
+                    if (is_string($value) && $value !== '') {
+                        return $value;
+                    }
+                }
+            }
+        }
+
+        return (string) config('acs_vendors.default.open_beacon_value', 'None');
+    }
+
+    /**
+     * Ganti segmen "WLANConfiguration.N." pada path vendor ke index WLAN target.
+     */
+    private function wlanIndexedPath(string $path, int $wlanIndex): string
+    {
+        if ($path === '') {
+            return '';
+        }
+        return preg_replace('/\.WLANConfiguration\.\d+\./', ".WLANConfiguration.{$wlanIndex}.", $path) ?? $path;
     }
 
     public function addProvisionTask(string $deviceId, string $provisionName): bool

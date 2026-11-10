@@ -491,7 +491,9 @@ class MobileAcsProxyController extends Controller
                 }
             }
 
-            if ($request->has('password')) {
+            $secUpper = strtoupper((string) $request->input('security_mode', ''));
+
+            if ($request->has('password') && $secUpper !== 'OPEN') {
                 $pass = $request->input('password');
                 $kv["{$prefix}.PreSharedKey.1.KeyPassphrase"] = $pass;
                 $kv["{$prefix}.KeyPassphrase"] = $pass;
@@ -511,8 +513,12 @@ class MobileAcsProxyController extends Controller
             if ($request->has('security_mode')) {
                 $sec = strtoupper((string) $request->input('security_mode'));
                 if ($sec === 'OPEN') {
-                    $kv["{$prefix}.BeaconType"] = 'None';
-                    $kv["{$prefix}.BasicAuthenticationMode"] = 'None';
+                    $openBeacon = $this->driver->resolveOpenBeaconValue('default', $cleanId);
+                    $kv["{$prefix}.BeaconType"] = $openBeacon;
+                    if ($openBeacon === 'Basic') {
+                        // Huawei/FiberHome: Open = Basic tanpa enkripsi WEP.
+                        $kv["{$prefix}.BasicEncryptionModes"] = 'None';
+                    }
                 } elseif ($sec === 'WPA2') {
                     $kv["{$prefix}.BeaconType"] = '11i';
                     $kv["{$prefix}.IEEE80211iAuthenticationMode"] = 'PSKAuthentication';
