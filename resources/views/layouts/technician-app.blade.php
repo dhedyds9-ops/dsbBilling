@@ -302,8 +302,8 @@
                 </div>
             @endif
 
-            <!-- MAIN CONTAINER: WIDE ON DESKTOP, MAX-W-MD ON MOBILE -->
-            <main class="flex-1 w-full max-w-md lg:max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-12">
+            <!-- MAIN CONTAINER: WIDE ON DESKTOP, FLUID ON MOBILE -->
+            <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-12">
                 {{ $slot ?? '' }}
                 @yield('content')
             </main>
