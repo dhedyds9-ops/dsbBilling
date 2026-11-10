@@ -109,7 +109,9 @@ class Wizard extends Component
                 ->whereIn('status', ['approved', 'dispatched'])
                 ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
 
-            if (!$isAdmin) {
+            $viewAll = request()->query('view_all', '0') === '1' && $isAdmin;
+            if (!$viewAll) {
+                // Kunci penugasan ke akun yang login (baik teknisi maupun staf/manager yang bertugas ke lapangan)
                 $ticketQuery->where('assigned_to', $user->id);
                 $installationQuery->where(function($q) use ($user) {
                     $q->where('assigned_to', $user->id)->orWhere('technician_id', $user->id);

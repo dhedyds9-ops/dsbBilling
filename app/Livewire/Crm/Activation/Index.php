@@ -44,7 +44,15 @@ class Index extends BaseCrmComponent
 
     public function openActivationModal($surveyId)
     {
-        $survey = Survey::with('prospect')->findOrFail($surveyId);
+        $survey = Survey::with(['prospect', 'installation'])->findOrFail($surveyId);
+        
+        // Validasi Kritis: Instalasi fisik wajib selesai dan terverifikasi
+        $inst = $survey->installation;
+        if ($inst && !in_array($inst->status, ['completed', 'verified'])) {
+            session()->flash('error', "Layanan belum dapat diaktifkan: Pekerjaan instalasi fisik (SPK #{$inst->id}) masih berstatus '" . strtoupper($inst->status) . "'. Pastikan teknisi telah menyelesaikan penarikan kabel & scan modem ONT di lapangan.");
+            return;
+        }
+
         $this->activation_survey_id = $survey->id;
         $this->activation_prospect_name = $survey->prospect->name ?? 'Unknown';
         
@@ -69,7 +77,13 @@ class Index extends BaseCrmComponent
             'network_profile_id' => 'required|exists:network_profiles,id',
         ]);
 
-        $survey = Survey::with('prospect')->findOrFail($this->activation_survey_id);
+        $survey = Survey::with(['prospect', 'installation'])->findOrFail($this->activation_survey_id);
+        $inst = $survey->installation;
+
+        if ($inst && !in_array($inst->status, ['completed', 'verified'])) {
+            $this->addError('activation', 'Gagal aktivasi: Pekerjaan instalasi fisik belum selesai atau belum terverifikasi oleh teknisi.');
+            return;
+        }
         
         try {
             $data = [
@@ -80,6 +94,9 @@ class Index extends BaseCrmComponent
                 'service_profile_id' => $this->service_profile_id,
                 'network_profile_id' => $this->network_profile_id,
                 'odp_id' => $survey->odp_id,
+                'onu_id' => $inst?->onu_id,
+                'mac_address' => $inst?->onu_mac_address,
+                'onu_serial_number' => $inst?->onu_serial_number,
                 'username' => $this->pppoe_username,
                 'password' => $this->pppoe_password,
                 'status' => 'active',
@@ -105,7 +122,7 @@ class Index extends BaseCrmComponent
     public function render()
     {
         if ($this->activeTab === 'pending') {
-            $query = Survey::with(['prospect', 'assignedTo', 'odp'])
+            $query = Survey::with(['prospect', 'assignedTo', 'odp', 'installation'])
                 ->where('status', 'completed')
                 ->where('recommendation', 'feasible')
                 ->whereHas('prospect', function($q) {
@@ -114,7 +131,7 @@ class Index extends BaseCrmComponent
                     });
                 });
         } else {
-            $query = Survey::with(['prospect', 'assignedTo', 'odp'])
+            $query = Survey::with(['prospect', 'assignedTo', 'odp', 'installation'])
                 ->where('status', 'activated');
         }
 

@@ -1344,13 +1344,11 @@ class Index extends BaseEnterpriseList
                 ? trim($this->completeResolutionNotes)
                 : 'Pekerjaan pemeliharaan selesai diverifikasi.';
 
-            DB::table('support_maintenances')->where('id', $id)->update([
-                'status' => 'completed',
-                'completed_at' => now(),
-                'resolution_notes' => $note,
-                'updated_by' => Auth::id(),
-                'updated_at' => now(),
-            ]);
+            app(\App\Services\Support\MaintenanceWorkOrderService::class)->resolveMaintenanceAndTicket(
+                $id,
+                $note,
+                (int) (Auth::id() ?? 0)
+            );
 
             $this->showCompleteModal = false;
             $this->completeMaintId = null;

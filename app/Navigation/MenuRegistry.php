@@ -254,7 +254,7 @@ class MenuRegistry
                         'icon' => 'support_agent',
                         'items' => [
                             ['label' => 'Tiket', 'route' => 'support.ticket', 'active' => 'support.ticket', 'permission' => 'ticket.view'],
-                            ['label' => 'Instalasi', 'route' => 'crm.installations.index', 'active' => 'crm.installations.*', 'permission' => 'workforce.jobs.view'],
+                            ['label' => 'Instalasi', 'route' => 'support.installation', 'active' => ['support.installation*', 'crm.installations*'], 'permission' => 'workforce.jobs.view'],
                             ['label' => 'Aktivasi', 'route' => 'crm.activations.index', 'active' => 'crm.activations.*', 'permission' => 'customer.view'],
                             ['label' => 'Maintenance', 'route' => 'support.maintenance', 'active' => 'support.maintenance', 'permission' => 'workforce.jobs.view'],
                             ['label' => 'Riwayat WO', 'route' => 'support.work-orders.history', 'active' => 'support.work-orders.*', 'permission' => 'workforce.jobs.view'],

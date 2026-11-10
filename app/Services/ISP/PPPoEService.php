@@ -109,6 +109,18 @@ class PPPoEService
             $pppoeUser = $this->pppoeUserRepository->find($pppoeUserId);
             $oldStatus = $pppoeUser->status;
 
+            // Provisi ke router terlebih dahulu sebelum mengesahkan status active di DB
+            try {
+                $this->provisionToMikrotik($pppoeUser, false);
+            } catch (\Throwable $e) {
+                $pppoeUser->update([
+                    'status' => 'failed_provisioning',
+                    'updated_by' => $userId,
+                ]);
+                Log::error("PPPoE Activation failed on hardware router for user {$pppoeUser->username}: " . $e->getMessage());
+                throw $e;
+            }
+
             $pppoeUser->update([
                 'status' => 'active',
                 'activated_at' => $pppoeUser->activated_at ?? now(),
@@ -117,10 +129,6 @@ class PPPoEService
             ]);
 
             Event::dispatch(new PPPoEUserStatusChangedEvent($pppoeUser, $oldStatus, 'active'));
-
-            if ($oldStatus !== 'pending') {
-                $this->provisionToMikrotik($pppoeUser);
-            }
 
             return $pppoeUser;
         });
@@ -219,10 +227,8 @@ class PPPoEService
         });
     }
 
-    public function provisionToMikrotik(PPPoEUser $pppoeUser, bool $isCreate = false): void
+    public function provisionToMikrotik(PPPoEUser $pppoeUser, bool $isCreate = false): bool
     {
-        if ($isCreate || $pppoeUser->wasRecentlyCreated) return;
-
         $routers = $this->resolveRouters($pppoeUser->serviceProfile);
         try {
             if (!empty($pppoeUser->router_id) && $pppoeUser->router) {
@@ -234,19 +240,43 @@ class PPPoEService
             $routers = Router::active()->get();
         }
 
+        if (empty($routers) || (is_object($routers) && method_exists($routers, 'isEmpty') && $routers->isEmpty())) {
+            Log::info("No active router configured for PPPoE {$pppoeUser->username}; RADIUS fallback assumed.");
+            return true;
+        }
+
         $normalProfile = $pppoeUser->serviceProfile?->mikrotik_profile ?: ($pppoeUser->serviceProfile?->name ?: 'default');
         $username = $pppoeUser->username;
+        $password = $pppoeUser->password;
+        $staticIp = $pppoeUser->static_ip;
+
+        $successCount = 0;
+        $lastError = null;
 
         foreach ($routers as $router) {
             try {
                 $driver = $this->routerOSService->getDriver($router);
                 if ($driver->connect()) {
-                    $driver->setPppSecretProfile($username, $normalProfile);
+                    if ($isCreate || !$driver->setPppSecretProfile($username, $normalProfile)) {
+                        $driver->addPPPoESecret($username, $password, $normalProfile, $staticIp);
+                    } else {
+                        $driver->enablePppSecret($username);
+                    }
                     $driver->disconnect();
+                    $successCount++;
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                $lastError = $e->getMessage();
+                Log::error("Failed to provision PPPoE {$username} on router {$router->name}: " . $e->getMessage());
+            }
             $this->kickSessionOnRouter($router, $username);
         }
+
+        if ($successCount === 0 && !empty($lastError)) {
+            throw new \RuntimeException("Gagal menghubungkan atau menambahkan secret ke router MikroTik: {$lastError}");
+        }
+
+        return $successCount > 0;
     }
 
     public function provisionIsolationToMikrotik(PPPoEUser $pppoeUser): void

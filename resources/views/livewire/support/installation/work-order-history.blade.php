@@ -100,6 +100,18 @@
                     <span class="material-symbols-outlined notranslate text-xs" translate="no">build</span>
                     Perbaikan Lapangan
                 </button>
+                <button wire:click="setTypeFilter('maintenance')" type="button"
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1
+                               {{ $typeFilter === 'maintenance' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+                    <span class="material-symbols-outlined notranslate text-xs" translate="no">home_repair_service</span>
+                    Maintenance
+                </button>
+                <button wire:click="setTypeFilter('activation')" type="button"
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1
+                               {{ $typeFilter === 'activation' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+                    <span class="material-symbols-outlined notranslate text-xs" translate="no">verified</span>
+                    Aktivasi
+                </button>
             </div>
 
             {{-- Search Input --}}
@@ -191,9 +203,19 @@
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">build_circle</span>
                                         {{ $item->type_badge }}
                                     </span>
-                                @else
+                                @elseif($item->type === 'repair')
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                                         <span class="material-symbols-outlined notranslate text-xs" translate="no">build</span>
+                                        {{ $item->type_badge }}
+                                    </span>
+                                @elseif($item->type === 'maintenance')
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                        <span class="material-symbols-outlined notranslate text-xs" translate="no">home_repair_service</span>
+                                        {{ $item->type_badge }}
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                        <span class="material-symbols-outlined notranslate text-xs" translate="no">verified</span>
                                         {{ $item->type_badge }}
                                     </span>
                                 @endif

@@ -180,6 +180,13 @@ class TicketService
                     (string) $assignedTo,
                     (string) $userId,
                 ));
+
+                // Otomatisasi Terintegrasi: Buat Work Order Maintenance lapangan jika tiket lapangan
+                try {
+                    app(\App\Services\Support\MaintenanceWorkOrderService::class)->syncFromTicket($ticket, $userId);
+                } catch (\Throwable $maintEx) {
+                    Log::warning('Auto sync Maintenance WO failed non-fatal: ' . $maintEx->getMessage());
+                }
             }
 
             return $ticket;
@@ -205,11 +212,33 @@ class TicketService
         }
 
         $ticket->update($updateData);
+
+        if (!empty($ticket->assigned_to)) {
+            try {
+                app(\App\Services\Support\MaintenanceWorkOrderService::class)->syncFromTicket($ticket, $userId);
+            } catch (\Throwable $e) {
+                Log::warning('Maintenance WO sync on update failed: ' . $e->getMessage());
+            }
+        }
+
+        if ($ticket->status === 'cancelled') {
+            try {
+                app(\App\Services\Support\MaintenanceWorkOrderService::class)->cancelMaintenanceForTicket($ticket, $userId);
+            } catch (\Throwable $e) {
+                Log::warning('Maintenance WO cancel failed: ' . $e->getMessage());
+            }
+        }
+
         return $ticket;
     }
 
     public function delete(Ticket $ticket): void
     {
+        try {
+            app(\App\Services\Support\MaintenanceWorkOrderService::class)->cancelMaintenanceForTicket($ticket, auth()->id() ?? 0);
+        } catch (\Throwable $e) {
+            Log::warning('Maintenance WO cancel on delete failed: ' . $e->getMessage());
+        }
         $ticket->delete();
     }
 
@@ -227,6 +256,13 @@ class TicketService
                 (string) $userId,
             ));
             Log::info('Ticket assigned', ['ticket_id' => $ticketId, 'assignee' => $assigneeId, 'by' => $userId]);
+
+            try {
+                app(\App\Services\Support\MaintenanceWorkOrderService::class)->syncFromTicket($ticket, $userId);
+            } catch (\Throwable $maintEx) {
+                Log::warning('Auto sync Maintenance WO on assign failed non-fatal: ' . $maintEx->getMessage());
+            }
+
             return $ticket;
         });
     }
@@ -257,6 +293,22 @@ class TicketService
                 $payload['resolution_notes'] = trim($note);
             }
             $ticket->update($payload);
+
+            // Sinkronkan status WO Maintenance terkait jika belum completed
+            try {
+                \App\Models\Support\SupportMaintenance::withoutGlobalScopes()
+                    ->where('ticket_id', $ticket->id)
+                    ->whereNotIn('status', ['completed', 'cancelled'])
+                    ->update([
+                        'status' => 'completed',
+                        'completed_at' => now(),
+                        'resolution_notes' => $note ?: $ticket->resolution_notes,
+                        'updated_by' => $userId,
+                    ]);
+            } catch (\Throwable $maintEx) {
+                Log::warning('Sync maintenance status on ticket resolve failed: ' . $maintEx->getMessage());
+            }
+
             Event::dispatch(TicketResolvedEvent::create(
                 (string) $ticketId,
                 (string) $userId,

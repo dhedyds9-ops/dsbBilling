@@ -30,6 +30,8 @@ class Ticket extends Model
         'optical_power',
         'digital_signature',
         'checklists',
+        'requires_field_visit',
+        'maintenance_wo_id',
     ];
 
     protected $casts = [
@@ -37,6 +39,7 @@ class Ticket extends Model
         'due_date' => 'date',
         'photos' => 'array',
         'checklists' => 'array',
+        'requires_field_visit' => 'boolean',
     ];
 
     public function customer(): BelongsTo
@@ -52,5 +55,15 @@ class Ticket extends Model
     public function reseller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reseller_id');
+    }
+
+    public function maintenances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SupportMaintenance::class, 'ticket_id');
+    }
+
+    public function maintenanceWorkOrder(): BelongsTo
+    {
+        return $this->belongsTo(SupportMaintenance::class, 'maintenance_wo_id');
     }
 }

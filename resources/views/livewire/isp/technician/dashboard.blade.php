@@ -91,40 +91,40 @@
     </div>
 
     {{-- Stats Grid --}}
-    <div class="grid grid-cols-3 gap-3">
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center mx-auto mb-2">
-                <span class="material-symbols-outlined" style="font-size:18px">sync</span>
+    <div class="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+        <div class="bg-white dark:bg-slate-800 p-3.5 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center mx-auto mb-2">
+                <span class="material-symbols-outlined" style="font-size:20px">sync</span>
             </div>
-            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $countProses ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['pending', 'running', 'in_progress', 'provisioning']))->count() }}</p>
-            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Proses</p>
+            <p class="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-200">{{ $countProses ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['pending', 'running', 'in_progress', 'provisioning']))->count() }}</p>
+            <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Proses</p>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-            <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
-                <span class="material-symbols-outlined" style="font-size:18px">task_alt</span>
+        <div class="bg-white dark:bg-slate-800 p-3.5 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                <span class="material-symbols-outlined" style="font-size:20px">task_alt</span>
             </div>
-            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $countSelesai ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['completed', 'provisioned', 'active']))->count() }}</p>
-            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Selesai</p>
+            <p class="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-200">{{ $countSelesai ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['completed', 'provisioned', 'active']))->count() }}</p>
+            <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Selesai</p>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-            <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 flex items-center justify-center mx-auto mb-2">
-                <span class="material-symbols-outlined" style="font-size:18px">warning</span>
+        <div class="bg-white dark:bg-slate-800 p-3.5 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 flex items-center justify-center mx-auto mb-2">
+                <span class="material-symbols-outlined" style="font-size:20px">warning</span>
             </div>
-            <p class="text-2xl font-black text-slate-800 dark:text-slate-200">{{ $countGagal ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['failed', 'cancelled', 'rolled_back']))->count() }}</p>
-            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Gagal</p>
+            <p class="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-200">{{ $countGagal ?? $recentInstallations->filter(fn($p) => in_array($p->status, ['failed', 'cancelled', 'rolled_back']))->count() }}</p>
+            <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Gagal</p>
         </div>
     </div>
 
     {{-- Fitur Lapangan & Layanan Karyawan --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div class="px-4 py-3.5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+        <div class="px-4 sm:px-6 py-3.5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">handyman</span>
                 <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">Aksi Lapangan & Tools</h2>
             </div>
-            <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-full">Field Service</span>
+            <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-0.5 rounded-full">Field Service Tools</span>
         </div>
-        <div class="p-4 grid grid-cols-4 gap-2">
+        <div class="p-4 sm:p-6 grid grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3 lg:gap-4">
             @if(!$hasCheckedIn)
                 <button type="button" onclick="alert('Silakan lakukan Absen Masuk terlebih dahulu.'); window.location.href='{{ route('technician.attendance') }}';"
                         class="bg-slate-50 dark:bg-slate-900 text-slate-400 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border border-slate-200 dark:border-slate-800 text-center cursor-not-allowed">

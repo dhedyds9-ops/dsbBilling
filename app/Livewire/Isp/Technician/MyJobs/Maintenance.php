@@ -517,13 +517,11 @@ class Maintenance extends Component
                 ? trim($this->resolution_notes)
                 : 'Pemeliharaan jaringan selesai dikerjakan oleh teknisi';
 
-            DB::table('support_maintenances')->where('id', $row->id)->update([
-                'status' => 'completed',
-                'completed_at' => $row->completed_at ?? now(),
-                'resolution_notes' => $note,
-                'updated_by' => $uid,
-                'updated_at' => now(),
-            ]);
+            app(\App\Services\Support\MaintenanceWorkOrderService::class)->resolveMaintenanceAndTicket(
+                (int) $row->id,
+                $note,
+                $uid
+            );
 
             $this->showModal = false;
             session()->flash('success', $this->isEditing
@@ -568,6 +566,25 @@ class Maintenance extends Component
             $payload['resolution_notes'] = $note;
         }
         $ticket->update($payload);
+
+        // Sinkronkan status Work Order Maintenance terkait
+        if ($ticket->maintenance_wo_id) {
+            DB::table('support_maintenances')->where('id', $ticket->maintenance_wo_id)->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'resolution_notes' => $note,
+                'updated_by' => $uid,
+                'updated_at' => now(),
+            ]);
+        } elseif (Schema::hasTable('support_maintenances')) {
+            DB::table('support_maintenances')->where('ticket_id', $ticket->id)->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'resolution_notes' => $note,
+                'updated_by' => $uid,
+                'updated_at' => now(),
+            ]);
+        }
 
         if (!$this->isEditing) {
             Event::dispatch(
