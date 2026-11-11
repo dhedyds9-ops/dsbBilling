@@ -3,8 +3,8 @@
 namespace App\Livewire\Support\Installation;
 
 use App\Livewire\BaseEnterpriseList;
-use App\Models\Crm\Installation as CrmInstallation;
-use App\Models\Crm\Customer;
+use App\Models\CRM\Installation as CrmInstallation;
+use App\Models\CRM\Customer;
 use App\Models\ISP\Pop;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -108,7 +108,8 @@ class Index extends BaseEnterpriseList
         ];
 
         try {
-            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager']))
+            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager', 'technician', 'teknisi']))
+                ->orWhere('job_function', 'TECHNICIAN')
                 ->pluck('name', 'id')->all();
         } catch (Throwable) {
             $techs = User::pluck('name', 'id')->all();
@@ -178,7 +179,8 @@ class Index extends BaseEnterpriseList
     protected function loadTechnicianLoad(): void
     {
         try {
-            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager']))
+            $techs = User::whereHas('roles', fn($q) => $q->whereIn('name', ['administrator', 'manager', 'technician', 'teknisi']))
+                ->orWhere('job_function', 'TECHNICIAN')
                 ->get(['id', 'name']);
             $load = [];
             $weekFrom = now()->startOfWeek()->toDateString();
@@ -214,7 +216,7 @@ class Index extends BaseEnterpriseList
 
     protected function buildWoQuery()
     {
-        $q = CrmInstallation::query();
+        $q = CrmInstallation::query()->with(['customer', 'technician', 'assignedTo', 'contract']);
 
         if (!empty($this->filters['status'])) {
             $q->where('status', $this->filters['status']);
@@ -602,7 +604,10 @@ class Index extends BaseEnterpriseList
     public function render()
     {
         $rows = $this->getRows();
-        return view('livewire.support.installation.index', compact('rows'));
+        return view('livewire.support.installation.index', [
+            'rows' => $rows,
+            'filterConfig' => $this->getFilterConfig(),
+        ]);
     }
 
     protected function sendInstallationWhatsAppNotification(CrmInstallation $wo): void

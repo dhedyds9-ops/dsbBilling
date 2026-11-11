@@ -33,7 +33,7 @@
   ])
 
   @if ($showFilters)
-    @include('partials.enterprise.filters', ['filters' => $filterConfig])
+    @include('partials.enterprise.filters', ['filters' => $filterConfig ?? $this->getFilterConfig()])
   @endif
 
   <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
@@ -91,14 +91,14 @@
               <td class="px-3 py-2"><input type="checkbox" value="{{ $r->id }}" wire:model.live="selected" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"></td>
               <td class="px-3 py-2 font-mono font-semibold text-slate-900 dark:text-slate-100">{{ $r->code ?? 'WO-'.$r->id }}</td>
               <td class="px-3 py-2">
-                <div class="font-medium text-slate-800 dark:text-slate-100">{{ $r->customer_name ?? '-' }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $r->customer_phone ?? '' }}</div>
+                <div class="font-medium text-slate-800 dark:text-slate-100">{{ $r->customer_name ?? $r->customer?->name ?? '-' }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $r->customer?->phone ?? $r->customer_phone ?? '' }}</div>
               </td>
               <td class="px-3 py-2">
-                <div class="text-slate-700 dark:text-slate-200">{{ $r->package_name ?? '-' }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[280px]">{{ $r->installation_address ?? $r->notes ?? '' }}</div>
+                <div class="text-slate-700 dark:text-slate-200">{{ $r->contract?->package_name ?? $r->package_name ?? '-' }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[280px]">{{ $r->customer?->address ?? $r->installation_address ?? $r->notes ?? '' }}</div>
               </td>
-              <td class="px-3 py-2 text-slate-600 dark:text-slate-300">{{ $r->technician_name ?? '-' }}</td>
+              <td class="px-3 py-2 text-slate-600 dark:text-slate-300">{{ $r->technician?->name ?? $r->assignedTo?->name ?? $r->technician_name ?? '-' }}</td>
               <td class="px-3 py-2 whitespace-nowrap text-slate-600 dark:text-slate-300 text-xs">
                 {{ $r->scheduled_date ? \Carbon\Carbon::parse($r->scheduled_date)->format('d/m/Y H:i') : '-' }}
               </td>
@@ -186,7 +186,7 @@
               @foreach($checklistTemplate ?? [] as $c)
                 <label class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
                   <input type="checkbox" disabled checked class="mt-0.5 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-                  <span>{{ $c['label'] }}</span>
+                  <span>{{ $c['item'] ?? $c['label'] ?? '' }}</span>
                 </label>
               @endforeach
               @if(empty($checklistTemplate))
@@ -210,7 +210,7 @@
   </div>
 
   <div class="px-3 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-    {{ $rows->links('livewire::simple-tailwind') }}
+    {{ $rows?->links('livewire::simple-tailwind') }}
   </div>
 
   @include('partials.enterprise.confirm-modal')
