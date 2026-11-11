@@ -129,36 +129,70 @@ class HotspotUserImport implements ToCollection, WithHeadingRow
                             ]);
                         }
 
-                        $cs = CustomerService::create([
-                            'uuid' => (string) Str::uuid(),
-                            'customer_id' => $customer->id,
-                            'service_profile_id' => $serviceProfile->id,
-                            'username' => $username,
-                            'password' => $password,
-                            'reseller_id' => $resellerId,
-                            'status' => $status === 'active' ? 'active' : 'inactive',
-                            'created_by' => $this->user->id,
-                            'updated_by' => $this->user->id,
-                        ]);
+                        $cs = CustomerService::withoutGlobalScopes()->withTrashed()->where('username', $username)->first();
+                        if ($cs) {
+                            if ($cs->trashed()) {
+                                $cs->restore();
+                            }
+                            $cs->update([
+                                'customer_id' => $customer->id,
+                                'service_profile_id' => $serviceProfile->id,
+                                'password' => $password,
+                                'reseller_id' => $resellerId ?? $cs->reseller_id,
+                                'status' => $status === 'active' ? 'active' : $cs->status,
+                                'updated_by' => $this->user->id,
+                            ]);
+                        } else {
+                            $cs = CustomerService::create([
+                                'uuid' => (string) Str::uuid(),
+                                'customer_id' => $customer->id,
+                                'service_profile_id' => $serviceProfile->id,
+                                'username' => $username,
+                                'password' => $password,
+                                'reseller_id' => $resellerId,
+                                'status' => $status === 'active' ? 'active' : 'inactive',
+                                'created_by' => $this->user->id,
+                                'updated_by' => $this->user->id,
+                            ]);
+                        }
 
                         $customerServiceId = $cs->id;
                     }
 
-                    HotspotUser::create([
-                        'uuid' => (string) Str::uuid(),
-                        'username' => $username,
-                        'password' => $password,
-                        'customer_service_id' => $customerServiceId,
-                        'service_profile_id' => $serviceProfile->id,
-                        'router_id' => $router?->id,
-                        'reseller_id' => $resellerId,
-                        'mac_address' => $macAddress,
-                        'static_ip' => $staticIp,
-                        'status' => $status,
-                        'activated_at' => $status === 'active' ? now() : null,
-                        'created_by' => $this->user->id,
-                        'updated_by' => $this->user->id,
-                    ]);
+                    $existingHotspotUser = HotspotUser::withoutGlobalScopes()->withTrashed()->where('username', $username)->first();
+                    if ($existingHotspotUser) {
+                        if ($existingHotspotUser->trashed()) {
+                            $existingHotspotUser->restore();
+                        }
+                        $existingHotspotUser->update([
+                            'password' => $password,
+                            'customer_service_id' => $customerServiceId,
+                            'service_profile_id' => $serviceProfile->id,
+                            'router_id' => $router?->id,
+                            'reseller_id' => $resellerId,
+                            'mac_address' => $macAddress,
+                            'static_ip' => $staticIp,
+                            'status' => $status,
+                            'activated_at' => $status === 'active' ? ($existingHotspotUser->activated_at ?? now()) : null,
+                            'updated_by' => $this->user->id,
+                        ]);
+                    } else {
+                        HotspotUser::create([
+                            'uuid' => (string) Str::uuid(),
+                            'username' => $username,
+                            'password' => $password,
+                            'customer_service_id' => $customerServiceId,
+                            'service_profile_id' => $serviceProfile->id,
+                            'router_id' => $router?->id,
+                            'reseller_id' => $resellerId,
+                            'mac_address' => $macAddress,
+                            'static_ip' => $staticIp,
+                            'status' => $status,
+                            'activated_at' => $status === 'active' ? now() : null,
+                            'created_by' => $this->user->id,
+                            'updated_by' => $this->user->id,
+                        ]);
+                    }
                 });
 
                 $successCount++;
