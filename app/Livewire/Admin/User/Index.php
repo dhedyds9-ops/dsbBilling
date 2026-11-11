@@ -168,26 +168,92 @@ class Index extends AdminComponent
 
     public function showSummary($userId)
     {
-        $this->summaryUser = UserModel::find($userId);
+        $this->summaryUser = UserModel::with(['roles', 'employee'])->find($userId);
+        if (!$this->summaryUser) {
+            return;
+        }
         
-        $vouchersHariIni = Voucher::with('serviceProfile')->where('created_by', $userId)->whereDate('activated_at', today())->get();
-        $vouchersBulanIni = Voucher::with('serviceProfile')->where('created_by', $userId)->whereMonth('activated_at', today()->month)->whereYear('activated_at', today()->year)->get();
-        
+        // Base Query Voucher: mencakup voucher yang diterbitkan oleh Reseller atau dibuat oleh user ini
+        $voucherBase = Voucher::withoutGlobalScopes()->where(function ($q) use ($userId) {
+            $q->where('reseller_id', $userId)
+              ->orWhere('created_by', $userId);
+        });
+
+        $vouchersHariIni = (clone $voucherBase)->with('serviceProfile')
+            ->whereDate('activated_at', today())
+            ->get();
+
+        $vouchersBulanIni = (clone $voucherBase)->with('serviceProfile')
+            ->whereMonth('activated_at', today()->month)
+            ->whereYear('activated_at', today()->year)
+            ->get();
+
+        $voucherIncomeHariIni = $vouchersHariIni->sum(fn($v) => (float)($v->serviceProfile->price ?? 0));
+        $voucherIncomeBulanIni = $vouchersBulanIni->sum(fn($v) => (float)($v->serviceProfile->price ?? 0));
+
+        // Invoice Pembayaran Langganan (PPPoE / Hotspot Berlangganan)
+        $invoiceIncomeHariIni = (float)\App\Models\Billing\Invoice::withoutGlobalScopes()
+            ->where(function ($q) use ($userId) {
+                $q->where('reseller_id', $userId)
+                  ->orWhere('created_by', $userId);
+            })
+            ->where('status', 'paid')
+            ->whereDate('updated_at', today())
+            ->sum('paid_amount');
+
+        $invoiceIncomeBulanIni = (float)\App\Models\Billing\Invoice::withoutGlobalScopes()
+            ->where(function ($q) use ($userId) {
+                $q->where('reseller_id', $userId)
+                  ->orWhere('created_by', $userId);
+            })
+            ->where('status', 'paid')
+            ->whereMonth('updated_at', today()->month)
+            ->whereYear('updated_at', today()->year)
+            ->sum('paid_amount');
+
+        // Base Query Pelanggan Hotspot (mencakup reseller_id, created_by, atau relasi ke CustomerService / Customer)
+        $hotspotBase = HotspotUser::withoutGlobalScopes()->where(function ($q) use ($userId) {
+            $q->where('reseller_id', $userId)
+              ->orWhere('created_by', $userId)
+              ->orWhereHas('customerService', function ($csQ) use ($userId) {
+                  $csQ->where('reseller_id', $userId)
+                      ->orWhere('created_by', $userId)
+                      ->orWhereHas('customer', function ($cQ) use ($userId) {
+                          $cQ->where('reseller_id', $userId)
+                             ->orWhere('created_by', $userId);
+                      });
+              });
+        });
+
+        // Base Query Pelanggan PPPoE (mencakup reseller_id, created_by, atau relasi ke CustomerService / Customer)
+        $pppoeBase = PPPoEUser::withoutGlobalScopes()->where(function ($q) use ($userId) {
+            $q->where('reseller_id', $userId)
+              ->orWhere('created_by', $userId)
+              ->orWhereHas('customerService', function ($csQ) use ($userId) {
+                  $csQ->where('reseller_id', $userId)
+                      ->orWhere('created_by', $userId)
+                      ->orWhereHas('customer', function ($cQ) use ($userId) {
+                          $cQ->where('reseller_id', $userId)
+                             ->orWhere('created_by', $userId);
+                      });
+              });
+        });
+
         $this->summaryData = [
-            'income_hari_ini' => $vouchersHariIni->sum(fn($v) => $v->serviceProfile->price ?? 0),
-            'income_bulan_ini' => $vouchersBulanIni->sum(fn($v) => $v->serviceProfile->price ?? 0),
+            'income_hari_ini' => $voucherIncomeHariIni + $invoiceIncomeHariIni,
+            'income_bulan_ini' => $voucherIncomeBulanIni + $invoiceIncomeBulanIni,
             'fee_hari_ini' => $vouchersHariIni->sum('fee_seller'),
             'fee_bulan_ini' => $vouchersBulanIni->sum('fee_seller'),
-            'stok_voucher' => Voucher::where('created_by', $userId)->where('status', 'available')->count(),
-            'voucher_expired' => Voucher::where('created_by', $userId)->where('status', 'expired')->count(),
-            'voucher_bulan_ini' => Voucher::where('created_by', $userId)->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year)->count(),
+            'stok_voucher' => (clone $voucherBase)->where('status', 'available')->count(),
+            'voucher_expired' => (clone $voucherBase)->where('status', 'expired')->count(),
+            'voucher_bulan_ini' => (clone $voucherBase)->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year)->count(),
             
-            'jml_hotspot' => HotspotUser::where('created_by', $userId)->count(),
-            'jml_ppp' => PPPoEUser::where('created_by', $userId)->count(),
-            'isolir_hotspot' => HotspotUser::where('created_by', $userId)->whereIn('status', ['isolated', 'suspended'])->count(),
-            'isolir_ppp' => PPPoEUser::where('created_by', $userId)->whereIn('status', ['isolated', 'suspended'])->count(),
-            'hotspot_bulan_ini' => HotspotUser::where('created_by', $userId)->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year)->count(),
-            'ppp_bulan_ini' => PPPoEUser::where('created_by', $userId)->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year)->count(),
+            'jml_hotspot' => (clone $hotspotBase)->count(),
+            'jml_ppp' => (clone $pppoeBase)->count(),
+            'isolir_hotspot' => (clone $hotspotBase)->whereIn('status', ['isolated', 'suspended', 'isolir'])->count(),
+            'isolir_ppp' => (clone $pppoeBase)->whereIn('status', ['isolated', 'suspended', 'isolir'])->count(),
+            'hotspot_bulan_ini' => (clone $hotspotBase)->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year)->count(),
+            'ppp_bulan_ini' => (clone $pppoeBase)->whereMonth('created_at', today()->month)->whereYear('created_at', today()->year)->count(),
         ];
         
         $this->showSummaryModal = true;
