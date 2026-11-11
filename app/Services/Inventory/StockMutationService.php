@@ -150,8 +150,11 @@ class StockMutationService
                     ->first();
 
                 $currentQty = $stock ? (float) $stock->quantity : 0.0;
+                $balanceBefore = $currentQty;
+                $balanceAfter = max(0, $balanceBefore - $qty);
+
                 if ($currentQty < $qty) {
-                    throw new \RuntimeException("Tidak dapat membatalkan! Stok tersisa untuk '{$item->name}' di gudang ({$currentQty} {$item->unit}) lebih sedikit dari jumlah penerimaan ({$qty} {$item->unit}). Sebagian barang mungkin sudah dikeluarkan.");
+                    \Illuminate\Support\Facades\Log::warning("cancelInbound: Saldo stok '{$item->name}' di gudang ({$currentQty} {$item->unit}) lebih kecil dari jumlah penerimaan ({$qty} {$item->unit}). Saldo diturunkan ke {$balanceAfter}.");
                 }
 
                 // 2. Jika barang berserial, periksa apakah ada serial yang sudah bergerak
@@ -168,7 +171,7 @@ class StockMutationService
                         throw new \RuntimeException("Tidak dapat membatalkan! Serial Number [{$list}] sudah berstatus di luar gudang (sedang dipegang teknisi atau terpasang ke pelanggan).");
                     }
 
-                    // Hapus serial yang terdaftar dari inbound ini
+                    // Hapus serial yang terdaftar dari inbound ini yang masih in_warehouse
                     ItemSerial::withoutGlobalScopes()
                         ->where('item_id', $item->id)
                         ->whereIn('serial_number', $inItem->serials)
@@ -177,13 +180,12 @@ class StockMutationService
                 }
 
                 // 3. Revert saldo fisik gudang
-                $balanceBefore = $currentQty;
-                $balanceAfter = $balanceBefore - $qty;
-
-                $stock->update([
-                    'quantity' => $balanceAfter,
-                    'updated_at' => now(),
-                ]);
+                if ($stock) {
+                    $stock->update([
+                        'quantity' => $balanceAfter,
+                        'updated_at' => now(),
+                    ]);
+                }
 
                 // 4. Catat mutasi pembatalan di ledger
                 InventoryStockMutation::create([
@@ -193,7 +195,7 @@ class StockMutationService
                     'item_id' => $item->id,
                     'type' => 'adjustment_out',
                     'qty_in' => 0,
-                    'qty_out' => $qty,
+                    'qty_out' => min($qty, $balanceBefore),
                     'balance_before' => $balanceBefore,
                     'balance_after' => $balanceAfter,
                     'reference_type' => 'inbound_cancellation',
@@ -211,6 +213,71 @@ class StockMutationService
                 'notes' => trim(($inbound->notes ? $inbound->notes . ' | ' : '') . 'DIBATALKAN: ' . ($reason ?: 'Kesalahan input penerimaan')),
             ]);
             $inbound->delete(); // Soft delete agar tidak merusak relasi namun tidak muncul di list aktif
+        });
+    }
+
+    /**
+     * Rollback saldo stok dan serial number lama untuk dokumen penerimaan yang sedang direvisi (diedit).
+     * Dijalankan dalam transaksi yang sama saat edit sebelum items baru dicatat.
+     */
+    public function rollbackInboundForRevision(InventoryInbound $inbound, ?int $actorId = null): void
+    {
+        DB::transaction(function () use ($inbound, $actorId) {
+            foreach ($inbound->items as $inItem) {
+                $item = Item::withoutGlobalScopes()->find($inItem->item_id);
+                if (!$item) continue;
+
+                $qty = (float) $inItem->quantity;
+
+                // 1. Cek saldo fisik di gudang
+                $stock = InventoryStock::withoutGlobalScopes()
+                    ->where('warehouse_id', $inbound->warehouse_id)
+                    ->where('item_id', $inItem->item_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $currentQty = $stock ? (float) $stock->quantity : 0.0;
+                $balanceBefore = $currentQty;
+                // Selama revisi, kurangi stok lama secara aman (jika saldo kurang dari qty akibat clean/opname, turunkan ke 0 tanpa crash)
+                $balanceAfter = max(0, $balanceBefore - $qty);
+
+                if ($stock) {
+                    $stock->update([
+                        'quantity' => $balanceAfter,
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                // 2. Bersihkan serial numbers lama yang masih berstatus 'in_warehouse' agar tidak bentrok saat simpan ulang
+                if ($item->is_serialized && !empty($inItem->serials)) {
+                    ItemSerial::withoutGlobalScopes()
+                        ->where('item_id', $item->id)
+                        ->whereIn('serial_number', $inItem->serials)
+                        ->where('status', 'in_warehouse')
+                        ->delete();
+                }
+
+                // 3. Catat mutasi penyesuaian revisi di ledger
+                if ($qty > 0) {
+                    InventoryStockMutation::create([
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'mutation_number' => InventoryStockMutation::generateMutationNumber(),
+                        'warehouse_id' => $inbound->warehouse_id,
+                        'item_id' => $item->id,
+                        'type' => 'adjustment_out',
+                        'qty_in' => 0,
+                        'qty_out' => min($qty, $balanceBefore),
+                        'balance_before' => $balanceBefore,
+                        'balance_after' => $balanceAfter,
+                        'reference_type' => 'inbound_revision_rollback',
+                        'reference_id' => $inbound->id,
+                        'notes' => 'Rollback revisi penerimaan ' . $inbound->inbound_number,
+                        'actor_id' => $actorId ?: auth()->id(),
+                        'branch_id' => $inbound->branch_id,
+                        'created_at' => now(),
+                    ]);
+                }
+            }
         });
     }
 

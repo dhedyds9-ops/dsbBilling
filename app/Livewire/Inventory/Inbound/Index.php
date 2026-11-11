@@ -237,8 +237,8 @@ class Index extends Component
                         throw new \RuntimeException('Dokumen yang telah dibatalkan tidak dapat diedit kembali.');
                     }
 
-                    // 1. Rollback previous stock & serials
-                    $mutationService->cancelInbound($inbound->id, 'Revisi edit transaksi oleh ' . auth()->user()->name, auth()->id());
+                    // 1. Rollback previous stock & serials secara aman untuk revisi
+                    $mutationService->rollbackInboundForRevision($inbound, auth()->id());
 
                     // 2. Update inbound header & reactivate status
                     $inbound->update([
