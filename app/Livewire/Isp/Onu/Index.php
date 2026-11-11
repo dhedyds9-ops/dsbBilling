@@ -22,10 +22,26 @@ class Index extends BaseIndex
     public function deleteOnu(int $id): void
     {
         try {
-            $onu = \App\Models\ISP\Onu::findOrFail($id);
-            $sn = $onu->serial_number ?: $onu->id;
-            $onu->delete();
-            session()->flash('success', 'ONU ' . $sn . ' berhasil dihapus dari database.');
+            $onu = \App\Models\ISP\Onu::with('olt')->findOrFail($id);
+            $sn = $onu->serial_number ?: ('#' . $onu->id);
+            $oltDeleted = false;
+
+            if ($onu->olt) {
+                try {
+                    $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($onu->olt);
+                    $oltDeleted = $driver->deleteOnu($onu);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Gagal hapus ONU {$sn} dari OLT fisik: " . $e->getMessage());
+                }
+            }
+
+            $onu->forceDelete();
+
+            $msg = 'ONU ' . $sn . ' berhasil dihapus dari database.';
+            if ($oltDeleted) {
+                $msg .= ' Registrasi ONU juga berhasil dihapus langsung dari perangkat OLT fisik!';
+            }
+            session()->flash('success', $msg);
         } catch (\Throwable $e) {
             session()->flash('error', 'Gagal menghapus ONU: ' . $e->getMessage());
         }
@@ -42,9 +58,11 @@ class Index extends BaseIndex
                 ->pluck('serial_number');
 
             $deletedCount = 0;
+            $registry = app(\App\Services\Adapters\Provisioning\OltRegistry::class);
+
             foreach ($duplicates as $sn) {
                 $records = \App\Models\ISP\Onu::where('serial_number', $sn)
-                    ->with('customerService')
+                    ->with(['customerService', 'olt'])
                     ->get();
                 
                 // Prioritize keeping the record that has a customer or PON port or signal
@@ -60,7 +78,13 @@ class Index extends BaseIndex
                 // Keep the top 1, delete all remaining duplicate rows
                 $keep = $sorted->first();
                 foreach ($sorted->slice(1) as $orphan) {
-                    $orphan->delete();
+                    if ($orphan->olt && $orphan->id !== $keep->id) {
+                        try {
+                            $driver = $registry->forOlt($orphan->olt);
+                            $driver->deleteOnu($orphan);
+                        } catch (\Throwable) {}
+                    }
+                    $orphan->forceDelete();
                     $deletedCount++;
                 }
             }
@@ -78,7 +102,7 @@ class Index extends BaseIndex
     public function deleteAllOfflineOnu(): void
     {
         try {
-            $offlineOnus = \App\Models\ISP\Onu::where(function ($q) {
+            $offlineOnus = \App\Models\ISP\Onu::with('olt')->where(function ($q) {
                 $q->where('status', 'inactive')
                   ->orWhere(function ($sq) {
                       $sq->whereNull('rx_power_dbm')->whereNull('pon_port');
@@ -91,11 +115,28 @@ class Index extends BaseIndex
                 return;
             }
 
+            $oltDeletedCount = 0;
+            $registry = app(\App\Services\Adapters\Provisioning\OltRegistry::class);
+
             foreach ($offlineOnus as $onu) {
-                $onu->delete();
+                if ($onu->olt) {
+                    try {
+                        $driver = $registry->forOlt($onu->olt);
+                        if ($driver->deleteOnu($onu)) {
+                            $oltDeletedCount++;
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("Gagal hapus ONU #{$onu->id} dari OLT fisik: " . $e->getMessage());
+                    }
+                }
+                $onu->forceDelete();
             }
             
-            session()->flash('success', $count . ' ONU offline / orphan berhasil dihapus.');
+            $msg = $count . ' ONU offline berhasil dihapus dari database.';
+            if ($oltDeletedCount > 0) {
+                $msg .= " ({$oltDeletedCount} ONU juga otomatis dihapus langsung dari perangkat fisik OLT).";
+            }
+            session()->flash('success', $msg);
         } catch (\Throwable $e) {
             session()->flash('error', 'Gagal menghapus masal ONU: ' . $e->getMessage());
         }

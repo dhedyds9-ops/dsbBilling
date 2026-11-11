@@ -227,4 +227,26 @@ class VsolOltDriver extends BaseOltDriver
             return false;
         }
     }
+
+    public function deleteOnu(Onu $onu): bool
+    {
+        try {
+            $ponPort = (int)($onu->pon_port ?? ($onu->ponPort->port_number ?? 0));
+            $onuId = (int)($onu->onu_id_on_olt ?? $onu->onu_index ?? $onu->getKey());
+            if ($ponPort <= 0 || $onuId <= 0) {
+                return false;
+            }
+            $this->initializeCli();
+            $this->cli->execute('enable');
+            $this->cli->execute('configure terminal');
+            $this->cli->execute("gpon-olt 0/$ponPort");
+            $this->cli->execute("no onu $onuId");
+            $this->cli->execute('exit');
+            $this->cli->execute('write');
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("VsolOltDriver::deleteOnu failed: " . $e->getMessage());
+            return false;
+        }
+    }
 }

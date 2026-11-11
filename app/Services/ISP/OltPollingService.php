@@ -240,11 +240,17 @@ class OltPollingService
                                 ->first();
                         }
 
-                        if ($onu && $onu->trashed()) {
-                            $onu->restore();
-                        }
-
                         $status = $item['status'] ?? 'unknown';
+
+                        if ($onu && $onu->trashed()) {
+                            // Hanya restore jika ONU benar-benar ONLINE & aktif di lapangan
+                            // Jangan bangkitkan ONU offline / orphan yang sengaja sudah dihapus admin
+                            if ($status === 'online') {
+                                $onu->restore();
+                            } else {
+                                continue;
+                            }
+                        }
 
                         if (!$onu) {
                             // Cek sekali lagi sebelum create untuk mencegah race condition duplicate serial_number
@@ -252,7 +258,11 @@ class OltPollingService
                             if ($existingWithSn) {
                                 $onu = $existingWithSn;
                                 if ($onu->trashed()) {
-                                    $onu->restore();
+                                    if ($status === 'online') {
+                                        $onu->restore();
+                                    } else {
+                                        continue;
+                                    }
                                 }
                             } else {
                                 $onu = Onu::create([

@@ -1397,6 +1397,53 @@ class CDataOltDriver extends BaseOltDriver
         }
     }
 
+    public function deleteOnu(Onu $onu): bool
+    {
+        try {
+            $ponPort = (int)($onu->pon_port ?? ($onu->ponPort->port_number ?? 0));
+            $onuId   = (int)($onu->onu_id_on_olt ?? $onu->onu_index ?? 0);
+
+            if ($ponPort <= 0 || $onuId <= 0) {
+                Log::warning("CDataOltDriver::deleteOnu: Invalid pon_port ({$ponPort}) or onu_id ({$onuId}) for ONU #{$onu->id}");
+                return false;
+            }
+
+            $this->initializeCli();
+
+            // Masuk mode config
+            $this->cli->execute("configure terminal\r\n", false);
+            $this->cli->execute("config\r\n", false);
+
+            // 1. Standar C-Data GPON interface mode (FD1600 / FD1200 / CD5000): interface gpon 0/0
+            $this->cli->execute("interface gpon 0/0\r\n", false);
+            $this->cli->execute("ont delete $ponPort $onuId\r\n", false);
+            $this->cli->execute("undo ont add $ponPort $onuId\r\n", false);
+            $this->cli->execute("exit\r\n", false);
+
+            // 2. Port-specific GPON interface mode: interface gpon 0/0/<port>
+            $this->cli->execute("interface gpon 0/0/$ponPort\r\n", false);
+            $this->cli->execute("ont delete $onuId\r\n", false);
+            $this->cli->execute("onu delete $onuId\r\n", false);
+            $this->cli->execute("no onu $onuId\r\n", false);
+            $this->cli->execute("exit\r\n", false);
+
+            // 3. Fallback EPON jika OLT berjalan dalam mode EPON
+            $this->cli->execute("interface epon 0/0\r\n", false);
+            $this->cli->execute("onu delete $ponPort onu $onuId\r\n", false);
+            $this->cli->execute("exit\r\n", false);
+
+            // Simpan perubahan ke memory/NVRAM
+            $this->cli->execute("write\r\n", false);
+            $this->cli->execute("write memory\r\n", false);
+
+            Log::info("CDataOltDriver::deleteOnu successfully issued delete command for ONU #{$onu->id} (Port: {$ponPort}, Index: {$onuId})");
+            return true;
+        } catch (\Throwable $e) {
+            Log::error("CDataOltDriver::deleteOnu failed for ONU #{$onu->id}: " . $e->getMessage());
+            return false;
+        }
+    }
+
     public function pushOnuWanConfig(Onu $onu, array $config): bool
     {
         try {

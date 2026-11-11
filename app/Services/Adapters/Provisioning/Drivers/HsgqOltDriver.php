@@ -443,6 +443,28 @@ class HsgqOltDriver extends BaseOltDriver
         }
     }
 
+    public function deleteOnu($onu): bool
+    {
+        try {
+            $ponPort = (int)($onu->pon_port ?? ($onu->ponPort->port_number ?? 0));
+            $onuId = (int)($onu->onu_id_on_olt ?? $onu->onu_index ?? $onu->getKey());
+            if ($ponPort <= 0 || $onuId <= 0) {
+                return false;
+            }
+            $this->initializeCli();
+            $this->cli->execute("configure");
+            $this->cli->execute("interface pon $ponPort");
+            $this->cli->execute("ont delete $onuId");
+            $this->cli->execute("no ont $onuId");
+            $this->cli->execute("exit");
+            $this->cli->execute("write");
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("HsgqOltDriver::deleteOnu failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
     protected function qosAddOrModify(int $downloadMbps, int $uploadMbps, int $onuId): void
     {
         $this->cli->execute("qos-profile add profile-id {$downloadMbps}-{$uploadMbps} cir downstream {$downloadMbps}000 upstream {$uploadMbps}000");

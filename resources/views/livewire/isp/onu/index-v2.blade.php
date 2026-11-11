@@ -102,7 +102,7 @@
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">cleaning_services</span>
                     <span>Bersihkan Duplikat</span>
                 </button>
-                <button type="button" wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline / Orphan ({{ $summary['offline'] ?? 0 }} ONU) dari database lokal?" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
+                <button type="button" wire:click="deleteAllOfflineOnu" wire:confirm="Yakin ingin menghapus SEMUA ONU Offline / Orphan ({{ $summary['offline'] ?? 0 }} ONU)? Data di dsBilling dan registrasi di perangkat fisik OLT akan dihapus bersamaan." class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap">
                     <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete_sweep</span>
                     <span>Hapus Offline</span>
                 </button>
@@ -232,7 +232,7 @@
                                     <a href="{{ route('isp.onus.edit', $onu->id) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-colors" title="Edit">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">edit</span>
                                     </a>
-                                    <button type="button" wire:click="deleteOnu({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU {{ $onu->serial_number ?: ('#' . $onu->id) }} dari database lokal?" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
+                                    <button type="button" wire:click="deleteOnu({{ $onu->id }})" wire:confirm="Yakin ingin menghapus ONU {{ $onu->serial_number ?: ('#' . $onu->id) }}? Registrasi di perangkat fisik OLT juga akan otomatis dihapus." class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 transition-colors cursor-pointer" title="Hapus">
                                         <span class="material-symbols-outlined notranslate" translate="no" style="font-size:18px">delete</span>
                                     </button>
                                 </div>

@@ -33,6 +33,8 @@ interface OltDriverInterface
 
     public function rebootOnu(Onu $onu): bool;
 
+    public function deleteOnu(Onu $onu): bool;
+
     public function getOnuSignal(Onu $onu): array;
 
     /**

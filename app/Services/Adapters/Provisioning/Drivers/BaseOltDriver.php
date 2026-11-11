@@ -207,6 +207,12 @@ abstract class BaseOltDriver implements OltDriverInterface
         return $this->setOnuAdminStatus($onu, 'reset');
     }
 
+    public function deleteOnu(Onu $onu): bool
+    {
+        Log::warning("deleteOnu is not implemented for OLT driver: " . static::class, ['onu_id' => $onu->id]);
+        return false;
+    }
+
     public function getOnuSignal(Onu $onu): array
     {
         try {
