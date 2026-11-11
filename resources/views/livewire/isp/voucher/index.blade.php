@@ -172,6 +172,14 @@
                         <span class="hidden sm:inline">Cetak ({{ count($selectedIds) }})</span>
                     </button>
                 @endif
+                <button wire:click="export" class="inline-flex items-center justify-center px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap shrink-0 cursor-pointer" title="Export Voucher">
+                    <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">download</span>
+                    <span class="hidden sm:inline">Export</span>
+                </button>
+                <button wire:click="openImportModal" class="inline-flex items-center justify-center px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg shadow-sm transition-all whitespace-nowrap shrink-0 cursor-pointer" title="Import Voucher">
+                    <span class="material-symbols-outlined notranslate sm:mr-1.5" translate="no" style="font-size: 18px">upload</span>
+                    <span class="hidden sm:inline">Import</span>
+                </button>
                 <button wire:click="$set('showGenerateModal', true)" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-all whitespace-nowrap shrink-0 cursor-pointer" title="Generate Voucher">
                     <span class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size: 18px">add</span>
                     <span>Generate</span>
@@ -427,6 +435,64 @@
             </div>
         </div>
     </div>
+
+    {{-- IMPORT MODAL --}}
+    @if($showImportModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm transition-opacity">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+                <div class="p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-indigo-600 dark:text-indigo-400" translate="no" style="font-size:22px">upload_file</span>
+                            Import Voucher Hotspot
+                        </h3>
+                        <button wire:click="closeImportModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">close</span>
+                        </button>
+                    </div>
+
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Unggah file Excel (.xlsx, .csv) untuk impor data voucher secara massal.</p>
+                    
+                    {{-- Download Template Section --}}
+                    <div class="p-3 mb-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between gap-3">
+                        <div class="text-xs text-indigo-900 dark:text-indigo-200">
+                            <p class="font-semibold">Format kolom voucher</p>
+                            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Gunakan nama paket & pool, tidak butuh ID database.</p>
+                        </div>
+                        <button type="button" wire:click="downloadTemplate" class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all whitespace-nowrap shrink-0">
+                            <span class="material-symbols-outlined notranslate mr-1" translate="no" style="font-size:16px">download</span>
+                            Template (.xlsx)
+                        </button>
+                    </div>
+
+                    {{-- Panduan Kolom Ringkas --}}
+                    <div class="mb-4 text-xs space-y-1 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <p class="font-semibold text-slate-700 dark:text-slate-200 mb-1">Panduan Kolom Excel:</p>
+                        <p class="text-slate-600 dark:text-slate-400"><span class="font-semibold text-emerald-600 dark:text-emerald-400">Wajib:</span> <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">kode_voucher</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">service_profile</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">voucher_pool</code></p>
+                        <p class="text-slate-600 dark:text-slate-400"><span class="font-semibold text-slate-500">Opsional:</span> <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">router</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">reseller</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">validity_days</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">status</code></p>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pilih File Excel</label>
+                        <input type="file" wire:model="importFile" accept=".xlsx,.xls,.csv" class="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:bg-indigo-900/30 file:text-indigo-700 hover:file:bg-indigo-100 dark:bg-indigo-900/50 dark:file:bg-indigo-900/30 dark:file:text-indigo-400 transition-all cursor-pointer dark:bg-slate-900 dark:text-slate-100">
+                        @error('importFile') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 mt-6">
+                        <button wire:click="closeImportModal" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                            Batal
+                        </button>
+                        <button wire:click="import" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors">
+                            <span wire:loading.remove wire:target="import" class="material-symbols-outlined notranslate mr-1.5" translate="no" style="font-size:18px">upload</span>
+                            <span wire:loading wire:target="import" class="material-symbols-outlined notranslate mr-1.5 animate-spin" translate="no" style="font-size:18px">sync</span>
+                            <span wire:loading.remove wire:target="import">Proses Import</span>
+                            <span wire:loading wire:target="import">Memproses...</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

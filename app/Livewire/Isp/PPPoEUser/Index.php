@@ -6,6 +6,7 @@ use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\PPPoEUser;
 use App\Services\ISP\PPPoEService;
 use App\Exports\PPPoEUserExport;
+use App\Exports\Templates\PPPoEUserTemplateExport;
 use App\Imports\PPPoEUserImport;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -216,10 +217,24 @@ class Index extends BaseNetworkComponent
         Log::info(__METHOD__);
         try {
             $selectedIds = $this->selectedIds;
-            return Excel::download(new PPPoEUserExport($selectedIds), 'pppoe-users.xlsx');
+            return Excel::download(new PPPoEUserExport($selectedIds, [
+                'search' => $this->search,
+                'status' => $this->filters['status'] ?? '',
+                'reseller_id' => $this->filters['reseller_id'] ?? '',
+            ]), 'pppoe-users.xlsx');
         } catch (Throwable $e) {
             Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             session()->flash('error', 'Gagal export PPPoE User: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate()
+    {
+        try {
+            return Excel::download(new PPPoEUserTemplateExport(), 'template-import-pppoe.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Download Template Failed', ['message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal download template: ' . $e->getMessage());
         }
     }
 

@@ -7,6 +7,7 @@ use App\Models\ISP\ServiceProfile as ServiceProfileModel;
 use App\Models\ISP\ServiceProfileType;
 use App\Models\User;
 use App\Exports\ServiceProfileExport;
+use App\Exports\Templates\ServiceProfileTemplateExport;
 use App\Imports\ServiceProfileImport;
 use App\Services\ISP\ServiceProfileService;
 use Illuminate\Support\Facades\Auth;
@@ -505,10 +506,25 @@ class Index extends BaseNetworkComponent
         Gate::authorize('export', ServiceProfileModel::class);
         try {
             $selectedIds = $this->selectedPackages;
-            return Excel::download(new ServiceProfileExport($selectedIds), 'paket-internet.xlsx');
+            return Excel::download(new ServiceProfileExport($selectedIds, [
+                'search' => $this->search,
+                'service_type' => $this->filterServiceType ?? '',
+                'status' => $this->filterStatus ?? '',
+            ]), 'paket-internet.xlsx');
         } catch (Throwable $e) {
             \Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             session()->flash('error', 'Gagal export paket: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate()
+    {
+        Gate::authorize('create', ServiceProfileModel::class);
+        try {
+            return Excel::download(new ServiceProfileTemplateExport(), 'template-import-paket.xlsx');
+        } catch (Throwable $e) {
+            \Log::error('Download Template Failed', ['message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal download template: ' . $e->getMessage());
         }
     }
 
@@ -570,7 +586,11 @@ class Index extends BaseNetworkComponent
             
             Log::info('Service profiles imported successfully');
             
-            session()->flash('success', 'Paket berhasil diimpor!');
+            if (session()->has('import_result')) {
+                session()->flash('success', session('import_result'));
+            } else {
+                session()->flash('success', 'Paket berhasil diimpor!');
+            }
             $this->closeImportModal();
             
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {

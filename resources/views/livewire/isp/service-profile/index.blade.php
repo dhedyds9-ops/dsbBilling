@@ -243,9 +243,38 @@
     @if($showImportModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-500/75 dark:bg-slate-900/80">
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="w-full max-w-lg bg-white dark:bg-slate-800 rounded-xl shadow-xl p-4">
-                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">Import Paket Internet</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Pilih file Excel (.xlsx, .xls) atau CSV untuk diimpor.</p>
+                <div class="w-full max-w-lg bg-white dark:bg-slate-800 rounded-xl shadow-xl p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <span class="material-symbols-outlined notranslate text-primary-600 dark:text-primary-400" translate="no" style="font-size:22px">upload_file</span>
+                            Import Paket Internet
+                        </h3>
+                        <button wire:click="closeImportModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">close</span>
+                        </button>
+                    </div>
+
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Pilih file Excel (.xlsx, .xls) atau CSV untuk diimpor ke sistem.</p>
+                    
+                    {{-- Download Template Section --}}
+                    <div class="p-3 mb-4 rounded-xl bg-primary-50/70 dark:bg-primary-950/40 border border-primary-100 dark:border-primary-900/50 flex items-center justify-between gap-3">
+                        <div class="text-xs text-primary-900 dark:text-primary-200">
+                            <p class="font-semibold">Format kolom paket internet</p>
+                            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Gunakan template resmi agar tipe dan kecepatan valid.</p>
+                        </div>
+                        <button type="button" wire:click="downloadTemplate" class="inline-flex items-center px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all whitespace-nowrap shrink-0">
+                            <span class="material-symbols-outlined notranslate mr-1" translate="no" style="font-size:16px">download</span>
+                            Template (.xlsx)
+                        </button>
+                    </div>
+
+                    {{-- Panduan Kolom Ringkas --}}
+                    <div class="mb-4 text-xs space-y-1 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <p class="font-semibold text-slate-700 dark:text-slate-200 mb-1">Panduan Kolom Excel:</p>
+                        <p class="text-slate-600 dark:text-slate-400"><span class="font-semibold text-emerald-600 dark:text-emerald-400">Wajib:</span> <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">nama_paket</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">download_speed</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">upload_speed</code></p>
+                        <p class="text-slate-600 dark:text-slate-400"><span class="font-semibold text-slate-500">Opsional:</span> <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">jenis_layanan</code> (pppoe/hotspot), <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">harga_dasar</code>, <code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">masa_aktif</code></p>
+                    </div>
+
                     <div class="space-y-4">
                         <input type="file" wire:model="importFile" class="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:bg-slate-900 dark:text-slate-100">
                         @error('importFile') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror

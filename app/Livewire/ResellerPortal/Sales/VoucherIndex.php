@@ -5,6 +5,7 @@ namespace App\Livewire\ResellerPortal\Sales;
 
 use App\Models\ISP\Voucher;
 use App\Exports\VoucherExport;
+use App\Exports\Templates\VoucherTemplateExport;
 use App\Imports\VoucherImport;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -205,10 +206,25 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
         Log::info(__METHOD__);
         try {
             $selectedIds = $this->selectedIds;
-            return Excel::download(new VoucherExport($selectedIds), 'vouchers.xlsx');
+            return Excel::download(new VoucherExport($selectedIds, [
+                'search' => $this->search,
+                'status' => $this->filters['status'] ?? '',
+                'voucher_pool_id' => $this->filters['voucher_pool_id'] ?? '',
+                'reseller_id' => auth()->user()->getEffectiveResellerId(),
+            ]), 'vouchers.xlsx');
         } catch (Throwable $e) {
             Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             session()->flash('error', 'Gagal export voucher: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate()
+    {
+        try {
+            return Excel::download(new VoucherTemplateExport(), 'template-import-voucher.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Download Template Failed', ['message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal download template: ' . $e->getMessage());
         }
     }
 
@@ -261,7 +277,11 @@ class VoucherIndex extends \App\Livewire\ISP\BaseNetworkComponent
 
             Log::info('Vouchers imported successfully');
 
-            session()->flash('success', 'Voucher berhasil diimpor!');
+            if (session()->has('import_result')) {
+                session()->flash('success', session('import_result'));
+            } else {
+                session()->flash('success', 'Voucher berhasil diimpor!');
+            }
             $this->closeImportModal();
 
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {

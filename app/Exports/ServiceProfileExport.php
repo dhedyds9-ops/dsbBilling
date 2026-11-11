@@ -11,18 +11,32 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class ServiceProfileExport implements FromCollection, WithHeadings, ShouldAutoSize, WithMapping
 {
     protected $selectedIds;
+    protected $filters;
 
-    public function __construct($selectedIds = null)
+    public function __construct($selectedIds = null, array $filters = [])
     {
         $this->selectedIds = $selectedIds;
+        $this->filters = $filters;
     }
 
     public function collection()
     {
         $query = ServiceProfile::with(['owner', 'serviceProfileType']);
 
-        if ($this->selectedIds && count($this->selectedIds) > 0) {
+        if (!empty($this->selectedIds)) {
             $query->whereIn('id', $this->selectedIds);
+        } else {
+            if (!empty($this->filters['search'])) {
+                $query->where('name', 'like', '%' . $this->filters['search'] . '%');
+            }
+
+            if (!empty($this->filters['service_type'])) {
+                $query->where('service_type', $this->filters['service_type']);
+            }
+
+            if (!empty($this->filters['status'])) {
+                $query->where('status', $this->filters['status']);
+            }
         }
 
         return $query->get();
@@ -39,8 +53,6 @@ class ServiceProfileExport implements FromCollection, WithHeadings, ShouldAutoSi
             'Tipe Paket',
             'Download Speed',
             'Upload Speed',
-            'Burst Download',
-            'Burst Upload',
             'Harga Dasar',
             'Harga Owner',
             'Harga Reseller',
@@ -60,17 +72,15 @@ class ServiceProfileExport implements FromCollection, WithHeadings, ShouldAutoSi
             $profile->description,
             $profile->service_type,
             $profile->package_type,
-            $profile->download_speed . ' Mbps',
-            $profile->upload_speed . ' Mbps',
-            $profile->burst_limit_download ? $profile->burst_limit_download . ' Mbps' : '-',
-            $profile->burst_limit_upload ? $profile->burst_limit_upload . ' Mbps' : '-',
-            $profile->base_price ? 'Rp ' . number_format($profile->base_price, 0, ',', '.') : '-',
-            $profile->owner_price ? 'Rp ' . number_format($profile->owner_price, 0, ',', '.') : '-',
-            $profile->reseller_price ? 'Rp ' . number_format($profile->reseller_price, 0, ',', '.') : '-',
-            $profile->status === 'active' ? 'Aktif' : 'Nonaktif',
-            $profile->reseller ? $profile->reseller->name : '-',
-            $profile->created_at ? $profile->created_at->format('d/m/Y H:i') : '-',
-            $profile->updated_at ? $profile->updated_at->format('d/m/Y H:i') : '-'
+            $profile->download_speed,
+            $profile->upload_speed,
+            $profile->base_price,
+            $profile->owner_price,
+            $profile->reseller_price,
+            $profile->status,
+            $profile->owner?->name ?? 'Pusat',
+            $profile->created_at?->format('d/m/Y H:i'),
+            $profile->updated_at?->format('d/m/Y H:i')
         ];
     }
 }

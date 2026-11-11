@@ -11,18 +11,36 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class VoucherExport implements FromCollection, WithHeadings, ShouldAutoSize, WithMapping
 {
     protected $selectedIds;
+    protected $filters;
 
-    public function __construct($selectedIds = null)
+    public function __construct($selectedIds = null, array $filters = [])
     {
         $this->selectedIds = $selectedIds;
+        $this->filters = $filters;
     }
 
     public function collection()
     {
-        $query = Voucher::with(['voucherPool', 'serviceProfile', 'nasDevice', 'owner', 'createdBy', 'updatedBy']);
+        $query = Voucher::with(['voucherPool', 'serviceProfile', 'nasDevice', 'reseller', 'createdBy', 'updatedBy']);
 
-        if ($this->selectedIds && count($this->selectedIds) > 0) {
+        if (!empty($this->selectedIds)) {
             $query->whereIn('id', $this->selectedIds);
+        } else {
+            if (!empty($this->filters['search'])) {
+                $query->where('code', 'like', '%' . $this->filters['search'] . '%');
+            }
+
+            if (!empty($this->filters['status'])) {
+                $query->where('status', $this->filters['status']);
+            }
+
+            if (!empty($this->filters['voucher_pool_id'])) {
+                $query->where('voucher_pool_id', $this->filters['voucher_pool_id']);
+            }
+
+            if (!empty($this->filters['reseller_id'])) {
+                $query->where('reseller_id', $this->filters['reseller_id']);
+            }
         }
 
         return $query->get();
@@ -36,7 +54,7 @@ class VoucherExport implements FromCollection, WithHeadings, ShouldAutoSize, Wit
             'Voucher Pool',
             'Service Profile',
             'NAS Device',
-            'Owner',
+            'Reseller',
             'Status',
             'Tipe',
             'Fee Seller',
@@ -54,20 +72,19 @@ class VoucherExport implements FromCollection, WithHeadings, ShouldAutoSize, Wit
         return [
             $voucher->id,
             $voucher->code,
-            $voucher->voucherPool?->name,
-            $voucher->serviceProfile?->name,
-            $voucher->nasDevice?->name,
-            $voucher->reseller?->name,
+            $voucher->voucherPool?->name ?? '-',
+            $voucher->serviceProfile?->name ?? '-',
+            $voucher->nasDevice?->name ?? '-',
+            $voucher->reseller?->name ?? 'Pusat',
             $voucher->status,
-            $voucher->type,
+            $voucher->type ?? 'hotspot',
             $voucher->fee_seller,
             $voucher->activated_at?->format('d/m/Y H:i'),
             $voucher->expires_at?->format('d/m/Y H:i'),
-            $voucher->createdBy?->name,
-            $voucher->updatedBy?->name,
+            $voucher->createdBy?->name ?? '-',
+            $voucher->updatedBy?->name ?? '-',
             $voucher->created_at?->format('d/m/Y H:i'),
             $voucher->updated_at?->format('d/m/Y H:i')
         ];
     }
 }
-

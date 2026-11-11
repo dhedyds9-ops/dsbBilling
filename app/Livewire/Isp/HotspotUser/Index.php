@@ -5,6 +5,7 @@ namespace App\Livewire\Isp\HotspotUser;
 use App\Livewire\Isp\BaseNetworkComponent;
 use App\Models\ISP\HotspotUser;
 use App\Exports\HotspotUserExport;
+use App\Exports\Templates\HotspotUserTemplateExport;
 use App\Imports\HotspotUserImport;
 use App\Services\ISP\HotspotService;
 use Illuminate\Support\Facades\Auth;
@@ -259,10 +260,24 @@ class Index extends BaseNetworkComponent
         Log::info(__METHOD__);
         try {
             $selectedIds = $this->selectedIds;
-            return Excel::download(new HotspotUserExport($selectedIds), 'hotspot-users.xlsx');
+            return Excel::download(new HotspotUserExport($selectedIds, [
+                'search' => $this->search,
+                'status' => $this->filters['status'] ?? '',
+                'reseller_id' => $this->filters['reseller_id'] ?? '',
+            ]), 'hotspot-users.xlsx');
         } catch (Throwable $e) {
             Log::error('Export Failed', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             session()->flash('error', 'Gagal export hotspot users: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate()
+    {
+        try {
+            return Excel::download(new HotspotUserTemplateExport(), 'template-import-hotspot-user.xlsx');
+        } catch (Throwable $e) {
+            Log::error('Download Template Failed', ['message' => $e->getMessage()]);
+            session()->flash('error', 'Gagal download template: ' . $e->getMessage());
         }
     }
 
@@ -300,7 +315,11 @@ class Index extends BaseNetworkComponent
 
             Log::info('Hotspot users imported successfully');
 
-            session()->flash('success', 'Hotspot User berhasil diimpor!');
+            if (session()->has('import_result')) {
+                session()->flash('success', session('import_result'));
+            } else {
+                session()->flash('success', 'Hotspot User berhasil diimpor!');
+            }
             $this->closeImportModal();
 
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
