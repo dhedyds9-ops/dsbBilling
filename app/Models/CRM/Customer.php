@@ -38,6 +38,9 @@ class Customer extends Model
     protected static function booted()
     {
         static::creating(function ($customer) {
+            if (empty($customer->uuid)) {
+                $customer->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
             if (empty($customer->code)) {
                 $customer->code = \App\Services\CRM\CustomerCodeGenerator::generate();
             }

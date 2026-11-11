@@ -131,12 +131,13 @@ class HotspotUserImport implements ToCollection, WithHeadingRow
                         }
 
                         $cs = CustomerService::create([
+                            'uuid' => (string) Str::uuid(),
                             'customer_id' => $customer->id,
                             'service_profile_id' => $serviceProfile->id,
-                            'router_id' => $router?->id,
+                            'username' => $username,
+                            'password' => $password,
                             'reseller_id' => $resellerId,
                             'status' => $status === 'active' ? 'active' : 'inactive',
-                            'service_type' => 'hotspot',
                             'created_by' => $this->user->id,
                             'updated_by' => $this->user->id,
                         ]);

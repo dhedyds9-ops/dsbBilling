@@ -53,8 +53,69 @@ class CustomerService extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+
             if (empty($model->reseller_id) && !empty($model->customer_id)) {
                 $model->reseller_id = \App\Models\CRM\Customer::withoutGlobalScopes()->where('id', $model->customer_id)->value('reseller_id');
+            }
+
+            if (empty($model->contract_id) && !empty($model->customer_id)) {
+                $contract = \App\Models\CRM\Contract::firstOrCreate(
+                    ['customer_id' => $model->customer_id],
+                    [
+                        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                        'contract_number' => 'CTR-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                        'start_date' => now(),
+                        'status' => 'active',
+                        'created_by' => $model->created_by,
+                        'updated_by' => $model->updated_by,
+                    ]
+                );
+                $model->contract_id = $contract->id;
+            }
+
+            if (empty($model->service_id)) {
+                $service = \App\Models\ServiceCatalog\Service::first();
+                if (!$service) {
+                    try {
+                        $catalog = \App\Models\ServiceCatalog\ServiceCatalog::withoutGlobalScopes()->firstOrCreate(
+                            ['name' => 'Layanan Internet'],
+                            [
+                                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                                'description' => 'Katalog Layanan Default',
+                                'is_active' => true,
+                                'created_by' => $model->created_by,
+                                'updated_by' => $model->updated_by,
+                            ]
+                        );
+                        $service = \App\Models\ServiceCatalog\Service::create([
+                            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                            'service_catalog_id' => $catalog->id,
+                            'name' => 'Default Internet Service',
+                            'description' => 'Auto-generated service',
+                            'type' => 'hotspot',
+                            'price' => 0,
+                            'is_active' => true,
+                            'created_by' => $model->created_by,
+                            'updated_by' => $model->updated_by,
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('CustomerService auto service fallback: ' . $e->getMessage());
+                    }
+                }
+                if ($service) {
+                    $model->service_id = $service->id;
+                }
+            }
+
+            if (empty($model->username)) {
+                $model->username = 'cs_' . ($model->customer_id ?? time()) . '_' . \Illuminate\Support\Str::random(4);
+            }
+
+            if (empty($model->password)) {
+                $model->password = \Illuminate\Support\Str::random(8);
             }
         });
 
