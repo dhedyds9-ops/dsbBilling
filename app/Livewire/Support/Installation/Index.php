@@ -21,13 +21,14 @@ class Index extends BaseEnterpriseList
 
     public array $tabs = [
         'workorder' => 'Work Order',
-        'schedule' => 'Schedule',
-        'technician' => 'Technician',
+        'schedule' => 'Jadwal',
+        'technician' => 'Beban Teknisi',
         'checklist' => 'Checklist',
     ];
 
     public ?array $summary = null;
     public ?array $filterOptions = null;
+    public ?array $calendar = null;
     public ?array $calendarEvents = null;
     public ?array $technicianLoad = null;
     public ?array $checklistTemplate = null;
@@ -49,8 +50,8 @@ class Index extends BaseEnterpriseList
             'customer_id' => '',
             'pop_id' => '',
             'priority' => '',
-            'scheduled_from' => now()->startOfWeek()->toDateString(),
-            'scheduled_to' => now()->endOfWeek()->toDateString(),
+            'scheduled_from' => '',
+            'scheduled_to' => '',
         ];
         $this->newWo = [
             'customer_id' => '',
@@ -153,25 +154,51 @@ class Index extends BaseEnterpriseList
         try {
             $from = $this->scheduleDateFrom ?: now()->startOfMonth()->toDateString();
             $to = $this->scheduleDateTo ?: now()->endOfMonth()->toDateString();
+            $startOfMonth = \Carbon\Carbon::parse($from)->startOfMonth();
+            $endOfMonth = \Carbon\Carbon::parse($to)->endOfMonth();
+
             $rows = CrmInstallation::query()
-                ->whereBetween('scheduled_date', [$from, $to])
+                ->with(['customer', 'technician'])
+                ->whereBetween('scheduled_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
                 ->limit(500)
-                ->get(['id', 'customer_id', 'scheduled_date', 'scheduled_time', 'status', 'technician_id']);
-            $events = [];
+                ->get();
+
+            $eventsByDate = [];
             foreach ($rows as $r) {
-                $events[] = [
-                    'id' => $r->id,
-                    'title' => 'WO #' . $r->id,
-                    'date' => $r->scheduled_date,
-                    'time' => $r->scheduled_time ?: '-',
-                    'status' => $r->status,
-                    'technician' => $r->technician_id,
-                    'customer' => $r->customer_id,
-                ];
+                $d = $r->scheduled_date ? (is_string($r->scheduled_date) ? $r->scheduled_date : $r->scheduled_date->format('Y-m-d')) : '';
+                if ($d) {
+                    $eventsByDate[$d][] = [
+                        'id' => $r->id,
+                        'title' => 'WO #' . $r->id . ' - ' . ($r->customer_name ?: $r->customer?->name ?: 'Pelanggan'),
+                        'time' => $r->scheduled_time ?: '09:00',
+                        'status' => $r->status,
+                        'technician' => $r->technician?->name ?: '-',
+                    ];
+                }
             }
-            $this->calendarEvents = $events;
+
+            $calendar = [];
+            $startGrid = $startOfMonth->copy()->startOfWeek(\Carbon\Carbon::SUNDAY);
+            $endGrid = $endOfMonth->copy()->endOfWeek(\Carbon\Carbon::SATURDAY);
+            $curr = $startGrid->copy();
+
+            while ($curr->lte($endGrid)) {
+                $dStr = $curr->toDateString();
+                $calendar[] = [
+                    'day' => $curr->day,
+                    'date' => $dStr,
+                    'is_today' => $curr->isToday(),
+                    'is_current_month' => $curr->month === $startOfMonth->month,
+                    'events' => $eventsByDate[$dStr] ?? [],
+                ];
+                $curr->addDay();
+            }
+
+            $this->calendar = $calendar;
+            $this->calendarEvents = $eventsByDate;
         } catch (Throwable $e) {
             Log::error('Installation calendar failed', ['e' => $e->getMessage()]);
+            $this->calendar = [];
             $this->calendarEvents = [];
         }
     }
@@ -607,6 +634,7 @@ class Index extends BaseEnterpriseList
         return view('livewire.support.installation.index', [
             'rows' => $rows,
             'filterConfig' => $this->getFilterConfig(),
+            'calendar' => $this->calendar ?? [],
         ]);
     }
 
