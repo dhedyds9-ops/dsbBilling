@@ -120,11 +120,27 @@
                                 {{ $inbound->receiver?->name ?? 'System' }}
                             </td>
                             <td class="py-3.5 px-4 text-right">
-                                <button wire:click="showDetail({{ $inbound->id }})"
-                                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg transition-colors">
-                                    <span class="material-symbols-outlined text-sm">visibility</span>
-                                    <span>Detail</span>
-                                </button>
+                                <div class="flex items-center justify-end gap-1.5">
+                                    <button wire:click="showDetail({{ $inbound->id }})"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg transition-colors"
+                                            title="Lihat Rincian Barang">
+                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                                        <span class="hidden sm:inline">Detail</span>
+                                    </button>
+                                    <button wire:click="openEditModal({{ $inbound->id }})"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-semibold text-xs rounded-lg border border-indigo-200 dark:border-indigo-800 transition-colors"
+                                            title="Edit Info Surat Jalan / Supplier / Tanggal">
+                                        <span class="material-symbols-outlined text-sm">edit</span>
+                                        <span class="hidden sm:inline">Edit</span>
+                                    </button>
+                                    <button wire:confirm="Apakah Anda yakin ingin membatalkan penerimaan ini? Seluruh saldo stok fisik di gudang akan dikurangi kembali dan nomor serial yang terdaftar akan dibatalkan."
+                                            wire:click="cancelInbound({{ $inbound->id }})"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-semibold text-xs rounded-lg border border-rose-200 dark:border-rose-800 transition-colors"
+                                            title="Batalkan Dokumen & Kembalikan Stok">
+                                        <span class="material-symbols-outlined text-sm">undo</span>
+                                        <span class="hidden sm:inline">Batal</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -579,10 +595,72 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end pt-2">
+                <div class="flex justify-between items-center pt-2">
+                    <button wire:confirm="Apakah Anda yakin ingin membatalkan penerimaan ini? Stok fisik di gudang akan dikurangi kembali."
+                            wire:click="cancelInbound({{ $selectedInbound->id }})" type="button"
+                            class="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800 transition-colors">
+                        Batalkan Dokumen
+                    </button>
                     <button wire:click="closeDetailModal" type="button"
                             class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors">
                         Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- MODAL EDIT INFORMASI DOKUMEN --}}
+    @if($showEditModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-indigo-600">edit_note</span>
+                            <span>Edit Informasi Barang Masuk</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Perbarui informasi no. surat jalan, supplier, atau catatan dokumen.</p>
+                    </div>
+                    <button wire:click="closeEditModal" type="button" class="text-slate-400 hover:text-slate-600">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Penerimaan</label>
+                        <input type="date" wire:model="edit_received_date"
+                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Supplier / Vendor / Pengirim</label>
+                        <input type="text" wire:model="edit_supplier_name" placeholder="PT Supplier / Toko..."
+                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">No. Referensi / Surat Jalan / Faktur</label>
+                        <input type="text" wire:model="edit_reference_doc" placeholder="SJ-2026/001 atau PO-..."
+                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
+                        <textarea wire:model="edit_notes" rows="3" placeholder="Catatan kondisi penerimaan..."
+                                  class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <button wire:click="closeEditModal" type="button"
+                            class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                        Batal
+                    </button>
+                    <button wire:click="saveEditInbound" type="button"
+                            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors">
+                        Simpan Perubahan
                     </button>
                 </div>
             </div>

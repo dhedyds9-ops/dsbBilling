@@ -34,6 +34,14 @@ class Index extends Component
     public bool $showDetailModal = false;
     public ?int $selectedInboundId = null;
 
+    // Modal Edit Informasi
+    public bool $showEditModal = false;
+    public ?int $editInboundId = null;
+    public string $edit_supplier_name = '';
+    public string $edit_reference_doc = '';
+    public string $edit_received_date = '';
+    public string $edit_notes = '';
+
     protected $queryString = [
         'search' => ['except' => ''],
         'warehouseFilter' => ['except' => ''],
@@ -287,6 +295,61 @@ class Index extends Component
     {
         $this->showDetailModal = false;
         $this->selectedInboundId = null;
+    }
+
+    public function openEditModal(int $id)
+    {
+        $inbound = InventoryInbound::findOrFail($id);
+        $this->editInboundId = $inbound->id;
+        $this->edit_supplier_name = $inbound->supplier_name ?? '';
+        $this->edit_reference_doc = $inbound->reference_doc ?? '';
+        $this->edit_received_date = $inbound->received_date ? $inbound->received_date->format('Y-m-d') : date('Y-m-d');
+        $this->edit_notes = $inbound->notes ?? '';
+        $this->showEditModal = true;
+    }
+
+    public function closeEditModal()
+    {
+        $this->showEditModal = false;
+        $this->editInboundId = null;
+    }
+
+    public function saveEditInbound()
+    {
+        $this->validate([
+            'edit_received_date' => 'required|date',
+            'edit_supplier_name' => 'nullable|string|max:200',
+            'edit_reference_doc' => 'nullable|string|max:100',
+            'edit_notes' => 'nullable|string|max:1000',
+        ]);
+
+        if (!$this->editInboundId) return;
+
+        $inbound = InventoryInbound::findOrFail($this->editInboundId);
+        $inbound->update([
+            'supplier_name' => trim($this->edit_supplier_name) ?: null,
+            'reference_doc' => trim($this->edit_reference_doc) ?: null,
+            'received_date' => $this->edit_received_date,
+            'notes' => trim($this->edit_notes) ?: null,
+        ]);
+
+        session()->flash('success', "Informasi dokumen \"{$inbound->inbound_number}\" berhasil diperbarui.");
+        $this->closeEditModal();
+    }
+
+    public function cancelInbound(int $id, StockMutationService $mutationService)
+    {
+        try {
+            $inbound = InventoryInbound::findOrFail($id);
+            $inboundNo = $inbound->inbound_number;
+
+            $mutationService->cancelInbound($id, 'Dibatalkan oleh ' . auth()->user()->name, auth()->id());
+
+            session()->flash('success', "Dokumen penerimaan \"{$inboundNo}\" berhasil dibatalkan dan saldo stok fisik telah dikembalikan.");
+            $this->closeDetailModal();
+        } catch (\Throwable $e) {
+            session()->flash('error', "Gagal membatalkan penerimaan: " . $e->getMessage());
+        }
     }
 
     public function render()

@@ -2,6 +2,8 @@
 
 namespace App\Services\Inventory;
 
+use App\Models\Inventory\InventoryInbound;
+use App\Models\Inventory\InventoryInboundItem;
 use App\Models\Inventory\InventoryCustody;
 use App\Models\Inventory\InventoryCustodyTransfer;
 use App\Models\Inventory\InventoryDispatch;
@@ -121,6 +123,94 @@ class StockMutationService
             }
 
             return $mutation;
+        });
+    }
+
+    /**
+     * Batalkan penerimaan barang masuk (Rollback stok fisik, ledger mutasi, dan serial number)
+     */
+    public function cancelInbound(int $inboundId, ?string $reason = null, ?int $actorId = null): void
+    {
+        DB::transaction(function () use ($inboundId, $reason, $actorId) {
+            $inbound = InventoryInbound::withoutGlobalScopes()->with('items')->findOrFail($inboundId);
+
+            if ($inbound->status === 'cancelled') {
+                throw new \InvalidArgumentException('Dokumen penerimaan ini sudah dibatalkan sebelumnya.');
+            }
+
+            foreach ($inbound->items as $inItem) {
+                $item = Item::withoutGlobalScopes()->findOrFail($inItem->item_id);
+                $qty = (float) $inItem->quantity;
+
+                // 1. Cek saldo stok di gudang
+                $stock = InventoryStock::withoutGlobalScopes()
+                    ->where('warehouse_id', $inbound->warehouse_id)
+                    ->where('item_id', $inItem->item_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $currentQty = $stock ? (float) $stock->quantity : 0.0;
+                if ($currentQty < $qty) {
+                    throw new \RuntimeException("Tidak dapat membatalkan! Stok tersisa untuk '{$item->name}' di gudang ({$currentQty} {$item->unit}) lebih sedikit dari jumlah penerimaan ({$qty} {$item->unit}). Sebagian barang mungkin sudah dikeluarkan.");
+                }
+
+                // 2. Jika barang berserial, periksa apakah ada serial yang sudah bergerak
+                if ($item->is_serialized && !empty($inItem->serials)) {
+                    $usedSerials = ItemSerial::withoutGlobalScopes()
+                        ->where('item_id', $item->id)
+                        ->whereIn('serial_number', $inItem->serials)
+                        ->where('status', '!=', 'in_warehouse')
+                        ->pluck('serial_number')
+                        ->toArray();
+
+                    if (!empty($usedSerials)) {
+                        $list = implode(', ', array_slice($usedSerials, 0, 3));
+                        throw new \RuntimeException("Tidak dapat membatalkan! Serial Number [{$list}] sudah berstatus di luar gudang (sedang dipegang teknisi atau terpasang ke pelanggan).");
+                    }
+
+                    // Hapus serial yang terdaftar dari inbound ini
+                    ItemSerial::withoutGlobalScopes()
+                        ->where('item_id', $item->id)
+                        ->whereIn('serial_number', $inItem->serials)
+                        ->where('status', 'in_warehouse')
+                        ->delete();
+                }
+
+                // 3. Revert saldo fisik gudang
+                $balanceBefore = $currentQty;
+                $balanceAfter = $balanceBefore - $qty;
+
+                $stock->update([
+                    'quantity' => $balanceAfter,
+                    'updated_at' => now(),
+                ]);
+
+                // 4. Catat mutasi pembatalan di ledger
+                InventoryStockMutation::create([
+                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                    'mutation_number' => InventoryStockMutation::generateMutationNumber(),
+                    'warehouse_id' => $inbound->warehouse_id,
+                    'item_id' => $item->id,
+                    'type' => 'adjustment_out',
+                    'qty_in' => 0,
+                    'qty_out' => $qty,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceAfter,
+                    'reference_type' => 'inbound_cancellation',
+                    'reference_id' => $inbound->id,
+                    'notes' => 'Pembatalan Penerimaan ' . $inbound->inbound_number . ($reason ? " ($reason)" : ''),
+                    'actor_id' => $actorId ?: auth()->id(),
+                    'branch_id' => $inbound->branch_id,
+                    'created_at' => now(),
+                ]);
+            }
+
+            // Update status inbound menjadi cancelled
+            $inbound->update([
+                'status' => 'cancelled',
+                'notes' => trim(($inbound->notes ? $inbound->notes . ' | ' : '') . 'DIBATALKAN: ' . ($reason ?: 'Kesalahan input penerimaan')),
+            ]);
+            $inbound->delete(); // Soft delete agar tidak merusak relasi namun tidak muncul di list aktif
         });
     }
 
