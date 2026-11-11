@@ -215,10 +215,10 @@ class HsgqOltDriver extends BaseOltDriver
                                 default     => false
                             };
                             $rx = $this->cachedOnuRx[$onuIndex] ?? null;
-                            if ($rx === null || $rx <= -40) {
+                            if ($rx !== null && $rx <= -40) {
                                 $isOnline = false;
                             }
-                            if ($statusVal === 0 && $rx !== null && $rx > -40) {
+                            if ($rx !== null && $rx > -40 && $rx < -5) {
                                 $isOnline = true;
                             }
                             return $isOnline ? 'online' : 'offline';
@@ -348,10 +348,10 @@ class HsgqOltDriver extends BaseOltDriver
                         1, 3, 4, 10 => true,
                         default     => false
                     };
-                    if ($rx === null || $rx <= -40) {
+                    if ($rx !== null && $rx <= -40) {
                         $isOnline = false;
                     }
-                    if ($statusVal === 0 && $rx !== null && $rx > -40) {
+                    if ($rx !== null && $rx > -40 && $rx < -5) {
                         $isOnline = true;
                     }
                     return $isOnline ? 'online' : 'offline';

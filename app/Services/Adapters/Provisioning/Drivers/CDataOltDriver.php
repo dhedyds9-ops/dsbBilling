@@ -380,8 +380,18 @@ class CDataOltDriver extends BaseOltDriver
                     $before = trim(substr($line, 0, $pos));
                     $after = trim(substr($line, $pos + strlen($snMatch[1])));
 
-                    // Explicitly match 'online' vs 'offline' (ignore 'Active' control flag)
-                    $runState = stripos($after, 'online') !== false ? 'online' : 'offline';
+                    // Robust regex match untuk mendeteksi status Online vs Offline di CLI C-DATA:
+                    // Online: online, up, working, work, operation, operational, o5, connected, ok, registered
+                    // Offline: offline, down, lost, los, power-off, dying-gasp, deactive, inactive, unregistered
+                    $afterLower = strtolower($after);
+                    $isCliOnline = false;
+                    if (str_contains($afterLower, 'online') || preg_match('/\b(up|working|work|operation|operational|o5|connected|ok|registered|match)\b/i', $afterLower)) {
+                        $isCliOnline = true;
+                    }
+                    if (preg_match('/\b(offline|down|lost|los|power-off|dying-gasp|deactive|inactive|unregistered|standby)\b/i', $afterLower)) {
+                        $isCliOnline = false;
+                    }
+                    $runState = $isCliOnline ? 'online' : 'offline';
 
                     $tokens = preg_split('/\s+/', $before);
                     $lPort = null;
@@ -595,6 +605,9 @@ class CDataOltDriver extends BaseOltDriver
 
                     if ($detectedRx !== null) {
                         $this->cachedCliParsedOnus[$lPort][$lOnuId]['rx_power_dbm'] = $detectedRx;
+                        if ($detectedRx >= -38.0 && $detectedRx <= -7.0) {
+                            $this->cachedCliParsedOnus[$lPort][$lOnuId]['status'] = 'online';
+                        }
                     }
                     if ($detectedTx !== null) {
                         $this->cachedCliParsedOnus[$lPort][$lOnuId]['tx_power_dbm'] = $detectedTx;
@@ -1126,44 +1139,72 @@ class CDataOltDriver extends BaseOltDriver
 
                 // 1. Cek dari CLI cache terlebih dahulu jika ada
                 $cliStatus = null;
+                $cliRx = null;
+                $cliTx = null;
                 if (!empty($this->cachedCliParsedOnus)) {
                     foreach ($this->cachedCliParsedOnus as $cPort => $cOnus) {
                         foreach ($cOnus as $cData) {
                             if (!empty($cData['serial_number']) && strtoupper($cData['serial_number']) === strtoupper($sn)) {
                                 $cliStatus = $cData['status'] ?? null;
+                                if (!empty($cData['rx_power_dbm'])) {
+                                    $cliRx = (float)$cData['rx_power_dbm'];
+                                }
+                                if (!empty($cData['tx_power_dbm'])) {
+                                    $cliTx = (float)$cData['tx_power_dbm'];
+                                }
                                 break 2;
                             }
                         }
                     }
                 }
 
-                if ($cliStatus === 'offline') {
-                    $isOnline = false;
-                } elseif ($cliStatus === 'online') {
-                    $isOnline = true;
+                // 2. Evaluasi status SNMP
+                // In GPON: onuRunState: 5=operation (O5/ONLINE), 101=online
+                // In EPON: 1=online/up, 2=offline/down
+                // activeVal: 1=active/enabled, 2=inactive/disabled
+                $snmpOnline = false;
+                if ($stVal === 5 || $stVal === 101) {
+                    $snmpOnline = true;
+                } elseif ($stVal === 1 && $activeVal === 1) {
+                    $snmpOnline = true;
+                } elseif (in_array($stVal, [2, 6, 7, 102], true)) {
+                    $snmpOnline = false;
+                } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5') || str_contains($stRaw, 'up') || str_contains($stRaw, 'work')) {
+                    $snmpOnline = true;
+                } elseif (str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'standby') || str_contains($stRaw, 'popup') || str_contains($stRaw, 'los')) {
+                    $snmpOnline = false;
                 } else {
-                    // 2. Evaluasi status SNMP
-                    // In GPON: onuRunState: 1=initial, 2=standby, 3=sn, 4=ranging, 5=operation (O5/ONLINE), 6=popup/los
-                    // Hanya state 5 (O5) yang menandakan ONU aktif beroperasi secara optik.
-                    // State 1, 2, 6, 7 adalah offline / mati total / dicabut.
-                    if ($stVal === 5 || $stVal === 101) {
-                        $isOnline = true;
-                    } elseif (in_array($stVal, [1, 2, 3, 4, 6, 7, 102], true)) {
-                        $isOnline = false;
-                    } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5')) {
-                        $isOnline = true;
-                    } elseif (str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'standby') || str_contains($stRaw, 'popup') || str_contains($stRaw, 'los')) {
-                        $isOnline = false;
-                    } else {
-                        // Jika stVal tidak terbaca, gunakan activeVal (1 = active config, 2 = inactive/disabled)
-                        $isOnline = ($activeVal === 1);
-                    }
+                    $snmpOnline = ($activeVal === 1);
                 }
 
+                // Tentukan status dasar dari CLI dan SNMP
+                if ($cliStatus === 'online' || $snmpOnline) {
+                    $isOnline = true;
+                } elseif ($cliStatus === 'offline' && !$snmpOnline) {
+                    $isOnline = false;
+                } else {
+                    $isOnline = $snmpOnline;
+                }
+
+                // 3. Evaluasi Redaman Optik (RX / TX)
                 $rxVal = $parsePower($lookupVal($this->cachedOnuRx, (string)$oidKey) ?? 0);
                 $txVal = $parsePower($lookupVal($this->cachedOnuTx, (string)$oidKey) ?? 0);
 
-                // Jika ONU offline/mati, bersihkan nilai redaman lama agar tidak dianggap online semu
+                if ($rxVal === null && $cliRx !== null) {
+                    $rxVal = $cliRx;
+                }
+                if ($txVal === null && $cliTx !== null) {
+                    $txVal = $cliTx;
+                }
+
+                // 4. GOLDEN RULE JARINGAN FIBER OPTIK:
+                // Modem yang mati listrik/kabel putus TIDAK DAPAT memancarkan laser upstream.
+                // Jika OLT mendeteksi redaman optik RX valid (-38 s.d -6 dBm), modem PASTI 100% ONLINE!
+                if ($rxVal !== null && $rxVal >= -38.0 && $rxVal <= -6.0) {
+                    $isOnline = true;
+                }
+
+                // Jika ONU benar-benar offline, bersihkan redaman lama agar tidak menampilkan redaman semu
                 if (!$isOnline) {
                     $rxVal = null;
                     $txVal = null;
