@@ -142,6 +142,12 @@ class Index extends BaseAdminComponent
         }
 
         $user = $employee->user;
+        if ($user) {
+            $user->update([
+                'password' => Hash::make('Password123!'),
+                'is_active' => true,
+            ]);
+        }
         $username = $user?->username ?? ($user?->email ?? $employee->email);
         $password = 'Password123!';
         $jabatan = $employee->position ?: ($employee->department ?: 'Staff');

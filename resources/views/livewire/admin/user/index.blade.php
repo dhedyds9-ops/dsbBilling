@@ -7,7 +7,7 @@
     </div>
 @endsection
 
-<div class="space-y-4 pb-10">
+<div class="space-y-4 pb-10" x-data x-on:open-wa-tab.window="if ($event.detail && $event.detail.url) window.open($event.detail.url, '_blank')">
     {{-- Role Tabs Navigation --}}
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 p-1.5 overflow-x-auto">
         <div class="flex items-center gap-1.5 min-w-max">
@@ -257,10 +257,10 @@
                                                         class="w-full text-left px-3 py-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 flex items-center gap-2 cursor-pointer font-medium">
                                                     <span class="material-symbols-outlined notranslate text-[15px]" translate="no">send</span> Kirim Otomatis (Gateway)
                                                 </button>
-                                                <a href="https://wa.me/{{ $cleanPhone }}?text={{ $manualWaText }}" target="_blank" @click="open = false"
-                                                   class="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2">
+                                                <button type="button" wire:click="openWhatsAppWeb({{ $user->id }})" @click="open = false"
+                                                        class="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer font-medium">
                                                     <span class="material-symbols-outlined notranslate text-[15px]" translate="no">open_in_new</span> Buka WhatsApp Web
-                                                </a>
+                                                </button>
                                             </div>
                                         </div>
                                     @endif

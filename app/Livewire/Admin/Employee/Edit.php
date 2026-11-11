@@ -167,6 +167,12 @@ class Edit extends AdminComponent
         }
 
         $user = $this->employee->fresh()->user;
+        if ($user) {
+            $user->update([
+                'password' => \Illuminate\Support\Facades\Hash::make('Password123!'),
+                'is_active' => true,
+            ]);
+        }
         $username = $user?->username ?? ($user?->email ?? $this->email);
         $password = 'Password123!';
         $jabatan = $this->position ?: ($this->department ?: 'Staff');

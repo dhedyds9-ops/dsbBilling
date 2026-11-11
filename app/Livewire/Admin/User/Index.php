@@ -297,6 +297,14 @@ class Index extends AdminComponent
         $username = $user->username ?: $user->email;
         $nama = $user->name;
 
+        $tempPassword = 'Password123!';
+
+        // Sinkronisasi database: reset password ke temporary password dan pastikan akun aktif
+        $user->update([
+            'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
+            'is_active' => true,
+        ]);
+
         $companyName = \App\Models\Setting::getValue('company.name', 'dsBilling');
 
         $msgText = "Halo *{$nama}*,\n\n"
@@ -308,7 +316,7 @@ class Index extends AdminComponent
             . "🌐 *Link Login:* " . url('/login') . "\n\n"
             . "🔐 *Kredensial Login:*\n"
             . "• Username / Email: *{$username}*\n"
-            . "• Password: *Password123!*\n"
+            . "• Password: *{$tempPassword}*\n"
             . "━━━━━━━━━━━━━━━━━━━━\n"
             . "Silakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan akun, segera ganti password Anda setelah login pertama kali.\n\n"
             . "Terima kasih.";
@@ -393,14 +401,74 @@ class Index extends AdminComponent
             }
 
             if ($sent) {
-                $this->dispatch('toast', type: 'success', message: "✅ Data login berhasil dikirim otomatis via WhatsApp Gateway ke {$phone}!");
+                $this->dispatch('toast', type: 'success', message: "✅ Kredensial login dengan password baru ('{$tempPassword}') berhasil disinkronkan ke database dan dikirim via WhatsApp Gateway ke {$phone}!");
             } else {
-                $this->dispatch('toast', type: 'error', message: "❌ Gagal kirim via WhatsApp Gateway: " . ($errorMsg ?: 'Perangkat/Gateway tidak merespons.'));
+                $this->dispatch('toast', type: 'error', message: "❌ Gagal kirim via WhatsApp Gateway: " . ($errorMsg ?: 'Perangkat/Gateway tidak merespons.') . " (Namun password database telah disinkronkan ke '{$tempPassword}').");
             }
         } catch (\Throwable $e) {
             Log::error('WhatsApp Gateway Error on User Index: ' . $e->getMessage());
             $this->dispatch('toast', type: 'error', message: "❌ Terjadi kendala: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Buka WhatsApp Web dengan pesan kredensial terformat dan sinkronisasi password database.
+     */
+    public function openWhatsAppWeb($userId)
+    {
+        $user = UserModel::with(['roles', 'employee'])->find($userId);
+        if (!$user) {
+            $this->dispatch('toast', type: 'error', message: 'User tidak ditemukan.');
+            return;
+        }
+
+        $rawPhone = $user->whatsapp ?: ($user->employee?->phone ?: ($user->phone ?? ''));
+        $phone = preg_replace('/[^0-9]/', '', (string)$rawPhone);
+        if (str_starts_with($phone, '08')) {
+            $phone = '628' . substr($phone, 2);
+        } elseif (str_starts_with($phone, '8')) {
+            $phone = '628' . substr($phone, 1);
+        } elseif (str_starts_with($phone, '6208')) {
+            $phone = '628' . substr($phone, 4);
+        }
+
+        if (empty($phone) || !str_starts_with($phone, '628') || strlen($phone) < 10 || strlen($phone) > 16) {
+            $this->dispatch('toast', type: 'error', message: "Nomor WhatsApp user ('{$rawPhone}') tidak valid. Harap lengkapi nomor seluler Indonesia (08... atau 628...).");
+            return;
+        }
+
+        $tempPassword = 'Password123!';
+
+        // Sinkronisasi database: reset password ke temporary password dan pastikan akun aktif
+        $user->update([
+            'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
+            'is_active' => true,
+        ]);
+
+        $roleNames = $user->roles->pluck('display_name')->implode(', ') ?: ($user->roles->pluck('name')->implode(', ') ?: 'User');
+        $jabatan = $user->job_title ?: ($user->job_function ?: $roleNames);
+        $username = $user->username ?: $user->email;
+        $nama = $user->name;
+        $companyName = \App\Models\Setting::getValue('company.name', 'dsBilling');
+
+        $msgText = "Halo *{$nama}*,\n\n"
+            . "Berikut informasi akun login sistem Anda:\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "🏢 *Aplikasi:* {$companyName}\n"
+            . "👤 *Nama:* {$nama}\n"
+            . "💼 *Peran/Jabatan:* {$jabatan}\n"
+            . "🌐 *Link Login:* " . url('/login') . "\n\n"
+            . "🔐 *Kredensial Login:*\n"
+            . "• Username / Email: *{$username}*\n"
+            . "• Password: *{$tempPassword}*\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "Silakan gunakan informasi di atas untuk masuk ke sistem. Demi keamanan akun, segera ganti password Anda setelah login pertama kali.\n\n"
+            . "Terima kasih.";
+
+        $waUrl = "https://wa.me/{$phone}?text=" . rawurlencode($msgText);
+
+        $this->dispatch('open-wa-tab', url: $waUrl);
+        $this->dispatch('toast', type: 'success', message: "Password akun {$nama} telah disinkronkan ke '{$tempPassword}' dan siap dikirim via WhatsApp Web.");
     }
 
     /**
