@@ -119,7 +119,6 @@ class HotspotUserImport implements ToCollection, WithHeadingRow
 
                         if (!$customer) {
                             $customer = Customer::create([
-                                'uuid' => (string) Str::uuid(),
                                 'code' => \App\Services\CRM\CustomerCodeGenerator::generate(),
                                 'name' => $customerName,
                                 'phone' => $phone ?? '0000000000',
