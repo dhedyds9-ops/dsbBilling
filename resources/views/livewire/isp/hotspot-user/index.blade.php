@@ -341,7 +341,7 @@
                                 {{ $tglLogout }}
                             </td>
                             <td class="px-4 py-3 {{ $textSecondary }} text-xs">
-                                {{ $user->subscription->next_billing_date ? \Carbon\Carbon::parse($user->subscription->next_billing_date)->format('d-m-Y') : '-' }}
+                                {{ $user->subscription?->next_billing_date ? \Carbon\Carbon::parse($user->subscription->next_billing_date)->format('d-m-Y') : '-' }}
                             </td>
                         </tr>
                     @empty
