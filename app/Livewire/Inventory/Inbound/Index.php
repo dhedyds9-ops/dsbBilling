@@ -20,8 +20,10 @@ class Index extends Component
     public string $dateFrom = '';
     public string $dateTo = '';
 
-    // Modal Form Penerimaan Barang
+    // Modal Form Penerimaan Barang (Create & Edit Lengkap)
     public bool $showCreateModal = false;
+    public ?int $editInboundId = null;
+    public ?string $editInboundNumber = null;
     public ?int $warehouse_id = null;
     public string $source_type = 'supplier';
     public string $supplier_name = '';
@@ -34,9 +36,8 @@ class Index extends Component
     public bool $showDetailModal = false;
     public ?int $selectedInboundId = null;
 
-    // Modal Edit Informasi
+    // Backward-compatible properties
     public bool $showEditModal = false;
-    public ?int $editInboundId = null;
     public string $edit_supplier_name = '';
     public string $edit_reference_doc = '';
     public string $edit_received_date = '';
@@ -114,6 +115,8 @@ class Index extends Component
 
     public function resetCreateForm()
     {
+        $this->editInboundId = null;
+        $this->editInboundNumber = null;
         $this->warehouse_id = null;
         $this->source_type = 'supplier';
         $this->supplier_name = '';
@@ -228,17 +231,43 @@ class Index extends Component
 
         try {
             DB::transaction(function () use ($mutationService, $warehouse) {
-                $inbound = InventoryInbound::create([
-                    'warehouse_id' => $warehouse->id,
-                    'branch_id' => $warehouse->branch_id,
-                    'source_type' => $this->source_type,
-                    'supplier_name' => $this->supplier_name ?: null,
-                    'reference_doc' => $this->reference_doc ?: null,
-                    'received_date' => $this->received_date,
-                    'status' => 'received',
-                    'notes' => $this->notes ?: null,
-                    'received_by' => auth()->id(),
-                ]);
+                if ($this->editInboundId) {
+                    $inbound = InventoryInbound::findOrFail($this->editInboundId);
+                    if ($inbound->status === 'cancelled') {
+                        throw new \RuntimeException('Dokumen yang telah dibatalkan tidak dapat diedit kembali.');
+                    }
+
+                    // 1. Rollback previous stock & serials
+                    $mutationService->cancelInbound($inbound->id, 'Revisi edit transaksi oleh ' . auth()->user()->name, auth()->id());
+
+                    // 2. Update inbound header & reactivate status
+                    $inbound->update([
+                        'warehouse_id' => $warehouse->id,
+                        'branch_id' => $warehouse->branch_id,
+                        'source_type' => $this->source_type,
+                        'supplier_name' => $this->supplier_name ?: null,
+                        'reference_doc' => $this->reference_doc ?: null,
+                        'received_date' => $this->received_date,
+                        'status' => 'received',
+                        'notes' => $this->notes ?: null,
+                        'updated_by' => auth()->id(),
+                    ]);
+
+                    // 3. Delete previous inbound items
+                    $inbound->items()->delete();
+                } else {
+                    $inbound = InventoryInbound::create([
+                        'warehouse_id' => $warehouse->id,
+                        'branch_id' => $warehouse->branch_id,
+                        'source_type' => $this->source_type,
+                        'supplier_name' => $this->supplier_name ?: null,
+                        'reference_doc' => $this->reference_doc ?: null,
+                        'received_date' => $this->received_date,
+                        'status' => 'received',
+                        'notes' => $this->notes ?: null,
+                        'received_by' => auth()->id(),
+                    ]);
+                }
 
                 foreach ($this->inboundItems as $row) {
                     $item = Item::findOrFail($row['item_id']);
@@ -277,7 +306,10 @@ class Index extends Component
                 }
             });
 
-            session()->flash('success', 'Penerimaan barang masuk berhasil disimpan dan stok gudang telah diperbarui.');
+            $msg = $this->editInboundId
+                ? "Data penerimaan barang masuk {$this->editInboundNumber} dan saldo stok gudang berhasil diperbarui."
+                : 'Penerimaan barang masuk berhasil disimpan dan stok gudang telah diperbarui.';
+            session()->flash('success', $msg);
             $this->showCreateModal = false;
             $this->resetCreateForm();
         } catch (\Throwable $e) {
@@ -299,42 +331,52 @@ class Index extends Component
 
     public function openEditModal(int $id)
     {
-        $inbound = InventoryInbound::findOrFail($id);
+        if (! $this->ensureWorkforceAttendance()) {
+            return;
+        }
+
+        $inbound = InventoryInbound::with(['items.item'])->findOrFail($id);
+        if ($inbound->status === 'cancelled') {
+            session()->flash('error', 'Dokumen penerimaan yang sudah dibatalkan tidak dapat diedit.');
+            return;
+        }
+
+        $this->resetCreateForm();
         $this->editInboundId = $inbound->id;
-        $this->edit_supplier_name = $inbound->supplier_name ?? '';
-        $this->edit_reference_doc = $inbound->reference_doc ?? '';
-        $this->edit_received_date = $inbound->received_date ? $inbound->received_date->format('Y-m-d') : date('Y-m-d');
-        $this->edit_notes = $inbound->notes ?? '';
-        $this->showEditModal = true;
+        $this->editInboundNumber = $inbound->inbound_number;
+        $this->warehouse_id = $inbound->warehouse_id;
+        $this->source_type = $inbound->source_type ?? 'supplier';
+        $this->supplier_name = $inbound->supplier_name ?? '';
+        $this->reference_doc = $inbound->reference_doc ?? '';
+        $this->received_date = $inbound->received_date ? $inbound->received_date->format('Y-m-d') : date('Y-m-d');
+        $this->notes = $inbound->notes ?? '';
+
+        $this->inboundItems = [];
+        foreach ($inbound->items as $inItem) {
+            $rawSerials = !empty($inItem->serials) ? implode("\n", $inItem->serials) : '';
+            $this->inboundItems[] = [
+                'item_id' => $inItem->item_id,
+                'quantity' => $inItem->quantity,
+                'unit_cost' => $inItem->unit_cost ? (float) $inItem->unit_cost : null,
+                'serials_raw' => $rawSerials,
+                'is_serialized' => (bool) ($inItem->item?->is_serialized ?? false),
+                'unit' => $inItem->item?->unit ?? 'unit',
+            ];
+        }
+
+        if (empty($this->inboundItems)) {
+            $this->addItemRow();
+        }
+
+        $this->showCreateModal = true;
+        $this->showEditModal = false;
     }
 
     public function closeEditModal()
     {
         $this->showEditModal = false;
-        $this->editInboundId = null;
-    }
-
-    public function saveEditInbound()
-    {
-        $this->validate([
-            'edit_received_date' => 'required|date',
-            'edit_supplier_name' => 'nullable|string|max:200',
-            'edit_reference_doc' => 'nullable|string|max:100',
-            'edit_notes' => 'nullable|string|max:1000',
-        ]);
-
-        if (!$this->editInboundId) return;
-
-        $inbound = InventoryInbound::findOrFail($this->editInboundId);
-        $inbound->update([
-            'supplier_name' => trim($this->edit_supplier_name) ?: null,
-            'reference_doc' => trim($this->edit_reference_doc) ?: null,
-            'received_date' => $this->edit_received_date,
-            'notes' => trim($this->edit_notes) ?: null,
-        ]);
-
-        session()->flash('success', "Informasi dokumen \"{$inbound->inbound_number}\" berhasil diperbarui.");
-        $this->closeEditModal();
+        $this->showCreateModal = false;
+        $this->resetCreateForm();
     }
 
     public function cancelInbound(int $id, StockMutationService $mutationService)

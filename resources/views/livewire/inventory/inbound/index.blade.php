@@ -170,15 +170,19 @@
             <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3.5">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                            <span class="material-symbols-outlined notranslate text-xl" translate="no">add_box</span>
+                        <div class="w-10 h-10 rounded-xl {{ $editInboundId ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' }} flex items-center justify-center">
+                            <span class="material-symbols-outlined notranslate text-xl" translate="no">{{ $editInboundId ? 'edit_note' : 'add_box' }}</span>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Catat Penerimaan Barang Masuk</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Stok gudang akan bertambah dan otomatis dicatat di Kartu Stok.</p>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+                                {{ $editInboundId ? "Edit Penerimaan Barang Masuk ({$editInboundNumber})" : 'Catat Penerimaan Barang Masuk' }}
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                {{ $editInboundId ? 'Perbarui informasi dokumen, gudang tujuan, daftar barang, kuantitas, harga, dan serial number.' : 'Stok gudang akan bertambah dan otomatis dicatat di Kartu Stok.' }}
+                            </p>
                         </div>
                     </div>
-                    <button wire:click="$set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <button wire:click="resetCreateForm; $set('showCreateModal', false)" type="button" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="material-symbols-outlined notranslate text-lg" translate="no">close</span>
                     </button>
                 </div>
@@ -508,14 +512,14 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-3.5 border-t border-slate-100 dark:border-slate-700/80">
-                        <button wire:click="$set('showCreateModal', false)" type="button"
+                        <button wire:click="resetCreateForm; $set('showCreateModal', false)" type="button"
                                 class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                             Batal
                         </button>
                         <button type="submit"
-                                class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-2">
-                            <span class="material-symbols-outlined text-sm">save</span>
-                            <span>Simpan & Bukukan ke Stok</span>
+                                class="px-5 py-2.5 rounded-xl {{ $editInboundId ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700' }} text-white text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">{{ $editInboundId ? 'save' : 'check_circle' }}</span>
+                            <span>{{ $editInboundId ? 'Simpan Perubahan & Perbarui Stok' : 'Simpan & Bukukan ke Stok' }}</span>
                         </button>
                     </div>
                 </form>
@@ -604,63 +608,6 @@
                     <button wire:click="closeDetailModal" type="button"
                             class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors">
                         Tutup
-                    </button>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- MODAL EDIT INFORMASI DOKUMEN --}}
-    @if($showEditModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <h3 class="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-indigo-600">edit_note</span>
-                            <span>Edit Informasi Barang Masuk</span>
-                        </h3>
-                        <p class="text-[11px] text-slate-400">Perbarui informasi no. surat jalan, supplier, atau catatan dokumen.</p>
-                    </div>
-                    <button wire:click="closeEditModal" type="button" class="text-slate-400 hover:text-slate-600">
-                        <span class="material-symbols-outlined">close</span>
-                    </button>
-                </div>
-
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Penerimaan</label>
-                        <input type="date" wire:model="edit_received_date"
-                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Supplier / Vendor / Pengirim</label>
-                        <input type="text" wire:model="edit_supplier_name" placeholder="PT Supplier / Toko..."
-                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">No. Referensi / Surat Jalan / Faktur</label>
-                        <input type="text" wire:model="edit_reference_doc" placeholder="SJ-2026/001 atau PO-..."
-                               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono focus:ring-2 focus:ring-indigo-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan</label>
-                        <textarea wire:model="edit_notes" rows="3" placeholder="Catatan kondisi penerimaan..."
-                                  class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"></textarea>
-                    </div>
-                </div>
-
-                <div class="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <button wire:click="closeEditModal" type="button"
-                            class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
-                        Batal
-                    </button>
-                    <button wire:click="saveEditInbound" type="button"
-                            class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors">
-                        Simpan Perubahan
                     </button>
                 </div>
             </div>
