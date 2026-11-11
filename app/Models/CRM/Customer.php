@@ -37,6 +37,12 @@ class Customer extends Model
 
     protected static function booted()
     {
+        static::creating(function ($customer) {
+            if (empty($customer->code)) {
+                $customer->code = \App\Services\CRM\CustomerCodeGenerator::generate();
+            }
+        });
+
         static::deleted(function ($customer) {
             // Deactivate associated login user
             if ($customer->user_id) {

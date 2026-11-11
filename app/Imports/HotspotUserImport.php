@@ -111,17 +111,24 @@ class HotspotUserImport implements ToCollection, WithHeadingRow
                 ) {
                     $customerServiceId = null;
 
-                    // Buat customer & customer_service jika nama pelanggan diisi
+                    // Hubungkan atau buat customer jika nama pelanggan diisi
                     if ($customerName) {
-                        $customer = Customer::create([
-                            'uuid' => (string) Str::uuid(),
-                            'name' => $customerName,
-                            'phone' => $phone ?? '0000000000',
-                            'status' => $status === 'active' ? 'active' : 'inactive',
-                            'reseller_id' => $resellerId,
-                            'created_by' => $this->user->id,
-                            'updated_by' => $this->user->id,
-                        ]);
+                        $customer = Customer::where('name', $customerName)
+                            ->when($resellerId, fn($q) => $q->where('reseller_id', $resellerId))
+                            ->first();
+
+                        if (!$customer) {
+                            $customer = Customer::create([
+                                'uuid' => (string) Str::uuid(),
+                                'code' => \App\Services\CRM\CustomerCodeGenerator::generate(),
+                                'name' => $customerName,
+                                'phone' => $phone ?? '0000000000',
+                                'status' => $status === 'active' ? 'active' : 'inactive',
+                                'reseller_id' => $resellerId,
+                                'created_by' => $this->user->id,
+                                'updated_by' => $this->user->id,
+                            ]);
+                        }
 
                         $cs = CustomerService::create([
                             'customer_id' => $customer->id,

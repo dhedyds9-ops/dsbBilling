@@ -111,8 +111,14 @@ class Index extends BaseNetworkComponent
 
         try {
             $hotspotUser = HotspotUser::findOrFail($id);
-            $service->terminateHotspotUser($hotspotUser->id, $user->id);
             $hotspotUser->delete();
+
+            try {
+                $service->terminateHotspotUser($hotspotUser->id, $user->id);
+            } catch (Throwable $netErr) {
+                Log::warning('Hotspot terminate network cleanup warning', ['error' => $netErr->getMessage()]);
+            }
+
             session()->flash('success', 'Hotspot User berhasil dihapus!');
             $this->resetActionState();
         } catch (Throwable $e) {
@@ -218,8 +224,10 @@ class Index extends BaseNetworkComponent
 
             foreach ($this->selectedIds as $id) {
                 $hotspotUser = HotspotUser::findOrFail($id);
-                $service->terminateHotspotUser($hotspotUser->id, $user->id);
                 $hotspotUser->delete();
+                try {
+                    $service->terminateHotspotUser($hotspotUser->id, $user->id);
+                } catch (Throwable) {}
             }
             
             session()->flash('success', count($this->selectedIds) . ' Hotspot User berhasil dihapus!');

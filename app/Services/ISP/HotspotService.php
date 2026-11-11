@@ -98,7 +98,9 @@ class HotspotService
 
     public function activateHotspotUser(int $hotspotUserId, int $userId): HotspotUser
     {
-        return DB::transaction(function () use ($hotspotUserId, $userId) {
+        $oldStatus = null;
+
+        $hotspotUser = DB::transaction(function () use ($hotspotUserId, $userId, &$oldStatus) {
             $hotspotUser = $this->hotspotUserRepository->find($hotspotUserId);
             $oldStatus = $hotspotUser->status;
 
@@ -125,25 +127,36 @@ class HotspotService
                 }
             }
 
-            if ($oldStatus !== 'pending') {
-                $this->provisionToMikrotik($hotspotUser);
-            }
-
-            try {
-                if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
-                    Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'active'));
-                }
-            } catch (Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
-
             return $hotspotUser;
         });
+
+        if ($oldStatus !== 'pending') {
+            try {
+                $this->provisionToMikrotik($hotspotUser);
+            } catch (Throwable $e) {
+                Log::warning('HotspotService provisionToMikrotik failed on activate', [
+                    'hotspot_user_id' => $hotspotUserId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        try {
+            if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
+                Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'active'));
+            }
+        } catch (Throwable $e) {
+            Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
+
+        return $hotspotUser;
     }
 
     public function suspendHotspotUser(int $hotspotUserId, int $userId): HotspotUser
     {
-        return DB::transaction(function () use ($hotspotUserId, $userId) {
+        $oldStatus = null;
+
+        $hotspotUser = DB::transaction(function () use ($hotspotUserId, $userId, &$oldStatus) {
             $hotspotUser = $this->hotspotUserRepository->find($hotspotUserId);
             $oldStatus = $hotspotUser->status;
 
@@ -169,23 +182,34 @@ class HotspotService
                 }
             }
 
-            $this->provisionIsolationToMikrotik($hotspotUser);
-
-            try {
-                if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
-                    Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'suspended'));
-                }
-            } catch (Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
-
             return $hotspotUser;
         });
+
+        try {
+            $this->provisionIsolationToMikrotik($hotspotUser);
+        } catch (Throwable $e) {
+            Log::warning('HotspotService provisionIsolationToMikrotik failed on suspend', [
+                'hotspot_user_id' => $hotspotUserId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
+                Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'suspended'));
+            }
+        } catch (Throwable $e) {
+            Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
+
+        return $hotspotUser;
     }
 
     public function terminateHotspotUser(int $hotspotUserId, int $userId): HotspotUser
     {
-        return DB::transaction(function () use ($hotspotUserId, $userId) {
+        $oldStatus = null;
+
+        $hotspotUser = DB::transaction(function () use ($hotspotUserId, $userId, &$oldStatus) {
             $hotspotUser = $this->hotspotUserRepository->find($hotspotUserId);
             $oldStatus = $hotspotUser->status;
 
@@ -196,18 +220,28 @@ class HotspotService
                 'updated_by' => $userId,
             ]);
 
-            $this->removeFromMikrotik($hotspotUser);
-
-            try {
-                if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
-                    Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'terminated'));
-                }
-            } catch (Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Swallowed exception caught: " . $e->getMessage());
-        }
-
             return $hotspotUser;
         });
+
+        // Jalankan operasi network MikroTik di luar DB::transaction agar tidak mengunci tabel database jika router lambat/offline
+        try {
+            $this->removeFromMikrotik($hotspotUser);
+        } catch (Throwable $e) {
+            Log::warning('HotspotService removeFromMikrotik failed on terminate', [
+                'hotspot_user_id' => $hotspotUserId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            if (class_exists(\App\Events\ISP\HotspotUserStatusChangedEvent::class)) {
+                Event::dispatch(new \App\Events\ISP\HotspotUserStatusChangedEvent($hotspotUser, $oldStatus, 'terminated'));
+            }
+        } catch (Throwable $e) {
+            Log::error("Swallowed exception caught: " . $e->getMessage());
+        }
+
+        return $hotspotUser;
     }
 
     public function updateHotspotUserCredentials(
