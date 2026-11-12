@@ -675,7 +675,7 @@ class MobileNetworkApiController extends Controller
             // 4. Link to CustomerService if customer is identified
             $customerInfo = null;
             if ($customerId) {
-                $customer = Customer::withoutGlobalScopes()->find($customerId) 
+                $customer = Customer::withoutGlobalScopes()->find($customerId)
                          ?? \App\Models\User::withoutGlobalScopes()->find($customerId);
 
                 if ($customer) {
@@ -1128,6 +1128,7 @@ class MobileNetworkApiController extends Controller
             'pon_port_number' => $onu->ponPort?->port_number,
             'customer_name' => $customerName,
             'customer_code' => $customerCode,
+            'pppoe_username' => $cs?->pppoeUser?->username ?: ($cs?->username ?: null),
             'last_seen_at' => $onu->last_seen_at ? $onu->last_seen_at->format('Y-m-d H:i:s') : null,
         ];
 
