@@ -327,7 +327,7 @@ class GuestPaymentController extends Controller
         try {
             $gateways = app(\App\Services\Pengaturan\PaymentGatewaySettingsService::class)->getAll();
             foreach ($gateways as $k => $g) {
-                if (($g['enabled'] ?? false) && !in_array($k, ['manual_transfer', 'bca_va', 'ewallet'])) {
+                if (($g['enabled'] ?? false) && !in_array($k, ['manual_transfer', 'manual_ewallet', 'bca_va', 'ewallet'])) {
                     $activeGateways[$k] = $g;
                 }
             }
@@ -382,6 +382,17 @@ class GuestPaymentController extends Controller
             }
         } catch (\Throwable $e) {}
 
+        $manualEwallets = [];
+        try {
+            $manualEwalletConfig = \App\Models\Setting::getValue('payment_gateway.manual_ewallet', null);
+            if (is_string($manualEwalletConfig)) {
+                $manualEwalletConfig = json_decode($manualEwalletConfig, true) ?? [];
+            }
+            if (!empty($manualEwalletConfig['enabled']) && !empty($manualEwalletConfig['providers']) && is_array($manualEwalletConfig['providers'])) {
+                $manualEwallets = array_values(array_filter($manualEwalletConfig['providers'], fn($p) => ($p['enabled'] ?? true) && !empty($p['number'] ?? $p['account_number'] ?? null)));
+            }
+        } catch (\Throwable $e) {}
+
         $companyName = \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
         $companyPhone = \App\Models\Setting::getValue('company.phone', '081234567890');
         $companyWhatsapp = \App\Models\Setting::getValue('company.whatsapp', $companyPhone);
@@ -400,6 +411,7 @@ class GuestPaymentController extends Controller
             'activeSessionData',
             'activeGateways',
             'bankAccounts',
+            'manualEwallets',
             'autoDetected',
             'companyName',
             'companyPhone',

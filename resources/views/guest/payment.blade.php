@@ -246,7 +246,7 @@
                     QRIS &amp; Otomatis
                 </button>
                 <button type="button" id="btn-tab-manual" onclick="switchTab('manual')" class="flex-1 py-2 px-3 rounded-lg transition-all text-center text-slate-400 hover:text-white">
-                    Transfer Bank Manual
+                    Transfer &amp; E-Wallet
                 </button>
                 <button type="button" id="btn-tab-panduan" onclick="switchTab('panduan')" class="flex-1 py-2 px-3 rounded-lg transition-all text-center text-slate-400 hover:text-white">
                     Langkah Aktivasi
@@ -333,6 +333,33 @@
                     </div>
                 @endif
 
+                @if(!empty($manualEwallets))
+                    <div class="pt-2">
+                        <span class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">E-Wallet Resmi</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            @foreach($manualEwallets as $ew)
+                                <div class="glass-card rounded-xl p-4 border border-slate-800 relative group">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="font-bold text-sm text-cyan-400 uppercase">{{ $ew['name'] ?? 'E-Wallet' }}</span>
+                                        <button type="button" 
+                                                onclick="copyToClipboard('{{ $ew['number'] ?? ($ew['account_number'] ?? '') }}', 'Nomor {{ $ew['name'] ?? 'E-Wallet' }} berhasil disalin')"
+                                                class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-700 hover:bg-cyan-600 text-slate-200 transition-colors flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                            Salin
+                                        </button>
+                                    </div>
+                                    <div class="font-mono text-base font-bold text-white tracking-wider">
+                                        {{ $ew['number'] ?? ($ew['account_number'] ?? '-') }}
+                                    </div>
+                                    <div class="text-xs text-slate-400 mt-1">
+                                        a.n. <strong class="text-slate-200">{{ $ew['holder'] ?? ($ew['account_name'] ?? $companyName) }}</strong>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 @php
                     $rawUname = $pppoe?->username ?? $hotspot?->username ?? $query;
                     $firstInv = $invoices->first();
@@ -357,21 +384,27 @@
 
             <!-- Tab 3: Langkah Aktivasi -->
             <div id="content-tab-panduan" class="space-y-4" style="display: none;">
-                <div class="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-700">
-                    <div class="relative">
-                        <span class="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">1</span>
-                        <h4 class="text-sm font-bold text-white">Pilih &amp; Selesaikan Pembayaran</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">Gunakan tombol online bayar (QRIS/VA) atau transfer bank ke rekening resmi yang tertera.</p>
+                <div class="space-y-4">
+                    <div class="flex items-start gap-3.5 glass-card p-3.5 rounded-xl border border-slate-800">
+                        <div class="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-indigo-600/40">1</div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold text-white">Pilih &amp; Selesaikan Pembayaran</h4>
+                            <p class="text-xs text-slate-400 mt-1 leading-relaxed">Gunakan tombol online bayar (QRIS/VA) atau transfer bank / e-wallet ke rekening resmi yang tertera.</p>
+                        </div>
                     </div>
-                    <div class="relative">
-                        <span class="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">2</span>
-                        <h4 class="text-sm font-bold text-white">Sistem Memverifikasi Otomatis</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">Begitu transaksi berhasil, status tagihan langsung terupdate di sistem tanpa delay.</p>
+                    <div class="flex items-start gap-3.5 glass-card p-3.5 rounded-xl border border-slate-800">
+                        <div class="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-indigo-600/40">2</div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold text-white">Sistem Memverifikasi Otomatis</h4>
+                            <p class="text-xs text-slate-400 mt-1 leading-relaxed">Begitu transaksi berhasil, status tagihan langsung terupdate di sistem tanpa delay.</p>
+                        </div>
                     </div>
-                    <div class="relative">
-                        <span class="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center">3</span>
-                        <h4 class="text-sm font-bold text-white">Internet Langsung Aktif</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">MikroTik Router memulihkan jalur internet Anda secara otomatis dalam 1-3 menit. Tidak perlu mematikan atau merestart modem Anda.</p>
+                    <div class="flex items-start gap-3.5 glass-card p-3.5 rounded-xl border border-slate-800">
+                        <div class="w-7 h-7 rounded-full bg-emerald-600 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-emerald-600/40">3</div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold text-white">Internet Langsung Aktif</h4>
+                            <p class="text-xs text-slate-400 mt-1 leading-relaxed">MikroTik Router memulihkan jalur internet Anda secara otomatis dalam 1-3 menit. Tidak perlu mematikan atau merestart modem Anda.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -442,12 +475,30 @@
                         <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Pilih Saluran Pembayaran</label>
                         <div class="space-y-2 mb-6 max-h-[35vh] overflow-y-auto pr-1">
                             @foreach($activeGateways as $key => $g)
+                            @php
+                                $gwName = match(strtolower($key)) {
+                                    'ipaymu' => 'iPaymu (QRIS & Virtual Account)',
+                                    'tripay' => 'Tripay (Multi-Channel)',
+                                    'midtrans' => 'Midtrans (Snap & GoPay)',
+                                    'xendit' => 'Xendit (QRIS & VA)',
+                                    'duitku' => 'Duitku Payment',
+                                    default => ($g['label'] ?? strtoupper($key))
+                                };
+                                $gwDesc = match(strtolower($key)) {
+                                    'ipaymu' => 'QRIS Semua E-Wallet (DANA/GoPay/OVO) & VA Bank',
+                                    'tripay' => 'QRIS, E-Wallet, VA Bank & Gerai Retail',
+                                    'midtrans' => 'GoPay, ShopeePay, QRIS & VA Semua Bank',
+                                    'xendit' => 'QRIS, OVO, DANA & VA Bank Otomatis',
+                                    'duitku' => 'QRIS, E-Wallet & Gerai Retail',
+                                    default => 'QRIS / VA / Instant Checkout Otomatis'
+                                };
+                            @endphp
                             <label class="flex items-center justify-between p-3.5 border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-800/60 transition-all group has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/30">
                                 <div class="flex items-center gap-3">
                                     <input type="radio" name="gateway" value="{{ $key }}" class="text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-900 w-4 h-4" {{ $loop->first ? 'checked' : '' }}>
                                     <div>
-                                        <span class="font-bold text-sm text-white group-has-[:checked]:text-indigo-300 block uppercase">{{ $key }}</span>
-                                        <span class="text-[11px] text-slate-400">QRIS / VA / Instant Checkout</span>
+                                        <span class="font-bold text-sm text-white group-has-[:checked]:text-indigo-300 block">{{ $gwName }}</span>
+                                        <span class="text-[11px] text-slate-400">{{ $gwDesc }}</span>
                                     </div>
                                 </div>
                                 <svg class="w-5 h-5 text-indigo-400 hidden group-has-[:checked]:block" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
