@@ -9,6 +9,11 @@ class TelegramAttendanceNotifier
 {
     public static function notify(Attendance $attendance): void
     {
+        // Hindari mengirim pesan notifikasi ke Telegram saat testing
+        if (app()->environment('testing') || app()->runningUnitTests()) {
+            return;
+        }
+
         try {
             $telegram = app(TelegramService::class);
             if (!$telegram->isEnabled()) {

@@ -16,12 +16,22 @@ class MstoreAttendanceSyncService
      */
     public static function shouldSync(?Attendance $attendance = null): bool
     {
+        // 0. Cegah sinkronisasi saat testing / unit test dijalankan
+        if (app()->environment('testing') || app()->runningUnitTests()) {
+            return false;
+        }
+
         // 1. Cek konfigurasi jika secara eksplisit diset
         if (config('services.mstore.sync_enabled') !== null) {
             return filter_var(config('services.mstore.sync_enabled'), FILTER_VALIDATE_BOOLEAN);
         }
         if (env('MSTORE_SYNC_ENABLED') !== null) {
             return filter_var(env('MSTORE_SYNC_ENABLED'), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Jangan sync ke production otomatis jika berjalan di environment local kecuali eksplisit diizinkan
+        if (app()->environment('local') && ! env('MSTORE_SYNC_ENABLED')) {
+            return false;
         }
 
         // 2. Kumpulkan seluruh kandidat host / domain dari request dan environment
