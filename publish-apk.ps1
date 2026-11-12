@@ -40,13 +40,12 @@ if ($Target -eq "all" -or $Target -eq "customer") {
     }
 }
 
-# 2. Build Staff APK
+# 2. Build Staff / Mobile APK
 if ($Target -eq "all" -or $Target -eq "staff") {
     Write-Host "`n[2/2] Checking dsBilling Staff / Mobile APK (Release)..." -ForegroundColor Yellow
     $staffSource = "D:\dsbilling-mobile\app\build\outputs\apk\release\app-release.apk"
     if (Test-Path $staffSource) {
         Copy-Item -Path $staffSource -Destination "$destDir\dsbilling-mobile-release.apk" -Force
-        Copy-Item -Path $staffSource -Destination "$destDir\dsbilling-staff-release.apk" -Force
         $sizeMB = [math]::Round((Get-Item "$destDir\dsbilling-mobile-release.apk").Length / 1MB, 2)
         Write-Host " [OK] Staff/Mobile APK berhasil di-publish ($sizeMB MB):" -ForegroundColor Green
         Write-Host "      -> $destDir\dsbilling-mobile-release.apk" -ForegroundColor Green
@@ -55,7 +54,6 @@ if ($Target -eq "all" -or $Target -eq "staff") {
         Set-Location "D:\dsbilling-mobile"
         .\gradlew.bat assembleRelease --no-daemon
         Copy-Item -Path $staffSource -Destination "$destDir\dsbilling-mobile-release.apk" -Force
-        Copy-Item -Path $staffSource -Destination "$destDir\dsbilling-staff-release.apk" -Force
     }
 }
 
