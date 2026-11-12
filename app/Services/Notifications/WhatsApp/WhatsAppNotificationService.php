@@ -104,12 +104,14 @@ final class WhatsAppNotificationService
         if (!$phone) return;
         $dueDate = is_object($invoice->due_date) ? $invoice->due_date : now()->parse((string)$invoice->due_date);
         $days = now()->startOfDay()->diffInDays($dueDate, false);
+        $link = $this->paymentLinkOf($invoice, $customer);
         $txt = $this->template->invoiceReminder([
             'customer_name' => $customer->name ?? $customer->full_name ?? 'Pelanggan',
             'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoice->id),
             'total_amount' => (float)$invoice->total_amount,
             'due_date' => is_object($invoice->due_date) ? $invoice->due_date->format('d M Y') : (string)$invoice->due_date,
             'days_remaining' => $days,
+            'payment_link' => $link,
             ...$extra,
         ], $stage);
         $this->dispatchSend($phone, $txt, category: 'reminder', priorityHigh: $stage === 'h+1');
@@ -145,10 +147,12 @@ final class WhatsAppNotificationService
         $phone = $this->phoneOf($customer);
         if (!$phone) return;
         $outstanding = max(0, (float)$invoice->total_amount - (float)$invoice->paid_amount);
+        $link = $this->paymentLinkOf($invoice, $customer);
         $txt = $this->template->serviceSuspended([
             'customer_name' => $customer->name ?? $customer->full_name ?? 'Pelanggan',
             'invoice_number' => $invoice->invoice_number ?? ('INV-' . $invoice->id),
             'outstanding_amount' => $outstanding,
+            'payment_link' => $link,
             ...$extra,
         ]);
         $this->dispatchSend($phone, $txt, category: 'info', priorityHigh: true);
@@ -521,16 +525,16 @@ final class WhatsAppNotificationService
 
     private function paymentLinkOf(Invoice $invoice, object $customer): string
     {
-        $base = config('app.url', url('/'));
-        $tok = substr(md5(config('app.key') . 'wa-pay' . $invoice->id . $customer->id), 0, 12);
-        return rtrim($base, '/') . '/bayar/' . $invoice->id . '?t=' . $tok;
+        $base = config('app.url') ?: url('/');
+        $code = $customer->customer_code ?? ($customer->code ?? ($customer->phone ?? ($invoice->invoice_number ?? $customer->id)));
+        return rtrim($base, '/') . '/bayar-tagihan?q=' . urlencode((string)$code);
     }
 
     private function customerPortalLinkOf(object $customer): string
     {
-        $base = config('app.url', url('/'));
-        $tok = substr(md5(config('app.key') . 'wa-cust' . ($customer->id ?? 0)), 0, 10);
-        return rtrim($base, '/') . '/portal/tagihan?t=' . $tok . '&c=' . ($customer->id ?? 0);
+        $base = config('app.url') ?: url('/');
+        $code = $customer->customer_code ?? ($customer->code ?? ($customer->phone ?? ($customer->id ?? '')));
+        return rtrim($base, '/') . '/bayar-tagihan?q=' . urlencode((string)$code);
     }
 
     private function packageNameOf(Invoice $invoice): string

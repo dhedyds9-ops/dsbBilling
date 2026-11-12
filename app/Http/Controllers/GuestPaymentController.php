@@ -30,7 +30,10 @@ class GuestPaymentController extends Controller
             ]));
         }
 
-        $query = trim($request->input('q') ?: ($request->input('query') ?: ''));
+        $query = trim($request->input('q') ?: ($request->input('query') ?: ($request->input('username') ?: ($request->input('user') ?: ''))));
+        if ($query === '' && $request->filled('c')) {
+            $query = trim((string)$request->input('c'));
+        }
         $queryOrderId = trim((string) $request->query('order_id', ''));
         $queryStatus = strtolower(trim((string) $request->query('transaction_status', '')));
 
@@ -80,9 +83,9 @@ class GuestPaymentController extends Controller
         $activeSessionData = null;
         $autoDetected = false;
 
-        // Auto-detect client identity from IP when redirected to isolir page without parameters
+        // Auto-detect client identity from IP / parameter when redirected to isolir page without parameters
         if ($query === '') {
-            $clientIp = $request->header('X-Forwarded-For') ?? $request->header('CF-Connecting-IP') ?? $request->ip();
+            $clientIp = $request->input('ip') ?: ($request->input('client_ip') ?: ($request->header('X-Forwarded-For') ?? $request->header('CF-Connecting-IP') ?? $request->ip()));
             if ($clientIp) {
                 if (str_contains($clientIp, ',')) {
                     $clientIp = trim(explode(',', $clientIp)[0]);
@@ -101,6 +104,12 @@ class GuestPaymentController extends Controller
                     }
                     if (!$foundUname) {
                         $foundUname = \App\Models\ISP\HotspotActiveSession::where('address', $clientIp)->value('user');
+                    }
+                    if (!$foundUname) {
+                        $foundUname = \App\Models\ISP\PppActiveSession::where('address', $clientIp)->value('name');
+                    }
+                    if (!$foundUname) {
+                        $foundUname = \App\Models\ISP\OnlineSession::where('ip_address', $clientIp)->value('username');
                     }
                 } catch (\Throwable $e) {}
 

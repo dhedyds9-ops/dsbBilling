@@ -95,6 +95,7 @@ final class WaTemplateEngine
         $total = $this->rp((float)($d['total_amount'] ?? 0));
         $due = $this->e($d['due_date'] ?? '-');
         $sisa = (int)($d['days_remaining'] ?? 0);
+        $payLink = !empty($d['payment_link']) ? "👉 *Link Bayar Instan (1-Tap):*\n" . $this->e($d['payment_link']) . "\n\n" : "";
 
         if ($stage === 'h+1') {
             return "🔴 *PEMBERITAHUAN: TAGIHAN SUDAH LEWAT JATUH TEMPO*\n\n"
@@ -103,7 +104,8 @@ final class WaTemplateEngine
                 . "💵 Tagihan  : *{$total}*\n"
                 . "📅 Jatuh Tempo: {$due} (1 hari lalu)\n\n"
                 . "⚠️ *AKSI DIBUTUHKAN:* Jika tidak segera dibayar hari ini, akses Internet Anda akan otomatis dibatasi (isolir) pada pukul 18:00 WIB.\n\n"
-                . "Ketik *\"bayar\"* untuk link pembayaran cepat.\n\n"
+                . $payLink
+                . "Ketik *\"bayar\"* untuk info pembayaran.\n\n"
                 . "Mohon maaf atas ketidaknyamanannya.\nTerima kasih.\n— " . $this->brand();
         }
 
@@ -112,8 +114,8 @@ final class WaTemplateEngine
                 . "Yth. *{$nama}*\n\n"
                 . "Tagihan No. *{$invNo}* akan jatuh tempo dalam *{$sisa} hari* ({$due}).\n\n"
                 . "💵 Total: *{$total}*\n\n"
+                . $payLink
                 . "Segera lakukan pembayaran untuk kenyamanan layanan Anda.\n"
-                . "Ketik *\"bayar\"* untuk link pembayaran.\n\n"
                 . "Terima kasih.\n— " . $this->brand();
         }
 
@@ -123,7 +125,7 @@ final class WaTemplateEngine
             . "⏰ Tagihan No. *{$invNo}* akan jatuh tempo *BESOK ({$due})*.\n\n"
             . "💵 Total: *{$total}*\n\n"
             . "⚠️ Lewati batas waktu besok = akses Internet OTOMATIS dibatasi mulai jam 00:00 WIB.\n\n"
-            . "Ketik *\"bayar\"* untuk bayar sekarang via QRIS/VA/E-Wallet dalam 1 tap.\n\n"
+            . $payLink
             . "Terima kasih 🙏\n— " . $this->brand();
     }
 
@@ -154,14 +156,15 @@ final class WaTemplateEngine
         $nama = $this->e($d['customer_name'] ?? 'Pelanggan');
         $invNo = $this->e($d['invoice_number'] ?? '-');
         $sisa = $this->rp((float)($d['outstanding_amount'] ?? 0));
+        $payLink = !empty($d['payment_link']) ? "👉 *Link Bayar & Reaktivasi Instan (1-Tap):*\n" . $this->e($d['payment_link']) . "\n\n" : "";
         return "⛔ *LAYANAN DIBATASI (ISOLIR)*\n\n"
             . "Yth. *{$nama}*\n\n"
-            . "Kami informasikan akses Internet Anda saat ini *DIBATASI (128kbps)* karena tagihan belum lunas.\n\n"
+            . "Kami informasikan akses Internet Anda saat ini *DIBATASI (ISOLIR)* karena tagihan belum lunas.\n\n"
             . "📄 Invoice : *{$invNo}*\n"
             . "💵 Tunggakan: *{$sisa}*\n\n"
-            . "⏱️ Setelah pembayaran diverifikasi (maks. 3 menit), layanan kembali NORMAL OTOMATIS.\n\n"
-            . "Ketik *\"bayar\"* untuk link pembayaran sekarang.\n"
-            . "Untuk bantuan ketik *\"bantuan\"* atau hubungi CS: {$this->wa()}.\n\n"
+            . $payLink
+            . "⏱️ Setelah pembayaran diverifikasi (maks. 3 menit), layanan kembali *NORMAL OTOMATIS* tanpa perlu restart modem.\n\n"
+            . "Untuk bantuan hubungi CS: {$this->wa()}.\n\n"
             . "Mohon maaf atas ketidaknyamanannya.\n— " . $this->brand();
     }
 

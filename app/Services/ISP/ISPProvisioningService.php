@@ -172,6 +172,20 @@ class ISPProvisioningService
                     if ($customerService->customer) {
                         $customerService->customer->update(['status' => 'suspend']);
                     }
+
+                    // Otomatis kirim notifikasi WhatsApp Isolir beserta Direct Payment Link
+                    try {
+                        $unpaidInvoice = \App\Models\Billing\Invoice::withoutGlobalScopes()
+                            ->where('customer_id', $customerService->customer_id)
+                            ->whereIn('status', ['unpaid', 'overdue', 'partial'])
+                            ->orderBy('due_date', 'asc')
+                            ->first();
+                        if ($unpaidInvoice) {
+                            app(\App\Services\Notifications\WhatsApp\WhatsAppNotificationService::class)->notifyServiceSuspended($unpaidInvoice);
+                        }
+                    } catch (\Throwable $waErr) {
+                        Log::warning('Gagal kirim notif WhatsApp saat suspendCustomerService: ' . $waErr->getMessage());
+                    }
                 } catch (Throwable $e) {
                     $result['errors'][] = 'Update DB status CustomerService gagal: ' . $e->getMessage();
                 }

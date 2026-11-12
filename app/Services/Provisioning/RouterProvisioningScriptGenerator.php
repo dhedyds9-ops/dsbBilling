@@ -150,7 +150,7 @@ class RouterProvisioningScriptGenerator
         $lines[] = "";
 
         $lines[] = "# 4.2 Web Proxy Internal MikroTik untuk Redirect ke Halaman Tagihan";
-        $lines[] = ":do { /ip proxy set enabled=yes port=8080 max-cache-size=none cache-on-disk=no } on-error={}";
+        $lines[] = ":do { /ip proxy set enabled=yes port=8080 max-cache-size=none cache-on-disk=no anonymous=no } on-error={}";
         $lines[] = ":do { /ip proxy access remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
         // RouterOS v7 uses action=redirect action-data=..., RouterOS v6 uses action=deny redirect-to=...
         $lines[] = ":do { /ip proxy access add action=redirect action-data=\"{$billingDomain}/bayar-tagihan\" comment=\"managed-by=dsbilling: Redirect Isolir\" } on-error={ :do { /ip proxy access add action=deny redirect-to=\"{$billingDomain}/bayar-tagihan\" comment=\"managed-by=dsbilling: Redirect Isolir\" } on-error={} }";
@@ -182,7 +182,11 @@ class RouterProvisioningScriptGenerator
         $lines[] = ":do { /ip firewall filter add chain=forward action=reject reject-with=tcp-reset protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=443 comment=\"managed-by=dsbilling: Fast Reject HTTPS Isolir\" } on-error={ :put \"Filter Reject HTTPS exists\" }";
         $lines[] = ":do { /ip firewall filter add chain=forward action=drop src-address-list=ISOLIR_LIST comment=\"managed-by=dsbilling: Drop other Isolir Traffic\" } on-error={ :put \"Filter Drop exists\" }";
         $lines[] = "";
-        $lines[] = "# 4.6 Prioritas Filter & NAT: Pindahkan ke baris teratas sebelum FastTrack / Established";
+        $lines[] = "# 4.6 Walled Garden Hotspot (Akses Bebas Halaman Tagihan Tanpa Voucher)";
+        $lines[] = ":do { /ip hotspot walled-garden add dst-host=\"*{$billingDomain}*\" comment=\"managed-by=dsbilling: Walled Garden Domain\" } on-error={}";
+        $lines[] = ":do { /ip hotspot walled-garden ip add dst-address-list=ISOLIR_WHITELIST comment=\"managed-by=dsbilling: Walled Garden Whitelist\" } on-error={}";
+        $lines[] = "";
+        $lines[] = "# 4.7 Prioritas Filter & NAT: Pindahkan ke baris teratas sebelum FastTrack / Established";
         $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Allow Isolir Whitelist\"] 0 } on-error={}";
         $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Allow Isolir DNS\"] 1 } on-error={}";
         $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Fast Reject HTTPS Isolir\"] 2 } on-error={}";
