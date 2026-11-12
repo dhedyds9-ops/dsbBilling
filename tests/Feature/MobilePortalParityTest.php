@@ -116,6 +116,14 @@ class MobilePortalParityTest extends TestCase
     {
         Sanctum::actingAs($this->technician, ['*']);
 
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technician->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
+
         Ticket::create([
             'uuid' => (string) Str::uuid(),
             'title' => 'Redaman Drop di RT 03',
@@ -137,6 +145,14 @@ class MobilePortalParityTest extends TestCase
     public function test_technician_can_perform_one_click_ont_swap(): void
     {
         Sanctum::actingAs($this->technician, ['*']);
+
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technician->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
 
         $odp = Odp::create([
             'uuid' => (string) Str::uuid(),
@@ -183,6 +199,14 @@ class MobilePortalParityTest extends TestCase
     public function test_technician_can_dismantle_customer_ont(): void
     {
         Sanctum::actingAs($this->technician, ['*']);
+
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technician->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
 
         $onu = Onu::create([
             'uuid' => (string) Str::uuid(),

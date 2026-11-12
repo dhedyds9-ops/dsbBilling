@@ -152,17 +152,18 @@ class HotspotService
         return $hotspotUser;
     }
 
-    public function suspendHotspotUser(int $hotspotUserId, int $userId): HotspotUser
+    public function suspendHotspotUser(int $hotspotUserId, int $userId, ?\Carbon\Carbon $suspendedAt = null): HotspotUser
     {
         $oldStatus = null;
 
-        $hotspotUser = DB::transaction(function () use ($hotspotUserId, $userId, &$oldStatus) {
+        $hotspotUser = DB::transaction(function () use ($hotspotUserId, $userId, $suspendedAt, &$oldStatus) {
             $hotspotUser = $this->hotspotUserRepository->find($hotspotUserId);
             $oldStatus = $hotspotUser->status;
+            $suspTime = $suspendedAt ?? now();
 
             $hotspotUser->update([
                 'status' => 'suspended',
-                'suspended_at' => now(),
+                'suspended_at' => $suspTime,
                 'updated_by' => $userId,
             ]);
 
@@ -172,7 +173,7 @@ class HotspotService
                 if ($cs) {
                     $cs->update([
                         'status' => 'suspended',
-                        'suspended_at' => now(),
+                        'suspended_at' => $suspTime,
                     ]);
                     if ($cs->customer_id) {
                         \App\Models\CRM\Customer::where('id', $cs->customer_id)->update([

@@ -533,8 +533,9 @@ class Customer360 extends AdminComponent
         $monthlyBill = 0;
         if ($this->getCustomer()->customerServices) {
             $this->getCustomer()->customerServices->each(function ($service) use (&$monthlyBill) {
-                if ($service->status === 'active' && $service->serviceProfile) {
-                    $monthlyBill += (float) $service->serviceProfile->base_price;
+                if ($service->status !== 'terminated' && $service->serviceProfile) {
+                    $price = (float) ($service->serviceProfile->price ?: $service->serviceProfile->base_price);
+                    $monthlyBill += $price;
                 }
             });
         }

@@ -26,14 +26,16 @@ class MobileNetworkApiController extends Controller
         $user = $request->user();
         $query = Olt::query()->withoutGlobalScopes();
 
-        $effectiveResellerId = $user->getEffectiveResellerId();
-        if ($effectiveResellerId || $user->hasRole('reseller')) {
+        $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
+        if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
             $query->forReseller($user);
-        } elseif (!empty($user->branch_id)) {
-            $query->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)
-                  ->orWhereNull('branch_id');
-            });
+        } elseif ($user && !$user->isTechnician() && !$user->hasAnyRole(['admin', 'administrator', 'manager', 'noc'])) {
+            if (!empty($user->branch_id)) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('branch_id', $user->branch_id)
+                      ->orWhereNull('branch_id');
+                });
+            }
         }
 
         if ($search = trim((string) $request->input('q', ''))) {
@@ -64,7 +66,7 @@ class MobileNetworkApiController extends Controller
                 'name' => $olt->name,
                 'code' => $olt->code,
                 'ip_address' => $olt->ip_address,
-                'brand' => $olt->brand ?? $olt->vendor,
+                'brand' => is_string($olt->brand) ? $olt->brand : ($olt->brand?->name ?? ($olt->vendor?->name ?? (is_string($olt->vendor) ? $olt->vendor : null))),
                 'model' => $olt->model,
                 'status' => $olt->status ?? 'active',
                 'pon_ports_count' => $olt->pon_ports_count,
@@ -351,6 +353,7 @@ class MobileNetworkApiController extends Controller
                 ->get()
                 ->map(function ($ad) {
                     $rx = $ad->signal !== null ? (float) $ad->signal : null;
+                    $isOnline = (strtolower((string) $ad->status) === 'online') || ($rx !== null && $rx !== 0.0);
                     return [
                         'id' => $ad->id,
                         'serial_number' => $ad->serial_number,
@@ -358,12 +361,13 @@ class MobileNetworkApiController extends Controller
                         'model' => $ad->model ?: 'ONT',
                         'name' => $ad->model,
                         'code' => $ad->serial_number,
-                        'status' => $ad->status ?: 'offline',
+                        'status' => $isOnline ? 'online' : ($ad->status ?: 'offline'),
+                        'is_online' => $isOnline,
                         'provision_status' => 'provisioned',
                         'rx_power_dbm' => $rx,
                         'tx_power_dbm' => null,
                         'optical_quality' => $rx !== null ? ($rx >= -23.0 ? 'Optimal' : ($rx < -26.0 ? 'Loss/Kritis' : 'Toleransi')) : 'Belum Diukur',
-                        'wifi_ssid' => $ad->wifi_ssid ?? 'dsBilling_WiFi',
+                        'wifi_ssid' => $ad->wifi_ssid ?: null,
                         'odp_id' => null,
                         'odp_code' => null,
                         'odp_name' => null,
@@ -509,13 +513,59 @@ class MobileNetworkApiController extends Controller
             'model' => 'nullable|string|max:50',
             'work_order_id' => 'nullable|integer',
             'customer_id' => 'nullable|integer',
+            'service_profile_id' => 'nullable|integer',
             'odp_id' => 'nullable|integer',
             'odp_port' => 'nullable|integer|min:1|max:64',
+            'olt_id' => 'nullable|integer',
+            'pon_port' => 'nullable|integer|min:1|max:64',
             'wifi_ssid' => 'nullable|string|max:32',
             'wifi_password' => 'nullable|string|min:8|max:64',
+            'pppoe_username' => 'nullable|string|max:100',
+            'pppoe_password' => 'nullable|string|max:100',
+            'optical_power' => 'nullable|numeric',
+            'dropcore_meters' => 'nullable|numeric|min:0',
+            'fast_connector_qty' => 'nullable|integer|min:0',
         ]);
 
         $user = $request->user();
+        $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin', 'manager', 'dispatcher']));
+
+        // Kebijakan Keamanan Jaringan & Anti-Perangkat Liar (Parity 100% dengan Web Installation Wizard)
+        // Teknisi lapangan WAJIB memiliki penugasan Work Order / SPK PSB yang sah sebelum mengaktivasi ONT
+        $workOrderId = $validated['work_order_id'] ?? null;
+        if (!$isAdmin && empty($workOrderId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aktivasi Pasang ONT ditolak: Teknisi lapangan wajib mengaitkan pemasangan dengan Surat Perintah Kerja (SPK) atau Tiket PSB resmi yang sah.',
+            ], 422);
+        }
+
+        if (!empty($workOrderId)) {
+            $targetWo = WorkOrder::withoutGlobalScopes()->find($workOrderId);
+            if (!$targetWo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Surat Perintah Kerja (SPK) #{$workOrderId} tidak ditemukan di sistem.",
+                ], 404);
+            }
+
+            // Validasi penugasan teknisi
+            if (!$isAdmin && $targetWo->assigned_to && $targetWo->assigned_to !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Surat Perintah Kerja (SPK) #{$workOrderId} tidak ditugaskan kepada Anda.",
+                ], 403);
+            }
+
+            // Pastikan status SPK belum selesai atau dibatalkan
+            if (in_array(strtolower((string) $targetWo->status), ['completed', 'closed', 'cancelled'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "SPK #{$workOrderId} sudah berstatus {$targetWo->status} dan tidak dapat digunakan untuk pemasangan baru.",
+                ], 422);
+            }
+        }
+
         $sn = strtoupper(trim($validated['serial_number']));
 
         return DB::transaction(function () use ($validated, $user, $sn) {
@@ -544,6 +594,15 @@ class MobileNetworkApiController extends Controller
             }
             if (!empty($validated['wifi_password'])) {
                 $onu->wifi_password = trim($validated['wifi_password']);
+            }
+            if (!empty($validated['olt_id'])) {
+                $onu->olt_id = (int) $validated['olt_id'];
+            }
+            if (!empty($validated['pon_port'])) {
+                $onu->pon_port_id = (int) $validated['pon_port'];
+            }
+            if (isset($validated['optical_power']) && $validated['optical_power'] !== null && $validated['optical_power'] !== '') {
+                $onu->rx_power_dbm = (float) $validated['optical_power'];
             }
 
             $onu->branch_id = $user->branch_id ?? $onu->branch_id;
@@ -587,7 +646,16 @@ class MobileNetworkApiController extends Controller
                     $odpDesc = $odpInfo ? " di ODP {$odpInfo['code']}" : '';
                     $wo->notes = $prevNotes . "ONT [{$sn}]{$odpDesc} dipasangkan oleh {$user->name} pada " . now()->format('d/m/Y H:i');
 
-                    // If order was assigned/pending, advance to in_progress
+                    $materialsUsed = [];
+                    if (!empty($validated['dropcore_meters'])) {
+                        $materialsUsed[] = "Dropcore: {$validated['dropcore_meters']}m";
+                    }
+                    if (!empty($validated['fast_connector_qty'])) {
+                        $materialsUsed[] = "Fast Connector: {$validated['fast_connector_qty']} pcs";
+                    }
+                    if (!empty($materialsUsed)) {
+                        $wo->notes .= "\nPenggunaan Material: " . implode(', ', $materialsUsed);
+                    }
                     if (in_array($wo->status, ['assigned', 'pending'])) {
                         $wo->status = 'in_progress';
                         if (!$wo->started_at) {
@@ -625,6 +693,15 @@ class MobileNetworkApiController extends Controller
                     if ($cs) {
                         $cs->onu_id = $onu->id;
                         $cs->tr069_status = 'provisioned';
+                        if (!empty($validated['service_profile_id'])) {
+                            $cs->service_profile_id = (int) $validated['service_profile_id'];
+                        }
+                        if (!empty($validated['pppoe_username'])) {
+                            $cs->username = trim($validated['pppoe_username']);
+                        }
+                        if (!empty($validated['pppoe_password'])) {
+                            $cs->password = bcrypt(trim($validated['pppoe_password']));
+                        }
                         $cs->save();
                     } else {
                         // Attempt to link to contract or existing service if present
@@ -636,10 +713,13 @@ class MobileNetworkApiController extends Controller
                             $newCs->branch_id = $user->branch_id;
                             $newCs->onu_id = $onu->id;
                             $newCs->tr069_status = 'provisioned';
-                            $newCs->username = 'onu_' . strtolower(substr($sn, -6));
-                            $newCs->password = bcrypt(Str::random(12));
+                            if (!empty($validated['service_profile_id'])) {
+                                $newCs->service_profile_id = (int) $validated['service_profile_id'];
+                            }
+                            $newCs->username = !empty($validated['pppoe_username']) ? trim($validated['pppoe_username']) : ('onu_' . strtolower(substr($sn, -6)));
+                            $newCs->password = !empty($validated['pppoe_password']) ? bcrypt(trim($validated['pppoe_password'])) : bcrypt(Str::random(12));
                             $newCs->contract_id = \DB::table('contracts')->where('customer_id', $customerId)->value('id') ?? 1;
-                            $newCs->service_id = \DB::table('services')->value('id') ?? 1;
+                            $newCs->service_id = $validated['service_profile_id'] ?? (\DB::table('services')->value('id') ?? 1);
                             $newCs->save();
                         } catch (\Throwable $e) {
                             \Log::info("Provision ONT: CustomerService link deferred: " . $e->getMessage());
@@ -705,7 +785,7 @@ class MobileNetworkApiController extends Controller
                         'tx_power_dbm' => null,
                         'optical_quality' => $quality,
                         'last_seen_at' => $ad->last_inform ? $ad->last_inform->format('Y-m-d H:i:s') : null,
-                        'wifi_ssid' => $ad->wifi_ssid ?? 'dsBilling_WiFi',
+                        'wifi_ssid' => $ad->wifi_ssid ?: null,
                         'olt' => $ad->olt ? [
                             'id' => $ad->olt->id,
                             'name' => $ad->olt->name,
@@ -750,8 +830,132 @@ class MobileNetworkApiController extends Controller
             }
         }
 
-        $rx = $onu->rx_power_dbm !== null ? (float) $onu->rx_power_dbm : null;
-        $tx = $onu->tx_power_dbm !== null ? (float) $onu->tx_power_dbm : null;
+        // 1. Coba baca Live Diagnostics dari GenieAcsDiagnosticService (sama dengan Web Technician Portal)
+        $liveDiag = null;
+        try {
+            /** @var \App\Services\ISP\GenieAcsDiagnosticService $genieService */
+            $genieService = app(\App\Services\ISP\GenieAcsDiagnosticService::class);
+            $liveDiag = $genieService->getLiveDiagnostics($onu, $request->boolean('refresh'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("MobileNetworkApiController live diagnostics error on ONU {$onu->id}: " . $e->getMessage());
+        }
+
+        // Cek juga ACSDevice untuk fallback status inform & IP
+        $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+            ->where(function ($q) use ($sn) {
+                $q->where('serial_number', $sn)
+                  ->orWhere('mac_address', $sn);
+            })
+            ->first();
+
+        // 2. Multi-layer customer resolution (Parity 100% dengan Technician Portal Diagnostic)
+        $cs = null;
+        $customer = null;
+
+        // Layer A: Cek dari CustomerService pada ONU
+        $cs = CustomerService::withoutGlobalScopes()
+            ->with([
+                'customer' => fn($q) => $q->withoutGlobalScopes(),
+                'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+            ])
+            ->where('onu_id', $onu->id)
+            ->latest('id')
+            ->first();
+
+        // Layer B: Cek via ACSDevice relation / tabel acs_devices
+        if (!$cs) {
+            $acsCsId = $onu->acsDevice?->customer_service_id ?: ($ad?->customer_service_id);
+            if ($acsCsId) {
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->with([
+                        'customer' => fn($q) => $q->withoutGlobalScopes(),
+                        'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                        'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                    ])
+                    ->find($acsCsId);
+            }
+        }
+
+        // Layer C: Cek via customer_id di ONU
+        if (!$cs && !empty($onu->customer_id)) {
+            $cs = CustomerService::withoutGlobalScopes()
+                ->with([
+                    'customer' => fn($q) => $q->withoutGlobalScopes(),
+                    'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                    'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                ])
+                ->where('customer_id', $onu->customer_id)
+                ->latest('id')
+                ->first();
+        }
+
+        // Layer D: Cek via MAC Address di PPPoEUser
+        if (!$cs && (!empty($onu->mac_address) || !empty($ad?->mac_address))) {
+            $rawMac = $onu->mac_address ?: $ad->mac_address;
+            $cleanMac = strtoupper(preg_replace('/[^A-F0-9]/i', '', (string)$rawMac));
+            $formattedMac = strlen($cleanMac) === 12 ? implode(':', str_split($cleanMac, 2)) : $rawMac;
+
+            $pppoe = \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                ->where(function ($mq) use ($cleanMac, $formattedMac) {
+                    $mq->where('mac_address', $formattedMac)
+                       ->orWhere('mac_address', $cleanMac)
+                       ->orWhere('mac_address', 'like', "%{$cleanMac}%");
+                })
+                ->latest('id')
+                ->first();
+
+            if ($pppoe && $pppoe->customer_service_id) {
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->with([
+                        'customer' => fn($q) => $q->withoutGlobalScopes(),
+                        'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                        'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                    ])
+                    ->find($pppoe->customer_service_id);
+            }
+        }
+
+        // Layer E: Cek via PPPoE username dari GenieACS live parameters
+        $pppoeUserFromGenie = $liveDiag['pppoe_username'] ?? null;
+        if (!$cs && !empty($pppoeUserFromGenie)) {
+            $pppoe = \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                ->where('username', trim($pppoeUserFromGenie))
+                ->latest('id')
+                ->first();
+
+            if ($pppoe && $pppoe->customer_service_id) {
+                $cs = CustomerService::withoutGlobalScopes()
+                    ->with([
+                        'customer' => fn($q) => $q->withoutGlobalScopes(),
+                        'serviceProfile' => fn($q) => $q->withoutGlobalScopes(),
+                        'pppoeUser' => fn($q) => $q->withoutGlobalScopes(),
+                    ])
+                    ->find($pppoe->customer_service_id);
+            }
+        }
+
+        $customer = $cs?->customer;
+        if (!$customer && !empty($onu->customer_id)) {
+            $customer = Customer::withoutGlobalScopes()->find($onu->customer_id);
+        }
+
+        // 3. Resolusi Redaman Optik (RX & TX)
+        $rx = null;
+        $tx = null;
+        if ($liveDiag && isset($liveDiag['optical']['rx_power']) && is_numeric($liveDiag['optical']['rx_power'])) {
+            $rx = (float) $liveDiag['optical']['rx_power'];
+        } elseif ($onu->rx_power_dbm !== null) {
+            $rx = (float) $onu->rx_power_dbm;
+        } elseif ($ad && $ad->signal !== null) {
+            $rx = (float) $ad->signal;
+        }
+
+        if ($liveDiag && isset($liveDiag['optical']['tx_power']) && is_numeric($liveDiag['optical']['tx_power'])) {
+            $tx = (float) $liveDiag['optical']['tx_power'];
+        } elseif ($onu->tx_power_dbm !== null) {
+            $tx = (float) $onu->tx_power_dbm;
+        }
 
         $quality = 'Belum Diukur';
         if ($rx !== null) {
@@ -764,14 +968,37 @@ class MobileNetworkApiController extends Controller
             }
         }
 
-        $isOnline = in_array(strtolower((string) $onu->status), ['online', 'active']) 
-            && ($onu->last_seen_at ? now()->diffInMinutes($onu->last_seen_at) < 30 : false);
+        // 4. Evaluasi Status Online
+        // Sesuai GenieAcsDiagnosticService: Jika optical transceiver receiving valid RX power atau status active -> ONLINE
+        $hasOpticalSignal = ($rx !== null && $rx !== 0.0);
+        $isOnline = false;
+        if ($liveDiag && !empty($liveDiag['is_online'])) {
+            $isOnline = true;
+        } elseif ($hasOpticalSignal) {
+            $isOnline = true;
+        } elseif ($ad && strtolower((string) $ad->status) === 'online') {
+            $isOnline = true;
+        } elseif (in_array(strtolower((string) $onu->status), ['online', 'active', 'up', 'working'])) {
+            $isOnline = true;
+        }
 
-        // Fetch customer info connected to this ONU
-        $cs = CustomerService::withoutGlobalScopes()
-            ->where('onu_id', $onu->id)
-            ->with(['customer', 'serviceProfile', 'pppoeUser'])
-            ->first();
+        // 5. Resolusi SSID, IP, dan Port
+        $wifiSsid = $liveDiag['wifi']['ssid_24'] ?? ($ad?->wifi_ssid ?: ($onu->wifi_ssid ?: null));
+        $uptime = $liveDiag['uptime'] ?? null;
+        $lastSeenTime = $ad?->last_inform ?? $onu->last_seen_at;
+        $lastSeenDisplay = $liveDiag['last_inform'] ?? ($lastSeenTime ? $lastSeenTime->format('d/m/Y H:i') : null);
+
+        $rawTr069 = $ad?->connection_request_url ? parse_url($ad->connection_request_url, PHP_URL_HOST) : null;
+        $tr069Ip = ($rawTr069 && $rawTr069 !== '0.0.0.0' && filter_var($rawTr069, FILTER_VALIDATE_IP)) ? $rawTr069 : null;
+        $rawPpp = ($liveDiag['ip_wan'] ?? null) ?: (($ad?->ip_address && $ad->ip_address !== '0.0.0.0') ? $ad->ip_address : ($cs?->ip_address ?? null));
+        $pppoeIp = ($rawPpp && $rawPpp !== $tr069Ip) ? $rawPpp : null;
+
+        // Resolusi nama PON Port manusiawi (misal "PON 34865153" atau "GPON 0/2/1")
+        $ponPortNumber = $onu->pon_port ?: ($onu->ponPort?->port_number ?? null);
+        $ponPortName = !empty($onu->pon_port) ? ("PON " . $onu->pon_port) : ($onu->ponPort?->name ?? ($ponPortNumber ? "GPON " . $ponPortNumber : null));
+
+        $connectedClients = $liveDiag['wifi']['connected_clients'] ?? [];
+        $connectedDevicesCount = count($connectedClients);
 
         try {
             \App\Models\AuditLog::create([
@@ -788,37 +1015,51 @@ class MobileNetworkApiController extends Controller
             'success' => true,
             'data' => [
                 'serial_number' => $onu->serial_number,
-                'mac_address' => $onu->mac_address,
-                'model' => $onu->model ?: 'ONT Terminal',
+                'mac_address' => $onu->mac_address ?: ($ad?->mac_address ?: ($liveDiag['mac_address'] ?? null)),
+                'model' => $onu->model ?: ($ad?->model ?: 'ONT Terminal'),
                 'is_online' => $isOnline,
-                'status' => $onu->status ?: 'unknown',
+                'status' => $isOnline ? 'online' : ($onu->status ?: 'offline'),
                 'rx_power_dbm' => $rx,
                 'tx_power_dbm' => $tx,
                 'optical_quality' => $quality,
-                'last_seen_at' => $onu->last_seen_at ? $onu->last_seen_at->format('Y-m-d H:i:s') : null,
-                'wifi_ssid' => $onu->wifi_ssid,
+                'last_seen_at' => $lastSeenDisplay,
+                'uptime' => $uptime,
+                'wifi_ssid' => $wifiSsid,
                 'olt' => $onu->olt ? [
                     'id' => $onu->olt->id,
                     'name' => $onu->olt->name,
                     'code' => $onu->olt->code,
-                ] : null,
+                ] : ($ad?->olt ? [
+                    'id' => $ad->olt->id,
+                    'name' => $ad->olt->name,
+                    'code' => $ad->olt->code,
+                ] : null),
                 'pon_port' => $onu->ponPort ? [
                     'id' => $onu->ponPort->id,
                     'port_number' => $onu->ponPort->port_number,
-                ] : null,
+                    'name' => $ponPortName,
+                ] : ($ponPortName ? ['id' => 0, 'port_number' => (int)$ponPortNumber, 'name' => $ponPortName] : null),
+                'pon_port_name' => $ponPortName,
                 'odp' => $onu->odp ? [
                     'id' => $onu->odp->id,
                     'code' => $onu->odp->code,
                     'name' => $onu->odp->name,
                 ] : null,
-                'customer' => $cs?->customer ? [
-                    'name' => $cs->customer->name,
-                    'code' => $cs->customer->code,
-                    'phone' => $cs->customer->phone,
-                    'address' => $cs->customer->address,
+                'customer' => $customer ? [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'code' => $customer->code,
+                    'phone' => $customer->phone,
+                    'address' => $customer->address,
                 ] : null,
-                'pppoe_username' => $cs?->username,
+                'customer_name' => $customer?->name,
+                'pppoe_username' => $cs?->pppoeUser?->username ?: ($cs?->username ?: ($ad?->customerService?->username ?: $pppoeUserFromGenie)),
+                'pppoe_ip' => $pppoeIp,
+                'tr069_ip' => $tr069Ip,
+                'wan_ip' => $pppoeIp ?: $tr069Ip,
                 'service_profile_name' => $cs?->serviceProfile?->name,
+                'connected_clients' => $connectedClients,
+                'connected_devices_count' => $connectedDevicesCount,
             ],
         ]);
     }
@@ -858,6 +1099,11 @@ class MobileNetworkApiController extends Controller
             }
         }
 
+        // Evaluasi status Online mengikuti logika GenieAcsDiagnosticService:
+        // Jika ada sinyal redaman optik RX valid atau status aktif -> Online
+        $hasOpticalSignal = ($rx !== null && $rx !== 0.0);
+        $isOnline = in_array(strtolower((string) $onu->status), ['active', 'online', 'up', 'working']) || $hasOpticalSignal;
+
         $res = [
             'id' => $onu->id,
             'serial_number' => $onu->serial_number,
@@ -865,7 +1111,8 @@ class MobileNetworkApiController extends Controller
             'model' => $onu->model ?: 'ONT',
             'name' => $onu->name,
             'code' => $onu->code,
-            'status' => $onu->status ?: 'offline',
+            'status' => $isOnline ? 'online' : ($onu->status ?: 'offline'),
+            'is_online' => $isOnline,
             'provision_status' => $onu->provision_status ?: 'unprovisioned',
             'rx_power_dbm' => $rx,
             'tx_power_dbm' => $tx,
@@ -957,7 +1204,6 @@ class MobileNetworkApiController extends Controller
             $newOnu->status = 'active';
             $newOnu->provision_status = 'provisioned';
             $newOnu->branch_id = $oldOnu->branch_id ?? $user->branch_id;
-            $newOnu->reseller_id = $oldOnu->reseller_id;
             $newOnu->created_by = $oldOnu->created_by ?? $user->id;
             $newOnu->updated_by = $user->id;
             $newOnu->save();

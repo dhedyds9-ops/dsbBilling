@@ -75,11 +75,18 @@
             </div>
 
             @if(!$selectedOnuId)
-                <div class="relative">
-                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-                    <input type="text" wire:model.live.debounce.300ms="searchQuery"
-                           placeholder="Ketik Nama Pelanggan / SN ONT / PPPoE..."
-                           class="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500">
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input type="text" wire:model.live.debounce.300ms="searchQuery"
+                               placeholder="Ketik Nama Pelanggan / SN ONT / PPPoE..."
+                               class="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <button type="button" @click="openScanner()"
+                            class="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-800 flex items-center gap-1 shrink-0 active:scale-95 transition-all">
+                        <span class="material-symbols-outlined text-sm">photo_camera</span>
+                        <span>Scan</span>
+                    </button>
                 </div>
 
                 @if(!empty($searchResults))
@@ -263,15 +270,79 @@
         </div>
     @endif
 
+    {{-- MODAL KAMERA SCANNER BARCODE / QR --}}
+    <div x-show="scannerOpen"
+         style="display: none;"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-sm">photo_camera</span>
+                    </div>
+                    <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">Scan Barcode / SN ONT</h3>
+                </div>
+                <button type="button" @click="closeScanner()" class="text-slate-400 hover:text-slate-600">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+
+            <div class="rounded-2xl overflow-hidden border-2 border-rose-500 relative bg-black aspect-video flex items-center justify-center">
+                <div id="dismantle-camera-reader" class="w-full h-full"></div>
+            </div>
+
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+                Arahkan kamera ke stiker barcode atau QR Code pada modem yang dicabut.
+            </p>
+
+            <button type="button" @click="closeScanner()"
+                    class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                Tutup Kamera
+            </button>
+        </div>
+    </div>
+
     <script>
         function dismantleManager() {
             return {
+                scannerOpen: false,
+                html5Scanner: null,
                 hasSignature: false,
 
                 init() {
                     this.$nextTick(() => {
                         this.initSignaturePad();
                     });
+                },
+
+                openScanner() {
+                    this.scannerOpen = true;
+                    this.$nextTick(() => {
+                        if (!this.html5Scanner) {
+                            this.html5Scanner = new Html5Qrcode("dismantle-camera-reader");
+                        }
+                        this.html5Scanner.start(
+                            { facingMode: "environment" },
+                            { fps: 10, qrbox: { width: 250, height: 120 } },
+                            (decodedText) => {
+                                this.closeScanner();
+                                @this.set('searchQuery', decodedText.trim());
+                            }
+                        ).catch((err) => {
+                            alert("Kamera tidak dapat diakses: " + err);
+                            this.closeScanner();
+                        });
+                    });
+                },
+
+                closeScanner() {
+                    if (this.html5Scanner) {
+                        this.html5Scanner.stop().catch(() => {}).finally(() => {
+                            this.scannerOpen = false;
+                        });
+                    } else {
+                        this.scannerOpen = false;
+                    }
                 },
 
                 initSignaturePad() {

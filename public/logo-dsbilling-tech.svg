@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 160" width="100%" height="100%">
+    <defs>
+        <linearGradient id="fiberGradLight" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#2563eb" />
+            <stop offset="100%" stop-color="#06b6d4" />
+        </linearGradient>
+        <linearGradient id="fiberGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#38bdf8" />
+            <stop offset="100%" stop-color="#6366f1" />
+        </linearGradient>
+        <style>
+            /* Light Mode Default */
+            .logo-bg { fill: transparent; }
+            .logo-primary { fill: url(#fiberGradLight); }
+            .logo-accent { fill: #0284c7; }
+            .logo-secondary { fill: #475569; }
+            .logo-status { fill: #10b981; }
+            
+            .text-main { 
+                fill: #0f172a; 
+                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+                font-weight: 800; 
+                font-size: 64px; 
+                letter-spacing: -1.2px; 
+            }
+            .text-main-accent { 
+                fill: #0284c7; 
+                font-weight: 700; 
+            }
+            
+            .text-sub { 
+                fill: #0284c7; 
+                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+                font-size: 15px; 
+                letter-spacing: 4px; 
+                font-weight: 700; 
+            }
+            .text-desc {
+                fill: #64748b;
+                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+                font-size: 11px;
+                letter-spacing: 1.5px;
+                font-weight: 500;
+            }
+            
+            /* Dark Mode Support */
+            @media (prefers-color-scheme: dark) {
+                .logo-primary { fill: url(#fiberGradDark); }
+                .logo-accent { fill: #38bdf8; }
+                .logo-secondary { fill: #94a3b8; }
+                .logo-status { fill: #34d399; }
+                .text-main { fill: #f8fafc; }
+                .text-main-accent { fill: #38bdf8; }
+                .text-sub { fill: #38bdf8; }
+                .text-desc { fill: #94a3b8; }
+            }
+        </style>
+    </defs>
+
+    <!-- Tech Emblem / Network Icon Group -->
+    <g transform="translate(15, 15)">
+        <!-- Outer Glassmorphic Rounded Hex/Squircle Shield -->
+        <rect x="0" y="0" width="130" height="130" rx="28" class="logo-bg" />
+        
+        <!-- Left 'd' Network Beam -->
+        <rect x="12" y="25" width="14" height="14" rx="3" class="logo-primary" />
+        <rect x="30" y="10" width="14" height="14" rx="3" class="logo-primary" />
+        <rect x="30" y="28" width="14" height="14" rx="3" class="logo-primary" />
+        <rect x="52" y="10" width="14" height="90" rx="4" class="logo-primary" />
+        <path d="M30,46 L52,46 L52,58 L42,58 L42,80 L52,80 L52,94 L30,94 C22,94 22,88 22,82 L22,58 C22,50 24,46 30,46 Z" class="logo-primary" />
+        <path d="M22,102 L66,102 L66,122 L22,110 Z" class="logo-primary" />
+
+        <!-- Right 's' & Fiber Nodes -->
+        <path d="M72,18 L114,30 L114,44 L72,30 Z" class="logo-secondary" />
+        <path d="M72,48 L110,48 L110,62 L84,62 L84,74 L110,74 L110,102 L72,102 L72,88 L98,88 L98,76 L72,76 Z" rx="2" class="logo-secondary" />
+        <path d="M72,106 L110,106 L110,113 L72,126 Z" class="logo-secondary" />
+
+        <!-- Status & Telemetry Pulse Indicator (Emerald LED) -->
+        <circle cx="114" cy="20" r="6" class="logo-status" />
+        
+        <!-- Signal / Network Grid Dots -->
+        <circle cx="42" cy="116" r="3.5" class="logo-primary" />
+        <circle cx="54" cy="118" r="3.5" class="logo-primary" />
+        <circle cx="78" cy="118" r="3.5" class="logo-secondary" />
+        <circle cx="90" cy="116" r="3.5" class="logo-secondary" />
+    </g>
+
+    <!-- Typography Group -->
+    <g transform="translate(165, 80)">
+        <!-- Brand Name -->
+        <text class="text-main" x="0" y="0">ds<tspan class="text-main-accent">Billing</tspan></text>
+        
+        <!-- Subtitle: TECHNICIAN & MONITORING -->
+        <text class="text-sub" x="4" y="30">TECHNICIAN &amp; MONITORING</text>
+        
+        <!-- Secondary Scope -->
+        <text class="text-desc" x="4" y="48">ISP OPERATIONS &amp; NETWORK DIAGNOSTICS</text>
+    </g>
+</svg>

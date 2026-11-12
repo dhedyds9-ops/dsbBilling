@@ -177,6 +177,11 @@ class RouterProvisioningScriptGenerator
         $lines[] = ":do { /ip firewall filter add chain=forward action=accept src-address-list=ISOLIR_LIST dst-address-list=ISOLIR_WHITELIST comment=\"managed-by=dsbilling: Allow Isolir Whitelist\" } on-error={ :put \"Filter Whitelist exists\" }";
         $lines[] = ":do { /ip firewall filter add chain=forward action=drop src-address-list=ISOLIR_LIST comment=\"managed-by=dsbilling: Drop other Isolir Traffic\" } on-error={ :put \"Filter Drop exists\" }";
         $lines[] = "";
+        $lines[] = "# 4.6 Prioritas Filter & NAT: Pindahkan ke baris teratas sebelum FastTrack / Established";
+        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Allow Isolir\"] 0 } on-error={}";
+        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Drop other Isolir\"] 1 } on-error={}";
+        $lines[] = ":do { /ip firewall nat move [find comment~\"managed-by=dsbilling: Redirect Isolir\"] 0 } on-error={}";
+        $lines[] = "";
 
         $lines[] = ":put \"==================================================\";";
         $lines[] = ":put \"[SUCCESS] Konfigurasi dsBilling Berhasil Diterapkan!\";";

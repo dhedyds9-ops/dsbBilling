@@ -358,6 +358,18 @@
                             </div>
                             @error('setup_fee') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
+
+                        {{-- Tanggal Isolir (Jika Suspend) --}}
+                        <div x-data x-show="$wire.status === 'suspended' || $wire.status === 'suspend'" class="col-span-1 md:col-span-3 bg-rose-50/70 dark:bg-rose-950/30 p-4 rounded-xl border border-rose-200 dark:border-rose-900/50 mt-2">
+                            <label class="block text-sm font-semibold text-rose-700 dark:text-rose-400 mb-1.5 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined notranslate text-rose-500" style="font-size:18px">event_busy</span>
+                                Tanggal Isolir (Suspend Date)
+                            </label>
+                            <input type="date" wire:model="suspended_at"
+                                   class="w-full sm:w-72 px-4 py-2 bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all">
+                            <p class="text-xs text-rose-600 dark:text-rose-400 mt-1">Tanggal layanan diputus/diisolir oleh sistem atau admin.</p>
+                            @error('suspended_at') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
                     </div>
                 </div>
 

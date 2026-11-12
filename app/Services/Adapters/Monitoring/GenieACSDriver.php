@@ -66,14 +66,23 @@ class GenieACSDriver
             return [];
         }
 
+        $parts = explode('-', $cleanId);
+        $candidateSn = end($parts);
+
         try {
+            $orConditions = [
+                ['_id' => $cleanId],
+                ['_deviceId._SerialNumber' => $cleanId],
+                ['_deviceId._MACAddress' => $cleanId],
+                ['_id' => ['$regex' => preg_quote($cleanId, '/')]],
+            ];
+            if (!empty($candidateSn) && $candidateSn !== $cleanId) {
+                $orConditions[] = ['_deviceId._SerialNumber' => $candidateSn];
+                $orConditions[] = ['_id' => ['$regex' => preg_quote($candidateSn, '/')]];
+            }
+
             $queryObj = [
-                '$or' => [
-                    ['_id' => $cleanId],
-                    ['_deviceId._SerialNumber' => $cleanId],
-                    ['_deviceId._MACAddress' => $cleanId],
-                    ['_id' => ['$regex' => preg_quote($cleanId, '/')]],
-                ]
+                '$or' => $orConditions
             ];
             $query = urlencode(json_encode($queryObj));
             $projection = urlencode('_id,_deviceId,_lastInform,VirtualParameters,InternetGatewayDevice,Device');

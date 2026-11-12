@@ -134,15 +134,16 @@ class PPPoEService
         });
     }
 
-    public function suspendPPPoEUser(int $pppoeUserId, int $userId): PPPoEUser
+    public function suspendPPPoEUser(int $pppoeUserId, int $userId, ?\Carbon\Carbon $suspendedAt = null): PPPoEUser
     {
-        return DB::transaction(function () use ($pppoeUserId, $userId) {
+        return DB::transaction(function () use ($pppoeUserId, $userId, $suspendedAt) {
             $pppoeUser = $this->pppoeUserRepository->find($pppoeUserId);
             $oldStatus = $pppoeUser->status;
+            $suspTime = $suspendedAt ?? now();
 
             $pppoeUser->update([
                 'status' => 'suspended',
-                'suspended_at' => now(),
+                'suspended_at' => $suspTime,
                 'updated_by' => $userId,
             ]);
 
@@ -152,7 +153,7 @@ class PPPoEService
                 if ($cs) {
                     $cs->update([
                         'status' => 'suspended',
-                        'suspended_at' => now(),
+                        'suspended_at' => $suspTime,
                     ]);
                     if ($cs->customer_id) {
                         \App\Models\CRM\Customer::where('id', $cs->customer_id)->update([

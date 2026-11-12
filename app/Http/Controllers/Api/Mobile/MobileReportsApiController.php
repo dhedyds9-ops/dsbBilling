@@ -180,8 +180,13 @@ class MobileReportsApiController extends Controller
 
         // 1. Work Orders activity (status changes & completions)
         $workOrdersQuery = WorkOrder::query()->withoutGlobalScopes();
-        if ($user->hasRole('technician')) {
-            $workOrdersQuery->where('assigned_to', $user->id);
+        if ($user->isTechnician()) {
+            $workOrdersQuery->where(function ($q) use ($user) {
+                $q->where('assigned_to', $user->id);
+                if (!empty($user->branch_id)) {
+                    $q->orWhere('branch_id', $user->branch_id);
+                }
+            });
         } elseif (!empty($user->branch_id)) {
             $workOrdersQuery->where('branch_id', $user->branch_id);
         }

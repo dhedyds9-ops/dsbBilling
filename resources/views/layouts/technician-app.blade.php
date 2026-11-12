@@ -28,6 +28,9 @@
     <x-slot:head>
         <meta name="theme-color" content="#4f46e5">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />
+        <!-- HTML5 Barcode/QR Scanner & Signature Pad for Technician Field Ops -->
+        <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
         <style>
             body { overscroll-behavior: none; }
             .material-symbols-outlined {

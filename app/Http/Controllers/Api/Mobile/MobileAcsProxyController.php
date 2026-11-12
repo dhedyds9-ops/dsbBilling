@@ -91,6 +91,10 @@ class MobileAcsProxyController extends Controller
             }
         }
 
+        if (!$hasPerm && ($user->isTechnician() || $user->hasRole(['admin', 'administrator', 'manager', 'noc', 'teknisi', 'technician']))) {
+            $hasPerm = true;
+        }
+
         if (!$hasPerm) {
             return response()->json([
                 'success' => false,
@@ -247,8 +251,32 @@ class MobileAcsProxyController extends Controller
                 ], 403);
             }
 
-            // Cross-branch operation is permitted for checked-in staff with audit trail
+            // Cross-branch operation is permitted for checked-in staff with valid assignment or manager oversight
             if ($deviceBranchId && (int) $deviceBranchId !== (int) $user->branch_id) {
+                $hasAssignedWo = false;
+                if ($cs && $cs->customer_id) {
+                    $hasAssignedWo = \App\Models\Workforce\WorkOrder::where('customer_id', $cs->customer_id)
+                        ->where('assigned_to', $user->id)
+                        ->whereIn('status', ['assigned', 'in_progress'])
+                        ->exists();
+                }
+                if (!$hasAssignedWo && $dbOnu) {
+                    $hasAssignedWo = \App\Models\Workforce\WorkOrder::where('assigned_to', $user->id)
+                        ->whereIn('status', ['assigned', 'in_progress'])
+                        ->where(function ($q) use ($dbOnu) {
+                            $q->where('description', 'like', "%{$dbOnu->serial_number}%")
+                              ->orWhere('notes', 'like', "%{$dbOnu->serial_number}%");
+                        })->exists();
+                }
+
+                // Strictly reject unassigned cross-branch device operations
+                if (!$hasAssignedWo && !$user->isSuperAdmin() && !$user->roles->contains(fn ($r) => in_array($r->name, ['manager', 'administrator', 'superadmin']))) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akses ditolak: Perangkat ini terdaftar pada cabang/tenant lain.',
+                    ], 403);
+                }
+
                 \Illuminate\Support\Facades\Log::info("[CROSS-BRANCH: Tech Cabang #{$user->branch_id} -> Device Cabang #{$deviceBranchId}] Staff: {$user->name} ({$user->id}) performed ACS operation '{$operation}' on device '{$cleanUpper}'.");
             }
         }
@@ -266,7 +294,7 @@ class MobileAcsProxyController extends Controller
         }
 
         try {
-            $limit = (int) $request->input('limit', 100);
+            $limit = min(5000, (int) $request->input('limit', 1000));
             $devices = $this->driver->listDevices([], $limit);
 
             $user = $request->user();
@@ -286,6 +314,55 @@ class MobileAcsProxyController extends Controller
                     }
                     return in_array($devSn, $allowedSns, true) || in_array($snToMatch, $allowedSns, true);
                 }));
+            }
+
+            // Enrich with customer names from dsBilling database
+            if (!empty($devices)) {
+                $candidateSns = [];
+                foreach ($devices as $d) {
+                    $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
+                    if ($devSn !== '') {
+                        $candidateSns[] = $devSn;
+                        if (str_contains($devSn, '-')) {
+                            $parts = explode('-', $devSn);
+                            $candidateSns[] = end($parts);
+                        }
+                    }
+                }
+                $candidateSns = array_values(array_unique(array_filter($candidateSns)));
+
+                if (!empty($candidateSns)) {
+                    $custServices = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                        ->with(['customer:id,name'])
+                        ->where(function ($query) use ($candidateSns) {
+                            $query->whereHas('onu', fn($q) => $q->whereIn('serial_number', $candidateSns))
+                                  ->orWhereIn('onu_serial', $candidateSns);
+                        })
+                        ->get();
+
+                    $custNameMap = [];
+                    foreach ($custServices as $cs) {
+                        $cName = $cs->customer?->name;
+                        if ($cName) {
+                            if ($cs->onu_serial) {
+                                $custNameMap[strtoupper($cs->onu_serial)] = $cName;
+                            }
+                            if ($cs->onu && $cs->onu->serial_number) {
+                                $custNameMap[strtoupper($cs->onu->serial_number)] = $cName;
+                            }
+                        }
+                    }
+
+                    foreach ($devices as &$d) {
+                        $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
+                        $snShort = str_contains($devSn, '-') ? end(explode('-', $devSn)) : $devSn;
+                        $matchedName = $custNameMap[$devSn] ?? ($custNameMap[$snShort] ?? null);
+                        if ($matchedName) {
+                            $d['customer_name'] = $matchedName;
+                        }
+                    }
+                    unset($d);
+                }
             }
 
             return response()->json([
@@ -316,14 +393,97 @@ class MobileAcsProxyController extends Controller
         }
 
         try {
-            $params = $this->driver->getDeviceParameters($cleanId);
+            $params = [];
+            try {
+                $params = $this->driver->getDeviceParameters($cleanId);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("MobileAcsProxy getDeviceParameters error for {$cleanId}: " . $e->getMessage());
+            }
+
+            // Enrich params with dsBilling database resolution (parity with Web dsBilling)
+            $cleanUpper = strtoupper(trim($cleanId));
+            $candidateSn = str_contains($cleanUpper, '-') ? end(explode('-', $cleanUpper)) : $cleanUpper;
+
+            $ad = \App\Models\ACS\ACSDevice::withoutGlobalScopes()->where(function ($q) use ($cleanUpper, $candidateSn) {
+                $q->where('uuid', $cleanUpper)
+                  ->orWhere('serial_number', $cleanUpper)
+                  ->orWhere('serial_number', $candidateSn)
+                  ->orWhere('mac_address', $cleanUpper);
+            })->first();
+
+            $onu = $ad && $ad->onu_id ? \App\Models\ISP\Onu::withoutGlobalScopes()->find($ad->onu_id) : null;
+            if (!$onu) {
+                $onu = \App\Models\ISP\Onu::withoutGlobalScopes()->where(function ($q) use ($cleanUpper, $candidateSn) {
+                    $q->where('serial_number', $cleanUpper)
+                      ->orWhere('serial_number', $candidateSn)
+                      ->orWhere('mac_address', $cleanUpper);
+                })->first();
+            }
 
             if (empty($params)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Perangkat dengan ID '{$cleanId}' tidak ditemukan di ACS.",
-                ], 404);
+                if ($ad || $onu) {
+                    $params = [
+                        '_id' => $cleanId,
+                        '_deviceId' => [
+                            '_Manufacturer' => $onu?->vendor?->name ?? ($ad?->vendor ?? 'ZTE'),
+                            '_ProductClass' => $onu?->model_name ?? ($ad?->model_name ?? 'Modem'),
+                            '_SerialNumber' => $candidateSn,
+                        ],
+                        '_lastInform' => $ad?->last_inform?->toIso8601String() ?? $onu?->updated_at?->toIso8601String(),
+                        'VirtualParameters' => array_filter([
+                            'RXPower' => $onu?->rx_power_dbm !== null ? (string)$onu->rx_power_dbm : null,
+                            'TXPower' => $onu?->tx_power_dbm !== null ? (string)$onu->tx_power_dbm : null,
+                            'SSID' => $onu?->wifi_ssid,
+                            'wlan_ssid' => $onu?->wifi_ssid,
+                        ]),
+                    ];
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Perangkat dengan ID '{$cleanId}' tidak ditemukan di ACS maupun database.",
+                    ], 404);
+                }
             }
+
+            $cs = null;
+            if ($ad && $ad->customer_service_id) {
+                $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
+                    ->find($ad->customer_service_id);
+            }
+            if (!$cs && $onu) {
+                $cs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('onu_id', $onu->id)
+                    ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
+                    ->first();
+            }
+
+            $cust = $cs?->customer;
+            if (!$cust && $onu?->customer_id) {
+                $cust = \App\Models\CRM\Customer::withoutGlobalScopes()->find($onu->customer_id);
+            }
+
+            $rawTr069 = $ad?->connection_request_url ? parse_url($ad->connection_request_url, PHP_URL_HOST) : null;
+            $tr069Ip = ($rawTr069 && $rawTr069 !== '0.0.0.0' && filter_var($rawTr069, FILTER_VALIDATE_IP)) ? $rawTr069 : null;
+            $rawPpp = ($ad?->ip_address && $ad->ip_address !== '0.0.0.0') ? $ad->ip_address : ($cs?->ip_address ?? null);
+            $pppoeIp = ($rawPpp && $rawPpp !== $tr069Ip) ? $rawPpp : null;
+
+            $ponPortName = $onu?->ponPort?->name 
+                ?? ($onu?->ponPort?->port_number ? "GPON " . $onu->ponPort->port_number : null)
+                ?? ($onu?->pon_port ? (str_starts_with($onu->pon_port, 'GPON') ? $onu->pon_port : "GPON " . $onu->pon_port) : null);
+
+            $params['customer_name'] = $cust?->name;
+            $params['customer_code'] = $cust?->code;
+            $params['customer_phone'] = $cust?->phone;
+            $params['customer_address'] = $cust?->address;
+            $params['pppoe_username'] = $cs?->username ?: ($ad?->customerService?->username);
+            $params['pppoe_ip'] = $pppoeIp;
+            $params['tr069_ip'] = $tr069Ip;
+            $params['wan_ip'] = $pppoeIp ?: ($tr069Ip ?: ($ad?->ip_address));
+            $params['mac_address'] = $ad?->mac_address ?: ($onu?->mac_address);
+            $params['olt_name'] = $onu?->olt?->name ?: ($ad?->olt?->name);
+            $params['pon_port_name'] = $ponPortName;
+            $params['odp_name'] = $onu?->odp?->name ?: ($onu?->odp?->code);
 
             // Extract connected devices if possible
             $connectedDevices = [];
@@ -903,14 +1063,43 @@ class MobileAcsProxyController extends Controller
             return response()->json(['success' => false, 'message' => 'Tag tidak boleh kosong.'], 422);
         }
 
+        $cleanUpper = strtoupper(trim($cleanId));
+        $parts = explode('-', $cleanUpper);
+        $candidateSn = end($parts);
+
+        // 1. Dual-write to dsBilling database: If tag is LOC_ or ODP_, update coordinates immediately
+        $dbUpdated = false;
+        if (str_starts_with($tag, 'LOC_')) {
+            $locParts = explode('_', $tag);
+            if (count($locParts) >= 3 && is_numeric($locParts[1]) && is_numeric($locParts[2])) {
+                $lat = ((float)$locParts[1]) / 1000000.0;
+                $lng = ((float)$locParts[2]) / 1000000.0;
+                \App\Models\ISP\Onu::withoutGlobalScopes()->where(function ($q) use ($cleanUpper, $candidateSn) {
+                    $q->where('serial_number', $cleanUpper)
+                      ->orWhere('serial_number', $candidateSn)
+                      ->orWhere('mac_address', $cleanUpper);
+                })->update(['latitude' => $lat, 'longitude' => $lng]);
+                $dbUpdated = true;
+            }
+        }
+
+        // 2. Resolve actual GenieACS _id if cleanId is candidate
+        $actualGenieId = $cleanId;
+        try {
+            $devParams = $this->driver->getDeviceParameters($cleanId);
+            if (!empty($devParams['_id'])) {
+                $actualGenieId = $devParams['_id'];
+            }
+        } catch (\Throwable) {}
+
         try {
             $baseUrl = rtrim(config('genieacs.base_url', 'http://localhost:7557'), '/');
             $resp = \Illuminate\Support\Facades\Http::withBasicAuth(
                 config('genieacs.username', 'admin'),
                 config('genieacs.password', 'admin')
-            )->post("{$baseUrl}/devices/" . urlencode($cleanId) . '/tags/' . urlencode($tag));
+            )->post("{$baseUrl}/devices/" . urlencode($actualGenieId) . '/tags/' . urlencode($tag));
 
-            if ($resp->successful() || $resp->status() === 200 || $resp->status() === 201) {
+            if ($resp->successful() || $resp->status() === 200 || $resp->status() === 201 || $dbUpdated) {
                 return response()->json([
                     'success' => true,
                     'message' => "Tag '{$tag}' berhasil ditambahkan.",
@@ -922,6 +1111,12 @@ class MobileAcsProxyController extends Controller
                 'message' => 'Gagal menambahkan tag di GenieACS.',
             ], $resp->status() ?: 500);
         } catch (Exception $e) {
+            if ($dbUpdated) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Tag '{$tag}' tersimpan di database lokal.",
+                ]);
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menambahkan tag: ' . $e->getMessage(),
@@ -943,13 +1138,25 @@ class MobileAcsProxyController extends Controller
             return $devCheck;
         }
 
+        $cleanUpper = strtoupper(trim($cleanId));
+        $parts = explode('-', $cleanUpper);
+        $candidateSn = end($parts);
+
+        $actualGenieId = $cleanId;
+        try {
+            $devParams = $this->driver->getDeviceParameters($cleanId);
+            if (!empty($devParams['_id'])) {
+                $actualGenieId = $devParams['_id'];
+            }
+        } catch (\Throwable) {}
+
         $cleanTag = trim(urldecode($tag));
         try {
             $baseUrl = rtrim(config('genieacs.base_url', 'http://localhost:7557'), '/');
             $resp = \Illuminate\Support\Facades\Http::withBasicAuth(
                 config('genieacs.username', 'admin'),
                 config('genieacs.password', 'admin')
-            )->delete("{$baseUrl}/devices/" . urlencode($cleanId) . '/tags/' . urlencode($cleanTag));
+            )->delete("{$baseUrl}/devices/" . urlencode($actualGenieId) . '/tags/' . urlencode($cleanTag));
 
             if ($resp->successful() || $resp->status() === 404) {
                 return response()->json([

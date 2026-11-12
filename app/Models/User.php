@@ -273,7 +273,7 @@ class User extends Authenticatable
         // 3. Proteksi Pembatasan Izin Berdasarkan Jabatan (Job Title) & Role Spesifik
         // Mencegah kebocoran menu superadmin/router/keuangan pada staf gudang, kasir, teknisi, dll.
         $title = strtolower((string)($this->job_title ?? ''));
-        if (str_contains($title, 'gudang') || str_contains($title, 'logistik') || $this->hasRole('admin_gudang')) {
+        if ($this->isWarehouseAdmin()) {
             return str_starts_with($permission, 'inventory.') || str_starts_with($permission, 'warehouse.');
         }
 
@@ -285,11 +285,26 @@ class User extends Authenticatable
             return str_starts_with($permission, 'customer.') || str_starts_with($permission, 'ticket.');
         }
 
-        if (str_contains($title, 'teknisi') || str_contains($title, 'technician') || $this->hasRole('teknisi') || $this->hasRole('technician')) {
+        if ($this->isTechnician()) {
             return str_starts_with($permission, 'technician.') 
                 || str_starts_with($permission, 'workforce.') 
                 || in_array($permission, \App\Enums\UserPermission::defaultTeknisiPermissions())
-                || in_array($permission, ['onu.view', 'onu.diagnose', 'onu.configure.wifi', 'onu.configure.wan', 'onu.reboot', 'inventory.custody', 'inventory.usage', 'inventory.return', 'inventory.requisition']);
+                || in_array($permission, [
+                    'onu.view', 'onu.diagnose', 'onu.configure.wifi', 'onu.configure.wan',
+                    'onu.reboot', 'inventory.custody', 'inventory.usage', 'inventory.return',
+                    'inventory.requisition', 'technician.portal'
+                ]);
+        }
+
+        if ($this->isReseller()) {
+            return str_starts_with($permission, 'customer.')
+                || str_starts_with($permission, 'workforce.')
+                || str_starts_with($permission, 'support.')
+                || in_array($permission, [
+                    'onu.view', 'onu.diagnose', 'onu.configure.wifi', 'onu.reboot',
+                    'inventory.custody', 'inventory.view', 'inventory.request',
+                    'gis.view', 'billing.view'
+                ]);
         }
 
         if (str_contains($title, 'marketing') || str_contains($title, 'sales') || $this->hasRole('marketing')) {

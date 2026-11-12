@@ -76,6 +76,11 @@ class AttendanceAuthorizationService
             return true;
         }
 
+        // Attendance-based operational gate strictly mandates attendance for field technicians
+        if (!$user->isTechnician()) {
+            return true;
+        }
+
         return false;
     }
 

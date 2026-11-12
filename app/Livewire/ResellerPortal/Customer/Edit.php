@@ -40,6 +40,7 @@ class Edit extends AdminComponent
 
     // Section 3: Billing & Status
     public $status = 'active';
+    public $suspended_at;
     public $billing_cycle = 'monthly';
     public $setup_fee = 0;
 
@@ -73,6 +74,8 @@ class Edit extends AdminComponent
         $cs = $customer->customerServices->first();
         $pppoe = $cs?->pppoeUser;
         $hotspot = $cs?->hotspotUser;
+
+        $this->suspended_at = $cs?->suspended_at ? $cs->suspended_at->format('Y-m-d') : ($pppoe?->suspended_at ? $pppoe->suspended_at->format('Y-m-d') : ($hotspot?->suspended_at ? $hotspot->suspended_at->format('Y-m-d') : null));
 
         if ($hotspot && !$pppoe) {
             $this->service_type = 'hotspot';
@@ -196,10 +199,15 @@ class Edit extends AdminComponent
 
         // 3. Update / Create CustomerService
         $cs = $customer->customerServices()->first();
+        $isSuspend = in_array($this->status, ['suspended', 'suspend']);
+        $actualStatus = $isSuspend ? 'suspended' : ($this->status === 'inactive' ? 'inactive' : 'active');
+        $suspendedAt = $isSuspend ? ($this->suspended_at ? \Carbon\Carbon::parse($this->suspended_at) : now()) : null;
+
         $serviceData = [
             'service_profile_id' => $this->service_profile_id ?: null,
             'onu_id'             => $actualOnuId,
-            'status'             => $this->status,
+            'status'             => $actualStatus,
+            'suspended_at'       => $suspendedAt,
         ];
         if (!empty($this->username)) {
             $serviceData['username'] = $this->username;
@@ -237,7 +245,8 @@ class Edit extends AdminComponent
                 'port_number'        => $this->port_number ?: null,
                 'billing_cycle'      => $this->billing_cycle ?: 'monthly',
                 'setup_fee'          => $this->setup_fee ?: 0,
-                'status'             => $this->status,
+                'status'             => $actualStatus,
+                'suspended_at'       => $suspendedAt,
             ];
             if (!empty($this->password)) {
                 $pppoeData['password'] = $this->password;
@@ -251,7 +260,7 @@ class Edit extends AdminComponent
                 $pppoeData['created_by'] = auth()->id();
                 $pppoeData['reseller_id'] = $customer->reseller_id;
                 $pppoeData['password'] = $this->password ?: '123456';
-                PPPoEUser::create($pppoeData);
+                $pppoe = PPPoEUser::create($pppoeData);
             }
         } elseif ($this->service_type === 'hotspot') {
             $hotspot = $cs->hotspotUser ?? HotspotUser::where('customer_service_id', $cs->id)->first();
@@ -265,7 +274,8 @@ class Edit extends AdminComponent
                 'port_number'        => $this->port_number ?: null,
                 'billing_cycle'      => $this->billing_cycle ?: 'monthly',
                 'setup_fee'          => $this->setup_fee ?: 0,
-                'status'             => $this->status,
+                'status'             => $actualStatus,
+                'suspended_at'       => $suspendedAt,
             ];
             if (!empty($this->password)) {
                 $hotspotData['password'] = $this->password;
@@ -279,7 +289,23 @@ class Edit extends AdminComponent
                 $hotspotData['created_by'] = auth()->id();
                 $hotspotData['reseller_id'] = $customer->reseller_id;
                 $hotspotData['password'] = $this->password ?: '123456';
-                HotspotUser::create($hotspotData);
+                $hotspot = HotspotUser::create($hotspotData);
+            }
+        }
+
+        // 5. Sinkronisasi Hardware MikroTik
+        $userId = auth()->id() ?? 1;
+        if ($isSuspend) {
+            if ($this->service_type === 'pppoe' && isset($pppoe)) {
+                try { app(\App\Services\ISP\PPPoEService::class)->suspendPPPoEUser($pppoe->id, $userId); } catch (\Throwable) {}
+            } elseif ($this->service_type === 'hotspot' && isset($hotspot)) {
+                try { app(\App\Services\ISP\HotspotService::class)->suspendHotspotUser($hotspot->id, $userId); } catch (\Throwable) {}
+            }
+        } else {
+            if ($this->service_type === 'pppoe' && isset($pppoe)) {
+                try { app(\App\Services\ISP\PPPoEService::class)->reactivatePPPoEUser($pppoe->id, $userId); } catch (\Throwable) {}
+            } elseif ($this->service_type === 'hotspot' && isset($hotspot)) {
+                try { app(\App\Services\ISP\HotspotService::class)->activateHotspotUser($hotspot->id, $userId); } catch (\Throwable) {}
             }
         }
 

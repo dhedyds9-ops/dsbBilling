@@ -38,7 +38,12 @@ class IsolirService
                 $j->on('sub_p.customer_id', '=', 'inv_p.customer_id')
                   ->whereIn('inv_p.status', ['unpaid', 'pending', 'overdue', 'partial']);
             })
-            ->where('pppoe_users.status', 'suspended')
+            ->where(function($q) {
+                $q->whereIn('pppoe_users.status', ['suspended', 'suspend'])
+                  ->orWhereNotNull('pppoe_users.suspended_at')
+                  ->orWhereIn('cs_p.status', ['suspended', 'suspend'])
+                  ->orWhereNotNull('cs_p.suspended_at');
+            })
             ->select([
                 DB::raw("'pppoe' as source_type"),
                 'pppoe_users.id as id',
@@ -71,7 +76,12 @@ class IsolirService
                 $j->on('sub_h.customer_id', '=', 'inv_h.customer_id')
                   ->whereIn('inv_h.status', ['unpaid', 'pending', 'overdue', 'partial']);
             })
-            ->where('hotspot_users.status', 'suspended')
+            ->where(function($q) {
+                $q->whereIn('hotspot_users.status', ['suspended', 'suspend'])
+                  ->orWhereNotNull('hotspot_users.suspended_at')
+                  ->orWhereIn('cs_h.status', ['suspended', 'suspend'])
+                  ->orWhereNotNull('cs_h.suspended_at');
+            })
             ->select([
                 DB::raw("'hotspot' as source_type"),
                 'hotspot_users.id as id',
@@ -161,11 +171,21 @@ class IsolirService
 
     public function summary(): array
     {
-        $pppoeBase = PPPoEUser::where('status', 'suspended');
-        $hotspotBase = HotspotUser::where('status', 'suspended');
+        $pppoeBase = PPPoEUser::where(function($q) {
+            $q->whereIn('status', ['suspended', 'suspend'])
+              ->orWhereNotNull('suspended_at')
+              ->orWhereHas('customerService', fn($cs) => $cs->whereIn('status', ['suspended', 'suspend'])->orWhereNotNull('suspended_at'));
+        });
+        $hotspotBase = HotspotUser::where(function($q) {
+            $q->whereIn('status', ['suspended', 'suspend'])
+              ->orWhereNotNull('suspended_at')
+              ->orWhereHas('customerService', fn($cs) => $cs->whereIn('status', ['suspended', 'suspend'])->orWhereNotNull('suspended_at'));
+        });
 
         if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole(UserRole::Reseller->value)) {
-            $userId = \Illuminate\Support\Facades\Auth::id();
+            $userId = method_exists(\Illuminate\Support\Facades\Auth::user(), 'getEffectiveResellerId')
+                ? \Illuminate\Support\Facades\Auth::user()->getEffectiveResellerId()
+                : \Illuminate\Support\Facades\Auth::id();
             // Scope berdasarkan reseller_id, bukan created_by
             $pppoeBase->where('reseller_id', $userId);
             $hotspotBase->where('reseller_id', $userId);

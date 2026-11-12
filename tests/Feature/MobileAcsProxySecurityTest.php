@@ -73,6 +73,21 @@ class MobileAcsProxySecurityTest extends TestCase
         ]);
         $this->technicianBranch2->roles()->attach($techRole->id);
 
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technicianBranch1->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technicianBranch2->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
+
         // Reseller A (Branch 1)
         $this->resellerA = User::factory()->create([
             'name' => 'Mitra Reseller A',

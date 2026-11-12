@@ -297,5 +297,47 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
     });
 });
 
+// ========================= DSBILLING CUSTOMER MOBILE API ========================
+Route::prefix('customer')->name('api.customer.')->group(function () {
+    Route::post('/auth/login', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'login'])->name('auth.login');
+    Route::post('/login', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'login'])->name('login');
+
+    Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('/auth/logout', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'logout'])->name('auth.logout');
+        Route::get('/auth/me', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'me'])->name('auth.me');
+        Route::get('/me', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'me']);
+
+        // Dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'dashboard'])->name('dashboard');
+
+        // Billing & Invoices
+        Route::get('/invoices', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'invoices'])->name('invoices.index');
+        Route::get('/invoices/{id}', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'invoiceDetail'])->where('id', '\d+')->name('invoices.show');
+        Route::post('/invoices/{id}/pay', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'payInvoice'])->where('id', '\d+')->name('invoices.pay');
+
+        // Self-Service Wi-Fi & Devices
+        Route::get('/wifi', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getWifi'])->name('wifi.show');
+        Route::post('/wifi', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateWifi'])->name('wifi.update');
+        Route::get('/wifi/connected-devices', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getConnectedDevices'])->name('wifi.devices');
+
+        // Support & Complaints
+        Route::get('/tickets', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'tickets'])->name('tickets.index');
+        Route::post('/tickets', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'createTicket'])->name('tickets.store');
+        Route::get('/tickets/{id}', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'ticketDetail'])->where('id', '\d+')->name('tickets.show');
+
+        // Notifications & Announcements
+        Route::get('/notifications', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'notifications'])->name('notifications.index');
+
+        // Profile & Security
+        Route::post('/profile', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateProfile'])->name('profile.update');
+        Route::post('/profile/change-password', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'changePassword'])->name('profile.change-password');
+
+        // Auxiliary
+        Route::get('/support/contact', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'contactAdmin'])->name('support.contact');
+        Route::get('/speedtest/config', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'speedtestConfig'])->name('speedtest.config');
+    });
+});
+
+
 
 

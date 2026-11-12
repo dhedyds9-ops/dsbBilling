@@ -364,7 +364,14 @@
                             
                             {{-- Tgl Isolir --}}
                             <td class="px-4 py-3 whitespace-nowrap {{ $textSecondary }}">
-                                {{ $tglIsolir }}
+                                <button type="button" 
+                                        wire:click="openEditIsolirModal({{ $customer->id }})"
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all group {{ $tglIsolir !== '-' ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-400' }}"
+                                        title="Klik untuk ubah tanggal isolir / beri janji bayar">
+                                    <span class="material-symbols-outlined notranslate text-xs {{ $tglIsolir !== '-' ? 'text-rose-500' : 'text-slate-400' }}" style="font-size:14px">calendar_month</span>
+                                    <span>{{ $tglIsolir }}</span>
+                                    <span class="material-symbols-outlined notranslate text-[10px] opacity-0 group-hover:opacity-100 transition-opacity" style="font-size:12px">edit</span>
+                                </button>
                             </td>
                         </tr>
                     @empty
@@ -388,5 +395,101 @@
         @endif
     </div>
 
+    {{-- MODAL UBAH TANGGAL ISOLIR & JANJI BAYAR --}}
+    @if($showEditIsolirModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+         wire:keydown.escape="closeEditIsolirModal">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-scale-up">
+            {{-- Modal Header --}}
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-900/50">
+                <div class="flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                        <span class="material-symbols-outlined notranslate" style="font-size:20px">event_busy</span>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Atur Tanggal Isolir & Dispensasi</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ $selectedCustomerName }} ({{ $selectedCustomerUsername }})</p>
+                    </div>
+                </div>
+                <button type="button" wire:click="closeEditIsolirModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined notranslate">close</span>
+                </button>
+            </div>
+
+            {{-- Tabs --}}
+            <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-sm font-medium">
+                <button type="button" 
+                        wire:click="$set('isolirModalTab', 'date')" 
+                        class="flex-1 py-2.5 text-center border-b-2 transition-all {{ $isolirModalTab === 'date' ? 'border-rose-600 text-rose-600 dark:text-rose-400 font-bold bg-white dark:bg-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400' }}">
+                    Ubah Tanggal Isolir
+                </button>
+                <button type="button" 
+                        wire:click="$set('isolirModalTab', 'grace')" 
+                        class="flex-1 py-2.5 text-center border-b-2 transition-all {{ $isolirModalTab === 'grace' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-bold bg-white dark:bg-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400' }}">
+                    Beri Janji Bayar (Dispensasi)
+                </button>
+            </div>
+
+            {{-- Modal Body --}}
+            <div class="p-6">
+                @if($isolirModalTab === 'date')
+                    <div class="space-y-4">
+                        <p class="text-xs text-slate-600 dark:text-slate-400">
+                            Atur tanggal kapan pelanggan ini diisolir. Sistem akan menandai layanan berstatus suspend dan memblokir internet pelanggan pada router.
+                        </p>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Tanggal Isolir
+                            </label>
+                            <input type="date" wire:model="editIsolirDate"
+                                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500">
+                            @error('editIsolirDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="pt-2 flex justify-end gap-2">
+                            <button type="button" wire:click="closeEditIsolirModal" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">
+                                Batal
+                            </button>
+                            <button type="button" wire:click="saveIsolirDate" class="px-4 py-2 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-200 dark:shadow-none transition-all">
+                                Simpan Tanggal Isolir
+                            </button>
+                        </div>
+                    </div>
+                @else
+                    <div class="space-y-4">
+                        <p class="text-xs text-slate-600 dark:text-slate-400">
+                            Berikan masa tenggang / janji bayar. Layanan pelanggan akan <strong>diaktifkan kembali</strong> secara instan di MikroTik selama masa dispensasi.
+                        </p>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Tambahan Hari Dispensasi
+                            </label>
+                            <div class="grid grid-cols-4 gap-2 mb-3">
+                                @foreach([1, 3, 7, 14] as $d)
+                                <button type="button" 
+                                        wire:click="$set('graceDays', {{ $d }})"
+                                        class="py-2 text-xs font-bold rounded-lg border transition-all {{ $graceDays == $d ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100' }}">
+                                    +{{ $d }} Hari
+                                </button>
+                                @endforeach
+                            </div>
+                            <input type="number" wire:model="graceDays" min="1" max="30"
+                                   class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                   placeholder="Jumlah hari custom (1 - 30)">
+                            @error('graceDays') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="pt-2 flex justify-end gap-2">
+                            <button type="button" wire:click="closeEditIsolirModal" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">
+                                Batal
+                            </button>
+                            <button type="button" wire:click="applyJanjiBayar" class="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none transition-all">
+                                Berikan Janji Bayar & Aktifkan
+                            </button>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 

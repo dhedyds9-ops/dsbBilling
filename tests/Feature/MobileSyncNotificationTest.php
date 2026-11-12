@@ -34,6 +34,14 @@ class MobileSyncNotificationTest extends TestCase
             'is_active' => true,
         ]);
         $this->technician->roles()->attach($techRole->id);
+
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technician->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
     }
 
     public function test_technician_can_get_offline_bootstrap_data(): void

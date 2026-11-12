@@ -45,7 +45,7 @@ class MobileWorkforceApiController extends Controller
             if (!$isAssigned && !$isManagerOrAdmin) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Akses ditolak: SPK ini milik cabang lain dan tidak ditugaskan kepada Anda.',
+                    'message' => 'Akses ditolak: SPK ini milik cabang lain.',
                 ], 403);
             }
         }
@@ -68,9 +68,21 @@ class MobileWorkforceApiController extends Controller
      */
     protected function isManagerOrAdmin(User $user): bool
     {
-        return $user->isSuperAdmin()
-            || $user->hasRole(['manager', 'administrator', 'superadmin'])
-            || in_array(strtoupper($user->job_function ?? ''), ['MANAGER', 'ADMINISTRATOR']);
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        // Direct check on user roles relation to prevent false positives from staff role fallbacks
+        $hasManagerRole = $user->roles->contains(function ($role) {
+            return in_array($role->name, ['manager', 'administrator', 'superadmin']);
+        });
+
+        if ($hasManagerRole) {
+            return true;
+        }
+
+        $jobFunc = strtoupper((string)$user->job_function);
+        return in_array($jobFunc, ['MANAGER', 'ADMINISTRATOR']);
     }
 
     /**

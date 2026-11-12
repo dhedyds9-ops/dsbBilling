@@ -47,6 +47,21 @@ class MobileWorkEvidenceTest extends TestCase
         ]);
         $this->technician2->roles()->attach($techRole->id);
 
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technician1->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
+        \App\Models\Workforce\Attendance::create([
+            'technician_id' => $this->technician2->id,
+            'date' => \Carbon\Carbon::today(),
+            'checked_in_at' => \Carbon\Carbon::now()->subHour(),
+            'checked_out_at' => null,
+            'status' => \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN,
+        ]);
+
         $this->customer = User::factory()->create([
             'name' => 'Pelanggan Rumah Ibu Rina',
             'email' => 'rina@dsbilling.test',
