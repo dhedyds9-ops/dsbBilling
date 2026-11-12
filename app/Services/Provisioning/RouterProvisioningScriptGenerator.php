@@ -179,13 +179,14 @@ class RouterProvisioningScriptGenerator
         $lines[] = ":do { /ip firewall filter add chain=forward action=accept protocol=udp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" } on-error={ :put \"Filter DNS UDP exists\" }";
         $lines[] = ":do { /ip firewall filter add chain=forward action=accept protocol=tcp src-address-list=ISOLIR_LIST dst-port=53 comment=\"managed-by=dsbilling: Allow Isolir DNS\" } on-error={ :put \"Filter DNS TCP exists\" }";
         $lines[] = ":do { /ip firewall filter add chain=forward action=accept src-address-list=ISOLIR_LIST dst-address-list=ISOLIR_WHITELIST comment=\"managed-by=dsbilling: Allow Isolir Whitelist\" } on-error={ :put \"Filter Whitelist exists\" }";
-        $lines[] = ":do { /ip firewall filter add chain=forward action=reject reject-with=tcp-reset protocol=tcp src-address-list=ISOLIR_LIST dst-port=443 comment=\"managed-by=dsbilling: Fast Reject HTTPS Isolir\" } on-error={ :put \"Filter Reject HTTPS exists\" }";
+        $lines[] = ":do { /ip firewall filter add chain=forward action=reject reject-with=tcp-reset protocol=tcp src-address-list=ISOLIR_LIST dst-address-list=!ISOLIR_WHITELIST dst-port=443 comment=\"managed-by=dsbilling: Fast Reject HTTPS Isolir\" } on-error={ :put \"Filter Reject HTTPS exists\" }";
         $lines[] = ":do { /ip firewall filter add chain=forward action=drop src-address-list=ISOLIR_LIST comment=\"managed-by=dsbilling: Drop other Isolir Traffic\" } on-error={ :put \"Filter Drop exists\" }";
         $lines[] = "";
         $lines[] = "# 4.6 Prioritas Filter & NAT: Pindahkan ke baris teratas sebelum FastTrack / Established";
-        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Allow Isolir\"] 0 } on-error={}";
-        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Fast Reject HTTPS Isolir\"] 1 } on-error={}";
-        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Drop other Isolir\"] 2 } on-error={}";
+        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Allow Isolir Whitelist\"] 0 } on-error={}";
+        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Allow Isolir DNS\"] 1 } on-error={}";
+        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Fast Reject HTTPS Isolir\"] 2 } on-error={}";
+        $lines[] = ":do { /ip firewall filter move [find comment~\"managed-by=dsbilling: Drop other Isolir\"] 3 } on-error={}";
         $lines[] = ":do { /ip firewall nat move [find comment~\"managed-by=dsbilling: Redirect Isolir\"] 0 } on-error={}";
         $lines[] = "";
 
