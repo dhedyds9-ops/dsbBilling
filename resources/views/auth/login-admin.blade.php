@@ -169,23 +169,16 @@
         </div>
     </div>
 
-    <!-- Floating Download APK Button for dsBilling Staff & Teknisi (Versi 1.1.1) -->
-    <div class="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50">
+    <!-- Compact Floating Download APK Button for dsBilling Staff & Teknisi (Versi 1.1.1) -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; margin: 0; padding: 0;">
         <a href="{{ asset('downloads/dsbilling-mobile-release.apk') }}" download
-           class="flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 backdrop-blur-md border border-cyan-500/40 hover:border-cyan-400 p-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl shadow-cyan-950/60 transition-all transform hover:-translate-y-1 hover:scale-105 group focus:outline-none focus:ring-2 focus:ring-cyan-500">
-            <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30 shrink-0 group-hover:rotate-6 transition-transform">
-                <span class="material-symbols-outlined text-[24px]">android</span>
-            </div>
-            <div class="flex flex-col text-left">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-xs sm:text-sm font-bold text-white tracking-wide">dsBilling Staff</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">v1.1.1</span>
-                </div>
-                <span class="text-[11px] text-slate-400 group-hover:text-cyan-300 transition-colors flex items-center gap-1">
-                    <span>Unduh APK Teknisi</span>
-                    <span class="material-symbols-outlined text-[14px]">download</span>
-                </span>
-            </div>
+           style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(6, 182, 212, 0.45); border-radius: 9999px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(6, 182, 212, 0.15); text-decoration: none; transition: all 0.2s ease-in-out; cursor: pointer;"
+           onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.borderColor='rgba(6, 182, 212, 0.8)';"
+           onmouseout="this.style.transform='none'; this.style.borderColor='rgba(6, 182, 212, 0.45)';">
+            <span class="material-symbols-outlined" style="font-size: 19px; color: #22d3ee; display: flex; align-items: center;">android</span>
+            <span style="font-size: 12px; font-weight: 700; color: #ffffff; letter-spacing: 0.2px;">APK Staff</span>
+            <span style="font-size: 10px; font-weight: 700; color: #67e8f9; background: rgba(6, 182, 212, 0.2); padding: 1px 6px; border-radius: 9999px; border: 1px solid rgba(6, 182, 212, 0.3);">v1.1.1</span>
+            <span class="material-symbols-outlined" style="font-size: 16px; color: #94a3b8; display: flex; align-items: center;">download</span>
         </a>
     </div>
 </body>
