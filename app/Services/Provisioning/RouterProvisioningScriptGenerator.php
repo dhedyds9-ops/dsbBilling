@@ -152,7 +152,8 @@ class RouterProvisioningScriptGenerator
         $lines[] = "# 4.2 Web Proxy Internal MikroTik untuk Redirect ke Halaman Tagihan";
         $lines[] = ":do { /ip proxy set enabled=yes port=8080 } on-error={}";
         $lines[] = ":do { /ip proxy access remove [find comment~\"managed-by=dsbilling\"] } on-error={}";
-        $lines[] = ":do { /ip proxy access add action=deny redirect-to=\"{$billingDomain}/bayar-tagihan\" comment=\"managed-by=dsbilling: Redirect Isolir\" } on-error={ /ip proxy access set [find comment~\"managed-by=dsbilling\"] action=deny redirect-to=\"{$billingDomain}/bayar-tagihan\" }";
+        // RouterOS v7 uses action=redirect action-data=..., RouterOS v6 uses action=deny redirect-to=...
+        $lines[] = ":do { /ip proxy access add action=redirect action-data=\"{$billingDomain}/bayar-tagihan\" comment=\"managed-by=dsbilling: Redirect Isolir\" } on-error={ :do { /ip proxy access add action=deny redirect-to=\"{$billingDomain}/bayar-tagihan\" comment=\"managed-by=dsbilling: Redirect Isolir\" } on-error={} }";
         $lines[] = "";
 
         $lines[] = "# 4.3 Whitelist Billing & Payment Gateway";
