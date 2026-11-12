@@ -178,12 +178,14 @@ class Index extends AdminComponent
             $q->where('reseller_id', $ownerId)->orWhere('created_by', $ownerId);
         })->findOrFail($id);
 
-        $hasActiveInvoices = $customer->invoices()
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->exists();
+        $activeInvoices = $customer->invoices()
+            ->withoutGlobalScopes()
+            ->whereIn('status', ['unpaid', 'overdue', 'pending'])
+            ->get();
 
-        if ($hasActiveInvoices) {
-            session()->flash('error', 'Tidak dapat menghapus pelanggan karena ada tagihan aktif/belum lunas.');
+        if ($activeInvoices->isNotEmpty()) {
+            $invList = $activeInvoices->take(3)->map(fn($inv) => "{$inv->invoice_number} (Rp " . number_format($inv->total_amount, 0, ',', '.') . ")")->implode(', ');
+            session()->flash('error', "Tidak dapat menghapus pelanggan karena masih ada tagihan belum lunas: [{$invList}]. Silakan batalkan atau lunasi tagihan terlebih dahulu.");
             return;
         }
 

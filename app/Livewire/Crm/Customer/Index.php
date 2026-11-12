@@ -14,6 +14,11 @@ class Index extends BaseCrmComponent
     public $selectedCustomers = [];
     public $selectAll = false;
 
+    public ?int $forceDeleteCustomerId = null;
+    public ?string $forceDeleteCustomerName = null;
+    public array $forceDeleteInvoices = [];
+    public bool $showForceDeleteModal = false;
+
     public function mount()
     {
         parent::mount();
@@ -47,23 +52,27 @@ class Index extends BaseCrmComponent
         $this->resetPage();
     }
 
-    public function bulkDelete(): void
+    public function bulkDelete(bool $force = false): void
     {
         if (empty($this->selectedCustomers)) return;
 
         $hasActiveInvoices = Customer::whereIn('id', $this->selectedCustomers)
             ->whereHas('invoices', function($q) {
-                $q->whereIn('status', ['unpaid', 'overdue']);
+                $q->whereIn('status', ['unpaid', 'overdue', 'pending']);
             })
             ->exists();
 
-        if ($hasActiveInvoices) {
+        if ($hasActiveInvoices && !$force) {
             session()->flash('error', 'Beberapa pelanggan tidak dapat dihapus karena masih memiliki tagihan aktif/belum lunas.');
             return;
         }
 
         $customers = Customer::whereIn('id', $this->selectedCustomers)->get();
         foreach ($customers as $customer) {
+            if ($force) {
+                $customer->invoices()->whereIn('status', ['unpaid', 'overdue', 'pending'])->update(['status' => 'cancelled']);
+                $customer->invoices()->whereIn('status', ['cancelled'])->delete();
+            }
             $customer->delete(); // This triggers Eloquent deleted events
         }
 
@@ -73,21 +82,60 @@ class Index extends BaseCrmComponent
         session()->flash('success', 'Pelanggan terpilih berhasil dihapus!');
     }
 
-    public function delete($id): void
+    public function delete($id, bool $force = false): void
     {
         $customer = Customer::findOrFail($id);
 
-        $hasActiveInvoices = $customer->invoices()
-            ->whereIn('status', ['unpaid', 'overdue'])
-            ->exists();
+        $activeInvoices = $customer->invoices()
+            ->withoutGlobalScopes()
+            ->whereIn('status', ['unpaid', 'overdue', 'pending'])
+            ->get();
 
-        if ($hasActiveInvoices) {
-            session()->flash('error', 'Tidak dapat menghapus pelanggan karena ada tagihan aktif/belum lunas.');
-            return;
+        if ($activeInvoices->isNotEmpty()) {
+            if ($force) {
+                foreach ($activeInvoices as $inv) {
+                    $inv->update(['status' => 'cancelled']);
+                    $inv->delete();
+                }
+            } else {
+                $this->forceDeleteCustomerId = $customer->id;
+                $this->forceDeleteCustomerName = $customer->name;
+                $this->forceDeleteInvoices = $activeInvoices->map(fn($inv) => [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'total_amount' => (int) $inv->total_amount,
+                    'status' => $inv->status,
+                    'due_date' => $inv->due_date ? $inv->due_date->format('d/m/Y') : '-',
+                    'period' => $inv->issue_date ? $inv->issue_date->format('M Y') : '-',
+                ])->toArray();
+
+                $invSummary = collect($this->forceDeleteInvoices)->pluck('invoice_number')->implode(', ');
+                $this->showForceDeleteModal = true;
+
+                session()->flash('error', "Pelanggan {$customer->name} memiliki " . count($activeInvoices) . " tagihan belum lunas: [{$invSummary}]. Silakan batalkan tagihan atau konfirmasi Hapus Paksa.");
+                return;
+            }
         }
 
         $customer->delete();
+        $this->showForceDeleteModal = false;
+        $this->forceDeleteCustomerId = null;
+        $this->forceDeleteInvoices = [];
         session()->flash('success', 'Pelanggan berhasil dihapus!');
+    }
+
+    public function confirmForceDelete(): void
+    {
+        if ($this->forceDeleteCustomerId) {
+            $this->delete($this->forceDeleteCustomerId, true);
+        }
+    }
+
+    public function cancelForceDelete(): void
+    {
+        $this->showForceDeleteModal = false;
+        $this->forceDeleteCustomerId = null;
+        $this->forceDeleteInvoices = [];
     }
 
     public function toggleStatus($id): void

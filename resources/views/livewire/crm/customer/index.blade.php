@@ -402,5 +402,55 @@
         @endif
     </div>
 
+    {{-- MODAL KONFIRMASI HAPUS PAKSA (JIKA ADA TAGIHAN BELUM LUNAS) --}}
+    @if($showForceDeleteModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-rose-200 dark:border-rose-900/50 space-y-4">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-xl">warning</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-black text-slate-900 dark:text-white">Ada Tagihan Belum Lunas!</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Pelanggan <strong class="text-slate-800 dark:text-slate-200">{{ $forceDeleteCustomerName }}</strong> memiliki {{ count($forceDeleteInvoices) }} tagihan yang belum dibayar:
+                        </p>
+                    </div>
+                </div>
+
+                <div class="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl p-2.5 border border-slate-200 dark:border-slate-700 text-xs">
+                    @foreach($forceDeleteInvoices as $inv)
+                        <div class="py-2 flex items-center justify-between gap-2">
+                            <div>
+                                <span class="font-mono font-bold text-slate-800 dark:text-slate-200">{{ $inv['invoice_number'] }}</span>
+                                <span class="text-[10px] text-slate-400 block">Periode: {{ $inv['period'] }} &bull; Jatuh Tempo: {{ $inv['due_date'] }}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-rose-600 dark:text-rose-400">Rp {{ number_format($inv['total_amount'], 0, ',', '.') }}</span>
+                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 block mt-0.5">{{ $inv['status'] }}</span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                    Apakah Anda ingin membatalkan (*cancel*) tagihan di atas dan tetap menghapus pelanggan ini dari sistem?
+                </p>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button wire:click="cancelForceDelete" type="button"
+                            class="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        Batal
+                    </button>
+                    <button wire:click="confirmForceDelete" type="button"
+                            class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-colors flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">delete_forever</span>
+                        <span>Hapus Paksa & Batalkan Tagihan</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
 </div>
 
