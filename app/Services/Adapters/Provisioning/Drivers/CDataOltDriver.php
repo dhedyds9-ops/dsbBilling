@@ -1246,7 +1246,7 @@ class CDataOltDriver extends BaseOltDriver
 
         // If SNMP returned 0 ONUs but Database has existing records for this port, keep them as offline
         if (empty($results)) {
-            $dbOnus = Onu::where('olt_id', $this->olt->id)
+            $dbOnus = Onu::withoutGlobalScopes()->where('olt_id', $this->olt->id)
                 ->where('pon_port', $ponPort)
                 ->get();
             foreach ($dbOnus as $dbOnu) {

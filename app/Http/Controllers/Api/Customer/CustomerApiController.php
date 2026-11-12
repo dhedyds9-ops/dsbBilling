@@ -60,13 +60,23 @@ class CustomerApiController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
+        $identity = trim((string) ($request->input('login') ?? $request->input('identifier') ?? $request->input('username') ?? ''));
+
+        if ($identity === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'ID Pelanggan, nomor HP, email, atau PPPoE wajib diisi.',
+                'errors' => [
+                    'login' => ['Field login / identifier wajib diisi.'],
+                ],
+            ], 422);
+        }
+
         $request->validate([
-            'login' => 'required|string',
             'password' => 'required|string',
             'device_name' => 'nullable|string',
         ]);
 
-        $identity = trim($request->input('login'));
         $password = (string) $request->input('password');
         $throttleKey = 'customer-login:' . Str::lower($identity) . '|' . $request->ip();
 
@@ -143,27 +153,46 @@ class CustomerApiController extends Controller
 
         Log::info("Mobile Customer Login: User #{$user->id} ({$user->name}) Customer #{$customer?->id}");
 
+        $customerPayload = $customer ? [
+            'id' => $customer->id,
+            'customer_id' => $customer->code,
+            'code' => $customer->code,
+            'name' => $customer->name,
+            'phone' => $customer->phone,
+            'address' => $customer->address,
+            'status' => $customer->status,
+        ] : [
+            'id' => $user->id,
+            'customer_id' => $user->customer_code ?? $user->username,
+            'code' => $user->customer_code ?? $user->username,
+            'name' => $user->name,
+            'phone' => $user->whatsapp,
+            'address' => null,
+            'status' => 'active',
+        ];
+
+        $userPayload = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'whatsapp' => $user->whatsapp,
+            'customer_code' => $customer?->code ?? $user->customer_code,
+            'needs_password_change' => empty($user->password_changed_at),
+        ];
+
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil.',
             'token' => $tokenResult->plainTextToken,
             'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'whatsapp' => $user->whatsapp,
-                'customer_code' => $customer?->code ?? $user->customer_code,
-                'needs_password_change' => empty($user->password_changed_at),
+            'user' => $userPayload,
+            'customer' => $customerPayload,
+            'data' => [
+                'token' => $tokenResult->plainTextToken,
+                'token_type' => 'Bearer',
+                'customer' => $customerPayload,
+                'user' => $userPayload,
             ],
-            'customer' => $customer ? [
-                'id' => $customer->id,
-                'code' => $customer->code,
-                'name' => $customer->name,
-                'phone' => $customer->phone,
-                'address' => $customer->address,
-                'status' => $customer->status,
-            ] : null,
         ]);
     }
 

@@ -313,15 +313,15 @@ class Index extends Component
                     $photoAfterPath = $this->photoAfter->store('technician/swap', 'public');
                 }
 
-                // 2. Update atau Buat Record ONU Target
+                // 2. Simpan Riwayat Modem Lama & Catat Record Modem Baru
                 if ($this->oldOnu) {
-                    $targetOnu = $this->oldOnu;
-                } else {
-                    $targetOnu = new Onu();
-                    $targetOnu->customerService()->associate($this->customerService);
+                    $this->oldOnu->status = 'dismantled';
+                    $this->oldOnu->rx_power_dbm = null;
+                    $this->oldOnu->description = "Bekas penarikan dari {$custName} pada " . now()->format('d/m/Y H:i') . " oleh {$user->name}. Diganti (Swap) ke SN Baru: {$newSn}. Alasan: {$this->replacementReason}";
+                    $this->oldOnu->save();
                 }
 
-                $targetOnu->serial_number = $newSn;
+                $targetOnu = Onu::firstOrNew(['serial_number' => $newSn]);
                 if (!empty($this->newMacAddress)) {
                     $targetOnu->mac_address = strtoupper(trim($this->newMacAddress));
                 }
@@ -339,11 +339,11 @@ class Index extends Component
                 $targetOnu->status = 'active';
                 $targetOnu->last_seen_at = now();
                 $targetOnu->updated_by = $user->id;
-                $targetOnu->description = "Swap ONT dari {$oldSn} ke {$newSn} pada " . now()->format('d/m/Y H:i') . " oleh {$user->name}. Alasan: {$this->replacementReason}";
+                $targetOnu->description = "Pemasangan ONT baru untuk {$custName} (Swap pengganti {$oldSn}) pada " . now()->format('d/m/Y H:i') . " oleh {$user->name}. Alasan: {$this->replacementReason}";
                 $targetOnu->save();
 
-                // Pastikan CustomerService terhubung ke ONU ini
-                if ($this->customerService && $this->customerService->onu_id !== $targetOnu->id) {
+                // Pastikan CustomerService terhubung ke ONU baru ini
+                if ($this->customerService) {
                     $this->customerService->update(['onu_id' => $targetOnu->id]);
                 }
 

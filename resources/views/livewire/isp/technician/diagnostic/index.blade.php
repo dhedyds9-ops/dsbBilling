@@ -122,8 +122,25 @@
                         <div wire:click="selectOnu({{ $res['onu_id'] }})"
                              class="p-3 hover:bg-sky-50/70 dark:hover:bg-slate-800 cursor-pointer transition-colors flex items-center justify-between gap-2">
                             <div class="min-w-0">
-                                <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">{{ $res['customer_name'] }}</h4>
-                                <p class="text-[10px] text-slate-500 truncate">PPPoE: {{ $res['pppoe_username'] }} • {{ $res['package'] }}</p>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">{{ $res['customer_name'] }}</h4>
+                                    @if(!empty($res['is_former']))
+                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                                            BEKAS RETUR / SWAP
+                                        </span>
+                                    @elseif($res['customer_name'] === 'Belum Terikat Pelanggan')
+                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                            MODEM POOL
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="text-[10px] text-slate-500 truncate">
+                                    @if(!empty($res['former_note']))
+                                        <span class="text-amber-600 dark:text-amber-400 font-medium">{{ $res['former_note'] }}</span>
+                                    @else
+                                        PPPoE: {{ $res['pppoe_username'] }} • {{ $res['package'] }}
+                                    @endif
+                                </p>
                                 <p class="text-[10px] text-sky-600 dark:text-sky-400 font-mono font-bold truncate">SN: {{ $res['serial_number'] }} ({{ $res['model'] }})</p>
                             </div>
                             <div class="text-right shrink-0 flex items-center gap-2">
@@ -187,7 +204,13 @@
                             {{ $customerService->serviceProfile?->name ?? 'Layanan' }} • 
                             {{ $customer?->phone ?? '-' }}
                         @else
-                            <span class="text-amber-600 dark:text-amber-400 font-semibold">Belum Tertaut Pelanggan</span>
+                            @if($formerCustomerNote)
+                                <span class="text-amber-700 dark:text-amber-300 font-semibold bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-[10px]">
+                                    ⚠️ {{ $formerCustomerNote }}
+                                </span>
+                            @else
+                                <span class="text-slate-500 font-semibold">Belum Tertaut Pelanggan (Modem Pool / Baru)</span>
+                            @endif
                             @if(!empty($diagnostics['pppoe_username']) && $diagnostics['pppoe_username'] !== '-')
                                 • PPPoE ONT: <span class="font-bold text-sky-600 dark:text-sky-400">{{ $diagnostics['pppoe_username'] }}</span>
                             @endif

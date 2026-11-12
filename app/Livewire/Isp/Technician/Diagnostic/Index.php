@@ -39,6 +39,7 @@ class Index extends Component
     public ?Customer $customer = null;
     public ?CustomerService $customerService = null;
     public ?Ticket $ticket = null;
+    public ?string $formerCustomerNote = null;
 
     // Live Diagnostics State
     public ?array $diagnostics = null;
@@ -209,7 +210,7 @@ class Index extends Component
                     ->with(['customer' => fn($q) => $q->withoutGlobalScopes(), 'serviceProfile' => fn($q) => $q->withoutGlobalScopes(), 'pppoeUser' => fn($q) => $q->withoutGlobalScopes()])
                     ->find($o->acsDevice->customer_service_id);
             }
-            $cust = $cs?->customer ?? ($o->customer_id ? Customer::withoutGlobalScopes()->find($o->customer_id) : null);
+            $cust = $cs?->customer ?? null;
 
             // Verifikasi status koneksi aktual (apakah benar-benar sedang online di OLT / GenieACS)
             $isLive = false;
@@ -225,17 +226,40 @@ class Index extends Component
 
             $displayStatus = $isLive ? 'online' : 'offline';
 
+            // Deteksi riwayat bekas pelanggan jika saat ini tidak terikat pelanggan aktif
+            $isFormer = false;
+            $formerNote = null;
+            if (!$cust) {
+                // Cek riwayat CustomerService yang pernah menggunakan onu ini
+                $prevCs = CustomerService::withoutGlobalScopes()
+                    ->withTrashed()
+                    ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
+                    ->where('onu_id', $o->id)
+                    ->latest('id')
+                    ->first();
+
+                if ($prevCs && $prevCs->customer) {
+                    $isFormer = true;
+                    $formerNote = "Bekas: {$prevCs->customer->name} (" . ($prevCs->customer->code ?? 'ID #' . $prevCs->customer->id) . ") • Sudah Diganti/Ditarik";
+                } elseif (!empty($o->description)) {
+                    $isFormer = true;
+                    $formerNote = $o->description;
+                }
+            }
+
             return [
                 'onu_id' => $o->id,
                 'serial_number' => $o->serial_number,
                 'model' => $o->model ?: 'ONT',
                 'mac_address' => $o->mac_address ?: '-',
-                'customer_name' => $cust?->name ?? 'Belum Terikat Pelanggan',
-                'customer_code' => $cust?->code ?? ('ID #' . ($cust?->id ?? '-')),
+                'customer_name' => $isFormer ? $formerNote : ($cust?->name ?? 'Belum Terikat Pelanggan'),
+                'customer_code' => $cust?->code ?? ($isFormer ? 'BEKAS' : 'BARU'),
                 'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
                 'package' => $cs?->serviceProfile?->name ?? 'Layanan',
                 'status' => $displayStatus,
                 'rx_power' => $isLive ? $o->rx_power_dbm : null,
+                'is_former' => $isFormer,
+                'former_note' => $formerNote,
             ];
         })->toArray();
     }
@@ -406,7 +430,23 @@ class Index extends Component
             }
         } else {
             $this->customerService = null;
-            $this->customer = $onu->customer_id ? Customer::withoutGlobalScopes()->find($onu->customer_id) : null;
+            $this->customer = null;
+
+            // Cek riwayat bekas pelanggan jika saat ini tidak terikat aktif
+            $prevCs = CustomerService::withoutGlobalScopes()
+                ->withTrashed()
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()])
+                ->where('onu_id', $onu->id)
+                ->latest('id')
+                ->first();
+
+            if ($prevCs && $prevCs->customer) {
+                $this->formerCustomerNote = "Bekas Pelanggan: {$prevCs->customer->name} (" . ($prevCs->customer->code ?? 'ID #' . $prevCs->customer->id) . ") • Sudah Diganti / Ditarik";
+            } elseif (!empty($onu->description)) {
+                $this->formerCustomerNote = $onu->description;
+            } else {
+                $this->formerCustomerNote = null;
+            }
         }
     }
 
