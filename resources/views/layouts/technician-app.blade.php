@@ -31,6 +31,9 @@
         <!-- HTML5 Barcode/QR Scanner & Signature Pad for Technician Field Ops -->
         <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+        <!-- Leaflet Map CSS & JS for GPS Attendance & ODP mapping -->
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
             body { overscroll-behavior: none; }
             .material-symbols-outlined {

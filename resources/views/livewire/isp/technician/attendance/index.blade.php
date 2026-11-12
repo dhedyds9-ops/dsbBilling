@@ -1,181 +1,8 @@
 <div class="space-y-3.5 pb-8"
-     x-data="{
-         gpsLoading: true,
-         gpsError: false,
-         gpsAccuracy: null,
-         userLat: @entangle('latitude'),
-         userLng: @entangle('longitude'),
-         map: null,
-         userMarker: null,
-         accuracyCircle: null,
-         branchMarkers: [],
-         branchesData: {{ json_encode($branches ?? []) }},
-         homeBranchData: {{ json_encode($homeBranch ?? null) }},
-         
-         init() {
-             this.$nextTick(() => {
-                 this.initMap();
-                 this.trackLocation();
-             });
-         },
-         
-         initMap() {
-             if (this.map) return;
-             
-             const defaultLat = this.homeBranchData?.latitude ? parseFloat(this.homeBranchData.latitude) : -6.9175;
-             const defaultLng = this.homeBranchData?.longitude ? parseFloat(this.homeBranchData.longitude) : 107.6191;
-             
-             this.map = L.map('attendance-map', {
-                 zoomControl: false,
-                 attributionControl: false
-             }).setView([defaultLat, defaultLng], 16);
-             
-             L.control.zoom({ position: 'topleft' }).addTo(this.map);
-             
-             // Base Layers: Google Satellite Hybrid (default) & OSM & Carto
-             const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
-                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-                 maxZoom: 20
-             });
-             
-             const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                 maxZoom: 19
-             });
-             
-             const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                 maxZoom: 20
-             });
-             
-             googleHybrid.addTo(this.map);
-             
-             const baseLayers = {
-                 'Satelit (Google)': googleHybrid,
-                 'Street (OSM)': osm,
-                 'Mode Gelap': cartoDark
-             };
-             
-             L.control.layers(baseLayers, null, { position: 'topright', collapsed: true }).addTo(this.map);
-             
-             // Render Office / Branch Geofence Pins
-             if (Array.isArray(this.branchesData)) {
-                 this.branchesData.forEach(br => {
-                     if (br.latitude && br.longitude) {
-                         const lat = parseFloat(br.latitude);
-                         const lng = parseFloat(br.longitude);
-                         
-                         // Geofence Circle 150m
-                         L.circle([lat, lng], {
-                             radius: 150,
-                             color: '#10B981',
-                             fillColor: '#10B981',
-                             fillOpacity: 0.12,
-                             weight: 1.5,
-                             dashArray: '4, 4'
-                         }).addTo(this.map);
-                         
-                         // Office Marker
-                         const officeIcon = L.divIcon({
-                             className: 'office-pin-wrapper',
-                             html: '<div class="w-6 h-6 rounded-full bg-emerald-600 border-2 border-white shadow-md flex items-center justify-center text-white text-[10px] font-black"><span class="material-symbols-outlined notranslate text-xs">domain</span></div>',
-                             iconSize: [24, 24],
-                             iconAnchor: [12, 12]
-                         });
-                         
-                         L.marker([lat, lng], { icon: officeIcon })
-                             .bindPopup('<b>' + br.name + '</b><br><span class="text-xs text-slate-500">Radius Kantor: 150m</span>')
-                             .addTo(this.map);
-                     }
-                 });
-             }
-         },
-         
-         trackLocation() {
-             if (!navigator.geolocation) {
-                 this.gpsLoading = false;
-                 this.gpsError = true;
-                 return;
-             }
-             
-             this.gpsLoading = true;
-             this.gpsError = false;
-             
-             navigator.geolocation.getCurrentPosition(
-                 (pos) => this.handlePosition(pos, true),
-                 (err) => {
-                     this.gpsLoading = false;
-                     this.gpsError = true;
-                 },
-                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-             );
-             
-             // Live Watch
-             try {
-                 navigator.geolocation.watchPosition(
-                     (pos) => this.handlePosition(pos, false),
-                     null,
-                     { enableHighAccuracy: true, maximumAge: 5000 }
-                 );
-             } catch(e) {}
-         },
-         
-         handlePosition(pos, shouldRecenter = false) {
-             const lat = pos.coords.latitude;
-             const lng = pos.coords.longitude;
-             this.gpsAccuracy = Math.round(pos.coords.accuracy);
-             this.userLat = lat;
-             this.userLng = lng;
-             this.gpsLoading = false;
-             this.gpsError = false;
-             
-             // Dispatch to Livewire
-             this.$dispatch('gps-located', { lat: lat, lng: lng });
-             
-             if (this.map) {
-                 // Pulsing GPS Icon
-                 const gpsPulseIcon = L.divIcon({
-                     className: 'custom-gps-icon',
-                     html: '<div class="relative w-8 h-8 flex items-center justify-center"><div class="absolute inset-0 rounded-full bg-indigo-500/30 animate-ping"></div><div class="w-4 h-4 rounded-full bg-indigo-600 border-2 border-white shadow-lg z-10"></div></div>',
-                     iconSize: [32, 32],
-                     iconAnchor: [16, 16]
-                 });
-                 
-                 if (!this.userMarker) {
-                     this.userMarker = L.marker([lat, lng], { icon: gpsPulseIcon }).addTo(this.map);
-                 } else {
-                     this.userMarker.setLatLng([lat, lng]);
-                 }
-                 
-                 // Accuracy Circle
-                 if (!this.accuracyCircle) {
-                     this.accuracyCircle = L.circle([lat, lng], {
-                         radius: this.gpsAccuracy || 10,
-                         color: '#6366F1',
-                         fillColor: '#6366F1',
-                         fillOpacity: 0.1,
-                         weight: 1
-                     }).addTo(this.map);
-                 } else {
-                     this.accuracyCircle.setLatLng([lat, lng]);
-                     this.accuracyCircle.setRadius(this.gpsAccuracy || 10);
-                 }
-                 
-                 if (shouldRecenter) {
-                     this.map.setView([lat, lng], 17);
-                 }
-             }
-         },
-         
-         recenter() {
-             if (this.userLat && this.userLng && this.map) {
-                 this.map.setView([this.userLat, this.userLng], 17, { animate: true });
-             } else {
-                 this.trackLocation();
-             }
-         }
-     }">
-    <!-- LEAFLET CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+     x-data="technicianAttendanceMap({
+         branches: @js($branches ?? []),
+         homeBranch: @js($homeBranch ?? null)
+     })">
 
     <!-- Error / Success Alert -->
     @if($errorMessage)
@@ -352,8 +179,8 @@
                     </div>
                     <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate leading-tight">
                         {{ $attendance->notes ?: 'Presensi Teknisi Lapangan dsBilling' }}
-                        @if($homeBranchData)
-                            &bull; Lokasi: {{ $homeBranchData['name'] ?? 'Kantor Cabang' }}
+                        @if($homeBranch)
+                            &bull; Lokasi: {{ $homeBranch->name ?? 'Kantor Cabang' }}
                         @endif
                     </p>
                 </div>
@@ -399,4 +226,174 @@
         </div>
     </div>
 
+    <script>
+        function technicianAttendanceMap(config) {
+            return {
+                gpsLoading: true,
+                gpsError: false,
+                gpsAccuracy: null,
+                userLat: null,
+                userLng: null,
+                map: null,
+                userMarker: null,
+                accuracyCircle: null,
+                branchMarkers: [],
+                branchesData: config.branches || [],
+                homeBranchData: config.homeBranch || null,
+
+                init() {
+                    this.$nextTick(() => {
+                        this.initMap();
+                        this.trackLocation();
+                    });
+                },
+
+                initMap() {
+                    if (this.map || typeof L === 'undefined') return;
+
+                    const defaultLat = this.homeBranchData && this.homeBranchData.latitude ? parseFloat(this.homeBranchData.latitude) : -6.9175;
+                    const defaultLng = this.homeBranchData && this.homeBranchData.longitude ? parseFloat(this.homeBranchData.longitude) : 107.6191;
+
+                    this.map = L.map('attendance-map', {
+                        zoomControl: false,
+                        attributionControl: false
+                    }).setView([defaultLat, defaultLng], 16);
+
+                    L.control.zoom({ position: 'topleft' }).addTo(this.map);
+
+                    const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                        maxZoom: 20
+                    });
+
+                    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19
+                    });
+
+                    const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        maxZoom: 20
+                    });
+
+                    googleHybrid.addTo(this.map);
+
+                    const baseLayers = {
+                        'Satelit (Google)': googleHybrid,
+                        'Street (OSM)': osm,
+                        'Mode Gelap': cartoDark
+                    };
+
+                    L.control.layers(baseLayers, null, { position: 'topright', collapsed: true }).addTo(this.map);
+
+                    if (Array.isArray(this.branchesData)) {
+                        this.branchesData.forEach(br => {
+                            if (br.latitude && br.longitude) {
+                                const lat = parseFloat(br.latitude);
+                                const lng = parseFloat(br.longitude);
+
+                                L.circle([lat, lng], {
+                                    radius: 150,
+                                    color: '#10B981',
+                                    fillColor: '#10B981',
+                                    fillOpacity: 0.12,
+                                    weight: 1.5,
+                                    dashArray: '4, 4'
+                                }).addTo(this.map);
+
+                                const officeIcon = L.divIcon({
+                                    className: 'office-pin-wrapper',
+                                    html: '<div class="w-6 h-6 rounded-full bg-emerald-600 border-2 border-white shadow-md flex items-center justify-center text-white text-[10px] font-black"><span class="material-symbols-outlined notranslate text-xs">domain</span></div>',
+                                    iconSize: [24, 24],
+                                    iconAnchor: [12, 12]
+                                });
+
+                                L.marker([lat, lng], { icon: officeIcon })
+                                    .bindPopup('<b>' + br.name + '</b><br><span class="text-xs text-slate-500">Radius Kantor: 150m</span>')
+                                    .addTo(this.map);
+                            }
+                        });
+                    }
+                },
+
+                trackLocation() {
+                    if (!navigator.geolocation) {
+                        this.gpsLoading = false;
+                        this.gpsError = true;
+                        return;
+                    }
+
+                    this.gpsLoading = true;
+                    this.gpsError = false;
+
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => this.handlePosition(pos, true),
+                        (err) => {
+                            this.gpsLoading = false;
+                            this.gpsError = true;
+                        },
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                    );
+
+                    try {
+                        navigator.geolocation.watchPosition(
+                            (pos) => this.handlePosition(pos, false),
+                            null,
+                            { enableHighAccuracy: true, maximumAge: 5000 }
+                        );
+                    } catch(e) {}
+                },
+
+                handlePosition(pos, shouldRecenter = false) {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    this.gpsAccuracy = Math.round(pos.coords.accuracy);
+                    this.userLat = lat;
+                    this.userLng = lng;
+                    this.gpsLoading = false;
+                    this.gpsError = false;
+
+                    this.$dispatch('gps-located', { lat: lat, lng: lng });
+
+                    if (this.map && typeof L !== 'undefined') {
+                        const gpsPulseIcon = L.divIcon({
+                            className: 'custom-gps-icon',
+                            html: '<div class="relative w-8 h-8 flex items-center justify-center"><div class="absolute inset-0 rounded-full bg-indigo-500/30 animate-ping"></div><div class="w-4 h-4 rounded-full bg-indigo-600 border-2 border-white shadow-lg z-10"></div></div>',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        });
+
+                        if (!this.userMarker) {
+                            this.userMarker = L.marker([lat, lng], { icon: gpsPulseIcon }).addTo(this.map);
+                        } else {
+                            this.userMarker.setLatLng([lat, lng]);
+                        }
+
+                        if (!this.accuracyCircle) {
+                            this.accuracyCircle = L.circle([lat, lng], {
+                                radius: this.gpsAccuracy || 10,
+                                color: '#6366F1',
+                                fillColor: '#6366F1',
+                                fillOpacity: 0.1,
+                                weight: 1
+                            }).addTo(this.map);
+                        } else {
+                            this.accuracyCircle.setLatLng([lat, lng]);
+                            this.accuracyCircle.setRadius(this.gpsAccuracy || 10);
+                        }
+
+                        if (shouldRecenter) {
+                            this.map.setView([lat, lng], 17);
+                        }
+                    }
+                },
+
+                recenter() {
+                    if (this.userLat && this.userLng && this.map) {
+                        this.map.setView([this.userLat, this.userLng], 17, { animate: true });
+                    } else {
+                        this.trackLocation();
+                    }
+                }
+            };
+        }
+    </script>
 </div>

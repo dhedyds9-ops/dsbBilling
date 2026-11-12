@@ -44,6 +44,38 @@ class TechnicianPortalResponsiveTest extends TestCase
         $response->assertSee('Field Service Tools');
     }
 
+    public function test_technician_can_access_attendance(): void
+    {
+        $role = Role::firstOrCreate(
+            ['name' => 'technician'],
+            ['display_name' => 'Technician', 'guard_name' => 'web']
+        );
+
+        $user = User::factory()->create([
+            'job_function' => 'TECHNICIAN',
+        ]);
+        $user->roles()->syncWithoutDetaching([$role->id]);
+
+        $responseDash = $this->actingAs($user)->get('/technician-portal/attendance');
+        $responseDash->assertStatus(200);
+
+        $responseUnderscore = $this->actingAs($user)->get('/technician_portal/attendance');
+        $responseUnderscore->assertRedirect('/technician-portal/attendance');
+
+        // Test when already checked in
+        Attendance::create([
+            'technician_id' => $user->id,
+            'date' => now()->toDateString(),
+            'checked_in_at' => now(),
+            'status' => AttendanceStatus::CHECKED_IN->value,
+            'notes' => 'Checked in successfully',
+        ]);
+
+        $responseCheckedIn = $this->actingAs($user)->get('/technician-portal/attendance');
+        $responseCheckedIn->assertStatus(200);
+        $responseCheckedIn->assertSee('Sudah Absen');
+    }
+
     public function test_technician_portal_blocks_unauthorized_role(): void
     {
         $role = Role::firstOrCreate(
