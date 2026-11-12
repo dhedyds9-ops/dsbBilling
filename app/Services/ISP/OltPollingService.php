@@ -112,14 +112,12 @@ class OltPollingService
                     $portStatus = $port['status'] === 'up' ? 'active' : 'inactive';
 
                     $dbPort = PonPort::where('olt_id', $olt->id)
-                        ->where('name', $portName)
+                        ->where(function ($q) use ($portName, $portNumber, $idx) {
+                            $q->where('name', $portName)
+                              ->orWhere('port_number', $portNumber)
+                              ->orWhere('port_index', $idx);
+                        })
                         ->first();
-
-                    if (!$dbPort) {
-                        $dbPort = PonPort::where('olt_id', $olt->id)
-                            ->where('port_number', $portNumber)
-                            ->first();
-                    }
 
                     $portCode = $olt->code . '-PON-' . $portNumber;
                     if (!$dbPort) {
@@ -131,6 +129,7 @@ class OltPollingService
                             'code' => $portCode,
                             'name' => $portName,
                             'port_number' => $portNumber,
+                            'port_index' => $idx,
                             'type' => str_contains(strtolower($portName), 'gpon') ? 'gpon' : (str_contains(strtolower($portName), 'epon') ? 'epon' : (str_contains(strtolower($olt->model ?? ''), 'gpon') ? 'gpon' : 'epon')),
                             'status' => $portStatus,
                         ]);
@@ -139,6 +138,7 @@ class OltPollingService
                             'status' => $portStatus,
                             'name' => $portName,
                             'port_number' => $portNumber,
+                            'port_index' => $idx,
                             'type' => str_contains(strtolower($portName), 'gpon') ? 'gpon' : (str_contains(strtolower($portName), 'epon') ? 'epon' : (str_contains(strtolower($olt->model ?? ''), 'gpon') ? 'gpon' : 'epon')),
                         ]);
                     }
@@ -298,9 +298,10 @@ class OltPollingService
                                 }
 
                                 try {
+                                    $resolvedPortNum = ($dbPort && $dbPort->port_number) ? $dbPort->port_number : ($idx > 1000000 ? ($idx & 0xFF ?: (($idx >> 8) & 0xFF)) : $idx);
                                     $onu = Onu::create([
                                         'olt_id' => $olt->id,
-                                        'pon_port' => $idx,
+                                        'pon_port' => $resolvedPortNum,
                                         'pon_port_id' => $dbPort ? $dbPort->id : null,
                                         'onu_id_on_olt' => (int)($item['onu_index'] ?? 0),
                                         'serial_number' => $snNormalized,
@@ -366,9 +367,11 @@ class OltPollingService
                         $newStatusEnum = $status === 'online' ? 'active' : 'inactive';
                         $oldStatusEnum = $onu->status;
                         
+                        $resolvedPortNum = ($dbPort && $dbPort->port_number) ? $dbPort->port_number : ($idx > 1000000 ? ($idx & 0xFF ?: (($idx >> 8) & 0xFF)) : $idx);
+
                         $onuUpdate = [
                             'olt_id' => $olt->id,
-                            'pon_port' => $idx,
+                            'pon_port' => $resolvedPortNum,
                             'pon_port_id' => $dbPort ? $dbPort->id : null,
                             'onu_id_on_olt' => (int)($item['onu_index'] ?? $onu->onu_id_on_olt),
                             'rx_power_dbm' => $rxDbm,

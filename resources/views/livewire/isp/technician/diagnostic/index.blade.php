@@ -1,5 +1,5 @@
-<div class="space-y-3.5 pb-6" x-data="diagnosticManager()">
-    @section('header_title', 'Diagnostik ONT & Jaringan')
+<div class="space-y-3.5 pb-28 sm:pb-8" x-data="diagnosticManager()">
+    @section('header_title', 'Diagnostik ONT')
     {{-- Alerts --}}
     @if(session('success') || !empty($successMessage))
         <div class="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">
@@ -398,7 +398,7 @@
                 </div>
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">OLT & PON:</span>
-                    <span class="font-semibold text-slate-800 dark:text-slate-200">{{ $onu->olt?->name ?? 'OLT Core' }} (PON {{ $onu->pon_port ?: '-' }})</span>
+                    <span class="font-semibold text-slate-800 dark:text-slate-200">{{ $onu->olt?->name ?? 'OLT Core' }} ({{ $onu->formatted_pon_port ?: 'PON -' }})</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Titik ODP:</span>
@@ -412,13 +412,13 @@
             $wifi = $diagnostics['wifi'] ?? null;
             $clients = $wifi['clients'] ?? [];
         @endphp
-        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm space-y-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                    <span class="material-symbols-outlined text-indigo-500 text-sm notranslate" translate="no" style="text-transform: none !important;">devices</span>
-                    <span class="uppercase tracking-wider">Perangkat Terhubung ke Modem</span>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 shadow-sm space-y-3">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 min-w-0 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span class="material-symbols-outlined text-indigo-500 text-base shrink-0 notranslate" translate="no" style="text-transform: none !important;">devices</span>
+                    <span class="uppercase tracking-wider truncate">Perangkat Terhubung</span>
                 </div>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 shrink-0 whitespace-nowrap">
                     {{ count($clients) }} Perangkat
                 </span>
             </div>
@@ -442,14 +442,14 @@
             @else
                 <div class="divide-y divide-slate-100 dark:divide-slate-700 border border-slate-100 dark:border-slate-700 rounded-xl overflow-hidden">
                     @foreach($clients as $client)
-                        <div class="p-3 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
-                            <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="p-2.5 sm:p-3 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                            <div class="flex items-center gap-2.5 min-w-0 flex-1">
                                 <div class="w-8 h-8 rounded-lg {{ $client['interface_type'] === 'Ethernet' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40' }} flex items-center justify-center shrink-0">
                                     <span class="material-symbols-outlined text-sm notranslate" translate="no">
                                         {{ $client['interface_type'] === 'Ethernet' ? 'lan' : 'smartphone' }}
                                     </span>
                                 </div>
-                                <div class="min-w-0">
+                                <div class="min-w-0 flex-1">
                                     <h5 class="text-xs font-bold text-slate-900 dark:text-white truncate">
                                         {{ $client['host_name'] ?: 'Perangkat Tanpa Nama' }}
                                     </h5>

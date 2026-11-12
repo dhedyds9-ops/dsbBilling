@@ -354,20 +354,54 @@ class Onu extends Model
     {
         return Attribute::make(
             get: function (): string {
-                if ($this->pon_port === null) return '-';
-                if ($this->pon_port >= 1310721 && $this->pon_port <= 1310728) {
-                    $port = $this->pon_port - 1310720;
-                    return "0/0/{$port}";
-                }
-                if ($this->pon_port > 1000000) {
-                    $slot = ($this->pon_port >> 24) & 0xFF;
-                    $port = ($this->pon_port >> 8) & 0xFF;
-                    if ($slot === 0 && $port === 0) {
-                        return (string)$this->pon_port;
+                // 1. Cek relasi PonPort yang terhubung langsung
+                if ($this->relationLoaded('ponPort') && $this->ponPort) {
+                    if (!empty($this->ponPort->name)) {
+                        return $this->ponPort->name;
                     }
-                    return "0/{$slot}/{$port}";
+                    if (!empty($this->ponPort->port_number)) {
+                        return 'PON ' . $this->ponPort->port_number;
+                    }
                 }
-                return (string)$this->pon_port;
+
+                if ($this->pon_port === null || $this->pon_port === '') {
+                    return '-';
+                }
+
+                $val = (int)$this->pon_port;
+
+                // 2. Format standar port angka 1 - 64
+                if ($val >= 1 && $val <= 64) {
+                    return "PON {$val}";
+                }
+
+                // 3. Format Huawei GPON ifIndex (1310721 - 1310736)
+                if ($val >= 1310721 && $val <= 1310736) {
+                    $port = $val - 1310720;
+                    return "GPON 0/0/{$port}";
+                }
+
+                // 4. Format C-Data / ZTE / VSOL SNMP ifIndex (contoh: 34865153 = 0x02140001)
+                if ($val > 1000000) {
+                    // Byte 0 adalah nomor PON port pada C-Data GPON
+                    $port = $val & 0xFF;
+                    if ($port === 0) {
+                        $port = ($val >> 8) & 0xFF;
+                    }
+                    $slot = ($val >> 16) & 0xFF;
+                    if ($slot > 16) {
+                        $slot = ($val >> 24) & 0xFF;
+                    }
+                    if ($slot > 16) {
+                        $slot = 0;
+                    }
+
+                    if ($port > 0 && $port <= 64) {
+                        return $slot > 0 ? "GPON 0/{$slot}/{$port}" : "PON {$port}";
+                    }
+                }
+
+                return "PON {$val}";
             }
         );
     }
