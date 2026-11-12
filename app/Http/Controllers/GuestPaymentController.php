@@ -77,6 +77,7 @@ class GuestPaymentController extends Controller
         $pppoe = null;
         $customerService = null;
         $activeSessions = 0;
+        $activeSessionData = null;
 
         if ($query !== '') {
             $queryLower = strtolower($query);

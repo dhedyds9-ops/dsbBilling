@@ -21,7 +21,7 @@ class CustomerActivePolicy implements RadiusAccessPolicy
         if ($ctx->hotspotUser !== null) {
             $huStatus = (string)($ctx->hotspotUser->status ?? 'active');
             if ($huStatus !== 'active') {
-                if ($huStatus === 'suspended') {
+                if (in_array($huStatus, ['suspended', 'suspend'])) {
                     $suspendMode = 'soft';
                     try {
                         $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
@@ -52,7 +52,7 @@ class CustomerActivePolicy implements RadiusAccessPolicy
         if ($ctx->pppoeUser !== null) {
             $puStatus = (string)($ctx->pppoeUser->status ?? 'active');
             if ($puStatus !== 'active') {
-                if ($puStatus === 'suspended') {
+                if (in_array($puStatus, ['suspended', 'suspend'])) {
                     $suspendMode = 'soft';
                     try {
                         $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');
@@ -79,7 +79,7 @@ class CustomerActivePolicy implements RadiusAccessPolicy
         if (!$cs) return PolicyResult::reject('Customer service tidak ditemukan', self::ruleClass());
         $status = is_string($cs->status) ? $cs->status : (string)($cs->status?->value ?? $cs->status);
         if ($status !== 'active') {
-            if ($status === 'suspended') {
+            if (in_array($status, ['suspended', 'suspend'])) {
                 $suspendMode = 'soft';
                 try {
                     $suspendMode = Setting::getValue('billing.suspend_mode', 'soft');

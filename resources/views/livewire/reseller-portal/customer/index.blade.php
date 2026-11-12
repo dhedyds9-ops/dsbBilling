@@ -198,23 +198,23 @@
                             $reseller = $customer->reseller->name ?? 'Default';
                             $dynamicId = $customer->display_id;
 
-                            $isInactive = $customer->status !== 'active' || ($svc && $svc->status === 'suspended');
+                            $isSuspended = in_array($customer->status, ['suspend', 'suspended'])
+                                || ($svc && ($svc->status === 'suspended' || $svc->suspended_at !== null))
+                                || ($svc?->pppoeUser && in_array($svc->pppoeUser->status, ['suspend', 'suspended']))
+                                || ($svc?->hotspotUser && in_array($svc->hotspotUser->status, ['suspend', 'suspended']));
+
+                            $isInactive = $isSuspended || $customer->status !== 'active';
                             
                             if ($isInactive) {
-                                $rowBg = 'bg-slate-50/80 dark:bg-slate-800/40 opacity-75 grayscale-[30%] hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800/60';
+                                $rowBg = 'bg-slate-50/60 dark:bg-slate-800/40 opacity-75 hover:bg-slate-100 dark:hover:bg-slate-800/60';
                                 $textPrimary = 'text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600';
-                                $textSecondary = 'text-slate-400 dark:text-slate-500 dark:text-slate-400';
-                                $idColor = 'text-slate-500 dark:text-slate-500 dark:text-slate-400';
-                            } elseif ($isOnline) {
-                                $rowBg = 'bg-emerald-50/40 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:bg-emerald-900/50/50 dark:hover:bg-emerald-900/30';
-                                $textPrimary = 'text-emerald-900 dark:text-emerald-100 font-bold';
-                                $textSecondary = 'text-emerald-700 dark:text-emerald-300';
-                                $idColor = 'text-emerald-800 dark:text-emerald-400 font-semibold';
+                                $textSecondary = 'text-slate-400 dark:text-slate-500';
+                                $idColor = 'text-slate-500 dark:text-slate-400';
                             } else {
-                                $rowBg = 'hover:bg-indigo-50 dark:bg-indigo-900/30/40 dark:hover:bg-indigo-900/10';
+                                $rowBg = 'hover:bg-slate-50 dark:hover:bg-slate-800/50';
                                 $textPrimary = 'text-slate-800 dark:text-slate-100 font-medium';
-                                $textSecondary = 'text-slate-600 dark:text-slate-400';
-                                $idColor = 'text-slate-700 dark:text-slate-300';
+                                $textSecondary = 'text-slate-500 dark:text-slate-400';
+                                $idColor = 'text-slate-600 dark:text-slate-400';
                             }
                         @endphp
                         <tr wire:key="customer-{{ $customer->id }}" class="{{ $rowBg }} transition-colors group">
@@ -259,21 +259,21 @@
                                 </div>
                             </td>
 
-                            {{-- Status Online/Offline --}}
+                            {{-- Status Online/Offline/Suspend --}}
                             <td class="px-4 py-3 whitespace-nowrap text-center">
-                                @if($isInactive || $tglIsolir !== '-')
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-700 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>
+                                @if($isSuspended)
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                         Suspend
                                     </span>
                                 @elseif($isOnline)
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-slate-800 animate-pulse"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                         Online
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500 text-white shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-red-200"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                                         Offline
                                     </span>
                                 @endif
@@ -283,7 +283,7 @@
                             <td class="px-4 py-3 whitespace-nowrap {{ $idColor }} font-mono text-xs flex items-center gap-2">
                                 <input type="checkbox" wire:change="toggleStatus({{ $customer->id }})" 
                                        class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                                       @if(!$isInactive) checked @endif
+                                       @if(!$isInactive && !$isSuspended) checked @endif
                                        title="Toggle Aktif/Nonaktif">
                                 {{ $dynamicId }}
                             </td>

@@ -197,7 +197,7 @@
                         @php
                             $cust = $user->real_customer;
                             $isOnline = $user->is_online ?? false;
-                            $isSuspend = $user->status === 'suspended';
+                            $isSuspend = in_array($user->status, ['suspended', 'suspend']) || $user->suspended_at !== null;
                             $dynamicId = $cust ? $cust->display_id : '-';
                             $layanan = 'Hotspot';
                             $loginDate = $user->latestAccounting?->acct_start_time ?? $user->activeSession?->session_started_at;
@@ -259,8 +259,8 @@
                                         Online
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                                         Offline
                                     </span>
                                 @endif

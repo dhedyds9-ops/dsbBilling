@@ -75,7 +75,7 @@ class ISPProvisioningService
                 return $result;
             }
 
-            $suspendMode = \App\Models\Setting::getValue('billing.suspend_mode', 'hard'); // 'soft' (Walled Garden/Profile change) or 'hard' (Disable secret)
+            $suspendMode = \App\Models\Setting::getValue('billing.suspend_mode', 'soft'); // 'soft' (Walled Garden/Profile change) or 'hard' (Disable secret)
             $isolirProfile = \App\Models\Setting::getValue('billing.isolir_profile', 'ISOLIR');
 
             foreach ($routers as $router) {
