@@ -6,11 +6,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $companyName }} - Halaman Isolir & Pembayaran Tagihan</title>
     
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    @if(file_exists(public_path('build/manifest.json')))
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @else
+        <link rel="stylesheet" href="/build/assets/app-B3A3qm5F.css">
+    @endif
     
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" media="print" onload="this.media='all'"/>
     <link rel="icon" href="/favicon.png?v=2" type="image/png">
 
     <script id="tailwind-config">
@@ -243,7 +246,7 @@
         @endif
 
         <!-- Cara Bayar & Reaktivasi Otomatis Guide -->
-        <div class="glass-panel rounded-2xl p-5 sm:p-6 mb-6 shadow-xl" x-data="{ tab: 'instan' }">
+        <div class="glass-panel rounded-2xl p-5 sm:p-6 mb-6 shadow-xl">
             <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
                 <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
                     <span class="material-symbols-outlined text-indigo-400 text-lg">credit_card</span>
@@ -257,19 +260,19 @@
 
             <!-- Tab Buttons -->
             <div class="flex gap-2 p-1 bg-slate-900/80 rounded-xl mb-4 text-xs font-semibold">
-                <button type="button" @click="tab = 'instan'" :class="tab === 'instan' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'" class="flex-1 py-2 px-3 rounded-lg transition-all text-center">
+                <button type="button" id="btn-tab-instan" onclick="switchTab('instan')" class="flex-1 py-2 px-3 rounded-lg transition-all text-center bg-indigo-600 text-white shadow-md">
                     QRIS &amp; Otomatis
                 </button>
-                <button type="button" @click="tab = 'manual'" :class="tab === 'manual' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'" class="flex-1 py-2 px-3 rounded-lg transition-all text-center">
+                <button type="button" id="btn-tab-manual" onclick="switchTab('manual')" class="flex-1 py-2 px-3 rounded-lg transition-all text-center text-slate-400 hover:text-white">
                     Transfer Bank Manual
                 </button>
-                <button type="button" @click="tab = 'panduan'" :class="tab === 'panduan' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'" class="flex-1 py-2 px-3 rounded-lg transition-all text-center">
+                <button type="button" id="btn-tab-panduan" onclick="switchTab('panduan')" class="flex-1 py-2 px-3 rounded-lg transition-all text-center text-slate-400 hover:text-white">
                     Langkah Aktivasi
                 </button>
             </div>
 
             <!-- Tab 1: QRIS / Instant Gateway -->
-            <div x-show="tab === 'instan'" class="space-y-3">
+            <div id="content-tab-instan" class="space-y-3">
                 <div class="glass-card rounded-xl p-4 border border-slate-800">
                     <div class="flex items-start gap-3">
                         <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
@@ -304,7 +307,7 @@
             </div>
 
             <!-- Tab 2: Manual Bank Transfer -->
-            <div x-show="tab === 'manual'" class="space-y-3">
+            <div id="content-tab-manual" class="space-y-3" style="display: none;">
                 <p class="text-xs text-slate-300">
                     Silakan transfer ke salah satu rekening resmi di bawah, lalu kirim bukti transfer ke WhatsApp Customer Service:
                 </p>
@@ -371,7 +374,7 @@
             </div>
 
             <!-- Tab 3: Langkah Aktivasi -->
-            <div x-show="tab === 'panduan'" class="space-y-4">
+            <div id="content-tab-panduan" class="space-y-4" style="display: none;">
                 <div class="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-700">
                     <div class="relative">
                         <span class="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">1</span>
@@ -487,6 +490,23 @@
     </div>
     
     <script>
+        function switchTab(name) {
+            ['instan', 'manual', 'panduan'].forEach(function(t) {
+                var content = document.getElementById('content-tab-' + t);
+                var btn = document.getElementById('btn-tab-' + t);
+                if (content) {
+                    content.style.display = (t === name) ? 'block' : 'none';
+                }
+                if (btn) {
+                    if (t === name) {
+                        btn.className = 'flex-1 py-2 px-3 rounded-lg transition-all text-center bg-indigo-600 text-white shadow-md';
+                    } else {
+                        btn.className = 'flex-1 py-2 px-3 rounded-lg transition-all text-center text-slate-400 hover:text-white';
+                    }
+                }
+            });
+        }
+
         function openPaymentModal(invoiceNumber, amount) {
             document.getElementById('modalInvoiceText').innerText = invoiceNumber;
             document.getElementById('modalInvoiceInput').value = invoiceNumber;
