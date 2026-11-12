@@ -320,6 +320,10 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
         Route::post('/wifi', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateWifi'])->name('wifi.update');
         Route::get('/wifi/connected-devices', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getConnectedDevices'])->name('wifi.devices');
 
+        // Packages & Change Plan
+        Route::get('/plans', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getAvailablePlans'])->name('plans.index');
+        Route::post('/change-plan', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'requestChangePlan'])->name('plans.change');
+
         // Support & Complaints
         Route::get('/tickets', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'tickets'])->name('tickets.index');
         Route::post('/tickets', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'createTicket'])->name('tickets.store');

@@ -330,6 +330,25 @@ class CustomerApiController extends Controller
         $primaryService = $data['primary_service'];
         $profile = $data['service_profile'];
         $onu = $primaryService?->onu;
+        $pppoeUser = $data['pppoe_user'] ?? null;
+        $hotspotUser = $data['hotspot_user'] ?? null;
+
+        $rawInternetStatus = $data['internet_status'];
+        $statusStr = is_array($rawInternetStatus) ? ($rawInternetStatus['status'] ?? 'online') : (string) $rawInternetStatus;
+        $isOnline = is_array($rawInternetStatus) ? ($rawInternetStatus['is_online'] ?? ($statusStr === 'online')) : ($statusStr === 'online');
+        $statusMsg = is_array($rawInternetStatus) ? ($rawInternetStatus['message'] ?? 'Internet Online') : 'Internet Online';
+
+        $dlSpeed = $profile?->download_speed ?? null;
+        $ulSpeed = $profile?->upload_speed ?? null;
+        $speedLabel = $dlSpeed ? (($dlSpeed >= 1000 ? round($dlSpeed / 1000, 0) . 'Gbps' : $dlSpeed . 'Mbps') . '↓') : null;
+        if ($speedLabel && $ulSpeed) {
+            $speedLabel .= ' / ' . ($ulSpeed >= 1000 ? round($ulSpeed / 1000, 0) . 'Gbps' : $ulSpeed . 'Mbps') . '↑';
+        }
+
+        $rawProfileType = strtolower($profile?->service_type ?? ($primaryService?->serviceProfile?->service_type ?? ''));
+        $isHotspotService = in_array($rawProfileType, ['hotspot', 'member_hotspot', 'voucher']) || ($hotspotUser && !$pppoeUser);
+        $serviceBadgeLabel = $isHotspotService ? 'Hotspot' : 'PPPoE';
+        $activeUsername = $pppoeUser?->username ?? $hotspotUser?->username ?? $primaryService?->username;
 
         $recentInvoices = collect($data['recent_invoices'])->map(fn($inv) => [
             'id' => $inv->id,
@@ -337,13 +356,19 @@ class CustomerApiController extends Controller
             'total_amount' => (int) $inv->total_amount,
             'paid_amount' => (int) $inv->paid_amount,
             'status' => $inv->status,
-            'due_date' => $inv->due_date?->format('Y-m-d') ?? (string) $inv->due_date,
-            'created_at' => $inv->created_at?->toIso8601String(),
+            'due_date' => $inv->due_date?->format('d M Y') ?? (string) $inv->due_date,
+            'created_at' => $inv->created_at?->format('d M Y') ?? (string) $inv->created_at,
         ]);
+
+        $companyName = Setting::getValue('company.name', config('app.name', 'WINETS ID'));
+        $dueDays = (int) Setting::getValue('billing.invoice_due_days', 7);
+        $nextBillingFormatted = $data['next_billing_date'] ? Carbon::parse($data['next_billing_date'])->translatedFormat('d M Y') : null;
 
         return response()->json([
             'success' => true,
             'data' => [
+                'company_name' => $companyName,
+                'warning_password_change' => empty($user->password_changed_at),
                 'customer' => [
                     'id' => $customer->id,
                     'code' => $customer->code,
@@ -352,36 +377,43 @@ class CustomerApiController extends Controller
                     'address' => $customer->address,
                 ],
                 'connection' => [
-                    'status' => $data['internet_status'],
-                    'ip_address' => $primaryService?->pppoeUser?->static_ip ?? null,
+                    'status' => $statusStr,
+                    'is_online' => $isOnline,
+                    'message' => $statusMsg,
+                    'ip_address' => $primaryService?->pppoeUser?->static_ip ?? $primaryService?->ip_address,
                     'onu_model' => $onu?->model ?? 'ONT Terminal',
                     'onu_sn' => $onu?->serial_number ?? null,
                     'optical_power' => $onu?->rx_power_dbm ? number_format($onu->rx_power_dbm, 2) . ' dBm' : null,
                 ],
-                'service' => $profile ? [
+                'current_package' => $profile ? [
                     'id' => $profile->id,
                     'name' => $profile->name,
-                    'download_speed' => $profile->download_speed,
-                    'upload_speed' => $profile->upload_speed,
-                    'price' => (int) ($profile->price ?? $profile->base_price),
-                    'service_type' => $profile->service_type,
+                    'speed_download' => $profile->download_speed,
+                    'speed_upload' => $profile->upload_speed,
+                    'speed_label' => $speedLabel,
+                    'price' => (int) ($profile->price ?? $profile->base_price ?? 0),
+                    'type' => $serviceBadgeLabel,
+                    'service_type' => $serviceBadgeLabel,
+                    'username' => $activeUsername,
+                    'is_active' => true,
                 ] : null,
                 'billing' => [
+                    'total_unpaid' => (double) $data['total_outstanding'],
                     'total_outstanding' => (int) $data['total_outstanding'],
+                    'is_lunas' => $data['total_outstanding'] <= 0,
+                    'unpaid_count' => count($data['active_invoices']),
                     'unpaid_invoices_count' => count($data['active_invoices']),
-                    'next_billing_date' => $data['next_billing_date'] ? (string) $data['next_billing_date'] : null,
-                    'bill_date_day' => 1,
-                    'due_date_day' => 10,
+                    'next_billing_date' => $nextBillingFormatted,
+                    'due_days_label' => "+{$dueDays} hari",
+                    'due_date' => $nextBillingFormatted,
+                    'latest_invoice' => $recentInvoices->first(),
                 ],
                 'recent_invoices' => $recentInvoices,
                 'usage_stats' => $data['usage_stats'],
-                'banners' => [
-                    [
-                        'id' => 1,
-                        'title' => 'Koneksi Stabil Tanpa Batas',
-                        'subtitle' => 'Nikmati pengalaman internet cepat dan andal dari dsBilling.',
-                        'image_url' => asset('images/banner_promo.jpg'),
-                    ]
+                'banner' => [
+                    'title' => 'Koneksi Stabil Tanpa Batas',
+                    'subtitle' => 'Nikmati pengalaman internet cepat dan andal dari ' . $companyName,
+                    'image_url' => asset('images/banner_promo.jpg'),
                 ],
             ],
         ]);
@@ -957,6 +989,114 @@ class CustomerApiController extends Controller
                 'whatsapp_url' => $waUrl,
                 'email' => Setting::getValue('company.email', 'cs@ispprovider.com'),
             ],
+        ]);
+    }
+
+    /**
+     * List Available Service Plans for Change Plan Request.
+     */
+    public function getAvailablePlans(Request $request): JsonResponse
+    {
+        $category = strtolower((string) $request->input('category', 'all'));
+
+        $query = \App\Models\ISP\ServiceProfile::query()
+            ->where(function ($q) {
+                $q->where('status', 'active')->orWhereNull('status');
+            })
+            ->where(function ($q) {
+                $q->whereNull('is_free')->orWhere('is_free', false);
+            })
+            ->where(function ($q) {
+                $q->where('base_price', '>', 0)->orWhere('price', '>', 0);
+            })
+            ->where(function ($q) {
+                $q->whereNull('visibility')->orWhere('visibility', '!=', 'hidden');
+            })
+            ->where('name', 'NOT LIKE', '%gratis%')
+            ->where('name', 'NOT LIKE', '%isolir%');
+
+        if ($category === 'pppoe') {
+            $query->where(function ($q) {
+                $q->whereRaw('LOWER(service_type) IN (?, ?)', ['pppoe', 'combined'])
+                  ->orWhereNull('service_type');
+            });
+        } elseif ($category === 'hotspot') {
+            $query->where(function ($q) {
+                $q->whereRaw('LOWER(service_type) IN (?, ?, ?)', ['hotspot', 'member_hotspot', 'voucher'])
+                  ->orWhere('service_type', 'LIKE', '%hotspot%')
+                  ->orWhere('service_type', 'LIKE', '%voucher%');
+            });
+        }
+
+        $plans = $query->orderBy('base_price')->get()->map(function ($plan) {
+            $rawType = strtolower($plan->service_type ?? '');
+            $typeLabel = in_array($rawType, ['hotspot', 'member_hotspot', 'voucher']) ? 'Hotspot' : 'PPPoE';
+            $price = (int) ($plan->price ?? $plan->base_price ?? 0);
+            return [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'type' => $typeLabel,
+                'service_type' => $typeLabel,
+                'price' => $price,
+                'price_formatted' => 'Rp ' . number_format($price, 0, ',', '.'),
+                'download_speed' => $plan->download_speed,
+                'upload_speed' => $plan->upload_speed,
+                'description' => $plan->description,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $plans,
+        ]);
+    }
+
+    /**
+     * Submit Change Plan Request.
+     */
+    public function requestChangePlan(Request $request): JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:service_profiles,id',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $user = $request->user();
+        $customer = $this->getAuthenticatedCustomer($user);
+
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Data pelanggan tidak ditemukan.'], 404);
+        }
+
+        $newPlan = \App\Models\ISP\ServiceProfile::find($request->input('plan_id'));
+        $data = $this->dashboardService->getDashboardData($customer->id);
+        $currentPlan = $data['service_profile'];
+
+        if ($currentPlan && $currentPlan->id === $newPlan->id) {
+            return response()->json(['success' => false, 'message' => 'Anda sudah menggunakan paket ini.'], 422);
+        }
+
+        $changeType = 'Perubahan';
+        if ($currentPlan) {
+            $changeType = ($newPlan->base_price > $currentPlan->base_price) ? 'Upgrade' : 'Downgrade';
+        }
+
+        $reason = trim((string) $request->input('reason', '-'));
+
+        Notification::create([
+            'uuid' => (string) Str::uuid(),
+            'recipient_id' => 1,
+            'title' => "[{$changeType} Paket] {$customer->name}",
+            'message' => "Pelanggan {$customer->name} (#{$customer->code}) mengajukan {$changeType} paket dari \"{$currentPlan?->name}\" ke \"{$newPlan->name}\". Alasan: {$reason}",
+            'type' => 'system',
+            'status' => 'pending',
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Permintaan {$changeType} paket ke \"{$newPlan->name}\" berhasil dikirim! Tim kami akan segera memproses dalam 1x24 jam.",
         ]);
     }
 
