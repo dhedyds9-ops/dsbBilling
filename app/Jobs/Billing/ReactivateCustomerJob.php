@@ -20,10 +20,20 @@ class ReactivateCustomerJob implements ShouldQueue
 
     public function handle(\App\Services\ISP\ISPProvisioningService $provisioningService): void
     {
-        // Cari layanan pelanggan yang dibayar dan menunggu aktivasi (pending)
-        $customerServices = CustomerService::where('customer_id', $this->invoice->customer_id)
-            ->where('status', 'suspended')
-            ->where('reactivation_status', 'pending')
+        $customerId = (int) $this->invoice->customer_id;
+        if ($customerId <= 0) {
+            return;
+        }
+
+        // 1. Pastikan status Customer dipulihkan menjadi active
+        \App\Models\CRM\Customer::withoutGlobalScopes()
+            ->where('id', $customerId)
+            ->update(['status' => 'active']);
+
+        // 2. Pulihkan semua CustomerService milik pelanggan
+        $customerServices = CustomerService::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->with(['pppoeUser', 'hotspotUser'])
             ->get();
 
         foreach ($customerServices as $cs) {
@@ -32,12 +42,26 @@ class ReactivateCustomerJob implements ShouldQueue
                 
                 $isSuccess = $reactivateResult['success'] ?? false;
                 
-                // Update state sesuai konsep: REACTIVATION_PENDING -> COA SUCCESS/FAILED
+                // Update state: status selalu active setelah tagihan lunas, reactivation_status mencatat hasil sinkronisasi hardware
                 $cs->update([
-                    'status' => $isSuccess ? 'active' : 'suspended',
-                    'reactivation_status' => $isSuccess ? 'success' : 'failed',
-                    'suspended_at' => $isSuccess ? null : $cs->suspended_at,
+                    'status' => 'active',
+                    'reactivation_status' => $isSuccess ? 'success' : 'pending_hardware',
+                    'suspended_at' => null,
                 ]);
+
+                if ($cs->pppoeUser) {
+                    $cs->pppoeUser->update([
+                        'status' => 'active',
+                        'suspended_at' => null,
+                    ]);
+                }
+
+                if ($cs->hotspotUser) {
+                    $cs->hotspotUser->update([
+                        'status' => 'active',
+                        'suspended_at' => null,
+                    ]);
+                }
                 
                 \Illuminate\Support\Facades\Log::info('ReactivateCustomerJob reactivate provisioning', [
                     'invoice_id' => $this->invoice->id,
@@ -48,12 +72,13 @@ class ReactivateCustomerJob implements ShouldQueue
                     'errors' => $reactivateResult['errors'] ?? [],
                 ]);
             } catch (\Throwable $e) {
-                // Hard failure -> REACTIVATION_FAILED
                 $cs->update([
-                    'reactivation_status' => 'failed'
+                    'status' => 'active',
+                    'reactivation_status' => 'pending_hardware',
+                    'suspended_at' => null,
                 ]);
                 
-                \Illuminate\Support\Facades\Log::error('ReactivateCustomerJob reactivate provisioning FATAL', [
+                \Illuminate\Support\Facades\Log::error('ReactivateCustomerJob reactivate provisioning warning', [
                     'cs_id' => $cs->id,
                     'invoice_id' => $this->invoice->id,
                     'err' => $e->getMessage(),

@@ -160,7 +160,7 @@ class PaymentService
             $remainingAmount -= $applyAmount;
 
             if ($newStatus === 'paid') {
-                $this->handleInvoicePaid($invoice);
+                $this->handleInvoicePaid($invoice, $userId);
             }
         }
 
@@ -171,35 +171,98 @@ class PaymentService
         ));
     }
 
-    protected function handleInvoicePaid(Invoice $invoice): void
+    public function handleInvoicePaid(Invoice $invoice, int $userId = 1): void
     {
-        $subscription = \App\Models\Billing\Subscription::where('customer_id', $invoice->customer_id)->first();
-        if (!$subscription || !$subscription->customer_service_id) {
+        $customerId = (int) $invoice->customer_id;
+        if ($customerId <= 0) {
             return;
         }
 
-        $customerService = \App\Models\Customer\CustomerService::find($subscription->customer_service_id);
-        if (!$customerService) {
+        // Cek apakah masih ada invoice lain milik customer ini yang overdue & belum dibayar
+        $hasRemainingOverdue = Invoice::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->where('id', '!=', $invoice->id)
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->where('due_date', '<', now()->toDateString())
+            ->exists();
+
+        if ($hasRemainingOverdue) {
+            Log::info("PaymentService: Pelanggan #{$customerId} masih memiliki tagihan jatuh tempo lain yang belum lunas. Melewati buka isolir otomatis.", [
+                'paid_invoice_id' => $invoice->id,
+            ]);
             return;
         }
 
-        if ($customerService->status !== 'suspended') {
-            return;
+        // 1. Pulihkan status Customer menjadi active
+        \App\Models\CRM\Customer::withoutGlobalScopes()
+            ->where('id', $customerId)
+            ->update(['status' => 'active']);
+
+        // 2. Pulihkan status Subscription (jika ada)
+        \App\Models\Billing\Subscription::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->where('status', '!=', 'active')
+            ->update(['status' => 'active']);
+
+        // 3. Ambil semua layanan (CustomerService) milik pelanggan
+        $customerServices = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->with(['pppoeUser', 'hotspotUser', 'serviceProfile'])
+            ->get();
+
+        foreach ($customerServices as $cs) {
+            try {
+                $cs->timestamps = false;
+                $cs->update([
+                    'status' => 'active',
+                    'suspended_at' => null,
+                    'reactivation_status' => 'success',
+                    'activated_at' => $cs->activated_at ?? now(),
+                ]);
+
+                // Pulihkan PPPoE User
+                if ($cs->pppoeUser) {
+                    $pu = $cs->pppoeUser;
+                    $pu->timestamps = false;
+                    $pu->update([
+                        'status' => 'active',
+                        'suspended_at' => null,
+                    ]);
+
+                    // Sinkronisasi pemulihan ke Router MikroTik
+                    try {
+                        app(\App\Services\ISP\PPPoEService::class)->provisionToMikrotik($pu);
+                    } catch (\Throwable $mikrotikErr) {
+                        Log::warning("PaymentService auto-unsuspend MikroTik PPPoE warning for {$pu->username}: " . $mikrotikErr->getMessage());
+                    }
+                }
+
+                // Pulihkan Hotspot User
+                if ($cs->hotspotUser) {
+                    $hu = $cs->hotspotUser;
+                    $hu->timestamps = false;
+                    $hu->update([
+                        'status' => 'active',
+                        'suspended_at' => null,
+                    ]);
+
+                    // Sinkronisasi pemulihan ke Router MikroTik Hotspot
+                    try {
+                        app(\App\Services\ISP\HotspotService::class)->activateHotspotUser($hu->id, $userId);
+                    } catch (\Throwable $hsErr) {
+                        Log::warning("PaymentService auto-unsuspend MikroTik Hotspot warning for {$hu->username}: " . $hsErr->getMessage());
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::error("PaymentService auto-unsuspend CustomerService #{$cs->id} error: " . $e->getMessage());
+            }
         }
 
+        // 4. Jalankan background job untuk COA / FreeRADIUS PoD (jika antrian aktif)
         try {
-            $customerService->update([
-                'reactivation_status' => 'pending',
-                // JANGAN merubah status = 'active' di sini. Status akan diubah setelah COA sukses.
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('PaymentService handleInvoicePaid update status failed', [
-                'cs_id' => $customerService->id,
-                'invoice_id' => $invoice->id,
-                'err' => $e->getMessage(),
-            ]);
+            \App\Jobs\Billing\ReactivateCustomerJob::dispatch($invoice);
+        } catch (\Throwable $qErr) {
+            Log::info("PaymentService dispatch ReactivateCustomerJob info: " . $qErr->getMessage());
         }
-
-        \App\Jobs\Billing\ReactivateCustomerJob::dispatch($invoice);
     }
 }

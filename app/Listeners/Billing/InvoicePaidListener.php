@@ -56,6 +56,14 @@ final class InvoicePaidListener
         $customer = Customer::query()->find((int)$invoice->customer_id);
         if (!$customer) {
             Log::warning('[InvoicePaidListener] Customer tidak ditemukan', ['customer_id' => $invoice->customer_id]);
+        } else {
+            // Pastikan Customer dan CustomerServices terupdate aktif
+            $customer->update(['status' => 'active']);
+            \App\Models\Customer\CustomerService::where('customer_id', $customer->id)->update([
+                'status' => 'active',
+                'suspended_at' => null,
+                'reactivation_status' => 'success',
+            ]);
         }
 
         // 1. Temukan PPPoEUsers aktif / suspended dari subscription milik customer

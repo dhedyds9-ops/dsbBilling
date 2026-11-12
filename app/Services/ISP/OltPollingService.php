@@ -431,9 +431,16 @@ class OltPollingService
                     }
                     
                     // Mark ONUs as offline if they exist in DB for this port but were missing from OLT output
-                    if ($dbPort) {
+                    if ($dbPort || $idx) {
                         $missingOnus = \App\Models\ISP\Onu::where('olt_id', $olt->id)
-                            ->where('pon_port_id', $dbPort->id)
+                            ->where(function ($q) use ($dbPort, $idx) {
+                                if ($dbPort) {
+                                    $q->where('pon_port_id', $dbPort->id);
+                                }
+                                if ($idx) {
+                                    $q->orWhere('pon_port', $idx);
+                                }
+                            })
                             ->whereNotIn('serial_number', $polledSns)
                             ->get();
                             

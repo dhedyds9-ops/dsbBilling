@@ -210,6 +210,21 @@ class Index extends Component
                     ->find($o->acsDevice->customer_service_id);
             }
             $cust = $cs?->customer ?? ($o->customer_id ? Customer::withoutGlobalScopes()->find($o->customer_id) : null);
+
+            // Verifikasi status koneksi aktual (apakah benar-benar sedang online di OLT / GenieACS)
+            $isLive = false;
+            if (in_array(strtolower((string)$o->status), ['active', 'online'])) {
+                if ($o->rx_power_dbm !== null && (float)$o->rx_power_dbm < 0 && (float)$o->rx_power_dbm > -40) {
+                    $isLive = true;
+                } elseif (!empty($o->last_seen_at) && \Carbon\Carbon::parse($o->last_seen_at)->diffInMinutes(now()) <= 15) {
+                    $isLive = true;
+                } elseif (!empty($o->acsDevice?->last_inform) && \Carbon\Carbon::parse($o->acsDevice->last_inform)->diffInMinutes(now()) <= 15) {
+                    $isLive = true;
+                }
+            }
+
+            $displayStatus = $isLive ? 'online' : 'offline';
+
             return [
                 'onu_id' => $o->id,
                 'serial_number' => $o->serial_number,
@@ -219,8 +234,8 @@ class Index extends Component
                 'customer_code' => $cust?->code ?? ('ID #' . ($cust?->id ?? '-')),
                 'pppoe_username' => $cs?->pppoeUser?->username ?? '-',
                 'package' => $cs?->serviceProfile?->name ?? 'Layanan',
-                'status' => $o->status,
-                'rx_power' => $o->rx_power_dbm,
+                'status' => $displayStatus,
+                'rx_power' => $isLive ? $o->rx_power_dbm : null,
             ];
         })->toArray();
     }

@@ -265,8 +265,7 @@ class ISPProvisioningService
 
             $routers = Router::active()->get();
             if ($routers->isEmpty()) {
-                $result['errors'][] = 'Tidak ada Router MikroTik aktif.';
-                return $result;
+                Log::info('ISPProvisioning reactivate: Tidak ada Router MikroTik aktif, menerapkan aktivasi database lokal');
             }
 
             $activeProfile = $customerService->serviceProfile?->name ?? 'default';
@@ -333,36 +332,35 @@ class ISPProvisioningService
 
             $result['success'] = ($result['enabled'] > 0 || count($result['errors']) === 0);
 
-            if ($result['success']) {
-                try {
-                    $customerService->timestamps = false;
-                    if ($customerService->status === 'suspended' || $customerService->status === 'pending') {
-                        $customerService->status = 'active';
-                    }
-                    $customerService->suspended_at = null;
-                    if (empty($customerService->activated_at)) {
-                        $customerService->activated_at = now();
-                    }
-                    $customerService->saveQuietly();
-
-                    if ($pppoeUser) {
-                        $pppoeUser->timestamps = false;
-                        $pppoeUser->status = 'active';
-                        $pppoeUser->suspended_at = null;
-                        $pppoeUser->saveQuietly();
-                    }
-                    if ($hotspotUser) {
-                        $hotspotUser->timestamps = false;
-                        $hotspotUser->status = 'active';
-                        $hotspotUser->suspended_at = null;
-                        $hotspotUser->saveQuietly();
-                    }
-                    if ($customerService->customer) {
-                        $customerService->customer->update(['status' => 'active']);
-                    }
-                } catch (Throwable $e) {
-                    $result['errors'][] = 'Update DB status CustomerService gagal: ' . $e->getMessage();
+            // Selalu pulihkan status record database agar pelanggan yang sudah lunas tidak tetap terisolir di CRM
+            try {
+                $customerService->timestamps = false;
+                if ($customerService->status === 'suspended' || $customerService->status === 'pending') {
+                    $customerService->status = 'active';
                 }
+                $customerService->suspended_at = null;
+                if (empty($customerService->activated_at)) {
+                    $customerService->activated_at = now();
+                }
+                $customerService->saveQuietly();
+
+                if ($pppoeUser) {
+                    $pppoeUser->timestamps = false;
+                    $pppoeUser->status = 'active';
+                    $pppoeUser->suspended_at = null;
+                    $pppoeUser->saveQuietly();
+                }
+                if ($hotspotUser) {
+                    $hotspotUser->timestamps = false;
+                    $hotspotUser->status = 'active';
+                    $hotspotUser->suspended_at = null;
+                    $hotspotUser->saveQuietly();
+                }
+                if ($customerService->customer) {
+                    $customerService->customer->update(['status' => 'active']);
+                }
+            } catch (Throwable $e) {
+                $result['errors'][] = 'Update DB status CustomerService gagal: ' . $e->getMessage();
             }
 
             Log::info('ISPProvisioning reactivateCustomerService selesai', [

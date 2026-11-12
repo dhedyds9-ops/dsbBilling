@@ -66,7 +66,7 @@ class Onu extends Model
                 $prefix = 'ONU-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $model->serial_number ?? Str::random(6)), -6));
                 $base = $prefix;
                 $counter = 1;
-                while (static::withTrashed()->where('code', $prefix)->where('id', '!=', $model->id)->exists()) {
+                while (static::withoutGlobalScopes()->withTrashed()->where('code', $prefix)->when(!empty($model->id), fn($q) => $q->where('id', '!=', $model->id))->exists()) {
                     $prefix = $base . '-' . $counter++;
                 }
                 $model->code = $prefix;
