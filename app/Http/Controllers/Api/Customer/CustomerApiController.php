@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
+use App\Models\ISP\HotspotActiveSession;
+use App\Models\ISP\HotspotUser;
+use App\Models\ISP\PppActiveSession;
 use App\Models\Notification\Notification;
 use App\Models\Setting;
 use App\Models\Support\Ticket;
@@ -15,6 +18,7 @@ use App\Services\CustomerPortal\CustomerDashboardService;
 use App\Services\CustomerPortal\CustomerProfileService;
 use App\Services\CustomerPortal\CustomerSelfServiceService;
 use App\Services\CustomerPortal\CustomerSupportService;
+use App\Services\ISP\Session\SessionKickService;
 use App\Services\Pengaturan\PaymentGatewaySettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -411,6 +415,12 @@ class CustomerApiController extends Controller
                 ],
                 'recent_invoices' => $recentInvoices,
                 'usage_stats' => $data['usage_stats'],
+                'is_hotspot' => $isHotspotService,
+                'service_type' => $serviceBadgeLabel,
+                'hotspot_user' => $hotspotUser ? [
+                    'id' => $hotspotUser->id,
+                    'username' => $hotspotUser->username,
+                ] : null,
                 'banner' => [
                     'title' => 'Koneksi Stabil Tanpa Batas',
                     'subtitle' => 'Nikmati pengalaman internet cepat dan andal dari ' . $companyName,
@@ -730,7 +740,7 @@ class CustomerApiController extends Controller
     }
 
     /**
-     * Get Connected Host Devices on Customer WiFi API.
+     * Get Connected Host Devices (ONU for PPPoE, MikroTik Sessions for Hotspot).
      */
     public function getConnectedDevices(Request $request): JsonResponse
     {
@@ -741,21 +751,263 @@ class CustomerApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Profil pelanggan tidak ditemukan.'], 404);
         }
 
-        $service = CustomerService::withoutGlobalScopes()
+        $customerServices = CustomerService::withoutGlobalScopes()
             ->where('customer_id', $customer->id)
-            ->whereNotNull('onu_id')
-            ->first();
+            ->with(['onu.vendor', 'pppoeUser', 'hotspotUser', 'serviceProfile'])
+            ->get();
 
-        if (!$service || !$service->onu_id) {
-            return response()->json(['success' => true, 'data' => []]);
+        $hotspotUsers = $customerServices->pluck('hotspotUser')->filter();
+        $isHotspot = false;
+        if ($hotspotUsers->isNotEmpty()) {
+            $isHotspot = true;
+        } else {
+            foreach ($customerServices as $cs) {
+                $type = strtolower($cs->serviceProfile?->service_type ?? $cs->serviceProfile?->type ?? '');
+                if (in_array($type, ['hotspot', 'member_hotspot', 'voucher'])) {
+                    $isHotspot = true;
+                    break;
+                }
+            }
         }
+
+        // HOTSPOT CUSTOMER: Ambil data aktif dari HotspotActiveSession MikroTik
+        if ($isHotspot) {
+            $usernames = $customerServices->pluck('username')->filter()->values()->all();
+            if ($hotspotUsers->isNotEmpty()) {
+                $usernames = array_unique(array_merge($usernames, $hotspotUsers->pluck('username')->filter()->values()->all()));
+            }
+
+            $sessions = HotspotActiveSession::with('router')
+                ->whereIn('user', $usernames)
+                ->get();
+
+            $formatted = $sessions->map(function ($s) {
+                $bytesTotal = (int)($s->bytes_in ?? 0) + (int)($s->bytes_out ?? 0);
+                return [
+                    'id' => $s->id,
+                    'hostname' => $s->user ?: 'Hotspot Client',
+                    'ip' => $s->address ?: '-',
+                    'mac' => $s->mac_address ?: '-',
+                    'interface' => 'MikroTik Hotspot',
+                    'active' => true,
+                    'uptime' => $s->uptime ?: '-',
+                    'bytes_in' => (int) ($s->bytes_in ?? 0),
+                    'bytes_out' => (int) ($s->bytes_out ?? 0),
+                    'bytes_formatted' => $this->formatBytes($bytesTotal),
+                    'router_name' => $s->router?->name ?? 'MikroTik',
+                    'type' => 'hotspot',
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'service_type' => 'hotspot',
+                'is_hotspot' => true,
+                'total_devices' => $formatted->count(),
+                'data' => $formatted,
+            ]);
+        }
+
+        // PPPOE CUSTOMER: Ambil data perangkat dari ONU & GenieACS
+        $service = $customerServices->first(fn($s) => !empty($s->onu_id)) ?? $customerServices->first();
+        $onu = $service?->onu;
+        $devices = [];
+
+        if ($service && $service->onu_id) {
+            try {
+                $devices = $this->selfService->getOnuConnectedDevices($customer->id, $service->onu_id);
+            } catch (\Throwable $e) {
+                Log::warning("GenieACS getOnuConnectedDevices error: " . $e->getMessage());
+            }
+        }
+
+        $formatted = collect($devices)->map(function ($d) {
+            return [
+                'id' => 0,
+                'hostname' => $d['hostname'] ?? $d['HostName'] ?? 'Unknown Device',
+                'ip' => $d['ip'] ?? $d['IPAddress'] ?? '-',
+                'mac' => $d['mac'] ?? $d['MACAddress'] ?? '-',
+                'interface' => $d['interface'] ?? $d['InterfaceType'] ?? 'WiFi',
+                'active' => !empty($d['active']) || !empty($d['Active']),
+                'uptime' => '-',
+                'bytes_in' => 0,
+                'bytes_out' => 0,
+                'bytes_formatted' => '-',
+                'router_name' => 'Modem ONT',
+                'type' => 'pppoe',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'service_type' => 'pppoe',
+            'is_hotspot' => false,
+            'onu_info' => [
+                'model' => $onu?->model ?? 'ONT Terminal',
+                'serial_number' => $onu?->serial_number ?? '-',
+                'rx_power' => $onu?->rx_power_dbm ? number_format($onu->rx_power_dbm, 2) . ' dBm' : null,
+                'tx_power' => $onu?->tx_power_dbm ? number_format($onu->tx_power_dbm, 2) . ' dBm' : null,
+                'wifi_ssid' => $onu?->wifi_ssid ?? 'dsBilling_WiFi',
+            ],
+            'total_devices' => $formatted->count(),
+            'data' => $formatted,
+        ]);
+    }
+
+    /**
+     * Kick / Disconnect Active Session (Hotspot / PPPoE).
+     */
+    public function kickSession(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $customer = $this->getAuthenticatedCustomer($user);
+
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Profil pelanggan tidak ditemukan.'], 404);
+        }
+
+        $sessionId = (int) $request->input('session_id');
+        $type = $request->input('type', 'hotspot');
+
+        $validUsernames = CustomerService::withoutGlobalScopes()
+            ->where('customer_id', $customer->id)
+            ->pluck('username')
+            ->filter()
+            ->toArray();
+
+        $kickService = app(SessionKickService::class);
 
         try {
-            $devices = $this->selfService->getOnuConnectedDevices($customer->id, $service->onu_id);
-            return response()->json(['success' => true, 'data' => $devices]);
+            if ($type === 'pppoe') {
+                $session = PppActiveSession::find($sessionId);
+                if (!$session || !in_array($session->name, $validUsernames)) {
+                    return response()->json(['success' => false, 'message' => 'Sesi PPPoE tidak ditemukan atau Anda tidak memiliki akses.'], 403);
+                }
+                $result = $kickService->kickPppoe($session, $user);
+            } else {
+                $session = HotspotActiveSession::find($sessionId);
+                if (!$session || !in_array($session->user, $validUsernames)) {
+                    return response()->json(['success' => false, 'message' => 'Sesi Hotspot tidak ditemukan atau Anda tidak memiliki akses.'], 403);
+                }
+                $result = $kickService->kickHotspot($session, $user);
+            }
+
+            if (isset($result['success']) && $result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Perangkat/sesi berhasil diputus dari jaringan.',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Gagal memutus koneksi perangkat.',
+            ], 422);
         } catch (\Throwable $e) {
-            return response()->json(['success' => true, 'data' => []]);
+            Log::error('Customer kick session error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memutus koneksi karena gangguan teknis.',
+            ], 500);
         }
+    }
+
+    /**
+     * Get Hotspot User Credentials for Self-Service.
+     */
+    public function getHotspotCredentials(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $customer = $this->getAuthenticatedCustomer($user);
+
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Profil pelanggan tidak ditemukan.'], 404);
+        }
+
+        $services = CustomerService::withoutGlobalScopes()
+            ->where('customer_id', $customer->id)
+            ->where('status', 'active')
+            ->with(['hotspotUser', 'serviceProfile'])
+            ->get();
+
+        $hotspotUsers = $services->pluck('hotspotUser')->filter();
+
+        if ($hotspotUsers->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki layanan Hotspot aktif.',
+            ], 404);
+        }
+
+        $target = $hotspotUsers->first();
+        $authType = ($target->username === $target->password) ? 'vc' : 'up';
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'hotspot_user_id' => $target->id,
+                'username' => $target->username,
+                'password' => $target->password,
+                'auth_type' => $authType,
+                'service_name' => $target->customerService?->serviceProfile?->name ?? 'Hotspot',
+                'all_users' => $hotspotUsers->map(fn($hu) => [
+                    'id' => $hu->id,
+                    'username' => $hu->username,
+                    'service_name' => $hu->customerService?->serviceProfile?->name ?? 'Hotspot',
+                ])->values(),
+            ],
+        ]);
+    }
+
+    /**
+     * Update Hotspot User Credentials (Radius).
+     */
+    public function updateHotspotCredentials(Request $request): JsonResponse
+    {
+        $request->validate([
+            'hotspot_user_id' => 'required|integer',
+            'auth_type' => 'required|in:up,vc',
+            'new_username' => 'nullable|string|min:3|max:50',
+            'new_password' => 'nullable|string|min:3|max:50',
+            'confirm_password' => 'nullable|string|same:new_password',
+        ]);
+
+        $user = $request->user();
+        $customer = $this->getAuthenticatedCustomer($user);
+
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Profil pelanggan tidak ditemukan.'], 404);
+        }
+
+        $hotspotUserId = (int) $request->input('hotspot_user_id');
+        $authType = $request->input('auth_type');
+        $newUsername = $request->input('new_username');
+        $newPassword = ($authType === 'vc') ? $newUsername : $request->input('new_password');
+
+        $result = $this->selfService->changeHotspotCredentials(
+            customerId: $customer->id,
+            hotspotUserId: $hotspotUserId,
+            newUsername: $newUsername,
+            newPassword: $newPassword
+        );
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['message'],
+        ], $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Format bytes helper.
+     */
+    protected function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, $precision) . ' ' . $units[$pow];
     }
 
     /**

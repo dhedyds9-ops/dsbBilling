@@ -168,5 +168,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Floating Download APK Button for dsBilling Customer (Versi 1.1.1) -->
+    <div class="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50">
+        <a href="{{ asset('downloads/dsbilling-customer-release.apk') }}" download
+           class="flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 backdrop-blur-md border border-emerald-500/40 hover:border-emerald-400 p-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl shadow-emerald-950/60 transition-all transform hover:-translate-y-1 hover:scale-105 group focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 shrink-0 group-hover:rotate-6 transition-transform">
+                <span class="material-symbols-outlined text-[24px]">android</span>
+            </div>
+            <div class="flex flex-col text-left">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs sm:text-sm font-bold text-white tracking-wide">dsBilling Pelanggan</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v1.1.1</span>
+                </div>
+                <span class="text-[11px] text-slate-400 group-hover:text-emerald-300 transition-colors flex items-center gap-1">
+                    <span>Unduh APK Pelanggan</span>
+                    <span class="material-symbols-outlined text-[14px]">download</span>
+                </span>
+            </div>
+        </a>
+    </div>
 </body>
 </html>

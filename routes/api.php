@@ -319,6 +319,11 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
         Route::get('/wifi', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getWifi'])->name('wifi.show');
         Route::post('/wifi', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateWifi'])->name('wifi.update');
         Route::get('/wifi/connected-devices', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getConnectedDevices'])->name('wifi.devices');
+        Route::post('/self-service/kick-session', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'kickSession'])->name('session.kick');
+
+        // Self-Service Hotspot Credentials (Radius)
+        Route::get('/hotspot-credentials', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getHotspotCredentials'])->name('hotspot.credentials.get');
+        Route::post('/hotspot-credentials', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateHotspotCredentials'])->name('hotspot.credentials.update');
 
         // Packages & Change Plan
         Route::get('/plans', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'getAvailablePlans'])->name('plans.index');
@@ -336,7 +341,8 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
         Route::post('/profile', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/change-password', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'changePassword'])->name('profile.change-password');
 
-        // Auxiliary
+        // Auxiliary & OTA App Updates
+        Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('customer.app.check-update');
         Route::get('/support/contact', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'contactAdmin'])->name('support.contact');
         Route::get('/speedtest/config', [\App\Http\Controllers\Api\Customer\CustomerApiController::class, 'speedtestConfig'])->name('speedtest.config');
     });
