@@ -248,7 +248,7 @@
         <div class="flex-1 lg:pl-72 flex flex-col min-h-screen">
             
             <!-- STICKY TOP HEADER -->
-            <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between shadow-xs print-hide">
+            <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between shadow-xs print-hide">
                 
                 <!-- Left: Back Button & Title / Mobile Brand -->
                 <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -306,7 +306,7 @@
             @endif
 
             <!-- MAIN CONTAINER: WIDE ON DESKTOP, FLUID ON MOBILE -->
-            <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-12">
+            <main class="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2 sm:py-5 pb-24 lg:pb-12">
                 {{ $slot ?? '' }}
                 @yield('content')
             </main>

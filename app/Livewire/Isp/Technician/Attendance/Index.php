@@ -249,9 +249,18 @@ class Index extends Component
             ->limit(5)
             ->get();
 
+        $branches = \App\Models\Master\Branch::where('is_active', true)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get(['id', 'name', 'latitude', 'longitude']);
+
+        $homeBranch = Auth::user()?->branch;
+
         return view('livewire.isp.technician.attendance.index', [
             'attendance' => $this->todayAttendance,
             'history' => $history,
+            'branches' => $branches,
+            'homeBranch' => $homeBranch,
         ]);
     }
 }

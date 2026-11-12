@@ -8,7 +8,7 @@
     }
 @endphp
 
-<div class="space-y-4 p-4 pb-24">
+<div class="space-y-3.5 pb-6">
 
     {{-- Alert Belum Absen --}}
     @if(!$hasCheckedIn)
