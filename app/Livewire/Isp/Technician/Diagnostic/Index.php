@@ -245,7 +245,7 @@ class Index extends Component
         $onu = Onu::withoutGlobalScopes()->with('customerService')->find($onuId);
         if (!$onu) return;
 
-        if ($onu->customer_id || $onu->customerService) {
+        if ($onu->customerService) {
             $this->errorMessage = "Tidak dapat menghapus: Modem ini terikat dengan data pelanggan aktif.";
             return;
         }

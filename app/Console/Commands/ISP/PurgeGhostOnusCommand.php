@@ -48,11 +48,10 @@ class PurgeGhostOnusCommand extends Command
         }
 
         // 2. Ambil semua ONU yang:
-        //    - Tidak terikat ke pelanggan manapun (customer_id null dan customerService null)
+        //    - Tidak terikat ke pelanggan manapun (tidak memiliki relasi customerService)
         //    - Tidak memiliki redaman optik aktif (rx_power_dbm null atau tidak valid)
         //    - Tidak terlihat di OLT dalam 24 jam terakhir (last_seen_at null atau > 24 jam)
         $ghostCandidates = Onu::withoutGlobalScopes()
-            ->whereNull('customer_id')
             ->whereDoesntHave('customerService')
             ->where(function ($q) {
                 $q->whereNull('last_seen_at')
