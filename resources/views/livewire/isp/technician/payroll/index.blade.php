@@ -1,6 +1,5 @@
-@section('header_title', 'Daftar Slip Gaji')
-
-<div class="space-y-4 p-4">
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Daftar Slip Gaji')
     @if($payrolls->isEmpty())
         <div class="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center border border-slate-200 dark:border-slate-700">
             <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 mb-2" style="font-size:48px">request_quote</span>

@@ -255,6 +255,9 @@ class CDataOltDriver extends BaseOltDriver
         }
 
         if (($this->olt->pon_port_count ?? 0) === 1 && !empty($this->cachedCliParsedOnus)) {
+            if ($portNum !== 1) {
+                return [];
+            }
             $res = [];
             $missingOpticalCount = 0;
             foreach ($this->cachedCliParsedOnus as $pOnus) {
@@ -1120,7 +1123,7 @@ class CDataOltDriver extends BaseOltDriver
             // Check if this ONU belongs to the current port
             $isPortMatch = false;
             if (($this->olt->pon_port_count ?? 0) === 1) {
-                $isPortMatch = true;
+                $isPortMatch = ($portNum === 1);
                 $p = 1;
             } elseif ($p !== null && $p > 0) {
                 $isPortMatch = ($p === $portNum || $p === $ponPort || (isset($rawP) && $rawP === $ponPort));
@@ -1441,8 +1444,39 @@ class CDataOltDriver extends BaseOltDriver
     public function deleteOnu(Onu $onu): bool
     {
         try {
-            $ponPort = (int)($onu->pon_port ?? ($onu->ponPort->port_number ?? 0));
+            $rawPort = (int)($onu->pon_port ?? ($onu->ponPort->port_number ?? 0));
             $onuId   = (int)($onu->onu_id_on_olt ?? $onu->onu_index ?? 0);
+
+            // Normalize port index (handles SNMP indexes like 1310721 -> 1)
+            if ($rawPort >= 1310721 && $rawPort <= 1310736) {
+                $ponPort = $rawPort - 1310720;
+            } elseif ($rawPort > 1000000) {
+                $ponPort = $rawPort & 0xFF;
+                if ($ponPort === 0) {
+                    $ponPort = ($rawPort >> 8) & 0xFF;
+                }
+            } else {
+                $ponPort = $rawPort;
+            }
+            if ($ponPort <= 0 && ($this->olt->pon_port_count ?? 0) === 1) {
+                $ponPort = 1;
+            }
+
+            // Fallback: cari onuId dari CLI cache jika belum tersimpan di DB
+            if ($onuId <= 0 && !empty($onu->serial_number)) {
+                $sn = strtoupper(trim($onu->serial_number));
+                if (!empty($this->cachedCliParsedOnus)) {
+                    foreach ($this->cachedCliParsedOnus as $p => $onus) {
+                        foreach ($onus as $id => $data) {
+                            if (!empty($data['serial_number']) && strtoupper($data['serial_number']) === $sn) {
+                                $ponPort = (int)$p;
+                                $onuId = (int)$id;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
 
             if ($ponPort <= 0 || $onuId <= 0) {
                 Log::warning("CDataOltDriver::deleteOnu: Invalid pon_port ({$ponPort}) or onu_id ({$onuId}) for ONU #{$onu->id}");
@@ -1459,6 +1493,7 @@ class CDataOltDriver extends BaseOltDriver
             $this->cli->execute("interface gpon 0/0\r\n", false);
             $this->cli->execute("ont delete $ponPort $onuId\r\n", false);
             $this->cli->execute("undo ont add $ponPort $onuId\r\n", false);
+            $this->cli->execute("no ont $ponPort $onuId\r\n", false);
             $this->cli->execute("exit\r\n", false);
 
             // 2. Port-specific GPON interface mode: interface gpon 0/0/<port>
@@ -1466,16 +1501,19 @@ class CDataOltDriver extends BaseOltDriver
             $this->cli->execute("ont delete $onuId\r\n", false);
             $this->cli->execute("onu delete $onuId\r\n", false);
             $this->cli->execute("no onu $onuId\r\n", false);
+            $this->cli->execute("no ont $onuId\r\n", false);
             $this->cli->execute("exit\r\n", false);
 
             // 3. Fallback EPON jika OLT berjalan dalam mode EPON
             $this->cli->execute("interface epon 0/0\r\n", false);
             $this->cli->execute("onu delete $ponPort onu $onuId\r\n", false);
+            $this->cli->execute("no onu $ponPort onu $onuId\r\n", false);
             $this->cli->execute("exit\r\n", false);
 
             // Simpan perubahan ke memory/NVRAM
             $this->cli->execute("write\r\n", false);
             $this->cli->execute("write memory\r\n", false);
+            $this->cli->execute("write all\r\n", false);
 
             Log::info("CDataOltDriver::deleteOnu successfully issued delete command for ONU #{$onu->id} (Port: {$ponPort}, Index: {$onuId})");
             return true;

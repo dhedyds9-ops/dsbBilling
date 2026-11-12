@@ -1,15 +1,14 @@
-<div class="p-4 pb-24">
-    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">add_circle</span>
-                Tugas Pemasangan Baru (PSB)
-            </h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftar pelanggan baru yang menunggu penarikan kabel dan instalasi perangkat.</p>
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Tugas Pasang Baru (PSB)')
+    <div class="bg-emerald-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-md">
+        <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-lg sm:text-xl">person_add</span>
+            <h2 class="text-base sm:text-lg font-black">Tugas Pemasangan Baru (PSB)</h2>
         </div>
+        <p class="text-xs text-emerald-100">Daftar pelanggan baru yang menunggu penarikan kabel & instalasi perangkat.</p>
     </div>
 
-    <div class="space-y-4">
+    <div class="space-y-3">
         @forelse($jobs as $job)
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col gap-4 items-start justify-between hover:border-indigo-500 transition-colors">
                 <div class="flex gap-4">

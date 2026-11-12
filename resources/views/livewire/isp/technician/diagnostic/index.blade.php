@@ -1,6 +1,5 @@
-@section('header_title', 'Diagnostik ONT & Jaringan')
-
-<div class="space-y-4 p-4 pb-24" x-data="diagnosticManager()">
+<div class="space-y-3.5 pb-6" x-data="diagnosticManager()">
+    @section('header_title', 'Diagnostik ONT & Jaringan')
     {{-- Alerts --}}
     @if(session('success') || !empty($successMessage))
         <div class="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">

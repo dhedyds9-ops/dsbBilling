@@ -1,6 +1,5 @@
-@section('header_title', 'Tiket Gangguan Saya')
-
-<div class="space-y-4 p-4 pb-24">
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Tiket Gangguan Saya')
     @if(session('success'))
         <div class="p-3 bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm">
             <span class="material-symbols-outlined text-sm">check_circle</span>

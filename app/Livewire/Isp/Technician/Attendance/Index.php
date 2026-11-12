@@ -5,6 +5,7 @@ namespace App\Livewire\Isp\Technician\Attendance;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Attributes\On;
 use App\Models\Workforce\Attendance;
 use Src\Domain\Workforce\Enums\AttendanceStatus;
@@ -13,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 #[Layout('layouts.technician-app')]
+#[Title('Absensi & Lokasi')]
 class Index extends Component
 {
     public $latitude;

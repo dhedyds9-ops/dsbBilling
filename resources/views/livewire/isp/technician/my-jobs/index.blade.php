@@ -1,6 +1,5 @@
-@section('header_title', 'Tugas Saya')
-
-<div class="space-y-4 p-4 pb-24">
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Tugas Saya')
 
     {{-- Flash Message --}}
     @if(session()->has('success'))
@@ -18,7 +17,7 @@
     @endif
 
     {{-- Hero Banner --}}
-    <div class="p-5 rounded-2xl shadow-lg relative overflow-hidden text-white"
+    <div class="p-4 sm:p-5 rounded-2xl shadow-lg relative overflow-hidden text-white"
          style="background: linear-gradient(135deg, #4f46e5 0%, #1d4ed8 100%) !important; color: #ffffff !important;">
         <div class="absolute top-0 right-0 opacity-10 pointer-events-none">
             <span class="material-symbols-outlined" style="font-size:130px">engineering</span>

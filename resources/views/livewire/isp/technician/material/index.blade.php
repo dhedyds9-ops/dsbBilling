@@ -1,6 +1,5 @@
-@section('header_title', 'Stok Saya (Inventory)')
-
-<div class="space-y-4 p-4 pb-24" x-data="materialManager()">
+<div class="space-y-3.5 pb-6" x-data="materialManager()">
+    @section('header_title', 'Stok Saya (Inventory)')
     @if(session('success'))
         <div class="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">
             <span class="material-symbols-outlined text-sm">check_circle</span>

@@ -1,13 +1,14 @@
-<div class="p-4 pb-24">
-    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">share_location</span>
-                Pemetaan ODP Terdekat
-            </h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Gunakan GPS perangkat Anda untuk menemukan titik ODP terdekat di sekitar lokasi instalasi.</p>
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Peta ODP Terdekat')
+    <div class="bg-indigo-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-md">
+        <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-lg sm:text-xl">share_location</span>
+            <h2 class="text-base sm:text-lg font-black">Pemetaan ODP Terdekat</h2>
         </div>
-        <div class="flex flex-col gap-2 w-full">
+        <p class="text-xs text-indigo-100">Gunakan GPS perangkat Anda untuk menemukan titik ODP terdekat di sekitar lokasi instalasi.</p>
+    </div>
+
+    <div class="flex flex-col gap-2 w-full">
             <select wire:model.live="radius" wire:change="loadNearestOdps" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
                 <option value="1">Radius 1 KM</option>
                 <option value="2">Radius 2 KM</option>

@@ -35,7 +35,9 @@ class Index extends BaseIndex
                 }
             }
 
-            $onu->forceDelete();
+            // Gunakan soft delete agar sistem sinkronisasi OLT mengenali status terhapus
+            // dan tidak membangkitkan kembali record ONU offline ini saat sinkronisasi berikutnya.
+            $onu->delete();
 
             $msg = 'ONU ' . $sn . ' berhasil dihapus dari database.';
             if ($oltDeleted) {
@@ -129,7 +131,9 @@ class Index extends BaseIndex
                         \Illuminate\Support\Facades\Log::warning("Gagal hapus ONU #{$onu->id} dari OLT fisik: " . $e->getMessage());
                     }
                 }
-                $onu->forceDelete();
+                // Gunakan soft delete agar sistem sinkronisasi OLT mengenali status terhapus
+            // dan tidak membangkitkan kembali record ONU offline ini saat sinkronisasi berikutnya.
+            $onu->delete();
             }
             
             $msg = $count . ' ONU offline berhasil dihapus dari database.';

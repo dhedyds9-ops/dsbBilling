@@ -1,6 +1,5 @@
-@section('header_title', 'Ganti / Swap ONT')
-
-<div class="space-y-4 p-4 pb-24" x-data="swapOntManager()">
+<div class="space-y-3.5 pb-6" x-data="swapOntManager()">
+    @section('header_title', 'Ganti / Swap ONT')
     {{-- Alerts --}}
     @if(session('success'))
         <div class="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-sm animate-fadeIn">

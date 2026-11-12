@@ -1,6 +1,5 @@
-@section('header_title', 'Slip Gaji')
-
-<div class="p-4 space-y-4">
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Slip Gaji')
     <div class="flex gap-2 print-hide">
         <button onclick="window.print()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 font-bold text-sm flex justify-center items-center gap-2 transition-colors">
             <span class="material-symbols-outlined" style="font-size:20px">print</span> Cetak

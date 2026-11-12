@@ -699,13 +699,6 @@ Route::middleware(['auth'])->group(function () use ($cs) {
 
 require __DIR__.'/auth.php';
 
-Route::get('/test-livewire', \App\Livewire\Isp\Technician\Attendance\Index::class);
-
-
-
-
-
-
 Route::post('/pengaturan/perusahaan/upload-logo', function (\Illuminate\Http\Request $request) {
     $request->validate(['logo' => 'required|image|max:2048']);
     if ($request->hasFile('logo')) {

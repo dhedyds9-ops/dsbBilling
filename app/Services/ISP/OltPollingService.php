@@ -270,6 +270,12 @@ class OltPollingService
                                     }
                                 }
                             } else {
+                                // Jangan buat record baru jika ONU dalam kondisi OFFLINE saat polling!
+                                // ONU yang telah dihapus atau belum aktif tidak boleh membangkitkan record offline liar.
+                                if ($status !== 'online') {
+                                    continue;
+                                }
+
                                 $onu = Onu::create([
                                     'olt_id' => $olt->id,
                                     'pon_port' => $idx,
@@ -281,7 +287,7 @@ class OltPollingService
                                     'name' => !empty($item['name']) ? $item['name'] : ($snNormalized ?: ("ONU-{$idx}-" . ($item['onu_index'] ?? 0))),
                                     'model' => $item['model'] ?? null,
                                     'firmware_version' => $item['firmware_version'] ?? null,
-                                    'status' => $status === 'online' ? 'active' : 'inactive',
+                                    'status' => 'active',
                                     'provision_status' => 'provisioned',
                                 ]);
                                 
@@ -446,17 +452,19 @@ class OltPollingService
 
             if (count($portErrors) > 0) { throw new \Exception("Gagal membaca " . count($portErrors) . " port PON. Kemungkinan Telnet/SNMP timeout. Detail: " . implode(', ', array_unique($portErrors))); }
 
-            if ($updatedOnu > 0) {
-                $olt->update([
-                    'onu_active_count' => $olt->onus()->where('status', 'active')->count(),
-                ]);
-            }
+            // Hitung jumlah riil ONU aktif & offline yang terdaftar pada OLT di database (single source of truth)
+            $actualOnline = $olt->onus()->where('status', 'active')->count();
+            $actualOffline = $olt->onus()->where('status', '!=', 'active')->count();
+
+            $olt->update([
+                'onu_active_count' => $actualOnline,
+            ]);
 
             return [
                 'success' => true,
                 'olt_id' => $olt->id,
-                'onu_online' => $onuOnline,
-                'onu_offline' => $onuOffline,
+                'onu_online' => $actualOnline,
+                'onu_offline' => $actualOffline,
                 'alerts' => $alerts,
             ];
         } catch (Throwable $e) {

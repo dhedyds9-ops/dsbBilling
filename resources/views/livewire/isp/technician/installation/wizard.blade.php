@@ -1,6 +1,5 @@
-@section('header_title', 'Instalasi Cepat')
-
-<div class="space-y-4 p-4">
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Instalasi Cepat')
     {{-- Global Alert Banner --}}
     @if(session('error') || $errors->any())
         <div class="p-4 bg-rose-500 text-white rounded-2xl text-xs sm:text-sm font-semibold flex items-start gap-3 shadow-md">

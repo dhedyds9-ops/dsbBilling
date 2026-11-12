@@ -1,6 +1,5 @@
-@section('header_title', 'Monitor Provisioning')
-
-<div class="space-y-4 p-4" wire:poll.3s>
+<div class="space-y-3.5 pb-6" wire:poll.3s>
+    @section('header_title', 'Monitor Provisioning')
 
     {{-- Status Banner --}}
     @php

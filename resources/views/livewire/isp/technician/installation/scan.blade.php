@@ -1,15 +1,14 @@
-<div class="p-4 pb-24">
-    <div class="mb-6 flex flex-col gap-2 justify-between">
-        <div>
-            <h1 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">qr_code_scanner</span>
-                Scan Perangkat ONU
-            </h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Gunakan kamera HP atau ketik manual Serial Number / MAC Address modem pelanggan.</p>
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Scan Perangkat ONU')
+    <div class="bg-indigo-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-md">
+        <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-lg sm:text-xl">qr_code_scanner</span>
+            <h2 class="text-base sm:text-lg font-black">Scan Perangkat ONU</h2>
         </div>
+        <p class="text-xs text-indigo-100">Gunakan kamera HP atau ketik manual Serial Number / MAC Address modem pelanggan.</p>
     </div>
 
-    <div class="flex flex-col gap-4 pb-6">
+    <div class="flex flex-col gap-3.5">
         <!-- Area Scan Kamera -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
             

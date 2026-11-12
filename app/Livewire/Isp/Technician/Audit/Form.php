@@ -7,31 +7,52 @@ use Livewire\Attributes\Renderless;
 use App\Models\CRM\Customer;
 use App\Models\Customer\CustomerService;
 use App\Models\ISP\Olt;
+use App\Models\ISP\Odp;
 use App\Models\ISP\Onu;
-use App\Models\ISP\ServiceProfile;
 
 class Form extends Component
 {
+    public $is_titipan = false;
+    public $titipan_name = "";
+    public $titipan_notes = "";
+
     public $searchCustomer = "";
     public $customer_id;
     public $olt_id;
-    public $pon_port;
+    public $pon_port = 1;
     public $onu_sn;
-    public $service_profile_id;
+    public $odp_id;
+    public $odp_port;
     public $latitude;
     public $longitude;
 
-    protected $rules = [
-        "customer_id" => "required|exists:customers,id",
-        "olt_id" => "required|exists:olts,id",
-        "pon_port" => "required|integer|min:1",
-        "onu_sn" => "required|string|max:100",
-        "service_profile_id" => "required|exists:service_profiles,id",
-    ];
+    protected function rules()
+    {
+        $rules = [
+            "olt_id" => "required|exists:olts,id",
+            "pon_port" => "required|integer|min:1",
+            "onu_sn" => "required|string|max:100",
+            "odp_id" => "required|exists:odps,id",
+            "odp_port" => "nullable|integer|min:1|max:128",
+        ];
+
+        if ($this->is_titipan) {
+            $rules["titipan_name"] = "required|string|min:3|max:100";
+            $rules["customer_id"] = "nullable";
+        } else {
+            $rules["customer_id"] = "required|exists:customers,id";
+        }
+
+        return $rules;
+    }
 
     public function mount()
     {
-        // Initialization if needed
+        // Default OLT jika hanya ada 1
+        $firstOlt = Olt::withoutGlobalScopes()->first();
+        if ($firstOlt) {
+            $this->olt_id = (string) $firstOlt->id;
+        }
     }
 
     public function submit()
@@ -39,23 +60,27 @@ class Form extends Component
         $this->validate();
 
         $user = auth()->user();
-        $customer = Customer::find($this->customer_id);
+        $customer = null;
+        $branchId = null;
 
-        if (!$customer) {
-            $this->addError('customer_id', 'Pelanggan tidak ditemukan.');
-            return;
+        if (!$this->is_titipan) {
+            $customer = Customer::find($this->customer_id);
+            if (!$customer) {
+                $this->addError('customer_id', 'Pelanggan tidak ditemukan.');
+                return;
+            }
+            $branchId = $user->branch_id ?? $customer->branch_id ?? $customer->reseller?->branch_id;
+        } else {
+            $branchId = $user->branch_id ?? Odp::withoutGlobalScopes()->where('id', $this->odp_id)->value('branch_id');
         }
 
-        // Tentukan branch_id dari konteks organisasi yang sah
-        $branchId = $user->branch_id ?? $customer->branch_id ?? $customer->reseller?->branch_id;
         if (!$branchId) {
-            $this->addError('customer_id', 'Cabang kantor (Branch) Anda atau Pelanggan belum ditentukan. Hubungi Administrator untuk menetapkan cabang.');
-            return;
+            $branchId = 1; // Fallback ke default branch
         }
 
-        // Validasi: Cegah penggunaan ONU yang sedang aktif digunakan oleh pelanggan lain (Cross-Branch Aware)
+        // Validasi: Cegah penggunaan ONU yang sedang aktif digunakan oleh pelanggan lain
         $existingOnu = Onu::withoutGlobalScopes()->where('serial_number', $this->onu_sn)->first();
-        if ($existingOnu) {
+        if ($existingOnu && !$this->is_titipan && $customer) {
             $activeOtherCs = CustomerService::withoutGlobalScopes()->where('onu_id', $existingOnu->id)
                 ->where('status', 'active')
                 ->where('customer_id', '!=', $customer->id)
@@ -69,45 +94,79 @@ class Form extends Component
         }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($customer, $branchId, $user) {
-            // Update Koordinat Pelanggan & pastikan branch_id terikat
-            $updateCust = ['branch_id' => $branchId];
-            if ($this->latitude && $this->longitude) {
-                $updateCust['latitude'] = $this->latitude;
-                $updateCust['longitude'] = $this->longitude;
-            }
-            $customer->update($updateCust);
+            $onuName = $this->is_titipan
+                ? "Titipan: " . trim($this->titipan_name)
+                : "ONU " . ($customer ? $customer->name : 'Pelanggan');
 
-            // 1. Buat/Update ONU (Tandai online pasif, terikat branch_id)
+            $onuDesc = $this->is_titipan
+                ? ($this->titipan_notes ?: "Perangkat titipan infrastruktur/lokal tanpa paket PPPoE/Hotspot")
+                : "Hasil Sensus Lapangan & Audit Jalur";
+
+            // Update Koordinat Pelanggan jika bukan titipan
+            if ($customer) {
+                $updateCust = ['branch_id' => $branchId];
+                if ($this->latitude && $this->longitude) {
+                    $updateCust['latitude'] = $this->latitude;
+                    $updateCust['longitude'] = $this->longitude;
+                }
+                $customer->update($updateCust);
+            }
+
+            // 1. Buat/Update ONU (Tandai online pasif, terikat ODP & OLT)
+            $onuData = [
+                "olt_id" => $this->olt_id,
+                "pon_port" => $this->pon_port,
+                "odp_id" => $this->odp_id,
+                "branch_id" => $branchId,
+                "name" => $onuName,
+                "description" => $onuDesc,
+                "status" => "online",
+                "attributes" => [
+                    "odp_port" => $this->odp_port,
+                    "is_titipan" => $this->is_titipan,
+                    "titipan_name" => $this->is_titipan ? $this->titipan_name : null,
+                    "audited_by" => $user?->name,
+                    "audited_at" => now()->toDateTimeString(),
+                ],
+            ];
+
+            if ($this->latitude && $this->longitude) {
+                $onuData['latitude'] = $this->latitude;
+                $onuData['longitude'] = $this->longitude;
+            }
+
             $onu = Onu::withoutGlobalScopes()->updateOrCreate(
                 ["serial_number" => $this->onu_sn],
-                [
-                    "olt_id" => $this->olt_id,
-                    "pon_port" => $this->pon_port,
-                    "branch_id" => $branchId,
-                    "name" => "ONU " . $customer->name,
-                    "status" => "online",
-                ]
+                $onuData
             );
 
-            // 2. Buat CustomerService (Soft Link, tanpa dikirim ke Orchestrator)
-            $profile = ServiceProfile::withoutGlobalScopes()->find($this->service_profile_id);
-            
-            $cs = CustomerService::where("customer_id", $customer->id)->where("onu_id", $onu->id)->first();
-            if (!$cs) {
-                CustomerService::create([
-                    "uuid" => (string) \Illuminate\Support\Str::uuid(),
-                    "customer_id" => $customer->id,
-                    "service_id" => $profile->service_id ?? 1,
-                    "service_profile_id" => $profile->id,
-                    "onu_id" => $onu->id,
-                    "status" => "active",
-                    "service_status" => "active",
-                    "created_by" => $user->id,
-                ]);
+            // Perbarui okupansi port ODP jika belum dihitung
+            if ($this->odp_id) {
+                $odp = Odp::withoutGlobalScopes()->find($this->odp_id);
+                if ($odp) {
+                    $count = Onu::withoutGlobalScopes()->where('odp_id', $odp->id)->count();
+                    $odp->update(['used_port_count' => $count]);
+                }
+            }
+
+            // 2. Hubungkan CustomerService jika pelanggan resmi
+            if ($customer && !$this->is_titipan) {
+                $cs = CustomerService::where("customer_id", $customer->id)->where("onu_id", $onu->id)->first();
+                if (!$cs) {
+                    CustomerService::create([
+                        "uuid" => (string) \Illuminate\Support\Str::uuid(),
+                        "customer_id" => $customer->id,
+                        "service_id" => 1,
+                        "onu_id" => $onu->id,
+                        "status" => "active",
+                        "service_status" => "active",
+                        "created_by" => $user->id,
+                    ]);
+                }
             }
         });
 
-        session()->flash("success", "Data Sensus ONU & Koordinat berhasil disimpan tanpa mereset modem!");
+        session()->flash("success", "Data Sensus ONU & Audit ODP berhasil disimpan ke sistem!");
         return redirect()->route("technician.dashboard");
     }
 
@@ -138,7 +197,7 @@ class Form extends Component
                 return [
                     'value' => (string) $c->id,
                     'label' => $c->name,
-                    'sublabel' => $c->phone . ($c->code ? " ({$c->code})" : ''),
+                    'sublabel' => ($c->phone ?: '-') . ($c->code ? " ({$c->code})" : ''),
                 ];
             })
             ->toArray();
@@ -162,33 +221,30 @@ class Form extends Component
         })->toArray();
 
         $user = auth()->user();
-        $servicesQuery = ServiceProfile::withoutGlobalScopes();
+        $odpsQuery = Odp::withoutGlobalScopes()->where('status', 'active');
         if ($user && $user->branch_id && !$user->isSuperAdmin()) {
-            $servicesQuery->where(function ($q) use ($user) {
+            $odpsQuery->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
                   ->orWhereNull('branch_id');
             });
         }
-        $servicesQuery->where(function ($q) {
-            $q->whereNull('status')->orWhere('status', 'active');
-        });
 
-        $servicesOptions = $servicesQuery
+        $odpsOptions = $odpsQuery
             ->orderBy('name')
             ->get()
-            ->map(function ($s) {
-                $price = $s->base_price ?? $s->price ?? $s->cost_price ?? 0;
-                $st = strtoupper($s->service_type ?: 'INTERNET');
+            ->map(function ($o) {
+                $used = (int) ($o->used_port_count ?? 0);
+                $total = (int) ($o->port_count ?? 8);
                 return [
-                    'value' => (string) $s->id,
-                    'label' => $s->name,
-                    'sublabel' => "[{$st}] Rp" . number_format($price, 0, ',', '.'),
+                    'value' => (string) $o->id,
+                    'label' => "{$o->name} (" . ($o->code ?: 'ODP') . ")",
+                    'sublabel' => "Port: {$used}/{$total} | " . ($o->address ?: 'Titik Distribusi'),
                 ];
             })->toArray();
 
         return view("livewire.isp.technician.audit.form", [
             "oltsOptions" => $oltsOptions,
-            "servicesOptions" => $servicesOptions,
+            "odpsOptions" => $odpsOptions,
         ])->layout("layouts.technician-app");
     }
 }

@@ -1,16 +1,15 @@
-<div class="p-4 pb-24">
-    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">search</span>
-                Pencarian ODP
-            </h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Cari dan periksa kapasitas jaringan Optical Distribution Point (ODP).</p>
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Pencarian ODP')
+    <div class="bg-indigo-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-md">
+        <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-lg sm:text-xl">search</span>
+            <h2 class="text-base sm:text-lg font-black">Pencarian ODP</h2>
         </div>
+        <p class="text-xs text-indigo-100">Cari dan periksa kapasitas jaringan Optical Distribution Point (ODP).</p>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 mb-3.5">
         <div class="flex flex-col gap-4">
             <div class="w-full">
                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Cari Kode / Nama ODP</label>

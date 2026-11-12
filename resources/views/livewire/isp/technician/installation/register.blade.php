@@ -1,18 +1,17 @@
-<div class="p-4 pb-24">
-    <div class="mb-6 flex flex-col gap-3 justify-between gap-4">
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Registrasi ONU ke OLT')
+    <div class="bg-indigo-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-md flex justify-between items-center gap-3">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate text-indigo-500" translate="no">add_circle</span>
-                Registrasi ONU ke OLT
-            </h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftarkan modem/ONU baru ke sistem database dan perangkat OLT.</p>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="material-symbols-outlined text-lg sm:text-xl">add_circle</span>
+                <h2 class="text-base sm:text-lg font-black">Registrasi ONU ke OLT</h2>
+            </div>
+            <p class="text-xs text-indigo-100">Daftarkan modem/ONU baru ke sistem database dan perangkat OLT.</p>
         </div>
-        <div>
-            <a href="{{ route('technician.installation.scan') }}" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
-                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">arrow_back</span>
-                Kembali ke Scan
-            </a>
-        </div>
+        <a href="{{ route('technician.installation.scan') }}" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shrink-0">
+            <span class="material-symbols-outlined text-sm" translate="no">arrow_back</span>
+            <span>Scan</span>
+        </a>
     </div>
 
     @if (session()->has('success'))

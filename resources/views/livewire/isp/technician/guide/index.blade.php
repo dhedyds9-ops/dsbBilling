@@ -1,8 +1,7 @@
-@section('header_title', 'Panduan Teknisi Lapangan')
-
-<div class="space-y-4 p-4 pb-28 max-w-xl mx-auto">
+<div class="space-y-3.5 pb-6">
+    @section('header_title', 'Panduan Teknisi Lapangan')
     <!-- Header Banner -->
-    <div class="rounded-2xl p-5 shadow-md relative overflow-hidden" style="background: linear-gradient(135deg, #d97706 0%, #ea580c 50%, #b45309 100%) !important; color: #ffffff !important;">
+    <div class="rounded-2xl p-4 sm:p-5 shadow-md relative overflow-hidden" style="background: linear-gradient(135deg, #d97706 0%, #ea580c 50%, #b45309 100%) !important; color: #ffffff !important;">
         <div class="absolute -right-4 -bottom-4 opacity-15 pointer-events-none" style="color: #ffffff;">
             <span class="material-symbols-outlined text-[130px]">engineering</span>
         </div>
