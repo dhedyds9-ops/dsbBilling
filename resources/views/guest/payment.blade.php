@@ -12,31 +12,8 @@
         <link rel="stylesheet" href="/build/assets/app-B3A3qm5F.css">
     @endif
     
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'"/>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" media="print" onload="this.media='all'"/>
     <link rel="icon" href="/favicon.png?v=2" type="image/png">
 
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         body {
             background-color: #0b1329;
@@ -46,6 +23,7 @@
                 radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.9) 0, transparent 60%);
             background-attachment: fixed;
             min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         .glass-panel {
             background: rgba(17, 24, 39, 0.75);
@@ -61,7 +39,7 @@
         }
     </style>
 </head>
-<body class="font-sans text-slate-100 antialiased min-h-screen py-6 px-3 sm:px-6 lg:px-8 selection:bg-rose-500 selection:text-white">
+<body class="text-slate-100 antialiased min-h-screen py-6 px-3 sm:px-6 lg:px-8 selection:bg-rose-500 selection:text-white">
     <div class="max-w-3xl mx-auto relative z-10">
 
         <!-- Header & Logo -->
@@ -76,7 +54,7 @@
                     </div>
                 @else
                     <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-rose-600 via-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/30 border border-white/20">
-                        <span class="material-symbols-outlined text-white text-3xl">wifi_off</span>
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
                     </div>
                 @endif
                 <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">{{ $companyName }}</h1>
@@ -87,11 +65,11 @@
         <!-- Isolir Notice Banner -->
         <div class="relative overflow-hidden rounded-2xl border border-rose-500/40 bg-gradient-to-br from-rose-950/60 via-rose-900/30 to-slate-900/80 p-5 sm:p-6 mb-6 shadow-2xl shadow-rose-950/40">
             <div class="absolute -right-6 -bottom-6 opacity-10 text-rose-400 pointer-events-none">
-                <span class="material-symbols-outlined" style="font-size: 140px;">cloud_off</span>
+                <svg class="w-32 h-32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0-4 7h1a5 5 0 0 0 4.54 4.95"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
             </div>
             <div class="flex items-start gap-4 relative z-10">
                 <div class="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0 shadow-inner">
-                    <span class="material-symbols-outlined text-2xl">block</span>
+                    <svg class="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-center gap-2 mb-1.5">
@@ -121,12 +99,12 @@
                 </label>
                 <div class="flex flex-col sm:flex-row gap-2.5">
                     <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute top-1/2 -translate-y-1/2 text-slate-400" style="left: 0.875rem; font-size: 20px;">search</span>
+                        <svg class="w-5 h-5 absolute top-1/2 -translate-y-1/2 text-slate-400" style="left: 0.875rem;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                         <input type="text" name="q" value="{{ $query }}" placeholder="No WhatsApp / ID Pelanggan / Username PPPoE / No Invoice" 
                                class="w-full bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                     </div>
                     <button type="submit" class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 text-sm shrink-0">
-                        <span class="material-symbols-outlined text-sm">search</span>
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                         Cari Tagihan
                     </button>
                 </div>
@@ -135,7 +113,7 @@
 
         @if($error)
             <div class="glass-panel border-rose-500/40 bg-rose-950/40 text-rose-200 px-5 py-4 rounded-2xl mb-6 flex items-start gap-3 shadow-lg">
-                <span class="material-symbols-outlined text-rose-400 shrink-0">error</span>
+                <svg class="w-5 h-5 text-rose-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <div class="text-sm">
                     <p class="font-bold">Data Tidak Ditemukan</p>
                     <p class="text-xs text-rose-300/90 mt-0.5">{{ $error }}</p>
@@ -150,7 +128,11 @@
                 <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
-                            <span class="material-symbols-outlined text-xl">{{ $pppoe ? 'router' : 'wifi' }}</span>
+                            @if($pppoe)
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 14V6"/><path d="M18 14V6"/></svg>
+                            @else
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M12 20h.01"/></svg>
+                            @endif
                         </div>
                         <div>
                             <span class="text-xs text-slate-400 block font-medium">Informasi Pelanggan</span>
@@ -201,7 +183,7 @@
             <div class="mb-6 space-y-4">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                        <span class="material-symbols-outlined text-rose-400 text-lg">receipt_long</span>
+                        <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
                         Tagihan Belum Lunas ({{ $invoices->count() }})
                     </h3>
                 </div>
@@ -235,7 +217,7 @@
                                 <button type="button" 
                                         onclick="openPaymentModal('{{ $inv->invoice_number }}', {{ $sisa }})" 
                                         class="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 text-sm active:scale-95">
-                                    <span class="material-symbols-outlined text-lg">payments</span>
+                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
                                     Bayar Sekarang (Online)
                                 </button>
                             </div>
@@ -249,11 +231,11 @@
         <div class="glass-panel rounded-2xl p-5 sm:p-6 mb-6 shadow-xl">
             <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
                 <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                    <span class="material-symbols-outlined text-indigo-400 text-lg">credit_card</span>
-                    Cara Pembayaran & Reaktivasi
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                    Cara Pembayaran &amp; Reaktivasi
                 </h3>
                 <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">flash_on</span>
+                    <svg class="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     Otomatis Aktif
                 </span>
             </div>
@@ -276,7 +258,7 @@
                 <div class="glass-card rounded-xl p-4 border border-slate-800">
                     <div class="flex items-start gap-3">
                         <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-xl">qr_code_scanner</span>
+                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M3 12h5"/><path d="M12 3v5"/><path d="M12 16v5"/><path d="M16 12h5"/></svg>
                         </div>
                         <div>
                             <h4 class="text-sm font-bold text-white">QRIS (Semua Pembayaran Digital)</h4>
@@ -284,7 +266,7 @@
                                 Klik tombol <strong>"Bayar Sekarang"</strong> pada tagihan Anda. Scan QRIS menggunakan aplikasi perbankan (BCA Mobile, Livin Mandiri, BRImo, BNI) atau dompet digital (GoPay, OVO, DANA, ShopeePay).
                             </p>
                             <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-300 text-[11px] font-semibold">
-                                <span class="material-symbols-outlined text-sm">check_circle</span>
+                                <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                                 Pembayaran terbaca otomatis dalam 1-3 menit
                             </div>
                         </div>
@@ -294,7 +276,7 @@
                 <div class="glass-card rounded-xl p-4 border border-slate-800">
                     <div class="flex items-start gap-3">
                         <div class="w-9 h-9 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-xl">account_balance</span>
+                            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                         </div>
                         <div>
                             <h4 class="text-sm font-bold text-white">Virtual Account (VA)</h4>
@@ -321,7 +303,7 @@
                                     <button type="button" 
                                             onclick="copyToClipboard('{{ $bank['account_number'] ?? '' }}', 'Nomor rekening {{ $bank['bank_name'] ?? '' }} berhasil disalin')"
                                             class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-700 hover:bg-indigo-600 text-slate-200 transition-colors flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-xs">content_copy</span>
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                         Salin
                                     </button>
                                 </div>
@@ -344,7 +326,7 @@
                             <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $companyWhatsapp) }}?text={{ urlencode('Halo Admin, mohon info rekening resmi untuk bayar tagihan.') }}" 
                                target="_blank"
                                class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm">chat</span>
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                                 Tanya Rekening
                             </a>
                         </div>
@@ -367,7 +349,7 @@
                     <a href="https://wa.me/{{ $cleanWa }}?text={{ urlencode($waText) }}" 
                        target="_blank"
                        class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 text-sm">
-                        <span class="material-symbols-outlined text-lg">chat</span>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                         Konfirmasi Pembayaran via WhatsApp
                     </a>
                 </div>
@@ -403,11 +385,11 @@
                 <a href="https://wa.me/{{ $cleanWa }}?text={{ urlencode('Halo CS ' . $companyName . ', saya butuh bantuan terkait layanan internet.') }}" 
                    target="_blank"
                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md">
-                    <span class="material-symbols-outlined text-sm">chat</span>
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                     WhatsApp Billing: {{ $companyWhatsapp }}
                 </a>
                 <a href="{{ route('home') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700">
-                    <span class="material-symbols-outlined text-sm">home</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                     Kembali ke Beranda
                 </a>
             </div>
@@ -415,7 +397,7 @@
 
         <!-- Toast Notification (Vanilla JS) -->
         <div id="toast" class="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-2xl transition-all transform translate-y-20 opacity-0 pointer-events-none flex items-center gap-2">
-            <span class="material-symbols-outlined text-sm">check_circle</span>
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
             <span id="toastMessage">Teks berhasil disalin</span>
         </div>
 
@@ -438,11 +420,11 @@
         <div class="glass-panel rounded-2xl shadow-2xl w-full max-w-md relative z-10 overflow-hidden flex flex-col border border-slate-700 transform transition-all">
             <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
                 <h3 class="text-base font-bold text-white flex items-center gap-2">
-                    <span class="material-symbols-outlined text-indigo-400">payments</span>
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
                     Pilih Metode Pembayaran
                 </h3>
                 <button type="button" onclick="closePaymentModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
-                    <span class="material-symbols-outlined text-lg">close</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
             </div>
             
@@ -468,19 +450,20 @@
                                         <span class="text-[11px] text-slate-400">QRIS / VA / Instant Checkout</span>
                                     </div>
                                 </div>
-                                <span class="material-symbols-outlined text-indigo-400 hidden group-has-[:checked]:block text-lg">check_circle</span>
+                                <svg class="w-5 h-5 text-indigo-400 hidden group-has-[:checked]:block" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                             </label>
                             @endforeach
                         </div>
                         <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 text-sm">
-                            Lanjutkan ke Pembayaran <span class="material-symbols-outlined text-base">arrow_forward</span>
+                            Lanjutkan ke Pembayaran 
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                         </button>
                     @else
                         <div class="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4 text-xs text-amber-300">
                             Payment Gateway otomatis belum aktif. Silakan pilih opsi Transfer Bank Manual atau konfirmasi via WhatsApp CS di bawah.
                         </div>
                         <a href="https://wa.me/{{ $cleanWa }}?text={{ urlencode($waText) }}" target="_blank" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2 text-sm">
-                            <span class="material-symbols-outlined text-base">chat</span>
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                             Konfirmasi ke WhatsApp Billing
                         </a>
                     @endif
