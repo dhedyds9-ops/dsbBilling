@@ -533,11 +533,28 @@ class Customer360 extends AdminComponent
         $monthlyBill = 0;
         if ($this->getCustomer()->customerServices) {
             $this->getCustomer()->customerServices->each(function ($service) use (&$monthlyBill) {
-                if ($service->status !== 'terminated' && $service->serviceProfile) {
-                    $price = (float) ($service->serviceProfile->price ?: $service->serviceProfile->base_price);
+                if ($service->status !== 'terminated' && $service->status !== 'cancelled' && $service->serviceProfile) {
+                    $price = (float) ($service->price ?? $service->serviceProfile->price ?? $service->serviceProfile->base_price ?? $service->monthly_fee ?? 0);
                     $monthlyBill += $price;
                 }
             });
+        }
+        if ($monthlyBill <= 0 && $this->getCustomer()->customerServices) {
+            foreach ($this->getCustomer()->customerServices as $service) {
+                if ($service->serviceProfile) {
+                    $p = (float) ($service->serviceProfile->price ?? $service->serviceProfile->base_price ?? 0);
+                    if ($p > 0) {
+                        $monthlyBill = $p;
+                        break;
+                    }
+                }
+            }
+        }
+        if ($monthlyBill <= 0 && $this->getCustomer()->invoices) {
+            $latestInv = $this->getCustomer()->invoices->sortByDesc('created_at')->first();
+            if ($latestInv) {
+                $monthlyBill = (float) $latestInv->total_amount;
+            }
         }
 
         $unpaidBill = 0;

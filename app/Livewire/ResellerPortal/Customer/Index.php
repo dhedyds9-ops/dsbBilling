@@ -296,20 +296,26 @@ class Index extends AdminComponent
                 $query->where(function($q) {
                     $q->whereIn('status', ['suspend', 'suspended'])
                       ->orWhereHas('customerServices', function($cs) {
-                          $cs->whereIn('status', ['suspend', 'suspended'])
-                             ->orWhereNotNull('suspended_at')
-                             ->orWhereHas('pppoeUser', fn($pu) => $pu->whereIn('status', ['suspend', 'suspended']))
-                             ->orWhereHas('hotspotUser', fn($hu) => $hu->whereIn('status', ['suspend', 'suspended']));
+                          $cs->withoutGlobalScopes()
+                             ->where(function($sub) {
+                                 $sub->whereIn('status', ['suspend', 'suspended'])
+                                     ->orWhereNotNull('suspended_at')
+                                     ->orWhereHas('pppoeUser', fn($pu) => $pu->withoutGlobalScopes()->whereIn('status', ['suspend', 'suspended']))
+                                     ->orWhereHas('hotspotUser', fn($hu) => $hu->withoutGlobalScopes()->whereIn('status', ['suspend', 'suspended']));
+                             });
                       });
                 });
             } elseif ($this->statusFilter === 'active') {
                 $query->where(function($q) {
                     $q->where('status', 'active')
                       ->whereDoesntHave('customerServices', function($cs) {
-                          $cs->whereIn('status', ['suspend', 'suspended'])
-                             ->orWhereNotNull('suspended_at')
-                             ->orWhereHas('pppoeUser', fn($pu) => $pu->whereIn('status', ['suspend', 'suspended']))
-                             ->orWhereHas('hotspotUser', fn($hu) => $hu->whereIn('status', ['suspend', 'suspended']));
+                          $cs->withoutGlobalScopes()
+                             ->where(function($sub) {
+                                 $sub->whereIn('status', ['suspend', 'suspended'])
+                                     ->orWhereNotNull('suspended_at')
+                                     ->orWhereHas('pppoeUser', fn($pu) => $pu->withoutGlobalScopes()->whereIn('status', ['suspend', 'suspended']))
+                                     ->orWhereHas('hotspotUser', fn($hu) => $hu->withoutGlobalScopes()->whereIn('status', ['suspend', 'suspended']));
+                             });
                       });
                 });
             } else {
@@ -326,10 +332,13 @@ class Index extends AdminComponent
             $suspendCustomers = (clone $baseKpi)->where(function($q) {
                 $q->whereIn('status', ['suspend', 'suspended'])
                   ->orWhereHas('customerServices', function($cs) {
-                      $cs->whereIn('status', ['suspend', 'suspended'])
-                         ->orWhereNotNull('suspended_at')
-                         ->orWhereHas('pppoeUser', fn($pu) => $pu->whereIn('status', ['suspend', 'suspended']))
-                         ->orWhereHas('hotspotUser', fn($hu) => $hu->whereIn('status', ['suspend', 'suspended']));
+                      $cs->withoutGlobalScopes()
+                         ->where(function($sub) {
+                             $sub->whereIn('status', ['suspend', 'suspended'])
+                                 ->orWhereNotNull('suspended_at')
+                                 ->orWhereHas('pppoeUser', fn($pu) => $pu->withoutGlobalScopes()->whereIn('status', ['suspend', 'suspended']))
+                                 ->orWhereHas('hotspotUser', fn($hu) => $hu->withoutGlobalScopes()->whereIn('status', ['suspend', 'suspended']));
+                         });
                   });
             })->count();
             $activeCustomers  = max(0, $totalCustomers - $suspendCustomers);

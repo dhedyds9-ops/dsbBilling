@@ -78,6 +78,38 @@ class GuestPaymentController extends Controller
         $customerService = null;
         $activeSessions = 0;
         $activeSessionData = null;
+        $autoDetected = false;
+
+        // Auto-detect client identity from IP when redirected to isolir page without parameters
+        if ($query === '') {
+            $clientIp = $request->header('X-Forwarded-For') ?? $request->header('CF-Connecting-IP') ?? $request->ip();
+            if ($clientIp) {
+                if (str_contains($clientIp, ',')) {
+                    $clientIp = trim(explode(',', $clientIp)[0]);
+                }
+                $foundUname = null;
+                try {
+                    $foundUname = \App\Models\ISP\RadiusAccounting::where('framed_ip_address', $clientIp)
+                        ->whereNull('acct_stop_time')
+                        ->orderByDesc('rad_acct_id')
+                        ->value('username');
+                    
+                    if (!$foundUname) {
+                        $foundUname = \App\Models\ISP\PPPoEUser::withoutGlobalScopes()
+                            ->where('static_ip', $clientIp)
+                            ->value('username');
+                    }
+                    if (!$foundUname) {
+                        $foundUname = \App\Models\ISP\HotspotActiveSession::where('address', $clientIp)->value('user');
+                    }
+                } catch (\Throwable $e) {}
+
+                if ($foundUname) {
+                    $query = $foundUname;
+                    $autoDetected = true;
+                }
+            }
+        }
 
         if ($query !== '') {
             $queryLower = strtolower($query);
@@ -330,6 +362,21 @@ class GuestPaymentController extends Controller
             }
         }
 
+        $bankAccounts = [];
+        try {
+            $manualTransferConfig = \App\Models\Setting::getValue('payment_gateway.manual_transfer', null);
+            if (is_string($manualTransferConfig)) {
+                $manualTransferConfig = json_decode($manualTransferConfig, true) ?? [];
+            }
+            if (!empty($manualTransferConfig['bank_accounts']) && is_array($manualTransferConfig['bank_accounts'])) {
+                $bankAccounts = $manualTransferConfig['bank_accounts'];
+            }
+        } catch (\Throwable $e) {}
+
+        $companyName = \App\Models\Setting::getValue('company.name', config('app.name', 'dsBilling'));
+        $companyPhone = \App\Models\Setting::getValue('company.phone', '081234567890');
+        $companyWhatsapp = \App\Models\Setting::getValue('company.whatsapp', $companyPhone);
+
         return view('guest.payment', compact(
             'query',
             'customer',
@@ -342,7 +389,12 @@ class GuestPaymentController extends Controller
             'customerService',
             'activeSessions',
             'activeSessionData',
-            'activeGateways'
+            'activeGateways',
+            'bankAccounts',
+            'autoDetected',
+            'companyName',
+            'companyPhone',
+            'companyWhatsapp'
         ));
     }
 

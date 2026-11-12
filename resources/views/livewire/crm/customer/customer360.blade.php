@@ -83,17 +83,22 @@
         </div>
 
         {{-- Status Layanan --}}
-        <div class="relative overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800 group hover:shadow-lg transition-all">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-t-xl"></div>
-            <div class="absolute top-3 right-3 opacity-10 text-emerald-400 group-hover:opacity-20 group-hover:scale-110 transition-all">
-                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">check_circle</span>
+        @php
+            $firstServiceStatus = strtolower($customer->customerServices->first()?->status ?? 'inactive');
+            $isSvcSuspended = in_array($firstServiceStatus, ['suspended', 'suspend']);
+            $isSvcActive = $firstServiceStatus === 'active';
+        @endphp
+        <div class="relative overflow-x-auto rounded-xl border {{ $isSvcSuspended ? 'border-rose-200 dark:border-rose-800/60 bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/50 dark:to-slate-800' : ($isSvcActive ? 'border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/50 dark:to-slate-800' : 'border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800') }} shadow-md group hover:shadow-lg transition-all">
+            <div class="absolute top-0 left-0 right-0 h-1 {{ $isSvcSuspended ? 'bg-gradient-to-r from-rose-500 to-red-400' : ($isSvcActive ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-slate-400') }} rounded-t-xl"></div>
+            <div class="absolute top-3 right-3 opacity-10 {{ $isSvcSuspended ? 'text-rose-400' : ($isSvcActive ? 'text-emerald-400' : 'text-slate-400') }} group-hover:opacity-20 group-hover:scale-110 transition-all">
+                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:56px">{{ $isSvcSuspended ? 'block' : ($isSvcActive ? 'check_circle' : 'pending') }}</span>
             </div>
             <div class="p-4 pt-5">
-                <h3 class="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-2">Status Layanan</h3>
-                <div class="text-2xl font-black text-emerald-700 dark:text-emerald-300 mb-1">
+                <h3 class="text-xs font-bold {{ $isSvcSuspended ? 'text-rose-600 dark:text-rose-400' : ($isSvcActive ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-500') }} uppercase tracking-widest mb-2">Status Layanan</h3>
+                <div class="text-2xl font-black {{ $isSvcSuspended ? 'text-rose-700 dark:text-rose-300' : ($isSvcActive ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300') }} mb-1">
                     {{ ucfirst($customer->customerServices->first()?->status ?? 'inactive') }}
                 </div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">layanan utama aktif</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">{{ $isSvcSuspended ? 'layanan ditangguhkan (isolir)' : ($isSvcActive ? 'layanan utama aktif' : 'layanan nonaktif') }}</div>
             </div>
         </div>
 

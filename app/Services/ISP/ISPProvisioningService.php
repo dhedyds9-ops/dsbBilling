@@ -156,6 +156,22 @@ class ISPProvisioningService
                     $customerService->status = 'suspended';
                     $customerService->suspended_at = $customerService->suspended_at ?? now();
                     $customerService->saveQuietly();
+
+                    if ($pppoeUser) {
+                        $pppoeUser->timestamps = false;
+                        $pppoeUser->status = 'suspended';
+                        $pppoeUser->suspended_at = $customerService->suspended_at;
+                        $pppoeUser->saveQuietly();
+                    }
+                    if ($hotspotUser) {
+                        $hotspotUser->timestamps = false;
+                        $hotspotUser->status = 'suspended';
+                        $hotspotUser->suspended_at = $customerService->suspended_at;
+                        $hotspotUser->saveQuietly();
+                    }
+                    if ($customerService->customer) {
+                        $customerService->customer->update(['status' => 'suspend']);
+                    }
                 } catch (Throwable $e) {
                     $result['errors'][] = 'Update DB status CustomerService gagal: ' . $e->getMessage();
                 }
@@ -326,6 +342,9 @@ class ISPProvisioningService
                         $hotspotUser->status = 'active';
                         $hotspotUser->suspended_at = null;
                         $hotspotUser->saveQuietly();
+                    }
+                    if ($customerService->customer) {
+                        $customerService->customer->update(['status' => 'active']);
                     }
                 } catch (Throwable $e) {
                     $result['errors'][] = 'Update DB status CustomerService gagal: ' . $e->getMessage();

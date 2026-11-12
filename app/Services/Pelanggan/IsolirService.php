@@ -29,7 +29,7 @@ class IsolirService
         $pppoeDisplayId = $isSqlite ? "('P-' || pppoe_users.id)" : "CONCAT('P-', pppoe_users.id)";
         $hotspotDisplayId = $isSqlite ? "('H-' || hotspot_users.id)" : "CONCAT('H-', hotspot_users.id)";
 
-        $pppoe = PPPoEUser::query()
+        $pppoe = PPPoEUser::withoutGlobalScopes()
             ->leftJoin('customer_services as cs_p', 'pppoe_users.customer_service_id', '=', 'cs_p.id')
             ->leftJoin("{$customerTable} as m_p", 'cs_p.customer_id', '=', 'm_p.id')
             ->leftJoin('service_profiles as sp_p', 'pppoe_users.service_profile_id', '=', 'sp_p.id')
@@ -67,7 +67,7 @@ class IsolirService
                 'pppoe_users.suspended_at',
             ]);
 
-        $hotspot = HotspotUser::query()
+        $hotspot = HotspotUser::withoutGlobalScopes()
             ->leftJoin('customer_services as cs_h', 'hotspot_users.customer_service_id', '=', 'cs_h.id')
             ->leftJoin("{$customerTable} as m_h", 'cs_h.customer_id', '=', 'm_h.id')
             ->leftJoin('service_profiles as sp_h', 'hotspot_users.service_profile_id', '=', 'sp_h.id')
@@ -171,15 +171,15 @@ class IsolirService
 
     public function summary(): array
     {
-        $pppoeBase = PPPoEUser::where(function($q) {
-            $q->whereIn('status', ['suspended', 'suspend'])
-              ->orWhereNotNull('suspended_at')
-              ->orWhereHas('customerService', fn($cs) => $cs->whereIn('status', ['suspended', 'suspend'])->orWhereNotNull('suspended_at'));
+        $pppoeBase = PPPoEUser::withoutGlobalScopes()->where(function($q) {
+            $q->whereIn('pppoe_users.status', ['suspended', 'suspend'])
+              ->orWhereNotNull('pppoe_users.suspended_at')
+              ->orWhereHas('customerService', fn($cs) => $cs->withoutGlobalScopes()->whereIn('status', ['suspended', 'suspend'])->orWhereNotNull('suspended_at'));
         });
-        $hotspotBase = HotspotUser::where(function($q) {
-            $q->whereIn('status', ['suspended', 'suspend'])
-              ->orWhereNotNull('suspended_at')
-              ->orWhereHas('customerService', fn($cs) => $cs->whereIn('status', ['suspended', 'suspend'])->orWhereNotNull('suspended_at'));
+        $hotspotBase = HotspotUser::withoutGlobalScopes()->where(function($q) {
+            $q->whereIn('hotspot_users.status', ['suspended', 'suspend'])
+              ->orWhereNotNull('hotspot_users.suspended_at')
+              ->orWhereHas('customerService', fn($cs) => $cs->withoutGlobalScopes()->whereIn('status', ['suspended', 'suspend'])->orWhereNotNull('suspended_at'));
         });
 
         if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->hasRole(UserRole::Reseller->value)) {
