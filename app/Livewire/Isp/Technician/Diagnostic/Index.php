@@ -240,6 +240,32 @@ class Index extends Component
         })->toArray();
     }
 
+    public function deleteOrphanOnu(int $onuId): void
+    {
+        $onu = Onu::withoutGlobalScopes()->with('customerService')->find($onuId);
+        if (!$onu) return;
+
+        if ($onu->customer_id || $onu->customerService) {
+            $this->errorMessage = "Tidak dapat menghapus: Modem ini terikat dengan data pelanggan aktif.";
+            return;
+        }
+
+        $sn = $onu->serial_number;
+        try {
+            if (!empty($sn)) {
+                \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                    ->where('serial_number', $sn)
+                    ->whereNull('customer_service_id')
+                    ->forceDelete();
+            }
+            $onu->forceDelete();
+            $this->searchResults = array_values(array_filter($this->searchResults, fn($r) => $r['onu_id'] !== $onuId));
+            $this->successMessage = "Data modem hantu (SN: {$sn}) berhasil dihapus permanen dari database.";
+        } catch (\Throwable $e) {
+            $this->errorMessage = "Gagal menghapus modem: " . $e->getMessage();
+        }
+    }
+
     public function loadTicket(int $ticketId)
     {
         $this->ticket = Ticket::withoutGlobalScopes()->with(['customer.customerServices.onu'])->find($ticketId);

@@ -126,12 +126,23 @@
                                 <p class="text-[10px] text-slate-500 truncate">PPPoE: {{ $res['pppoe_username'] }} • {{ $res['package'] }}</p>
                                 <p class="text-[10px] text-sky-600 dark:text-sky-400 font-mono font-bold truncate">SN: {{ $res['serial_number'] }} ({{ $res['model'] }})</p>
                             </div>
-                            <div class="text-right shrink-0">
-                                <span class="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase {{ $res['status'] === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">
-                                    {{ $res['status'] }}
-                                </span>
-                                @if($res['rx_power'])
-                                    <p class="text-[10px] font-bold font-mono text-emerald-600 mt-0.5">{{ $res['rx_power'] }} dBm</p>
+                            <div class="text-right shrink-0 flex items-center gap-2">
+                                <div>
+                                    <span class="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase {{ in_array($res['status'], ['active', 'online']) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' }}">
+                                        {{ $res['status'] }}
+                                    </span>
+                                    @if($res['rx_power'])
+                                        <p class="text-[10px] font-bold font-mono text-emerald-600 mt-0.5">{{ $res['rx_power'] }} dBm</p>
+                                    @endif
+                                </div>
+                                @if($res['customer_name'] === 'Belum Terikat Pelanggan' && $res['status'] === 'offline')
+                                    <button type="button" 
+                                            wire:click.stop="deleteOrphanOnu({{ $res['onu_id'] }})"
+                                            wire:confirm="Hapus data modem hantu ini secara permanen dari database?"
+                                            title="Hapus data modem hantu dari database"
+                                            class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors">
+                                        <span class="material-symbols-outlined notranslate text-[18px]">delete</span>
+                                    </button>
                                 @endif
                             </div>
                         </div>

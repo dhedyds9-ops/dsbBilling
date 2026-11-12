@@ -26,12 +26,25 @@ class StateReconciliationCommand extends Command
         Log::info("StateReconciliation: Deleted $deletedSessions ghost sessions.");
 
         // 2. Audit OLT ↔ ONU (Database)
-        // Mark ONUs as inactive if they haven't been seen for > 15 minutes by the poller
+        // Mark ONUs as inactive if they haven't been seen for > 15 minutes by the poller or never seen
         $this->info('Auditing ONU states...');
         $updatedOnus = Onu::where('status', 'active')
-            ->where('last_seen_at', '<', now()->subMinutes(15))
+            ->where(function ($q) {
+                $q->where('last_seen_at', '<', now()->subMinutes(15))
+                  ->orWhereNull('last_seen_at');
+            })
+            ->where(function ($q) {
+                $q->whereNull('rx_power_dbm')
+                  ->orWhere('rx_power_dbm', '>=', 0)
+                  ->orWhere('rx_power_dbm', '<=', -45);
+            })
             ->update(['status' => 'inactive']);
         $this->info("Marked $updatedOnus ONUs as inactive due to staleness.");
+
+        // Bersihkan data modem hantu / orphan yang tidak bertuan dan tidak ada di OLT/GenieACS
+        try {
+            \Illuminate\Support\Facades\Artisan::call('onu:purge-ghosts', ['--force' => true]);
+        } catch (\Throwable $e) {}
 
         // 3. Audit GenieACS ↔ ACSDevice
         // Handled dynamically via `isDeviceOnline` logic in the engine, but we can clean up the `acs_devices` table
