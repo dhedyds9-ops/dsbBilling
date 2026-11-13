@@ -15,6 +15,7 @@ class Index extends Component
     public string $search = '';
     public string $categoryFilter = '';
     public string $statusFilter = ''; // all, active, low_stock, serialized
+    public string|int $perPage = 20;
 
     // Modal Form
     public bool $showFormModal = false;
@@ -44,6 +45,7 @@ class Index extends Component
         'search' => ['except' => ''],
         'categoryFilter' => ['except' => ''],
         'statusFilter' => ['except' => ''],
+        'perPage' => ['except' => 20],
     ];
 
     public function updatingSearch()
@@ -57,6 +59,11 @@ class Index extends Component
     }
 
     public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage()
     {
         $this->resetPage();
     }
@@ -243,7 +250,14 @@ class Index extends Component
             ->orderBy('category')
             ->orderBy('name');
 
-        $items = $query->paginate(15);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        $items = $query->paginate($perPageInt);
 
         // Data Serials jika modal serial aktif
         $serials = collect();

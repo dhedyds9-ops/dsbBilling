@@ -196,4 +196,27 @@ class FoundationInventoryTest extends TestCase
         $this->get(route('inventory.inbounds.index'))->assertStatus(200);
         $this->get(route('inventory.stock-card.index'))->assertStatus(200);
     }
+
+    public function test_items_index_per_page_filtering()
+    {
+        for ($i = 1; $i <= 25; $i++) {
+            Item::create([
+                'sku' => "SKU-PAGE-TEST-{$i}",
+                'name' => "Item Page Test {$i}",
+                'category' => 'Material Lain',
+                'unit' => 'pcs',
+                'min_stock' => 1,
+                'is_active' => true,
+            ]);
+        }
+
+        \Livewire\Livewire::actingAs($this->adminUser)
+            ->test(\App\Livewire\Inventory\Item\Index::class)
+            ->assertSet('perPage', 20)
+            ->assertViewHas('items', fn ($items) => $items->count() === 20 && $items->total() >= 25)
+            ->set('perPage', '50')
+            ->assertViewHas('items', fn ($items) => $items->count() >= 25)
+            ->set('perPage', 'all')
+            ->assertViewHas('items', fn ($items) => $items->count() >= 25);
+    }
 }
