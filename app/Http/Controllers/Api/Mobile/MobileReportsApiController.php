@@ -285,14 +285,49 @@ class MobileReportsApiController extends Controller
             });
         }
         if ($startDate) {
-            $paymentQuery->where(function($q) {
-                $q->where(function($sq) {
-                    $sq->whereMonth('paid_at', now()->month)->whereYear('paid_at', now()->year);
-                })->orWhere(function($sq) {
-                    $sq->whereNull('paid_at')->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+            if ($period === 'today') {
+                $paymentQuery->where(function($q) {
+                    $q->whereDate('paid_at', today())
+                      ->orWhere(function($sq) {
+                          $sq->whereNull('paid_at')->whereDate('created_at', today());
+                      });
                 });
+            } else {
+                $paymentQuery->where(function($q) {
+                    $q->where(function($sq) {
+                        $sq->whereMonth('paid_at', now()->month)->whereYear('paid_at', now()->year);
+                    })->orWhere(function($sq) {
+                        $sq->whereNull('paid_at')->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+                    });
+                });
+            }
+        }
+
+        $baseSuccessQuery = Payment::withoutGlobalScopes()
+            ->where(fn ($q) => $q->whereNull('gateway')->orWhere('gateway', '!=', 'reseller_topup'))
+            ->whereIn('status', ['paid', 'success', 'approved']);
+        if ($ownerId) {
+            $baseSuccessQuery->where(function ($q) use ($ownerId, $customerScope) {
+                $q->where('payments.reseller_id', $ownerId)
+                    ->orWhere('payments.created_by', $ownerId)
+                    ->orWhereHas('customer', $customerScope);
             });
         }
+
+        $todayIncome = (float) (clone $baseSuccessQuery)->where(function($q) {
+            $q->whereDate('paid_at', today())
+              ->orWhere(function($sq) {
+                  $sq->whereNull('paid_at')->whereDate('created_at', today());
+              });
+        })->sum('amount');
+
+        $monthIncome = (float) (clone $baseSuccessQuery)->where(function($q) {
+            $q->where(function($sq) {
+                $sq->whereMonth('paid_at', now()->month)->whereYear('paid_at', now()->year);
+            })->orWhere(function($sq) {
+                $sq->whereNull('paid_at')->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+            });
+        })->sum('amount');
 
         $successQuery = (clone $paymentQuery)->whereIn('status', ['paid', 'success', 'approved']);
         $paidTotal = (float) (clone $successQuery)->sum('amount');
@@ -310,7 +345,7 @@ class MobileReportsApiController extends Controller
                 $reportData = $incomeService->getTransactions([
                     'reseller_id' => $ownerId,
                     'start_date' => $startDate ? $startDate->format('Y-m-d') : now()->startOfMonth()->format('Y-m-d'),
-                    'end_date' => now()->endOfMonth()->format('Y-m-d'),
+                    'end_date' => $period === 'today' ? now()->format('Y-m-d') : now()->endOfMonth()->format('Y-m-d'),
                     'user_type' => 'all',
                 ]);
                 $resellerCommission = (float) ($reportData['summary']['fee_seller'] ?? 0);
@@ -371,6 +406,8 @@ class MobileReportsApiController extends Controller
                 'period_label' => $this->getPeriodLabel($period),
                 'paid_total' => $paidTotal,
                 'paid_count' => $paidCount,
+                'today_income' => $todayIncome,
+                'month_income' => $monthIncome,
                 'reseller_commission' => $resellerCommission,
                 'setor_pusat' => $setorPusat,
                 'pending_count' => $pendingCount,

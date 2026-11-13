@@ -68,6 +68,12 @@ class MobileAuthController extends Controller
         // Audit log
         Log::info("Mobile Staff Login: User #{$user->id} ({$user->name}) logged in as {$role}.");
 
+        $userWilayah = $user->getEffectiveWilayah();
+        $branchName = $user->branch?->name ?: ($user->parentReseller?->branch?->name ?: ("Cabang " . ($user->branch_id ?? 1)));
+        if (empty($userWilayah) && !empty($branchName)) {
+            $userWilayah = $branchName;
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil.',
@@ -83,6 +89,8 @@ class MobileAuthController extends Controller
                 'job_title' => $user->job_title ?? $role,
                 'branch_id' => $user->branch_id,
                 'reseller_id' => $user->getEffectiveResellerId(),
+                'wilayah' => $userWilayah ?: $branchName,
+                'branch_name' => $branchName,
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
             ],
@@ -110,6 +118,12 @@ class MobileAuthController extends Controller
         $activeAttendance = \App\Services\Workforce\AttendanceAuthorizationService::getActiveAttendance($user);
         $canOperate = \App\Services\Workforce\AttendanceAuthorizationService::canPerformOperations($user);
 
+        $userWilayah = $user->getEffectiveWilayah();
+        $branchName = $user->branch?->name ?: ($user->parentReseller?->branch?->name ?: ("Cabang " . ($user->branch_id ?? 1)));
+        if (empty($userWilayah) && !empty($branchName)) {
+            $userWilayah = $branchName;
+        }
+
         return response()->json([
             'success' => true,
             'user' => [
@@ -122,6 +136,8 @@ class MobileAuthController extends Controller
                 'job_title' => $user->job_title ?? $role,
                 'branch_id' => $user->branch_id,
                 'reseller_id' => $user->getEffectiveResellerId(),
+                'wilayah' => $userWilayah ?: $branchName,
+                'branch_name' => $branchName,
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
                 'has_active_attendance' => $hasActiveAttendance,

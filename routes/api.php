@@ -260,6 +260,12 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/{id}/pay-cash', [\App\Http\Controllers\Api\Mobile\MobileInvoiceApiController::class, 'payCash'])->where('id', '\d+')->name('pay-cash');
         });
 
+        // Online User Sessions (PPPoE, Hotspot, Voucher)
+        Route::prefix('sessions')->name('sessions.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\MobileSessionApiController::class, 'index'])->name('index');
+            Route::post('/{type}/{id}/kick', [\App\Http\Controllers\Api\Mobile\MobileSessionApiController::class, 'kick'])->name('kick');
+        });
+
         // Offline Sync & Notifications (Phase 2E)
         Route::prefix('sync')->name('sync.')->group(function () {
             Route::get('/bootstrap', [\App\Http\Controllers\Api\Mobile\MobileSyncApiController::class, 'bootstrap'])->name('bootstrap');
