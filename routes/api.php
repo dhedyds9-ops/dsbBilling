@@ -251,6 +251,13 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/service-profiles', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'serviceProfiles'])->name('service-profiles');
             Route::post('/', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'store'])->name('store');
             Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\MobileCustomerApiController::class, 'show'])->where('id', '\d+')->name('show');
+            Route::get('/{id}/invoices', [\App\Http\Controllers\Api\Mobile\MobileInvoiceApiController::class, 'customerInvoices'])->where('id', '\d+')->name('invoices');
+        });
+
+        // Invoices & Cashier Payments
+        Route::prefix('invoices')->name('invoices.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\MobileInvoiceApiController::class, 'index'])->name('index');
+            Route::post('/{id}/pay-cash', [\App\Http\Controllers\Api\Mobile\MobileInvoiceApiController::class, 'payCash'])->where('id', '\d+')->name('pay-cash');
         });
 
         // Offline Sync & Notifications (Phase 2E)

@@ -20,11 +20,21 @@ class MobileCustomerApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = Customer::with(['customerServices.serviceProfile', 'customerServices.onu']);
+        $query = Customer::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+            ->withoutGuests()
+            ->with([
+                'customerServices' => function ($q) {
+                    $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                      ->with(['serviceProfile', 'onu', 'pppoeUser', 'hotspotUser']);
+                }
+            ]);
 
-        if ($resellerId = $user->getEffectiveResellerId()) {
-            $query->where('reseller_id', $resellerId)
-                  ->whereHas('customerServices');
+        $resellerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+        if ($resellerId) {
+            $query->where(function ($q) use ($resellerId) {
+                $q->where('reseller_id', $resellerId)
+                  ->orWhere('created_by', $resellerId);
+            });
         } elseif (!empty($user->branch_id)) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
@@ -52,6 +62,10 @@ class MobileCustomerApiController extends Controller
 
         $items = collect($paginator->items())->map(function (Customer $c) {
             $primaryService = $c->customerServices->first();
+            $serviceUsername = $primaryService?->username
+                ?? $primaryService?->pppoeUser?->username
+                ?? $primaryService?->hotspotUser?->username;
+
             return [
                 'id' => $c->id,
                 'code' => $c->code,
@@ -66,7 +80,7 @@ class MobileCustomerApiController extends Controller
                 'longitude' => $c->longitude,
                 'service' => $primaryService ? [
                     'id' => $primaryService->id,
-                    'username' => $primaryService->username,
+                    'username' => $serviceUsername,
                     'status' => $primaryService->status,
                     'profile_name' => $primaryService->serviceProfile->name ?? null,
                     'onu_serial' => $primaryService->onu->serial_number ?? null,
@@ -92,11 +106,28 @@ class MobileCustomerApiController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $customer = Customer::with([
-            'customerServices.serviceProfile',
-            'customerServices.onu',
-            'customerServices.odp',
-        ])->findOrFail($id);
+        $user = $request->user();
+        $query = Customer::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])->with([
+            'customerServices' => function ($q) {
+                $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
+                  ->with(['serviceProfile', 'onu', 'odp', 'pppoeUser', 'hotspotUser']);
+            }
+        ]);
+
+        $resellerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+        if ($resellerId) {
+            $query->where(function ($q) use ($resellerId) {
+                $q->where('reseller_id', $resellerId)
+                  ->orWhere('created_by', $resellerId);
+            });
+        } elseif (!empty($user->branch_id)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                  ->orWhereNull('branch_id');
+            });
+        }
+
+        $customer = $query->findOrFail($id);
 
         return response()->json([
             'success' => true,

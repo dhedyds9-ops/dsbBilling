@@ -262,7 +262,8 @@ class MobileReportsApiController extends Controller
         $period = $request->input('period', 'this_month');
         $startDate = $this->resolveStartDate($period);
 
-        $isReseller = $user->hasRole('reseller') && !$user->hasAnyRole(['administrator', 'superadmin', 'manager']);
+        $isReseller = ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
+            && !$user->hasAnyRole(['administrator', 'superadmin', 'manager']);
         $ownerId = $isReseller ? ($user->getEffectiveResellerId() ?: $user->id) : null;
 
         $customerScope = function ($cq) use ($ownerId) {
@@ -285,11 +286,32 @@ class MobileReportsApiController extends Controller
             $paymentQuery->whereRaw('COALESCE(payments.paid_at, payments.created_at) >= ?', [$startDate]);
         }
 
-        $successQuery = (clone $paymentQuery)->where('status', 'success');
+        $successQuery = (clone $paymentQuery)->whereIn('status', ['paid', 'success', 'approved']);
         $paidTotal = (float) (clone $successQuery)->sum('amount');
         $paidCount = (clone $successQuery)->count();
-        $pendingCount = (clone $paymentQuery)->where('status', 'pending')->count();
-        $failedCount = (clone $paymentQuery)->where('status', 'failed')->count();
+        $pendingCount = (clone $paymentQuery)->whereIn('status', ['pending', 'waiting', 'process'])->count();
+        $failedCount = (clone $paymentQuery)->whereIn('status', ['failed', 'canceled', 'expired'])->count();
+
+        $resellerCommission = 0.0;
+        $setorPusat = 0.0;
+        if ($ownerId) {
+            try {
+                $incomeService = app(\App\Services\Keuangan\IncomeReportService::class);
+                $reportData = $incomeService->getTransactions([
+                    'reseller_id' => $ownerId,
+                    'start_date' => $startDate ? $startDate->format('Y-m-d') : now()->startOfMonth()->format('Y-m-d'),
+                    'end_date' => now()->endOfMonth()->format('Y-m-d'),
+                    'user_type' => 'all',
+                ]);
+                $resellerCommission = (float) ($reportData['summary']['fee_seller'] ?? 0);
+                $setorPusat = (float) ($reportData['summary']['profit'] ?? 0);
+                if ($paidTotal <= 0 && !empty($reportData['summary']['total_ppn'])) {
+                    $paidTotal = (float) $reportData['summary']['total_ppn'];
+                }
+            } catch (\Throwable $e) {
+                // Fallback gracefully
+            }
+        }
 
         $invoiceQuery = Invoice::withoutGlobalScopes()->whereIn('status', ['unpaid', 'partial']);
         if ($ownerId) {
@@ -322,6 +344,8 @@ class MobileReportsApiController extends Controller
                 'period_label' => $this->getPeriodLabel($period),
                 'paid_total' => $paidTotal,
                 'paid_count' => $paidCount,
+                'reseller_commission' => $resellerCommission,
+                'setor_pusat' => $setorPusat,
                 'pending_count' => $pendingCount,
                 'failed_count' => $failedCount,
                 'unpaid_total' => $unpaidTotal,
