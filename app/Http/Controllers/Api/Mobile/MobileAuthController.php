@@ -74,6 +74,8 @@ class MobileAuthController extends Controller
             $userWilayah = $branchName;
         }
 
+        $brandName = $this->resolveBrandName($request);
+
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil.',
@@ -91,6 +93,7 @@ class MobileAuthController extends Controller
                 'reseller_id' => $user->getEffectiveResellerId(),
                 'wilayah' => $userWilayah ?: $branchName,
                 'branch_name' => $branchName,
+                'brand_name' => $brandName,
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
             ],
@@ -124,6 +127,8 @@ class MobileAuthController extends Controller
             $userWilayah = $branchName;
         }
 
+        $brandName = $this->resolveBrandName($request);
+
         return response()->json([
             'success' => true,
             'user' => [
@@ -138,6 +143,7 @@ class MobileAuthController extends Controller
                 'reseller_id' => $user->getEffectiveResellerId(),
                 'wilayah' => $userWilayah ?: $branchName,
                 'branch_name' => $branchName,
+                'brand_name' => $brandName,
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
                 'has_active_attendance' => $hasActiveAttendance,
@@ -277,5 +283,24 @@ class MobileAuthController extends Controller
         }
 
         return array_values(array_unique($perms));
+    }
+
+    private function resolveBrandName(Request $request): string
+    {
+        $settingBrand = \App\Models\Setting::getValue('app.brand_name') 
+            ?: \App\Models\Setting::getValue('company.name') 
+            ?: \App\Models\Setting::getValue('company.partner_name');
+
+        if (!empty($settingBrand)) {
+            return (string) $settingBrand;
+        }
+
+        $host = $request->header('X-Forwarded-Host') ?: $request->getHost();
+        $parts = explode('.', $host);
+        if (!empty($parts[0]) && !in_array($parts[0], ['localhost', '127', 'www', 'api', 'central'])) {
+            return ucfirst($parts[0]);
+        }
+
+        return config('app.name', 'dsBilling');
     }
 }
