@@ -262,9 +262,11 @@ class MobileReportsApiController extends Controller
         $period = $request->input('period', 'this_month');
         $startDate = $this->resolveStartDate($period);
 
-        $isReseller = ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
-            && !$user->hasAnyRole(['administrator', 'superadmin', 'manager']);
-        $ownerId = $isReseller ? ($user->getEffectiveResellerId() ?: $user->id) : null;
+        $ownerId = $user->getEffectiveResellerId() ?? (
+            ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
+                ? ($user->reseller_id ?: $user->id)
+                : null
+        );
 
         $customerScope = function ($cq) use ($ownerId) {
             $cq->withoutGlobalScopes()->where(function ($sub) use ($ownerId) {
@@ -283,7 +285,13 @@ class MobileReportsApiController extends Controller
             });
         }
         if ($startDate) {
-            $paymentQuery->whereRaw('COALESCE(payments.paid_at, payments.created_at) >= ?', [$startDate]);
+            $paymentQuery->where(function($q) {
+                $q->where(function($sq) {
+                    $sq->whereMonth('paid_at', now()->month)->whereYear('paid_at', now()->year);
+                })->orWhere(function($sq) {
+                    $sq->whereNull('paid_at')->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+                });
+            });
         }
 
         $successQuery = (clone $paymentQuery)->whereIn('status', ['paid', 'success', 'approved']);
@@ -294,6 +302,8 @@ class MobileReportsApiController extends Controller
 
         $resellerCommission = 0.0;
         $setorPusat = 0.0;
+        $recent = collect();
+
         if ($ownerId) {
             try {
                 $incomeService = app(\App\Services\Keuangan\IncomeReportService::class);
@@ -305,8 +315,23 @@ class MobileReportsApiController extends Controller
                 ]);
                 $resellerCommission = (float) ($reportData['summary']['fee_seller'] ?? 0);
                 $setorPusat = (float) ($reportData['summary']['profit'] ?? 0);
-                if ($paidTotal <= 0 && !empty($reportData['summary']['total_ppn'])) {
-                    $paidTotal = (float) $reportData['summary']['total_ppn'];
+                $serviceTotal = (float) ($reportData['summary']['total_ppn'] ?? 0);
+                if ($serviceTotal > 0) {
+                    $paidTotal = $serviceTotal;
+                    $paidCount = count($reportData['rows'] ?? []);
+                }
+
+                if (!empty($reportData['rows'])) {
+                    $recent = collect($reportData['rows'])->take(10)->map(function ($r) {
+                        return [
+                            'id' => $r['id'] ?? 0,
+                            'reference_number' => $r['invoice_number'] ?? '-',
+                            'customer_name' => $r['customer_name'] ?? 'Pelanggan',
+                            'amount' => (float) ($r['harga_ppn'] ?? 0),
+                            'method' => 'cash',
+                            'paid_at' => $r['paid_at'] ?? now()->format('Y-m-d H:i'),
+                        ];
+                    });
                 }
             } catch (\Throwable $e) {
                 // Fallback gracefully
@@ -323,18 +348,20 @@ class MobileReportsApiController extends Controller
         $unpaidCount = (clone $invoiceQuery)->count();
         $unpaidTotal = (float) (clone $invoiceQuery)->selectRaw('COALESCE(SUM(total_amount - COALESCE(paid_amount, 0)), 0) as outstanding')->value('outstanding');
 
-        $recent = (clone $successQuery)->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
-            ->orderByRaw('COALESCE(payments.paid_at, payments.created_at) DESC')
-            ->limit(10)
-            ->get()
-            ->map(fn ($p) => [
-                'id' => $p->id,
-                'reference_number' => $p->reference_number,
-                'customer_name' => $p->customer?->name ?: 'Pelanggan',
-                'amount' => (float) $p->amount,
-                'method' => $p->method,
-                'paid_at' => ($p->paid_at ?: $p->created_at)?->format('Y-m-d H:i'),
-            ]);
+        if ($recent->isEmpty()) {
+            $recent = (clone $successQuery)->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+                ->orderByRaw('COALESCE(payments.paid_at, payments.created_at) DESC')
+                ->limit(10)
+                ->get()
+                ->map(fn ($p) => [
+                    'id' => $p->id,
+                    'reference_number' => $p->reference_number,
+                    'customer_name' => $p->customer?->name ?: 'Pelanggan',
+                    'amount' => (float) $p->amount,
+                    'method' => $p->method,
+                    'paid_at' => ($p->paid_at ?: $p->created_at)?->format('Y-m-d H:i'),
+                ]);
+        }
 
         return response()->json([
             'success' => true,
