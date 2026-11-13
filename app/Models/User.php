@@ -296,16 +296,6 @@ class User extends Authenticatable
                 ]);
         }
 
-        if ($this->isReseller()) {
-            return str_starts_with($permission, 'customer.')
-                || str_starts_with($permission, 'workforce.')
-                || str_starts_with($permission, 'support.')
-                || in_array($permission, [
-                    'onu.view', 'onu.diagnose', 'onu.configure.wifi', 'onu.reboot',
-                    'inventory.custody', 'inventory.view', 'inventory.request',
-                    'gis.view', 'billing.view'
-                ]);
-        }
 
         if (str_contains($title, 'marketing') || str_contains($title, 'sales') || $this->hasRole('marketing')) {
             return str_starts_with($permission, 'crm.') || str_starts_with($permission, 'customer.');
