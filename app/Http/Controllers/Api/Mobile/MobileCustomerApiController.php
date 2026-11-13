@@ -23,7 +23,8 @@ class MobileCustomerApiController extends Controller
         $query = Customer::with(['customerServices.serviceProfile', 'customerServices.onu']);
 
         if ($resellerId = $user->getEffectiveResellerId()) {
-            $query->where('reseller_id', $resellerId);
+            $query->where('reseller_id', $resellerId)
+                  ->whereHas('customerServices');
         } elseif (!empty($user->branch_id)) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
