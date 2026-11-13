@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Billing\Invoice;
+use App\Models\Payment\Payment;
 use App\Models\Inventory\InventoryCustodyTransfer;
 use App\Models\Inventory\InventoryReturn;
 use App\Models\Workforce\MaterialUsage;
@@ -244,6 +246,88 @@ class MobileReportsApiController extends Controller
             'message' => 'Log aktivitas operasional berhasil dimuat.',
             'count' => $sorted->count(),
             'data' => $sorted,
+        ]);
+    }
+
+    /**
+     * Revenue Summary (Reseller & Staff).
+     *
+     * Sumber data SAMA dengan halaman web "Data Tagihan > Pembayaran":
+     * hanya pembayaran berstatus `success` yang dihitung sebagai penerimaan.
+     * Aplikasi Android TIDAK boleh menghitung sendiri (lihat SSOT).
+     */
+    public function revenueSummary(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $period = $request->input('period', 'this_month');
+        $startDate = $this->resolveStartDate($period);
+
+        $isReseller = $user->hasRole('reseller') && !$user->hasAnyRole(['administrator', 'superadmin', 'manager']);
+        $ownerId = $isReseller ? ($user->getEffectiveResellerId() ?: $user->id) : null;
+
+        $customerScope = function ($cq) use ($ownerId) {
+            $cq->withoutGlobalScopes()->where(function ($sub) use ($ownerId) {
+                $sub->where('customers.reseller_id', $ownerId)
+                    ->orWhere('customers.created_by', $ownerId);
+            });
+        };
+
+        $paymentQuery = Payment::withoutGlobalScopes()
+            ->where(fn ($q) => $q->whereNull('gateway')->orWhere('gateway', '!=', 'reseller_topup'));
+        if ($ownerId) {
+            $paymentQuery->where(function ($q) use ($ownerId, $customerScope) {
+                $q->where('payments.reseller_id', $ownerId)
+                    ->orWhere('payments.created_by', $ownerId)
+                    ->orWhereHas('customer', $customerScope);
+            });
+        }
+        if ($startDate) {
+            $paymentQuery->whereRaw('COALESCE(payments.paid_at, payments.created_at) >= ?', [$startDate]);
+        }
+
+        $successQuery = (clone $paymentQuery)->where('status', 'success');
+        $paidTotal = (float) (clone $successQuery)->sum('amount');
+        $paidCount = (clone $successQuery)->count();
+        $pendingCount = (clone $paymentQuery)->where('status', 'pending')->count();
+        $failedCount = (clone $paymentQuery)->where('status', 'failed')->count();
+
+        $invoiceQuery = Invoice::withoutGlobalScopes()->whereIn('status', ['unpaid', 'partial']);
+        if ($ownerId) {
+            $invoiceQuery->where(function ($q) use ($ownerId, $customerScope) {
+                $q->where('invoices.reseller_id', $ownerId)
+                    ->orWhereHas('customer', $customerScope);
+            });
+        }
+        $unpaidCount = (clone $invoiceQuery)->count();
+        $unpaidTotal = (float) (clone $invoiceQuery)->selectRaw('COALESCE(SUM(total_amount - COALESCE(paid_amount, 0)), 0) as outstanding')->value('outstanding');
+
+        $recent = (clone $successQuery)->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+            ->orderByRaw('COALESCE(payments.paid_at, payments.created_at) DESC')
+            ->limit(10)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'reference_number' => $p->reference_number,
+                'customer_name' => $p->customer?->name ?: 'Pelanggan',
+                'amount' => (float) $p->amount,
+                'method' => $p->method,
+                'paid_at' => ($p->paid_at ?: $p->created_at)?->format('Y-m-d H:i'),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ringkasan pendapatan berhasil dimuat.',
+            'data' => [
+                'period' => $period,
+                'period_label' => $this->getPeriodLabel($period),
+                'paid_total' => $paidTotal,
+                'paid_count' => $paidCount,
+                'pending_count' => $pendingCount,
+                'failed_count' => $failedCount,
+                'unpaid_total' => $unpaidTotal,
+                'unpaid_count' => $unpaidCount,
+                'recent_payments' => $recent,
+            ],
         ]);
     }
 

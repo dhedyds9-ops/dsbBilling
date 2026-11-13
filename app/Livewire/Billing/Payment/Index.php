@@ -295,7 +295,9 @@ class Index extends BaseBillingComponent
 
         $stats = [
             'total' => (clone $baseStatsQuery)->count(),
-            'total_amount' => (clone $baseStatsQuery)->sum('amount'),
+            // Total Penerimaan hanya menghitung pembayaran yang benar-benar berhasil
+            // (pending & gagal/dibatalkan tidak boleh ikut dijumlahkan).
+            'total_amount' => (clone $baseStatsQuery)->where('status', 'success')->sum('amount'),
             'success' => (clone $baseStatsQuery)->where('status', 'success')->count(),
             'pending' => (clone $baseStatsQuery)->where('status', 'pending')->count(),
             'failed' => (clone $baseStatsQuery)->where('status', 'failed')->count(),

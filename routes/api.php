@@ -270,6 +270,7 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::get('/technician-performance', [\App\Http\Controllers\Api\Mobile\MobileReportsApiController::class, 'technicianPerformance'])->name('technician-performance');
             Route::get('/material-consumption', [\App\Http\Controllers\Api\Mobile\MobileReportsApiController::class, 'materialConsumption'])->name('material-consumption');
             Route::get('/activity-logs', [\App\Http\Controllers\Api\Mobile\MobileReportsApiController::class, 'activityLogs'])->name('activity-logs');
+            Route::get('/revenue-summary', [\App\Http\Controllers\Api\Mobile\MobileReportsApiController::class, 'revenueSummary'])->name('revenue-summary');
         });
 
         // ACS TR-069 Proxy (Replaces direct NBI access)

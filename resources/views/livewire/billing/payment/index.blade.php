@@ -25,7 +25,7 @@
                     <div class="flex items-baseline gap-2">
                         <span class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Rp {{ number_format($stats['total_amount'] ?? 0, 0, ',', '.') }}</span>
                     </div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ number_format($stats['total'] ?? 0) }} Transaksi</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ number_format($stats['success'] ?? 0) }} Transaksi Berhasil (dari {{ number_format($stats['total'] ?? 0) }})</p>
                 </div>
             </div>
 
