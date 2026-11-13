@@ -19,6 +19,7 @@ class Index extends Component
     public string $warehouseFilter = '';
     public string $dateFrom = '';
     public string $dateTo = '';
+    public string|int $perPage = 20;
 
     // Modal Form Penerimaan Barang (Create & Edit Lengkap)
     public bool $showCreateModal = false;
@@ -48,7 +49,13 @@ class Index extends Component
         'warehouseFilter' => ['except' => ''],
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
+        'perPage' => ['except' => 20],
     ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
 
     public function mount()
     {
@@ -422,7 +429,14 @@ class Index extends Component
             $query->whereDate('received_date', '<=', $this->dateTo);
         }
 
-        $inbounds = $query->paginate(15);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        $inbounds = $query->paginate($perPageInt);
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
 

@@ -42,14 +42,26 @@
                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400">
             </div>
 
-            <div class="min-w-[230px]">
-                <select wire:model.live="warehouseFilter"
-                        class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer">
-                    <option value="">Semua Gudang Asal</option>
-                    @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
-                    @endforeach
-                </select>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="min-w-[200px] flex-1 sm:flex-initial">
+                    <select wire:model.live="warehouseFilter"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer">
+                        <option value="">Semua Gudang Asal</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="min-w-[130px] flex-1 sm:flex-initial">
+                    <select wire:model.live="perPage"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer font-medium">
+                        <option value="20">20 / Hal</option>
+                        <option value="50">50 / Hal</option>
+                        <option value="100">100 / Hal</option>
+                        <option value="all">All (Semua)</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -131,11 +143,14 @@
             </table>
         </div>
 
-        @if($dispatches->hasPages())
-            <div class="p-4 border-t border-slate-200 dark:border-slate-700/80">
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+                Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $dispatches->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $dispatches->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $dispatches->total() }}</span> dokumen pengeluaran
+            </div>
+            <div>
                 {{ $dispatches->links() }}
             </div>
-        @endif
+        </div>
     </div>
 
     {{-- MODAL PENGELUARAN BARANG --}}

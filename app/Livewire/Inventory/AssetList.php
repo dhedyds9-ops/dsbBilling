@@ -19,7 +19,7 @@ class AssetList extends AdminComponent
 
     public string $sortField = 'created_at';
     public string $sortDirection = 'desc';
-    public int $perPage = 15;
+    public string|int $perPage = 20;
     
     // CRUD Properties
     public bool $isModalOpen = false;
@@ -129,6 +129,11 @@ class AssetList extends AdminComponent
         $this->resetPage();
     }
 
+    public function updatingPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     public function getAssets()
     {
         $query = Asset::with('vendor');
@@ -145,7 +150,14 @@ class AssetList extends AdminComponent
             $query->where('status', $this->filters['status']);
         }
         
-        return $query->orderBy($this->sortField, $this->sortDirection)->paginate($this->perPage);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        return $query->orderBy($this->sortField, $this->sortDirection)->paginate($perPageInt);
     }
 
     public function getAssetStats(): array

@@ -17,6 +17,19 @@ class Index extends Component
 
     public $activeTab = 'stock_position'; // stock_position, mutations, custody
 
+    public string|int $perPage = 20;
+
+    protected $queryString = [
+        'activeTab' => ['except' => 'stock_position'],
+        'perPage' => ['except' => 20],
+        'page' => ['except' => 1],
+    ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
+
     // Filters for Stock Position
     public $warehouseId = '';
     public $categoryFilter = '';
@@ -53,9 +66,16 @@ class Index extends Component
         if ($this->activeTab === 'stock_position') {
             $stockQuery = InventoryStock::with(['item', 'warehouse'])
                 ->when($this->warehouseId, fn($q) => $q->where('warehouse_id', $this->warehouseId))
-                ->when($this->categoryFilter, fn($q) => $q->whereHas('item', fn($i) => $i->where('category', $this->categoryFilter)))
-                ->paginate(15);
-            $stockData = $stockQuery;
+                ->when($this->categoryFilter, fn($q) => $q->whereHas('item', fn($i) => $i->where('category', $this->categoryFilter)));
+
+            $perPageInt = match ((string) $this->perPage) {
+                '50' => 50,
+                '100' => 100,
+                'all' => max(1, (clone $stockQuery)->count()),
+                default => 20,
+            };
+
+            $stockData = $stockQuery->paginate($perPageInt);
         }
 
         // 2. Laporan Mutasi
@@ -66,9 +86,16 @@ class Index extends Component
                 ->when($this->endDate, fn($q) => $q->whereDate('created_at', '<=', $this->endDate))
                 ->when($this->mutationWarehouseId, fn($q) => $q->where('warehouse_id', $this->mutationWarehouseId))
                 ->when($this->mutationType, fn($q) => $q->where('type', $this->mutationType))
-                ->latest('id')
-                ->paginate(15);
-            $mutationData = $mutQuery;
+                ->latest('id');
+
+            $perPageInt = match ((string) $this->perPage) {
+                '50' => 50,
+                '100' => 100,
+                'all' => max(1, (clone $mutQuery)->count()),
+                default => 20,
+            };
+
+            $mutationData = $mutQuery->paginate($perPageInt);
         }
 
         // 3. Laporan Custody Tim
@@ -77,9 +104,16 @@ class Index extends Component
             $custQuery = InventoryCustody::with(['item', 'holder', 'branch'])
                 ->when($this->custodyHolderType, fn($q) => $q->where('holder_type', $this->custodyHolderType))
                 ->when($this->custodyStatus, fn($q) => $q->where('status', $this->custodyStatus))
-                ->latest('id')
-                ->paginate(15);
-            $custodyData = $custQuery;
+                ->latest('id');
+
+            $perPageInt = match ((string) $this->perPage) {
+                '50' => 50,
+                '100' => 100,
+                'all' => max(1, (clone $custQuery)->count()),
+                default => 20,
+            };
+
+            $custodyData = $custQuery->paginate($perPageInt);
         }
 
         return view('livewire.inventory.reports.index', [

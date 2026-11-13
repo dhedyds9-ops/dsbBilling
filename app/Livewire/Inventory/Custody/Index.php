@@ -17,6 +17,7 @@ class Index extends Component
     public string $search = '';
     public string $holderTypeFilter = ''; // reseller, technician, all
     public ?int $holderFilter = null;
+    public string|int $perPage = 20;
 
     // Modal Serah Terima ke Teknisi (Handover - Metode A)
     public bool $showHandoverModal = false;
@@ -32,7 +33,14 @@ class Index extends Component
         'search' => ['except' => ''],
         'holderTypeFilter' => ['except' => ''],
         'holderFilter' => ['except' => null],
+        'perPage' => ['except' => 20],
+        'page' => ['except' => 1],
     ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
 
     public function setTab(string $tab)
     {
@@ -159,7 +167,13 @@ class Index extends Component
             });
         }
 
-        $custodies = $custodyQuery->paginate(15);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $custodyQuery)->count()),
+            default => 20,
+        };
+        $custodies = $custodyQuery->paginate($perPageInt);
 
         // 2. Query Transfers (Riwayat Serah Terima)
         $transferQuery = InventoryCustodyTransfer::with(['fromUser', 'toUser', 'item', 'itemSerial'])
@@ -171,7 +185,13 @@ class Index extends Component
             $transferQuery->where('to_user_id', $user->id);
         }
 
-        $transfers = $transferQuery->paginate(15);
+        $transferPerPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $transferQuery)->count()),
+            default => 20,
+        };
+        $transfers = $transferQuery->paginate($transferPerPageInt);
 
         // List Teknisi untuk dropdown modal serah terima
         $technicians = User::getEligibleTechnicians();

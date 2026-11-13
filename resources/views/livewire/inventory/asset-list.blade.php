@@ -108,10 +108,10 @@
                 </select>
                 <select wire:model.live="perPage"
                         class="w-full sm:w-auto pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                    <option value="15">15 / hal</option>
-                    <option value="25">25 / hal</option>
-                    <option value="50">50 / hal</option>
-                    <option value="100">100 / hal</option>
+                    <option value="20">20 / Hal</option>
+                    <option value="50">50 / Hal</option>
+                    <option value="100">100 / Hal</option>
+                    <option value="all">All (Semua)</option>
                 </select>
                 @if(($filters['search'] ?? '') !== '' || ($filters['status'] ?? 'all') !== 'all')
                     <button type="button" wire:click="resetFilters"
@@ -210,11 +210,14 @@
             </table>
         </div>
 
-        @if(method_exists($assets, 'hasPages') && $assets->hasPages())
-            <div class="bg-white dark:bg-slate-800 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+                Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $assets->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $assets->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $assets->total() }}</span> data
+            </div>
+            <div>
                 {{ $assets->links() }}
             </div>
-        @endif
+        </div>
     </div>
 
     {{-- MODAL CREATE / EDIT --}}

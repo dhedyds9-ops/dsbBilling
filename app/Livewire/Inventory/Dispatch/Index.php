@@ -21,6 +21,7 @@ class Index extends Component
     public string $search = '';
     public string $warehouseFilter = '';
     public ?int $requisition_id = null; // query parameter from requisition page
+    public string|int $perPage = 20;
 
     // Modal Form Dispatch
     public bool $showCreateModal = false;
@@ -41,7 +42,13 @@ class Index extends Component
         'search' => ['except' => ''],
         'warehouseFilter' => ['except' => ''],
         'requisition_id' => ['except' => null],
+        'perPage' => ['except' => 20],
     ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
 
     public function mount()
     {
@@ -334,7 +341,14 @@ class Index extends Component
             $query->where('warehouse_id', $this->warehouseFilter);
         }
 
-        $dispatches = $query->paginate(15);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        $dispatches = $query->paginate($perPageInt);
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
         $customers = Customer::query()

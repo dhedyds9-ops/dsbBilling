@@ -18,6 +18,7 @@ class Index extends Component
     public string $typeFilter = '';
     public string $dateFrom = '';
     public string $dateTo = '';
+    public string|int $perPage = 20;
 
     protected $queryString = [
         'warehouseId' => ['except' => null],
@@ -25,7 +26,13 @@ class Index extends Component
         'typeFilter' => ['except' => ''],
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
+        'perPage' => ['except' => 20],
     ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
 
     public function mount()
     {
@@ -130,7 +137,14 @@ class Index extends Component
                 $mutQuery->where('type', $this->typeFilter);
             }
 
-            $mutations = $mutQuery->orderBy('created_at', 'asc')->orderBy('id', 'asc')->paginate(25);
+            $perPageInt = match ((string) $this->perPage) {
+                '50' => 50,
+                '100' => 100,
+                'all' => max(1, (clone $mutQuery)->count()),
+                default => 20,
+            };
+
+            $mutations = $mutQuery->orderBy('created_at', 'asc')->orderBy('id', 'asc')->paginate($perPageInt);
         }
 
         return view('livewire.inventory.stock-card.index', [

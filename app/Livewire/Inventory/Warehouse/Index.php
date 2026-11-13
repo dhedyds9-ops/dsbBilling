@@ -14,6 +14,7 @@ class Index extends Component
 
     public string $search = '';
     public string $typeFilter = '';
+    public string|int $perPage = 20;
 
     // Modal Form
     public bool $showFormModal = false;
@@ -35,6 +36,7 @@ class Index extends Component
     protected $queryString = [
         'search' => ['except' => ''],
         'typeFilter' => ['except' => ''],
+        'perPage' => ['except' => 20],
     ];
 
     public function updatingSearch()
@@ -43,6 +45,11 @@ class Index extends Component
     }
 
     public function updatingTypeFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage()
     {
         $this->resetPage();
     }
@@ -158,7 +165,7 @@ class Index extends Component
     {
         $q = trim($this->search);
 
-        $warehouses = Warehouse::with(['branch', 'manager'])
+        $query = Warehouse::with(['branch', 'manager'])
             ->withCount('stocks')
             ->when(!empty($q), function ($b) use ($q) {
                 $b->where(function ($sub) use ($q) {
@@ -171,8 +178,16 @@ class Index extends Component
                 $b->where('type', $this->typeFilter);
             })
             ->orderBy('type')
-            ->orderBy('name')
-            ->paginate(12);
+            ->orderBy('name');
+
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        $warehouses = $query->paginate($perPageInt);
 
         $branches = Branch::where('is_active', true)->orderBy('name')->get();
         $managers = User::where('is_active', true)->orderBy('name')->get();

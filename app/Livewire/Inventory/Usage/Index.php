@@ -18,6 +18,7 @@ class Index extends Component
     public string $search = '';
     public string $workOrderFilter = '';
     public ?int $technicianFilter = null;
+    public string|int $perPage = 20;
 
     // Modal Form Catat Pemakaian
     public bool $showCreateModal = false;
@@ -37,7 +38,13 @@ class Index extends Component
         'search' => ['except' => ''],
         'workOrderFilter' => ['except' => ''],
         'technicianFilter' => ['except' => null],
+        'perPage' => ['except' => 20],
     ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
 
     public function mount()
     {
@@ -209,7 +216,14 @@ class Index extends Component
             });
         }
 
-        $usages = $query->paginate(15);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        $usages = $query->paginate($perPageInt);
 
         $technicians = User::getEligibleTechnicians();
 

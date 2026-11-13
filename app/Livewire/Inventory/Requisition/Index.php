@@ -19,6 +19,7 @@ class Index extends Component
     public string $search = '';
     public string $statusFilter = ''; // all, pending, approved, rejected, dispatched
     public string $warehouseFilter = '';
+    public string|int $perPage = 20;
 
     // Modal Form Permintaan
     public bool $showCreateModal = false;
@@ -42,7 +43,14 @@ class Index extends Component
         'search' => ['except' => ''],
         'statusFilter' => ['except' => ''],
         'warehouseFilter' => ['except' => ''],
+        'perPage' => ['except' => 20],
+        'page' => ['except' => 1],
     ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
 
     public function updatingSearch()
     {
@@ -384,7 +392,14 @@ class Index extends Component
             $query->where('warehouse_id', $this->warehouseFilter);
         }
 
-        $requisitions = $query->paginate(15);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        $requisitions = $query->paginate($perPageInt);
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $availableItems = Item::active()->orderBy('name')->get();
         $customers = Customer::query()

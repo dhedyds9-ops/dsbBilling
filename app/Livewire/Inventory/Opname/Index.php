@@ -17,6 +17,19 @@ class Index extends Component
     public $search = '';
     public $warehouseFilter = '';
     public $statusFilter = '';
+    public string|int $perPage = 20;
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'warehouseFilter' => ['except' => ''],
+        'statusFilter' => ['except' => ''],
+        'perPage' => ['except' => 20],
+    ];
+
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
 
     // Modal Create / Edit
     public $showCreateModal = false;
@@ -192,7 +205,14 @@ class Index extends Component
             $query->where('status', $this->statusFilter);
         }
 
-        $opnames = $query->paginate(10);
+        $perPageInt = match ((string) $this->perPage) {
+            '50' => 50,
+            '100' => 100,
+            'all' => max(1, (clone $query)->count()),
+            default => 20,
+        };
+
+        $opnames = $query->paginate($perPageInt);
         $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
 
         return view('livewire.inventory.opname.index', [

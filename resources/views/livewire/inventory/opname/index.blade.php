@@ -49,12 +49,21 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="w-full sm:w-auto sm:min-w-[210px] flex-1 sm:flex-initial">
+                <div class="w-full sm:w-auto sm:min-w-[190px] flex-1 sm:flex-initial">
                     <select wire:model.live="statusFilter" class="w-full py-2.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
                         <option value="">Semua Status</option>
                         <option value="draft">Draft</option>
                         <option value="in_progress">Sedang Dihitung</option>
                         <option value="completed">Selesai (Adjusted)</option>
+                    </select>
+                </div>
+                <div class="min-w-[130px] flex-1 sm:flex-initial">
+                    <select wire:model.live="perPage"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
+                        <option value="20">20 / Hal</option>
+                        <option value="50">50 / Hal</option>
+                        <option value="100">100 / Hal</option>
+                        <option value="all">All (Semua)</option>
                     </select>
                 </div>
             </div>
@@ -131,8 +140,13 @@
                 </tbody>
             </table>
         </div>
-        <div class="px-5 py-4 border-t border-slate-200 dark:border-slate-700">
-            {{ $opnames->links() }}
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+                Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $opnames->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $opnames->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $opnames->total() }}</span> sesi opname
+            </div>
+            <div>
+                {{ $opnames->links() }}
+            </div>
         </div>
     </div>
 

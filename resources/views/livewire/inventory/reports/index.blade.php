@@ -56,6 +56,15 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="min-w-[130px] flex-1 sm:flex-initial">
+                    <select wire:model.live="perPage"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
+                        <option value="20">20 / Hal</option>
+                        <option value="50">50 / Hal</option>
+                        <option value="100">100 / Hal</option>
+                        <option value="all">All (Semua)</option>
+                    </select>
+                </div>
             </div>
             <div class="text-xs text-slate-500">
                 Menampilkan posisi fisik stok per gudang.
@@ -105,8 +114,13 @@
                     </tbody>
                 </table>
             </div>
-            <div class="px-5 py-4 border-t border-slate-200 dark:border-slate-700">
-                {{ $stockData->links() }}
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $stockData->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $stockData->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $stockData->total() }}</span> data
+                </div>
+                <div>
+                    {{ $stockData->links() }}
+                </div>
             </div>
         </div>
     </div>
@@ -143,6 +157,16 @@
                         <option value="return_damaged">Retur Rusak (QC)</option>
                         <option value="adjustment_in">Adjustment Masuk</option>
                         <option value="adjustment_out">Adjustment Keluar</option>
+                    </select>
+                </div>
+
+                <div class="min-w-[130px] flex-1 sm:flex-initial">
+                    <select wire:model.live="perPage"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
+                        <option value="20">20 / Hal</option>
+                        <option value="50">50 / Hal</option>
+                        <option value="100">100 / Hal</option>
+                        <option value="all">All (Semua)</option>
                     </select>
                 </div>
             </div>
@@ -194,8 +218,13 @@
                     </tbody>
                 </table>
             </div>
-            <div class="px-5 py-4 border-t border-slate-200 dark:border-slate-700">
-                {{ $mutationData->links() }}
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $mutationData->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $mutationData->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $mutationData->total() }}</span> data
+                </div>
+                <div>
+                    {{ $mutationData->links() }}
+                </div>
             </div>
         </div>
     </div>
@@ -220,6 +249,15 @@
                         <option value="in_custody">Di Tangan (Aktif)</option>
                         <option value="used">Habis Terpakai</option>
                         <option value="returned">Sudah Dikembalikan</option>
+                    </select>
+                </div>
+                <div class="min-w-[130px] flex-1 sm:flex-initial">
+                    <select wire:model.live="perPage"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
+                        <option value="20">20 / Hal</option>
+                        <option value="50">50 / Hal</option>
+                        <option value="100">100 / Hal</option>
+                        <option value="all">All (Semua)</option>
                     </select>
                 </div>
             </div>
@@ -270,8 +308,13 @@
                     </tbody>
                 </table>
             </div>
-            <div class="px-5 py-4 border-t border-slate-200 dark:border-slate-700">
-                {{ $custodyData->links() }}
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $custodyData->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $custodyData->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $custodyData->total() }}</span> data
+                </div>
+                <div>
+                    {{ $custodyData->links() }}
+                </div>
             </div>
         </div>
     </div>

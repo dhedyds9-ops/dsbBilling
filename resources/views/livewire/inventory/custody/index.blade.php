@@ -73,6 +73,16 @@
                             <option value="technician">Teknisi Saja</option>
                         </select>
                     </div>
+
+                    <div class="min-w-[130px] flex-1 sm:flex-initial">
+                        <select wire:model.live="perPage"
+                                class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
+                            <option value="20">20 / Hal</option>
+                            <option value="50">50 / Hal</option>
+                            <option value="100">100 / Hal</option>
+                            <option value="all">All (Semua)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -150,18 +160,37 @@
                     </table>
                 </div>
 
-                @if($custodies->hasPages())
-                    <div class="p-4 border-t border-slate-200 dark:border-slate-700/80">
+                <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="text-xs text-slate-500 dark:text-slate-400">
+                        Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $custodies->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $custodies->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $custodies->total() }}</span> data
+                    </div>
+                    <div>
                         {{ $custodies->links() }}
                     </div>
-                @endif
+                </div>
             </div>
         </div>
     @endif
 
     {{-- TAB 2: TRANSFERS (SERAH TERIMA RESELLER -> TEKNISI) --}}
     @if($activeTab === 'transfers')
-        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs overflow-hidden">
+        <div class="space-y-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Catatan log serah terima material dan status konfirmasi penerimaan.
+                </div>
+                <div class="min-w-[130px] flex-1 sm:flex-initial">
+                    <select wire:model.live="perPage"
+                            class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 text-slate-900 dark:text-slate-100 cursor-pointer font-medium">
+                        <option value="20">20 / Hal</option>
+                        <option value="50">50 / Hal</option>
+                        <option value="100">100 / Hal</option>
+                        <option value="all">All (Semua)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -247,11 +276,14 @@
                 </table>
             </div>
 
-            @if($transfers->hasPages())
-                <div class="p-4 border-t border-slate-200 dark:border-slate-700/80">
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan <span class="font-bold text-slate-700 dark:text-slate-200">{{ $transfers->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700 dark:text-slate-200">{{ $transfers->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700 dark:text-slate-200">{{ $transfers->total() }}</span> data
+                </div>
+                <div>
                     {{ $transfers->links() }}
                 </div>
-            @endif
+            </div>
         </div>
     @endif
 
