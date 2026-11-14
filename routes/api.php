@@ -158,6 +158,11 @@ Route::post('/v1/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiCont
     ->name('api.employees.sync');
 Route::post('/employees/sync', [\App\Http\Controllers\Api\EmployeeSyncApiController::class, 'sync']);
 
+// ========================= MSTORE ATTENDANCE PULL API ========================
+Route::match(['get', 'post'], '/v1/attendance/pull', [\App\Http\Controllers\Api\AttendanceSyncExportApiController::class, 'pull'])
+    ->name('api.attendance.pull');
+Route::match(['get', 'post'], '/attendance/pull', [\App\Http\Controllers\Api\AttendanceSyncExportApiController::class, 'pull']);
+
 // ========================= DSBILLING STAFF MOBILE API ========================
 Route::prefix('mobile')->name('api.mobile.')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'login'])->name('login');
