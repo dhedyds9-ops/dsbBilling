@@ -97,9 +97,12 @@ class Wizard extends Component
             // Cek seluruh tugas PSB aktif (Untuk teknisi: tugas dirinya. Untuk admin penguji: tugas sistem atau dirinya)
             $ticketQuery = \App\Models\Support\Ticket::withoutGlobalScopes()
                 ->whereIn('category', ['psb', 'installation'])
-                ->whereNull('installation_id')
                 ->whereIn('status', ['open', 'in_progress', 'assigned'])
                 ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
+                $ticketQuery->whereNull('installation_id');
+            }
 
             $installationQuery = \App\Models\CRM\Installation::withoutGlobalScopes()
                 ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
@@ -195,9 +198,11 @@ class Wizard extends Component
             if ($inst) {
                 $this->installation_id = $inst->id;
                 // Cek tiket yang tertaut ke SPK instalasi ini
-                $linkedTicket = \App\Models\Support\Ticket::withoutGlobalScopes()->where('installation_id', $inst->id)->first();
-                if ($linkedTicket) {
-                    $this->ticket_id = $linkedTicket->id;
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
+                    $linkedTicket = \App\Models\Support\Ticket::withoutGlobalScopes()->where('installation_id', $inst->id)->first();
+                    if ($linkedTicket) {
+                        $this->ticket_id = $linkedTicket->id;
+                    }
                 }
 
                 if ($inst->customer_id) {
@@ -752,16 +757,18 @@ class Wizard extends Component
                         }
 
                         // Jika ada tiket tertaut ke SPK instalasi ini, update statusnya menjadi resolved
-                        \App\Models\Support\Ticket::withoutGlobalScopes()
-                            ->where('installation_id', $instModel->id)
-                            ->where('status', '!=', 'resolved')
-                            ->where('status', '!=', 'closed')
-                            ->update([
-                                'customer_id' => $customer->id,
-                                'status' => 'resolved',
-                                'resolved_at' => now(),
-                                'resolution_notes' => 'PSB SPK #' . $instModel->id . ' selesai dipasang & diaktivasi oleh teknisi ' . $user->name . ' (ONU SN: ' . $sn . ')',
-                            ]);
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
+                            \App\Models\Support\Ticket::withoutGlobalScopes()
+                                ->where('installation_id', $instModel->id)
+                                ->where('status', '!=', 'resolved')
+                                ->where('status', '!=', 'closed')
+                                ->update([
+                                    'customer_id' => $customer->id,
+                                    'status' => 'resolved',
+                                    'resolved_at' => now(),
+                                    'resolution_notes' => 'PSB SPK #' . $instModel->id . ' selesai dipasang & diaktivasi oleh teknisi ' . $user->name . ' (ONU SN: ' . $sn . ')',
+                                ]);
+                        }
                     }
                 } catch (\Throwable $ie) {
                     \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal update status installation: ' . $ie->getMessage());
