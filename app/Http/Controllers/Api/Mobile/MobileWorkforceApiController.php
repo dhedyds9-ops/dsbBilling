@@ -110,7 +110,12 @@ class MobileWorkforceApiController extends Controller
         }
 
         // Apply branch & assignment scope (Cross-branch assignment supported per Directive Section 6)
-        $hasTechIdsCol = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'technician_ids');
+        $hasTechIdsCol = false;
+        try {
+            $hasTechIdsCol = in_array('technician_ids', (new WorkOrder)->getConnection()->getSchemaBuilder()->getColumnListing('work_orders'));
+        } catch (\Throwable $e) {
+            $hasTechIdsCol = false;
+        }
         if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
             $query->where(function ($q) use ($user, $hasTechIdsCol) {
                 // 1. Show work orders assigned to this technician (regardless of branch)
@@ -676,9 +681,20 @@ class MobileWorkforceApiController extends Controller
         try {
             $hasInstIdCol = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id');
 
-            $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
-            $hasWoTechIds = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'technician_ids');
-            $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+            $hasInstTechIds = false;
+            try {
+                $hasInstTechIds = in_array('technician_ids', (new \App\Models\CRM\Installation)->getConnection()->getSchemaBuilder()->getColumnListing('installations'));
+            } catch (\Throwable $e) {}
+
+            $hasWoTechIds = false;
+            try {
+                $hasWoTechIds = in_array('technician_ids', (new WorkOrder)->getConnection()->getSchemaBuilder()->getColumnListing('work_orders'));
+            } catch (\Throwable $e) {}
+
+            $hasTicketTechIds = false;
+            try {
+                $hasTicketTechIds = in_array('technician_ids', (new Ticket)->getConnection()->getSchemaBuilder()->getColumnListing('tickets'));
+            } catch (\Throwable $e) {}
 
             // 1. Sync SPK Instalasi (CRM) Aktif & Riwayat Selesai
             $allInstallations = \App\Models\CRM\Installation::withoutGlobalScopes()
@@ -940,7 +956,10 @@ class MobileWorkforceApiController extends Controller
                   });
             });
         } elseif (!$isManager) {
-            $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+            $hasTicketTechIds = false;
+            try {
+                $hasTicketTechIds = in_array('technician_ids', (new Ticket)->getConnection()->getSchemaBuilder()->getColumnListing('tickets'));
+            } catch (\Throwable $e) {}
             $query->where(function ($q) use ($user, $hasTicketTechIds) {
                 $q->where(function ($sub) use ($user, $hasTicketTechIds) {
                     $sub->where('assigned_to', $user->id);

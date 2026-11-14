@@ -64,7 +64,7 @@ class CDataOltDriver extends BaseOltDriver
             return;
         }
 
-        $user = !empty($this->olt->username) ? $this->olt->username : 'admin';
+        $user = !empty($this->olt->username) ? $this->olt->username : 'root';
         $pass = !empty($this->olt->password) ? $this->olt->password : 'admin';
         $port = (int)($this->olt->cli_port ?: 23);
 
@@ -79,24 +79,37 @@ class CDataOltDriver extends BaseOltDriver
                 $this->olt->enable_secret ?? ''
             );
         } catch (\Throwable $e) {
-            // Jika login dengan admin/admin gagal, coba fallback password umum C-Data
-            if ($user === 'admin' && $pass === 'admin') {
-                foreach (['stdONUpwd', '123456', 'cdata'] as $altPass) {
-                    try {
-                        $this->cli = new \App\Services\Adapters\Provisioning\Support\TelnetSshClient();
-                        $this->cli->connect(
-                            $this->olt->ip_address,
-                            'admin',
-                            $altPass,
-                            $this->cliMode ?: 'telnet',
-                            $port,
-                            $this->olt->enable_secret ?? ''
-                        );
-                        return;
-                    } catch (\Throwable) {}
+            // Coba fallback kombinasi kredensial umum C-Data (root/admin, root/root, admin/admin, admin/stdONUpwd, dll)
+            $fallbackCreds = [
+                ['root', 'admin'],
+                ['root', 'root'],
+                ['admin', 'admin'],
+                ['admin', 'stdONUpwd'],
+                ['admin', '123456'],
+                ['admin', 'cdata'],
+            ];
+            $connected = false;
+            foreach ($fallbackCreds as [$altUser, $altPass]) {
+                if ($altUser === $user && $altPass === $pass) {
+                    continue;
                 }
+                try {
+                    $this->cli = new \App\Services\Adapters\Provisioning\Support\TelnetSshClient();
+                    $this->cli->connect(
+                        $this->olt->ip_address,
+                        $altUser,
+                        $altPass,
+                        $this->cliMode ?: 'telnet',
+                        $port,
+                        $this->olt->enable_secret ?? ''
+                    );
+                    $connected = true;
+                    break;
+                } catch (\Throwable) {}
             }
-            throw $e;
+            if (!$connected) {
+                throw $e;
+            }
         }
     }
 
@@ -460,15 +473,23 @@ class CDataOltDriver extends BaseOltDriver
                     $before = trim(substr($line, 0, $pos));
                     $after = trim(substr($line, $pos + strlen($snMatch[1])));
 
-                    // Robust regex match untuk mendeteksi status Online vs Offline di CLI C-DATA:
-                    // Online: online, up, working, work, operation, operational, o5, connected, ok, registered
-                    // Offline: offline, down, lost, los, power-off, dying-gasp, deactive, inactive, unregistered
+                    // Robust token & regex match untuk mendeteksi status Online vs Offline di CLI C-DATA:
+                    // Header C-Data GPON: [F/S] [P] [ONT-ID] [SN] [Control flag] [Run state] [Config state] [Match state] [Last down-cause]
+                    // Contoh line: 0/1 1  1      ZTEGC85E2D31     Active   Online  success   match     dying-gasp
+                    // PERHATIAN: Kolom "Last down-cause" bisa berisi "dying-gasp" atau "power-off" dari riwayat reboot lama.
+                    // Jangan sampai "dying-gasp" di riwayat meng-overwrite "Online" aktif!
                     $afterLower = strtolower($after);
+                    $afterTokens = preg_split('/\s+/', trim($after));
+                    $candidateRunState = strtolower($afterTokens[1] ?? ($afterTokens[0] ?? ''));
+
                     $isCliOnline = false;
-                    if (str_contains($afterLower, 'online') || preg_match('/\b(up|working|work|operation|operational|o5|connected|ok|registered|match)\b/i', $afterLower)) {
+                    if (in_array($candidateRunState, ['online', 'up', 'working', 'operation', 'operational', 'o5', 'connected', 'ok'], true)) {
                         $isCliOnline = true;
-                    }
-                    if (preg_match('/\b(offline|down|lost|los|power-off|dying-gasp|deactive|inactive|unregistered|standby)\b/i', $afterLower)) {
+                    } elseif (preg_match('/\b(online|working|operation|operational|o5)\b/i', $afterLower) && !in_array($candidateRunState, ['offline', 'down', 'inactive', 'deactive', 'lost', 'standby'], true)) {
+                        $isCliOnline = true;
+                    } elseif (in_array($candidateRunState, ['offline', 'down', 'inactive', 'deactive', 'lost', 'standby', 'unregistered'], true)) {
+                        $isCliOnline = false;
+                    } elseif (preg_match('/\b(offline|down|inactive|deactive)\b/i', $afterLower)) {
                         $isCliOnline = false;
                     }
                     $runState = $isCliOnline ? 'online' : 'offline';

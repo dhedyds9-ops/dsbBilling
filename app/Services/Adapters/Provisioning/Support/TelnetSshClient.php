@@ -104,7 +104,8 @@ class TelnetSshClient
             $this->connection->write("enable\r\n");
             $out = $this->connection->read('/(password|#|>)/i');
             if (str_contains(strtolower($out), 'password')) {
-                $this->connection->write($this->enableSecret . "\r\n");
+                $enablePass = !empty($this->enableSecret) ? $this->enableSecret : (!empty($this->password) ? $this->password : 'admin');
+                $this->connection->write($enablePass . "\r\n");
                 $this->connection->read('/#/');
             }
         }
