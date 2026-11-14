@@ -894,18 +894,28 @@ class CDataOltDriver extends BaseOltDriver
             $gponActive = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.7')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: [])) : [];
 
-            // GPON Run Status (1=init, 2=standby, 3=sn, 4=ranging, 5=operation/ONLINE, 6=popup)
-            $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8')
+            // GPON Run Status:
+            // 1. gponOnuRunState (.18.2.1.1 - Official CDATA-GPON-MIB: 1=online, 2=offline)
+            // 2. gponOnuRunStatus (.18.1.1.8 - legacy C-Data: 1=init, 2=standby, 3=sn, 4=ranging, 5=operation/ONLINE, 6=popup)
+            // 3. FD1608/FD1616 legacy OID (.100.9.2.1.8 or .100.9.2.1.13)
+            $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: []))) : [];
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [])))) : [];
             
-            // GPON Optical Collect Table (.18.19.1.2 - Official CDATA-GPON-MIB OctetString holding Rx, Tx, Temp)
+            // GPON Direct Optical Table:
+            // gponOnuOpticalInfoTable (.18.6.1 - Official CDATA-GPON-MIB: .3=RxPower, .2=TxPower, .4=Temperature)
+            $gponDirectRx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.3') ?: []) : [];
+            $gponDirectTx = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.2') ?: []) : [];
+            $gponDirectTemp = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.6.1.4') ?: []) : [];
+
+            // GPON Optical Collect Table (.18.19.1.2 - CDATA OctetString holding Rx, Tx, Temp)
             $opticalCollect = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.2')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.19.1.1.2') ?: [])) : [];
 
-            $gponRx = [];
-            $gponTx = [];
-            $gponTemps = [];
+            $gponRx = $gponDirectRx;
+            $gponTx = $gponDirectTx;
+            $gponTemps = $gponDirectTemp;
 
             if (!empty($opticalCollect)) {
                 foreach ($opticalCollect as $oKey => $oStr) {
@@ -1029,14 +1039,20 @@ class CDataOltDriver extends BaseOltDriver
             // Extract suffix (e.g. 1.0.1.1 or 1310721.1 or 1.1)
             $parts = explode('.', $trimmed);
             $cnt = count($parts);
+            if ($cnt >= 4) {
+                $lastFour = '.' . $parts[$cnt - 4] . '.' . $parts[$cnt - 3] . '.' . $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
+                foreach ($arr as $k => $v) {
+                    if (str_ends_with((string)$k, $lastFour)) return $v;
+                }
+            }
             if ($cnt >= 3) {
-                $lastThree = $parts[$cnt - 3] . '.' . $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
+                $lastThree = '.' . $parts[$cnt - 3] . '.' . $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
                 foreach ($arr as $k => $v) {
                     if (str_ends_with((string)$k, $lastThree)) return $v;
                 }
             }
             if ($cnt >= 2) {
-                $lastTwo = $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
+                $lastTwo = '.' . $parts[$cnt - 2] . '.' . $parts[$cnt - 1];
                 if (array_key_exists($lastTwo, $arr)) return $arr[$lastTwo];
                 foreach ($arr as $k => $v) {
                     if (str_ends_with((string)$k, $lastTwo)) return $v;
@@ -1205,22 +1221,24 @@ class CDataOltDriver extends BaseOltDriver
                 }
 
                 // 2. Evaluasi status SNMP
-                // In GPON: onuRunState: 5=operation (O5/ONLINE), 101=online
+                // In GPON:
+                // - gponOnuRunState (.18.2.1.1): 1=online, 2=offline
+                // - gponOnuRunStatus (.18.1.1.8 / legacy): 1=init, 5=operation (O5/ONLINE), 101=online
                 // In EPON (CTC standard & C-Data MIB): 1=authenticated/up/online, 2=registered/online
                 $snmpOnline = false;
-                if ($stVal === 5 || $stVal === 101) {
+                if ($stVal === 5 || $stVal === 101 || $stVal === 1) {
                     $snmpOnline = true;
-                } elseif ($stVal === 1 || $stVal === 2) {
-                    // Di CTC EPON dan C-Data MIB, nilai 1 dan 2 adalah status Online / Registered
-                    $snmpOnline = true;
-                } elseif (in_array($stVal, [3, 6, 7, 102], true)) {
+                } elseif ($stVal === 2) {
+                    // Di GPON (.18.2.1.1), 2 adalah offline. Namun di EPON CTC, 2 adalah registered (online).
+                    $snmpOnline = empty($gponSerials) ? true : ($activeVal === 1);
+                } elseif (in_array($stVal, [3, 4, 6, 7, 102], true)) {
                     $snmpOnline = false;
                 } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5') || str_contains($stRaw, 'up') || str_contains($stRaw, 'work') || str_contains($stRaw, 'auth') || str_contains($stRaw, 'reg')) {
                     $snmpOnline = true;
                 } elseif (str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'standby') || str_contains($stRaw, 'popup') || str_contains($stRaw, 'los') || str_contains($stRaw, 'dereg')) {
                     $snmpOnline = false;
                 } else {
-                    $snmpOnline = ($activeVal === 1 || $stVal > 0);
+                    $snmpOnline = ($activeVal === 1);
                 }
 
                 // Tentukan status dasar dari CLI dan SNMP
