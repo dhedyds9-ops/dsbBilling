@@ -560,6 +560,14 @@ class Index extends BaseEnterpriseList
                 $ticket->installation_id = $wo->id;
                 $ticket->save();
             }
+
+            if (!empty($wo->technician_id)) {
+                try {
+                    app(\App\Services\CRM\InstallationTechnicianNotifier::class)->notifyAssigned($wo, 'created');
+                } catch (\Throwable $ne) {
+                    Log::warning('[Ticket->Installation] Gagal notif teknisi: ' . $ne->getMessage());
+                }
+            }
         } catch (\Throwable $e) {
             Log::warning('[Ticket] Gagal membuat SPK Instalasi dari tiket #' . $ticket->id . ': ' . $e->getMessage());
         }

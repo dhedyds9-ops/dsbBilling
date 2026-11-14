@@ -26,36 +26,19 @@ class TicketAssignedListener
             if (!$technician) return;
 
             $customer = $ticket->customer;
+            $customerName = $customer?->name 
+                ?? ($ticket->installation ? ('PSB: ' . ($ticket->installation->customer_name ?: 'Calon Pelanggan')) : 'Pelanggan / Objek');
 
-            // ── 1. WhatsApp Notification ke Teknisi ──────────────────
+            // ── 1. In-App Database Notification ke Teknisi (Portal Teknisi & Android) ──
             try {
-                $techPhone = $this->normalizePhone($technician->phone ?? $technician->whatsapp ?? null);
-                $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
-                $text = $this->template->ticketAssigned([
-                    'ticket_code'      => $code,
-                    'ticket_id'        => $ticket->id,
-                    'title'            => $ticket->title,
-                    'category'         => $ticket->category ?? 'internet',
-                    'priority'         => $ticket->priority ?? 'medium',
-                    'description'      => $ticket->description ?? '',
-                    'customer_name'    => $customer?->name ?? 'Pelanggan',
-                    'customer_address' => $customer?->address ?? '-',
-                    'customer_phone'   => $this->normalizePhone($customer?->phone ?? '') ?: '',
-                    'technician_name'  => $technician->name,
-                ]);
-
-                if ($techPhone) {
-                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $text);
-                }
-
-                // In-App Database Notification ke Teknisi
                 \App\Models\Notification\Notification::create([
                     'uuid' => (string) \Illuminate\Support\Str::uuid(),
                     'recipient_id' => $technician->id,
-                    'title' => 'Tiket Ditugaskan',
-                    'message' => "Anda telah ditugaskan untuk menangani Tiket #{$ticket->id} (Pelanggan: " . ($ticket->customer?->name ?? 'Pelanggan') . ")",
+                    'title' => 'Tugas Baru Tiket #' . $ticket->id,
+                    'message' => "Anda ditugaskan menangani tiket: {$ticket->title} ({$customerName})",
                     'type' => 'in_app',
                     'status' => 'pending',
+                    'sent_at' => now(),
                     'data' => [
                         'type' => 'ticket_assigned',
                         'ticket_id' => $ticket->id,
@@ -64,8 +47,32 @@ class TicketAssignedListener
                         'color' => 'yellow'
                     ]
                 ]);
+            } catch (\Throwable $ne) {
+                Log::warning('[TicketAssignedListener] Gagal membuat in-app notif teknisi: ' . $ne->getMessage());
+            }
+
+            // ── 2. WhatsApp Notification Pribadi ke Teknisi ──────────────────
+            try {
+                $techPhone = $this->normalizePhone($technician->phone ?? $technician->whatsapp ?? null);
+                if ($techPhone) {
+                    $code = !empty($ticket->uuid) ? ('TKT-' . strtoupper(substr(str_replace('-', '', $ticket->uuid), 0, 6))) : ('TKT-' . $ticket->id);
+                    $text = $this->template->ticketAssigned([
+                        'ticket_code'      => $code,
+                        'ticket_id'        => $ticket->id,
+                        'title'            => $ticket->title,
+                        'category'         => $ticket->category ?? 'internet',
+                        'priority'         => $ticket->priority ?? 'medium',
+                        'description'      => $ticket->description ?? '',
+                        'customer_name'    => $customerName,
+                        'customer_address' => $customer?->address ?? '-',
+                        'customer_phone'   => $this->normalizePhone($customer?->phone ?? '') ?: '',
+                        'technician_name'  => $technician->name,
+                    ]);
+
+                    \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $text);
+                }
             } catch (\Throwable $te) {
-                Log::warning('[TicketAssignedListener] Gagal notif teknisi: ' . $te->getMessage());
+                Log::warning('[TicketAssignedListener] Gagal kirim WA teknisi: ' . $te->getMessage());
             }
 
             // ── 2. WhatsApp Notification ke Grup WA Tiket / NOC ───────

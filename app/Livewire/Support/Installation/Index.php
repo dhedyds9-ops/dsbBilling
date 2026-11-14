@@ -313,6 +313,14 @@ class Index extends BaseEnterpriseList
                             $wo->technician_id = $this->assignTechId;
                             if ($wo->status === 'pending') $wo->status = 'scheduled';
                             $wo->save();
+
+                            // Notifikasi Portal Teknisi & Android
+                            try {
+                                app(\App\Services\CRM\InstallationTechnicianNotifier::class)->notifyAssigned($wo, 'reassigned');
+                            } catch (\Throwable $ne) {
+                                Log::warning('[Installation Bulk] Gagal notif teknisi: ' . $ne->getMessage());
+                            }
+
                             $this->sendInstallationWhatsAppNotification($wo);
                             $n++;
                         }
@@ -589,6 +597,16 @@ class Index extends BaseEnterpriseList
             $wo->status = !empty($this->newWo['technician_id']) ? 'scheduled' : 'pending';
             $wo->created_by = Auth::id() ?? 0;
             $wo->save();
+
+            // Notifikasi in-app Portal Teknisi & Mobile App Android
+            if (!empty($wo->technician_id)) {
+                try {
+                    app(\App\Services\CRM\InstallationTechnicianNotifier::class)->notifyAssigned($wo, 'created');
+                } catch (\Throwable $ne) {
+                    Log::warning('[Installation] Gagal notif teknisi: ' . $ne->getMessage());
+                }
+            }
+
             $this->sendInstallationWhatsAppNotification($wo);
             session()->flash('success', 'Work Order #' . $wo->id . ' berhasil dibuat.');
             $this->showCreateWo = false;
