@@ -500,48 +500,100 @@
         @endif
 
         @if($currentStep === 3)
-            <h3 class="text-base font-black mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">router</span> Pemilihan ODP
-            </h3>
-            <x-ds-searchable-select
-                wire:model="odp_id"
-                strategy="remote"
-                search-action="searchOdps"
-                placeholder="-- Pilih ODP Terdekat --"
-                search-placeholder="Cari nama atau kode ODP..."
-                :selected-label="$this->selectedOdpLabel"
-                :error="$errors->first('odp_id')"
-            />
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">router</span> Titik ODP
+                </h3>
+                <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                    Opsional
+                </span>
+            </div>
 
-            {{-- Detail ODP Terpilih --}}
-            @if($this->selectedOdp)
-                @php $odpObj = $this->selectedOdp; @endphp
-                <div class="mt-4 p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50 flex items-start justify-between gap-3 animate-fadeIn">
-                    <div class="flex items-start gap-3 min-w-0">
-                        <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                            <span class="material-symbols-outlined" style="font-size:20px">hub</span>
+            @if($allOdps->isEmpty())
+                <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 space-y-2 mb-4">
+                    <div class="flex items-center gap-2 font-bold text-sm">
+                        <span class="material-symbols-outlined text-amber-500" style="font-size:20px">info</span>
+                        Belum Ada Data ODP di Sistem
+                    </div>
+                    <p class="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                        Data ODP belum diinput oleh Admin atau lokasi ini belum memiliki ODP terdaftar. Anda dapat melewati langkah ini dan langsung melanjutkan ke pengaturan OLT & Port PON.
+                    </p>
+                    <div class="pt-1 flex items-center gap-2">
+                        <button type="button" wire:click="nextStep" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors">
+                            <span>Lanjut ke OLT / PON</span>
+                            <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+            @else
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Pilih ODP terdekat untuk mencatat port distribusi, atau lewati jika sambungan langsung ke OLT.
+                        </p>
+                        @if($odp_id)
+                            <button type="button" wire:click="clearOdp" class="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 font-semibold flex items-center gap-0.5">
+                                <span class="material-symbols-outlined" style="font-size:14px">close</span>
+                                <span>Hapus ODP</span>
+                            </button>
+                        @endif
+                    </div>
+
+                    <div>
+                        <select wire:model.live="odp_id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="">-- Lewati / Tanpa ODP (Langsung ke OLT) --</option>
+                            @foreach($allOdps as $odpItem)
+                                @php
+                                    $avail = $odpItem->availablePortCount ?? $odpItem->available_ports ?? 0;
+                                    $total = $odpItem->port_count ?? 8;
+                                    $isFull = $avail <= 0;
+                                @endphp
+                                <option value="{{ $odpItem->id }}" {{ $isFull ? 'disabled' : '' }}>
+                                    {{ $odpItem->name }} {{ $odpItem->code ? "({$odpItem->code})" : '' }} • Sisa: {{ $avail }}/{{ $total }} port {{ $isFull ? '[PENUH]' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('odp_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    @if(!$this->odp_id)
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
+                            <span class="material-symbols-outlined text-slate-400 shrink-0" style="font-size:18px">check_circle</span>
+                            <span>Mode <strong>Tanpa ODP</strong> aktif. Port dan OLT dapat Anda tentukan pada langkah berikutnya.</span>
                         </div>
-                        <div class="min-w-0">
-                            <div class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
-                                {{ $odpObj->name }}
+                    @endif
+                </div>
+
+                {{-- Detail ODP Terpilih --}}
+                @if($this->selectedOdp)
+                    @php $odpObj = $this->selectedOdp; @endphp
+                    <div class="mt-4 p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50 flex items-start justify-between gap-3 animate-fadeIn">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                                <span class="material-symbols-outlined" style="font-size:20px">hub</span>
                             </div>
-                            <div class="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
-                                <span>Sisa Port: <strong>{{ $odpObj->availablePortCount ?? $odpObj->available_ports ?? '-' }}/{{ $odpObj->port_count ?? '-' }}</strong></span>
-                                @if($odpObj->olt)
-                                    <span>• OLT: <strong>{{ $odpObj->olt->name }}</strong></span>
+                            <div class="min-w-0">
+                                <div class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                                    {{ $odpObj->name }}
+                                </div>
+                                <div class="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
+                                    <span>Sisa Port: <strong>{{ $odpObj->availablePortCount ?? $odpObj->available_ports ?? '-' }}/{{ $odpObj->port_count ?? '-' }}</strong></span>
+                                    @if($odpObj->olt)
+                                        <span>• OLT: <strong>{{ $odpObj->olt->name }}</strong></span>
+                                    @endif
+                                </div>
+                                @if($odpObj->address)
+                                    <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+                                        {{ $odpObj->address }}
+                                    </div>
                                 @endif
                             </div>
-                            @if($odpObj->address)
-                                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
-                                    {{ $odpObj->address }}
-                                </div>
-                            @endif
                         </div>
+                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0">
+                            Terpilih
+                        </span>
                     </div>
-                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0">
-                        Terpilih
-                    </span>
-                </div>
+                @endif
             @endif
         @endif
 
@@ -723,7 +775,7 @@
                 <div class="flex justify-between items-center px-4 py-3">
                     <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ODP</span>
                     <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
-                        {{ $this->selectedOdp?->name ?? ($odp_id ? 'ID: '.$odp_id : '-') }}
+                        {{ $this->selectedOdp?->name ?? 'Tanpa ODP (Langsung)' }}
                     </span>
                 </div>
                 <div class="flex justify-between items-center px-4 py-3">

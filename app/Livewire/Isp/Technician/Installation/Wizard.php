@@ -457,10 +457,13 @@ class Wizard extends Component
         } elseif ($this->currentStep === 2) {
             $this->validate(['service_profile_id' => 'required|exists:service_profiles,id']);
         } elseif ($this->currentStep === 3) {
-            $this->validate(['odp_id' => 'required|exists:odps,id']);
-            $odp = Odp::find($this->odp_id);
-            if ($odp && $odp->availablePortCount <= 0) {
-                $this->addError('odp_id', "ODP {$odp->name} sudah penuh (kapasitas 0 port tersedia). Silakan pilih ODP lain.");
+            // ODP bersifat opsional (jika belum ada data ODP atau sambungan langsung)
+            if (!empty($this->odp_id)) {
+                $this->validate(['odp_id' => 'nullable|exists:odps,id']);
+                $odp = Odp::withoutGlobalScopes()->find($this->odp_id);
+                if ($odp && $odp->availablePortCount <= 0) {
+                    $this->addError('odp_id', "ODP {$odp->name} sudah penuh (kapasitas 0 port tersedia). Silakan pilih ODP lain atau lewati tanpa ODP.");
+                }
             }
         } elseif ($this->currentStep === 4) {
             $this->validate([
@@ -506,7 +509,7 @@ class Wizard extends Component
 
         $this->validate([
             'service_profile_id' => 'required|exists:service_profiles,id',
-            'odp_id' => 'required|exists:odps,id',
+            'odp_id' => 'nullable|exists:odps,id',
             'olt_id' => 'required|exists:olts,id',
             'pon_port' => 'required|numeric|min:1',
             'onu_sn' => 'required|string|min:4',
@@ -587,10 +590,15 @@ class Wizard extends Component
         // 4. Eksekusi Atomic Database Transaction dengan Concurrency Locking (P0-H3)
         try {
             $executionResult = \Illuminate\Support\Facades\DB::transaction(function () use ($provisioningService, $branchId, $sn, $user) {
-                // A. Concurrency Lock & Reservasi Kapasitas Port ODP
-                $odp = Odp::where('id', $this->odp_id)->lockForUpdate()->first();
-                if (!$odp || $odp->availablePortCount <= 0) {
-                    throw new \DomainException("ODP " . ($odp?->name ?? $this->odp_id) . " sudah penuh atau tidak memiliki sisa port.");
+                // A. Concurrency Lock & Reservasi Kapasitas Port ODP (Opsional jika ODP ditentukan)
+                if (!empty($this->odp_id)) {
+                    $odp = Odp::withoutGlobalScopes()->where('id', $this->odp_id)->lockForUpdate()->first();
+                    if ($odp) {
+                        if ($odp->availablePortCount <= 0) {
+                            throw new \DomainException("ODP " . ($odp->name ?? $this->odp_id) . " sudah penuh atau tidak memiliki sisa port.");
+                        }
+                        $odp->increment('used_port_count');
+                    }
                 }
 
                 // B. Concurrency Lock & Verifikasi Konflik Kepemilikan ONU (Global Cross-Branch Aware)
@@ -613,10 +621,7 @@ class Wizard extends Component
                     }
                 }
 
-                // C. Klaim port ODP secara atomik di dalam transaksi
-                $odp->increment('used_port_count');
-
-                // D. Simpan atau Perbarui Data Pelanggan
+                // C. Simpan atau Perbarui Data Pelanggan
                 if ($this->is_new_customer) {
                     $existing = Customer::withoutGlobalScopes()
                         ->where('phone', $this->new_customer_phone)
@@ -959,6 +964,11 @@ class Wizard extends Component
             ->toArray();
     }
 
+    public function clearOdp(): void
+    {
+        $this->odp_id = null;
+    }
+
     #[Renderless]
     public function searchOdps(string $query = ''): array
     {
@@ -966,10 +976,13 @@ class Wizard extends Component
         $user = auth()->user();
         $builder = Odp::withoutGlobalScopes();
         if ($user && $user->branch_id && !$user->isSuperAdmin()) {
-            $builder->where(function ($b) use ($user) {
-                $b->where('branch_id', $user->branch_id)
-                  ->orWhereNull('branch_id');
-            });
+            $hasBranchOdp = (clone $builder)->where('branch_id', $user->branch_id)->exists();
+            if ($hasBranchOdp) {
+                $builder->where(function ($b) use ($user) {
+                    $b->where('branch_id', $user->branch_id)
+                      ->orWhereNull('branch_id');
+                });
+            }
         }
 
         return $builder
@@ -981,7 +994,7 @@ class Wizard extends Component
                 });
             })
             ->latest('id')
-            ->take(30)
+            ->take(50)
             ->get()
             ->map(function ($odp) {
                 $avail = $odp->availablePortCount ?? $odp->available_ports ?? 0;
@@ -1167,12 +1180,14 @@ class Wizard extends Component
 
         $olts = Olt::withoutGlobalScopes()->get();
         $vendors = \App\Models\ISP\Vendor::withoutGlobalScopes()->get();
+        $allOdps = Odp::withoutGlobalScopes()->orderBy('name')->get();
 
         return view('livewire.isp.technician.installation.wizard', [
             'servicesOptions' => $servicesOptions,
             'serviceRecords' => $filteredRecords,
             'allServiceRecords' => $serviceRecords,
             'resellersOptions' => $resellersOptions,
+            'allOdps' => $allOdps,
             'olts' => $olts,
             'vendors' => $vendors,
             'currentStep' => $this->currentStep,
