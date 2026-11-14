@@ -431,11 +431,21 @@ class MobileReportsApiController extends Controller
             }
         }
 
-        $invoiceQuery = Invoice::withoutGlobalScopes()->whereIn('status', ['unpaid', 'partial']);
+        $invoiceQuery = Invoice::withoutGlobalScopes()->whereIn('status', ['unpaid', 'partial', 'pending', 'overdue']);
         if ($ownerId) {
-            $invoiceQuery->where(function ($q) use ($ownerId, $customerScope) {
+            $invoiceQuery->where(function ($q) use ($ownerId, $customerScope, $user) {
                 $q->where('invoices.reseller_id', $ownerId)
-                    ->orWhereHas('customer', $customerScope);
+                  ->orWhere('invoices.created_by', $ownerId)
+                  ->orWhereHas('customer', $customerScope);
+                if (!empty($user->branch_id)) {
+                    $q->orWhere('invoices.branch_id', $user->branch_id)
+                      ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('customers.branch_id', $user->branch_id));
+                }
+            });
+        } elseif (!empty($user->branch_id)) {
+            $invoiceQuery->where(function ($q) use ($user) {
+                $q->where('invoices.branch_id', $user->branch_id)
+                  ->orWhereHas('customer', fn($cq) => $cq->withoutGlobalScopes()->where('customers.branch_id', $user->branch_id));
             });
         }
         $unpaidCount = (clone $invoiceQuery)->count();
@@ -626,7 +636,7 @@ class MobileReportsApiController extends Controller
                 'pending_count' => $pendingCount,
                 'failed_count' => $failedCount,
                 'unpaid_total' => $unpaidTotal,
-                'unpaid_count' => $unpaidCount > 0 ? $unpaidCount : 24,
+                'unpaid_count' => $unpaidCount,
                 'suspended_count' => $suspendedCount,
                 'online_count' => $onlineCount,
                 'pppoe_income' => $pppoeIncome,

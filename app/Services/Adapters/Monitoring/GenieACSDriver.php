@@ -45,8 +45,9 @@ class GenieACSDriver
     public function listDevices(array $query = [], int $limit = 100): array
     {
         try {
+            $effectiveTimeout = min(6, max(3, (int) ($this->timeout ?: 5)));
             $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout(120) // Increased from $this->timeout for large payloads
+                ->timeout($effectiveTimeout)
                 ->asJson()
                 ->get("{$this->baseUrl}/devices", array_merge(['limit' => $limit], $query));
                 

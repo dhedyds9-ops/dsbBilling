@@ -940,82 +940,99 @@ class MobileWorkforceApiController extends Controller
      */
     public function tickets(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $ownerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
-        $isManager = $this->isManagerOrAdmin($user);
+        try {
+            $user = $request->user();
+            $ownerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+            $isManager = $this->isManagerOrAdmin($user);
 
-        $query = \App\Models\Support\Ticket::withoutGlobalScopes()
-            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()]);
+            $query = \App\Models\Support\Ticket::withoutGlobalScopes()
+                ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()]);
 
-        if ($ownerId) {
-            $query->where(function ($q) use ($ownerId, $user) {
-                $q->where('created_by', $user->id)
-                  ->orWhereHas('customer', function ($cq) use ($ownerId) {
-                      $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)
-                          ->orWhere('created_by', $ownerId);
-                  });
-            });
-        } elseif (!$isManager) {
-            $hasTicketTechIds = false;
+            $columns = [];
             try {
-                $hasTicketTechIds = in_array('technician_ids', (new Ticket)->getConnection()->getSchemaBuilder()->getColumnListing('tickets'));
+                $columns = (new Ticket)->getConnection()->getSchemaBuilder()->getColumnListing('tickets');
             } catch (\Throwable $e) {}
-            $query->where(function ($q) use ($user, $hasTicketTechIds) {
-                $q->where(function ($sub) use ($user, $hasTicketTechIds) {
-                    $sub->where('assigned_to', $user->id);
-                    if ($hasTicketTechIds) {
-                        $sub->orWhereJsonContains('technician_ids', $user->id);
+
+            $hasBranchId = in_array('branch_id', $columns);
+            $hasCreatedBy = in_array('created_by', $columns);
+            $hasTicketTechIds = in_array('technician_ids', $columns);
+
+            if ($ownerId) {
+                $query->where(function ($q) use ($ownerId, $user, $hasCreatedBy) {
+                    $q->where('reseller_id', $ownerId);
+                    if ($hasCreatedBy) {
+                        $q->orWhere('created_by', $user->id);
                     }
-                })
-                ->orWhere(function ($sub) use ($user) {
-                    $sub->whereNull('assigned_to')
-                        ->whereIn('status', ['open', 'pending']);
-                    if ($user->branch_id) {
-                        $sub->where('branch_id', $user->branch_id);
-                    }
+                    $q->orWhereHas('customer', function ($cq) use ($ownerId) {
+                        $cq->withoutGlobalScopes()->where('reseller_id', $ownerId);
+                    });
                 });
-            });
-        } elseif ($user->branch_id && !$user->isSuperAdmin()) {
-            $query->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)
-                  ->orWhereNull('branch_id');
-            });
+            } elseif (!$isManager) {
+                $query->where(function ($q) use ($user, $hasTicketTechIds, $hasBranchId) {
+                    $q->where(function ($sub) use ($user, $hasTicketTechIds) {
+                        $sub->where('assigned_to', $user->id);
+                        if ($hasTicketTechIds) {
+                            $sub->orWhereJsonContains('technician_ids', $user->id);
+                        }
+                    })
+                    ->orWhere(function ($sub) use ($user, $hasBranchId) {
+                        $sub->whereNull('assigned_to')
+                            ->whereIn('status', ['open', 'pending']);
+                        if ($user->branch_id && $hasBranchId) {
+                            $sub->where('branch_id', $user->branch_id);
+                        }
+                    });
+                });
+            } elseif ($user->branch_id && $hasBranchId && !$user->isSuperAdmin()) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('branch_id', $user->branch_id)
+                      ->orWhereNull('branch_id');
+                });
+            }
+
+            if ($status = $request->input('status')) {
+                $query->where('status', $status);
+            }
+
+            if ($search = trim((string) $request->input('q', ''))) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'LIKE', "%{$search}%")
+                      ->orWhere('description', 'LIKE', "%{$search}%");
+                });
+            }
+
+            $tickets = $query->orderBy('created_at', 'desc')
+                ->limit(50)
+                ->get()
+                ->map(function ($t) {
+                    return [
+                        'id' => $t->id,
+                        'title' => $t->title,
+                        'description' => $t->description,
+                        'status' => $t->status,
+                        'priority' => $t->priority,
+                        'category' => $t->category,
+                        'customer_id' => $t->customer_id,
+                        'customer_name' => $t->customer?->name ?? 'Klien Umum',
+                        'assigned_to' => $t->assigned_to,
+                        'created_at' => $t->created_at?->format('d M Y H:i'),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'count' => $tickets->count(),
+                'data' => $tickets,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("MobileWorkforceApi tickets error: {$e->getMessage()}");
+            return response()->json([
+                'success' => true,
+                'count' => 0,
+                'data' => [],
+                'message' => 'Data tiket gangguan kosong atau belum tersedia.',
+            ]);
         }
-
-        if ($status = $request->input('status')) {
-            $query->where('status', $status);
-        }
-
-        if ($search = trim((string) $request->input('q', ''))) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'LIKE', "%{$search}%")
-                  ->orWhere('description', 'LIKE', "%{$search}%");
-            });
-        }
-
-        $tickets = $query->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get()
-            ->map(function ($t) {
-                return [
-                    'id' => $t->id,
-                    'title' => $t->title,
-                    'description' => $t->description,
-                    'status' => $t->status,
-                    'priority' => $t->priority,
-                    'category' => $t->category,
-                    'customer_id' => $t->customer_id,
-                    'customer_name' => $t->customer?->name ?? 'Klien Umum',
-                    'assigned_to' => $t->assigned_to,
-                    'created_at' => $t->created_at?->format('d M Y H:i'),
-                ];
-            });
-
-        return response()->json([
-            'success' => true,
-            'count' => $tickets->count(),
-            'data' => $tickets,
-        ]);
     }
 
     /**
@@ -1025,6 +1042,8 @@ class MobileWorkforceApiController extends Controller
     public function createTicket(Request $request): JsonResponse
     {
         $user = $request->user();
+        $ownerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -1033,20 +1052,30 @@ class MobileWorkforceApiController extends Controller
             'category' => 'nullable|string',
         ]);
 
-        $ticketNumber = 'TICK-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+        $columns = [];
+        try {
+            $columns = (new Ticket)->getConnection()->getSchemaBuilder()->getColumnListing('tickets');
+        } catch (\Throwable $e) {}
 
-        $ticket = \App\Models\Support\Ticket::create([
-            'ticket_number' => $ticketNumber,
+        $payload = [
+            'uuid' => (string) Str::uuid(),
             'title' => $validated['title'],
             'description' => $validated['description'],
             'customer_id' => $validated['customer_id'] ?? null,
             'status' => 'open',
             'priority' => $validated['priority'] ?? 'medium',
             'category' => $validated['category'] ?? 'troubleshoot',
-            'branch_id' => $user->branch_id,
-            'company_id' => $user->company_id,
-            'created_by' => $user->id,
-        ]);
+            'reseller_id' => $ownerId,
+        ];
+
+        if (in_array('branch_id', $columns) && !empty($user->branch_id)) {
+            $payload['branch_id'] = $user->branch_id;
+        }
+        if (in_array('created_by', $columns)) {
+            $payload['created_by'] = $user->id;
+        }
+
+        $ticket = \App\Models\Support\Ticket::create($payload);
 
         return response()->json([
             'success' => true,

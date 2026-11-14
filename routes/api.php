@@ -373,6 +373,15 @@ Route::prefix('customer')->name('api.customer.')->group(function () {
     });
 });
 
+// Mobile & Cross-platform Speedtest Routes
+Route::prefix('speedtest')->group(function () {
+    Route::get('/ping', [\App\Http\Controllers\SpeedtestController::class, 'ping']);
+    Route::get('/download', [\App\Http\Controllers\SpeedtestController::class, 'download']);
+    Route::post('/upload', [\App\Http\Controllers\SpeedtestController::class, 'upload']);
+    Route::get('/info', [\App\Http\Controllers\SpeedtestController::class, 'info']);
+});
+
+
 
 
 

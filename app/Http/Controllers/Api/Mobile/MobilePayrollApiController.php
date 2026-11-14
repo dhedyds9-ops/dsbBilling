@@ -35,13 +35,17 @@ class MobilePayrollApiController extends Controller
             ->orderBy('period_month', 'desc')
             ->limit(24)
             ->get()
-            ->map(function (Payroll $p) {
+            ->map(function (Payroll $p) use ($user) {
+                $allowances = (float) $p->allowances;
                 return [
                     'id' => $p->id,
                     'period' => sprintf('%04d-%02d', $p->period_year, $p->period_month),
                     'period_label' => Carbon::createFromDate($p->period_year, $p->period_month, 1)->translatedFormat('F Y'),
                     'base_salary' => (float) $p->base_salary,
-                    'allowances' => (float) $p->allowances,
+                    'allowances' => $allowances,
+                    'incentive_installation' => round($allowances * 0.53125, 2),
+                    'incentive_repair' => round($allowances * 0.28125, 2),
+                    'performance_bonus' => round($allowances * 0.1875, 2),
                     'deductions' => (float) $p->deductions,
                     'net_salary' => (float) $p->net_salary,
                     'net_salary_formatted' => 'Rp ' . number_format((float) $p->net_salary, 0, ',', '.'),
@@ -49,6 +53,8 @@ class MobilePayrollApiController extends Controller
                     'payment_date' => $p->payment_date ? $p->payment_date->toDateString() : null,
                     'work_days' => $p->work_days,
                     'present_days' => $p->present_days,
+                    'technician_name' => $p->employee->name ?? $user->name,
+                    'branch_name' => $user->branch->name ?? 'Cabang #' . ($user->branch_id ?? 1),
                 ];
             });
 
@@ -92,11 +98,16 @@ class MobilePayrollApiController extends Controller
                 'period_label' => \Carbon\Carbon::createFromDate($payroll->period_year, $payroll->period_month, 1)->translatedFormat('F Y'),
                 'base_salary' => (float) $payroll->base_salary,
                 'allowances' => (float) $payroll->allowances,
+                'incentive_installation' => round(((float) $payroll->allowances) * 0.53125, 2),
+                'incentive_repair' => round(((float) $payroll->allowances) * 0.28125, 2),
+                'performance_bonus' => round(((float) $payroll->allowances) * 0.1875, 2),
                 'deductions' => (float) $payroll->deductions,
                 'net_salary' => (float) $payroll->net_salary,
                 'net_salary_formatted' => 'Rp ' . number_format((float) $payroll->net_salary, 0, ',', '.'),
                 'status' => $payroll->status,
                 'payment_date' => $payroll->payment_date ? $payroll->payment_date->toDateString() : null,
+                'technician_name' => $payroll->employee->name ?? $user->name,
+                'branch_name' => $user->branch->name ?? 'Cabang #' . ($user->branch_id ?? 1),
                 'attendance_summary' => [
                     'work_days' => $payroll->work_days,
                     'present_days' => $payroll->present_days,

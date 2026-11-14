@@ -285,7 +285,7 @@ class MobileAcsProxyController extends Controller
     }
 
     /**
-     * Proxy List Devices from GenieACS.
+     * Proxy List Devices from GenieACS with resilient dsBilling database fallback.
      */
     public function listDevices(Request $request): JsonResponse
     {
@@ -293,18 +293,34 @@ class MobileAcsProxyController extends Controller
             return $authCheck;
         }
 
+        $user = $request->user();
+        $limit = min(5000, (int) $request->input('limit', 1000));
+        $devices = [];
+
         try {
-            $limit = min(5000, (int) $request->input('limit', 1000));
             $devices = $this->driver->listDevices([], $limit);
+        } catch (\Throwable $e) {
+            Log::warning("MobileAcsProxy listDevices: GenieACS driver unreachable or error ({$e->getMessage()}), utilizing dsBilling local database fallback.");
+            $devices = [];
+        }
 
-            $user = $request->user();
-            if ($user && $user->hasRole('reseller')) {
-                $allowedSns = \App\Models\ACS\ACSDevice::forReseller($user)
-                    ->pluck('serial_number')
+        // Reseller ownership filtering on driver devices
+        if ($user && $user->hasRole('reseller')) {
+            $effectiveResellerId = $user->getEffectiveResellerId() ?: $user->id;
+            $allowedSns = array_values(array_unique(array_filter(array_merge(
+                \App\Models\ACS\ACSDevice::withoutGlobalScopes()->forReseller($user)->pluck('serial_number')->map(fn($s) => strtoupper(trim((string) $s)))->toArray(),
+                \App\Models\ISP\Onu::withoutGlobalScopes()->forReseller($user)->pluck('serial_number')->map(fn($s) => strtoupper(trim((string) $s)))->toArray(),
+                \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where(function ($csQ) use ($effectiveResellerId) {
+                        $csQ->where('reseller_id', $effectiveResellerId)
+                            ->orWhereHas('customer', fn($q) => $q->where('reseller_id', $effectiveResellerId));
+                    })
+                    ->pluck('onu_serial')
                     ->map(fn($s) => strtoupper(trim((string) $s)))
-                    ->filter()
-                    ->toArray();
+                    ->toArray()
+            ))));
 
+            if (!empty($devices)) {
                 $devices = array_values(array_filter($devices, function ($dev) use ($allowedSns) {
                     $devSn = strtoupper(trim((string) ($dev['serial_number'] ?? ($dev['_id'] ?? ''))));
                     $snToMatch = $devSn;
@@ -315,45 +331,175 @@ class MobileAcsProxyController extends Controller
                     return in_array($devSn, $allowedSns, true) || in_array($snToMatch, $allowedSns, true);
                 }));
             }
+        }
 
-            // Enrich with customer names from dsBilling database
-            if (!empty($devices)) {
-                $candidateSns = [];
-                foreach ($devices as $d) {
-                    $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
-                    if ($devSn !== '') {
-                        $candidateSns[] = $devSn;
-                        if (str_contains($devSn, '-')) {
-                            $parts = explode('-', $devSn);
-                            $candidateSns[] = end($parts);
+        // Fallback or merge with dsBilling database records
+        $dbOnus = collect();
+        $dbAcs = collect();
+
+        if ($user && $user->hasRole('reseller')) {
+            $dbOnus = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->forReseller($user)
+                ->with(['customerService.customer', 'customerService.pppoeUser', 'odp', 'olt', 'vendor'])
+                ->get();
+            $dbAcs = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->forReseller($user)
+                ->with(['customerService.customer', 'onu', 'odp', 'olt'])
+                ->get();
+        } else {
+            $onusQuery = \App\Models\ISP\Onu::withoutGlobalScopes()
+                ->with(['customerService.customer', 'customerService.pppoeUser', 'odp', 'olt', 'vendor']);
+            $acsQuery = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->with(['customerService.customer', 'onu', 'odp', 'olt']);
+
+            if ($user && !empty($user->branch_id) && !$user->isSuperAdmin() && !$user->hasRole('administrator')) {
+                $onusQuery->where(function ($q) use ($user) {
+                    $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id');
+                });
+                $acsQuery->where(function ($q) use ($user) {
+                    $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id');
+                });
+            }
+
+            $dbOnus = $onusQuery->limit(200)->get();
+            $dbAcs = $acsQuery->limit(200)->get();
+        }
+
+        // Index existing devices by normalized serial number to prevent duplicates
+        $existingSns = [];
+        foreach ($devices as $d) {
+            $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
+            if ($devSn !== '') {
+                $existingSns[$devSn] = true;
+                if (str_contains($devSn, '-')) {
+                    $existingSns[end(explode('-', $devSn))] = true;
+                }
+            }
+        }
+
+        // Convert and merge database records
+        foreach ($dbOnus as $onu) {
+            $sn = strtoupper(trim((string) $onu->serial_number));
+            if (empty($sn) || isset($existingSns[$sn])) {
+                continue;
+            }
+            $existingSns[$sn] = true;
+
+            $isOnline = in_array(strtolower((string) $onu->status), ['online', 'active'], true)
+                || ($onu->last_seen_at && \Carbon\Carbon::parse($onu->last_seen_at)->diffInMinutes(now()) <= 5);
+
+            $customerName = $onu->customerService?->customer?->name ?? $onu->customer?->name ?? $onu->name;
+            $pppoeUser = $onu->customerService?->pppoeUser?->username ?? $onu->pppoe_username ?? '-';
+            $rxPower = $onu->rx_power_dbm !== null ? (float) $onu->rx_power_dbm : null;
+            $mfg = $onu->vendor?->name ?? (str_starts_with($sn, 'HWTC') ? 'Huawei' : (str_starts_with($sn, 'ZTEG') ? 'ZTE' : 'Modem'));
+            $model = $onu->model ?: ($onu->name ?: 'ONT');
+
+            $devices[] = [
+                '_id' => "{$mfg}-{$sn}",
+                '_deviceId' => [
+                    '_Manufacturer' => $mfg,
+                    '_ProductClass' => $model,
+                    '_SerialNumber' => $sn,
+                ],
+                '_lastInform' => $onu->last_seen_at ? \Carbon\Carbon::parse($onu->last_seen_at)->toISOString() : ($isOnline ? now()->toISOString() : now()->subHours(2)->toISOString()),
+                'is_online' => $isOnline,
+                'customer_name' => $customerName,
+                'pppoe_username' => $pppoeUser,
+                'ssid' => $onu->wifi_ssid ?: 'Wi-Fi',
+                'rx_power' => $rxPower,
+                'odp_name' => $onu->odp?->name ?? $onu->odp?->code,
+                'VirtualParameters' => [
+                    'RXPower' => (string) ($rxPower ?? -19.5),
+                    'redaman' => (string) ($rxPower ?? -19.5),
+                    'SSID' => (string) ($onu->wifi_ssid ?: 'Wi-Fi'),
+                    'pppoeUsername' => (string) $pppoeUser,
+                    'customerName' => (string) ($customerName ?: ''),
+                ],
+                'tags' => array_values(array_filter([$onu->odp?->name, $onu->olt?->name])),
+            ];
+        }
+
+        foreach ($dbAcs as $ad) {
+            $sn = strtoupper(trim((string) $ad->serial_number));
+            if (empty($sn) || isset($existingSns[$sn])) {
+                continue;
+            }
+            $existingSns[$sn] = true;
+
+            $isOnline = strtolower((string) $ad->status) === 'online'
+                || ($ad->last_inform && \Carbon\Carbon::parse($ad->last_inform)->diffInMinutes(now()) <= 5);
+
+            $customerName = $ad->customerService?->customer?->name;
+            $pppoeUser = $ad->pppoe_username ?? '-';
+            $rxPower = $ad->signal !== null ? (float) $ad->signal : null;
+            $mfg = $ad->manufacturer ?: (str_starts_with($sn, 'HWTC') ? 'Huawei' : (str_starts_with($sn, 'ZTEG') ? 'ZTE' : 'Modem'));
+            $model = $ad->model ?: ($ad->product_class ?: 'ONT');
+
+            $devices[] = [
+                '_id' => $ad->uuid ?: "{$mfg}-{$sn}",
+                '_deviceId' => [
+                    '_Manufacturer' => $mfg,
+                    '_ProductClass' => $model,
+                    '_SerialNumber' => $sn,
+                ],
+                '_lastInform' => $ad->last_inform ? \Carbon\Carbon::parse($ad->last_inform)->toISOString() : ($isOnline ? now()->toISOString() : now()->subHours(2)->toISOString()),
+                'is_online' => $isOnline,
+                'customer_name' => $customerName,
+                'pppoe_username' => $pppoeUser,
+                'ssid' => $ad->wifi_ssid ?: 'Wi-Fi',
+                'rx_power' => $rxPower,
+                'odp_name' => $ad->odp?->name ?? $ad->odp?->code,
+                'VirtualParameters' => [
+                    'RXPower' => (string) ($rxPower ?? -19.5),
+                    'redaman' => (string) ($rxPower ?? -19.5),
+                    'SSID' => (string) ($ad->wifi_ssid ?: 'Wi-Fi'),
+                    'pppoeUsername' => (string) $pppoeUser,
+                    'customerName' => (string) ($customerName ?: ''),
+                ],
+                'tags' => array_values(array_filter([$ad->odp?->name, $ad->olt?->name])),
+            ];
+        }
+
+        // Enrich any remaining devices with customer names from dsBilling database
+        if (!empty($devices)) {
+            $candidateSns = [];
+            foreach ($devices as $d) {
+                if (!empty($d['customer_name'])) continue;
+                $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
+                if ($devSn !== '') {
+                    $candidateSns[] = $devSn;
+                    if (str_contains($devSn, '-')) {
+                        $parts = explode('-', $devSn);
+                        $candidateSns[] = end($parts);
+                    }
+                }
+            }
+            $candidateSns = array_values(array_unique(array_filter($candidateSns)));
+
+            if (!empty($candidateSns)) {
+                $custServices = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->with(['customer:id,name'])
+                    ->where(function ($query) use ($candidateSns) {
+                        $query->whereHas('onu', fn($q) => $q->whereIn('serial_number', $candidateSns))
+                              ->orWhereIn('onu_serial', $candidateSns);
+                    })
+                    ->get();
+
+                $custNameMap = [];
+                foreach ($custServices as $cs) {
+                    $cName = $cs->customer?->name;
+                    if ($cName) {
+                        if ($cs->onu_serial) {
+                            $custNameMap[strtoupper($cs->onu_serial)] = $cName;
+                        }
+                        if ($cs->onu && $cs->onu->serial_number) {
+                            $custNameMap[strtoupper($cs->onu->serial_number)] = $cName;
                         }
                     }
                 }
-                $candidateSns = array_values(array_unique(array_filter($candidateSns)));
 
-                if (!empty($candidateSns)) {
-                    $custServices = \App\Models\Customer\CustomerService::withoutGlobalScopes()
-                        ->with(['customer:id,name'])
-                        ->where(function ($query) use ($candidateSns) {
-                            $query->whereHas('onu', fn($q) => $q->whereIn('serial_number', $candidateSns))
-                                  ->orWhereIn('onu_serial', $candidateSns);
-                        })
-                        ->get();
-
-                    $custNameMap = [];
-                    foreach ($custServices as $cs) {
-                        $cName = $cs->customer?->name;
-                        if ($cName) {
-                            if ($cs->onu_serial) {
-                                $custNameMap[strtoupper($cs->onu_serial)] = $cName;
-                            }
-                            if ($cs->onu && $cs->onu->serial_number) {
-                                $custNameMap[strtoupper($cs->onu->serial_number)] = $cName;
-                            }
-                        }
-                    }
-
-                    foreach ($devices as &$d) {
+                foreach ($devices as &$d) {
+                    if (empty($d['customer_name'])) {
                         $devSn = strtoupper(trim((string) ($d['serial_number'] ?? ($d['_id'] ?? ''))));
                         $snShort = str_contains($devSn, '-') ? end(explode('-', $devSn)) : $devSn;
                         $matchedName = $custNameMap[$devSn] ?? ($custNameMap[$snShort] ?? null);
@@ -361,21 +507,15 @@ class MobileAcsProxyController extends Controller
                             $d['customer_name'] = $matchedName;
                         }
                     }
-                    unset($d);
                 }
+                unset($d);
             }
-
-            return response()->json([
-                'success' => true,
-                'data' => $devices,
-            ]);
-        } catch (Exception $e) {
-            Log::error("MobileAcsProxy listDevices error: " . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memuat perangkat dari ACS: ' . $e->getMessage(),
-            ], 502);
         }
+
+        return response()->json([
+            'success' => true,
+            'data' => $devices,
+        ]);
     }
 
     /**

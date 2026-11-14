@@ -20,15 +20,14 @@ class MobileInvoiceApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $resellerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+        $resellerId = $user->getEffectiveResellerId() ?? (
+            ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
+                ? ($user->reseller_id ?: $user->id)
+                : null
+        );
 
         $query = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
             ->whereNull('invoices.deleted_at')
-            ->whereNotExists(function ($sub) {
-                $sub->select('id')
-                    ->from('voucher_orders')
-                    ->whereColumn('voucher_orders.invoice_id', 'invoices.id');
-            })
             ->with([
                 'customer' => function ($q) {
                     $q->withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
@@ -48,18 +47,31 @@ class MobileInvoiceApiController extends Controller
 
         // Reseller or Branch scoping
         if ($resellerId) {
-            $query->where(function ($q) use ($resellerId) {
+            $query->where(function ($q) use ($resellerId, $user) {
                 $q->where('invoices.reseller_id', $resellerId)
-                  ->orWhereHas('customer', function ($cq) use ($resellerId) {
-                      $cq->withoutGlobalScopes()->where(function ($sq) use ($resellerId) {
+                  ->orWhere('invoices.created_by', $resellerId)
+                  ->orWhereHas('customer', function ($cq) use ($resellerId, $user) {
+                      $cq->withoutGlobalScopes()->where(function ($sq) use ($resellerId, $user) {
                           $sq->where('customers.reseller_id', $resellerId)
-                             ->orWhere('customers.created_by', $resellerId);
+                             ->orWhere('customers.created_by', $resellerId)
+                             ->orWhereHas('customerServices', function ($csq) use ($resellerId) {
+                                 $csq->withoutGlobalScopes()->where('customer_services.reseller_id', $resellerId);
+                             });
+                          if (!empty($user->branch_id)) {
+                              $sq->orWhere('customers.branch_id', $user->branch_id);
+                          }
                       });
                   });
+                if (!empty($user->branch_id)) {
+                    $q->orWhere('invoices.branch_id', $user->branch_id);
+                }
             });
         } elseif (!empty($user->branch_id)) {
-            $query->whereHas('customer', function ($cq) use ($user) {
-                $cq->withoutGlobalScopes()->where('customers.branch_id', $user->branch_id);
+            $query->where(function ($q) use ($user) {
+                $q->where('invoices.branch_id', $user->branch_id)
+                  ->orWhereHas('customer', function ($cq) use ($user) {
+                      $cq->withoutGlobalScopes()->where('customers.branch_id', $user->branch_id);
+                  });
             });
         }
 
@@ -87,12 +99,14 @@ class MobileInvoiceApiController extends Controller
         $status = strtolower(trim((string) $request->input('status', '')));
         $today = Carbon::today()->toDateString();
         if ($status === 'unpaid' || $status === 'belum_lunas') {
-            $query->whereIn('invoices.status', ['pending', 'unpaid', 'partial', 'draft']);
+            $query->whereIn('invoices.status', ['pending', 'unpaid', 'partial', 'draft', 'overdue']);
         } elseif ($status === 'paid' || $status === 'lunas') {
             $query->whereIn('invoices.status', ['paid', 'success', 'approved']);
         } elseif ($status === 'overdue' || $status === 'jatuh_tempo') {
-            $query->whereDate('invoices.due_date', '<', $today)
-                  ->whereIn('invoices.status', ['pending', 'unpaid', 'partial', 'draft']);
+            $query->where(function ($q) use ($today) {
+                $q->whereDate('invoices.due_date', '<', $today)
+                  ->orWhere('invoices.status', 'overdue');
+            })->whereIn('invoices.status', ['pending', 'unpaid', 'partial', 'draft', 'overdue']);
         } elseif (!empty($status) && $status !== 'all' && $status !== 'semua') {
             $query->where('invoices.status', $status);
         }
@@ -173,7 +187,11 @@ class MobileInvoiceApiController extends Controller
     public function payCash(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $resellerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
+        $resellerId = $user->getEffectiveResellerId() ?? (
+            ($user->hasRole('reseller') || $user->role === 'reseller' || !empty($user->reseller_id))
+                ? ($user->reseller_id ?: $user->id)
+                : null
+        );
 
         $query = Invoice::withoutGlobalScopes(['branch_isolation', 'reseller_isolation'])
             ->whereNull('invoices.deleted_at')

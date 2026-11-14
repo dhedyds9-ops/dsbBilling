@@ -264,10 +264,8 @@ class MobileNetworkApiController extends Controller
 
         // Scope by reseller if user is a reseller, otherwise by branch
         $effectiveResellerId = $user ? $user->getEffectiveResellerId() : null;
-        if ($effectiveResellerId) {
-            $query->where(function ($q) use ($effectiveResellerId) {
-                \App\Services\Auth\ResellerScopeHelper::applyOnuOwnership($q, $effectiveResellerId, 'onus');
-            });
+        if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
+            $query->forReseller($user);
         } elseif ($user && !empty($user->branch_id)) {
             $query->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
@@ -338,18 +336,26 @@ class MobileNetworkApiController extends Controller
                 return $this->formatOnuDevice($onu);
             });
 
-        // Fallback: search ACSDevice table if empty and search query provided
-        if ($devices->isEmpty() && !empty($search)) {
-            $acsMatches = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
-                ->with(['olt', 'customerService.customer'])
-                ->where(function ($aq) use ($search, $candidates) {
+        // Fallback: search ACSDevice table if empty
+        if ($devices->isEmpty()) {
+            $acsQuery = \App\Models\ACS\ACSDevice::withoutGlobalScopes()
+                ->with(['olt', 'customerService.customer']);
+
+            if (!empty($search)) {
+                $acsQuery->where(function ($aq) use ($search, $candidates) {
                     foreach ($candidates as $cand) {
                         $aq->orWhere('serial_number', 'LIKE', "%{$cand}%")
                            ->orWhere('mac_address', 'LIKE', "%{$cand}%");
                     }
                     $aq->orWhere('model', 'LIKE', "%{$search}%");
-                })
-                ->limit(20)
+                });
+            }
+
+            if ($effectiveResellerId || ($user && $user->hasRole('reseller'))) {
+                $acsQuery->forReseller($user);
+            }
+
+            $acsMatches = $acsQuery->limit(50)
                 ->get()
                 ->map(function ($ad) {
                     $rx = $ad->signal !== null ? (float) $ad->signal : null;
