@@ -578,7 +578,9 @@ class Index extends BaseEnterpriseList
             $wo->customer_name = $customer?->name ?? ($psbInfo['name'] ?? 'Calon Pelanggan');
             $wo->technician_id = $ticket->assigned_to ?: null;
             $wo->assigned_to = $ticket->assigned_to ?: null;
-            $wo->technician_ids = $ticket->technician_ids;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids')) {
+                $wo->technician_ids = $ticket->technician_ids;
+            }
             $wo->priority = $ticket->priority ?: 'medium';
             $wo->status = $ticket->assigned_to ? 'scheduled' : 'pending';
             $wo->scheduled_date = !empty($data['due_date']) ? $data['due_date'] : now()->addDay()->toDateString();
@@ -703,11 +705,13 @@ class Index extends BaseEnterpriseList
                 'priority' => $this->editingTicket['priority'] ?? 'medium',
                 'status' => $newStatus,
                 'assigned_to' => $newAssignee,
-                'technician_ids' => !empty($editTechIds) ? $editTechIds : null,
                 'reseller_id' => $newResellerId,
                 'resolved_at' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? now() : $ticket->resolved_at,
                 'resolved_by' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? $userId : $ticket->resolved_by,
             ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids')) {
+                $updatePayload['technician_ids'] = !empty($editTechIds) ? $editTechIds : null;
+            }
             if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'due_date')) {
                 $updatePayload['due_date'] = !empty($this->editingTicket['due_date']) ? $this->editingTicket['due_date'] : null;
             }

@@ -156,9 +156,14 @@ class TicketService
                 'priority' => $data['priority'] ?? 'medium',
                 'status' => $status,
                 'assigned_to' => $assignedTo,
-                'technician_ids' => $technicianIds,
-                'installation_id' => $data['installation_id'] ?? null,
             ];
+
+            if (Schema::hasColumn('tickets', 'technician_ids')) {
+                $ticketData['technician_ids'] = $technicianIds;
+            }
+            if (Schema::hasColumn('tickets', 'installation_id')) {
+                $ticketData['installation_id'] = $data['installation_id'] ?? null;
+            }
 
             if (Schema::hasColumn('tickets', 'due_date')) {
                 $ticketData['due_date'] = !empty($data['due_date']) ? $data['due_date'] : null;
@@ -219,7 +224,9 @@ class TicketService
 
         if (array_key_exists('technician_ids', $data)) {
             $techIds = !empty($data['technician_ids']) ? array_values(array_filter(array_map('intval', (array) $data['technician_ids']))) : null;
-            $updateData['technician_ids'] = $techIds;
+            if (Schema::hasColumn('tickets', 'technician_ids')) {
+                $updateData['technician_ids'] = $techIds;
+            }
             if (!empty($techIds) && empty($data['assigned_to'])) {
                 $updateData['assigned_to'] = $techIds[0];
             }

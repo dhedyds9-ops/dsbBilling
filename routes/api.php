@@ -191,8 +191,14 @@ Route::prefix('mobile')->name('api.mobile.')->group(function () {
             Route::post('/work-orders/{id}/sign', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'saveSignature'])->where('id', '\d+')->name('work-orders.sign');
             Route::get('/technicians', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'technicians'])->name('technicians');
             Route::get('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'tickets'])->name('tickets');
+            Route::post('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'createTicket'])->name('tickets.create');
             Route::post('/gps/log', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'logGPS'])->name('gps.log');
         });
+
+        // Direct aliases for /api/mobile/tickets & /api/mobile/vouchers
+        Route::get('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'tickets']);
+        Route::post('/tickets', [\App\Http\Controllers\Api\Mobile\MobileWorkforceApiController::class, 'createTicket']);
+        Route::get('/vouchers', [\App\Http\Controllers\Api\Mobile\MobileVoucherApiController::class, 'index']);
 
         // Direct aliases for /api/mobile/work-orders
         Route::prefix('work-orders')->name('work-orders.')->group(function () {

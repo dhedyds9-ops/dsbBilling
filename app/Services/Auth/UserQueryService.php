@@ -347,34 +347,53 @@ class UserQueryService
         }
 
         // Ambil semua instalasi aktif
+        $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
+        $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+
+        $instCols = ['id', 'technician_id', 'assigned_to'];
+        if ($hasInstTechIds) {
+            $instCols[] = 'technician_ids';
+        }
+
+        $ticketCols = ['id', 'assigned_to'];
+        if ($hasTicketTechIds) {
+            $ticketCols[] = 'technician_ids';
+        }
+
         $activeInstallations = \App\Models\CRM\Installation::withoutGlobalScopes()
             ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
-            ->get(['id', 'technician_id', 'assigned_to', 'technician_ids']);
+            ->get($instCols);
 
         // Ambil semua tiket aktif
         $activeTickets = \App\Models\Support\Ticket::withoutGlobalScopes()
             ->whereIn('status', ['open', 'in_progress', 'assigned', 'pending_customer'])
-            ->get(['id', 'assigned_to', 'technician_ids']);
+            ->get($ticketCols);
 
         $result = [];
         foreach ($technicians as $t) {
             $att = $attendances->get($t->id);
             $checkInTime = $att ? \Carbon\Carbon::parse($att->checked_in_at)->format('H:i') : '-';
 
-            $instCount = $activeInstallations->filter(function ($inst) use ($t) {
+            $instCount = $activeInstallations->filter(function ($inst) use ($t, $hasInstTechIds) {
                 if ((int) $inst->technician_id === (int) $t->id || (int) $inst->assigned_to === (int) $t->id) {
                     return true;
                 }
-                $ids = is_array($inst->technician_ids) ? $inst->technician_ids : json_decode($inst->technician_ids ?? '[]', true);
-                return in_array($t->id, (array) $ids);
+                if ($hasInstTechIds && !empty($inst->technician_ids)) {
+                    $ids = is_array($inst->technician_ids) ? $inst->technician_ids : json_decode($inst->technician_ids ?? '[]', true);
+                    return in_array($t->id, (array) $ids);
+                }
+                return false;
             })->count();
 
-            $tktCount = $activeTickets->filter(function ($tkt) use ($t) {
-                if ((int) $tkt->assigned_to === (int) $tkt->id || (int) $tkt->assigned_to === (int) $t->id) {
+            $tktCount = $activeTickets->filter(function ($tkt) use ($t, $hasTicketTechIds) {
+                if ((int) $tkt->assigned_to === (int) $t->id) {
                     return true;
                 }
-                $ids = is_array($tkt->technician_ids) ? $tkt->technician_ids : json_decode($tkt->technician_ids ?? '[]', true);
-                return in_array($t->id, (array) $ids);
+                if ($hasTicketTechIds && !empty($tkt->technician_ids)) {
+                    $ids = is_array($tkt->technician_ids) ? $tkt->technician_ids : json_decode($tkt->technician_ids ?? '[]', true);
+                    return in_array($t->id, (array) $ids);
+                }
+                return false;
             })->count();
 
             $totalActive = $instCount + $tktCount;

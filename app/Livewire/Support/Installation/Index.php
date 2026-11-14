@@ -630,7 +630,9 @@ class Index extends BaseEnterpriseList
             $wo->scheduled_time = $this->newWo['scheduled_time'];
             $wo->technician_id = $primaryTechId;
             $wo->assigned_to = $primaryTechId;
-            $wo->technician_ids = !empty($selectedTechIds) ? $selectedTechIds : null;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'technician_ids')) {
+                $wo->technician_ids = !empty($selectedTechIds) ? $selectedTechIds : null;
+            }
             $wo->notes = $notes;
             $wo->priority = $this->newWo['priority'] ?? 'medium';
             $wo->status = !empty($primaryTechId) ? 'scheduled' : 'pending';

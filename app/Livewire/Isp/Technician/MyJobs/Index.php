@@ -808,11 +808,14 @@ class Index extends Component
                     'onu' => fn ($q) => $q->withoutGlobalScopes(),
                 ]);
 
+            $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
             if (!$isAllScope) {
-                $instQuery->where(function ($q) use ($userId) {
+                $instQuery->where(function ($q) use ($userId, $hasInstTechIds) {
                     $q->where('technician_id', $userId)
-                      ->orWhere('assigned_to', $userId)
-                      ->orWhereJsonContains('technician_ids', $userId);
+                      ->orWhere('assigned_to', $userId);
+                    if ($hasInstTechIds) {
+                        $q->orWhereJsonContains('technician_ids', $userId);
+                    }
                 });
             }
 
@@ -885,10 +888,13 @@ class Index extends Component
                     'assignedTo',
                 ]);
 
+            $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
             if (!$isAllScope) {
-                $ticketQuery->where(function ($q) use ($userId) {
-                    $q->where('assigned_to', $userId)
-                      ->orWhereJsonContains('technician_ids', $userId);
+                $ticketQuery->where(function ($q) use ($userId, $hasTicketTechIds) {
+                    $q->where('assigned_to', $userId);
+                    if ($hasTicketTechIds) {
+                        $q->orWhereJsonContains('technician_ids', $userId);
+                    }
                 });
             }
 
@@ -1099,17 +1105,30 @@ class Index extends Component
             ->where('activated_at', '>=', now()->subDays(30))
             ->count();
 
+        $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
+        $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+
         // Active & History Installations (CRM)
         $activeInst = Installation::withoutGlobalScopes()
-            ->when(!$isAllScope, function ($q) use ($userId) {
-                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId));
+            ->when(!$isAllScope, function ($q) use ($userId, $hasInstTechIds) {
+                $q->where(function ($sub) use ($userId, $hasInstTechIds) {
+                    $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId);
+                    if ($hasInstTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $userId);
+                    }
+                });
             })
             ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
             ->count();
 
         $historyInst = Installation::withoutGlobalScopes()
-            ->when(!$isAllScope, function ($q) use ($userId) {
-                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId));
+            ->when(!$isAllScope, function ($q) use ($userId, $hasInstTechIds) {
+                $q->where(function ($sub) use ($userId, $hasInstTechIds) {
+                    $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId);
+                    if ($hasInstTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $userId);
+                    }
+                });
             })
             ->whereIn('status', ['completed', 'cancelled'])
             ->count();
@@ -1127,12 +1146,26 @@ class Index extends Component
 
         // Active & History Tickets
         $activeTickets = Ticket::withoutGlobalScopes()
-            ->when(!$isAllScope, fn ($q) => $q->where(fn ($sub) => $sub->where('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId)))
+            ->when(!$isAllScope, function ($q) use ($userId, $hasTicketTechIds) {
+                $q->where(function ($sub) use ($userId, $hasTicketTechIds) {
+                    $sub->where('assigned_to', $userId);
+                    if ($hasTicketTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $userId);
+                    }
+                });
+            })
             ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
             ->count();
 
         $historyTickets = Ticket::withoutGlobalScopes()
-            ->when(!$isAllScope, fn ($q) => $q->where(fn ($sub) => $sub->where('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId)))
+            ->when(!$isAllScope, function ($q) use ($userId, $hasTicketTechIds) {
+                $q->where(function ($sub) use ($userId, $hasTicketTechIds) {
+                    $sub->where('assigned_to', $userId);
+                    if ($hasTicketTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $userId);
+                    }
+                });
+            })
             ->whereIn('status', ['resolved', 'closed'])
             ->count();
 

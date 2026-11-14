@@ -110,12 +110,15 @@ class MobileWorkforceApiController extends Controller
         }
 
         // Apply branch & assignment scope (Cross-branch assignment supported per Directive Section 6)
+        $hasTechIdsCol = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'technician_ids');
         if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
-            $query->where(function ($q) use ($user) {
+            $query->where(function ($q) use ($user, $hasTechIdsCol) {
                 // 1. Show work orders assigned to this technician (regardless of branch)
-                $q->where(function ($sub) use ($user) {
-                    $sub->where('assigned_to', $user->id)
-                        ->orWhereJsonContains('technician_ids', $user->id);
+                $q->where(function ($sub) use ($user, $hasTechIdsCol) {
+                    $sub->where('assigned_to', $user->id);
+                    if ($hasTechIdsCol) {
+                        $sub->orWhereJsonContains('technician_ids', $user->id);
+                    }
                 });
                 // 2. Or unassigned work orders in their home branch
                 if ($user->branch_id) {
@@ -673,16 +676,22 @@ class MobileWorkforceApiController extends Controller
         try {
             $hasInstIdCol = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id');
 
+            $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
+            $hasWoTechIds = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'technician_ids');
+            $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+
             // 1. Sync SPK Instalasi (CRM) Aktif
             $activeInstallations = \App\Models\CRM\Installation::withoutGlobalScopes()
                 ->with(['customer' => fn ($q) => $q->withoutGlobalScopes(), 'survey.prospect'])
                 ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
-                ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user) {
-                    $q->where(function ($sub) use ($user) {
+                ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user, $hasInstTechIds) {
+                    $q->where(function ($sub) use ($user, $hasInstTechIds) {
                         $sub->where('technician_id', $user->id)
                             ->orWhere('assigned_to', $user->id)
-                            ->orWhereJsonContains('technician_ids', $user->id)
                             ->orWhereNull('technician_id');
+                        if ($hasInstTechIds) {
+                            $sub->orWhereJsonContains('technician_ids', $user->id);
+                        }
                     });
                 })
                 ->latest()
@@ -715,9 +724,12 @@ class MobileWorkforceApiController extends Controller
                     'description' => 'Instalasi Pasang Baru (PSB)' . ($inst->notes ? " - {$inst->notes}" : ''),
                     'notes' => $inst->notes,
                     'priority' => $inst->priority ?? 'medium',
-                    'technician_ids' => $inst->technician_ids,
                     'scheduled_at' => $schedAt ?: $inst->created_at,
                 ];
+
+                if ($hasWoTechIds && isset($inst->technician_ids)) {
+                    $data['technician_ids'] = $inst->technician_ids;
+                }
 
                 if ($hasInstIdCol) {
                     WorkOrder::updateOrCreate(
@@ -738,11 +750,13 @@ class MobileWorkforceApiController extends Controller
             $openTickets = Ticket::withoutGlobalScopes()
                 ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
                 ->whereIn('status', ['open', 'in_progress', 'assigned'])
-                ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user) {
-                    $q->where(function ($sub) use ($user) {
+                ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user, $hasTicketTechIds) {
+                    $q->where(function ($sub) use ($user, $hasTicketTechIds) {
                         $sub->where('assigned_to', $user->id)
-                            ->orWhereJsonContains('technician_ids', $user->id)
                             ->orWhereNull('assigned_to');
+                        if ($hasTicketTechIds) {
+                            $sub->orWhereJsonContains('technician_ids', $user->id);
+                        }
                     });
                 })
                 ->latest()
@@ -750,23 +764,28 @@ class MobileWorkforceApiController extends Controller
                 ->get();
 
             foreach ($openTickets as $t) {
+                $ticketWoData = [
+                    'uuid' => (string) Str::uuid(),
+                    'company_id' => $user->company_id,
+                    'branch_id' => $user->branch_id,
+                    'type' => $t->category ?? 'troubleshooting',
+                    'customer_id' => $t->customer_id ?? $t->user_id,
+                    'assigned_to' => $t->assigned_to ?? $user->id,
+                    'status' => $t->status === 'in_progress' ? 'in_progress' : ($t->assigned_to ? 'assigned' : 'pending'),
+                    'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
+                    'description' => $t->description ?? '',
+                    'notes' => $t->resolution_notes ?? null,
+                    'priority' => $t->priority ?? 'medium',
+                    'scheduled_at' => $t->created_at,
+                ];
+
+                if ($hasWoTechIds && isset($t->technician_ids)) {
+                    $ticketWoData['technician_ids'] = $t->technician_ids;
+                }
+
                 WorkOrder::firstOrCreate(
                     ['ticket_id' => $t->id],
-                    [
-                        'uuid' => (string) Str::uuid(),
-                        'company_id' => $user->company_id,
-                        'branch_id' => $user->branch_id,
-                        'type' => $t->category ?? 'troubleshooting',
-                        'customer_id' => $t->customer_id ?? $t->user_id,
-                        'assigned_to' => $t->assigned_to ?? $user->id,
-                        'technician_ids' => $t->technician_ids,
-                        'status' => $t->status === 'in_progress' ? 'in_progress' : ($t->assigned_to ? 'assigned' : 'pending'),
-                        'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
-                        'description' => $t->description ?? '',
-                        'notes' => $t->resolution_notes ?? null,
-                        'priority' => $t->priority ?? 'medium',
-                        'scheduled_at' => $t->created_at,
-                    ]
+                    $ticketWoData
                 );
             }
         } catch (\Throwable $e) {
@@ -897,15 +916,28 @@ class MobileWorkforceApiController extends Controller
     public function tickets(Request $request): JsonResponse
     {
         $user = $request->user();
+        $ownerId = $user->getEffectiveResellerId() ?? ($user->hasRole('reseller') ? $user->id : null);
         $isManager = $this->isManagerOrAdmin($user);
 
-        $query = \App\Models\Support\Ticket::withoutGlobalScopes();
+        $query = \App\Models\Support\Ticket::withoutGlobalScopes()
+            ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()]);
 
-        if (!$isManager) {
-            $query->where(function ($q) use ($user) {
-                $q->where(function ($sub) use ($user) {
-                    $sub->where('assigned_to', $user->id)
-                        ->orWhereJsonContains('technician_ids', $user->id);
+        if ($ownerId) {
+            $query->where(function ($q) use ($ownerId, $user) {
+                $q->where('created_by', $user->id)
+                  ->orWhereHas('customer', function ($cq) use ($ownerId) {
+                      $cq->withoutGlobalScopes()->where('reseller_id', $ownerId)
+                          ->orWhere('created_by', $ownerId);
+                  });
+            });
+        } elseif (!$isManager) {
+            $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+            $query->where(function ($q) use ($user, $hasTicketTechIds) {
+                $q->where(function ($sub) use ($user, $hasTicketTechIds) {
+                    $sub->where('assigned_to', $user->id);
+                    if ($hasTicketTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $user->id);
+                    }
                 })
                 ->orWhere(function ($sub) use ($user) {
                     $sub->whereNull('assigned_to')
@@ -945,8 +977,9 @@ class MobileWorkforceApiController extends Controller
                     'priority' => $t->priority,
                     'category' => $t->category,
                     'customer_id' => $t->customer_id,
+                    'customer_name' => $t->customer?->name ?? 'Klien Umum',
                     'assigned_to' => $t->assigned_to,
-                    'created_at' => $t->created_at?->toIso8601String(),
+                    'created_at' => $t->created_at?->format('d M Y H:i'),
                 ];
             });
 
@@ -955,5 +988,42 @@ class MobileWorkforceApiController extends Controller
             'count' => $tickets->count(),
             'data' => $tickets,
         ]);
+    }
+
+    /**
+     * Reseller / Staff submit trouble ticket to central NOC.
+     * POST /api/mobile/tickets
+     */
+    public function createTicket(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'customer_id' => 'nullable|integer',
+            'priority' => 'nullable|string|in:low,medium,high,urgent',
+            'category' => 'nullable|string',
+        ]);
+
+        $ticketNumber = 'TICK-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+
+        $ticket = \App\Models\Support\Ticket::create([
+            'ticket_number' => $ticketNumber,
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'customer_id' => $validated['customer_id'] ?? null,
+            'status' => 'open',
+            'priority' => $validated['priority'] ?? 'medium',
+            'category' => $validated['category'] ?? 'troubleshoot',
+            'branch_id' => $user->branch_id,
+            'company_id' => $user->company_id,
+            'created_by' => $user->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tiket gangguan berhasil dilaporkan ke pusat NOC.',
+            'data' => $ticket,
+        ], 201);
     }
 }

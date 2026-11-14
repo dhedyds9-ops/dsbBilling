@@ -59,16 +59,23 @@ class Dashboard extends Component
             ->whereIn('status', ['pending', 'running', 'in_progress', 'provisioning'])
             ->count();
 
+        $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
+        $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+
         // SPK Instalasi (CRM) Aktif yang Ditugaskan ke Teknisi
         $activeInstallations = Installation::withoutGlobalScopes()
             ->with([
                 'customer' => fn ($q) => $q->withoutGlobalScopes()->with('reseller'),
                 'survey.prospect',
             ])
-            ->when(!$isAdmin, function ($q) use ($userId) {
-                $q->where(fn ($sub) => $sub->where('technician_id', $userId)
-                    ->orWhere('assigned_to', $userId)
-                    ->orWhereJsonContains('technician_ids', $userId));
+            ->when(!$isAdmin, function ($q) use ($userId, $hasInstTechIds) {
+                $q->where(function ($sub) use ($userId, $hasInstTechIds) {
+                    $sub->where('technician_id', $userId)
+                        ->orWhere('assigned_to', $userId);
+                    if ($hasInstTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $userId);
+                    }
+                });
             })
             ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
             ->orderBy('scheduled_date', 'asc')
@@ -88,7 +95,14 @@ class Dashboard extends Component
             ->count();
 
         $activeTicketsCount = Ticket::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where(fn ($sub) => $sub->where('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId)))
+            ->when(!$isAdmin, function ($q) use ($userId, $hasTicketTechIds) {
+                $q->where(function ($sub) use ($userId, $hasTicketTechIds) {
+                    $sub->where('assigned_to', $userId);
+                    if ($hasTicketTechIds) {
+                        $sub->orWhereJsonContains('technician_ids', $userId);
+                    }
+                });
+            })
             ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
             ->count();
 

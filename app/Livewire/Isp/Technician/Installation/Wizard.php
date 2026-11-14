@@ -115,17 +115,24 @@ class Wizard extends Component
                 ->whereIn('status', ['approved', 'dispatched'])
                 ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
 
+            $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
+            $hasInstTechIds = \Illuminate\Support\Facades\Schema::hasColumn('installations', 'technician_ids');
+
             $viewAll = request()->query('view_all', '0') === '1' && $isAdmin;
             if (!$viewAll) {
                 // Kunci penugasan ke akun yang login (baik teknisi tunggal maupun anggota tim di technician_ids)
-                $ticketQuery->where(function($q) use ($user) {
-                    $q->where('assigned_to', $user->id)
-                      ->orWhereJsonContains('technician_ids', $user->id);
+                $ticketQuery->where(function($q) use ($user, $hasTicketTechIds) {
+                    $q->where('assigned_to', $user->id);
+                    if ($hasTicketTechIds) {
+                        $q->orWhereJsonContains('technician_ids', $user->id);
+                    }
                 });
-                $installationQuery->where(function($q) use ($user) {
+                $installationQuery->where(function($q) use ($user, $hasInstTechIds) {
                     $q->where('assigned_to', $user->id)
-                      ->orWhere('technician_id', $user->id)
-                      ->orWhereJsonContains('technician_ids', $user->id);
+                      ->orWhere('technician_id', $user->id);
+                    if ($hasInstTechIds) {
+                        $q->orWhereJsonContains('technician_ids', $user->id);
+                    }
                 });
                 $requisitionQuery->where('designated_technician_id', $user->id);
             }
