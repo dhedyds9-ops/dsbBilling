@@ -264,6 +264,10 @@ class CDataOltDriver extends BaseOltDriver
             if ($slot > 16) {
                 $slot = 0;
             }
+        } elseif ($ponPort >= 17 && $ponPort <= 32) {
+            // C-Data standard: ifIndex 17-32 are PON ports 1-16 (ports 1-16 are GE/10GE uplink)
+            $portNum = $ponPort - 16;
+            $slot = 1;
         } else {
             $portNum = $ponPort;
             $slot = 0;
@@ -278,10 +282,23 @@ class CDataOltDriver extends BaseOltDriver
             $this->scrapeCliOnus($slot);
         }
 
-        if (!empty($this->cachedCliParsedOnus[$portNum])) {
+        // Check target port in CLI cache (supports both raw $ponPort, normalized $portNum, and slot-shifted)
+        $targetOnus = $this->cachedCliParsedOnus[$portNum] 
+            ?? ($this->cachedCliParsedOnus[$ponPort] ?? null)
+            ?? ($ponPort > 16 ? ($this->cachedCliParsedOnus[$ponPort - 16] ?? null) : null);
+
+        // Fallback: If only 1 port has parsed ONUs in CLI cache and this is the first PON port (e.g. 1 or 17)
+        if (empty($targetOnus) && !empty($this->cachedCliParsedOnus) && ($portNum === 1 || $ponPort === 17 || $ponPort === 1)) {
+            $firstKey = array_key_first($this->cachedCliParsedOnus);
+            if ($firstKey !== null) {
+                $targetOnus = $this->cachedCliParsedOnus[$firstKey];
+            }
+        }
+
+        if (!empty($targetOnus)) {
             $res = [];
             $missingOpticalCount = 0;
-            foreach ($this->cachedCliParsedOnus[$portNum] as $item) {
+            foreach ($targetOnus as $item) {
                 $item['pon_port'] = $ponPort;
                 if ($item['rx_power_dbm'] === null && ($item['status'] ?? 'offline') === 'online') {
                     $missingOpticalCount++;
@@ -333,8 +350,17 @@ class CDataOltDriver extends BaseOltDriver
                 return empty(trim($s)) || str_contains($l, 'incomplete') || str_contains($l, 'invalid') || str_contains($l, 'unknown') || str_contains($l, 'error') || str_contains($l, 'unrecognized');
             };
 
-            // Attempt 1: Direct commands
+            // Attempt 1: Direct commands (supports 0/1/1, 0/0/1, slot 1 and slot 0)
             $infoOut = $this->cli->execute("show ont info all\r\n", false);
+            if ($isBad($infoOut)) {
+                $infoOut = $this->cli->execute("show ont info 0/1 all\r\n", false);
+            }
+            if ($isBad($infoOut)) {
+                $infoOut = $this->cli->execute("show ont info 0/1/1 all\r\n", false);
+            }
+            if ($isBad($infoOut)) {
+                $infoOut = $this->cli->execute("show ont info 0/1 1 all\r\n", false);
+            }
             if ($isBad($infoOut)) {
                 $infoOut = $this->cli->execute("show ont info 1 all\r\n", false);
             }
@@ -352,6 +378,15 @@ class CDataOltDriver extends BaseOltDriver
             }
 
             $optOut = $this->cli->execute("show ont optical-info all\r\n", false);
+            if ($isBad($optOut)) {
+                $optOut = $this->cli->execute("show ont optical-info 0/1 all\r\n", false);
+            }
+            if ($isBad($optOut)) {
+                $optOut = $this->cli->execute("show ont optical-info 0/1/1 all\r\n", false);
+            }
+            if ($isBad($optOut)) {
+                $optOut = $this->cli->execute("show ont optical-info 0/1 1 all\r\n", false);
+            }
             if ($isBad($optOut)) {
                 $optOut = $this->cli->execute("show ont optical-info 1 all\r\n", false);
             }
@@ -1181,14 +1216,23 @@ class CDataOltDriver extends BaseOltDriver
 
             // Check if this ONU belongs to the current port
             $isPortMatch = false;
+            $normalizedP = ($p > 16 && $p <= 32) ? ($p - 16) : $p;
+            $normalizedTarget = ($portNum > 16 && $portNum <= 32) ? ($portNum - 16) : $portNum;
+
             if (($this->olt->pon_port_count ?? 0) === 1) {
-                $isPortMatch = ($portNum === 1);
+                $isPortMatch = ($normalizedTarget === 1);
                 $p = 1;
             } elseif ($p !== null && $p > 0) {
-                $isPortMatch = ($p === $portNum || $p === $ponPort || (isset($rawP) && $rawP === $ponPort));
+                $isPortMatch = (
+                    $p === $portNum 
+                    || $p === $ponPort 
+                    || $normalizedP === $normalizedTarget
+                    || $p === $normalizedTarget
+                    || (isset($rawP) && ($rawP === $ponPort || $rawP === $portNum))
+                );
             } else {
                 // If port index could not be resolved from OID, assign to port 1 only (prevent duplicating to all 8 ports)
-                $isPortMatch = ($portNum === 1);
+                $isPortMatch = ($normalizedTarget === 1);
             }
 
             if ($isPortMatch) {
