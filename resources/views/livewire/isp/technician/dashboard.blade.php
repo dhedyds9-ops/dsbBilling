@@ -63,16 +63,21 @@
             @else
                 <a href="{{ route('technician.my-jobs.index') }}"
                    class="relative py-2 bg-white/20 dark:bg-slate-800/20 hover:bg-white/30 dark:hover:bg-slate-800/30 border border-white/30 rounded-xl text-white text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors">
-                    @if(($activeTicketsCount ?? 0) > 0)
+                    @if(($totalActiveTasks ?? $activeTicketsCount ?? 0) > 0)
                         <span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center shadow">
-                            {{ $activeTicketsCount }}
+                            {{ $totalActiveTasks ?? $activeTicketsCount }}
                         </span>
                     @endif
                     <span class="material-symbols-outlined" style="font-size:18px">assignment</span>
                     Tugas
                 </a>
                 <a href="{{ route('technician.installation.wizard') }}"
-                   class="py-2 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                   class="relative py-2 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-colors shadow-sm">
+                    @if(($assignedInstallationsCount ?? 0) > 0)
+                        <span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center shadow animate-bounce">
+                            {{ $assignedInstallationsCount }}
+                        </span>
+                    @endif
                     <span class="material-symbols-outlined" style="font-size:18px">build_circle</span>
                     Instalasi
                 </a>
@@ -114,6 +119,81 @@
             <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Gagal</p>
         </div>
     </div>
+
+    {{-- Penugasan SPK Instalasi Aktif Menunggu --}}
+    @if(isset($activeInstallations) && $activeInstallations->isNotEmpty())
+        <div class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-indigo-500/10 rounded-2xl border-2 border-amber-400/50 dark:border-amber-500/40 p-4 sm:p-5 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-amber-200/60 dark:border-amber-800/40 mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <span class="material-symbols-outlined notranslate" translate="no" style="font-size:20px">build_circle</span>
+                    </span>
+                    <div>
+                        <h2 class="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-tight">Tugas Instalasi Aktif (SPK)</h2>
+                        <p class="text-[11px] text-amber-700 dark:text-amber-400 font-medium">Anda memiliki {{ $activeInstallations->count() }} tugas pemasangan baru yang perlu dikerjakan.</p>
+                    </div>
+                </div>
+                <a href="{{ route('technician.my-jobs.index') }}" class="text-xs font-bold text-amber-800 dark:text-amber-300 hover:underline shrink-0">
+                    Semua Tugas &rarr;
+                </a>
+            </div>
+
+            <div class="space-y-2.5">
+                @foreach($activeInstallations as $inst)
+                    @php
+                        $custName = $inst->customer->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Calon Pelanggan'));
+                        $resellerName = $inst->customer?->reseller?->name ?? null;
+                        $phone = $inst->customer?->phone ?? ($inst->customer?->whatsapp ?? null);
+                        $address = $inst->customer?->address ?? ($inst->survey?->address ?? ($inst->notes ?: '-'));
+                        $schedDate = $inst->scheduled_date ? (\Carbon\Carbon::parse($inst->scheduled_date)->translatedFormat('d M Y')) : null;
+                        $schedTime = $inst->scheduled_time ? substr((string)$inst->scheduled_time, 0, 5) : null;
+                    @endphp
+                    <div class="bg-white dark:bg-slate-800 rounded-xl p-3.5 border border-amber-200/80 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-black text-sm flex items-center justify-center shrink-0 mt-0.5">
+                                PSB
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h3 class="font-black text-slate-900 dark:text-slate-100 text-sm leading-tight truncate">
+                                        {{ $custName }}
+                                    </h3>
+                                    @if($resellerName)
+                                        <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold">
+                                            Reseller: {{ $resellerName }}
+                                        </span>
+                                    @else
+                                        <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-extrabold">
+                                            Direct (Kantor)
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+                                    <span class="material-symbols-outlined text-[13px] align-middle" translate="no">location_on</span>
+                                    {{ \Illuminate\Support\Str::limit($address, 60) }}
+                                    @if($phone) &bull; <span class="material-symbols-outlined text-[13px] align-middle" translate="no">call</span> {{ $phone }} @endif
+                                </p>
+                                @if($schedDate)
+                                    <p class="text-[11px] font-bold text-amber-700 dark:text-amber-400 mt-0.5">
+                                        <span class="material-symbols-outlined text-[13px] align-middle" translate="no">calendar_month</span>
+                                        Jadwal: {{ $schedDate }} {{ $schedTime ? 'pukul ' . $schedTime . ' WIB' : '' }}
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            <a href="{{ route('technician.installation.wizard') }}"
+                               class="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-xl text-xs font-black flex items-center gap-1 shadow-xs transition-colors">
+                                <span class="material-symbols-outlined text-[16px]" translate="no">play_arrow</span>
+                                Mulai Pasang
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     {{-- Fitur Lapangan & Layanan Karyawan --}}
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">

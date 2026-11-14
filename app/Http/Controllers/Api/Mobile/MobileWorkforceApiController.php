@@ -92,7 +92,7 @@ class MobileWorkforceApiController extends Controller
     {
         $user = $request->user();
 
-        $query = WorkOrder::with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages'])
+        $query = WorkOrder::with(['customer', 'technician', 'approver', 'ticket', 'checklists', 'materialUsages', 'installation.customer'])
             ->orderByRaw("CASE 
                 WHEN priority = 'urgent' THEN 1 
                 WHEN priority = 'high' THEN 2 
@@ -161,43 +161,10 @@ class MobileWorkforceApiController extends Controller
             });
         }
 
+        // Otomatis sinkronisasi tugas aktif (Tiket Gangguan & SPK Instalasi CRM) ke tabel WorkOrder
+        $this->syncActiveTasksToWorkOrders($user);
+
         $workOrders = $query->limit(100)->get();
-
-        // If no work orders yet, automatically sync active tickets as work orders
-        if ($workOrders->isEmpty() && !$request->filled('status') && !$request->filled('search')) {
-            $openTickets = Ticket::withoutGlobalScopes()
-                ->whereIn('status', ['open', 'in_progress', 'assigned'])
-                ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user) {
-                    $q->where(function ($sub) use ($user) {
-                        $sub->where('assigned_to', $user->id)
-                            ->orWhereNull('assigned_to');
-                    });
-                })
-                ->latest()
-                ->limit(15)
-                ->get();
-
-            foreach ($openTickets as $t) {
-                WorkOrder::firstOrCreate(
-                    ['ticket_id' => $t->id],
-                    [
-                        'uuid' => (string) Str::uuid(),
-                        'company_id' => $user->company_id,
-                        'branch_id' => $user->branch_id,
-                        'type' => $t->category ?? 'troubleshooting',
-                        'customer_id' => $t->customer_id ?? $t->user_id,
-                        'assigned_to' => $t->assigned_to ?? $user->id,
-                        'status' => $t->status === 'in_progress' ? 'in_progress' : 'pending',
-                        'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
-                        'description' => $t->description ?? '',
-                        'priority' => $t->priority ?? 'medium',
-                        'scheduled_at' => $t->created_at,
-                    ]
-                );
-            }
-
-            $workOrders = $query->limit(100)->get();
-        }
 
         $formatted = $workOrders->map(fn(WorkOrder $wo) => $this->formatWorkOrder($wo, $user));
 
@@ -695,6 +662,111 @@ class MobileWorkforceApiController extends Controller
     }
 
     /**
+     * Sinkronisasi otomatis SPK Instalasi (CRM) dan Tiket Gangguan aktif ke WorkOrder untuk aplikasi mobile.
+     */
+    protected function syncActiveTasksToWorkOrders(User $user): void
+    {
+        try {
+            $hasInstIdCol = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'installation_id');
+
+            // 1. Sync SPK Instalasi (CRM) Aktif
+            $activeInstallations = \App\Models\CRM\Installation::withoutGlobalScopes()
+                ->with(['customer' => fn ($q) => $q->withoutGlobalScopes(), 'survey.prospect'])
+                ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
+                ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user) {
+                    $q->where(function ($sub) use ($user) {
+                        $sub->where('technician_id', $user->id)
+                            ->orWhere('assigned_to', $user->id)
+                            ->orWhereNull('technician_id');
+                    });
+                })
+                ->latest()
+                ->limit(25)
+                ->get();
+
+            foreach ($activeInstallations as $inst) {
+                $custName = $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru'));
+                $schedAt = null;
+                if ($inst->scheduled_date) {
+                    try {
+                        $time = $inst->scheduled_time ? substr((string)$inst->scheduled_time, 0, 5) : '09:00';
+                        $schedAt = \Carbon\Carbon::parse($inst->scheduled_date . ' ' . $time);
+                    } catch (\Throwable) {
+                        $schedAt = now();
+                    }
+                }
+
+                $assignedTechId = $inst->assigned_to ?: ($inst->technician_id ?: null);
+                $status = in_array($inst->status, ['in_progress']) ? 'in_progress' : ($assignedTechId ? 'assigned' : 'pending');
+
+                $data = [
+                    'company_id' => $user->company_id,
+                    'branch_id' => $user->branch_id,
+                    'type' => 'installation',
+                    'customer_id' => $inst->customer_id,
+                    'assigned_to' => $assignedTechId,
+                    'status' => $status,
+                    'title' => 'PSB: ' . $custName,
+                    'description' => 'Instalasi Pasang Baru (PSB)' . ($inst->notes ? " - {$inst->notes}" : ''),
+                    'notes' => $inst->notes,
+                    'priority' => $inst->priority ?? 'medium',
+                    'scheduled_at' => $schedAt ?: $inst->created_at,
+                ];
+
+                if ($hasInstIdCol) {
+                    WorkOrder::updateOrCreate(
+                        ['installation_id' => $inst->id],
+                        array_merge(['uuid' => (string) Str::uuid()], $data)
+                    );
+                } else {
+                    $existing = WorkOrder::where('type', 'installation')
+                        ->where('title', 'PSB: ' . $custName)
+                        ->first();
+                    if (!$existing) {
+                        WorkOrder::create(array_merge(['uuid' => (string) Str::uuid()], $data));
+                    }
+                }
+            }
+
+            // 2. Sync Tiket Gangguan Aktif
+            $openTickets = Ticket::withoutGlobalScopes()
+                ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
+                ->whereIn('status', ['open', 'in_progress', 'assigned'])
+                ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user) {
+                    $q->where(function ($sub) use ($user) {
+                        $sub->where('assigned_to', $user->id)
+                            ->orWhereNull('assigned_to');
+                    });
+                })
+                ->latest()
+                ->limit(25)
+                ->get();
+
+            foreach ($openTickets as $t) {
+                WorkOrder::firstOrCreate(
+                    ['ticket_id' => $t->id],
+                    [
+                        'uuid' => (string) Str::uuid(),
+                        'company_id' => $user->company_id,
+                        'branch_id' => $user->branch_id,
+                        'type' => $t->category ?? 'troubleshooting',
+                        'customer_id' => $t->customer_id ?? $t->user_id,
+                        'assigned_to' => $t->assigned_to ?? $user->id,
+                        'status' => $t->status === 'in_progress' ? 'in_progress' : ($t->assigned_to ? 'assigned' : 'pending'),
+                        'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
+                        'description' => $t->description ?? '',
+                        'notes' => $t->resolution_notes ?? null,
+                        'priority' => $t->priority ?? 'medium',
+                        'scheduled_at' => $t->created_at,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WorkforceApi] Gagal sync active tasks ke WorkOrders: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Format a work order for API response with role-aware permissions.
      */
     protected function formatWorkOrder(WorkOrder $wo, User $user, bool $includeDetails = false): array
@@ -714,6 +786,22 @@ class MobileWorkforceApiController extends Controller
                 'pppoe_username' => $customer->pppoe_username,
                 'onu_sn' => $customer->onu_sn,
             ];
+        } elseif ($wo->relationLoaded('installation') || $wo->installation) {
+            $inst = $wo->installation;
+            if ($inst) {
+                $instCust = $inst->customer;
+                $customerData = [
+                    'id' => $instCust?->id ?? null,
+                    'name' => $instCust?->name ?? ($inst->customer_name ?: 'Pelanggan Baru'),
+                    'email' => $instCust?->email ?? null,
+                    'phone' => $instCust?->phone ?? null,
+                    'whatsapp' => $instCust?->whatsapp ?? ($instCust?->phone ?? null),
+                    'address' => $instCust?->address ?? null,
+                    'customer_code' => $instCust?->code ?? null,
+                    'pppoe_username' => null,
+                    'onu_sn' => null,
+                ];
+            }
         }
 
         $technician = $wo->technician;

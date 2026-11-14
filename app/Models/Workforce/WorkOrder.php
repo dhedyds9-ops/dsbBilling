@@ -20,6 +20,7 @@ class WorkOrder extends Model
         'branch_id',
         'type',
         'ticket_id',
+        'installation_id',
         'customer_id',
         'assigned_to',
         'status',
@@ -66,6 +67,11 @@ class WorkOrder extends Model
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, 'ticket_id');
+    }
+
+    public function installation(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\CRM\Installation::class, 'installation_id');
     }
 
     public function branch(): BelongsTo

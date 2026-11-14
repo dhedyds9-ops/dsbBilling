@@ -4,6 +4,7 @@ namespace App\Livewire\Isp\Technician;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use App\Models\CRM\Installation;
 use App\Models\Provisioning\ProvisionPipeline;
 use App\Models\Support\Ticket;
 use Illuminate\Support\Facades\Auth;
@@ -54,9 +55,27 @@ class Dashboard extends Component
             });
         };
 
-        $countProses = ProvisionPipeline::where($scopePipeline)
+        $pipelineProses = ProvisionPipeline::where($scopePipeline)
             ->whereIn('status', ['pending', 'running', 'in_progress', 'provisioning'])
             ->count();
+
+        // SPK Instalasi (CRM) Aktif yang Ditugaskan ke Teknisi
+        $activeInstallations = Installation::withoutGlobalScopes()
+            ->with([
+                'customer' => fn ($q) => $q->withoutGlobalScopes()->with('reseller'),
+                'survey.prospect',
+            ])
+            ->when(!$isAdmin, function ($q) use ($userId) {
+                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId));
+            })
+            ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
+            ->orderBy('scheduled_date', 'asc')
+            ->orderBy('scheduled_time', 'asc')
+            ->limit(10)
+            ->get();
+
+        $assignedInstallationsCount = $activeInstallations->count();
+        $countProses = $pipelineProses + $assignedInstallationsCount;
 
         $countSelesai = ProvisionPipeline::where($scopePipeline)
             ->whereIn('status', ['completed', 'provisioned', 'active'])
@@ -70,6 +89,8 @@ class Dashboard extends Component
             ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
             ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
             ->count();
+
+        $totalActiveTasks = $activeTicketsCount + $assignedInstallationsCount;
 
         $recentInstallations = ProvisionPipeline::where($scopePipeline)
             ->with([
@@ -89,6 +110,9 @@ class Dashboard extends Component
 
         return view('livewire.isp.technician.dashboard', compact(
             'recentInstallations',
+            'activeInstallations',
+            'assignedInstallationsCount',
+            'totalActiveTasks',
             'countProses',
             'countSelesai',
             'countGagal',
