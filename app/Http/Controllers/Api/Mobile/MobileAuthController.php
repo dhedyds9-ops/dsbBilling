@@ -75,6 +75,7 @@ class MobileAuthController extends Controller
         }
 
         $brandName = $this->resolveBrandName($request);
+        $brandLogoUrl = $this->resolveBrandLogoUrl($request);
 
         return response()->json([
             'success' => true,
@@ -94,6 +95,7 @@ class MobileAuthController extends Controller
                 'wilayah' => $userWilayah ?: $branchName,
                 'branch_name' => $branchName,
                 'brand_name' => $brandName,
+                'logo_url' => $brandLogoUrl,
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
             ],
@@ -128,6 +130,7 @@ class MobileAuthController extends Controller
         }
 
         $brandName = $this->resolveBrandName($request);
+        $brandLogoUrl = $this->resolveBrandLogoUrl($request);
 
         return response()->json([
             'success' => true,
@@ -144,6 +147,7 @@ class MobileAuthController extends Controller
                 'wilayah' => $userWilayah ?: $branchName,
                 'branch_name' => $branchName,
                 'brand_name' => $brandName,
+                'logo_url' => $brandLogoUrl,
                 'company_id' => $user->company_id ?? 1,
                 'permissions' => $permissions,
                 'has_active_attendance' => $hasActiveAttendance,
@@ -302,5 +306,25 @@ class MobileAuthController extends Controller
         }
 
         return config('app.name', 'dsBilling');
+    }
+
+    private function resolveBrandLogoUrl(Request $request): ?string
+    {
+        $logo = \App\Models\Setting::getValue('company.logo_url') 
+            ?: \App\Models\Setting::getValue('company.partner_logo_url');
+
+        if (!empty($logo)) {
+            $logoStr = (string) $logo;
+            if (str_starts_with($logoStr, 'http://') || str_starts_with($logoStr, 'https://')) {
+                return $logoStr;
+            }
+            return url(ltrim($logoStr, '/'));
+        }
+
+        if (file_exists(public_path('images/dsbilling_header_logo.jpg'))) {
+            return url('images/dsbilling_header_logo.jpg');
+        }
+
+        return null;
     }
 }
