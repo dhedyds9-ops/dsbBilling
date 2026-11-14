@@ -292,10 +292,12 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">
-                            {{ $pipeline->serviceInstance->customerService->customer->name ?? 'Unknown' }}
+                            {{ $pipeline->customer_name ?? ($pipeline->serviceInstance->customerService->customer->name ?? 'Pelanggan') }}
                         </p>
-                        <p class="text-xs text-slate-400 mt-0.5">
-                            {{ $pipeline->created_at->format('d/m/Y H:i') }}
+                        <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                            <span>{{ $pipeline->type_label ?? 'Instalasi' }}</span>
+                            <span>&bull;</span>
+                            <span>{{ is_string($pipeline->created_at) ? \Carbon\Carbon::parse($pipeline->created_at)->format('d/m/Y H:i') : $pipeline->created_at->format('d/m/Y H:i') }}</span>
                         </p>
                     </div>
                     <div class="shrink-0 flex flex-col items-end gap-1.5">
@@ -306,9 +308,9 @@
                         @else
                             <span class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-[10px] font-bold uppercase">Proses</span>
                         @endif
-                        <a href="{{ route('technician.provisioning.show', $pipeline->id) }}"
+                        <a href="{{ $pipeline->monitor_url ?? route('technician.my-jobs.index') }}"
                            class="text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center gap-0.5 hover:underline">
-                            Monitor
+                            Detail
                             <span class="material-symbols-outlined" style="font-size:14px">chevron_right</span>
                         </a>
                     </div>

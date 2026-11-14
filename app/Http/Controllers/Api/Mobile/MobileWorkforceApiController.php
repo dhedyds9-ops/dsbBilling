@@ -680,10 +680,9 @@ class MobileWorkforceApiController extends Controller
             $hasWoTechIds = \Illuminate\Support\Facades\Schema::hasColumn('work_orders', 'technician_ids');
             $hasTicketTechIds = \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'technician_ids');
 
-            // 1. Sync SPK Instalasi (CRM) Aktif
-            $activeInstallations = \App\Models\CRM\Installation::withoutGlobalScopes()
+            // 1. Sync SPK Instalasi (CRM) Aktif & Riwayat Selesai
+            $allInstallations = \App\Models\CRM\Installation::withoutGlobalScopes()
                 ->with(['customer' => fn ($q) => $q->withoutGlobalScopes(), 'survey.prospect'])
-                ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
                 ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user, $hasInstTechIds) {
                     $q->where(function ($sub) use ($user, $hasInstTechIds) {
                         $sub->where('technician_id', $user->id)
@@ -694,11 +693,12 @@ class MobileWorkforceApiController extends Controller
                         }
                     });
                 })
-                ->latest()
-                ->limit(25)
+                ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned', 'completed', 'verified', 'active'])
+                ->latest('updated_at')
+                ->limit(50)
                 ->get();
 
-            foreach ($activeInstallations as $inst) {
+            foreach ($allInstallations as $inst) {
                 $custName = $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? ($inst->customer_name ?: 'Pelanggan Baru'));
                 $schedAt = null;
                 if ($inst->scheduled_date) {
@@ -711,7 +711,10 @@ class MobileWorkforceApiController extends Controller
                 }
 
                 $assignedTechId = $inst->assigned_to ?: ($inst->technician_id ?: null);
-                $status = in_array($inst->status, ['in_progress']) ? 'in_progress' : ($assignedTechId ? 'assigned' : 'pending');
+                $isCompleted = in_array($inst->status, ['completed', 'verified', 'active']);
+                $isProgress = in_array($inst->status, ['in_progress']);
+
+                $status = $isCompleted ? 'completed' : ($isProgress ? 'in_progress' : ($assignedTechId ? 'assigned' : 'pending'));
 
                 $data = [
                     'company_id' => $user->company_id,
@@ -725,6 +728,7 @@ class MobileWorkforceApiController extends Controller
                     'notes' => $inst->notes,
                     'priority' => $inst->priority ?? 'medium',
                     'scheduled_at' => $schedAt ?: $inst->created_at,
+                    'completed_at' => $isCompleted ? ($inst->completed_at ?: $inst->updated_at) : null,
                 ];
 
                 if ($hasWoTechIds && isset($inst->technician_ids)) {
@@ -740,16 +744,17 @@ class MobileWorkforceApiController extends Controller
                     $existing = WorkOrder::where('type', 'installation')
                         ->where('title', 'PSB: ' . $custName)
                         ->first();
-                    if (!$existing) {
+                    if ($existing) {
+                        $existing->update($data);
+                    } else {
                         WorkOrder::create(array_merge(['uuid' => (string) Str::uuid()], $data));
                     }
                 }
             }
 
-            // 2. Sync Tiket Gangguan Aktif
-            $openTickets = Ticket::withoutGlobalScopes()
+            // 2. Sync Tiket Gangguan Aktif & Selesai
+            $allTickets = Ticket::withoutGlobalScopes()
                 ->with(['customer' => fn ($q) => $q->withoutGlobalScopes()])
-                ->whereIn('status', ['open', 'in_progress', 'assigned'])
                 ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user, $hasTicketTechIds) {
                     $q->where(function ($sub) use ($user, $hasTicketTechIds) {
                         $sub->where('assigned_to', $user->id)
@@ -759,33 +764,37 @@ class MobileWorkforceApiController extends Controller
                         }
                     });
                 })
-                ->latest()
-                ->limit(25)
+                ->whereIn('status', ['open', 'in_progress', 'assigned', 'pending_customer', 'resolved', 'closed'])
+                ->latest('updated_at')
+                ->limit(50)
                 ->get();
 
-            foreach ($openTickets as $t) {
+            foreach ($allTickets as $t) {
+                $isTicketCompleted = in_array($t->status, ['resolved', 'closed']);
+                $ticketStatus = $isTicketCompleted ? 'completed' : ($t->status === 'in_progress' ? 'in_progress' : ($t->assigned_to ? 'assigned' : 'pending'));
+
                 $ticketWoData = [
-                    'uuid' => (string) Str::uuid(),
                     'company_id' => $user->company_id,
                     'branch_id' => $user->branch_id,
                     'type' => $t->category ?? 'troubleshooting',
                     'customer_id' => $t->customer_id ?? $t->user_id,
                     'assigned_to' => $t->assigned_to ?? $user->id,
-                    'status' => $t->status === 'in_progress' ? 'in_progress' : ($t->assigned_to ? 'assigned' : 'pending'),
+                    'status' => $ticketStatus,
                     'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
                     'description' => $t->description ?? '',
                     'notes' => $t->resolution_notes ?? null,
                     'priority' => $t->priority ?? 'medium',
                     'scheduled_at' => $t->created_at,
+                    'completed_at' => $isTicketCompleted ? ($t->resolved_at ?: $t->updated_at) : null,
                 ];
 
                 if ($hasWoTechIds && isset($t->technician_ids)) {
                     $ticketWoData['technician_ids'] = $t->technician_ids;
                 }
 
-                WorkOrder::firstOrCreate(
+                WorkOrder::updateOrCreate(
                     ['ticket_id' => $t->id],
-                    $ticketWoData
+                    array_merge(['uuid' => (string) Str::uuid()], $ticketWoData)
                 );
             }
         } catch (\Throwable $e) {
