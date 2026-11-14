@@ -278,15 +278,45 @@
           </button>
         </div>
         <div class="p-5 space-y-4 text-sm">
+          @php $fieldCls = 'w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500'; @endphp
           <div>
-            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Pelanggan <span class="text-red-500">*</span></label>
-            <select wire:model="newWo.customer_id" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500">
-              <option value="">-- Pilih Pelanggan --</option>
-              @foreach(($filterOptions['customers'] ?? []) as $cid => $cname)
-                <option value="{{ $cid }}">{{ $cname }}</option>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Reseller</label>
+            <select wire:model.live="newWo.reseller_id" class="{{ $fieldCls }}">
+              <option value="">-- Semua Reseller --</option>
+              <option value="direct">Langsung (tanpa Reseller)</option>
+              @foreach($this->getResellerOptions() as $rid => $rname)
+                <option value="{{ $rid }}">{{ $rname }}</option>
               @endforeach
             </select>
           </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Pelanggan <span class="text-red-500">*</span></label>
+              <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                <input type="checkbox" wire:model.live="newWo.manual" class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600">
+                Input manual (pelanggan baru)
+              </label>
+            </div>
+            @if(!empty($newWo['manual']))
+              <div class="space-y-2">
+                <input type="text" wire:model="newWo.manual_name" placeholder="Nama pelanggan *" class="{{ $fieldCls }}">
+                <input type="text" wire:model="newWo.manual_phone" placeholder="No. telepon / WhatsApp" class="{{ $fieldCls }}">
+                <input type="text" wire:model="newWo.manual_address" placeholder="Alamat pemasangan" class="{{ $fieldCls }}">
+              </div>
+            @else
+              @php $modalCustomers = $this->getModalCustomers(); @endphp
+              <input type="text" wire:model.live.debounce.300ms="newWo.customer_search" placeholder="Ketik nama / kode / telepon untuk mencari..." class="{{ $fieldCls }} mb-2" autocomplete="off">
+              <select wire:model="newWo.customer_id" class="{{ $fieldCls }}">
+                <option value="">-- Pilih Pelanggan ({{ count($modalCustomers) }} ditemukan) --</option>
+                @foreach($modalCustomers as $cid => $cname)
+                  <option value="{{ $cid }}">{{ $cname }}</option>
+                @endforeach
+              </select>
+            @endif
+          </div>
+          @if($errorMessage)
+            <div class="p-2 rounded-md bg-red-50 text-red-700 text-xs">{{ $errorMessage }}</div>
+          @endif
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tanggal Jadwal</label>

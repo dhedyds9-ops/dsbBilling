@@ -54,6 +54,12 @@ class Index extends BaseEnterpriseList
             'scheduled_to' => '',
         ];
         $this->newWo = [
+            'reseller_id' => '',
+            'customer_search' => '',
+            'manual' => false,
+            'manual_name' => '',
+            'manual_phone' => '',
+            'manual_address' => '',
             'customer_id' => '',
             'package_id' => '',
             'scheduled_date' => now()->addDay()->toDateString(),
@@ -415,6 +421,12 @@ class Index extends BaseEnterpriseList
     public function openCreateWo(): void
     {
         $this->newWo = [
+            'reseller_id' => '',
+            'customer_search' => '',
+            'manual' => false,
+            'manual_name' => '',
+            'manual_phone' => '',
+            'manual_address' => '',
             'customer_id' => '',
             'package_id' => '',
             'scheduled_date' => now()->addDay()->toDateString(),
@@ -431,13 +443,67 @@ class Index extends BaseEnterpriseList
         $this->showCreateWo = false;
     }
 
+    /** Daftar reseller untuk dropdown modal WO. */
+    public function getResellerOptions(): array
+    {
+        try {
+            return User::whereHas('roles', fn($q) => $q->where('name', 'reseller'))
+                ->orderBy('name')->pluck('name', 'id')->all();
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /** Pelanggan untuk modal WO: filter reseller + pencarian ketik (nama/kode/telepon). */
+    public function getModalCustomers(): array
+    {
+        try {
+            $q = Customer::query();
+            $reseller = $this->newWo['reseller_id'] ?? '';
+            if ($reseller === 'direct') {
+                $q->whereNull('reseller_id');
+            } elseif ($reseller !== '' && $reseller !== null) {
+                $q->where('reseller_id', $reseller);
+            }
+            $term = trim((string) ($this->newWo['customer_search'] ?? ''));
+            if ($term !== '') {
+                $like = '%' . $term . '%';
+                $q->where(fn($w) => $w->where('name', 'like', $like)
+                    ->orWhere('code', 'like', $like)
+                    ->orWhere('phone', 'like', $like));
+            }
+            return $q->orderBy('name')->limit(50)->get(['id', 'name', 'code', 'phone'])
+                ->mapWithKeys(fn($c) => [$c->id => trim(($c->code ? $c->code . ' - ' : '') . $c->name . ($c->phone ? ' (' . $c->phone . ')' : ''))])
+                ->all();
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
     public function submitCreateWo(): void
     {
-        if (empty($this->newWo['customer_id'])) {
-            $this->errorMessage = 'Customer wajib dipilih.';
-            return;
-        }
+        $this->errorMessage = null;
         try {
+            if (!empty($this->newWo['manual'])) {
+                if (trim((string) ($this->newWo['manual_name'] ?? '')) === '') {
+                    $this->errorMessage = 'Nama pelanggan wajib diisi.';
+                    return;
+                }
+                $reseller = $this->newWo['reseller_id'] ?? '';
+                $customer = Customer::create([
+                    'name' => trim($this->newWo['manual_name']),
+                    'phone' => $this->newWo['manual_phone'] ?? null,
+                    'address' => $this->newWo['manual_address'] ?? null,
+                    'reseller_id' => ($reseller === '' || $reseller === 'direct') ? null : $reseller,
+                    'status' => 'prospect',
+                    'created_by' => Auth::id(),
+                ]);
+                $this->newWo['customer_id'] = $customer->id;
+            }
+            if (empty($this->newWo['customer_id'])) {
+                $this->errorMessage = 'Customer wajib dipilih.';
+                return;
+            }
             $wo = new CrmInstallation();
             $wo->customer_id = $this->newWo['customer_id'];
             $wo->scheduled_date = $this->newWo['scheduled_date'];
