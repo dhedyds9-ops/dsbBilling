@@ -144,6 +144,9 @@ class Index extends BaseEnterpriseList
         ];
         $this->newTicket = [
             'is_manual_customer' => false,
+            'manual_type' => 'customer',
+            'force_new_customer' => false,
+            'duplicate_found' => false,
             'reseller_id' => $defaultResellerId,
             'customer_id' => '',
             'manual_customer_name' => '',
@@ -370,6 +373,9 @@ class Index extends BaseEnterpriseList
 
         $this->newTicket = [
             'is_manual_customer' => false,
+            'manual_type' => 'customer',
+            'force_new_customer' => false,
+            'duplicate_found' => false,
             'reseller_id' => $defaultResellerId,
             'customer_id' => '',
             'manual_customer_name' => '',
@@ -428,34 +434,63 @@ class Index extends BaseEnterpriseList
                 $resellerId = (int) $data['reseller_id'];
             }
 
+            $category = $data['category'] ?? 'internet';
+            $isPsb = in_array($category, ['installation', 'psb'], true);
+            $psbInfo = null;
+
             // Validasi Customer
             if (!empty($data['is_manual_customer'])) {
-                if (empty(trim($data['manual_customer_name'] ?? ''))) {
-                    $this->addError('newTicket.manual_customer_name', 'Nama pelanggan / pelapor wajib diisi.');
+                $manualName = trim((string) ($data['manual_customer_name'] ?? ''));
+                if ($manualName === '') {
+                    $this->addError('newTicket.manual_customer_name', 'Nama pelapor / objek wajib diisi.');
                     return;
                 }
 
-                // Buat record Customer guest/non-pelanggan cepat
-                $rawPhone = trim((string)($data['manual_customer_phone'] ?? ''));
+                $rawPhone = trim((string) ($data['manual_customer_phone'] ?? ''));
                 $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
                 if (empty($cleanPhone)) {
                     $cleanPhone = $rawPhone !== '' ? $rawPhone : '-';
                 }
-
-                $rawAddress = trim((string)($data['manual_customer_address'] ?? ''));
+                $rawAddress = trim((string) ($data['manual_customer_address'] ?? ''));
                 $cleanAddress = $rawAddress !== '' ? $rawAddress : '-';
+                $manualType = $data['manual_type'] ?? 'customer';
 
-                $guestCustomer = \App\Models\CRM\Customer::create([
-                    'name' => trim($data['manual_customer_name']),
-                    'code' => 'GST-' . strtoupper(\Illuminate\Support\Str::random(6)),
-                    'phone' => $cleanPhone,
-                    'address' => $cleanAddress,
-                    'reseller_id' => $resellerId,
-                    'status' => 'active',
-                    'created_by' => $userId,
-                ]);
+                if ($manualType === 'network') {
+                    // Objek jaringan (ODP/Jalur/ODC): tiket tanpa customer_id
+                    $data['customer_id'] = null;
+                    $objInfo = '[Objek Jaringan: ' . $manualName . ']'
+                        . ($cleanAddress !== '-' ? ' Lokasi: ' . $cleanAddress . '.' : '')
+                        . ($cleanPhone !== '-' ? ' PIC: ' . $cleanPhone . '.' : '');
+                    $data['description'] = trim($objInfo . "\n" . ($data['description'] ?? ''));
+                } elseif ($isPsb) {
+                    // Calon pelanggan baru (PSB): akun pelanggan resmi dibuat di Wizard saat pemasangan
+                    $data['customer_id'] = null;
+                    $psbInfo = ['name' => $manualName, 'phone' => $cleanPhone, 'address' => $cleanAddress];
+                    $data['description'] = trim(
+                        '[Calon Pelanggan: ' . $manualName . ' | Telp: ' . $cleanPhone . ' | Alamat: ' . $cleanAddress . "]\n"
+                        . ($data['description'] ?? '')
+                    );
+                } else {
+                    // Pelanggan lama yang belum tercatat: daftarkan sebagai pelanggan resmi dsBilling
+                    $dup = $this->findSimilarCustomer($manualName, $cleanPhone);
+                    if ($dup && empty($data['force_new_customer'])) {
+                        $this->newTicket['duplicate_found'] = true;
+                        $this->addError('create_error', 'Ditemukan data pelanggan yang mirip: ' . $dup->name
+                            . ' (' . ($dup->code ?: '-') . ', ' . ($dup->phone ?: '-') . '). '
+                            . 'Gunakan tab "Pelanggan Terdaftar", atau centang opsi "Tetap daftarkan sebagai pelanggan baru".');
+                        return;
+                    }
 
-                $data['customer_id'] = $guestCustomer->id;
+                    $newCustomer = \App\Models\CRM\Customer::create([
+                        'name' => $manualName,
+                        'phone' => $cleanPhone,
+                        'address' => $cleanAddress,
+                        'reseller_id' => $resellerId,
+                        'status' => 'active',
+                        'created_by' => $userId,
+                    ]);
+                    $data['customer_id'] = $newCustomer->id;
+                }
             } else {
                 if (empty($data['customer_id'])) {
                     $this->addError('newTicket.customer_id', 'Silakan pilih pelanggan dari daftar, atau aktifkan opsi Belum Terdaftar (Input Manual).');
@@ -470,12 +505,63 @@ class Index extends BaseEnterpriseList
             }
 
             $data['reseller_id'] = $resellerId;
-            $this->ticketService->create($data, $userId);
-            session()->flash('success', 'Tiket berhasil dibuat.');
+            $ticket = $this->ticketService->create($data, $userId);
+
+            // Tiket PSB mengacu ke SPK Instalasi (Work Order PSB terintegrasi)
+            if ($isPsb && $ticket) {
+                $this->createInstallationForTicket($ticket, $psbInfo, $data, $userId);
+            }
+
+            session()->flash('success', 'Tiket berhasil dibuat' . ($isPsb ? ' dan SPK Instalasi baru telah diterbitkan.' : '.'));
             $this->showCreateForm = false;
             $this->loadAll();
         } catch (\Throwable $e) {
             $this->addError('create_error', 'Gagal membuat tiket: ' . $e->getMessage());
+        }
+    }
+
+    /** Cari pelanggan non-guest yang mirip (telepon 8 digit terakhir atau nama persis). */
+    protected function findSimilarCustomer(string $name, string $phone): ?\App\Models\CRM\Customer
+    {
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+        $q = \App\Models\CRM\Customer::query()
+            ->where(function ($g) {
+                $g->whereNull('code')->orWhere('code', 'not like', 'GST-%');
+            })
+            ->where(function ($w) use ($name, $digits) {
+                $w->whereRaw('LOWER(name) = ?', [mb_strtolower($name)]);
+                if (strlen($digits) >= 8) {
+                    $w->orWhere('phone', 'like', '%' . substr($digits, -8));
+                }
+            });
+        return $q->first();
+    }
+
+    /** Buat SPK Instalasi dari tiket PSB lalu tautkan lewat tickets.installation_id. */
+    protected function createInstallationForTicket(\App\Models\Support\Ticket $ticket, ?array $psbInfo, array $data, int $userId): void
+    {
+        try {
+            $customer = $ticket->customer_id ? \App\Models\CRM\Customer::find($ticket->customer_id) : null;
+            $wo = new \App\Models\CRM\Installation();
+            $wo->customer_id = $customer?->id;
+            $wo->customer_name = $customer?->name ?? ($psbInfo['name'] ?? 'Calon Pelanggan');
+            $wo->technician_id = $ticket->assigned_to ?: null;
+            $wo->priority = $ticket->priority ?: 'medium';
+            $wo->status = $ticket->assigned_to ? 'scheduled' : 'pending';
+            $wo->scheduled_date = !empty($data['due_date']) ? $data['due_date'] : now()->addDay()->toDateString();
+            $wo->scheduled_time = '09:00';
+            $wo->notes = trim('Dari Tiket #' . $ticket->id . ': ' . $ticket->title
+                . ($psbInfo ? "\nTelp: " . $psbInfo['phone'] . ' | Alamat: ' . $psbInfo['address'] : '')
+                . ($ticket->description ? "\n" . $ticket->description : ''));
+            $wo->created_by = $userId ?: 0;
+            $wo->save();
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
+                $ticket->installation_id = $wo->id;
+                $ticket->save();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Ticket] Gagal membuat SPK Instalasi dari tiket #' . $ticket->id . ': ' . $e->getMessage());
         }
     }
 

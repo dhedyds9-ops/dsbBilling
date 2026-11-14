@@ -32,7 +32,7 @@ class TicketService
 
     public function list(array $filters, string $search, string $sortField, string $sortDirection, int $perPage)
     {
-        $query = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller']);
+        $query = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller', 'installation']);
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -114,7 +114,7 @@ class TicketService
         $statuses = ['open', 'in_progress', 'pending_customer', 'resolved', 'closed'];
         $out = [];
         foreach ($statuses as $s) {
-            $out[$s] = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller'])
+            $out[$s] = $this->scopedQuery()->with(['customer', 'assignedTo', 'reseller', 'installation'])
                 ->where('status', $s)
                 ->orderByDesc('priority')
                 ->orderBy('created_at')
@@ -148,6 +148,7 @@ class TicketService
                 'priority' => $data['priority'] ?? 'medium',
                 'status' => $status,
                 'assigned_to' => $assignedTo,
+                'installation_id' => $data['installation_id'] ?? null,
             ];
 
             if (Schema::hasColumn('tickets', 'due_date')) {

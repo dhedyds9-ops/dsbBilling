@@ -86,7 +86,15 @@ $statusLabels = [
                                     <div class="font-medium text-sm mt-1 line-clamp-2 text-slate-800 dark:text-slate-100">{{ $t->title }}</div>
                                     <div class="mt-1.5 flex items-center justify-between text-[11px]">
                                         <div class="truncate max-w-[60%]">
-                                            <span class="text-slate-700 dark:text-slate-300 font-medium block truncate">{{ $t->customer?->name ?? '-' }}</span>
+                                            <span class="text-slate-700 dark:text-slate-300 font-medium block truncate">
+                                                @if($t->customer)
+                                                    {{ $t->customer->name }}
+                                                @elseif($t->installation)
+                                                    <span class="text-blue-600 dark:text-blue-400 font-semibold">PSB: {{ $t->installation->customer_name ?: 'Calon Pelanggan' }}</span>
+                                                @else
+                                                    <span class="text-slate-400 italic">Non-Pelanggan / Jalur</span>
+                                                @endif
+                                            </span>
                                             <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block truncate">{{ $t->reseller?->name ?? ($t->customer?->reseller?->name ?? 'Kantor Pusat') }}</span>
                                         </div>
                                         @if ($t->assignedTo)
@@ -289,10 +297,26 @@ $statusLabels = [
                                 </td>
                                 <td class="px-3 py-2 max-w-xs truncate font-medium">{{ $t->title }}</td>
                                 <td class="px-3 py-2 text-xs">
-                                    <div class="font-medium text-slate-800 dark:text-slate-200">{{ $t->customer?->name ?? '-' }}</div>
+                                    <div class="font-medium text-slate-800 dark:text-slate-200">
+                                        @if($t->customer)
+                                            {{ $t->customer->name }}
+                                        @elseif($t->installation)
+                                            <span class="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                PSB: {{ $t->installation->customer_name ?: 'Calon Pelanggan' }}
+                                            </span>
+                                        @else
+                                            <span class="text-slate-400 italic">Non-Pelanggan / Jalur</span>
+                                        @endif
+                                    </div>
                                     <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">{{ $t->reseller?->name ?? ($t->customer?->reseller?->name ?? 'Kantor Pusat') }}</div>
                                 </td>
-                                <td class="px-3 py-2 text-xs capitalize">{{ $t->category }}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    <span class="capitalize">{{ $t->category }}</span>
+                                    @if($t->installation_id)
+                                        <a href="{{ route('support.installation') }}?search=WO-{{ $t->installation_id }}" class="block text-[10px] font-mono text-blue-600 dark:text-blue-400 hover:underline">SPK #{{ $t->installation_id }}</a>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-2"><span class="text-[10px] px-2 py-0.5 rounded-full {{ $priorityBadge[$t->priority] ?? '' }}">{{ strtoupper($t->priority) }}</span></td>
                                 <td class="px-3 py-2"><span class="text-[10px] px-2 py-0.5 rounded-full border {{ $statusBadge[$t->status] ?? '' }}">{{ $statusLabels[$t->status] ?? $t->status }}</span></td>
                                 <td class="px-3 py-2 text-xs">
@@ -471,8 +495,8 @@ $statusLabels = [
                             <button type="button" 
                                     wire:click="$set('newTicket.is_manual_customer', true)"
                                     class="py-1.5 px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 {{ !empty($newTicket['is_manual_customer']) ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' }}">
-                                <span class="material-symbols-outlined notranslate text-base" translate="no">construction</span>
-                                Non-Pelanggan / Jalur / ODP
+                                <span class="material-symbols-outlined notranslate text-base" translate="no">person_add</span>
+                                Belum Terdaftar / Jalur / ODP
                             </button>
                         </div>
 
@@ -498,38 +522,64 @@ $statusLabels = [
                         @else
                         {{-- Option 2: Manual Customer Form --}}
                             <div class="p-3.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl space-y-3 pt-3">
+                                <div class="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                    <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input type="radio" value="customer" wire:model.live="newTicket.manual_type" class="text-indigo-600 focus:ring-indigo-500">
+                                        <span>Pelanggan Belum Terdaftar (Daftarkan Baru)</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                        <input type="radio" value="network" wire:model.live="newTicket.manual_type" class="text-indigo-600 focus:ring-indigo-500">
+                                        <span>Objek Jaringan (Jalur / ODP / ODC)</span>
+                                    </label>
+                                </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Nama Pelapor / Objek Gangguan (ODP/Jalur/ODC) <span class="text-rose-500">*</span>
+                                        {{ ($newTicket['manual_type'] ?? 'customer') === 'network' ? 'Nama Objek Gangguan (ODP/Jalur/ODC)' : 'Nama Pelanggan / Pelapor' }} <span class="text-rose-500">*</span>
                                     </label>
                                     <input type="text" 
                                            wire:model.live="newTicket.manual_customer_name" 
-                                           placeholder="Contoh: [ODP-04] Jl. Merdeka / Jalur FO Sektor Timur"
+                                           placeholder="{{ ($newTicket['manual_type'] ?? 'customer') === 'network' ? 'Contoh: [ODP-04] Jl. Merdeka / Jalur FO Sektor Timur' : 'Nama lengkap calon / pelanggan' }}"
                                            class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     @error('newTicket.manual_customer_name') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Nomor Kontak / PIC Lapangan
+                                            Nomor Kontak / Telepon
                                         </label>
                                         <input type="text" 
                                                wire:model.live="newTicket.manual_customer_phone" 
-                                               placeholder="08xxxxxxxxxx (opsional)"
+                                               placeholder="08xxxxxxxxxx"
                                                class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Alamat / Lokasi Titik Gangguan
+                                            Alamat / Lokasi
                                         </label>
                                         <input type="text" 
                                                wire:model.live="newTicket.manual_customer_address" 
-                                               placeholder="Contoh: Depan Tiang PLN No. 12 / Seberang Masjid"
+                                               placeholder="Alamat pelanggan atau titik lokasi"
                                                class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     </div>
                                 </div>
+
+                                @if(!empty($newTicket['duplicate_found']))
+                                    <div class="p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-200">
+                                        <label class="flex items-center gap-2 cursor-pointer font-semibold">
+                                            <input type="checkbox" wire:model.live="newTicket.force_new_customer" class="rounded text-amber-600 focus:ring-amber-500">
+                                            <span>Tetap daftarkan sebagai pelanggan baru (abaikan kemiripan data)</span>
+                                        </label>
+                                    </div>
+                                @endif
+
                                 <p class="text-[11px] text-slate-500 dark:text-slate-400">
-                                    <span class="font-medium text-indigo-600 dark:text-indigo-400">Info:</span> Untuk perbaikan jalur kabel, ODP, ODC, atau gangguan massal, isi nama objek/segmen jaringan di atas agar tim teknisi lapangan langsung mengetahui titik sasaran perbaikan.
+                                    @if(($newTicket['manual_type'] ?? 'customer') === 'network')
+                                        <span class="font-medium text-indigo-600 dark:text-indigo-400">Info Jaringan:</span> Tiket perbaikan jalur kabel, ODP, ODC, atau gangguan massal tanpa terikat akun pelanggan.
+                                    @elseif(in_array($newTicket['category'] ?? '', ['installation', 'psb'], true))
+                                        <span class="font-medium text-indigo-600 dark:text-indigo-400">Info PSB:</span> Tiket akan otomatis menerbitkan SPK Instalasi baru. Akun pelanggan resmi dibuat saat teknisi selesai pasang dan aktivasi di Wizard.
+                                    @else
+                                        <span class="font-medium text-indigo-600 dark:text-indigo-400">Info Pendaftaran Otomatis:</span> Pelapor akan didaftarkan sebagai pelanggan resmi dsBilling. Teknisi dapat melengkapi data teknis (ODP/ONU) saat perbaikan di lapangan via Sensus.
+                                    @endif
                                 </p>
                             </div>
                         @endif

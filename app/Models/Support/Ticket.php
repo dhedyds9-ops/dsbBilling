@@ -32,6 +32,7 @@ class Ticket extends Model
         'checklists',
         'requires_field_visit',
         'maintenance_wo_id',
+        'installation_id',
     ];
 
     protected $casts = [
@@ -65,5 +66,10 @@ class Ticket extends Model
     public function maintenanceWorkOrder(): BelongsTo
     {
         return $this->belongsTo(SupportMaintenance::class, 'maintenance_wo_id');
+    }
+
+    public function installation(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\CRM\Installation::class, 'installation_id');
     }
 }
