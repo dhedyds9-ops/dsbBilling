@@ -305,61 +305,195 @@
             @endif
 
         @if($currentStep === 2)
-            <h3 class="text-base font-black mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <span class="material-symbols-outlined text-indigo-500" style="font-size:20px">package</span> Paket Layanan
-            </h3>
-            <x-ds-searchable-select
-                wire:model="service_profile_id"
-                strategy="local"
-                :options="$servicesOptions"
-                placeholder="-- Pilih Paket --"
-                search-placeholder="Cari paket..."
-                :error="$errors->first('service_profile_id')"
-            />
-
-            {{-- Detail Paket Terpilih --}}
-            @if($this->selectedServiceProfile)
-                @php $sp = $this->selectedServiceProfile; @endphp
-                <div class="mt-4 p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-start justify-between gap-3 animate-fadeIn">
-                    <div class="flex items-start gap-3 min-w-0">
-                        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                            <span class="material-symbols-outlined" style="font-size:20px">wifi</span>
-                        </div>
-                        <div class="min-w-0">
-                            <div class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
-                                {{ $sp->name }}
-                            </div>
-                            <div class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
-                                <span class="px-2 py-0.5 rounded font-black text-[10px] uppercase {{ $service_type === 'hotspot' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' }}">
-                                    {{ strtoupper($service_type) }}
-                                </span>
-                                @if($sp->download_speed)
-                                    <span>Bandwidth: <strong>{{ $sp->download_speed }}M / {{ $sp->upload_speed ?? $sp->download_speed }}M</strong></span>
-                                @endif
-                                <span>•</span>
-                                <span class="font-bold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($sp->base_price ?? $sp->price ?? 0, 0, ',', '.') }}</span>
-                            </div>
-                        </div>
+            <div class="space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                        <h3 class="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-indigo-500" style="font-size:22px">package</span> 
+                            Pilih Paket Layanan
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pilih paket kecepatan & tipe koneksi yang akan dipasang ke ONT pelanggan.</p>
                     </div>
-                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 shrink-0">
-                        Terpilih
-                    </span>
+
+                    {{-- Quick Filter Tipe Layanan --}}
+                    <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-center">
+                        <button type="button" wire:click="setPackageFilterType('all')"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $package_filter_type === 'all' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800' }}">
+                            Semua
+                        </button>
+                        <button type="button" wire:click="setPackageFilterType('pppoe')"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $package_filter_type === 'pppoe' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800' }}">
+                            PPPoE
+                        </button>
+                        <button type="button" wire:click="setPackageFilterType('hotspot')"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $package_filter_type === 'hotspot' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800' }}">
+                            Hotspot
+                        </button>
+                    </div>
                 </div>
-            @endif
 
-            <div class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center justify-between">
-                    <span>Kredensial Layanan PPPoE / Hotspot</span>
-                    <span class="text-[10px] text-slate-400 font-normal normal-case">Opsional (Kosongkan jika auto-generate)</span>
-                </label>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Username</label>
-                        <input type="text" wire:model="custom_username" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono" placeholder="Default: Otomatis sistem">
+                {{-- Search Box & Filter --}}
+                @if(count($allServiceRecords ?? []) > 4)
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-2.5 text-slate-400 pointer-events-none">
+                            <span class="material-symbols-outlined text-sm notranslate" translate="no">search</span>
+                        </span>
+                        <input type="text" wire:model.live.debounce.250ms="package_search"
+                               placeholder="Ketik untuk mencari nama paket, kode, atau kecepatan..."
+                               class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500">
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Password</label>
-                        <input type="text" wire:model="custom_password" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono" placeholder="Default: pppoe">
+                @endif
+
+                {{-- Grid Kartu Pilihan Paket (Interactive Plan Cards) --}}
+                @if(isset($serviceRecords) && count($serviceRecords) > 0)
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($serviceRecords as $pkg)
+                            @php
+                                $isSelected = (string)$service_profile_id === (string)$pkg->id;
+                                $price = $pkg->base_price ?? $pkg->price ?? $pkg->cost_price ?? 0;
+                                $rawType = strtolower((string)($pkg->service_type ?: 'pppoe'));
+                                $isHotspot = in_array($rawType, ['hotspot', 'voucher', 'member_hotspot']);
+                            @endphp
+                            <div wire:key="pkg-card-{{ $pkg->id }}"
+                                 wire:click="selectPackage({{ $pkg->id }})"
+                                 class="relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 shadow-xs {{ $isSelected ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 dark:border-indigo-400 ring-2 ring-indigo-500/20 shadow-md' : 'border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm' }}">
+                                
+                                <div>
+                                    <div class="flex items-start justify-between gap-2 mb-2">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="px-2 py-0.5 rounded-md font-black text-[10px] uppercase {{ $isHotspot ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' }}">
+                                                {{ $isHotspot ? 'HOTSPOT' : 'PPPoE' }}
+                                            </span>
+                                            @if($pkg->code)
+                                                <span class="font-mono text-[10px] text-slate-400">{{ $pkg->code }}</span>
+                                            @endif
+                                        </div>
+
+                                        @if($isSelected)
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-500 text-white font-extrabold text-[10px] flex items-center gap-0.5 shadow-xs">
+                                                <span class="material-symbols-outlined text-[13px] notranslate" translate="no">check</span>
+                                                DIPILIH
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <h4 class="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-tight mb-1">
+                                        {{ $pkg->name }}
+                                    </h4>
+
+                                    @if($pkg->download_speed)
+                                        <div class="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">
+                                            <span class="material-symbols-outlined text-indigo-500 text-sm notranslate" translate="no">speed</span>
+                                            <span>Speed: <strong>{{ $pkg->download_speed }} Mbps</strong></span>
+                                            @if($pkg->upload_speed && $pkg->upload_speed != $pkg->download_speed)
+                                                <span class="text-slate-400 font-normal text-[11px]">/ {{ $pkg->upload_speed }}M UL</span>
+                                            @endif
+                                        </div>
+                                    @endif
+
+                                    @if($pkg->description)
+                                        <p class="text-[11px] text-slate-400 line-clamp-2 mt-1">
+                                            {{ $pkg->description }}
+                                        </p>
+                                    @endif
+                                </div>
+
+                                <div class="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block leading-none">Harga</span>
+                                        <span class="font-black text-sm text-emerald-600 dark:text-emerald-400">
+                                            Rp{{ number_format($price, 0, ',', '.') }}
+                                            <span class="text-[10px] font-normal text-slate-400">/bln</span>
+                                        </span>
+                                    </div>
+
+                                    <button type="button" class="px-3 py-1 rounded-xl text-xs font-bold transition-colors {{ $isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300' }}">
+                                        {{ $isSelected ? 'Terpilih' : 'Pilih' }}
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="py-10 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-6">
+                        <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2 block" translate="no">inventory_2</span>
+                        <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Tidak ada paket yang sesuai</p>
+                        <p class="text-xs text-slate-400 mt-1">Coba ganti filter tipe layanan atau hapus kata pencarian.</p>
+                        <button type="button" wire:click="$set('package_filter_type', 'all'); $set('package_search', '');" class="mt-3 px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold">
+                            Tampilkan Semua Paket
+                        </button>
+                    </div>
+                @endif
+
+                {{-- Fallback Dropdown Select Standar (Untuk kemudahan akses) --}}
+                <div class="pt-2">
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                        Atau pilih langsung lewat dropdown:
+                    </label>
+                    <select wire:model.live="service_profile_id"
+                            class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900 dark:text-slate-100 shadow-xs">
+                        <option value="">-- Pilih Paket Layanan --</option>
+                        @foreach($allServiceRecords ?? $serviceRecords as $opt)
+                            @php
+                                $optPrice = $opt->base_price ?? $opt->price ?? 0;
+                                $optType = strtoupper($opt->service_type ?: 'PPPOE');
+                                $optSpeed = $opt->download_speed ? " • {$opt->download_speed} Mbps" : '';
+                            @endphp
+                            <option value="{{ $opt->id }}">
+                                {{ $opt->name }} [{{ $optType }}] - Rp{{ number_format($optPrice, 0, ',', '.') }}{{ $optSpeed }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('service_profile_id')
+                        <p class="text-xs text-red-500 mt-1 font-bold">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Detail Paket Terpilih --}}
+                @if($this->selectedServiceProfile)
+                    @php $sp = $this->selectedServiceProfile; @endphp
+                    <div class="mt-2 p-4 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-start justify-between gap-3 animate-fadeIn">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                                <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">wifi</span>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-sm font-extrabold text-emerald-950 dark:text-emerald-100 truncate">
+                                    {{ $sp->name }}
+                                </div>
+                                <div class="text-xs text-emerald-700 dark:text-emerald-300 flex flex-wrap items-center gap-2 mt-0.5">
+                                    <span class="px-2 py-0.5 rounded font-black text-[10px] uppercase {{ $service_type === 'hotspot' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' }}">
+                                        {{ strtoupper($service_type) }}
+                                    </span>
+                                    @if($sp->download_speed)
+                                        <span>Bandwidth: <strong>{{ $sp->download_speed }}M / {{ $sp->upload_speed ?? $sp->download_speed }}M</strong></span>
+                                    @endif
+                                    <span>&bull;</span>
+                                    <span class="font-bold text-emerald-700 dark:text-emerald-200">Rp{{ number_format($sp->base_price ?? $sp->price ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 text-[10px] font-black uppercase rounded-lg bg-emerald-200/80 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 shrink-0">
+                            Paket Terverifikasi
+                        </span>
+                    </div>
+                @endif
+
+                {{-- Kredensial PPPoE / Hotspot --}}
+                <div class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center justify-between">
+                        <span>Kredensial Layanan PPPoE / Hotspot</span>
+                        <span class="text-[10px] text-slate-400 font-normal normal-case">Opsional (Kosongkan jika auto-generate)</span>
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Username</label>
+                            <input type="text" wire:model="custom_username" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono" placeholder="Default: Otomatis sistem">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Password</label>
+                            <input type="text" wire:model="custom_password" class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono" placeholder="Default: pppoe">
+                        </div>
                     </div>
                 </div>
             </div>

@@ -34,6 +34,8 @@ class Wizard extends Component
     public $customer_id;
     public $service_profile_id;
     public $service_type = 'pppoe'; // Default to PPPoE
+    public string $package_filter_type = 'all'; // all, pppoe, hotspot
+    public string $package_search = '';
     public $odp_id;
     public $olt_id;
     public $pon_port;
@@ -192,6 +194,7 @@ class Wizard extends Component
                 ];
                 $this->requireWorkOrderSelection = false;
                 $this->hasAccess = true;
+                $this->tryAutoDetectPackage($ticket->description, $ticket->customer_id);
             }
         } elseif ($type === 'installation') {
             $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer', 'survey.prospect'])->find($id);
@@ -230,6 +233,7 @@ class Wizard extends Component
                 ];
                 $this->requireWorkOrderSelection = false;
                 $this->hasAccess = true;
+                $this->tryAutoDetectPackage($inst->notes, $inst->customer_id);
             }
         } elseif ($type === 'requisition') {
             $req = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()->with(['customer'])->find($id);
@@ -268,6 +272,61 @@ class Wizard extends Component
             $this->ticket_id = null;
             $this->installation_id = null;
             $this->requisition_id = null;
+        }
+    }
+
+    public function selectPackage($id)
+    {
+        $this->service_profile_id = (string) $id;
+        $this->updatedServiceProfileId($id);
+    }
+
+    public function setPackageFilterType(string $type)
+    {
+        $this->package_filter_type = in_array($type, ['all', 'pppoe', 'hotspot']) ? $type : 'all';
+    }
+
+    protected function tryAutoDetectPackage(?string $notes = null, ?int $customerId = null): void
+    {
+        try {
+            if ($this->service_profile_id) {
+                return;
+            }
+
+            // 1. Cek dari customer service existing
+            if ($customerId) {
+                $existingCs = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('customer_id', $customerId)
+                    ->whereNotNull('service_profile_id')
+                    ->latest()
+                    ->first();
+                if ($existingCs && $existingCs->service_profile_id) {
+                    $this->selectPackage($existingCs->service_profile_id);
+                    return;
+                }
+            }
+
+            // 2. Cek dari teks notes SPK
+            if (!empty($notes)) {
+                $allProfiles = ServiceProfile::withoutGlobalScopes()->get(['id', 'name']);
+                foreach ($allProfiles as $prof) {
+                    if (stripos($notes, $prof->name) !== false) {
+                        $this->selectPackage($prof->id);
+                        return;
+                    }
+                }
+            }
+
+            // 3. Fallback: jika hanya ada 1 profil paket di database, pilih otomatis
+            $profilesCount = ServiceProfile::withoutGlobalScopes()->count();
+            if ($profilesCount === 1) {
+                $single = ServiceProfile::withoutGlobalScopes()->first();
+                if ($single) {
+                    $this->selectPackage($single->id);
+                }
+            }
+        } catch (\Throwable) {
+            // silent ignore
         }
     }
 
@@ -988,7 +1047,8 @@ class Wizard extends Component
         $baseServiceQuery = ServiceProfile::withoutGlobalScopes()
             ->where(function ($q) {
                 $q->whereNull('status')
-                  ->orWhereIn(\Illuminate\Support\Facades\DB::raw('LOWER(status)'), ['active', 'enabled', '1', 'actived']);
+                  ->orWhere('status', '')
+                  ->orWhereIn(\Illuminate\Support\Facades\DB::raw('LOWER(status)'), ['active', 'enabled', '1', 'actived', 'aktif']);
             });
 
         $servicesQuery = clone $baseServiceQuery;
@@ -996,6 +1056,7 @@ class Wizard extends Component
             $servicesQuery->where(function ($q) use ($user) {
                 $q->where('branch_id', $user->branch_id)
                   ->orWhereNull('branch_id')
+                  ->orWhere('branch_id', '')
                   ->orWhere('visibility', 'global');
             });
         }
@@ -1010,6 +1071,23 @@ class Wizard extends Component
         // Fallback darurat: jika status bukan active, ambil semua profile agar teknisi tidak terblokir
         if ($serviceRecords->isEmpty()) {
             $serviceRecords = ServiceProfile::withoutGlobalScopes()->orderBy('name')->get();
+        }
+
+        // Filter tipe & pencarian untuk tampilan UI kartu paket
+        $filteredRecords = $serviceRecords;
+        if ($this->package_filter_type === 'pppoe') {
+            $filteredRecords = $filteredRecords->filter(fn ($s) => !in_array(strtolower((string)$s->service_type), ['hotspot', 'voucher']));
+        } elseif ($this->package_filter_type === 'hotspot') {
+            $filteredRecords = $filteredRecords->filter(fn ($s) => in_array(strtolower((string)$s->service_type), ['hotspot', 'voucher', 'member_hotspot']));
+        }
+
+        if (!empty(trim($this->package_search))) {
+            $term = strtolower(trim($this->package_search));
+            $filteredRecords = $filteredRecords->filter(function ($s) use ($term) {
+                return str_contains(strtolower((string)$s->name), $term)
+                    || str_contains(strtolower((string)$s->code), $term)
+                    || str_contains(strtolower((string)$s->download_speed), $term);
+            });
         }
 
         $servicesOptions = $serviceRecords
@@ -1046,6 +1124,8 @@ class Wizard extends Component
 
         return view('livewire.isp.technician.installation.wizard', [
             'servicesOptions' => $servicesOptions,
+            'serviceRecords' => $filteredRecords,
+            'allServiceRecords' => $serviceRecords,
             'resellersOptions' => $resellersOptions,
             'olts' => $olts,
             'vendors' => $vendors,
