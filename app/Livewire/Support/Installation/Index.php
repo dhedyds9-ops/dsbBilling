@@ -123,7 +123,7 @@ class Index extends BaseEnterpriseList
         }
 
         try {
-            $customers = Customer::withoutGuests()->limit(500)->pluck('name', 'id')->all();
+            $customers = $this->eligibleCustomers()->limit(500)->pluck('name', 'id')->all();
         } catch (Throwable) {
             $customers = [];
         }
@@ -443,6 +443,25 @@ class Index extends BaseEnterpriseList
         $this->showCreateWo = false;
     }
 
+    /**
+     * Pelanggan yang boleh dipilih untuk WO: bukan guest GST-, dan punya layanan
+     * PPPoE, Hotspot, atau hasil sensus teknisi (layanan terhubung ke ONU).
+     */
+    protected function eligibleCustomers()
+    {
+        return Customer::query()
+            ->where(function ($g) {
+                $g->whereNull('code')->orWhere('code', 'not like', 'GST-%');
+            })
+            ->whereHas('customerServices', function ($cs) {
+                $cs->where(function ($w) {
+                    $w->whereHas('pppoeUser')
+                      ->orWhereHas('hotspotUser')
+                      ->orWhereNotNull('onu_id');
+                });
+            });
+    }
+
     /** Daftar reseller untuk dropdown modal WO. */
     public function getResellerOptions(): array
     {
@@ -458,7 +477,7 @@ class Index extends BaseEnterpriseList
     public function getModalCustomers(): array
     {
         try {
-            $q = Customer::withoutGuests();
+            $q = $this->eligibleCustomers();
             $reseller = $this->newWo['reseller_id'] ?? '';
             if ($reseller === 'direct') {
                 $q->whereNull('reseller_id');
