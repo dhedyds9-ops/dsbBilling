@@ -291,14 +291,9 @@ class OltPollingService
                                     }
                                 }
                             } else {
-                                // Jangan buat record baru jika ONU dalam kondisi OFFLINE saat polling!
-                                // ONU yang telah dihapus atau belum aktif tidak boleh membangkitkan record offline liar.
-                                if ($status !== 'online') {
-                                    continue;
-                                }
-
                                 try {
                                     $resolvedPortNum = ($dbPort && $dbPort->port_number) ? $dbPort->port_number : ($idx > 1000000 ? ($idx & 0xFF ?: (($idx >> 8) & 0xFF)) : $idx);
+                                    $newStatusEnum = $status === 'online' ? 'active' : 'inactive';
                                     $onu = Onu::create([
                                         'olt_id' => $olt->id,
                                         'pon_port' => $resolvedPortNum,
@@ -310,9 +305,10 @@ class OltPollingService
                                         'name' => !empty($item['name']) ? $item['name'] : ($snNormalized ?: ("ONU-{$idx}-" . ($item['onu_index'] ?? 0))),
                                         'model' => $item['model'] ?? null,
                                         'firmware_version' => $item['firmware_version'] ?? null,
-                                        'status' => 'active',
+                                        'status' => $newStatusEnum,
                                         'provision_status' => 'provisioned',
                                         'branch_id' => $olt->branch_id,
+                                        'last_seen_at' => $status === 'online' ? now() : null,
                                     ]);
                                     
                                     try {

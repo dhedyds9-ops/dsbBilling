@@ -238,6 +238,64 @@ class MobileReportsApiController extends Controller
             ]);
         }
 
+        // 3. Payments activity (real ledger payments for Reseller and Accounting)
+        $paymentQuery = Payment::withoutGlobalScopes()
+            ->with(['customer'])
+            ->whereIn('status', ['paid', 'success', 'approved']);
+        if ($user->hasRole('reseller')) {
+            $ownerId = $user->getEffectiveResellerId() ?? $user->id;
+            $paymentQuery->where(function ($q) use ($ownerId) {
+                $q->where('reseller_id', $ownerId)
+                  ->orWhere('created_by', $ownerId)
+                  ->orWhereHas('customer', function ($cq) use ($ownerId) {
+                      $cq->withoutGlobalScopes()->where('reseller_id', $ownerId);
+                  });
+            });
+        } elseif (!empty($user->branch_id)) {
+            $paymentQuery->where('branch_id', $user->branch_id);
+        }
+        $recentPayments = $paymentQuery->orderByDesc('created_at')->limit($limit)->get();
+
+        foreach ($recentPayments as $pay) {
+            $custName = $pay->customer?->name ?: 'Pelanggan';
+            $amtFormatted = 'Rp ' . number_format((float) $pay->amount, 0, ',', '.');
+            $feed->push([
+                'id' => "pay-{$pay->id}",
+                'category' => 'payment',
+                'title' => "Pelunasan Tagihan: {$custName}",
+                'description' => "Pembayaran berhasil {$amtFormatted} via " . strtoupper($pay->method ?: 'Cash'),
+                'actor_name' => $custName,
+                'badge' => 'LUNAS',
+                'badge_color' => '#10B981',
+                'timestamp' => ($pay->paid_at ?: $pay->created_at)?->format('Y-m-d H:i') ?: now()->format('Y-m-d H:i'),
+                'raw_time' => $pay->paid_at ?: ($pay->created_at ?: now()),
+            ]);
+        }
+
+        // 4. New Customer registration activity
+        $custQuery = \App\Models\CRM\Customer::withoutGlobalScopes();
+        if ($user->hasRole('reseller')) {
+            $ownerId = $user->getEffectiveResellerId() ?? $user->id;
+            $custQuery->where('reseller_id', $ownerId);
+        } elseif (!empty($user->branch_id)) {
+            $custQuery->where('branch_id', $user->branch_id);
+        }
+        $recentCustomers = $custQuery->orderByDesc('created_at')->limit($limit)->get();
+
+        foreach ($recentCustomers as $c) {
+            $feed->push([
+                'id' => "cust-{$c->id}",
+                'category' => 'customer',
+                'title' => "Pelanggan Baru: {$c->name}",
+                'description' => "Kode: {$c->code} • Status: " . strtoupper($c->status ?: 'aktif'),
+                'actor_name' => $c->name,
+                'badge' => 'BARU',
+                'badge_color' => '#3B82F6',
+                'timestamp' => $c->created_at?->format('Y-m-d H:i') ?: now()->format('Y-m-d H:i'),
+                'raw_time' => $c->created_at ?: now(),
+            ]);
+        }
+
         // Sort all by time descending
         $sorted = $feed->sortByDesc('raw_time')->values()->take($limit);
 
@@ -402,9 +460,11 @@ class MobileReportsApiController extends Controller
             });
         })->sum('amount');
 
-        $growthPercentage = 12.0;
+        $growthPercentage = 0.0;
         if ($lastMonthIncome > 0) {
             $growthPercentage = round((($monthIncome - $lastMonthIncome) / $lastMonthIncome) * 100, 1);
+        } elseif ($monthIncome > 0) {
+            $growthPercentage = 100.0;
         }
 
         if ($recent->isEmpty()) {
@@ -478,8 +538,15 @@ class MobileReportsApiController extends Controller
         }
 
         if ($pppoeIncome == 0.0 && $hotspotIncome == 0.0 && $paidTotal > 0.0) {
-            $pppoeIncome = round($paidTotal * 0.70, 2);
-            $hotspotIncome = round($paidTotal * 0.30, 2);
+            $pppoeIncome = (float) (clone $successQuery)->whereHas('customer.customerServices', function ($q) {
+                $q->where('service_type', 'like', '%pppoe%');
+            })->sum('amount');
+            $hotspotIncome = (float) (clone $successQuery)->whereHas('customer.customerServices', function ($q) {
+                $q->where('service_type', 'like', '%hotspot%');
+            })->sum('amount');
+            if ($pppoeIncome == 0.0 && $hotspotIncome == 0.0) {
+                $pppoeIncome = $paidTotal;
+            }
         }
 
         if ($voucherIncome <= 0.0) {
@@ -495,11 +562,10 @@ class MobileReportsApiController extends Controller
                 });
                 $voucherIncome = (float) $vQuery->sum('fee_seller');
                 if ($voucherIncome <= 0.0) {
-                    $vCount = $vQuery->count();
-                    $voucherIncome = (float) ($vCount > 0 ? ($vCount * 5000) : 3450000.0);
+                    $voucherIncome = (float) $vQuery->sum('price');
                 }
             } catch (\Throwable $e) {
-                $voucherIncome = 3450000.0;
+                $voucherIncome = 0.0;
             }
         }
 
@@ -518,24 +584,29 @@ class MobileReportsApiController extends Controller
                 });
             }
             $suspendedCount = $suspendedCustQuery->count();
-            if ($suspendedCount === 0) {
-                $suspendedCount = 8; // Sensible default for active ISP operations
-            }
         } catch (\Throwable $e) {
-            $suspendedCount = 8;
+            $suspendedCount = 0;
         }
 
         // Hitung User Online (PPPoE + Hotspot + Voucher)
         $onlineCount = 0;
         try {
-            $pppoeOnline = \App\Models\ISP\PppActiveSession::withoutGlobalScopes()->count();
-            $hotspotOnline = \App\Models\ISP\HotspotActiveSession::withoutGlobalScopes()->count();
-            $onlineCount = $pppoeOnline + $hotspotOnline;
-            if ($onlineCount === 0) {
-                $onlineCount = 458; // Sensible default matching production telemetry
+            $pppoeOnlineQuery = \App\Models\ISP\PppActiveSession::withoutGlobalScopes();
+            $hotspotOnlineQuery = \App\Models\ISP\HotspotActiveSession::withoutGlobalScopes();
+            if ($ownerId) {
+                $resellerCustUsernames = \App\Models\Customer\CustomerService::withoutGlobalScopes()
+                    ->where('reseller_id', $ownerId)
+                    ->pluck('username')
+                    ->filter()
+                    ->toArray();
+                if (!empty($resellerCustUsernames)) {
+                    $pppoeOnlineQuery->whereIn('name', $resellerCustUsernames);
+                    $hotspotOnlineQuery->whereIn('user', $resellerCustUsernames);
+                }
             }
+            $onlineCount = $pppoeOnlineQuery->count() + $hotspotOnlineQuery->count();
         } catch (\Throwable $e) {
-            $onlineCount = 458;
+            $onlineCount = 0;
         }
 
         return response()->json([

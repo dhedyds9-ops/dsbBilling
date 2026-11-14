@@ -58,6 +58,48 @@ class CDataOltDriver extends BaseOltDriver
         return $this->isNewBranch = (!empty($ponTest));
     }
 
+    protected function initializeCli(): void
+    {
+        if ($this->cli !== null) {
+            return;
+        }
+
+        $user = !empty($this->olt->username) ? $this->olt->username : 'admin';
+        $pass = !empty($this->olt->password) ? $this->olt->password : 'admin';
+        $port = (int)($this->olt->cli_port ?: 23);
+
+        $this->cli = new \App\Services\Adapters\Provisioning\Support\TelnetSshClient();
+        try {
+            $this->cli->connect(
+                $this->olt->ip_address,
+                $user,
+                $pass,
+                $this->cliMode ?: 'telnet',
+                $port,
+                $this->olt->enable_secret ?? ''
+            );
+        } catch (\Throwable $e) {
+            // Jika login dengan admin/admin gagal, coba fallback password umum C-Data
+            if ($user === 'admin' && $pass === 'admin') {
+                foreach (['stdONUpwd', '123456', 'cdata'] as $altPass) {
+                    try {
+                        $this->cli = new \App\Services\Adapters\Provisioning\Support\TelnetSshClient();
+                        $this->cli->connect(
+                            $this->olt->ip_address,
+                            'admin',
+                            $altPass,
+                            $this->cliMode ?: 'telnet',
+                            $port,
+                            $this->olt->enable_secret ?? ''
+                        );
+                        return;
+                    } catch (\Throwable) {}
+                }
+            }
+            throw $e;
+        }
+    }
+
     public function getSystemInfo(): array
     {
         $info = parent::getSystemInfo();
@@ -1087,6 +1129,7 @@ class CDataOltDriver extends BaseOltDriver
             if ($raw == 0 || $raw <= -65535 || $raw >= 65535) return null;
             if ($raw < 0 && $raw >= -4500 && $raw <= -100) return round($raw / 100, 2);
             if ($raw >= 1000 && $raw <= 4500) return round(-($raw / 100), 2);
+            if ($raw >= 100 && $raw <= 450) return round(-($raw / 10), 2);
             if ($raw >= -45 && $raw <= 10) return round($raw, 2);
             if ($raw >= -450 && $raw <= -100) return round($raw / 10, 2);
             if ($raw > 0 && $raw < 100000) return round(10 * log10($raw / 10000), 2);
@@ -1163,21 +1206,21 @@ class CDataOltDriver extends BaseOltDriver
 
                 // 2. Evaluasi status SNMP
                 // In GPON: onuRunState: 5=operation (O5/ONLINE), 101=online
-                // In EPON: 1=online/up, 2=offline/down
-                // activeVal: 1=active/enabled, 2=inactive/disabled
+                // In EPON (CTC standard & C-Data MIB): 1=authenticated/up/online, 2=registered/online
                 $snmpOnline = false;
                 if ($stVal === 5 || $stVal === 101) {
                     $snmpOnline = true;
-                } elseif ($stVal === 1 && $activeVal === 1) {
+                } elseif ($stVal === 1 || $stVal === 2) {
+                    // Di CTC EPON dan C-Data MIB, nilai 1 dan 2 adalah status Online / Registered
                     $snmpOnline = true;
-                } elseif (in_array($stVal, [2, 6, 7, 102], true)) {
+                } elseif (in_array($stVal, [3, 6, 7, 102], true)) {
                     $snmpOnline = false;
-                } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5') || str_contains($stRaw, 'up') || str_contains($stRaw, 'work')) {
+                } elseif (str_contains($stRaw, 'online') || str_contains($stRaw, 'oper') || str_contains($stRaw, 'o5') || str_contains($stRaw, 'up') || str_contains($stRaw, 'work') || str_contains($stRaw, 'auth') || str_contains($stRaw, 'reg')) {
                     $snmpOnline = true;
-                } elseif (str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'standby') || str_contains($stRaw, 'popup') || str_contains($stRaw, 'los')) {
+                } elseif (str_contains($stRaw, 'offline') || str_contains($stRaw, 'down') || str_contains($stRaw, 'inactive') || str_contains($stRaw, 'standby') || str_contains($stRaw, 'popup') || str_contains($stRaw, 'los') || str_contains($stRaw, 'dereg')) {
                     $snmpOnline = false;
                 } else {
-                    $snmpOnline = ($activeVal === 1);
+                    $snmpOnline = ($activeVal === 1 || $stVal > 0);
                 }
 
                 // Tentukan status dasar dari CLI dan SNMP

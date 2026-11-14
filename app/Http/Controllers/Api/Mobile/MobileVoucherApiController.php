@@ -83,10 +83,10 @@ class MobileVoucherApiController extends Controller
             'message' => 'Data voucher berhasil dimuat.',
             'summary' => [
                 'total_vouchers' => $totalVouchers,
-                'total_revenue' => $totalRevenue > 0 ? $totalRevenue : 3450000.0,
+                'total_revenue' => $totalRevenue,
                 'active_count' => $activeCount,
                 'used_count' => $usedCount,
-                'unused_count' => $unusedCount > 0 ? $unusedCount : 120,
+                'unused_count' => $unusedCount,
                 'expired_count' => $expiredCount,
             ],
             'count' => $vouchers->count(),
