@@ -128,6 +128,14 @@ class TicketService
     {
         return DB::transaction(function () use ($data, $userId) {
             $assignedTo = !empty($data['assigned_to']) ? (int) $data['assigned_to'] : null;
+            $technicianIds = !empty($data['technician_ids']) ? array_values(array_filter(array_map('intval', (array) $data['technician_ids']))) : null;
+            if (empty($assignedTo) && !empty($technicianIds)) {
+                $assignedTo = $technicianIds[0];
+            }
+            if (!empty($assignedTo) && empty($technicianIds)) {
+                $technicianIds = [$assignedTo];
+            }
+
             $status = $data['status'] ?? ($assignedTo ? 'in_progress' : 'open');
 
             $resellerId = null;
@@ -148,6 +156,7 @@ class TicketService
                 'priority' => $data['priority'] ?? 'medium',
                 'status' => $status,
                 'assigned_to' => $assignedTo,
+                'technician_ids' => $technicianIds,
                 'installation_id' => $data['installation_id'] ?? null,
             ];
 
@@ -206,6 +215,18 @@ class TicketService
 
         if (array_key_exists('reseller_id', $data)) {
             $updateData['reseller_id'] = ($data['reseller_id'] === 'hq' || $data['reseller_id'] === '' || $data['reseller_id'] === null) ? null : (int) $data['reseller_id'];
+        }
+
+        if (array_key_exists('technician_ids', $data)) {
+            $techIds = !empty($data['technician_ids']) ? array_values(array_filter(array_map('intval', (array) $data['technician_ids']))) : null;
+            $updateData['technician_ids'] = $techIds;
+            if (!empty($techIds) && empty($data['assigned_to'])) {
+                $updateData['assigned_to'] = $techIds[0];
+            }
+        }
+
+        if (array_key_exists('assigned_to', $data)) {
+            $updateData['assigned_to'] = !empty($data['assigned_to']) ? (int) $data['assigned_to'] : null;
         }
 
         if (Schema::hasColumn('tickets', 'due_date') && array_key_exists('due_date', $data)) {
@@ -289,6 +310,7 @@ class TicketService
             $payload = [
                 'status' => 'resolved',
                 'resolved_at' => now(),
+                'resolved_by' => $userId,
             ];
             if ($note !== null && trim($note) !== '' && \Illuminate\Support\Facades\Schema::hasColumn('tickets', 'resolution_notes')) {
                 $payload['resolution_notes'] = trim($note);

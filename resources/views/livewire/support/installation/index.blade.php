@@ -350,25 +350,73 @@
               <input type="time" wire:model="newWo.scheduled_time" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500">
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Teknisi Ditugaskan</label>
-              <select wire:model="newWo.technician_id" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500">
-                <option value="">-- Belum Ditugaskan --</option>
-                @foreach(($filterOptions['technicians'] ?? []) as $tid => $tname)
-                  <option value="{{ $tid }}">{{ $tname }}</option>
+          @php
+            $attendedTechs = $this->getAttendedTechnicians();
+          @endphp
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Teknisi Lapangan Ditugaskan (Tim / Multi-Teknisi)
+                <span class="text-xs font-normal text-slate-400 dark:text-slate-500">(Bisa pilih > 1 teknisi, maks 2 tugas/teknisi)</span>
+              </label>
+              <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                {{ count($attendedTechs) }} Hadir Hari Ini
+              </span>
+            </div>
+
+            @if(empty($attendedTechs))
+              <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
+                <svg class="w-4 h-4 shrink-0 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div>
+                  <strong>Belum ada teknisi yang absen hadir hari ini.</strong>
+                  <p class="mt-0.5 text-[11px] text-amber-700 dark:text-amber-400">Hanya teknisi yang sudah absen masuk (check-in) yang dapat ditugaskan. SPK dapat disimpan tanpa teknisi (Pending) atau minta teknisi absen terlebih dahulu.</p>
+                </div>
+              </div>
+            @else
+              <div class="max-h-40 overflow-y-auto space-y-1.5 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+                @foreach($attendedTechs as $tId => $t)
+                  @php
+                    $isFull = !empty($t['is_full']);
+                    $isSelected = in_array($tId, (array) ($newWo['technician_ids'] ?? []));
+                  @endphp
+                  <label class="flex items-center justify-between p-2 rounded-md transition-colors cursor-pointer {{ $isFull && !$isSelected ? 'bg-slate-100 dark:bg-slate-800/40 opacity-60 cursor-not-allowed' : ($isSelected ? 'bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700') }}">
+                    <div class="flex items-center gap-2.5">
+                      <input type="checkbox" wire:model.live="newWo.technician_ids" value="{{ $tId }}" {{ $isFull && !$isSelected ? 'disabled' : '' }} class="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
+                      <div>
+                        <div class="font-medium text-xs text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                          {{ $t['name'] }}
+                          <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Hadir {{ $t['check_in_time'] }})</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">
+                          Aktif: {{ $t['active_installations'] }} Instalasi, {{ $t['active_tickets'] }} Tiket
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      @if($isFull)
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                          {{ $t['total_active'] }}/2 PENUH
+                        </span>
+                      @else
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                          {{ $t['total_active'] }}/2 Tugas
+                        </span>
+                      @endif
+                    </div>
+                  </label>
                 @endforeach
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Prioritas</label>
-              <select wire:model="newWo.priority" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500">
-                <option value="low">Rendah (Low)</option>
-                <option value="medium">Normal (Medium)</option>
-                <option value="high">Tinggi (High)</option>
-                <option value="critical">Darurat (Critical)</option>
-              </select>
-            </div>
+              </div>
+            @endif
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Prioritas</label>
+            <select wire:model="newWo.priority" class="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-slate-800 dark:text-slate-100 py-2 px-3 text-sm focus:ring-blue-500">
+              <option value="low">Rendah (Low)</option>
+              <option value="medium">Normal (Medium)</option>
+              <option value="high">Tinggi (High)</option>
+              <option value="critical">Darurat (Critical)</option>
+            </select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Catatan / Detail Lokasi</label>

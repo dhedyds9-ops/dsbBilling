@@ -117,10 +117,15 @@ class Wizard extends Component
 
             $viewAll = request()->query('view_all', '0') === '1' && $isAdmin;
             if (!$viewAll) {
-                // Kunci penugasan ke akun yang login (baik teknisi maupun staf/manager yang bertugas ke lapangan)
-                $ticketQuery->where('assigned_to', $user->id);
+                // Kunci penugasan ke akun yang login (baik teknisi tunggal maupun anggota tim di technician_ids)
+                $ticketQuery->where(function($q) use ($user) {
+                    $q->where('assigned_to', $user->id)
+                      ->orWhereJsonContains('technician_ids', $user->id);
+                });
                 $installationQuery->where(function($q) use ($user) {
-                    $q->where('assigned_to', $user->id)->orWhere('technician_id', $user->id);
+                    $q->where('assigned_to', $user->id)
+                      ->orWhere('technician_id', $user->id)
+                      ->orWhereJsonContains('technician_ids', $user->id);
                 });
                 $requisitionQuery->where('designated_technician_id', $user->id);
             }
@@ -142,7 +147,8 @@ class Wizard extends Component
             if ($ticketId) {
                 $validTicket = $tickets->firstWhere('id', (int) $ticketId)
                     ?? \App\Models\Support\Ticket::withoutGlobalScopes()->where('id', $ticketId)->first();
-                if (!$validTicket || (!$isAdmin && $validTicket->assigned_to !== $user->id)) {
+                $isTicketAssigned = $validTicket && ($validTicket->assigned_to == $user->id || in_array($user->id, (array) ($validTicket->technician_ids ?? [])));
+                if (!$validTicket || (!$isAdmin && !$isTicketAssigned)) {
                     $this->hasAccess = false;
                     session()->flash('error', 'Tiket Tugas PSB ini tidak ditugaskan kepada Anda atau statusnya sudah selesai.');
                     return;
@@ -151,9 +157,10 @@ class Wizard extends Component
             } elseif ($installationId) {
                 $validInst = $installations->firstWhere('id', (int) $installationId)
                     ?? \App\Models\CRM\Installation::withoutGlobalScopes()->where('id', $installationId)->first();
-                if (!$validInst) {
+                $isInstAssigned = $validInst && ($validInst->assigned_to == $user->id || $validInst->technician_id == $user->id || in_array($user->id, (array) ($validInst->technician_ids ?? [])));
+                if (!$validInst || (!$isAdmin && !$isInstAssigned)) {
                     $this->hasAccess = false;
-                    session()->flash('error', 'SPK Pemasangan ini tidak valid atau statusnya sudah selesai.');
+                    session()->flash('error', 'SPK Pemasangan ini tidak valid atau ditugaskan kepada teknisi lain.');
                     return;
                 }
                 $this->selectWorkOrder('installation', $validInst->id);
@@ -178,8 +185,17 @@ class Wizard extends Component
     public function selectWorkOrder(string $type, $id)
     {
         if ($type === 'ticket') {
-            $ticket = \App\Models\Support\Ticket::withoutGlobalScopes()->with(['customer'])->find($id);
+            $ticket = \App\Models\Support\Ticket::withoutGlobalScopes()->with(['customer', 'resolvedBy'])->find($id);
             if ($ticket) {
+                if (in_array($ticket->status, ['resolved', 'closed']) || !empty($ticket->resolved_by)) {
+                    $completer = $ticket->resolvedBy?->name ?? 'teknisi lain';
+                    $time = $ticket->resolved_at ? \Carbon\Carbon::parse($ticket->resolved_at)->format('d/m/Y H:i') : '';
+                    session()->flash('error', "Tiket PSB #{$ticket->id} sudah diselesaikan oleh {$completer}" . ($time ? " pada {$time}" : "") . ". Tidak perlu dikerjakan ulang agar tidak terjadi duplikasi data.");
+                    $this->hasAccess = false;
+                    $this->requireWorkOrderSelection = false;
+                    return;
+                }
+
                 $this->ticket_id = $ticket->id;
                 $this->customer_id = (string) $ticket->customer_id;
                 $this->is_new_customer = false;
@@ -197,8 +213,17 @@ class Wizard extends Component
                 $this->tryAutoDetectPackage($ticket->description, $ticket->customer_id);
             }
         } elseif ($type === 'installation') {
-            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer', 'survey.prospect'])->find($id);
+            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer', 'survey.prospect', 'completedBy'])->find($id);
             if ($inst) {
+                if ($inst->status === 'completed' || !empty($inst->completed_by)) {
+                    $completer = $inst->completedBy?->name ?? 'teknisi lain';
+                    $time = $inst->completed_at ? \Carbon\Carbon::parse($inst->completed_at)->format('d/m/Y H:i') : '';
+                    session()->flash('error', "SPK Pemasangan #{$inst->id} sudah diselesaikan oleh {$completer}" . ($time ? " pada {$time}" : "") . ". Tidak perlu dikerjakan ulang agar tidak terjadi duplikasi data.");
+                    $this->hasAccess = false;
+                    $this->requireWorkOrderSelection = false;
+                    return;
+                }
+
                 $this->installation_id = $inst->id;
                 // Cek tiket yang tertaut ke SPK instalasi ini
                 if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
@@ -491,6 +516,25 @@ class Wizard extends Component
 
         // 2. Validasi & Penegakan Branch Isolation (P0-4)
         $user = auth()->user();
+
+        // Proteksi Anti-Duplikasi Pengerjaan (Hanya 1 teknisi yang menyelesaikan)
+        if ($this->installation_id) {
+            $instCheck = \App\Models\CRM\Installation::withoutGlobalScopes()->with('completedBy')->find($this->installation_id);
+            if ($instCheck && ($instCheck->status === 'completed' || !empty($instCheck->completed_by))) {
+                $completer = $instCheck->completedBy?->name ?? 'teknisi lain';
+                $this->addError('general', "Pemasangan SPK ini telah diselesaikan oleh {$completer}. Aktivasi dibatalkan untuk menghindari duplikasi data.");
+                return;
+            }
+        }
+        if ($this->ticket_id) {
+            $ticketCheck = \App\Models\Support\Ticket::withoutGlobalScopes()->with('resolvedBy')->find($this->ticket_id);
+            if ($ticketCheck && (in_array($ticketCheck->status, ['resolved', 'closed']) || !empty($ticketCheck->resolved_by))) {
+                $completer = $ticketCheck->resolvedBy?->name ?? 'teknisi lain';
+                $this->addError('general', "Tiket ini telah diselesaikan oleh {$completer}. Aktivasi dibatalkan untuk menghindari duplikasi data.");
+                return;
+            }
+        }
+
         $branchId = $user->branch_id;
         if (!$branchId && $this->is_new_customer && $this->new_customer_reseller_id) {
             $reseller = \App\Models\User::find($this->new_customer_reseller_id);
@@ -788,6 +832,7 @@ class Wizard extends Component
                             'customer_id' => $customer->id,
                             'status' => 'resolved',
                             'resolved_at' => now(),
+                            'resolved_by' => $user->id,
                             'resolution_notes' => 'PSB berhasil diaktivasi oleh teknisi ' . $user->name . ' pada ' . now()->format('d/m/Y H:i') . ' (ONU SN: ' . $sn . ')',
                         ]);
                 } catch (\Throwable $te) {
@@ -803,6 +848,7 @@ class Wizard extends Component
                             'customer_id' => $customer->id,
                             'status' => 'completed',
                             'completed_at' => now(),
+                            'completed_by' => $user->id,
                             'onu_serial_number' => $sn,
                             'onu_id' => $onu->id,
                         ]);

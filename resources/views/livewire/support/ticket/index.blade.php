@@ -639,38 +639,66 @@ $statusLabels = [
 
                     {{-- Petugas Assignee & Target Selesai --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
+                        <div class="sm:col-span-2">
+                            @php
+                                $attendedTechs = $this->attendedTechnicians;
+                            @endphp
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Petugas / Teknisi
+                                    Teknisi Lapangan Ditugaskan (Tim / Multi-Teknisi)
+                                    <span class="text-xs font-normal text-slate-400 lowercase">(bisa pilih > 1 teknisi, maks 2 tugas aktif)</span>
                                 </label>
-                                <label class="flex items-center gap-1 cursor-pointer text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 select-none" title="Centang untuk menampilkan semua staff termasuk yang belum absen masuk">
-                                    <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-indigo-500">
-                                    <span>Semua Staff</span>
-                                </label>
+                                <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                    {{ count($attendedTechs) }} Hadir Hari Ini
+                                </span>
                             </div>
-                            <select wire:model.live="newTicket.assigned_to"
-                                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="">-- Belum Ditugaskan --</option>
-                                @forelse ($this->assigneeOptions as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @empty
-                                    <option value="" disabled>Belum ada teknisi yang absen hadir hari ini</option>
-                                @endforelse
-                            </select>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                                @if(!$showAllStaff)
-                                    <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        Hanya menampilkan teknisi yang sudah absen hadir hari ini.
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-medium">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                        Menampilkan semua teknisi & staf lapangan.
-                                    </span>
-                                @endif
-                            </p>
+
+                            @if(empty($attendedTechs))
+                                <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
+                                    <svg class="w-4 h-4 shrink-0 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <div>
+                                        <strong>Belum ada teknisi yang absen hadir hari ini.</strong>
+                                        <p class="mt-0.5 text-[11px] text-amber-700 dark:text-amber-400">Hanya teknisi yang sudah absen masuk (check-in) yang dapat ditugaskan. Tiket dapat dibuat tanpa teknisi (Open) atau minta teknisi absen terlebih dahulu.</p>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="max-h-36 overflow-y-auto space-y-1.5 p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40">
+                                    @foreach($attendedTechs as $tId => $t)
+                                        @php
+                                            $isFull = !empty($t['is_full']);
+                                            $isSelected = in_array($tId, (array) ($newTicket['technician_ids'] ?? []));
+                                        @endphp
+                                        <label class="flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer {{ $isFull && !$isSelected ? 'bg-slate-100 dark:bg-slate-800/40 opacity-60 cursor-not-allowed' : ($isSelected ? 'bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800' : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700') }}">
+                                            <div class="flex items-center gap-2.5">
+                                                <input type="checkbox" wire:model.live="newTicket.technician_ids" value="{{ $tId }}" {{ $isFull && !$isSelected ? 'disabled' : '' }} class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500">
+                                                <div>
+                                                    <div class="font-medium text-xs text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                                                        {{ $t['name'] }}
+                                                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Hadir {{ $t['check_in_time'] }})</span>
+                                                    </div>
+                                                    <div class="text-[10px] text-slate-500 dark:text-slate-400">
+                                                        Aktif: {{ $t['active_installations'] }} Instalasi, {{ $t['active_tickets'] }} Tiket
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                @if($isFull)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                                        {{ $t['total_active'] }}/2 PENUH
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                                        {{ $t['total_active'] }}/2 Tugas
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            @endif
+                            @error('newTicket.technician_ids')
+                                <p class="text-xs text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <div>
@@ -829,24 +857,61 @@ $statusLabels = [
                         </div>
                     </div>
 
-                    {{-- Petugas Assignee --}}
+                    {{-- Petugas Assignee / Tim Teknisi --}}
                     <div>
+                        @php
+                            $attendedTechs = $this->attendedTechnicians;
+                        @endphp
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                Petugas / Teknisi Lapangan
+                                Teknisi Lapangan (Tim / Multi-Teknisi)
                             </label>
-                            <label class="flex items-center gap-1 cursor-pointer text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 select-none">
-                                <input type="checkbox" wire:model.live="showAllStaff" class="w-3 h-3 rounded text-indigo-600 border-slate-300 dark:border-slate-600 dark:bg-slate-800 focus:ring-indigo-500">
-                                <span>Semua Staff</span>
-                            </label>
+                            <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                {{ count($attendedTechs) }} Hadir Hari Ini
+                            </span>
                         </div>
-                        <select wire:model.live="editingTicket.assigned_to"
-                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                            <option value="">-- Belum Ditugaskan --</option>
-                            @foreach ($this->assigneeOptions as $id => $name)
-                                <option value="{{ $id }}">{{ $name }}</option>
-                            @endforeach
-                        </select>
+                        @if(empty($attendedTechs))
+                            <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs">
+                                Belum ada teknisi yang absen hadir hari ini.
+                            </div>
+                        @else
+                            <div class="max-h-36 overflow-y-auto space-y-1.5 p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40">
+                                @foreach($attendedTechs as $tId => $t)
+                                    @php
+                                        $isSelected = in_array($tId, (array) ($editingTicket['technician_ids'] ?? []));
+                                        $isFull = !empty($t['is_full']) && !$isSelected;
+                                    @endphp
+                                    <label class="flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer {{ $isFull ? 'bg-slate-100 dark:bg-slate-800/40 opacity-60 cursor-not-allowed' : ($isSelected ? 'bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800' : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700') }}">
+                                        <div class="flex items-center gap-2.5">
+                                            <input type="checkbox" wire:model.live="editingTicket.technician_ids" value="{{ $tId }}" {{ $isFull ? 'disabled' : '' }} class="rounded border-slate-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500">
+                                            <div>
+                                                <div class="font-medium text-xs text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                                                    {{ $t['name'] }}
+                                                    <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Hadir {{ $t['check_in_time'] }})</span>
+                                                </div>
+                                                <div class="text-[10px] text-slate-500 dark:text-slate-400">
+                                                    Aktif: {{ $t['active_installations'] }} Instalasi, {{ $t['active_tickets'] }} Tiket
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            @if(!empty($t['is_full']))
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                                    {{ $t['total_active'] }}/2 PENUH
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                                    {{ $t['total_active'] }}/2 Tugas
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endif
+                        @error('editingTicket.technician_ids')
+                            <p class="text-xs text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     {{-- Deskripsi Keluhan --}}

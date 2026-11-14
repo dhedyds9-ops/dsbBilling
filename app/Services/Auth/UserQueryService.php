@@ -298,4 +298,105 @@ class UserQueryService
     {
         return $this->getEligibleApprovers($activeOnly)->pluck('name', 'id')->toArray();
     }
+
+    /**
+     * Dapatkan daftar teknisi yang SAH bertugas hari ini:
+     * 1. HANYA akun teknisi (job_function TECHNICIAN atau role teknisi)
+     * 2. HANYA yang sudah absen masuk hari ini dan belum checkout
+     * 3. Menghitung beban tugas aktif (Instalasi & Tiket aktif)
+     * 4. Ditandai is_full jika beban >= $maxQuota (default 2)
+     */
+    public function getAttendedTechniciansWithWorkload(int $maxQuota = 2): array
+    {
+        $today = \Carbon\Carbon::today()->toDateString();
+        $attendances = \App\Models\Workforce\Attendance::whereDate('date', $today)
+            ->whereNotNull('checked_in_at')
+            ->whereNull('checked_out_at')
+            ->whereIn('status', [
+                \Src\Domain\Workforce\Enums\AttendanceStatus::CHECKED_IN->value ?? 'checked_in',
+                \Src\Domain\Workforce\Enums\AttendanceStatus::LATE->value ?? 'late',
+                'checked_in', 'late'
+            ])
+            ->get(['technician_id', 'checked_in_at', 'status'])
+            ->keyBy('technician_id');
+
+        if ($attendances->isEmpty()) {
+            return [];
+        }
+
+        $technicians = User::where(function ($q) {
+                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', [
+                    UserRole::Teknisi->value,
+                    'technician',
+                    'Technician',
+                    'teknisi',
+                    'Teknisi',
+                ]))
+                ->orWhereRaw('UPPER(COALESCE(job_function, "")) IN (?, ?)', ['TECHNICIAN', 'TEKNISI'])
+                ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TEKNISI%'])
+                ->orWhereRaw('UPPER(COALESCE(job_title, "")) LIKE ?', ['%TECHNICIAN%']);
+            })
+            ->whereDoesntHave('roles', fn($q) => $q->where('name', UserRole::Customer->value))
+            ->where('is_active', true)
+            ->whereIn('id', $attendances->keys())
+            ->orderBy('name')
+            ->get();
+
+        if ($technicians->isEmpty()) {
+            return [];
+        }
+
+        // Ambil semua instalasi aktif
+        $activeInstallations = \App\Models\CRM\Installation::withoutGlobalScopes()
+            ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
+            ->get(['id', 'technician_id', 'assigned_to', 'technician_ids']);
+
+        // Ambil semua tiket aktif
+        $activeTickets = \App\Models\Support\Ticket::withoutGlobalScopes()
+            ->whereIn('status', ['open', 'in_progress', 'assigned', 'pending_customer'])
+            ->get(['id', 'assigned_to', 'technician_ids']);
+
+        $result = [];
+        foreach ($technicians as $t) {
+            $att = $attendances->get($t->id);
+            $checkInTime = $att ? \Carbon\Carbon::parse($att->checked_in_at)->format('H:i') : '-';
+
+            $instCount = $activeInstallations->filter(function ($inst) use ($t) {
+                if ((int) $inst->technician_id === (int) $t->id || (int) $inst->assigned_to === (int) $t->id) {
+                    return true;
+                }
+                $ids = is_array($inst->technician_ids) ? $inst->technician_ids : json_decode($inst->technician_ids ?? '[]', true);
+                return in_array($t->id, (array) $ids);
+            })->count();
+
+            $tktCount = $activeTickets->filter(function ($tkt) use ($t) {
+                if ((int) $tkt->assigned_to === (int) $tkt->id || (int) $tkt->assigned_to === (int) $t->id) {
+                    return true;
+                }
+                $ids = is_array($tkt->technician_ids) ? $tkt->technician_ids : json_decode($tkt->technician_ids ?? '[]', true);
+                return in_array($t->id, (array) $ids);
+            })->count();
+
+            $totalActive = $instCount + $tktCount;
+            $isFull = $totalActive >= $maxQuota;
+
+            $statusBadge = $isFull ? "[{$totalActive}/{$maxQuota} PENUH]" : "[{$totalActive}/{$maxQuota} Aktif]";
+            $label = "{$t->name} (Hadir: {$checkInTime}) {$statusBadge}";
+
+            $result[$t->id] = [
+                'id' => $t->id,
+                'name' => $t->name,
+                'phone' => $t->phone ?? $t->whatsapp,
+                'check_in_time' => $checkInTime,
+                'active_installations' => $instCount,
+                'active_tickets' => $tktCount,
+                'total_active' => $totalActive,
+                'max_quota' => $maxQuota,
+                'is_full' => $isFull,
+                'label' => $label,
+            ];
+        }
+
+        return $result;
+    }
 }

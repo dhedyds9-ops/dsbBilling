@@ -38,7 +38,8 @@ class MobileWorkforceApiController extends Controller
         }
 
         // 2. Cross-branch and assignment authorization (Directive Section 6)
-        $isAssigned = $workOrder->assigned_to && (int)$workOrder->assigned_to === (int)$user->id;
+        $isAssigned = ($workOrder->assigned_to && (int)$workOrder->assigned_to === (int)$user->id)
+            || in_array((int)$user->id, (array) ($workOrder->technician_ids ?? []));
         $isManagerOrAdmin = $this->isManagerOrAdmin($user);
 
         if ($user->branch_id && $workOrder->branch_id && (int)$user->branch_id !== (int)$workOrder->branch_id && !$user->isSuperAdmin()) {
@@ -112,7 +113,10 @@ class MobileWorkforceApiController extends Controller
         if ($user->isTechnician() && !$this->isManagerOrAdmin($user)) {
             $query->where(function ($q) use ($user) {
                 // 1. Show work orders assigned to this technician (regardless of branch)
-                $q->where('assigned_to', $user->id);
+                $q->where(function ($sub) use ($user) {
+                    $sub->where('assigned_to', $user->id)
+                        ->orWhereJsonContains('technician_ids', $user->id);
+                });
                 // 2. Or unassigned work orders in their home branch
                 if ($user->branch_id) {
                     $q->orWhere(function ($sub) use ($user) {
@@ -677,6 +681,7 @@ class MobileWorkforceApiController extends Controller
                     $q->where(function ($sub) use ($user) {
                         $sub->where('technician_id', $user->id)
                             ->orWhere('assigned_to', $user->id)
+                            ->orWhereJsonContains('technician_ids', $user->id)
                             ->orWhereNull('technician_id');
                     });
                 })
@@ -710,6 +715,7 @@ class MobileWorkforceApiController extends Controller
                     'description' => 'Instalasi Pasang Baru (PSB)' . ($inst->notes ? " - {$inst->notes}" : ''),
                     'notes' => $inst->notes,
                     'priority' => $inst->priority ?? 'medium',
+                    'technician_ids' => $inst->technician_ids,
                     'scheduled_at' => $schedAt ?: $inst->created_at,
                 ];
 
@@ -735,6 +741,7 @@ class MobileWorkforceApiController extends Controller
                 ->when($user->isTechnician() && !$this->isManagerOrAdmin($user), function ($q) use ($user) {
                     $q->where(function ($sub) use ($user) {
                         $sub->where('assigned_to', $user->id)
+                            ->orWhereJsonContains('technician_ids', $user->id)
                             ->orWhereNull('assigned_to');
                     });
                 })
@@ -752,6 +759,7 @@ class MobileWorkforceApiController extends Controller
                         'type' => $t->category ?? 'troubleshooting',
                         'customer_id' => $t->customer_id ?? $t->user_id,
                         'assigned_to' => $t->assigned_to ?? $user->id,
+                        'technician_ids' => $t->technician_ids,
                         'status' => $t->status === 'in_progress' ? 'in_progress' : ($t->assigned_to ? 'assigned' : 'pending'),
                         'title' => $t->title ?? ($t->ticket_number . ' - ' . ($t->subject ?? 'Tiket Perbaikan')),
                         'description' => $t->description ?? '',
@@ -895,14 +903,17 @@ class MobileWorkforceApiController extends Controller
 
         if (!$isManager) {
             $query->where(function ($q) use ($user) {
-                $q->where('assigned_to', $user->id)
-                  ->orWhere(function ($sub) use ($user) {
-                      $sub->whereNull('assigned_to')
-                          ->whereIn('status', ['open', 'pending']);
-                      if ($user->branch_id) {
-                          $sub->where('branch_id', $user->branch_id);
-                      }
-                  });
+                $q->where(function ($sub) use ($user) {
+                    $sub->where('assigned_to', $user->id)
+                        ->orWhereJsonContains('technician_ids', $user->id);
+                })
+                ->orWhere(function ($sub) use ($user) {
+                    $sub->whereNull('assigned_to')
+                        ->whereIn('status', ['open', 'pending']);
+                    if ($user->branch_id) {
+                        $sub->where('branch_id', $user->branch_id);
+                    }
+                });
             });
         } elseif ($user->branch_id && !$user->isSuperAdmin()) {
             $query->where(function ($q) use ($user) {

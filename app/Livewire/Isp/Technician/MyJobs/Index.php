@@ -115,8 +115,15 @@ class Index extends Component
             return true;
         }
 
+        if (in_array($userId, (array) ($ticket->technician_ids ?? []))) {
+            return true;
+        }
+
         if (empty($ticket->assigned_to)) {
-            $ticket->update(['assigned_to' => $userId]);
+            $ticket->update([
+                'assigned_to' => $userId,
+                'technician_ids' => [$userId],
+            ]);
             return true;
         }
 
@@ -345,6 +352,14 @@ class Index extends Component
             abort(403, 'Tiket ini tidak ditugaskan kepada Anda.');
         }
 
+        // Proteksi Anti-Duplikasi Penyelesaian & Upload Foto oleh Tim
+        if (in_array($ticket->status, ['resolved', 'closed']) || !empty($ticket->resolved_by)) {
+            $completer = $ticket->resolvedBy?->name ?? 'teknisi lain';
+            session()->flash('warning', "Tiket ini telah diselesaikan oleh {$completer}. Tidak perlu mengupload atau menyelesaikan ulang.");
+            $this->showResolveTicketModal = false;
+            return;
+        }
+
         $note = trim($this->ticket_resolution_notes) !== ''
             ? trim($this->ticket_resolution_notes)
             : 'Diselesaikan oleh teknisi melalui portal tugas';
@@ -352,6 +367,7 @@ class Index extends Component
         $payload = [
             'status' => 'resolved',
             'resolved_at' => now(),
+            'resolved_by' => Auth::id(),
         ];
         if (Schema::hasColumn('tickets', 'resolution_notes')) {
             $payload['resolution_notes'] = $note;
@@ -795,7 +811,8 @@ class Index extends Component
             if (!$isAllScope) {
                 $instQuery->where(function ($q) use ($userId) {
                     $q->where('technician_id', $userId)
-                      ->orWhere('assigned_to', $userId);
+                      ->orWhere('assigned_to', $userId)
+                      ->orWhereJsonContains('technician_ids', $userId);
                 });
             }
 
@@ -869,7 +886,10 @@ class Index extends Component
                 ]);
 
             if (!$isAllScope) {
-                $ticketQuery->where('assigned_to', $userId);
+                $ticketQuery->where(function ($q) use ($userId) {
+                    $q->where('assigned_to', $userId)
+                      ->orWhereJsonContains('technician_ids', $userId);
+                });
             }
 
             if ($this->activeTab === 'active') {
@@ -1082,14 +1102,14 @@ class Index extends Component
         // Active & History Installations (CRM)
         $activeInst = Installation::withoutGlobalScopes()
             ->when(!$isAllScope, function ($q) use ($userId) {
-                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId));
+                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId));
             })
             ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
             ->count();
 
         $historyInst = Installation::withoutGlobalScopes()
             ->when(!$isAllScope, function ($q) use ($userId) {
-                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId));
+                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId));
             })
             ->whereIn('status', ['completed', 'cancelled'])
             ->count();
@@ -1107,12 +1127,12 @@ class Index extends Component
 
         // Active & History Tickets
         $activeTickets = Ticket::withoutGlobalScopes()
-            ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where(fn ($sub) => $sub->where('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId)))
             ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
             ->count();
 
         $historyTickets = Ticket::withoutGlobalScopes()
-            ->when(!$isAllScope, fn ($q) => $q->where('assigned_to', $userId))
+            ->when(!$isAllScope, fn ($q) => $q->where(fn ($sub) => $sub->where('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId)))
             ->whereIn('status', ['resolved', 'closed'])
             ->count();
 

@@ -26,10 +26,12 @@ class Installation extends Model
         'onu_id',
         'assigned_to',
         'technician_id',
+        'technician_ids',
         'scheduled_at',
         'scheduled_date',
         'scheduled_time',
         'completed_at',
+        'completed_by',
         'status',
         'priority',
         'pop_id',
@@ -52,6 +54,7 @@ class Installation extends Model
         'completed_at' => 'datetime',
         'photos' => 'array',
         'checklists' => 'array',
+        'technician_ids' => 'array',
     ];
 
     protected static function booted()
@@ -112,6 +115,31 @@ class Installation extends Model
         return $this->belongsTo(User::class, 'technician_id');
     }
 
+    public function completedBy()
+    {
+        return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    /**
+     * Dapatkan semua teknisi yang ditugaskan (Lead + Tim Partner)
+     */
+    public function assignedTechnicians(): \Illuminate\Database\Eloquent\Collection
+    {
+        $ids = is_array($this->technician_ids) ? $this->technician_ids : [];
+        if (!empty($this->technician_id) && !in_array($this->technician_id, $ids)) {
+            $ids[] = $this->technician_id;
+        }
+        if (!empty($this->assigned_to) && !in_array($this->assigned_to, $ids)) {
+            $ids[] = $this->assigned_to;
+        }
+
+        if (empty($ids)) {
+            return new \Illuminate\Database\Eloquent\Collection();
+        }
+
+        return User::withoutGlobalScopes()->whereIn('id', $ids)->get();
+    }
+
     public function pop()
     {
         return $this->belongsTo(Pop::class, 'pop_id');
@@ -161,6 +189,10 @@ class Installation extends Model
 
     public function getTechnicianDisplayNameAttribute(): string
     {
+        $techs = $this->assignedTechnicians();
+        if ($techs->isNotEmpty()) {
+            return $techs->pluck('name')->implode(', ');
+        }
         if ($this->assignedTo?->name) {
             return $this->assignedTo->name;
         }

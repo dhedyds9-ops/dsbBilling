@@ -23,6 +23,7 @@ class WorkOrder extends Model
         'installation_id',
         'customer_id',
         'assigned_to',
+        'technician_ids',
         'status',
         'title',
         'description',
@@ -47,6 +48,7 @@ class WorkOrder extends Model
         'optical_rx_power' => 'decimal:2',
         'optical_tx_power' => 'decimal:2',
         'evidence_photos' => 'array',
+        'technician_ids' => 'array',
     ];
 
     public function customer(): BelongsTo

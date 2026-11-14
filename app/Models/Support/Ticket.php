@@ -23,8 +23,10 @@ class Ticket extends Model
         'priority',
         'status',
         'assigned_to',
+        'technician_ids',
         'reseller_id',
         'resolved_at',
+        'resolved_by',
         'due_date',
         'photos',
         'optical_power',
@@ -40,6 +42,7 @@ class Ticket extends Model
         'due_date' => 'date',
         'photos' => 'array',
         'checklists' => 'array',
+        'technician_ids' => 'array',
         'requires_field_visit' => 'boolean',
     ];
 
@@ -51,6 +54,28 @@ class Ticket extends Model
     public function assignedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function resolvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    /**
+     * Dapatkan semua teknisi yang ditugaskan (Lead + Tim Partner)
+     */
+    public function assignedTechnicians(): \Illuminate\Database\Eloquent\Collection
+    {
+        $ids = is_array($this->technician_ids) ? $this->technician_ids : [];
+        if (!empty($this->assigned_to) && !in_array($this->assigned_to, $ids)) {
+            $ids[] = $this->assigned_to;
+        }
+
+        if (empty($ids)) {
+            return new \Illuminate\Database\Eloquent\Collection();
+        }
+
+        return User::withoutGlobalScopes()->whereIn('id', $ids)->get();
     }
 
     public function reseller(): BelongsTo

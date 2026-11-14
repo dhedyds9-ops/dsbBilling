@@ -66,7 +66,9 @@ class Dashboard extends Component
                 'survey.prospect',
             ])
             ->when(!$isAdmin, function ($q) use ($userId) {
-                $q->where(fn ($sub) => $sub->where('technician_id', $userId)->orWhere('assigned_to', $userId));
+                $q->where(fn ($sub) => $sub->where('technician_id', $userId)
+                    ->orWhere('assigned_to', $userId)
+                    ->orWhereJsonContains('technician_ids', $userId));
             })
             ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
             ->orderBy('scheduled_date', 'asc')
@@ -86,7 +88,7 @@ class Dashboard extends Component
             ->count();
 
         $activeTicketsCount = Ticket::withoutGlobalScopes()
-            ->when(!$isAdmin, fn ($q) => $q->where('assigned_to', $userId))
+            ->when(!$isAdmin, fn ($q) => $q->where(fn ($sub) => $sub->where('assigned_to', $userId)->orWhereJsonContains('technician_ids', $userId)))
             ->whereIn('status', ['open', 'in_progress', 'pending_customer'])
             ->count();
 

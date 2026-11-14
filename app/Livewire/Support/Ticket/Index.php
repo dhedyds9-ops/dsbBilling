@@ -41,6 +41,11 @@ class Index extends BaseEnterpriseList
         return $this->ticketService->getAssigneeOptions(!$this->showAllStaff);
     }
 
+    public function getAttendedTechniciansProperty(): array
+    {
+        return app(\App\Services\Auth\UserQueryService::class)->getAttendedTechniciansWithWorkload(2);
+    }
+
     public function getResellerOptionsProperty(): array
     {
         $resellers = app(\App\Services\Auth\UserQueryService::class)->getResellers();
@@ -157,6 +162,7 @@ class Index extends BaseEnterpriseList
             'category' => 'internet',
             'priority' => 'medium',
             'assigned_to' => '',
+            'technician_ids' => [],
             'due_date' => '',
         ];
         $this->loadAll();
@@ -386,6 +392,7 @@ class Index extends BaseEnterpriseList
             'category' => 'internet',
             'priority' => 'medium',
             'assigned_to' => '',
+            'technician_ids' => [],
             'due_date' => '',
         ];
         $this->showCreateForm = true;
@@ -504,6 +511,30 @@ class Index extends BaseEnterpriseList
                 }
             }
 
+            // Validasi & Pembagian Teknisi (Multi-Technician & Kuota Max 2)
+            $selectedTechIds = array_values(array_filter(array_map('intval', (array) ($data['technician_ids'] ?? []))));
+            if (empty($selectedTechIds) && !empty($data['assigned_to'])) {
+                $selectedTechIds = [(int) $data['assigned_to']];
+            }
+
+            if (!empty($selectedTechIds)) {
+                $attendedTechs = $this->attendedTechnicians;
+                foreach ($selectedTechIds as $tId) {
+                    $techData = $attendedTechs[$tId] ?? null;
+                    if (!$techData) {
+                        $this->addError('newTicket.technician_ids', 'Teknisi terpilih belum absen hadir hari ini.');
+                        return;
+                    }
+                    if (!empty($techData['is_full'])) {
+                        $this->addError('newTicket.technician_ids', "Teknisi {$techData['name']} telah mencapai batas maksimal 2 tugas aktif. Selesaikan tugas sebelumnya terlebih dahulu.");
+                        return;
+                    }
+                }
+            }
+
+            $primaryTechId = !empty($selectedTechIds) ? $selectedTechIds[0] : null;
+            $data['assigned_to'] = $primaryTechId;
+            $data['technician_ids'] = !empty($selectedTechIds) ? $selectedTechIds : null;
             $data['reseller_id'] = $resellerId;
             $ticket = $this->ticketService->create($data, $userId);
 
@@ -546,6 +577,8 @@ class Index extends BaseEnterpriseList
             $wo->customer_id = $customer?->id;
             $wo->customer_name = $customer?->name ?? ($psbInfo['name'] ?? 'Calon Pelanggan');
             $wo->technician_id = $ticket->assigned_to ?: null;
+            $wo->assigned_to = $ticket->assigned_to ?: null;
+            $wo->technician_ids = $ticket->technician_ids;
             $wo->priority = $ticket->priority ?: 'medium';
             $wo->status = $ticket->assigned_to ? 'scheduled' : 'pending';
             $wo->scheduled_date = !empty($data['due_date']) ? $data['due_date'] : now()->addDay()->toDateString();
@@ -601,6 +634,7 @@ class Index extends BaseEnterpriseList
             'priority' => $ticket->priority ?? 'medium',
             'status' => $ticket->status ?? 'open',
             'assigned_to' => $ticket->assigned_to ? (string) $ticket->assigned_to : '',
+            'technician_ids' => $ticket->technician_ids ?? ($ticket->assigned_to ? [$ticket->assigned_to] : []),
             'due_date' => $ticket->due_date ? (is_string($ticket->due_date) ? substr($ticket->due_date, 0, 10) : $ticket->due_date->format('Y-m-d')) : '',
             'note' => $ticket->resolution_notes ?? '',
         ];
@@ -635,7 +669,27 @@ class Index extends BaseEnterpriseList
         $oldAssignee = $ticket->assigned_to;
 
         try {
-            $newAssignee = !empty($this->editingTicket['assigned_to']) ? (int) $this->editingTicket['assigned_to'] : null;
+            $editTechIds = array_values(array_filter(array_map('intval', (array) ($this->editingTicket['technician_ids'] ?? []))));
+            if (empty($editTechIds) && !empty($this->editingTicket['assigned_to'])) {
+                $editTechIds = [(int) $this->editingTicket['assigned_to']];
+            }
+            if (!empty($editTechIds)) {
+                $attendedTechs = $this->attendedTechnicians;
+                foreach ($editTechIds as $tId) {
+                    $techData = $attendedTechs[$tId] ?? null;
+                    if (!$techData) {
+                        $this->addError('editingTicket.technician_ids', 'Teknisi terpilih belum absen hadir hari ini.');
+                        return;
+                    }
+                    $alreadyAssigned = in_array($tId, (array) ($ticket->technician_ids ?? [])) || (int) $ticket->assigned_to === (int) $tId;
+                    if (!$alreadyAssigned && !empty($techData['is_full'])) {
+                        $this->addError('editingTicket.technician_ids', "Teknisi {$techData['name']} telah mencapai batas maksimal 2 tugas aktif.");
+                        return;
+                    }
+                }
+            }
+
+            $newAssignee = !empty($editTechIds) ? $editTechIds[0] : null;
             $newStatus = $this->editingTicket['status'] ?? $ticket->status;
             $newResellerId = null;
             if (!empty($this->editingTicket['reseller_id']) && $this->editingTicket['reseller_id'] !== 'hq') {
@@ -649,8 +703,10 @@ class Index extends BaseEnterpriseList
                 'priority' => $this->editingTicket['priority'] ?? 'medium',
                 'status' => $newStatus,
                 'assigned_to' => $newAssignee,
+                'technician_ids' => !empty($editTechIds) ? $editTechIds : null,
                 'reseller_id' => $newResellerId,
                 'resolved_at' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? now() : $ticket->resolved_at,
+                'resolved_by' => ($newStatus === 'resolved' && $oldStatus !== 'resolved') ? $userId : $ticket->resolved_by,
             ];
             if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'due_date')) {
                 $updatePayload['due_date'] = !empty($this->editingTicket['due_date']) ? $this->editingTicket['due_date'] : null;

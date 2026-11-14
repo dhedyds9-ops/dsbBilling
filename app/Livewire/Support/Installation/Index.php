@@ -69,6 +69,7 @@ class Index extends BaseEnterpriseList
             'scheduled_date' => now()->addDay()->toDateString(),
             'scheduled_time' => '09:00',
             'technician_id' => '',
+            'technician_ids' => [],
             'notes' => '',
             'priority' => 'medium',
         ];
@@ -448,6 +449,7 @@ class Index extends BaseEnterpriseList
             'scheduled_date' => now()->addDay()->toDateString(),
             'scheduled_time' => '09:00',
             'technician_id' => '',
+            'technician_ids' => [],
             'notes' => '',
             'priority' => 'medium',
         ];
@@ -472,6 +474,17 @@ class Index extends BaseEnterpriseList
             ->where(function ($s) {
                 $s->whereNull('status')->orWhereNotIn('status', ['terminated', 'cancelled']);
             });
+    }
+
+    /** Daftar teknisi hadir hari ini beserta beban kerja aktif. */
+    public function getAttendedTechnicians(): array
+    {
+        try {
+            return app(\App\Services\Auth\UserQueryService::class)->getAttendedTechniciansWithWorkload(2);
+        } catch (Throwable $e) {
+            Log::error('getAttendedTechnicians failed', ['e' => $e->getMessage()]);
+            return [];
+        }
     }
 
     /** Daftar reseller untuk dropdown modal WO. */
@@ -589,19 +602,50 @@ class Index extends BaseEnterpriseList
                 }
             }
 
+            // Validasi & Pembagian Teknisi (Multi-Technician & Kuota Max 2)
+            $selectedTechIds = array_values(array_filter(array_map('intval', (array) ($this->newWo['technician_ids'] ?? []))));
+            // Jika single technician_id juga diisi dari legacy fallback
+            if (empty($selectedTechIds) && !empty($this->newWo['technician_id'])) {
+                $selectedTechIds = [(int) $this->newWo['technician_id']];
+            }
+
+            if (!empty($selectedTechIds)) {
+                $attendedTechs = $this->getAttendedTechnicians();
+                foreach ($selectedTechIds as $tId) {
+                    $techData = $attendedTechs[$tId] ?? null;
+                    if (!$techData) {
+                        $this->errorMessage = 'Teknisi terpilih belum absen hadir hari ini.';
+                        return;
+                    }
+                    if (!empty($techData['is_full'])) {
+                        $this->errorMessage = "Teknisi {$techData['name']} telah mencapai batas maksimal 2 tugas aktif. Selesaikan tugas sebelumnya terlebih dahulu.";
+                        return;
+                    }
+                }
+            }
+
+            $primaryTechId = !empty($selectedTechIds) ? $selectedTechIds[0] : null;
+
             $wo->scheduled_date = $this->newWo['scheduled_date'];
             $wo->scheduled_time = $this->newWo['scheduled_time'];
-            $wo->technician_id = $this->newWo['technician_id'] ?: null;
+            $wo->technician_id = $primaryTechId;
+            $wo->assigned_to = $primaryTechId;
+            $wo->technician_ids = !empty($selectedTechIds) ? $selectedTechIds : null;
             $wo->notes = $notes;
             $wo->priority = $this->newWo['priority'] ?? 'medium';
-            $wo->status = !empty($this->newWo['technician_id']) ? 'scheduled' : 'pending';
+            $wo->status = !empty($primaryTechId) ? 'scheduled' : 'pending';
             $wo->created_by = Auth::id() ?? 0;
             $wo->save();
 
-            // Notifikasi in-app Portal Teknisi & Mobile App Android
-            if (!empty($wo->technician_id)) {
+            // Notifikasi in-app Portal Teknisi & Mobile App Android untuk semua teknisi di tim
+            if (!empty($selectedTechIds)) {
                 try {
-                    app(\App\Services\CRM\InstallationTechnicianNotifier::class)->notifyAssigned($wo, 'created');
+                    $notifier = app(\App\Services\CRM\InstallationTechnicianNotifier::class);
+                    foreach ($selectedTechIds as $tid) {
+                        $woCopy = clone $wo;
+                        $woCopy->technician_id = $tid;
+                        $notifier->notifyAssigned($woCopy, 'created');
+                    }
                 } catch (\Throwable $ne) {
                     Log::warning('[Installation] Gagal notif teknisi: ' . $ne->getMessage());
                 }
@@ -824,16 +868,23 @@ class Index extends BaseEnterpriseList
                 \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($ticketGroupId, $groupText);
             }
 
-            // 2. Kirim ke nomor WhatsApp teknisi jika ada teknisi ditugaskan
-            if ($technician) {
-                $rawPhone = $technician->phone ?? $technician->whatsapp ?? null;
-                if ($rawPhone) {
-                    $techPhone = preg_replace('/\D/', '', (string)$rawPhone);
-                    if (str_starts_with($techPhone, '0')) $techPhone = '62' . substr($techPhone, 1);
-                    if (!str_starts_with($techPhone, '62')) $techPhone = '62' . $techPhone;
+            // 2. Kirim ke nomor WhatsApp seluruh teknisi yang ditugaskan (Lead & Tim)
+            $allTechIds = (array) ($wo->technician_ids ?? []);
+            if ($wo->technician_id && !in_array($wo->technician_id, $allTechIds)) {
+                $allTechIds[] = $wo->technician_id;
+            }
+            if (!empty($allTechIds)) {
+                $techUsers = User::whereIn('id', $allTechIds)->get();
+                foreach ($techUsers as $techUser) {
+                    $rawPhone = $techUser->phone ?? $techUser->whatsapp ?? null;
+                    if ($rawPhone) {
+                        $techPhone = preg_replace('/\D/', '', (string)$rawPhone);
+                        if (str_starts_with($techPhone, '0')) $techPhone = '62' . substr($techPhone, 1);
+                        if (!str_starts_with($techPhone, '62')) $techPhone = '62' . $techPhone;
 
-                    if (strlen($techPhone) >= 10) {
-                        \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $groupText);
+                        if (strlen($techPhone) >= 10) {
+                            \App\Services\Notifications\WhatsApp\WhatsAppDirectSender::send($techPhone, $groupText);
+                        }
                     }
                 }
             }
