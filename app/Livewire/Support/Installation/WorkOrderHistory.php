@@ -63,7 +63,15 @@ class WorkOrderHistory extends AdminComponent
         // 1. INSTALASI PASANG BARU (From CRM Installation Table)
         if ($this->typeFilter === 'all' || $this->typeFilter === 'installation') {
             $instQ = Installation::withoutGlobalScopes()
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'onu.olt', 'assignedTo', 'technician']);
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'onu.olt', 'assignedTo', 'technician'])
+                ->where(function($iq) {
+                    $iq->whereNull('customer_id')
+                       ->orWhereHas('customer', function($cq) {
+                           $cq->withoutGlobalScopes()->where(function($sq) {
+                               $sq->whereNull('code')->orWhere('code', 'not like', 'GST-%');
+                           });
+                       });
+                });
 
             if ($this->technicianFilter) {
                 $techId = (int) $this->technicianFilter;
@@ -148,7 +156,15 @@ class WorkOrderHistory extends AdminComponent
         if ($this->typeFilter === 'all' || $this->typeFilter === 'repair') {
             $tQ = Ticket::withoutGlobalScopes()
                 ->whereNotIn('category', ['psb', 'installation'])
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'assignedTo', 'reseller']);
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'assignedTo', 'reseller'])
+                ->where(function($tq) {
+                    $tq->whereNull('customer_id')
+                       ->orWhereHas('customer', function($cq) {
+                           $cq->withoutGlobalScopes()->where(function($sq) {
+                               $sq->whereNull('code')->orWhere('code', 'not like', 'GST-%');
+                           });
+                       });
+                });
 
             if ($this->technicianFilter) {
                 $tQ->where('tickets.assigned_to', $this->technicianFilter);
@@ -292,7 +308,15 @@ class WorkOrderHistory extends AdminComponent
         if ($this->typeFilter === 'all' || $this->typeFilter === 'activation') {
             $csQ = CustomerService::withoutGlobalScopes()
                 ->whereNotNull('activated_at')
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'onu.olt', 'serviceProfile', 'service', 'createdBy', 'reseller']);
+                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'), 'onu.olt', 'serviceProfile', 'service', 'createdBy', 'reseller'])
+                ->where(function($cq) {
+                    $cq->whereNull('customer_id')
+                       ->orWhereHas('customer', function($scq) {
+                           $scq->withoutGlobalScopes()->where(function($sq) {
+                               $sq->whereNull('code')->orWhere('code', 'not like', 'GST-%');
+                           });
+                       });
+                });
 
             if ($this->technicianFilter) {
                 $csQ->where('customer_services.created_by', $this->technicianFilter);

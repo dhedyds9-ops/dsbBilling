@@ -97,6 +97,7 @@ class Wizard extends Component
             // Cek seluruh tugas PSB aktif (Untuk teknisi: tugas dirinya. Untuk admin penguji: tugas sistem atau dirinya)
             $ticketQuery = \App\Models\Support\Ticket::withoutGlobalScopes()
                 ->whereIn('category', ['psb', 'installation'])
+                ->whereNull('installation_id')
                 ->whereIn('status', ['open', 'in_progress', 'assigned'])
                 ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
 
@@ -190,12 +191,23 @@ class Wizard extends Component
                 $this->hasAccess = true;
             }
         } elseif ($type === 'installation') {
-            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer'])->find($id);
+            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer', 'survey.prospect'])->find($id);
             if ($inst) {
                 $this->installation_id = $inst->id;
+                // Cek tiket yang tertaut ke SPK instalasi ini
+                $linkedTicket = \App\Models\Support\Ticket::withoutGlobalScopes()->where('installation_id', $inst->id)->first();
+                if ($linkedTicket) {
+                    $this->ticket_id = $linkedTicket->id;
+                }
+
                 if ($inst->customer_id) {
                     $this->customer_id = (string) $inst->customer_id;
                     $this->is_new_customer = false;
+                } elseif ($inst->survey && $inst->survey->prospect) {
+                    $this->is_new_customer = true;
+                    $this->new_customer_name = $inst->survey->prospect->name;
+                    $this->new_customer_phone = $inst->survey->prospect->phone ?? '';
+                    $this->new_customer_address = $inst->survey->address ?: ($inst->survey->prospect->address ?? '');
                 } elseif (!empty($inst->customer_name)) {
                     $this->is_new_customer = true;
                     $this->new_customer_name = $inst->customer_name;
@@ -206,9 +218,9 @@ class Wizard extends Component
                     'type' => 'installation',
                     'id' => $inst->id,
                     'number' => $inst->uuid ?? ('SPK-INST-' . $inst->id),
-                    'customer_name' => $inst->customer?->name ?? $inst->customer_name,
-                    'customer_phone' => $inst->customer?->phone ?? $inst->customer_phone,
-                    'address' => $inst->installation_address ?? $inst->customer?->address,
+                    'customer_name' => $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? $inst->customer_name),
+                    'customer_phone' => $inst->customer?->phone ?? ($inst->survey?->prospect?->phone ?? $inst->customer_phone),
+                    'address' => $inst->installation_address ?? ($inst->survey?->address ?? ($inst->customer?->address ?? $inst->survey?->prospect?->address)),
                     'notes' => $inst->notes,
                 ];
                 $this->requireWorkOrderSelection = false;
@@ -703,12 +715,13 @@ class Wizard extends Component
                 }
             }
 
-            // 7. Update status tiket / surat perintah kerja terkait menjadi selesai
+            // 7. Update status tiket / surat perintah kerja terkait menjadi selesai & sinkronkan data
             if ($this->ticket_id) {
                 try {
                     \App\Models\Support\Ticket::withoutGlobalScopes()
                         ->where('id', $this->ticket_id)
                         ->update([
+                            'customer_id' => $customer->id,
                             'status' => 'resolved',
                             'resolved_at' => now(),
                             'resolution_notes' => 'PSB berhasil diaktivasi oleh teknisi ' . $user->name . ' pada ' . now()->format('d/m/Y H:i') . ' (ONU SN: ' . $sn . ')',
@@ -720,17 +733,54 @@ class Wizard extends Component
 
             if ($this->installation_id) {
                 try {
-                    \App\Models\CRM\Installation::withoutGlobalScopes()
-                        ->where('id', $this->installation_id)
-                        ->update([
+                    $instModel = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['survey.prospect'])->find($this->installation_id);
+                    if ($instModel) {
+                        $instModel->update([
+                            'customer_id' => $customer->id,
                             'status' => 'completed',
                             'completed_at' => now(),
                             'onu_serial_number' => $sn,
                             'onu_id' => $onu->id,
                         ]);
+
+                        // Tandai Survey & Prospect sebagai activated resmi (agar sinkron di CRM Aktivasi)
+                        if ($instModel->survey) {
+                            $instModel->survey->update(['status' => 'activated']);
+                            if ($instModel->survey->prospect) {
+                                $instModel->survey->prospect->update(['status' => 'activated']);
+                            }
+                        }
+
+                        // Jika ada tiket tertaut ke SPK instalasi ini, update statusnya menjadi resolved
+                        \App\Models\Support\Ticket::withoutGlobalScopes()
+                            ->where('installation_id', $instModel->id)
+                            ->where('status', '!=', 'resolved')
+                            ->where('status', '!=', 'closed')
+                            ->update([
+                                'customer_id' => $customer->id,
+                                'status' => 'resolved',
+                                'resolved_at' => now(),
+                                'resolution_notes' => 'PSB SPK #' . $instModel->id . ' selesai dipasang & diaktivasi oleh teknisi ' . $user->name . ' (ONU SN: ' . $sn . ')',
+                            ]);
+                    }
                 } catch (\Throwable $ie) {
                     \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal update status installation: ' . $ie->getMessage());
                 }
+            }
+
+            // Catat Aktivasi resmi pada CRM
+            try {
+                \App\Models\CRM\Activation::create([
+                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                    'customer_name' => $customer->name,
+                    'activation_date' => now()->toDateString(),
+                    'service_package' => $selectedProfile?->name ?? strtoupper($this->service_type),
+                    'status' => 'completed',
+                    'notes' => 'Aktivasi resmi via Wizard PSB Teknisi ' . $user->name . ' (ONU SN: ' . $sn . ')',
+                    'created_by' => $user->id,
+                ]);
+            } catch (\Throwable $ae) {
+                \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal catat CRM Activation: ' . $ae->getMessage());
             }
 
             $this->currentStep = 7;
