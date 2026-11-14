@@ -56,7 +56,11 @@ class Index extends BaseEnterpriseList
         $this->newWo = [
             'reseller_id' => '',
             'customer_search' => '',
-            'manual' => false,
+            'source' => 'survey',
+            'survey_id' => '',
+            'survey_search' => '',
+            'job_type' => '',
+            'manual_package' => '',
             'manual_name' => '',
             'manual_phone' => '',
             'manual_address' => '',
@@ -423,7 +427,11 @@ class Index extends BaseEnterpriseList
         $this->newWo = [
             'reseller_id' => '',
             'customer_search' => '',
-            'manual' => false,
+            'source' => 'survey',
+            'survey_id' => '',
+            'survey_search' => '',
+            'job_type' => '',
+            'manual_package' => '',
             'manual_name' => '',
             'manual_phone' => '',
             'manual_address' => '',
@@ -444,8 +452,8 @@ class Index extends BaseEnterpriseList
     }
 
     /**
-     * Pelanggan yang boleh dipilih untuk WO: bukan guest GST-, dan punya layanan
-     * PPPoE, Hotspot, atau hasil sensus teknisi (layanan terhubung ke ONU).
+     * Pelanggan existing yang boleh dipilih untuk WO (pindah lokasi, pasang ulang,
+     * tambah layanan): semua pelanggan non-guest GST-, selain yang sudah terminated.
      */
     protected function eligibleCustomers()
     {
@@ -453,12 +461,8 @@ class Index extends BaseEnterpriseList
             ->where(function ($g) {
                 $g->whereNull('code')->orWhere('code', 'not like', 'GST-%');
             })
-            ->whereHas('customerServices', function ($cs) {
-                $cs->where(function ($w) {
-                    $w->whereHas('pppoeUser')
-                      ->orWhereHas('hotspotUser')
-                      ->orWhereNotNull('onu_id');
-                });
+            ->where(function ($s) {
+                $s->whereNull('status')->orWhereNotIn('status', ['terminated', 'cancelled']);
             });
     }
 
@@ -473,7 +477,7 @@ class Index extends BaseEnterpriseList
         }
     }
 
-    /** Pelanggan untuk modal WO: filter reseller + pencarian ketik (nama/kode/telepon). */
+    /** Pelanggan existing: filter reseller + pencarian ketik (nama/kode/telepon). */
     public function getModalCustomers(): array
     {
         try {
@@ -499,36 +503,88 @@ class Index extends BaseEnterpriseList
         }
     }
 
+    /** Survey selesai yang belum punya instalasi (jalur PSB utama). */
+    public function getModalSurveys(): array
+    {
+        try {
+            $q = \App\Models\CRM\Survey::query()
+                ->with('prospect:id,name,phone,address')
+                ->where('status', 'completed')
+                ->whereDoesntHave('installation');
+            $term = trim((string) ($this->newWo['survey_search'] ?? ''));
+            if ($term !== '') {
+                $like = '%' . $term . '%';
+                $q->whereHas('prospect', fn($p) => $p->where('name', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('address', 'like', $like));
+            }
+            return $q->latest('completed_at')->limit(50)->get()
+                ->filter(fn($s) => $s->prospect)
+                ->mapWithKeys(fn($s) => [$s->id => trim($s->prospect->name . ($s->prospect->phone ? ' (' . $s->prospect->phone . ')' : '') . ' - ' . \Illuminate\Support\Str::limit((string) ($s->address ?: $s->prospect->address), 40))])
+                ->all();
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
     public function submitCreateWo(): void
     {
         $this->errorMessage = null;
+        $source = $this->newWo['source'] ?? 'survey';
         try {
-            if (!empty($this->newWo['manual'])) {
-                if (trim((string) ($this->newWo['manual_name'] ?? '')) === '') {
-                    $this->errorMessage = 'Nama pelanggan wajib diisi.';
+            $wo = new CrmInstallation();
+            $notes = trim((string) ($this->newWo['notes'] ?? ''));
+
+            if ($source === 'survey') {
+                if (empty($this->newWo['survey_id'])) {
+                    $this->errorMessage = 'Pilih hasil survey terlebih dahulu.';
                     return;
                 }
-                $reseller = $this->newWo['reseller_id'] ?? '';
-                $customer = Customer::create([
-                    'name' => trim($this->newWo['manual_name']),
-                    'phone' => $this->newWo['manual_phone'] ?? null,
-                    'address' => $this->newWo['manual_address'] ?? null,
-                    'reseller_id' => ($reseller === '' || $reseller === 'direct') ? null : $reseller,
-                    'status' => 'prospect',
-                    'created_by' => Auth::id(),
+                $survey = \App\Models\CRM\Survey::with('prospect')->find($this->newWo['survey_id']);
+                if (!$survey || !$survey->prospect) {
+                    $this->errorMessage = 'Data survey tidak valid.';
+                    return;
+                }
+                $wo->survey_id = $survey->id;
+                $wo->customer_name = $survey->prospect->name;
+            } elseif ($source === 'existing') {
+                if (empty($this->newWo['customer_id'])) {
+                    $this->errorMessage = 'Pilih pelanggan terlebih dahulu.';
+                    return;
+                }
+                $customer = $this->eligibleCustomers()->find($this->newWo['customer_id']);
+                if (!$customer) {
+                    $this->errorMessage = 'Pelanggan tidak valid.';
+                    return;
+                }
+                $wo->customer_id = $customer->id;
+                $wo->customer_name = $customer->name;
+                $jobTypes = ['pindah' => 'Pindah Lokasi', 'pasang_ulang' => 'Pasang Ulang', 'tambah' => 'Tambah Layanan'];
+                $jt = $jobTypes[$this->newWo['job_type'] ?? ''] ?? null;
+                if ($jt) {
+                    $notes = '[' . $jt . '] ' . $notes;
+                }
+            } else {
+                $name = trim((string) ($this->newWo['manual_name'] ?? ''));
+                if ($name === '') {
+                    $this->errorMessage = 'Nama calon pelanggan wajib diisi.';
+                    return;
+                }
+                $wo->customer_name = $name;
+                $info = array_filter([
+                    !empty($this->newWo['manual_phone']) ? 'Telp: ' . trim($this->newWo['manual_phone']) : null,
+                    !empty($this->newWo['manual_address']) ? 'Alamat: ' . trim($this->newWo['manual_address']) : null,
+                    !empty($this->newWo['manual_package']) ? 'Paket: ' . trim($this->newWo['manual_package']) : null,
                 ]);
-                $this->newWo['customer_id'] = $customer->id;
+                if ($info) {
+                    $notes = trim(implode(' | ', $info) . "\n" . $notes);
+                }
             }
-            if (empty($this->newWo['customer_id'])) {
-                $this->errorMessage = 'Customer wajib dipilih.';
-                return;
-            }
-            $wo = new CrmInstallation();
-            $wo->customer_id = $this->newWo['customer_id'];
+
             $wo->scheduled_date = $this->newWo['scheduled_date'];
             $wo->scheduled_time = $this->newWo['scheduled_time'];
             $wo->technician_id = $this->newWo['technician_id'] ?: null;
-            $wo->notes = $this->newWo['notes'] ?: '';
+            $wo->notes = $notes;
             $wo->priority = $this->newWo['priority'] ?? 'medium';
             $wo->status = !empty($this->newWo['technician_id']) ? 'scheduled' : 'pending';
             $wo->created_by = Auth::id() ?? 0;
