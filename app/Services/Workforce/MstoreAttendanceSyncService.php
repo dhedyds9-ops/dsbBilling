@@ -109,16 +109,16 @@ class MstoreAttendanceSyncService
     /**
      * Kirim data absensi ke aplikasi MStore (https://ms.mstore.id).
      */
-    public static function sync(Attendance $attendance): bool
+    public static function sync(Attendance $attendance, bool $force = false): bool
     {
         try {
             // Bypass sinkronisasi jika tenant/subdomain adalah winets (hanya mstore.mstore.id yang dikaitkan)
-            if (! static::shouldSync($attendance)) {
+            if (! $force && ! static::shouldSync($attendance)) {
                 Log::info('Skip syncing attendance to MStore: winets.mstore.id is configured as an independent tenant.', [
                     'attendance_id' => $attendance->id ?? null,
                     'user_id' => $attendance->technician_id ?? null,
                 ]);
-                return true;
+                return false;
             }
 
             $mstoreUrl = env('MSTORE_ATTENDANCE_SYNC_URL', config('services.mstore.sync_url', 'https://ms.mstore.id/api/v1/attendance/sync'));
