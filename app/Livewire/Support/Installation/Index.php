@@ -123,7 +123,7 @@ class Index extends BaseEnterpriseList
         }
 
         try {
-            $customers = Customer::limit(500)->pluck('name', 'id')->all();
+            $customers = Customer::withoutGuests()->limit(500)->pluck('name', 'id')->all();
         } catch (Throwable) {
             $customers = [];
         }
@@ -458,7 +458,7 @@ class Index extends BaseEnterpriseList
     public function getModalCustomers(): array
     {
         try {
-            $q = Customer::query();
+            $q = Customer::withoutGuests();
             $reseller = $this->newWo['reseller_id'] ?? '';
             if ($reseller === 'direct') {
                 $q->whereNull('reseller_id');
