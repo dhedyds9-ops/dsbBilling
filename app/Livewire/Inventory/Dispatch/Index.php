@@ -227,6 +227,22 @@ class Index extends Component
         $this->recipient_id = null;
     }
 
+    public function updatedRecipientId($val)
+    {
+        if ($val) {
+            $user = User::withoutGlobalScopes()->find($val);
+            if ($user) {
+                if ($user->hasRole(['technician', 'teknisi']) || strtoupper($user->job_function ?? '') === 'TECHNICIAN') {
+                    $this->recipient_type = 'technician';
+                } elseif ($user->isReseller() || $user->hasRole(['reseller', 'Reseller'])) {
+                    $this->recipient_type = 'reseller';
+                } else {
+                    $this->recipient_type = 'internal';
+                }
+            }
+        }
+    }
+
     public function saveDispatch(StockMutationService $mutationService)
     {
         if (! $this->ensureWorkforceAttendance()) {
@@ -250,6 +266,18 @@ class Index extends Component
             'dispatchItems.*.quantity.min' => 'Jumlah barang harus lebih besar dari 0.',
         ]);
 
+        // Validasi penerima dan tipe hak kepemilikan (custody)
+        $recipientUser = User::withoutGlobalScopes()->find($this->recipient_id);
+        if ($recipientUser) {
+            if ($recipientUser->hasRole(['technician', 'teknisi']) || strtoupper($recipientUser->job_function ?? '') === 'TECHNICIAN') {
+                $this->recipient_type = 'technician';
+            } elseif ($recipientUser->isReseller() || $recipientUser->hasRole(['reseller', 'Reseller'])) {
+                $this->recipient_type = 'reseller';
+            } else {
+                $this->recipient_type = 'internal';
+            }
+        }
+
         // Validasi serial numbers untuk barang berserial
         $itemsPayload = [];
         foreach ($this->dispatchItems as $idx => $row) {
@@ -258,15 +286,15 @@ class Index extends Component
             $serials = [];
 
             if ($item->is_serialized) {
-                // Ambil dari selected_serials array atau serials_raw
-                if (!empty($row['selected_serials'])) {
-                    $serials = $row['selected_serials'];
-                } elseif (!empty($row['serials_raw'])) {
-                    $serials = array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $row['serials_raw']))));
-                }
+                // Ambil gabungan dari selected_serials array dan serials_raw
+                $selected = (array) ($row['selected_serials'] ?? []);
+                $raw = !empty($row['serials_raw']) 
+                    ? array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $row['serials_raw'])))) 
+                    : [];
+                $serials = array_values(array_unique(array_merge($selected, $raw)));
 
                 if (count($serials) !== (int) $qty) {
-                    $this->addError("dispatchItems.{$idx}.quantity", "Barang '{$item->name}' memerlukan " . (int)$qty . " Serial Number. Terpilih: " . count($serials));
+                    $this->addError("dispatchItems.{$idx}.quantity", "Barang '{$item->name}' memerlukan " . (int)$qty . " Serial Number. Terpilih/diinput: " . count($serials));
                     return;
                 }
             }

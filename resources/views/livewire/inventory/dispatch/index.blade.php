@@ -293,30 +293,57 @@
                                     {{-- Serial Number Selection for Serialized items --}}
                                     @if(!empty($row['is_serialized']) && !empty($row['item_id']))
                                         <div class="pt-2 border-t border-dashed border-slate-200 dark:border-slate-700 space-y-2">
-                                            <div class="flex items-center justify-between">
+                                            <div class="flex items-center justify-between flex-wrap gap-1">
                                                 <label class="text-[11px] font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1">
                                                     <span class="material-symbols-outlined text-xs">qr_code</span>
                                                     <span>Pilih Serial Number Unit (Wajib {{ (int)$row['quantity'] }} SN):</span>
                                                 </label>
-                                                <span class="text-[10px] text-slate-400">Tersedia di gudang ini: {{ count($availableSerials[$row['item_id']] ?? []) }} unit</span>
+                                                @php
+                                                    $availCount = count($availableSerials[$row['item_id']] ?? []);
+                                                    $selectedCount = count($row['selected_serials'] ?? []);
+                                                    if (!empty($row['serials_raw'])) {
+                                                        $rawArr = array_filter(array_map('trim', preg_split('/[\r\n,]+/', $row['serials_raw'])));
+                                                        $selectedCount += count($rawArr);
+                                                    }
+                                                @endphp
+                                                <div class="flex items-center gap-2 text-[10px]">
+                                                    <span class="font-bold {{ $selectedCount == (int)$row['quantity'] ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400' }}">
+                                                        Terpilih: {{ $selectedCount }} / {{ (int)$row['quantity'] }} SN
+                                                    </span>
+                                                    <span class="text-slate-400">•</span>
+                                                    <span class="text-slate-500 dark:text-slate-400">Tersedia di gudang ini: {{ $availCount }} unit</span>
+                                                </div>
                                             </div>
 
-                                            @if(!empty($availableSerials[$row['item_id']]) && count($availableSerials[$row['item_id']]) > 0)
-                                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-32 overflow-y-auto p-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                                                    @foreach($availableSerials[$row['item_id']] as $sn)
-                                                        <label class="inline-flex items-center gap-1.5 text-xs font-mono cursor-pointer p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
-                                                            <input type="checkbox" wire:model="dispatchItems.{{ $idx }}.selected_serials" value="{{ $sn->serial_number }}"
-                                                                   class="rounded text-blue-600 focus:ring-blue-500">
-                                                            <span class="truncate">{{ $sn->serial_number }}</span>
-                                                        </label>
-                                                    @endforeach
+                                            @if($availCount > 0)
+                                                <div class="space-y-2">
+                                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-36 overflow-y-auto p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                        @foreach($availableSerials[$row['item_id']] as $sn)
+                                                            <label class="inline-flex items-center gap-1.5 text-xs font-mono cursor-pointer p-1 rounded hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                                                <input type="checkbox" wire:model.live="dispatchItems.{{ $idx }}.selected_serials" value="{{ $sn->serial_number }}"
+                                                                       class="rounded text-blue-600 focus:ring-blue-500">
+                                                                <span class="truncate">{{ $sn->serial_number }}</span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
+                                                    <div class="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                                                        <span>Centang nomor SN dari daftar di atas, atau scan barcode di bawah:</span>
+                                                    </div>
+                                                    <textarea wire:model.live="dispatchItems.{{ $idx }}.serials_raw" rows="1" placeholder="Scan barcode atau masukkan SN tambahan di sini..."
+                                                              class="w-full font-mono text-xs py-1.5 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"></textarea>
                                                 </div>
                                             @else
-                                                <div class="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-[11px] text-amber-700 dark:text-amber-300">
-                                                    Peringatan: Tidak ada Serial Number berstatus 'in_warehouse' di gudang ini. Anda dapat memasukkan SN manual/scan di bawah:
+                                                <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                                                    <div class="font-bold flex items-center gap-1.5">
+                                                        <span class="material-symbols-outlined text-sm">info</span>
+                                                        <span>Belum ada data Serial Number tersimpan di gudang ini</span>
+                                                    </div>
+                                                    <p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
+                                                        Stok barang fisik ini belum diinput nomor serinya saat Barang Masuk (Inbound). Silakan ketik atau gunakan <strong>Barcode Scanner</strong> untuk memindai SN unit pada kolom di bawah. Sistem otomatis akan meregistrasikannya:
+                                                    </p>
                                                 </div>
-                                                <textarea wire:model="dispatchItems.{{ $idx }}.serials_raw" rows="2" placeholder="Masukkan 1 SN per baris..."
-                                                          class="w-full font-mono text-xs py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"></textarea>
+                                                <textarea wire:model.live="dispatchItems.{{ $idx }}.serials_raw" rows="2" placeholder="Scan barcode atau masukkan 1 SN per baris..."
+                                                          class="w-full font-mono text-xs py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"></textarea>
                                             @endif
                                         </div>
                                     @endif
