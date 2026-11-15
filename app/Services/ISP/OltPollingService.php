@@ -267,13 +267,8 @@ class OltPollingService
                         }
 
                         if ($onu && $onu->trashed()) {
-                            // Hanya restore jika ONU benar-benar ONLINE & aktif di lapangan
-                            // Jangan bangkitkan ONU offline / orphan yang sengaja sudah dihapus admin
-                            if ($status === 'online') {
-                                $onu->restore();
-                            } else {
-                                continue;
-                            }
+                            // Pulihkan ONU jika terdeteksi online atau masih terdaftar secara sah pada perangkat OLT
+                            $onu->restore();
                         }
 
                         if (!$onu) {
@@ -284,11 +279,7 @@ class OltPollingService
                             if ($existingWithSn) {
                                 $onu = $existingWithSn;
                                 if ($onu->trashed()) {
-                                    if ($status === 'online') {
-                                        $onu->restore();
-                                    } else {
-                                        continue;
-                                    }
+                                    $onu->restore();
                                 }
                             } else {
                                 try {

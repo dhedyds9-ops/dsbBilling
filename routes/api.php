@@ -167,6 +167,8 @@ Route::match(['get', 'post'], '/attendance/pull', [\App\Http\Controllers\Api\Att
 Route::prefix('mobile')->name('api.mobile.')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'login'])->name('login');
     Route::post('/auth/login', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'login'])->name('auth.login');
+    Route::post('/auth/qr/authenticate', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'authenticateQr'])->name('auth.qr.authenticate');
+    Route::post('/auth/password/forgot', [\App\Http\Controllers\Api\Mobile\MobileAuthController::class, 'requestPasswordReset'])->name('auth.password.forgot');
     Route::get('/app/check-update', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate'])->name('app.check-update');
     Route::get('/version/check', [\App\Http\Controllers\Api\Mobile\MobileAppApiController::class, 'checkUpdate']);
 

@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class MobileAuthController extends Controller
 {
@@ -25,16 +27,34 @@ class MobileAuthController extends Controller
         ]);
 
         $login = trim($request->input('email'));
+        $ip = $request->ip();
+        $throttleKey = 'mobile_auth_lock:' . sha1($ip . '|' . strtolower($login));
+
+        // Rate limiting: maximum 5 attempts per 60 seconds
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            Log::warning("Mobile Staff Login: Rate limit exceeded for {$login} from IP {$ip}.");
+            return response()->json([
+                'success' => false,
+                'message' => "Terlalu banyak percobaan login gagal. Demi keamanan, silakan coba lagi dalam {$seconds} detik.",
+                'retry_after' => $seconds,
+            ], 429);
+        }
+
         $user = User::where('email', $login)
             ->orWhere('username', $login)
             ->first();
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
+            RateLimiter::hit($throttleKey, 60);
             return response()->json([
                 'success' => false,
                 'message' => 'Username/Email atau kata sandi tidak valid.',
             ], 401);
         }
+
+        // Clear rate limiter upon successful authentication
+        RateLimiter::clear($throttleKey);
 
         // Account status check
         if (isset($user->is_active) && !$user->is_active) {
@@ -176,6 +196,106 @@ class MobileAuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Sesi berhasil diakhiri (Logout).',
+        ]);
+    }
+
+    /**
+     * Authenticate via Single-Use Secure QR Code.
+     */
+    public function authenticateQr(Request $request): JsonResponse
+    {
+        $request->validate([
+            'qr_token' => 'required|string',
+            'device_info' => 'nullable|string',
+        ]);
+
+        $token = trim($request->input('qr_token'));
+        $cacheKey = 'qr_auth_ticket:' . sha1($token);
+        $ticketData = Cache::get($cacheKey);
+
+        if (!$ticketData || !is_array($ticketData)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'QR Code tidak valid atau telah kedaluwarsa. Silakan scan ulang QR terbaru.',
+            ], 401);
+        }
+
+        // Invalidate immediately (single-use)
+        Cache::forget($cacheKey);
+
+        $userId = $ticketData['user_id'] ?? null;
+        $user = $userId ? User::find($userId) : null;
+
+        if (!$user || (isset($user->is_active) && !$user->is_active)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun staf tidak ditemukan atau dinonaktifkan.',
+            ], 403);
+        }
+
+        $role = $this->determinePrimaryRole($user);
+        $permissions = $this->collectPermissions($user, $role);
+
+        $tokenName = 'dsbilling-staff-qr-' . ($request->input('device_info') ?? 'android');
+        $tokenResult = $user->createToken($tokenName);
+        $plainToken = $tokenResult->plainTextToken;
+
+        Log::info("Mobile QR Staff Login: User #{$user->id} ({$user->name}) authenticated via QR.");
+
+        $userWilayah = $user->getEffectiveWilayah();
+        $branchName = $user->branch?->name ?: ($user->parentReseller?->branch?->name ?: ("Cabang " . ($user->branch_id ?? 1)));
+        if (empty($userWilayah) && !empty($branchName)) {
+            $userWilayah = $branchName;
+        }
+
+        $brandName = $this->resolveBrandName($request);
+        $brandLogoUrl = $this->resolveBrandLogoUrl($request);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login via QR Code berhasil.',
+            'token' => $plainToken,
+            'token_type' => 'Bearer',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username ?? $user->email,
+                'email' => $user->email,
+                'role' => $role,
+                'job_function' => $user->job_function,
+                'job_title' => $user->job_title ?? $role,
+                'branch_id' => $user->branch_id,
+                'reseller_id' => $user->getEffectiveResellerId(),
+                'wilayah' => $userWilayah ?: $branchName,
+                'branch_name' => $branchName,
+                'brand_name' => $brandName,
+                'logo_url' => $brandLogoUrl,
+                'company_id' => $user->company_id ?? 1,
+                'permissions' => $permissions,
+            ],
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Request Password Reset Information (Safe, does not leak account existence).
+     */
+    public function requestPasswordReset(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|string',
+        ]);
+
+        $login = trim($request->input('email'));
+        $user = User::where('email', $login)->orWhere('username', $login)->first();
+
+        if ($user) {
+            Log::info("Staff Password Reset Requested: User #{$user->id} ({$user->name}) requested reset.");
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Permintaan reset telah dikirimkan ke Administrator cabang. Silakan hubungi admin atau periksa instruksi lebih lanjut.',
         ]);
     }
 

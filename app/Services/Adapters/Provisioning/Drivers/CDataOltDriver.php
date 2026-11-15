@@ -188,7 +188,9 @@ class CDataOltDriver extends BaseOltDriver
                         if ($slot === 0) {
                             $slot = ($realPortIdx >> 16) & 0xFF;
                         }
-                        if ($slot === 0) {
+                        // Pada C-Data GPON pizza box (FD1608/FD1604/FD1616), byte 2 menandakan tipe PON (bukan slot 2).
+                        // Standar port board adalah slot 1 (0/1/1 s.d 0/1/8).
+                        if ($slot === 0 || $slot === 2) {
                             $slot = 1;
                         }
                         $port = $realPortIdx & 0xFF;
@@ -474,24 +476,42 @@ class CDataOltDriver extends BaseOltDriver
                     $after = trim(substr($line, $pos + strlen($snMatch[1])));
 
                     // Robust token & regex match untuk mendeteksi status Online vs Offline di CLI C-DATA:
-                    // Header C-Data GPON: [F/S] [P] [ONT-ID] [SN] [Control flag] [Run state] [Config state] [Match state] [Last down-cause]
-                    // Contoh line: 0/1 1  1      ZTEGC85E2D31     Active   Online  success   match     dying-gasp
-                    // PERHATIAN: Kolom "Last down-cause" bisa berisi "dying-gasp" atau "power-off" dari riwayat reboot lama.
-                    // Jangan sampai "dying-gasp" di riwayat meng-overwrite "Online" aktif!
+                    // Header C-Data GPON: [F/S/P] [ONT-ID] [SN] [Desc] [Control flag] [Run state] [Config state] [Match state] [Last down-cause]
+                    // Contoh line: 0/1/1  1  ZTEGC85E2D31  N/A  Active  Online  success  match  dying-gasp
+                    // Atau:        0/1 1  1  ZTEGC85E2D31  Active  Online  success  match  dying-gasp
+                    // PERHATIAN: Kolom "Last down-cause" bisa berisi "dying-gasp" atau "power-off" dari riwayat lama.
+                    // Jangan sampai "dying-gasp" di riwayat meng-overwrite status aktif "Online"!
                     $afterLower = strtolower($after);
                     $afterTokens = preg_split('/\s+/', trim($after));
-                    $candidateRunState = strtolower($afterTokens[1] ?? ($afterTokens[0] ?? ''));
 
                     $isCliOnline = false;
-                    if (in_array($candidateRunState, ['online', 'up', 'working', 'operation', 'operational', 'o5', 'connected', 'ok'], true)) {
-                        $isCliOnline = true;
-                    } elseif (preg_match('/\b(online|working|operation|operational|o5)\b/i', $afterLower) && !in_array($candidateRunState, ['offline', 'down', 'inactive', 'deactive', 'lost', 'standby'], true)) {
-                        $isCliOnline = true;
-                    } elseif (in_array($candidateRunState, ['offline', 'down', 'inactive', 'deactive', 'lost', 'standby', 'unregistered'], true)) {
-                        $isCliOnline = false;
-                    } elseif (preg_match('/\b(offline|down|inactive|deactive)\b/i', $afterLower)) {
-                        $isCliOnline = false;
+                    // Cek token-token awal setelah SN (biasanya token ke-0, 1, 2, atau 3 berisi run state)
+                    foreach (array_slice($afterTokens, 0, 4) as $tok) {
+                        $tokLower = strtolower(trim($tok));
+                        if (in_array($tokLower, ['online', 'up', 'working', 'operation', 'operational', 'o5', 'connected', 'ok'], true)) {
+                            $isCliOnline = true;
+                            break;
+                        }
                     }
+
+                    if (!$isCliOnline) {
+                        // Regex match untuk memastikan ada kata "online" atau "o5" sebelum kata status offline/down-cause
+                        if (preg_match('/\b(online|working|operation|operational|o5)\b/i', $afterLower)) {
+                            $isCliOnline = true;
+                        }
+                    }
+
+                    // Cek jika memang baris tersebut jelas-jelas Offline
+                    if (!$isCliOnline) {
+                        foreach (array_slice($afterTokens, 0, 4) as $tok) {
+                            $tokLower = strtolower(trim($tok));
+                            if (in_array($tokLower, ['offline', 'down', 'inactive', 'deactive', 'lost', 'standby', 'unregistered'], true)) {
+                                $isCliOnline = false;
+                                break;
+                            }
+                        }
+                    }
+
                     $runState = $isCliOnline ? 'online' : 'offline';
 
                     $tokens = preg_split('/\s+/', $before);
@@ -951,13 +971,13 @@ class CDataOltDriver extends BaseOltDriver
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.7') ?: [])) : [];
 
             // GPON Run Status:
-            // 1. gponOnuRunState (.18.2.1.1 - Official CDATA-GPON-MIB: 1=online, 2=offline)
-            // 2. gponOnuRunStatus (.18.1.1.8 - legacy C-Data: 1=init, 2=standby, 3=sn, 4=ranging, 5=operation/ONLINE, 6=popup)
-            // 3. FD1608/FD1616 legacy OID (.100.9.2.1.8 or .100.9.2.1.13)
-            $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8')
+            // 1. gponOnuOperStatus (.18.1.1.8 - Official CDATA-GPON-MIB: 1=online, 5=operation/O5/ONLINE, 101=online)
+            // 2. FD1608/FD1616 legacy OID (.100.9.2.1.8 or .100.9.2.1.13)
+            // 3. gponOnuAutoFindTable (.18.2.1.1 fallback)
+            $gponRunStatus = !empty($gponSerials) ? ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.1.1.8')
                 ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.8')
-                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13') ?: [])))) : [];
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.3.100.9.2.1.13')
+                ?: ($this->snmp->walk('.1.3.6.1.4.1.34592.1.5.1.1.2.18.2.1.1') ?: [])))) : [];
             
             // GPON Direct Optical Table:
             // gponOnuOpticalInfoTable (.18.6.1 - Official CDATA-GPON-MIB: .3=RxPower, .2=TxPower, .4=Temperature)
