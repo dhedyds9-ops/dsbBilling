@@ -28,41 +28,70 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
         $user = Auth::user();
         
-        if ($user->hasRole('customer')) {
-            return redirect()->intended(route('customer-portal.dashboard', absolute: false));
-        }
-        
-        if ($user->hasRole('reseller')) {
-            return redirect()->intended(route('reseller-portal.dashboard', absolute: false));
-        }
+        // Bersihkan session intended jika sebelumnya tersangkut di portal customer
+        $intended = session()->get('url.intended', '');
+        $isCustomerPortalIntended = str_contains($intended, 'customer-portal');
 
-        // 1. Cek Job Function khusus (Portal Spesifik)
-        if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || $user->hasRole('technician') || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
+        // 1. Cek Teknisi Lapangan (Prioritas Operasional)
+        if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' 
+            || strtoupper($user->job_function ?? '') === 'TEKNISI'
+            || $user->hasRole(['technician', 'teknisi']) 
+            || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
+            if ($isCustomerPortalIntended) {
+                session()->forget('url.intended');
+                return redirect()->route('technician.dashboard');
+            }
             return redirect()->intended(route('technician.dashboard', absolute: false));
         }
-        
+
+        // 2. Cek NOC & Monitoring
         if (strtoupper($user->job_function ?? '') === 'NOC' || $user->hasRole('noc')) {
+            if ($isCustomerPortalIntended) {
+                session()->forget('url.intended');
+                return redirect()->route('noc.overview');
+            }
             return redirect()->intended(route('noc.overview', absolute: false));
         }
 
-        // 1.1 Staff Gudang / Logistik diarahkan langsung ke Dashboard Inventaris
+        // 3. Staff Gudang / Logistik
         if (!$user->isSuperAdmin()) {
             $isWarehouseStaff = str_contains(strtolower($user->job_title ?? ''), 'gudang')
                 || str_contains(strtolower($user->job_title ?? ''), 'logistik')
                 || ($user->hasPermission('inventory.view') && !$user->hasPermission('router.view') && !$user->hasPermission('customer.view'));
 
             if ($isWarehouseStaff) {
+                if ($isCustomerPortalIntended) {
+                    session()->forget('url.intended');
+                    return redirect()->route('inventory.dashboard');
+                }
                 return redirect()->intended(route('inventory.dashboard', absolute: false));
             }
         }
-        
-        // 2. Administrator dan Manager (Staff Backoffice Umum)
-        if ($user->hasRole('administrator') || $user->hasRole('manager')) {
-            $intended = session()->get('url.intended', '');
+
+        // 4. Reseller Partner
+        if ($user->hasRole('reseller') || (method_exists($user, 'isReseller') && $user->isReseller())) {
+            if ($isCustomerPortalIntended) {
+                session()->forget('url.intended');
+                return redirect()->route('reseller-portal.dashboard');
+            }
+            return redirect()->intended(route('reseller-portal.dashboard', absolute: false));
+        }
+
+        // 5. Administrator dan Manager (Backoffice Umum)
+        if ($user->hasRole('administrator') || $user->hasRole('manager') || $user->isSuperAdmin()) {
+            if ($isCustomerPortalIntended) {
+                session()->forget('url.intended');
+                return redirect()->route('dashboard');
+            }
             if (str_contains($intended, 'reseller-portal')) {
                 return redirect()->intended(route('reseller-portal.dashboard', absolute: false));
             }
             return redirect()->intended(route('dashboard', absolute: false));
+        }
+
+        // 6. Pelanggan (Customer Portal) - HANYA jika bukan staff internal
+        if ($user->hasRole('customer')) {
+            return redirect()->intended(route('customer-portal.dashboard', absolute: false));
         }
         
         // Default fallback

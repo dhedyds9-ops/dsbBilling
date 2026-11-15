@@ -177,7 +177,12 @@ class MobileCustomerApiController extends Controller
     public function serviceProfiles(Request $request): JsonResponse
     {
         $profiles = ServiceProfile::query()
-            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->where('is_active', true)
+                  ->orWhere('is_active', 1)
+                  ->orWhereNull('is_active');
+            })
+            ->orderBy('price', 'asc')
             ->get(['id', 'name', 'price', 'speed_limit', 'category', 'billing_type']);
 
         return response()->json([

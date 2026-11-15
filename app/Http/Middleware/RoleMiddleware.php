@@ -47,36 +47,34 @@ class RoleMiddleware
         }
 
         // Redirect berdasarkan role + job_function user yang sebenarnya
-        if ($user->hasRole(UserRole::Customer->value)) {
-            // Customer diarahkan ke customer portal
-            return new \Illuminate\Http\RedirectResponse(route('customer-portal.dashboard'));
+        if ($user->hasRole(['technician', 'teknisi']) || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
+            return new \Illuminate\Http\RedirectResponse(route('technician.dashboard'));
         }
 
-        if ($user->hasRole(UserRole::Reseller->value)) {
-            // Reseller (dan sub-staff) diarahkan ke reseller portal
-            return new \Illuminate\Http\RedirectResponse(route('reseller-portal.dashboard'));
+        if ($user->hasRole('noc') || strtoupper($user->job_function ?? '') === 'NOC') {
+            return new \Illuminate\Http\RedirectResponse(route('noc.overview'));
         }
 
-        if ($user->hasRole(UserRole::Administrator->value)) {
-            // Admin diarahkan ke admin dashboard
+        if ($user->hasRole(UserRole::Administrator->value) || $user->hasRole('superadmin')) {
             return new \Illuminate\Http\RedirectResponse(route('dashboard'));
         }
 
+        if ($user->hasRole(UserRole::Reseller->value) || (method_exists($user, 'isReseller') && $user->isReseller())) {
+            return new \Illuminate\Http\RedirectResponse(route('reseller-portal.dashboard'));
+        }
+
         if ($user->hasRole(UserRole::Manager->value)) {
-            // Manager diarahkan berdasarkan job_function / job_title / permissions
-            if (strtoupper($user->job_function ?? '') === 'NOC') {
-                return new \Illuminate\Http\RedirectResponse(route('noc.overview'));
-            }
-            if (strtoupper($user->job_function ?? '') === 'TECHNICIAN' || (method_exists($user, 'isTechnician') && $user->isTechnician())) {
-                return new \Illuminate\Http\RedirectResponse(route('technician.dashboard'));
-            }
             if (str_contains(strtolower($user->job_title ?? ''), 'gudang') 
                 || str_contains(strtolower($user->job_title ?? ''), 'logistik')
                 || ($user->hasPermission('inventory.view') && !$user->hasPermission('router.view') && !$user->hasPermission('customer.view'))) {
                 return new \Illuminate\Http\RedirectResponse(route('inventory.dashboard'));
             }
-            // Fallback manager portal
             return new \Illuminate\Http\RedirectResponse(route('dashboard'));
+        }
+
+        if ($user->hasRole(UserRole::Customer->value)) {
+            // Customer diarahkan ke customer portal
+            return new \Illuminate\Http\RedirectResponse(route('customer-portal.dashboard'));
         }
 
         // User tanpa role yang valid: Logout dan kembali ke login
