@@ -172,6 +172,56 @@
                     <label for="is_active" class="text-sm font-medium text-slate-700 dark:text-slate-300">Akun Aktif</label>
                 </div>
             </div>
+
+            <!-- Integrasi Profil Kepegawaian (HR & Payroll) -->
+            <div class="p-6 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined notranslate" translate="no" style="font-size:22px">badge</span>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Profil Kepegawaian (HR & Payroll)</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Otomatis daftarkan user ini ke data kepegawaian agar langsung terhubung untuk absensi & payroll.</p>
+                        </div>
+                    </div>
+                    <label class="inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" wire:model.live="create_employee_profile" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                        <span class="ms-3 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            {{ $create_employee_profile ? 'Aktif (Daftarkan Pegawai)' : 'Nonaktif (Hanya Akun User)' }}
+                        </span>
+                    </label>
+                </div>
+
+                @if($create_employee_profile)
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                        <div>
+                            <label class="block mb-1 text-xs font-semibold text-slate-700 dark:text-slate-300">Tanggal Bergabung</label>
+                            <input type="date" wire:model="employee_join_date"
+                                   class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-xs font-semibold text-slate-700 dark:text-slate-300">Gaji Pokok (Rp, Opsional)</label>
+                            <input type="number" wire:model="employee_base_salary" step="1000" placeholder="Contoh: 3500000"
+                                   class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-xs font-semibold text-slate-700 dark:text-slate-300">Rekening Bank (Opsional)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" wire:model="employee_bank_name" placeholder="Bank (BCA/BRI)"
+                                       class="w-full px-2.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <input type="text" wire:model="employee_bank_account" placeholder="No Rekening"
+                                       class="w-full px-2.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">info</span>
+                        <span>Nama, NIK (<span class="font-mono font-bold">{{ $identity_number ?: 'KTP' }}</span>), Jabatan, dan No. WhatsApp akan otomatis disinkronkan ke menu Data Pegawai.</span>
+                    </div>
+                @endif
+            </div>
             
             <div class="flex items-center justify-end gap-3 pt-6 mt-2 border-t border-slate-200 dark:border-slate-700">
                 <a href="{{ route('admin.users.index') }}" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700 transition-colors">

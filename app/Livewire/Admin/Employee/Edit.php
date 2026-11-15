@@ -127,9 +127,43 @@ class Edit extends AdminComponent
                 'is_active' => true,
             ]);
 
-            $managerRole = \App\Models\Role::where('name', \App\Enums\UserRole::Manager->value ?? 'manager')->first();
-            if ($managerRole) {
-                $newUser->roles()->sync([$managerRole->id]);
+            // Tentukan Role yang sesuai dengan posisi pegawai
+            $target = strtolower(trim((string)$this->position));
+            $roleNameToSelect = \App\Enums\UserRole::Manager->value;
+
+            if (str_contains($target, 'gudang') || str_contains($target, 'logistik')) {
+                $roleNameToSelect = \App\Enums\UserRole::AdminGudang->value;
+            } elseif (str_contains($target, 'kasir') || str_contains($target, 'billing')) {
+                $roleNameToSelect = \App\Enums\UserRole::Kasir->value;
+            } elseif (str_contains($target, 'customer service') || str_contains($target, 'cs')) {
+                $roleNameToSelect = \App\Enums\UserRole::CustomerService->value;
+            } elseif (str_contains($target, 'noc') || str_contains($target, 'monitoring') || str_contains($target, 'network')) {
+                $roleNameToSelect = \App\Enums\UserRole::Noc->value;
+            } elseif (str_contains($target, 'teknisi') || str_contains($target, 'technician') || ($this->department === \App\Enums\JobFunction::TECHNICIAN->value)) {
+                $roleNameToSelect = \App\Enums\UserRole::Teknisi->value;
+            } elseif (str_contains($target, 'marketing') || str_contains($target, 'sales')) {
+                $roleNameToSelect = \App\Enums\UserRole::Marketing->value;
+            } elseif (str_contains($target, 'admin') || str_contains($target, 'administrator')) {
+                $roleNameToSelect = \App\Enums\UserRole::Administrator->value;
+            }
+
+            $matchedRole = \App\Models\Role::where('name', $roleNameToSelect)->first();
+            if ($matchedRole) {
+                $newUser->roles()->sync([$matchedRole->id]);
+            }
+
+            if ($newUser->hasRole(\App\Enums\UserRole::Teknisi->value) || $newUser->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
+                $techPerms = \App\Models\Permission::whereIn('name', [
+                    \App\Enums\UserPermission::TechnicianPortal->value,
+                    \App\Enums\UserPermission::WorkforceJobsView->value,
+                    \App\Enums\UserPermission::WorkforceJobsExecute->value,
+                    \App\Enums\UserPermission::WorkforceQcView->value,
+                    \App\Enums\UserPermission::WorkforceQcExecute->value,
+                    \App\Enums\UserPermission::WorkforceMaterialView->value,
+                    \App\Enums\UserPermission::WorkforceMaterialExecute->value,
+                    \App\Enums\UserPermission::WorkforceAttendanceExecute->value,
+                ])->pluck('id')->toArray();
+                $newUser->directPermissions()->sync($techPerms);
             }
 
             $this->user_id = $newUser->id;

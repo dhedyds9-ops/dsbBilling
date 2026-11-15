@@ -472,6 +472,46 @@ class Index extends AdminComponent
     }
 
     /**
+     * Otomatis buatkan data profil kepegawaian (HR) untuk user internal yang belum terdaftar di tabel employees.
+     */
+    public function createEmployeeProfile(int $userId)
+    {
+        $user = UserModel::with('employee')->find($userId);
+        if (!$user) {
+            $this->dispatch('toast', type: 'error', message: 'User tidak ditemukan.');
+            return;
+        }
+
+        if ($user->employee) {
+            $this->dispatch('toast', type: 'info', message: 'User sudah memiliki profil data kepegawaian.');
+            return;
+        }
+
+        $nik = !empty($user->identity_number) && $user->identity_number !== '-' 
+            ? $user->identity_number 
+            : 'EMP-' . str_pad((string)$user->id, 5, '0', STR_PAD_LEFT);
+
+        if (\App\Models\Employee::where('nik', $nik)->exists()) {
+            $nik = 'EMP-' . str_pad((string)$user->id, 5, '0', STR_PAD_LEFT);
+        }
+
+        \App\Models\Employee::create([
+            'nik' => $nik,
+            'name' => $user->name,
+            'position' => $user->job_title ?: ($user->roles->first()?->display_name ?? 'Staff'),
+            'department' => $user->job_function ?: null,
+            'phone' => $user->whatsapp ?: ($user->phone ?? null),
+            'email' => $user->email,
+            'join_date' => date('Y-m-d'),
+            'base_salary' => 0,
+            'status' => $user->is_active ? 'active' : 'inactive',
+            'user_id' => $user->id,
+        ]);
+
+        $this->dispatch('toast', type: 'success', message: "Profil data pegawai berhasil dibuat untuk {$user->name}!");
+    }
+
+    /**
      * Membangun query user terfilter yang digunakan bersama oleh tabel render dan fungsi export.
      */
     protected function buildFilteredQuery()

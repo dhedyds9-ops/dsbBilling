@@ -256,13 +256,15 @@
                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                                        title="Edit Akun Login User">
                                         <span class="material-symbols-outlined notranslate" style="font-size: 15px;" translate="no">verified_user</span>
-                                        {{ $employee->user->name }}
+                                        {{ $employee->user->username ?: $employee->user->name }}
                                     </a>
                                 @else
-                                    <span class="inline-flex items-center gap-1 text-xs text-slate-400 italic">
-                                        <span class="material-symbols-outlined notranslate" style="font-size: 14px;" translate="no">link_off</span>
-                                        Belum ditautkan
-                                    </span>
+                                    <button type="button" wire:click="createUserAccount({{ $employee->id }})"
+                                            class="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                                            title="Klik untuk otomatis membuat akun login user untuk pegawai ini">
+                                        <span class="material-symbols-outlined text-[13px]">person_add</span>
+                                        <span>+ Buat Akun Login</span>
+                                    </button>
                                 @endif
                             </td>
                         </tr>

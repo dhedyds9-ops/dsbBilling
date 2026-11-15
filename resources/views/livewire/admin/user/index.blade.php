@@ -213,6 +213,13 @@
                                         <span class="material-symbols-outlined notranslate text-[13px]" translate="no">badge</span>
                                         <span>NIK: {{ $user->employee->nik }}</span>
                                     </a>
+                                @elseif(!$user->isReseller() && !$user->hasRole('customer'))
+                                    <button type="button" wire:click="createEmployeeProfile({{ $user->id }})"
+                                            class="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                                            title="Klik untuk otomatis membuat profil data kepegawaian (HR) untuk user ini">
+                                        <span class="material-symbols-outlined text-[13px]">person_add</span>
+                                        <span>+ Buat Profil Pegawai</span>
+                                    </button>
                                 @else
                                     <span class="text-slate-400 text-xs">Non-Pegawai</span>
                                 @endif

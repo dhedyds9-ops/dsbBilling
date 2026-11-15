@@ -67,6 +67,33 @@ class Create extends AdminComponent
     {
         if ($value) {
             $this->department = JobFunction::resolveJobFunction($value)->value;
+
+            // Auto-detect matching Role from Position
+            $target = strtolower(trim((string)$value));
+            $roleNameToSelect = null;
+
+            if (str_contains($target, 'gudang') || str_contains($target, 'logistik')) {
+                $roleNameToSelect = UserRole::AdminGudang->value;
+            } elseif (str_contains($target, 'kasir') || str_contains($target, 'billing')) {
+                $roleNameToSelect = UserRole::Kasir->value;
+            } elseif (str_contains($target, 'customer service') || str_contains($target, 'cs')) {
+                $roleNameToSelect = UserRole::CustomerService->value;
+            } elseif (str_contains($target, 'noc') || str_contains($target, 'monitoring') || str_contains($target, 'network')) {
+                $roleNameToSelect = UserRole::Noc->value;
+            } elseif (str_contains($target, 'teknisi') || str_contains($target, 'technician')) {
+                $roleNameToSelect = UserRole::Teknisi->value;
+            } elseif (str_contains($target, 'marketing') || str_contains($target, 'sales')) {
+                $roleNameToSelect = UserRole::Marketing->value;
+            } elseif (str_contains($target, 'admin') || str_contains($target, 'administrator')) {
+                $roleNameToSelect = UserRole::Administrator->value;
+            }
+
+            if ($roleNameToSelect) {
+                $matchedRole = Role::where('name', $roleNameToSelect)->first();
+                if ($matchedRole) {
+                    $this->role_id = (string) $matchedRole->id;
+                }
+            }
         }
     }
 
@@ -120,6 +147,21 @@ class Create extends AdminComponent
 
             if ($this->role_id) {
                 $newUser->roles()->sync([(int)$this->role_id]);
+
+                $selectedRole = Role::find($this->role_id);
+                if ($selectedRole && ($selectedRole->name === UserRole::Teknisi->value || $newUser->job_function === JobFunction::TECHNICIAN->value)) {
+                    $techPerms = \App\Models\Permission::whereIn('name', [
+                        \App\Enums\UserPermission::TechnicianPortal->value,
+                        \App\Enums\UserPermission::WorkforceJobsView->value,
+                        \App\Enums\UserPermission::WorkforceJobsExecute->value,
+                        \App\Enums\UserPermission::WorkforceQcView->value,
+                        \App\Enums\UserPermission::WorkforceQcExecute->value,
+                        \App\Enums\UserPermission::WorkforceMaterialView->value,
+                        \App\Enums\UserPermission::WorkforceMaterialExecute->value,
+                        \App\Enums\UserPermission::WorkforceAttendanceExecute->value,
+                    ])->pluck('id')->toArray();
+                    $newUser->directPermissions()->sync($techPerms);
+                }
             }
 
             $assignedUserId = $newUser->id;
@@ -157,10 +199,7 @@ class Create extends AdminComponent
 
     public function render()
     {
-        $roles = Role::whereIn('name', [
-            UserRole::Manager->value,
-            UserRole::Administrator->value,
-        ])->get();
+        $roles = Role::whereNotIn('name', ['customer', 'reseller'])->orderBy('name')->get();
 
         $users = User::whereHas('roles', function($query) {
             $query->whereNotIn('name', ['customer', 'reseller']);

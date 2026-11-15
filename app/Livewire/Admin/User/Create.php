@@ -33,6 +33,13 @@ class Create extends AdminComponent
     
     public $selectedPermissions = [];
 
+    // Profil Kepegawaian Otomatis (HR)
+    public bool $create_employee_profile = true;
+    public $employee_join_date = null;
+    public $employee_base_salary = null;
+    public $employee_bank_name = '';
+    public $employee_bank_account = '';
+
     public function updatedJobTitle($value)
     {
         if ($value) {
@@ -105,6 +112,7 @@ class Create extends AdminComponent
         parent::mount();
         $this->activeModule = 'admin';
         $this->activePage = 'users';
+        $this->employee_join_date = date('Y-m-d');
 
         // Auto-seed: pastikan seluruh role standar ISP sinkron ke database
         if (Role::whereIn('name', ['admin_gudang', 'kasir', 'customer_service', 'noc', 'teknisi', 'marketing'])->count() < 6) {
@@ -124,6 +132,13 @@ class Create extends AdminComponent
         if ($roleId) {
             $role = Role::with('permissions')->find($roleId);
             if ($role) {
+                // If reseller, do not create employee profile by default
+                if ($role->name === \App\Enums\UserRole::Reseller->value) {
+                    $this->create_employee_profile = false;
+                } else {
+                    $this->create_employee_profile = true;
+                }
+
                 // Ensure IDs are strings for Livewire checkbox binding
                 $this->selectedPermissions = $role->permissions->pluck('id')->map(fn($id) => (string)$id)->toArray();
 
@@ -303,12 +318,37 @@ class Create extends AdminComponent
         $auditService->auditRoleSync($user, [], $newRoleIds);
         $auditService->auditUserPermissionSync($user, [], $newPermissionIds);
 
+        // Otomatis buatkan data Employee jika ini akun internal staf (bukan reseller / customer)
+        if ($this->create_employee_profile && !$user->isReseller() && !$user->hasRole('customer')) {
+            $existingEmp = \App\Models\Employee::where('nik', $this->identity_number)->first();
+            if (!$existingEmp) {
+                \App\Models\Employee::create([
+                    'nik' => $this->identity_number,
+                    'name' => $this->name,
+                    'position' => $this->job_title ?: ($requestedRole?->display_name ?? $requestedRole?->name ?? 'Staff'),
+                    'department' => $this->job_function ?: null,
+                    'phone' => $this->whatsapp,
+                    'email' => $this->email,
+                    'join_date' => $this->employee_join_date ?: date('Y-m-d'),
+                    'base_salary' => $this->employee_base_salary ?: 0,
+                    'bank_name' => $this->employee_bank_name ?: null,
+                    'bank_account' => $this->employee_bank_account ?: null,
+                    'status' => $this->is_active ? 'active' : 'inactive',
+                    'user_id' => $user->id,
+                ]);
+            } else {
+                if (empty($existingEmp->user_id)) {
+                    $existingEmp->update(['user_id' => $user->id]);
+                }
+            }
+        }
+
         // Bust cache navigation global (agar role baru langsung tercermin)
         foreach (\App\Enums\UserRole::allValues() as $roleValue) {
             \Illuminate\Support\Facades\Cache::forget("dsbilling_navigation.{$roleValue}.v3");
         }
 
-        session()->flash('success', 'User berhasil dibuat!');
+        session()->flash('success', 'User & profil pegawai berhasil dibuat!');
         return redirect()->route('admin.users.index');
     }
 

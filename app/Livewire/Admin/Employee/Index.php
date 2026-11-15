@@ -84,6 +84,88 @@ class Index extends BaseAdminComponent
     }
 
     /**
+     * Buat akun login pengguna (User) otomatis untuk pegawai yang belum ditautkan akun.
+     */
+    public function createUserAccount(int $employeeId)
+    {
+        $employee = Employee::with('user')->find($employeeId);
+        if (!$employee) {
+            $this->dispatch('toast', type: 'error', message: 'Pegawai tidak ditemukan.');
+            return;
+        }
+
+        if ($employee->user) {
+            $this->dispatch('toast', type: 'info', message: 'Pegawai sudah memiliki akun login.');
+            return;
+        }
+
+        $baseUsername = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', explode(' ', $employee->name)[0] ?? 'pegawai'));
+        $username = $baseUsername ?: 'user' . rand(100, 999);
+        $counter = 1;
+        while (User::where('username', $username)->exists()) {
+            $username = $baseUsername . $counter++;
+        }
+
+        $userEmail = !empty($employee->email) ? strtolower(trim($employee->email)) : ($username . '@mstore.local');
+        $defaultPassword = 'Password123!';
+
+        $newUser = User::create([
+            'name' => $employee->name,
+            'email' => $userEmail,
+            'username' => $username,
+            'password' => Hash::make($defaultPassword),
+            'job_title' => $employee->position ?: 'Staff',
+            'job_function' => $employee->department ?: \App\Enums\JobFunction::TECHNICIAN->value,
+            'whatsapp' => $employee->phone,
+            'identity_number' => $employee->nik ?: '-',
+            'is_active' => ($employee->status === 'active'),
+        ]);
+
+        // Auto-assign role from position / department
+        $target = strtolower(trim((string)$employee->position));
+        $roleNameToSelect = \App\Enums\UserRole::Manager->value;
+
+        if (str_contains($target, 'gudang') || str_contains($target, 'logistik')) {
+            $roleNameToSelect = \App\Enums\UserRole::AdminGudang->value;
+        } elseif (str_contains($target, 'kasir') || str_contains($target, 'billing')) {
+            $roleNameToSelect = \App\Enums\UserRole::Kasir->value;
+        } elseif (str_contains($target, 'customer service') || str_contains($target, 'cs')) {
+            $roleNameToSelect = \App\Enums\UserRole::CustomerService->value;
+        } elseif (str_contains($target, 'noc') || str_contains($target, 'monitoring') || str_contains($target, 'network')) {
+            $roleNameToSelect = \App\Enums\UserRole::Noc->value;
+        } elseif (str_contains($target, 'teknisi') || str_contains($target, 'technician') || ($employee->department === \App\Enums\JobFunction::TECHNICIAN->value)) {
+            $roleNameToSelect = \App\Enums\UserRole::Teknisi->value;
+        } elseif (str_contains($target, 'marketing') || str_contains($target, 'sales')) {
+            $roleNameToSelect = \App\Enums\UserRole::Marketing->value;
+        } elseif (str_contains($target, 'admin') || str_contains($target, 'administrator')) {
+            $roleNameToSelect = \App\Enums\UserRole::Administrator->value;
+        }
+
+        $matchedRole = \App\Models\Role::where('name', $roleNameToSelect)->first();
+        if ($matchedRole) {
+            $newUser->roles()->sync([$matchedRole->id]);
+        }
+
+        if ($newUser->hasRole(\App\Enums\UserRole::Teknisi->value) || $newUser->job_function === \App\Enums\JobFunction::TECHNICIAN->value) {
+            $techPerms = \App\Models\Permission::whereIn('name', [
+                \App\Enums\UserPermission::TechnicianPortal->value,
+                \App\Enums\UserPermission::WorkforceJobsView->value,
+                \App\Enums\UserPermission::WorkforceJobsExecute->value,
+                \App\Enums\UserPermission::WorkforceQcView->value,
+                \App\Enums\UserPermission::WorkforceQcExecute->value,
+                \App\Enums\UserPermission::WorkforceMaterialView->value,
+                \App\Enums\UserPermission::WorkforceMaterialExecute->value,
+                \App\Enums\UserPermission::WorkforceAttendanceExecute->value,
+            ])->pluck('id')->toArray();
+            $newUser->directPermissions()->sync($techPerms);
+        }
+
+        $employee->update(['user_id' => $newUser->id]);
+
+        $this->dispatch('toast', type: 'success', message: "Akun login berhasil dibuat untuk {$employee->name}! Username: {$username} | Password: {$defaultPassword}");
+    }
+
+    /**
      * Kirim data login (Nama, Jabatan, Username, Password) langsung ke nomor WhatsApp pegawai via Gateway.
      */
     public function sendWhatsAppCredentials($employeeId)
