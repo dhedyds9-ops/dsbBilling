@@ -723,7 +723,7 @@ class Index extends Component
         if ($this->jobType === 'all' || $this->jobType === 'installation') {
             $csQuery = CustomerService::withoutGlobalScopes()
                 ->with([
-                    'customer' => fn ($q) => $q->withoutGlobalScopes(),
+                    'customer' => fn ($q) => $q->withoutGlobalScopes()->with('reseller'),
                     'onu' => fn ($q) => $q->withoutGlobalScopes()->with('olt'),
                     'serviceProfile' => fn ($q) => $q->withoutGlobalScopes(),
                     'service',
@@ -792,6 +792,8 @@ class Index extends Component
                     'status_label' => $isActive ? 'Selesai / Aktif' : 'Menunggu / Proses',
                     'is_completed' => $isActive,
                     'customer_id' => $cs->customer_id,
+                    'reseller_name' => $cs->customer?->reseller?->name ?? null,
+                    'reseller_id' => $cs->customer?->reseller_id ?? null,
                     'photos' => null,
                     'latitude' => $cs->customer?->latitude,
                     'longitude' => $cs->customer?->longitude,
@@ -803,7 +805,7 @@ class Index extends Component
             // 1b. Fetch CRM Work Order Installations (strictly assigned_to or technician_id)
             $instQuery = Installation::withoutGlobalScopes()
                 ->with([
-                    'customer' => fn ($q) => $q->withoutGlobalScopes(),
+                    'customer' => fn ($q) => $q->withoutGlobalScopes()->with('reseller'),
                     'survey.prospect',
                     'onu' => fn ($q) => $q->withoutGlobalScopes(),
                 ]);
@@ -871,6 +873,8 @@ class Index extends Component
                     'status_label' => $isCompleted ? 'Selesai' : (in_array($inst->status, ['in_progress']) ? 'Dalam Pengerjaan' : 'Dijadwalkan'),
                     'is_completed' => $isCompleted,
                     'customer_id' => $inst->customer_id,
+                    'reseller_name' => $inst->customer?->reseller?->name ?? null,
+                    'reseller_id' => $inst->customer?->reseller_id ?? null,
                     'photos' => null,
                     'latitude' => $inst->customer?->latitude ?? $inst->survey?->latitude,
                     'longitude' => $inst->customer?->longitude ?? $inst->survey?->longitude,
@@ -884,7 +888,8 @@ class Index extends Component
         if ($this->jobType === 'all' || $this->jobType === 'ticket') {
             $ticketQuery = Ticket::withoutGlobalScopes()
                 ->with([
-                    'customer' => fn ($q) => $q->withoutGlobalScopes(),
+                    'customer' => fn ($q) => $q->withoutGlobalScopes()->with('reseller'),
+                    'reseller' => fn ($q) => $q->withoutGlobalScopes(),
                     'assignedTo',
                 ]);
 
@@ -953,6 +958,8 @@ class Index extends Component
                     'resolution_notes' => $ticket->resolution_notes ?? null,
                     'photos' => $ticket->photos ?? null,
                     'customer_id' => $ticket->customer_id,
+                    'reseller_name' => $ticket->reseller?->name ?? $ticket->customer?->reseller?->name ?? null,
+                    'reseller_id' => $ticket->reseller_id ?? $ticket->customer?->reseller_id ?? null,
                     'latitude' => $ticket->customer?->latitude,
                     'longitude' => $ticket->customer?->longitude,
                     'survey_id' => null,

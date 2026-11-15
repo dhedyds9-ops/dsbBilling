@@ -185,6 +185,15 @@
                 </div>
             </div>
 
+            @if(!empty($job->reseller_name))
+                <div class="mt-1 flex items-center gap-1.5">
+                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/60 px-2 py-0.5 rounded-md">
+                        <span class="material-symbols-outlined text-[13px] notranslate" translate="no">storefront</span>
+                        <span>Mitra / Reseller: <strong>{{ $job->reseller_name }}</strong></span>
+                    </span>
+                </div>
+            @endif
+
             {{-- Phone --}}
             @if($job->phone && $job->phone !== '-')
                 <div class="flex items-center gap-3 mt-1.5 text-xs">

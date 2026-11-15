@@ -100,7 +100,10 @@ class Wizard extends Component
             $ticketQuery = \App\Models\Support\Ticket::withoutGlobalScopes()
                 ->whereIn('category', ['psb', 'installation'])
                 ->whereIn('status', ['open', 'in_progress', 'assigned'])
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
+                ->with([
+                    'customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'),
+                    'reseller' => fn($q) => $q->withoutGlobalScopes(),
+                ]);
 
             if (\Illuminate\Support\Facades\Schema::hasColumn('tickets', 'installation_id')) {
                 $ticketQuery->whereNull('installation_id');
@@ -108,7 +111,10 @@ class Wizard extends Component
 
             $installationQuery = \App\Models\CRM\Installation::withoutGlobalScopes()
                 ->whereIn('status', ['pending', 'scheduled', 'in_progress', 'assigned'])
-                ->with(['customer' => fn($q) => $q->withoutGlobalScopes()]);
+                ->with([
+                    'customer' => fn($q) => $q->withoutGlobalScopes()->with('reseller'),
+                    'survey.prospect',
+                ]);
 
             $requisitionQuery = \App\Models\Inventory\InventoryRequisition::withoutGlobalScopes()
                 ->where('work_order_type', 'psb')
@@ -197,7 +203,7 @@ class Wizard extends Component
     public function selectWorkOrder(string $type, $id)
     {
         if ($type === 'ticket') {
-            $ticket = \App\Models\Support\Ticket::withoutGlobalScopes()->with(['customer', 'resolvedBy'])->find($id);
+            $ticket = \App\Models\Support\Ticket::withoutGlobalScopes()->with(['customer.reseller', 'reseller', 'resolvedBy'])->find($id);
             if ($ticket) {
                 if (in_array($ticket->status, ['resolved', 'closed']) || !empty($ticket->resolved_by)) {
                     $completer = $ticket->resolvedBy?->name ?? 'teknisi lain';
@@ -211,6 +217,12 @@ class Wizard extends Component
                 $this->ticket_id = $ticket->id;
                 $this->customer_id = (string) $ticket->customer_id;
                 $this->is_new_customer = false;
+
+                $ticketResellerId = $ticket->reseller_id ?? $ticket->customer?->reseller_id;
+                if ($ticketResellerId) {
+                    $this->new_customer_reseller_id = (string) $ticketResellerId;
+                }
+
                 $this->activeWorkOrder = [
                     'type' => 'ticket',
                     'id' => $ticket->id,
@@ -218,6 +230,8 @@ class Wizard extends Component
                     'customer_name' => $ticket->customer?->name ?? 'Pelanggan #' . $ticket->customer_id,
                     'customer_phone' => $ticket->customer?->phone ?? '-',
                     'address' => $ticket->customer?->address ?? $ticket->description,
+                    'reseller_name' => $ticket->reseller?->name ?? $ticket->customer?->reseller?->name ?? null,
+                    'reseller_id' => $ticketResellerId,
                     'notes' => $ticket->description,
                 ];
                 $this->requireWorkOrderSelection = false;
@@ -225,7 +239,7 @@ class Wizard extends Component
                 $this->tryAutoDetectPackage($ticket->description, $ticket->customer_id);
             }
         } elseif ($type === 'installation') {
-            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer', 'survey.prospect', 'completedBy'])->find($id);
+            $inst = \App\Models\CRM\Installation::withoutGlobalScopes()->with(['customer.reseller', 'survey.prospect', 'completedBy'])->find($id);
             if ($inst) {
                 if ($inst->status === 'completed' || !empty($inst->completed_by)) {
                     $completer = $inst->completedBy?->name ?? 'teknisi lain';
@@ -243,6 +257,11 @@ class Wizard extends Component
                     if ($linkedTicket) {
                         $this->ticket_id = $linkedTicket->id;
                     }
+                }
+
+                $instResellerId = $inst->customer?->reseller_id;
+                if ($instResellerId) {
+                    $this->new_customer_reseller_id = (string) $instResellerId;
                 }
 
                 if ($inst->customer_id) {
@@ -266,6 +285,8 @@ class Wizard extends Component
                     'customer_name' => $inst->customer?->name ?? ($inst->survey?->prospect?->name ?? $inst->customer_name),
                     'customer_phone' => $inst->customer?->phone ?? ($inst->survey?->prospect?->phone ?? $inst->customer_phone),
                     'address' => $inst->installation_address ?? ($inst->survey?->address ?? ($inst->customer?->address ?? $inst->survey?->prospect?->address)),
+                    'reseller_name' => $inst->customer?->reseller?->name ?? null,
+                    'reseller_id' => $instResellerId,
                     'notes' => $inst->notes,
                 ];
                 $this->requireWorkOrderSelection = false;
@@ -679,8 +700,15 @@ class Wizard extends Component
                     $this->customer_id = $customer->id;
                 } else {
                     $customer = Customer::findOrFail($this->customer_id);
-                    if (empty($customer->branch_id)) {
-                        $customer->update(['branch_id' => $branchId]);
+                    $updatePayload = [];
+                    if (empty($customer->branch_id) && $branchId) {
+                        $updatePayload['branch_id'] = $branchId;
+                    }
+                    if (!empty($this->new_customer_reseller_id) && $customer->reseller_id != $this->new_customer_reseller_id) {
+                        $updatePayload['reseller_id'] = $this->new_customer_reseller_id;
+                    }
+                    if (!empty($updatePayload)) {
+                        $customer->update($updatePayload);
                     }
                 }
 
@@ -1036,15 +1064,30 @@ class Wizard extends Component
             ->toArray();
     }
 
+    public function updatedCustomerId($value)
+    {
+        if ($value) {
+            $cust = Customer::withoutGlobalScopes()->find($value);
+            if ($cust && !empty($cust->reseller_id)) {
+                $this->new_customer_reseller_id = (string) $cust->reseller_id;
+            }
+        }
+    }
+
     public function getSelectedCustomerProperty()
     {
         if ($this->is_new_customer) {
+            $reseller = !empty($this->new_customer_reseller_id)
+                ? \App\Models\User::withoutGlobalScopes()->find($this->new_customer_reseller_id)
+                : null;
             return (object) [
                 'id' => null,
                 'name' => $this->new_customer_name ?: '(Nama Pelanggan Baru Belum Diisi)',
                 'phone' => $this->new_customer_phone ?: '-',
                 'address' => $this->new_customer_address ?: '-',
                 'code' => 'BARU',
+                'reseller_id' => $this->new_customer_reseller_id ?: null,
+                'reseller' => $reseller,
             ];
         }
 
@@ -1052,7 +1095,7 @@ class Wizard extends Component
             return null;
         }
 
-        return Customer::withoutGlobalScopes()->find($this->customer_id);
+        return Customer::withoutGlobalScopes()->with('reseller')->find($this->customer_id);
     }
 
     public function getSelectedCustomerLabelProperty(): ?string
@@ -1193,18 +1236,23 @@ class Wizard extends Component
             })
             ->toArray();
 
-        $resellersOptions = \App\Models\User::withoutGlobalScopes()->whereHas('roles', function($q) {
-            $q->where('name', 'reseller');
-        })
-        ->get()
-        ->map(function ($r) {
-            return [
-                'value' => (string) $r->id,
-                'label' => $r->name,
-                'sublabel' => $r->email ?? '',
-            ];
-        })
-        ->toArray();
+        $resellersOptions = \App\Models\User::withoutGlobalScopes()
+            ->where(function($q) {
+                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['reseller', 'Reseller']))
+                  ->orWhereRaw('UPPER(COALESCE(job_function, "")) = ?', ['RESELLER']);
+            })
+            ->with('branch')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($r) {
+                $branchLabel = !empty($r->branch?->name) ? ' (' . $r->branch->name . ')' : '';
+                return [
+                    'value' => (string) $r->id,
+                    'label' => $r->name . $branchLabel,
+                    'sublabel' => $r->email ?? ($r->phone ?? 'Mitra Reseller'),
+                ];
+            })
+            ->toArray();
 
         $olts = Olt::withoutGlobalScopes()->get();
         $vendors = \App\Models\ISP\Vendor::withoutGlobalScopes()->get();

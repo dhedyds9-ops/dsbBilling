@@ -83,7 +83,18 @@
                                 <span class="text-[11px] text-slate-400">{{ $t->created_at->format('d/m/Y H:i') }}</span>
                             </div>
                             <div>
-                                <div class="font-bold text-slate-900 dark:text-slate-100 text-sm">{{ $t->customer?->name ?? 'Pelanggan #' . $t->customer_id }}</div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-900 dark:text-slate-100 text-sm">{{ $t->customer?->name ?? 'Pelanggan #' . $t->customer_id }}</span>
+                                    @php
+                                        $ticketReseller = $t->reseller?->name ?? $t->customer?->reseller?->name ?? null;
+                                    @endphp
+                                    @if($ticketReseller)
+                                        <span class="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[12px] notranslate" translate="no">storefront</span>
+                                            {{ $ticketReseller }}
+                                        </span>
+                                    @endif
+                                </div>
                                 <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                                     <span class="material-symbols-outlined text-xs notranslate" translate="no">location_on</span>
                                     <span>{{ $t->customer?->address ?? $t->description ?? 'Alamat sesuai tiket' }}</span>
@@ -108,7 +119,18 @@
                                 <span class="text-[11px] text-slate-400">{{ $inst->created_at->format('d/m/Y') }}</span>
                             </div>
                             <div>
-                                <div class="font-bold text-slate-900 dark:text-slate-100 text-sm">{{ $inst->customer?->name ?? $inst->customer_name }}</div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-900 dark:text-slate-100 text-sm">{{ $inst->customer?->name ?? $inst->customer_name }}</span>
+                                    @php
+                                        $instReseller = $inst->customer?->reseller?->name ?? null;
+                                    @endphp
+                                    @if($instReseller)
+                                        <span class="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[12px] notranslate" translate="no">storefront</span>
+                                            {{ $instReseller }}
+                                        </span>
+                                    @endif
+                                </div>
                                 <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                                     <span class="material-symbols-outlined text-xs notranslate" translate="no">location_on</span>
                                     <span>{{ $inst->installation_address ?? $inst->customer?->address ?? 'Alamat pemasangan' }}</span>
@@ -198,7 +220,15 @@
                             </div>
                             <div class="min-w-0">
                                 <div class="text-xs font-bold text-emerald-900 dark:text-emerald-200 truncate">Surat Tugas Terverifikasi: {{ $activeWorkOrder['number'] }}</div>
-                                <div class="text-[11px] text-emerald-700 dark:text-emerald-400 truncate">{{ $activeWorkOrder['customer_name'] }} • {{ $activeWorkOrder['customer_phone'] }}</div>
+                                <div class="text-[11px] text-emerald-700 dark:text-emerald-400 truncate flex items-center gap-1.5 flex-wrap">
+                                    <span>{{ $activeWorkOrder['customer_name'] }} • {{ $activeWorkOrder['customer_phone'] }}</span>
+                                    @if(!empty($activeWorkOrder['reseller_name']))
+                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 font-bold text-[10px]">
+                                            <span class="material-symbols-outlined text-[11px] notranslate" translate="no">storefront</span>
+                                            Mitra: {{ $activeWorkOrder['reseller_name'] }}
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                         <button wire:click="clearWorkOrder" type="button" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0">
@@ -235,18 +265,19 @@
                             <textarea wire:model="new_customer_address" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 dark:bg-slate-900 dark:text-slate-100" rows="2" placeholder="Alamat lengkap lokasi" {{ $isRestrictedTechnician ? 'readonly' : '' }}></textarea>
                             @error('new_customer_address') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
-                        @if(!$isRestrictedTechnician)
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Owner / Reseller (Opsional)</label>
-                                <x-ds-searchable-select
-                                    wire:model="new_customer_reseller_id"
-                                    strategy="local"
-                                    :options="$resellersOptions"
-                                    placeholder="-- Pilih Owner/Reseller --"
-                                    search-placeholder="Cari reseller..."
-                                />
-                            </div>
-                        @endif
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Owner / Reseller (Opsional)</label>
+                            <x-ds-searchable-select
+                                wire:model="new_customer_reseller_id"
+                                strategy="local"
+                                :options="$resellersOptions"
+                                placeholder="-- Pilih Owner / Reseller (Default: Kantor Pusat / HQ) --"
+                                search-placeholder="Cari nama atau email reseller..."
+                            />
+                            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                                Pilih Mitra / Reseller jika pemasangan ini untuk pelanggan mitra, atau kosongkan jika milik Kantor Pusat (HQ).
+                            </p>
+                        </div>
                     </div>
                 @else
                     <div class="space-y-3">
@@ -263,6 +294,23 @@
                                 <div class="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
                                     <span class="material-symbols-outlined text-xs notranslate shrink-0 mt-0.5" translate="no">location_on</span>
                                     <span>{{ $this->selectedCustomer->address ?? 'Alamat belum diatur' }}</span>
+                                </div>
+                                @php
+                                    $resellerObj = $this->selectedCustomer->reseller ?? (!empty($this->new_customer_reseller_id) ? \App\Models\User::withoutGlobalScopes()->find($this->new_customer_reseller_id) : null);
+                                @endphp
+                                <div class="text-xs flex items-center justify-between pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                                    <span class="text-slate-500 dark:text-slate-400 font-semibold">Owner / Reseller:</span>
+                                    @if($resellerObj)
+                                        <span class="inline-flex items-center gap-1 font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 text-[11px]">
+                                            <span class="material-symbols-outlined text-[13px] notranslate" translate="no">storefront</span>
+                                            <span>{{ $resellerObj->name }}</span>
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg text-[11px]">
+                                            <span class="material-symbols-outlined text-[13px] notranslate" translate="no">domain</span>
+                                            <span>Kantor Pusat (HQ)</span>
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
                         @else
@@ -297,12 +345,36 @@
                                                     {{ $this->selectedCustomer->address }}
                                                 </div>
                                             @endif
+                                            @php
+                                                $selectResellerObj = $this->selectedCustomer->reseller ?? (!empty($this->new_customer_reseller_id) ? \App\Models\User::withoutGlobalScopes()->find($this->new_customer_reseller_id) : null);
+                                            @endphp
+                                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                                <span>Owner / Reseller:</span>
+                                                @if($selectResellerObj)
+                                                    <span class="font-bold text-purple-700 dark:text-purple-300">{{ $selectResellerObj->name }}</span>
+                                                @else
+                                                    <span class="font-semibold text-slate-600 dark:text-slate-400">Kantor Pusat (HQ)</span>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 shrink-0">
                                         Terdaftar
                                     </span>
                                 </div>
+
+                                @if(empty($this->selectedCustomer->reseller_id))
+                                    <div class="mt-2.5">
+                                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">Tautkan ke Owner / Reseller (Opsional)</label>
+                                        <x-ds-searchable-select
+                                            wire:model="new_customer_reseller_id"
+                                            strategy="local"
+                                            :options="$resellersOptions"
+                                            placeholder="-- Tautkan ke Owner / Reseller (Default: HQ) --"
+                                            search-placeholder="Cari reseller..."
+                                        />
+                                    </div>
+                                @endif
                             @endif
                         @endif
                     </div>
@@ -777,6 +849,25 @@
                         <div class="col-span-2">
                             <span class="text-slate-400 block text-[10px] uppercase font-bold">Alamat Pemasangan</span>
                             <span class="text-slate-700 dark:text-slate-300 text-xs">{{ $this->selectedCustomer?->address ?? ($new_customer_address ?: '-') }}</span>
+                        </div>
+                        <div class="col-span-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                            <span class="text-slate-400 text-[10px] uppercase font-bold">Owner / Reseller</span>
+                            @php
+                                $reviewReseller = !empty($this->new_customer_reseller_id) 
+                                    ? \App\Models\User::withoutGlobalScopes()->find($this->new_customer_reseller_id) 
+                                    : ($this->selectedCustomer?->reseller ?? null);
+                            @endphp
+                            @if($reviewReseller)
+                                <span class="inline-flex items-center gap-1 font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 text-[11px]">
+                                    <span class="material-symbols-outlined text-[13px] notranslate" translate="no">storefront</span>
+                                    <span>{{ $reviewReseller->name }}</span>
+                                </span>
+                            @else
+                                <span class="text-slate-600 dark:text-slate-400 font-semibold text-xs flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[13px] notranslate" translate="no">domain</span>
+                                    <span>Kantor Pusat (HQ / Direct)</span>
+                                </span>
+                            @endif
                         </div>
                     </div>
                 </div>
