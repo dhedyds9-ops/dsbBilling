@@ -315,13 +315,12 @@
                                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-start">
                                         <div class="sm:col-span-6">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
-                                            <select wire:model.live="inboundItems.{{ $idx }}.item_id" required
-                                                    class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 shadow-xs">
-                                                <option value="">-- Pilih Barang dari Katalog --</option>
-                                                @foreach($availableItems as $it)
-                                                    <option value="{{ $it->id }}">[{{ $it->sku }}] {{ $it->name }} ({{ $it->category }} - {{ $it->unit }})</option>
-                                                @endforeach
-                                            </select>
+                                            <x-inventory.item-searchable-select
+                                                :availableItems="$availableItems"
+                                                :selectedId="$row['item_id'] ?? null"
+                                                wireModel="inboundItems.{{ $idx }}.item_id"
+                                                placeholder="-- Cari / Pilih Barang dari Katalog --"
+                                            />
                                             @error("inboundItems.{$idx}.item_id") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
 
