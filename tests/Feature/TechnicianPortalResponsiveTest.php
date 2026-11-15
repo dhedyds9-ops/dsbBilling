@@ -93,4 +93,31 @@ class TechnicianPortalResponsiveTest extends TestCase
         // Reseller without technician role/job_function is blocked (either 403 or redirect 302)
         $this->assertTrue(in_array($response->getStatusCode(), [302, 403], true));
     }
+
+    public function test_technician_can_access_material_page_and_gudang_tab(): void
+    {
+        $role = Role::firstOrCreate(
+            ['name' => 'technician'],
+            ['display_name' => 'Technician', 'guard_name' => 'web']
+        );
+
+        $user = User::factory()->create([
+            'job_function' => 'TECHNICIAN',
+        ]);
+        $user->roles()->syncWithoutDetaching([$role->id]);
+
+        // Check in for attendance gate
+        Attendance::create([
+            'technician_id' => $user->id,
+            'date' => now()->toDateString(),
+            'checked_in_at' => now(),
+            'status' => AttendanceStatus::CHECKED_IN->value,
+        ]);
+
+        $response = $this->actingAs($user)->get('/technician-portal/material?activeTab=gudang');
+        $response->assertStatus(200);
+        $response->assertSee('Gudang Kantor');
+        $response->assertSee('Stok Saya');
+        $response->assertSee('Permintaan');
+    }
 }

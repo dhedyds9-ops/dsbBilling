@@ -8,14 +8,11 @@ use Livewire\Attributes\Url;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 use App\Models\Inventory\Item;
+use App\Models\Inventory\ItemSerial;
 use App\Models\Inventory\Warehouse;
 use App\Models\Inventory\InventoryStock;
-use App\Models\Inventory\InventoryStockMutation;
 use App\Models\Inventory\InventoryCustody;
 use App\Models\Inventory\InventoryUsage;
 use App\Models\Inventory\InventoryUsageItem;
@@ -23,6 +20,7 @@ use App\Models\Inventory\InventoryReturn;
 use App\Models\Inventory\InventoryReturnItem;
 use App\Models\Inventory\InventoryRequisition;
 use App\Models\Inventory\InventoryRequisitionItem;
+use App\Models\Support\Ticket;
 
 #[Layout('layouts.technician-app')]
 class Index extends Component
@@ -30,46 +28,40 @@ class Index extends Component
     use WithPagination;
 
     #[Url]
-    public string $activeTab = 'stok'; // stok, gudang, pemakaian
+    public string $activeTab = 'stok'; // stok, gudang, pemakaian, permintaan
 
     public string $search = '';
 
-    // Modal Ambil Barang dari Gudang
-    public bool $showTakeModal = false;
-    public ?int $takeWarehouseMaterialId = null;
-    public int $takeQuantity = 1;
-    public string $takeNotes = '';
-
-    // Modal Catat Pemakaian Cepat
-    public bool $showUsageModal = false;
-    public ?int $selectedMaterialId = null;
-    public string $usageMaterialName = '';
-    public int $usageQuantity = 1;
-    public string $usageUnit = 'pcs';
-    public ?int $usageTicketId = null;
-    public string $usageNotes = '';
-
-    // Modal Minta Barang Tambahan
+    // Modal Minta Barang dari Gudang (Requisition)
     public bool $showRequestModal = false;
+    public ?int $reqItemId = null;
     public string $reqMaterialName = '';
     public int $reqQuantity = 1;
     public string $reqUnit = 'pcs';
     public string $reqReason = '';
+    public string $reqWorkOrderType = 'stock_topup';
 
-    // Modal Retur & Lapor Rusak / Hilang
+    // Modal Catat Pemakaian Cepat (Usage)
+    public bool $showUsageModal = false;
+    public ?int $selectedCustodyId = null;
+    public string $usageMaterialName = '';
+    public string $usageSerial = '';
+    public int $usageQuantity = 1;
+    public float $usageMaxQuantity = 1;
+    public string $usageUnit = 'pcs';
+    public ?int $usageTicketId = null;
+    public string $usageNotes = '';
+
+    // Modal Retur & Lapor Rusak / Hilang (Return)
     public bool $showReturnModal = false;
+    public ?int $returnCustodyId = null;
     public string $returnAction = 'retur'; // 'retur', 'rusak', 'hilang'
-    public ?int $returnMaterialId = null;
     public string $returnMaterialName = '';
-    public int $returnQuantity = 1;
-    public string $returnUnit = 'pcs';
     public string $returnSerial = '';
+    public int $returnQuantity = 1;
+    public float $returnMaxQuantity = 1;
+    public string $returnUnit = 'pcs';
     public string $returnReason = '';
-
-    public function mount()
-    {
-        $this->ensureDefaultMaterialsExist();
-    }
 
     public function updatingSearch()
     {
@@ -78,548 +70,271 @@ class Index extends Component
 
     public function switchTab(string $tab)
     {
-        $this->activeTab = in_array($tab, ['stok', 'gudang', 'pemakaian'], true) ? $tab : 'stok';
+        $this->activeTab = in_array($tab, ['stok', 'gudang', 'pemakaian', 'permintaan'], true) ? $tab : 'stok';
         $this->resetPage();
     }
 
-    private function ensureDefaultMaterialsExist(): void
+    /**
+     * Buka Modal Permintaan Barang ke Gudang (Requisition)
+     */
+    public function openRequestModal(?int $itemId = null)
     {
-        if (!Schema::hasTable('support_maintenance_materials')) {
-            return;
+        $this->reqItemId = $itemId;
+        $this->reqQuantity = 1;
+        $this->reqReason = '';
+        $this->reqWorkOrderType = 'stock_topup';
+
+        if ($itemId) {
+            $item = Item::find($itemId);
+            if ($item) {
+                $this->reqMaterialName = $item->name;
+                $this->reqUnit = $item->unit ?: 'pcs';
+            }
+        } else {
+            $this->reqMaterialName = '';
+            $this->reqUnit = 'pcs';
         }
 
-        try {
-            // Pastikan jika ada data default, lokasinya adalah Gudang Utama (bukan langsung di tangan teknisi)
-            if (Schema::hasColumn('support_maintenance_materials', 'technician_id')) {
-                DB::table('support_maintenance_materials')
-                    ->whereNull('technician_id')
-                    ->where('location', 'like', '%Bagasi%')
-                    ->update(['location' => 'Gudang Utama']);
-            }
-
-            $count = DB::table('support_maintenance_materials')->whereNull('technician_id')->count();
-            if ($count === 0) {
-                $now = now();
-                $defaults = [
-                    ['sku' => 'MAT-DC-1C', 'name' => 'Kabel Dropcore Optik 1 Core (1000m)', 'category' => 'Kabel', 'stock' => 1000, 'min_stock' => 150, 'unit' => 'meter', 'location' => 'Gudang Utama', 'technician_id' => null],
-                    ['sku' => 'MAT-FC-SC', 'name' => 'Fast Connector SC/UPC', 'category' => 'Konektor', 'stock' => 100, 'min_stock' => 20, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
-                    ['sku' => 'MAT-ROSET-1C', 'name' => 'Roset Optik 1 Core / OTB Mini', 'category' => 'Pasif', 'stock' => 50, 'min_stock' => 10, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
-                    ['sku' => 'MAT-PC-SC-1.5M', 'name' => 'Patchcord Fiber SC/UPC - SC/UPC 1.5m', 'category' => 'Kabel', 'stock' => 30, 'min_stock' => 5, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
-                    ['sku' => 'MAT-CLAMP-S', 'name' => 'S-Clamp / Klem Tarik Kabel Dropcore', 'category' => 'Aksesoris', 'stock' => 150, 'min_stock' => 30, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
-                    ['sku' => 'MAT-ADAPT-SC', 'name' => 'Adapter Fiber SC/UPC Simplex', 'category' => 'Konektor', 'stock' => 50, 'min_stock' => 10, 'unit' => 'pcs', 'location' => 'Gudang Utama', 'technician_id' => null],
-                    ['sku' => 'DEV-ONT-ZTE-F609', 'name' => 'ONT GPON ZTE F609 (Wi-Fi 2.4GHz)', 'category' => 'Perangkat Aktif', 'stock' => 5, 'min_stock' => 2, 'unit' => 'unit', 'location' => 'Gudang Utama', 'technician_id' => null],
-                    ['sku' => 'DEV-ONT-HW-8245H', 'name' => 'ONT GPON Huawei HG8245H', 'category' => 'Perangkat Aktif', 'stock' => 5, 'min_stock' => 2, 'unit' => 'unit', 'location' => 'Gudang Utama', 'technician_id' => null],
-                ];
-
-                foreach ($defaults as $item) {
-                    DB::table('support_maintenance_materials')->insert(array_merge($item, [
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ]));
-                }
-            }
-        } catch (\Throwable) {}
+        $this->showRequestModal = true;
     }
 
-    public function openTakeModal(?int $warehouseMaterialId = null)
-    {
-        $this->takeWarehouseMaterialId = $warehouseMaterialId;
-        $this->takeQuantity = 1;
-        $this->takeNotes = '';
-        $this->showTakeModal = true;
-    }
-
-    public function submitTake()
+    /**
+     * Submit Permintaan Barang Resmi (Requisition) ke Admin Gudang
+     */
+    public function submitMaterialRequest()
     {
         $this->validate([
-            'takeWarehouseMaterialId' => 'required|integer',
-            'takeQuantity' => 'required|integer|min:1',
-            'takeNotes' => 'nullable|string|max:255',
+            'reqItemId' => 'required|integer|exists:items,id',
+            'reqQuantity' => 'required|integer|min:1',
+            'reqReason' => 'nullable|string|max:500',
+            'reqWorkOrderType' => 'required|string|in:stock_topup,psb,maintenance',
         ]);
 
         $user = Auth::user();
 
         try {
             DB::transaction(function () use ($user) {
-                // 1. Kunci baris material gudang kantor
-                $whMat = DB::table('support_maintenance_materials')
-                    ->where('id', $this->takeWarehouseMaterialId)
-                    ->whereNull('technician_id')
-                    ->lockForUpdate()
-                    ->first();
+                $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+                    ?? Warehouse::where('is_active', true)->first();
 
-                if (!$whMat) {
-                    throw new \RuntimeException('Material di gudang kantor tidak ditemukan.');
+                if (!$warehouse) {
+                    throw new \RuntimeException('Tidak ada gudang aktif yang terdaftar di sistem.');
                 }
 
-                if ((int) $whMat->stock < $this->takeQuantity) {
-                    throw new \RuntimeException("Stok gudang tidak mencukupi (tersedia: {$whMat->stock} {$whMat->unit}).");
-                }
+                $item = Item::findOrFail($this->reqItemId);
 
-                // 2. Kurangi stok di gudang kantor
-                DB::table('support_maintenance_materials')
-                    ->where('id', $whMat->id)
-                    ->update([
-                        'stock' => (int) $whMat->stock - $this->takeQuantity,
-                        'updated_at' => now(),
-                    ]);
-
-                // 3. Tambahkan ke stok bagasi teknisi (cari berdasarkan SKU atau buat baru)
-                $myMat = DB::table('support_maintenance_materials')
-                    ->where('technician_id', $user->id)
-                    ->where(function ($q) use ($whMat) {
-                        if ($whMat->sku) {
-                            $q->where('sku', $whMat->sku);
-                        } else {
-                            $q->where('name', $whMat->name);
-                        }
-                    })
-                    ->first();
-
-                if ($myMat) {
-                    DB::table('support_maintenance_materials')
-                        ->where('id', $myMat->id)
-                        ->update([
-                            'stock' => (int) $myMat->stock + $this->takeQuantity,
-                            'updated_at' => now(),
-                        ]);
-                } else {
-                    DB::table('support_maintenance_materials')->insert([
-                        'sku' => $whMat->sku,
-                        'name' => $whMat->name,
-                        'category' => $whMat->category,
-                        'stock' => $this->takeQuantity,
-                        'min_stock' => $whMat->min_stock ?? 5,
-                        'unit' => $whMat->unit ?: 'pcs',
-                        'location' => 'Bagasi Teknisi (' . $user->name . ')',
-                        'technician_id' => $user->id,
-                        'notes' => 'Diambil dari Gudang Kantor',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-
-                // 4. Catat mutasi / transfer ke usage log
-                DB::table('support_maintenance_usages')->insert([
-                    'material_id' => $whMat->id,
-                    'material_name' => '[AMBIL GUDANG] ' . $whMat->name,
-                    'quantity' => $this->takeQuantity,
-                    'unit' => $whMat->unit ?: 'pcs',
-                    'technician_id' => $user->id,
-                    'technician_name' => $user->name,
-                    'used_date' => now()->toDateString(),
-                    'notes' => 'Pengambilan material dari Gudang Kantor ke Bagasi Teknisi' . ($this->takeNotes ? ' (' . $this->takeNotes . ')' : ''),
-                    'created_by' => $user->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                $requisition = InventoryRequisition::create([
+                    'uuid' => (string) Str::uuid(),
+                    'requester_id' => $user->id,
+                    'requester_type' => 'technician',
+                    'warehouse_id' => $warehouse->id,
+                    'branch_id' => $user->branch_id,
+                    'distribution_method' => 'direct_technician',
+                    'designated_technician_id' => $user->id,
+                    'work_order_type' => $this->reqWorkOrderType,
+                    'status' => 'pending',
+                    'notes' => $this->reqReason ?: 'Permintaan material teknisi via Portal Teknisi',
                 ]);
 
-                // 5. Sinkronisasi dengan Enterprise Inventory & Custody (SSOT)
-                try {
-                    $item = Item::where('sku', $whMat->sku)->orWhere('name', $whMat->name)->first();
-                    if ($item) {
-                        $wh = Warehouse::where('is_active', true)->first();
-                        $whId = $wh ? $wh->id : 1;
-
-                        // Kurangi stok di inventory_stocks
-                        $stock = InventoryStock::where('warehouse_id', $whId)->where('item_id', $item->id)->first();
-                        $balBefore = $stock ? (float)$stock->quantity : 0;
-                        $balAfter = max(0, $balBefore - $this->takeQuantity);
-                        if ($stock) {
-                            $stock->quantity = $balAfter;
-                            $stock->save();
-                        }
-
-                        // Catat mutasi persediaan resmi
-                        InventoryStockMutation::create([
-                            'company_id' => $user->company_id ?? 1,
-                            'branch_id' => $user->branch_id,
-                            'warehouse_id' => $whId,
-                            'item_id' => $item->id,
-                            'type' => 'outbound_dispatch',
-                            'qty_in' => 0,
-                            'qty_out' => $this->takeQuantity,
-                            'balance_before' => $balBefore,
-                            'balance_after' => $balAfter,
-                            'reference_type' => 'technician_take',
-                            'notes' => 'Diambil langsung oleh teknisi ' . $user->name . ' via Portal Teknisi' . ($this->takeNotes ? ' (' . $this->takeNotes . ')' : ''),
-                            'created_by' => $user->id,
-                        ]);
-
-                        // Catat / Update Custody Teknisi
-                        $custody = InventoryCustody::where('holder_type', 'technician')
-                            ->where('holder_id', $user->id)
-                            ->where('item_id', $item->id)
-                            ->where('status', 'in_custody')
-                            ->first();
-
-                        if ($custody) {
-                            $custody->quantity = (float)$custody->quantity + $this->takeQuantity;
-                            $custody->save();
-                        } else {
-                            InventoryCustody::create([
-                                'branch_id' => $user->branch_id,
-                                'item_id' => $item->id,
-                                'holder_type' => 'technician',
-                                'holder_id' => $user->id,
-                                'quantity' => $this->takeQuantity,
-                                'used_quantity' => 0,
-                                'returned_quantity' => 0,
-                                'status' => 'in_custody',
-                                'notes' => 'Pengambilan mandiri via Portal Teknisi',
-                            ]);
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Error syncing take to Enterprise Inventory: ' . $e->getMessage());
-                }
+                InventoryRequisitionItem::create([
+                    'requisition_id' => $requisition->id,
+                    'item_id' => $item->id,
+                    'quantity_requested' => $this->reqQuantity,
+                    'quantity_approved' => 0,
+                    'quantity_dispatched' => 0,
+                    'notes' => $this->reqReason ?: "Permintaan {$item->name}",
+                ]);
             });
 
-            session()->flash('success', "Berhasil mengambil {$this->takeQuantity} barang dari Gudang Kantor ke Bagasi Anda!");
-            $this->showTakeModal = false;
-            $this->activeTab = 'stok';
+            session()->flash('success', "Permintaan barang \"{$this->reqMaterialName}\" ({$this->reqQuantity} {$this->reqUnit}) berhasil diajukan! Menunggu persetujuan Admin Gudang.");
+            $this->showRequestModal = false;
+            $this->activeTab = 'permintaan';
         } catch (\Throwable $e) {
-            session()->flash('error', $e->getMessage());
+            session()->flash('error', 'Gagal mengajukan permintaan: ' . $e->getMessage());
         }
     }
 
-    public function openRecordUsageModal(int $materialId)
+    /**
+     * Buka Modal Catat Pemakaian Barang dari Custody Teknisi
+     */
+    public function openRecordUsageModal(int $custodyId)
     {
-        $mat = DB::table('support_maintenance_materials')->where('id', $materialId)->first();
-        if (!$mat) return;
+        $custody = InventoryCustody::with(['item', 'itemSerial'])->find($custodyId);
+        if (!$custody) return;
 
-        $this->selectedMaterialId = $mat->id;
-        $this->usageMaterialName = $mat->name;
-        $this->usageUnit = $mat->unit ?: 'pcs';
+        $this->selectedCustodyId = $custody->id;
+        $this->usageMaterialName = $custody->item?->name ?? 'Material #' . $custody->item_id;
+        $this->usageSerial = $custody->itemSerial?->serial_number ?? '';
+        $this->usageMaxQuantity = (float) $custody->available_quantity;
         $this->usageQuantity = 1;
-        $this->usageNotes = '';
+        $this->usageUnit = $custody->item?->unit ?: 'pcs';
         $this->usageTicketId = null;
+        $this->usageNotes = '';
         $this->showUsageModal = true;
     }
 
+    /**
+     * Simpan Pemakaian Material Lapangan
+     */
     public function saveUsage()
     {
         $this->validate([
-            'selectedMaterialId' => 'required|integer',
-            'usageQuantity' => 'required|integer|min:1',
-            'usageNotes' => 'nullable|string|max:255',
+            'selectedCustodyId' => 'required|integer|exists:inventory_custodies,id',
+            'usageQuantity' => 'required|numeric|min:0.01',
+            'usageNotes' => 'nullable|string|max:500',
+            'usageTicketId' => 'nullable|integer|exists:support_tickets,id',
         ]);
 
         $user = Auth::user();
 
         try {
             DB::transaction(function () use ($user) {
-                $mat = DB::table('support_maintenance_materials')
-                    ->where('id', $this->selectedMaterialId)
+                $custody = InventoryCustody::with(['item', 'itemSerial'])
+                    ->where('id', $this->selectedCustodyId)
+                    ->where('holder_id', $user->id)
                     ->lockForUpdate()
-                    ->first();
+                    ->firstOrFail();
 
-                if (!$mat) {
-                    throw new \RuntimeException('Data material tidak ditemukan.');
+                $avail = (float) $custody->available_quantity;
+                if ($this->usageQuantity > $avail) {
+                    throw new \RuntimeException("Jumlah melebihi sisa barang di bagasi Anda (Tersedia: {$avail} {$custody->item?->unit}).");
                 }
 
-                if ((int) $mat->stock < $this->usageQuantity) {
-                    throw new \RuntimeException("Stok tidak mencukupi (sisa: {$mat->stock} {$mat->unit}).");
-                }
-
-                // Potong stok material
-                DB::table('support_maintenance_materials')
-                    ->where('id', $mat->id)
-                    ->update([
-                        'stock' => (int) $mat->stock - $this->usageQuantity,
-                        'updated_at' => now(),
-                    ]);
-
-                // Catat ke usage history
-                DB::table('support_maintenance_usages')->insert([
-                    'material_id' => $mat->id,
-                    'material_name' => $mat->name,
-                    'quantity' => $this->usageQuantity,
-                    'unit' => $mat->unit ?: 'pcs',
+                $usage = InventoryUsage::create([
                     'technician_id' => $user->id,
-                    'technician_name' => $user->name,
+                    'customer_id' => $this->usageTicketId ? Ticket::find($this->usageTicketId)?->customer_id : null,
                     'ticket_id' => $this->usageTicketId ?: null,
-                    'used_date' => now()->toDateString(),
-                    'notes' => trim($this->usageNotes) ?: 'Pemakaian lapangan oleh teknisi',
-                    'created_by' => $user->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'work_order_type' => 'maintenance',
+                    'usage_date' => now()->toDateString(),
+                    'branch_id' => $user->branch_id,
+                    'notes' => trim($this->usageNotes) ?: 'Pemakaian lapangan oleh teknisi via Portal Teknisi',
                 ]);
 
-                // Sinkronisasi dengan Enterprise Inventory Usages & Custody
-                try {
-                    $item = Item::where('sku', $mat->sku)->orWhere('name', $mat->name)->first();
-                    if ($item) {
-                        $custody = InventoryCustody::where('holder_type', 'technician')
-                            ->where('holder_id', $user->id)
-                            ->where('item_id', $item->id)
-                            ->where('status', 'in_custody')
-                            ->first();
+                $newUsed = (float) $custody->used_quantity + (float) $this->usageQuantity;
+                $newAvail = max(0, (float) $custody->quantity - $newUsed - (float) $custody->returned_quantity);
 
-                        if ($custody) {
-                            $custody->used_quantity = (float)$custody->used_quantity + $this->usageQuantity;
-                            $custody->save();
-                        }
+                $custody->update([
+                    'used_quantity' => $newUsed,
+                    'status' => ($newAvail <= 0) ? 'used' : 'in_custody',
+                    'ticket_id' => $this->usageTicketId ?: $custody->ticket_id,
+                ]);
 
-                        $usage = InventoryUsage::create([
-                            'uuid' => (string) Str::uuid(),
-                            'company_id' => $user->company_id ?? 1,
-                            'branch_id' => $user->branch_id,
-                            'ticket_id' => $this->usageTicketId ?: null,
-                            'work_order_type' => 'maintenance',
-                            'used_by' => $user->id,
-                            'usage_date' => now()->toDateString(),
-                            'optical_power_dbm' => null,
-                            'notes' => trim($this->usageNotes) ?: 'Pemakaian lapangan oleh teknisi via Portal Teknisi',
-                        ]);
-
-                        InventoryUsageItem::create([
-                            'usage_id' => $usage->id,
-                            'custody_id' => $custody?->id,
-                            'item_id' => $item->id,
-                            'quantity' => $this->usageQuantity,
-                            'unit' => $mat->unit ?: 'pcs',
-                            'notes' => $this->usageNotes,
+                if ($custody->item_serial_id) {
+                    $serial = ItemSerial::find($custody->item_serial_id);
+                    if ($serial) {
+                        $serial->update([
+                            'status' => 'installed',
+                            'ticket_id' => $this->usageTicketId ?: $serial->ticket_id,
+                            'customer_id' => $usage->customer_id ?: $serial->customer_id,
+                            'updated_by' => $user->id,
                         ]);
                     }
-                } catch (\Throwable $e) {
-                    Log::warning('Error syncing usage to Enterprise Inventory: ' . $e->getMessage());
                 }
+
+                InventoryUsageItem::create([
+                    'usage_id' => $usage->id,
+                    'custody_id' => $custody->id,
+                    'item_id' => $custody->item_id,
+                    'item_serial_id' => $custody->item_serial_id,
+                    'quantity' => $this->usageQuantity,
+                    'notes' => $this->usageNotes ?: null,
+                ]);
             });
 
-            session()->flash('success', "Pemakaian {$this->usageQuantity} {$this->usageUnit} \"{$this->usageMaterialName}\" berhasil dicatat & stok terpotong.");
+            session()->flash('success', "Pemakaian {$this->usageQuantity} {$this->usageUnit} \"{$this->usageMaterialName}\" berhasil dicatat dan stok bagasi telah terpotong.");
             $this->showUsageModal = false;
         } catch (\Throwable $e) {
             session()->flash('error', $e->getMessage());
         }
     }
 
-    public function openRequestModal()
+    /**
+     * Buka Modal Retur / Pengembalian Barang
+     */
+    public function openReturnModal(int $custodyId, string $action = 'retur')
     {
-        $this->reqMaterialName = '';
-        $this->reqQuantity = 1;
-        $this->reqUnit = 'pcs';
-        $this->reqReason = '';
-        $this->showRequestModal = true;
-    }
+        $custody = InventoryCustody::with(['item', 'itemSerial'])->find($custodyId);
+        if (!$custody) return;
 
-    public function submitMaterialRequest()
-    {
-        $this->validate([
-            'reqMaterialName' => 'required|string|max:150',
-            'reqQuantity' => 'required|integer|min:1',
-            'reqUnit' => 'required|string|max:20',
-            'reqReason' => 'nullable|string|max:255',
-        ]);
-
-        $user = Auth::user();
-
-        // Catat sebagai log permintaan material di support_maintenance_usages dengan status/notes khusus
-        try {
-            DB::table('support_maintenance_usages')->insert([
-                'material_id' => null,
-                'material_name' => '[PERMINTAAN TAMBAHAN] ' . $this->reqMaterialName,
-                'quantity' => $this->reqQuantity,
-                'unit' => $this->reqUnit,
-                'technician_id' => $user->id,
-                'technician_name' => $user->name,
-                'used_date' => now()->toDateString(),
-                'notes' => 'Alasan: ' . ($this->reqReason ?: 'Kebutuhan pekerjaan lapangan (Menunggu Approval Gudang/Admin)'),
-                'created_by' => $user->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            // Hubungkan otomatis ke Enterprise Inventory Requisition
-            try {
-                $wh = Warehouse::where('is_active', true)->first();
-                $item = Item::where('name', 'like', '%' . trim($this->reqMaterialName) . '%')->first() ?? Item::first();
-
-                $req = InventoryRequisition::create([
-                    'uuid' => (string) Str::uuid(),
-                    'company_id' => $user->company_id ?? 1,
-                    'branch_id' => $user->branch_id,
-                    'warehouse_id' => $wh ? $wh->id : 1,
-                    'requester_id' => $user->id,
-                    'requester_type' => 'technician',
-                    'distribution_method' => 'direct_technician',
-                    'designated_technician_id' => $user->id,
-                    'work_order_type' => 'stock_topup',
-                    'status' => 'pending',
-                    'notes' => 'Permintaan mandiri teknisi: ' . ($this->reqReason ?: 'Kebutuhan pekerjaan operasional lapangan'),
-                ]);
-
-                if ($item) {
-                    InventoryRequisitionItem::create([
-                        'requisition_id' => $req->id,
-                        'item_id' => $item->id,
-                        'requested_quantity' => $this->reqQuantity,
-                        'approved_quantity' => 0,
-                        'notes' => $this->reqMaterialName,
-                    ]);
-                }
-            } catch (\Throwable $re) {
-                Log::warning('Error creating enterprise requisition: ' . $re->getMessage());
-            }
-
-            session()->flash('success', "Permintaan tambahan barang \"{$this->reqMaterialName}\" ({$this->reqQuantity} {$this->reqUnit}) telah dikirimkan ke Admin Gudang!");
-            $this->showRequestModal = false;
-            $this->activeTab = 'pemakaian';
-        } catch (\Throwable $e) {
-            session()->flash('error', 'Gagal mengirimkan permintaan: ' . $e->getMessage());
-        }
-    }
-
-    public function openReturnModal(int $materialId, string $action = 'retur')
-    {
-        $mat = DB::table('support_maintenance_materials')->where('id', $materialId)->first();
-        if (!$mat) return;
-
-        $this->returnMaterialId = $mat->id;
-        $this->returnMaterialName = $mat->name;
-        $this->returnUnit = $mat->unit ?: 'pcs';
+        $this->returnCustodyId = $custody->id;
+        $this->returnAction = in_array($action, ['retur', 'rusak', 'hilang'], true) ? $action : 'retur';
+        $this->returnMaterialName = $custody->item?->name ?? 'Material #' . $custody->item_id;
+        $this->returnSerial = $custody->itemSerial?->serial_number ?? '';
+        $this->returnMaxQuantity = (float) $custody->available_quantity;
         $this->returnQuantity = 1;
-        $this->returnSerial = '';
+        $this->returnUnit = $custody->item?->unit ?: 'pcs';
         $this->returnReason = '';
-        $this->returnAction = in_array($action, ['retur', 'rusak', 'hilang']) ? $action : 'retur';
         $this->showReturnModal = true;
     }
 
+    /**
+     * Submit Pengembalian Barang (Return) ke Gudang
+     */
     public function submitReturn()
     {
         $this->validate([
-            'returnMaterialId' => 'required|integer',
-            'returnQuantity' => 'required|integer|min:1',
-            'returnAction' => 'required|in:retur,rusak,hilang',
-            'returnReason' => 'nullable|string|max:255',
+            'returnCustodyId' => 'required|integer|exists:inventory_custodies,id',
+            'returnQuantity' => 'required|numeric|min:0.01',
+            'returnAction' => 'required|string|in:retur,rusak,hilang',
+            'returnReason' => 'nullable|string|max:500',
         ]);
 
         $user = Auth::user();
 
         try {
-            DB::transaction(function () use ($user) {
-                $mat = DB::table('support_maintenance_materials')
-                    ->where('id', $this->returnMaterialId)
+            $returnDoc = null;
+            DB::transaction(function () use ($user, &$returnDoc) {
+                $custody = InventoryCustody::with(['item', 'itemSerial'])
+                    ->where('id', $this->returnCustodyId)
+                    ->where('holder_id', $user->id)
                     ->lockForUpdate()
-                    ->first();
+                    ->firstOrFail();
 
-                if (!$mat) {
-                    throw new \RuntimeException('Data material tidak ditemukan.');
+                $avail = (float) $custody->available_quantity;
+                if ($this->returnQuantity > $avail) {
+                    throw new \RuntimeException("Jumlah retur melebihi sisa barang di bagasi Anda (Tersedia: {$avail} {$custody->item?->unit}).");
                 }
 
-                if ((int) $mat->stock < $this->returnQuantity) {
-                    throw new \RuntimeException("Jumlah melebihi stok yang tersedia (sisa: {$mat->stock} {$mat->unit}).");
-                }
+                $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+                    ?? Warehouse::where('is_active', true)->first();
 
-                // Kurangi stok teknisi
-                DB::table('support_maintenance_materials')
-                    ->where('id', $mat->id)
-                    ->update([
-                        'stock' => max(0, (int) $mat->stock - $this->returnQuantity),
-                        'updated_at' => now(),
-                    ]);
-
-                // Jika aksi retur ke gudang kantor, kembalikan stok ke Gudang Utama
-                if ($this->returnAction === 'retur') {
-                    $whMat = DB::table('support_maintenance_materials')
-                        ->whereNull('technician_id')
-                        ->where(function ($q) use ($mat) {
-                            if ($mat->sku) {
-                                $q->where('sku', $mat->sku);
-                            } else {
-                                $q->where('name', $mat->name);
-                            }
-                        })
-                        ->first();
-
-                    if ($whMat) {
-                        DB::table('support_maintenance_materials')
-                            ->where('id', $whMat->id)
-                            ->update([
-                                'stock' => (int) $whMat->stock + $this->returnQuantity,
-                                'updated_at' => now(),
-                            ]);
-                    }
-                }
-
-                $tag = match($this->returnAction) {
-                    'retur' => '[RETUR KE GUDANG]',
-                    'rusak' => '[BARANG RUSAK/AFKIR]',
-                    'hilang' => '[BARANG HILANG]',
-                };
-
-                $notes = "Status: {$tag}. " . ($this->returnSerial ? "SN: {$this->returnSerial}. " : "") . ($this->returnReason ?: 'Laporan mandiri teknisi');
-
-                DB::table('support_maintenance_usages')->insert([
-                    'material_id' => $mat->id,
-                    'material_name' => "{$tag} {$mat->name}",
-                    'quantity' => $this->returnQuantity,
-                    'unit' => $mat->unit ?: 'pcs',
-                    'technician_id' => $user->id,
-                    'technician_name' => $user->name,
-                    'used_date' => now()->toDateString(),
-                    'notes' => $notes,
-                    'created_by' => $user->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                $returnDoc = InventoryReturn::create([
+                    'returner_id' => $user->id,
+                    'returner_type' => 'technician',
+                    'warehouse_id' => $warehouse ? $warehouse->id : 1,
+                    'branch_id' => $user->branch_id,
+                    'status' => 'pending',
+                    'notes' => "Pengembalian barang oleh {$user->name}: " . ($this->returnReason ?: 'Selesai tugas/kelebihan stok bagasi'),
                 ]);
 
-                // Sinkronisasi dengan Enterprise Inventory Custody & Returns (QC Pending)
-                try {
-                    $item = Item::where('sku', $mat->sku)->orWhere('name', $mat->name)->first();
-                    if ($item) {
-                        $custody = InventoryCustody::where('holder_type', 'technician')
-                            ->where('holder_id', $user->id)
-                            ->where('item_id', $item->id)
-                            ->where('status', 'in_custody')
-                            ->first();
+                InventoryReturnItem::create([
+                    'return_id' => $returnDoc->id,
+                    'custody_id' => $custody->id,
+                    'item_id' => $custody->item_id,
+                    'item_serial_id' => $custody->item_serial_id,
+                    'quantity' => $this->returnQuantity,
+                    'condition' => match($this->returnAction) {
+                        'retur' => 'good',
+                        'rusak' => 'damaged',
+                        'hilang' => 'unusable',
+                        default => 'good',
+                    },
+                    'action_taken' => match($this->returnAction) {
+                        'retur' => 'restock',
+                        'rusak' => 'repair',
+                        'hilang' => 'scrap',
+                        default => 'restock',
+                    },
+                    'qc_notes' => $this->returnReason ?: null,
+                ]);
 
-                        if ($custody) {
-                            if ($this->returnAction === 'retur') {
-                                $custody->returned_quantity = (float)$custody->returned_quantity + $this->returnQuantity;
-                            } else {
-                                $custody->used_quantity = (float)$custody->used_quantity + $this->returnQuantity;
-                            }
-                            $custody->save();
-                        }
+                $newReturned = (float) $custody->returned_quantity + (float) $this->returnQuantity;
+                $newAvail = max(0, (float) $custody->quantity - (float) $custody->used_quantity - $newReturned);
 
-                        $wh = Warehouse::where('is_active', true)->first();
-                        $whId = $wh ? $wh->id : 1;
-
-                        $returnDoc = InventoryReturn::create([
-                            'uuid' => (string) Str::uuid(),
-                            'company_id' => $user->company_id ?? 1,
-                            'branch_id' => $user->branch_id,
-                            'warehouse_id' => $whId,
-                            'returner_id' => $user->id,
-                            'returner_type' => 'technician',
-                            'status' => 'pending_qc',
-                            'reason' => "Status: {$tag}. " . ($this->returnReason ?: 'Laporan pengembalian/kondisi material dari teknisi'),
-                        ]);
-
-                        InventoryReturnItem::create([
-                            'return_id' => $returnDoc->id,
-                            'custody_id' => $custody?->id,
-                            'item_id' => $item->id,
-                            'quantity' => $this->returnQuantity,
-                            'condition' => match($this->returnAction) {
-                                'retur' => 'good',
-                                'rusak' => 'damaged',
-                                'hilang' => 'unusable',
-                            },
-                            'action' => match($this->returnAction) {
-                                'retur' => 'restock',
-                                'rusak' => 'repair',
-                                'hilang' => 'scrap',
-                            },
-                            'serial_number' => $this->returnSerial ?: null,
-                            'qc_status' => 'pending',
-                            'notes' => $this->returnReason,
-                        ]);
-                    }
-                } catch (\Throwable $retEx) {
-                    Log::warning('Error syncing return to Enterprise Inventory: ' . $retEx->getMessage());
-                }
+                $custody->update([
+                    'returned_quantity' => $newReturned,
+                    'status' => ($newAvail <= 0) ? 'returned' : 'in_custody',
+                ]);
             });
 
             $label = match($this->returnAction) {
@@ -628,7 +343,7 @@ class Index extends Component
                 'hilang' => 'Laporan barang hilang',
             };
 
-            session()->flash('success', "{$label} ({$this->returnQuantity} {$this->returnUnit} \"{$this->returnMaterialName}\") berhasil dicatat.");
+            session()->flash('success', "{$label} ({$this->returnQuantity} {$this->returnUnit} \"{$this->returnMaterialName}\") berhasil diajukan dengan No. {$returnDoc->return_number}! Silakan serahkan fisik barang ke Admin Gudang.");
             $this->showReturnModal = false;
         } catch (\Throwable $e) {
             session()->flash('error', $e->getMessage());
@@ -640,99 +355,106 @@ class Index extends Component
         $user = Auth::user();
         $q = trim($this->search);
 
-        // 1. Data Stok Bagasi Saya (hanya barang yang dipegang teknisi ini)
-        $materials = collect();
-        if (Schema::hasTable('support_maintenance_materials')) {
-            $builder = DB::table('support_maintenance_materials')
-                ->where('technician_id', $user->id)
-                ->when(!empty($q), function ($b) use ($q) {
-                    $b->where(function ($sub) use ($q) {
-                        $sub->where('name', 'like', "%{$q}%")
-                            ->orWhere('sku', 'like', "%{$q}%")
-                            ->orWhere('category', 'like', "%{$q}%");
+        // 1. DATA STOK BAGASI SAYA (Real Enterprise Custody)
+        $custodiesQuery = InventoryCustody::with(['item', 'itemSerial'])
+            ->where('holder_id', $user->id)
+            ->where('holder_type', 'technician')
+            ->whereRaw('(quantity - used_quantity - returned_quantity) > 0')
+            ->when(!empty($q), function ($b) use ($q) {
+                $b->where(function ($sub) use ($q) {
+                    $sub->whereHas('item', function ($iq) use ($q) {
+                        $iq->where('name', 'like', "%{$q}%")
+                           ->orWhere('sku', 'like', "%{$q}%")
+                           ->orWhere('category', 'like', "%{$q}%");
+                    })->orWhereHas('itemSerial', function ($sq) use ($q) {
+                        $sq->where('serial_number', 'like', "%{$q}%");
                     });
-                })
-                ->orderBy('category')
-                ->orderBy('name');
+                });
+            })
+            ->latest('id');
 
-            $materials = $builder->get();
+        $materials = $custodiesQuery->get();
 
-            // Sinkronkan juga item dari Enterprise Custody jika ada dispatch resmi dari gudang
-            try {
-                $custodies = InventoryCustody::with(['item', 'itemSerial'])
-                    ->where('holder_id', $user->id)
-                    ->where('holder_type', 'technician')
-                    ->activeCustody()
-                    ->get();
+        // 2. DATA KETERSEDIAAN GUDANG KANTOR (Real Enterprise Stocks & Catalog)
+        $activeWarehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+            ?? Warehouse::where('is_active', true)->first();
 
-                $added = false;
-                foreach ($custodies as $c) {
-                    if ($c->item && !$materials->firstWhere('sku', $c->item->sku)) {
-                        DB::table('support_maintenance_materials')->insert([
-                            'sku' => $c->item->sku,
-                            'name' => $c->item->name,
-                            'category' => $c->item->category ?? 'Material',
-                            'stock' => (int) $c->available_quantity,
-                            'min_stock' => $c->item->min_stock ?? 5,
-                            'unit' => $c->item->unit ?: 'pcs',
-                            'location' => 'Bagasi Teknisi (' . $user->name . ')',
-                            'technician_id' => $user->id,
-                            'notes' => 'Dispatched from Central Warehouse',
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                        $added = true;
-                    }
+        $warehouseId = $activeWarehouse?->id;
+
+        $itemsQuery = Item::query()
+            ->where('is_active', true)
+            ->when(!empty($q), function ($b) use ($q) {
+                $b->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                       ->orWhere('sku', 'like', "%{$q}%")
+                       ->orWhere('category', 'like', "%{$q}%")
+                       ->orWhere('brand', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('category')
+            ->orderBy('name');
+
+        $rawItems = $itemsQuery->get();
+
+        // Hitung real stock per item di gudang ini
+        $warehouseMaterials = $rawItems->map(function ($item) use ($warehouseId, $activeWarehouse) {
+            $stockQty = 0.0;
+            if ($warehouseId) {
+                if ($item->is_serialized) {
+                    $serialCount = (float) ItemSerial::where('item_id', $item->id)
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('status', 'in_warehouse')
+                        ->count();
+                    $stk = InventoryStock::where('warehouse_id', $warehouseId)->where('item_id', $item->id)->first();
+                    $stockQty = max((float) ($stk?->quantity ?? 0.0), $serialCount);
+                } else {
+                    $stk = InventoryStock::where('warehouse_id', $warehouseId)->where('item_id', $item->id)->first();
+                    $stockQty = (float) ($stk?->quantity ?? 0.0);
                 }
-                if ($added) {
-                    $materials = DB::table('support_maintenance_materials')
-                        ->where('technician_id', $user->id)
-                        ->orderBy('name')
-                        ->get();
-                }
-            } catch (\Throwable) {}
-        }
+            }
 
-        // 2. Data Stok Gudang Kantor (technician_id IS NULL)
-        $warehouseMaterials = collect();
-        if (Schema::hasTable('support_maintenance_materials')) {
-            $whBuilder = DB::table('support_maintenance_materials')
-                ->whereNull('technician_id')
-                ->when(!empty($q), function ($b) use ($q) {
-                    $b->where(function ($sub) use ($q) {
-                        $sub->where('name', 'like', "%{$q}%")
-                            ->orWhere('sku', 'like', "%{$q}%")
-                            ->orWhere('category', 'like', "%{$q}%");
-                    });
-                })
-                ->orderBy('category')
-                ->orderBy('name');
+            return (object) [
+                'id' => $item->id,
+                'sku' => $item->sku,
+                'name' => $item->name,
+                'category' => $item->category ?? 'Material',
+                'unit' => $item->unit ?: 'pcs',
+                'stock' => $stockQty,
+                'min_stock' => $item->min_stock ?? 5,
+                'location' => $activeWarehouse?->name ?? 'Gudang Utama',
+                'is_serialized' => (bool) $item->is_serialized,
+            ];
+        });
 
-            $warehouseMaterials = $whBuilder->get();
-        }
+        // 3. RIWAYAT PEMAKAIAN SAYA (Real InventoryUsage)
+        $myUsages = InventoryUsage::with(['items.item', 'items.itemSerial', 'ticket.customer'])
+            ->where('technician_id', $user->id)
+            ->when(!empty($q), function ($b) use ($q) {
+                $b->where(function ($sub) use ($q) {
+                    $sub->where('usage_number', 'like', "%{$q}%")
+                       ->orWhere('notes', 'like', "%{$q}%")
+                       ->orWhereHas('items.item', function ($iq) use ($q) {
+                           $iq->where('name', 'like', "%{$q}%");
+                       });
+                });
+            })
+            ->latest('id')
+            ->paginate(15);
 
-        // 3. Data Riwayat Pemakaian & Mutasi Saya
-        $myUsages = collect();
-        if (Schema::hasTable('support_maintenance_usages')) {
-            $usageBuilder = DB::table('support_maintenance_usages')
-                ->where(function ($b) use ($user) {
-                    $b->where('technician_id', $user->id)
-                      ->orWhere('created_by', $user->id);
-                })
-                ->when(!empty($q), function ($b) use ($q) {
-                    $b->where(function ($sub) use ($q) {
-                        $sub->where('material_name', 'like', "%{$q}%")
-                            ->orWhere('notes', 'like', "%{$q}%");
-                    });
-                })
-                ->orderByDesc('id')
-                ->paginate(15);
-
-            $myUsages = $usageBuilder;
-        }
+        // 4. RIWAYAT PERMINTAAN SAYA (Real InventoryRequisition)
+        $myRequisitions = InventoryRequisition::with(['items.item', 'warehouse'])
+            ->where('requester_id', $user->id)
+            ->when(!empty($q), function ($b) use ($q) {
+                $b->where(function ($sub) use ($q) {
+                    $sub->where('requisition_number', 'like', "%{$q}%")
+                       ->orWhere('notes', 'like', "%{$q}%");
+                });
+            })
+            ->latest('id')
+            ->paginate(15);
 
         // Tiket Aktif Teknisi untuk Dropdown Pemakaian
-        $activeTickets = \App\Models\Support\Ticket::withoutGlobalScopes()
+        $activeTickets = Ticket::withoutGlobalScopes()
             ->where(function ($sq) use ($user) {
                 $sq->where('assigned_to', $user->id)
                    ->orWhereNull('assigned_to');
@@ -745,33 +467,36 @@ class Index extends Component
         return view('livewire.isp.technician.material.index', [
             'materials' => $materials,
             'warehouseMaterials' => $warehouseMaterials,
+            'activeWarehouse' => $activeWarehouse,
             'myUsages' => $myUsages,
+            'myRequisitions' => $myRequisitions,
             'activeTickets' => $activeTickets,
             'activeTab' => $this->activeTab,
             'search' => $this->search,
-            'showTakeModal' => $this->showTakeModal,
-            'takeWarehouseMaterialId' => $this->takeWarehouseMaterialId,
-            'takeQuantity' => $this->takeQuantity,
-            'takeNotes' => $this->takeNotes,
-            'showUsageModal' => $this->showUsageModal,
-            'selectedMaterialId' => $this->selectedMaterialId,
-            'usageMaterialName' => $this->usageMaterialName,
-            'usageQuantity' => $this->usageQuantity,
-            'usageUnit' => $this->usageUnit,
-            'usageTicketId' => $this->usageTicketId,
-            'usageNotes' => $this->usageNotes,
             'showRequestModal' => $this->showRequestModal,
+            'reqItemId' => $this->reqItemId,
             'reqMaterialName' => $this->reqMaterialName,
             'reqQuantity' => $this->reqQuantity,
             'reqUnit' => $this->reqUnit,
             'reqReason' => $this->reqReason,
+            'reqWorkOrderType' => $this->reqWorkOrderType,
+            'showUsageModal' => $this->showUsageModal,
+            'selectedCustodyId' => $this->selectedCustodyId,
+            'usageMaterialName' => $this->usageMaterialName,
+            'usageSerial' => $this->usageSerial,
+            'usageQuantity' => $this->usageQuantity,
+            'usageMaxQuantity' => $this->usageMaxQuantity,
+            'usageUnit' => $this->usageUnit,
+            'usageTicketId' => $this->usageTicketId,
+            'usageNotes' => $this->usageNotes,
             'showReturnModal' => $this->showReturnModal,
+            'returnCustodyId' => $this->returnCustodyId,
             'returnAction' => $this->returnAction,
-            'returnMaterialId' => $this->returnMaterialId,
             'returnMaterialName' => $this->returnMaterialName,
-            'returnQuantity' => $this->returnQuantity,
-            'returnUnit' => $this->returnUnit,
             'returnSerial' => $this->returnSerial,
+            'returnQuantity' => $this->returnQuantity,
+            'returnMaxQuantity' => $this->returnMaxQuantity,
+            'returnUnit' => $this->returnUnit,
             'returnReason' => $this->returnReason,
         ]);
     }
