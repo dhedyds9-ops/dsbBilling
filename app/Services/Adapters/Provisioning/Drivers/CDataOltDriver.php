@@ -1672,7 +1672,7 @@ class CDataOltDriver extends BaseOltDriver
     public function pushOnuWanConfig(Onu $onu, array $config): bool
     {
         try {
-            $ponPort = $onu->ponPort->port_number ?? $onu->pon_port ?? 0;
+            $ponPort = $onu->pon_port ?? ($onu->ponPort->port_number ?? ($onu->pon_port_id ?? 1));
             $onuId   = $onu->onu_index ?? $onu->onu_id_on_olt ?? $onu->getKey();
 
             $mode = strtolower($config['mode'] ?? 'pppoe');
@@ -1694,17 +1694,25 @@ class CDataOltDriver extends BaseOltDriver
                 $this->cli->execute($cmd . "\r\n", false);
             }
 
-            // Injeksi otomatis WAN IP Management TR-069 (VLAN 901)
+            // Injeksi otomatis WAN IP Management TR-069 (IP Host OMCI ME 134)
+            $tr069Mode = strtolower($config['tr069_mode'] ?? 'dhcp');
             $tr069Vlan = (int)($config['tr069_vlan'] ?? 901);
-            $mgmtCmd = "ont ipconfig $ponPort $onuId ip-index 2 dhcp vlan $tr069Vlan priority 0";
+            if ($tr069Mode === 'static' && !empty($config['tr069_static_ip'])) {
+                $stIp = trim($config['tr069_static_ip']);
+                $stMask = trim($config['tr069_netmask'] ?? '255.255.255.0');
+                $stGw = trim($config['tr069_gateway'] ?? '');
+                $mgmtCmd = "ont ipconfig $ponPort $onuId ip-index 2 static ip $stIp mask $stMask gateway $stGw vlan $tr069Vlan priority 0";
+            } else {
+                $mgmtCmd = "ont ipconfig $ponPort $onuId ip-index 2 dhcp vlan $tr069Vlan priority 0";
+            }
             $this->cli->execute($mgmtCmd . "\r\n", false);
 
             // Injeksi OMCI TR-069 ACS Server URL jika tersedia di konfigurasi / pengaturan
             $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
-            $acsUrl = $acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', '');
+            $acsUrl = $config['acs_url'] ?? ($acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', ''));
             if (!empty($acsUrl)) {
-                $acsUser = $acsSettings['connection_request_username'] ?? config('genieacs.cpe_defaults.connection_request_username', 'dsbilling_cwmp');
-                $acsPass = $acsSettings['connection_request_password'] ?? config('genieacs.cpe_defaults.connection_request_password', 'ChangeMePlease!123');
+                $acsUser = $config['acs_username'] ?? ($acsSettings['connection_request_username'] ?? config('genieacs.cpe_defaults.connection_request_username', 'dsbilling_cwmp'));
+                $acsPass = $config['acs_password'] ?? ($acsSettings['connection_request_password'] ?? config('genieacs.cpe_defaults.connection_request_password', 'ChangeMePlease!123'));
                 $tr069Cmd = "ont tr069-server $ponPort $onuId url $acsUrl user $acsUser password $acsPass";
                 $this->cli->execute($tr069Cmd . "\r\n", false);
             }

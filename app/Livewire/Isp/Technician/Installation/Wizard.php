@@ -49,6 +49,15 @@ class Wizard extends Component
     public $wifi_ssid = '';
     public $wifi_password = '';
 
+    // Konfigurasi IP Host TR-069 & OMCI OLT (Khusus C-Data & GPON/EPON)
+    public bool $enable_tr069_iphost = true;
+    public string $tr069_mode = 'dhcp'; // 'dhcp', 'static', 'pppoe'
+    public string $tr069_vlan = '901';
+    public string $tr069_static_ip = '';
+    public string $tr069_netmask = '255.255.255.0';
+    public string $tr069_gateway = '';
+    public string $tr069_acs_url = '';
+
     // Field Service Proof & Material Consumption (P1-1B)
     public $optical_power = '';
     public $dropcore_meters = 0;
@@ -84,6 +93,10 @@ class Wizard extends Component
 
         $this->network_profile_id = NetworkProfile::withoutGlobalScopes()->where('type', 'pppoe')->first()?->id
             ?? NetworkProfile::withoutGlobalScopes()->first()?->id;
+
+        $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
+        $this->tr069_acs_url = $acsSettings['acs_url'] ?? (config('genieacs.cpe_defaults.acs_url', '') ?: 'http://10.10.10.1:7547');
+        $this->tr069_vlan = (string) ($acsSettings['management_vlan'] ?? '901');
 
         $user = auth()->user();
         $isAdmin = $user && ($user->isSuperAdmin() || $user->hasRole(['administrator', 'superadmin', 'admin', 'manager', 'dispatcher']));
@@ -797,20 +810,54 @@ class Wizard extends Component
                         'type' => 'pppoe',
                         'pipeline_id' => $serviceInstance->provisionPipeline->id,
                         'onu' => $onu,
+                        'username' => $username,
+                        'password' => $password,
+                        'network_profile_id' => $npId,
                     ];
                 } else {
                     $provisioningService->activateHotspotService($data, $user->id);
                     return [
                         'type' => 'hotspot',
                         'onu' => $onu,
+                        'username' => $username,
+                        'password' => $password,
+                        'network_profile_id' => $npId,
                     ];
                 }
             });
 
             // 6. Eksekusi Non-Blocking Post-Commit Actions (di luar database transaction)
             $onu = $executionResult['onu'];
+            $username = $executionResult['username'] ?? '';
+            $password = $executionResult['password'] ?? '';
+            $npId = $executionResult['network_profile_id'] ?? null;
             $this->completed_onu_id = $onu->id;
             $this->last_provisioned_at = now()->format('d M Y H:i:s');
+
+            // Eksekusi Injeksi WAN & IP Host TR-069 OMCI ke OLT (Zero-Touch Provisioning)
+            if ($this->enable_tr069_iphost && !empty($this->olt_id)) {
+                try {
+                    $oltModel = Olt::withoutGlobalScopes()->find($this->olt_id);
+                    if ($oltModel) {
+                        $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($oltModel);
+                        $npVlan = $npId ? (\App\Models\ISP\NetworkProfile::withoutGlobalScopes()->where('id', $npId)->value('vlan_id') ?? 200) : 200;
+                        $driver->pushOnuWanConfig($onu, [
+                            'mode' => $this->service_type === 'hotspot' ? 'dhcp' : 'pppoe',
+                            'vlan_id' => $npVlan,
+                            'username' => $username,
+                            'password' => $password,
+                            'tr069_mode' => $this->tr069_mode,
+                            'tr069_vlan' => (int) ($this->tr069_vlan ?: 901),
+                            'tr069_static_ip' => $this->tr069_static_ip,
+                            'tr069_netmask' => $this->tr069_netmask,
+                            'tr069_gateway' => $this->tr069_gateway,
+                            'acs_url' => $this->tr069_acs_url,
+                        ]);
+                    }
+                } catch (\Throwable $oe) {
+                    \Illuminate\Support\Facades\Log::warning('[Wizard] Gagal push IP Host TR-069 ke OLT via OMCI: ' . $oe->getMessage());
+                }
+            }
 
             if ($executionResult['type'] === 'pppoe') {
                 $this->completed_pipeline_id = $executionResult['pipeline_id'];

@@ -831,6 +831,18 @@ class MobileNetworkApiController extends Controller
                     $wo->save();
                 }
 
+                // Perbarui kontak/alamat jika teknisi melakukan update di lapangan
+                $customerContactUpdates = [];
+                if (!empty($validated['customer_phone']) && $validated['customer_phone'] !== '-' && $customer->phone !== $validated['customer_phone']) {
+                    $customerContactUpdates['phone'] = trim($validated['customer_phone']);
+                }
+                if (!empty($validated['customer_address']) && $customer->address !== $validated['customer_address']) {
+                    $customerContactUpdates['address'] = trim($validated['customer_address']);
+                }
+                if (!empty($customerContactUpdates)) {
+                    $customer->update($customerContactUpdates);
+                }
+
                 $customerInfo = [
                     'id' => $customer->id,
                     'name' => $customer->name,
@@ -841,6 +853,8 @@ class MobileNetworkApiController extends Controller
                 $cs = CustomerService::withoutGlobalScopes()
                     ->where('customer_id', $customerId)
                     ->first();
+
+                $targetCs = null;
 
                 if ($cs) {
                     $cs->onu_id = $onu->id;
@@ -856,6 +870,7 @@ class MobileNetworkApiController extends Controller
                         $cs->password = bcrypt(trim($validated['pppoe_password']));
                     }
                     $cs->save();
+                    $targetCs = $cs;
                 } else {
                     try {
                         // Pastikan ada contract_id yang valid
@@ -889,8 +904,81 @@ class MobileNetworkApiController extends Controller
                         $newCs->contract_id = $contractId ?: 1;
                         $newCs->service_id = $validated['service_profile_id'] ?? (\DB::table('services')->value('id') ?? 1);
                         $newCs->save();
+                        $targetCs = $newCs;
                     } catch (\Throwable $e) {
                         \Log::info("Provision ONT: CustomerService link deferred: " . $e->getMessage());
+                    }
+                }
+
+                // Sinkronkan ke tabel akun otentikasi (PPPoE User atau Hotspot User) agar muncul di modul jaringan
+                if ($targetCs) {
+                    $serviceProfile = null;
+                    if (!empty($validated['service_profile_id'])) {
+                        $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->find($validated['service_profile_id']);
+                    }
+                    if (!$serviceProfile) {
+                        $serviceProfile = \App\Models\ISP\ServiceProfile::withoutGlobalScopes()->first();
+                    }
+
+                    $serviceType = strtolower($serviceProfile?->service_type ?? 'pppoe');
+                    $routerId = \DB::table('routers')->where('branch_id', $user->branch_id)->value('id') 
+                             ?? \DB::table('routers')->value('id');
+
+                    $credUser = !empty($validated['pppoe_username']) 
+                        ? trim($validated['pppoe_username']) 
+                        : ('onu_' . strtolower(substr($sn, -6)));
+                    $credPass = !empty($validated['pppoe_password']) 
+                        ? trim($validated['pppoe_password']) 
+                        : $credUser;
+
+                    if ($serviceType === 'hotspot' && \Illuminate\Support\Facades\Schema::hasTable('hotspot_users')) {
+                        try {
+                            \App\Models\ISP\HotspotUser::updateOrCreate(
+                                ['customer_service_id' => $targetCs->id],
+                                [
+                                    'uuid' => (string) Str::uuid(),
+                                    'username' => $credUser,
+                                    'password' => $credPass,
+                                    'customer_service_id' => $targetCs->id,
+                                    'service_profile_id' => $serviceProfile?->id,
+                                    'router_id' => $routerId,
+                                    'odp_id' => !empty($validated['odp_id']) ? (int) $validated['odp_id'] : null,
+                                    'port_number' => !empty($validated['odp_port']) ? (int) $validated['odp_port'] : null,
+                                    'mac_address' => $sn,
+                                    'status' => 'active',
+                                    'branch_id' => $user->branch_id,
+                                    'reseller_id' => $customer->reseller_id ?? $user->getEffectiveResellerId(),
+                                    'activated_at' => now(),
+                                    'created_by' => $user->id,
+                                ]
+                            );
+                        } catch (\Throwable $he) {
+                            \Log::warning("[provisionOnt] Gagal sinkron HotspotUser: " . $he->getMessage());
+                        }
+                    } elseif (\Illuminate\Support\Facades\Schema::hasTable('pppoe_users')) {
+                        try {
+                            \App\Models\ISP\PPPoEUser::updateOrCreate(
+                                ['customer_service_id' => $targetCs->id],
+                                [
+                                    'uuid' => (string) Str::uuid(),
+                                    'username' => $credUser,
+                                    'password' => $credPass,
+                                    'customer_service_id' => $targetCs->id,
+                                    'service_profile_id' => $serviceProfile?->id,
+                                    'router_id' => $routerId,
+                                    'odp_id' => !empty($validated['odp_id']) ? (int) $validated['odp_id'] : null,
+                                    'port_number' => !empty($validated['odp_port']) ? (int) $validated['odp_port'] : null,
+                                    'mac_address' => $sn,
+                                    'status' => 'active',
+                                    'branch_id' => $user->branch_id,
+                                    'reseller_id' => $customer->reseller_id ?? $user->getEffectiveResellerId(),
+                                    'activated_at' => now(),
+                                    'created_by' => $user->id,
+                                ]
+                            );
+                        } catch (\Throwable $pe) {
+                            \Log::warning("[provisionOnt] Gagal sinkron PPPoEUser: " . $pe->getMessage());
+                        }
                     }
                 }
 
@@ -909,6 +997,28 @@ class MobileNetworkApiController extends Controller
                     } catch (\Throwable $ae) {
                         \Log::warning("[provisionOnt] Gagal catat CRM Activation: " . $ae->getMessage());
                     }
+                }
+            }
+
+            // 5. Injeksi OMCI WAN & TR-069 IP Host ke OLT C-Data / GPON jika OLT ditentukan
+            if (!empty($validated['olt_id'])) {
+                try {
+                    $oltModel = Olt::withoutGlobalScopes()->find($validated['olt_id']);
+                    if ($oltModel) {
+                        $driver = app(\App\Services\Adapters\Provisioning\OltRegistry::class)->forOlt($oltModel);
+                        $acsSettings = \App\Models\Setting::getValue('connection.acs', []);
+                        $driver->pushOnuWanConfig($onu, [
+                            'mode' => ($serviceType ?? 'pppoe') === 'hotspot' ? 'dhcp' : 'pppoe',
+                            'vlan_id' => 200,
+                            'username' => $credUser ?? ('onu_' . strtolower(substr($sn, -6))),
+                            'password' => $credPass ?? 'pppoe',
+                            'tr069_mode' => 'dhcp',
+                            'tr069_vlan' => (int) ($acsSettings['management_vlan'] ?? 901),
+                            'acs_url' => $acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', ''),
+                        ]);
+                    }
+                } catch (\Throwable $oe) {
+                    \Log::warning("[provisionOnt] Gagal push IP Host TR-069 ke OLT via OMCI: " . $oe->getMessage());
                 }
             }
 

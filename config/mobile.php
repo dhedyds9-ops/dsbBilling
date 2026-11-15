@@ -2,11 +2,11 @@
 
 return [
     'staff' => [
-        'latest_version_code' => 10106,
-        'latest_version_name' => '1.1.6',
+        'latest_version_code' => 10107,
+        'latest_version_name' => '1.1.7',
         'minimum_supported_code' => 1,
         'download_url' => env('APP_URL', 'http://localhost') . '/downloads/dsbilling-mobile-release.apk',
-        'release_notes' => "dsBilling Staff & Teknisi v1.1.6:\n- Penuntasan status SPK otomatis menjadi Selesai (Completed) saat aktivasi Wizard PSB berhasil\n- Resolusi otomatis tiket gangguan/penugasan dan SPK CRM saat instalasi tuntas\n- Auto-create dan aktivasi pelanggan baru (Customer & CustomerService) langsung dari pengerjaan wizard\n- Pencatatan otomatis pemakaian material kabel dropcore dan fast connector ke inventori operasional.",
+        'release_notes' => "dsBilling Staff & Teknisi v1.1.7:\n- Penyempurnaan tombol SPK menjadi ringkas 'Mulai Install' & 'Lanjutkan Install'\n- Perbaikan safe area navigation bar pada detail SPK agar tidak tertutup tombol navigasi Android\n- Tahap 1 Wizard: nama pelanggan, kontak WhatsApp, dan alamat instalasi kini dapat diedit fleksibel\n- Dukungan tombol 'Cari Pelanggan' untuk memilih pelanggan yang sudah terdaftar di dsBilling\n- Sinkronisasi otomatis paket layanan dan pembuatan akun pengguna ke tabel Pelanggan PPPoE & Hotspot.",
     ],
     'customer' => [
         'latest_version_code' => 10103,

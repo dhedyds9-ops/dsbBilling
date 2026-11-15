@@ -796,6 +796,68 @@
                     </div>
                 </div>
 
+                {{-- Konfigurasi IP Host & TR-069 GenieACS (C-Data OLT OMCI) --}}
+                <div class="border-t border-slate-200 dark:border-slate-700/60 pt-3 mt-3 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5 cursor-pointer select-none">
+                            <span class="material-symbols-outlined text-[#0866F5]" style="font-size:18px">router</span>
+                            <span>Injeksi IP Host TR-069 OMCI OLT (C-Data)</span>
+                        </label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" wire:model.live="enable_tr069_iphost" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0866F5]"></div>
+                        </label>
+                    </div>
+
+                    @if($enable_tr069_iphost)
+                        <div class="p-3.5 bg-blue-50/60 dark:bg-slate-800/80 rounded-2xl border border-blue-200/80 dark:border-slate-700 space-y-3">
+                            <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                                <span class="font-bold text-[#0866F5]">Zero-Touch Provisioning:</span> OLT akan mengirimkan perintah OMCI <code class="bg-blue-100 dark:bg-slate-900 px-1 py-0.5 rounded text-[10px] font-mono font-bold text-[#09265E] dark:text-blue-300">ont ipconfig ip-index 2</code> & <code class="bg-blue-100 dark:bg-slate-900 px-1 py-0.5 rounded text-[10px] font-mono font-bold text-[#09265E] dark:text-blue-300">ont tr069-server</code> agar ONT otomatis mendapat IP Management dan terhubung ke GenieACS.
+                            </p>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Mode IP Management</label>
+                                    <div class="flex gap-2">
+                                        <button type="button" wire:click="$set('tr069_mode', 'dhcp')" class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition-all {{ $tr069_mode === 'dhcp' ? 'bg-[#0866F5] text-white border-[#0866F5] shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600' }}">
+                                            DHCP (Otomatis)
+                                        </button>
+                                        <button type="button" wire:click="$set('tr069_mode', 'static')" class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition-all {{ $tr069_mode === 'static' ? 'bg-[#0866F5] text-white border-[#0866F5] shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600' }}">
+                                            Static IP
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">VLAN Management TR-069</label>
+                                    <input type="number" wire:model="tr069_vlan" class="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-[#0866F5] bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="901">
+                                </div>
+                            </div>
+
+                            @if($tr069_mode === 'static')
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">IP Static TR-069</label>
+                                        <input type="text" wire:model="tr069_static_ip" class="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono focus:ring-2 focus:ring-[#0866F5] bg-white dark:bg-slate-800" placeholder="10.10.10.55">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Subnet Mask</label>
+                                        <input type="text" wire:model="tr069_netmask" class="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono focus:ring-2 focus:ring-[#0866F5] bg-white dark:bg-slate-800" placeholder="255.255.255.0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Gateway</label>
+                                        <input type="text" wire:model="tr069_gateway" class="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono focus:ring-2 focus:ring-[#0866F5] bg-white dark:bg-slate-800" placeholder="10.10.10.1">
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">GenieACS Server URL</label>
+                                <input type="text" wire:model="tr069_acs_url" class="w-full px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono focus:ring-2 focus:ring-[#0866F5] bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="http://10.10.10.1:7547">
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
                 {{-- Redaman Optik & Pemakaian Material Lapangan --}}
                 <div class="border-t border-slate-200 dark:border-slate-700/60 pt-3 mt-3 space-y-3">
                     <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1.5">
@@ -951,6 +1013,19 @@
                         <div>
                             <span class="text-slate-400 block text-[10px] uppercase font-bold">PPPoE Password</span>
                             <span class="font-mono text-slate-700 dark:text-slate-300">{{ !empty(trim($custom_password)) ? '••••••' : 'pppoe' }}</span>
+                        </div>
+                        <div class="col-span-2 pt-1 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+                            <span class="text-slate-400 text-[10px] uppercase font-bold">Injeksi OMCI TR-069 (OLT)</span>
+                            <span class="font-bold text-xs {{ $enable_tr069_iphost ? 'text-[#16A36A]' : 'text-slate-500' }}">
+                                @if($enable_tr069_iphost)
+                                    <span class="inline-flex items-center gap-1">
+                                        <span class="w-2 h-2 rounded-full bg-[#16A36A]"></span>
+                                        VLAN {{ $tr069_vlan }} ({{ strtoupper($tr069_mode) }})
+                                    </span>
+                                @else
+                                    <span class="text-slate-400">Nonaktif</span>
+                                @endif
+                            </span>
                         </div>
                     </div>
                 </div>
