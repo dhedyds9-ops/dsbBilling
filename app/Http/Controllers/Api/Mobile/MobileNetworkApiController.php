@@ -534,6 +534,13 @@ class MobileNetworkApiController extends Controller
             'optical_power' => 'nullable|numeric',
             'dropcore_meters' => 'nullable|numeric|min:0',
             'fast_connector_qty' => 'nullable|integer|min:0',
+            'enable_tr069_iphost' => 'nullable|boolean',
+            'tr069_mode' => 'nullable|string|in:dhcp,static',
+            'tr069_vlan' => 'nullable|integer|min:1|max:4094',
+            'tr069_static_ip' => 'nullable|ip',
+            'tr069_netmask' => 'nullable|string',
+            'tr069_gateway' => 'nullable|ip',
+            'tr069_acs_url' => 'nullable|string',
         ]);
 
         $user = $request->user();
@@ -1001,7 +1008,8 @@ class MobileNetworkApiController extends Controller
             }
 
             // 5. Injeksi OMCI WAN & TR-069 IP Host ke OLT C-Data / GPON jika OLT ditentukan
-            if (!empty($validated['olt_id'])) {
+            $enableTr069 = $validated['enable_tr069_iphost'] ?? true;
+            if ($enableTr069 && !empty($validated['olt_id'])) {
                 try {
                     $oltModel = Olt::withoutGlobalScopes()->find($validated['olt_id']);
                     if ($oltModel) {
@@ -1012,9 +1020,12 @@ class MobileNetworkApiController extends Controller
                             'vlan_id' => 200,
                             'username' => $credUser ?? ('onu_' . strtolower(substr($sn, -6))),
                             'password' => $credPass ?? 'pppoe',
-                            'tr069_mode' => 'dhcp',
-                            'tr069_vlan' => (int) ($acsSettings['management_vlan'] ?? 901),
-                            'acs_url' => $acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', ''),
+                            'tr069_mode' => $validated['tr069_mode'] ?? 'dhcp',
+                            'tr069_vlan' => (int) ($validated['tr069_vlan'] ?? ($acsSettings['management_vlan'] ?? 901)),
+                            'tr069_static_ip' => $validated['tr069_static_ip'] ?? '',
+                            'tr069_netmask' => $validated['tr069_netmask'] ?? '255.255.255.0',
+                            'tr069_gateway' => $validated['tr069_gateway'] ?? '',
+                            'acs_url' => $validated['tr069_acs_url'] ?? ($acsSettings['acs_url'] ?? config('genieacs.cpe_defaults.acs_url', '')),
                         ]);
                     }
                 } catch (\Throwable $oe) {
