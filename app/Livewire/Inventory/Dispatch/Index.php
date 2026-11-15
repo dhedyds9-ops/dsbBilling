@@ -421,6 +421,16 @@ class Index extends Component
                 }
             }
 
+            // Validasi saldo stok fisik di gudang sebelum eksekusi
+            $stock = \App\Models\Inventory\InventoryStock::where('warehouse_id', $this->warehouse_id)
+                ->where('item_id', $item->id)
+                ->first();
+            $availableStock = $stock ? (float) $stock->quantity : 0.0;
+            if ($availableStock < $qty) {
+                $this->addError("dispatchItems.{$idx}.quantity", "Stok '{$item->name}' di gudang tidak mencukupi (Tersedia: {$availableStock} {$item->unit}, diminta: {$qty} {$item->unit}). Silakan lakukan Barang Masuk (Inbound) terlebih dahulu.");
+                return;
+            }
+
             $itemsPayload[] = [
                 'item_id' => $item->id,
                 'quantity' => $qty,
@@ -515,17 +525,25 @@ class Index extends Component
         // Penerima options (Teknisi, Reseller, Internal)
         $recipients = User::inventoryRecipients()->orderBy('name')->get();
 
-        // Available serials per warehouse for selected items in modal
+        // Available serials & stocks per warehouse for selected items in modal
         $availableSerials = [];
+        $warehouseStocks = [];
         if ($this->warehouse_id) {
             foreach ($this->dispatchItems as $row) {
-                if (!empty($row['item_id']) && !empty($row['is_serialized'])) {
+                if (!empty($row['item_id'])) {
                     $itemId = (int) $row['item_id'];
-                    $availableSerials[$itemId] = ItemSerial::where('item_id', $itemId)
-                        ->where('warehouse_id', $this->warehouse_id)
-                        ->where('status', 'in_warehouse')
-                        ->orderBy('serial_number')
-                        ->get();
+                    $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $this->warehouse_id)
+                        ->where('item_id', $itemId)
+                        ->first();
+                    $warehouseStocks[$itemId] = $stk ? (float) $stk->quantity : 0.0;
+
+                    if (!empty($row['is_serialized'])) {
+                        $availableSerials[$itemId] = ItemSerial::where('item_id', $itemId)
+                            ->where('warehouse_id', $this->warehouse_id)
+                            ->where('status', 'in_warehouse')
+                            ->orderBy('serial_number')
+                            ->get();
+                    }
                 }
             }
         }
@@ -542,6 +560,7 @@ class Index extends Component
             'customers' => $customers,
             'recipients' => $recipients,
             'availableSerials' => $availableSerials,
+            'warehouseStocks' => $warehouseStocks,
             'selectedDispatch' => $selectedDispatch,
             'showCreateModal' => $this->showCreateModal,
             'showDetailModal' => $this->showDetailModal,

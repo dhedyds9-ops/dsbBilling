@@ -201,6 +201,17 @@
                     </button>
                 </div>
 
+                {{-- In-Modal Alert Banner --}}
+                @if(session('error'))
+                    <div class="p-3.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-2xl text-xs sm:text-sm font-semibold text-rose-800 dark:text-rose-200 flex items-start gap-2.5 animate-fadeIn">
+                        <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 shrink-0 text-xl">error</span>
+                        <div class="flex-1">
+                            <span class="font-bold block">Gagal Memproses:</span>
+                            <span class="text-xs font-normal leading-relaxed text-rose-700 dark:text-rose-300">{{ session('error') }}</span>
+                        </div>
+                    </div>
+                @endif
+
                 <form wire:submit="saveInbound" class="space-y-4">
                     {{-- Header Fields (Sleek & Compact) --}}
                     <div class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">

@@ -172,6 +172,17 @@
                     </button>
                 </div>
 
+                {{-- In-Modal Alert Banner --}}
+                @if(session('error'))
+                    <div class="p-3.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-2xl text-xs sm:text-sm font-semibold text-rose-800 dark:text-rose-200 flex items-start gap-2.5 animate-fadeIn">
+                        <span class="material-symbols-outlined text-rose-600 dark:text-rose-400 shrink-0 text-xl">error</span>
+                        <div class="flex-1">
+                            <span class="font-bold block">Gagal Memproses Pengeluaran Barang:</span>
+                            <span class="text-xs font-normal leading-relaxed text-rose-700 dark:text-rose-300">{{ session('error') }}</span>
+                        </div>
+                    </div>
+                @endif
+
                 <form wire:submit="saveDispatch" class="space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
@@ -277,9 +288,18 @@
                                         </div>
 
                                         <div class="sm:col-span-3">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah Keluar ({{ $row['unit'] ?? 'unit' }}) *</label>
+                                            <div class="flex items-center justify-between mb-1">
+                                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300">Jumlah Keluar ({{ $row['unit'] ?? 'unit' }}) *</label>
+                                                @if(!empty($row['item_id']) && $warehouse_id)
+                                                    @php $currentStock = $warehouseStocks[$row['item_id']] ?? 0; @endphp
+                                                    <span class="text-[10px] font-bold {{ $currentStock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500' }}">
+                                                        Stok: {{ $currentStock }} {{ $row['unit'] ?? 'unit' }}
+                                                    </span>
+                                                @endif
+                                            </div>
                                             <input wire:model="dispatchItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
                                                    class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 font-bold">
+                                            @error("dispatchItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                                         </div>
 
                                         <div class="sm:col-span-3">
