@@ -328,7 +328,7 @@
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Gudang Sumber *</label>
-                            <select wire:model="warehouse_id" required
+                            <select wire:model.live="warehouse_id" required
                                     class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200">
                                 <option value="">-- Pilih Gudang Sumber --</option>
                                 @foreach($warehouses as $wh)
@@ -416,7 +416,7 @@
                                     </div>
 
                                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-start">
-                                        <div class="sm:col-span-6">
+                                        <div class="sm:col-span-5">
                                             <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Pilih Barang Katalog *</label>
                                             <x-inventory.item-searchable-select
                                                 :availableItems="$availableItems"
@@ -425,10 +425,28 @@
                                                 placeholder="-- Cari / Pilih Barang dari Katalog --"
                                             />
                                             @error("requisitionItems.{$idx}.item_id") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
+
+                                            @if(!empty($row['item_id']) && $warehouse_id)
+                                                @php $stockQty = $warehouseStocks[$row['item_id']] ?? 0; @endphp
+                                                @if($stockQty <= 0)
+                                                    <p class="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1 font-medium leading-tight">
+                                                        <span class="material-symbols-outlined text-xs">info</span>
+                                                        <span>Stok gudang sedang kosong (0 {{ $row['unit'] ?? 'unit' }}). Pengajuan akan menunggu pengadaan gudang (Inbound).</span>
+                                                    </p>
+                                                @endif
+                                            @endif
                                         </div>
 
-                                        <div class="sm:col-span-2">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
+                                        <div class="sm:col-span-3">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300">Jumlah ({{ $row['unit'] ?? 'unit' }}) *</label>
+                                                @if(!empty($row['item_id']) && $warehouse_id)
+                                                    @php $currentStock = $warehouseStocks[$row['item_id']] ?? 0; @endphp
+                                                    <span class="text-[10px] font-bold {{ $currentStock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500' }}">
+                                                        Stok: {{ $currentStock }} {{ $row['unit'] ?? 'unit' }}
+                                                    </span>
+                                                @endif
+                                            </div>
                                             <input wire:model="requisitionItems.{{ $idx }}.quantity" type="number" step="any" min="0.01" required placeholder="1"
                                                    class="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-bold">
                                             @error("requisitionItems.{$idx}.quantity") <span class="text-xs text-rose-500 mt-1 block font-semibold">{{ $message }}</span> @enderror

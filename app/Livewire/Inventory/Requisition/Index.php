@@ -416,10 +416,36 @@ class Index extends Component
             $selectedRequisition = InventoryRequisition::with(['warehouse', 'requester', 'designatedTechnician', 'customer', 'items.item', 'dispatches'])->find($this->selectedRequisitionId);
         }
 
+        // Hitung ketersediaan stok fisik di gudang sumber untuk barang yang dipilih
+        $warehouseStocks = [];
+        if ($this->warehouse_id) {
+            foreach ($this->requisitionItems as $row) {
+                if (!empty($row['item_id'])) {
+                    $itemId = (int) $row['item_id'];
+                    $itemObj = Item::find($itemId);
+                    $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $this->warehouse_id)
+                        ->where('item_id', $itemId)
+                        ->first();
+                    $qtyStock = $stk ? (float) $stk->quantity : 0.0;
+
+                    if ($itemObj && $itemObj->is_serialized) {
+                        $physicalCount = (float) \App\Models\Inventory\ItemSerial::where('item_id', $itemId)
+                            ->where('warehouse_id', $this->warehouse_id)
+                            ->where('status', 'in_warehouse')
+                            ->count();
+                        $qtyStock = max($qtyStock, $physicalCount);
+                    }
+
+                    $warehouseStocks[$itemId] = $qtyStock;
+                }
+            }
+        }
+
         return view('livewire.inventory.requisition.index', [
             'requisitions' => $requisitions,
             'warehouses' => $warehouses,
             'availableItems' => $availableItems,
+            'warehouseStocks' => $warehouseStocks,
             'customers' => $customers,
             'technicians' => $technicians,
             'selectedRequisition' => $selectedRequisition,

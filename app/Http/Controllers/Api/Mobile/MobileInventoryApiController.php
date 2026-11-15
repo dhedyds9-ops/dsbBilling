@@ -131,18 +131,42 @@ class MobileInventoryApiController extends Controller
             $items = $query->limit($limit)->get();
         }
 
-        $formatted = $items->map(fn(Item $i) => [
-            'id' => $i->id,
-            'uuid' => $i->uuid,
-            'name' => $i->name,
-            'sku' => $i->sku,
-            'category' => $i->category ?? 'General',
-            'unit' => $i->unit ?? 'pcs',
-            'brand' => $i->brand,
-            'model' => $i->model,
-            'is_serialized' => (bool)$i->is_serialized,
-            'cost_price' => (float)$i->cost_price,
-        ]);
+        $warehouse = Warehouse::where('branch_id', $user->branch_id)->where('is_active', true)->first()
+            ?? Warehouse::where('is_active', true)->first();
+        $whId = $warehouse?->id;
+
+        $formatted = $items->map(function (Item $i) use ($whId) {
+            $stockQty = 0.0;
+            if ($whId) {
+                if ($i->is_serialized) {
+                    $serialCount = (float) \App\Models\Inventory\ItemSerial::where('item_id', $i->id)
+                        ->where('warehouse_id', $whId)
+                        ->where('status', 'in_warehouse')
+                        ->count();
+                    $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $whId)->where('item_id', $i->id)->first();
+                    $stockQty = max((float) ($stk?->quantity ?? 0.0), $serialCount);
+                } else {
+                    $stk = \App\Models\Inventory\InventoryStock::where('warehouse_id', $whId)->where('item_id', $i->id)->first();
+                    $stockQty = (float) ($stk?->quantity ?? 0.0);
+                }
+            }
+
+            return [
+                'id' => $i->id,
+                'uuid' => $i->uuid,
+                'name' => $i->name,
+                'sku' => $i->sku,
+                'category' => $i->category ?? 'General',
+                'unit' => $i->unit ?? 'pcs',
+                'brand' => $i->brand,
+                'model' => $i->model,
+                'is_serialized' => (bool)$i->is_serialized,
+                'cost_price' => (float)$i->cost_price,
+                'warehouse_id' => $whId,
+                'available_stock' => $stockQty,
+                'is_available' => $stockQty > 0,
+            ];
+        });
 
         return response()->json([
             'success' => true,
