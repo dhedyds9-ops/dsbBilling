@@ -427,8 +427,15 @@ class Wizard extends Component
 
     public function previousStep()
     {
-        if ($this->currentStep > 1) {
+        if ($this->currentStep > 1 && $this->currentStep < 7) {
             $this->currentStep--;
+        }
+    }
+
+    public function goToStep(int $step)
+    {
+        if ($step >= 1 && $step <= 6 && $this->currentStep < 7) {
+            $this->currentStep = $step;
         }
     }
 

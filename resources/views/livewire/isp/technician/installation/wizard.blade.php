@@ -149,35 +149,40 @@
             </div>
         </div>
     @else
-        {{-- Stepper Progress --}}
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+        {{-- Stepper Progress (7 Tahap Standar INETS) --}}
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-[#DCE6F5] dark:border-slate-700 p-4">
             <div class="flex items-center justify-between relative mb-3">
                 <div class="absolute left-0 top-4 w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full z-0"></div>
-                <div class="absolute left-0 top-4 h-1 bg-indigo-500 rounded-full z-0 transition-all duration-300" style="width: {{ $currentStep >= 6 ? '100%' : ((($currentStep - 1) / 5) * 100) }}%"></div>
-                @foreach(range(1, 6) as $step)
+                <div class="absolute left-0 top-4 h-1 bg-[#0866F5] rounded-full z-0 transition-all duration-300" style="width: {{ $currentStep >= 7 ? '100%' : ((($currentStep - 1) / 6) * 100) }}%"></div>
+                @foreach(range(1, 7) as $step)
                     <div class="relative z-10 flex flex-col items-center">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shadow-sm
-                            {{ $currentStep === $step ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-900/50' :
-                              ($currentStep > $step ? 'bg-indigo-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700') }}">
+                        <button type="button" 
+                            @if($step < $currentStep && $currentStep < 7) wire:click="goToStep({{ $step }})" @else disabled @endif
+                            class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm
+                            {{ $currentStep === $step ? 'bg-[#0866F5] text-white ring-4 ring-blue-100 dark:ring-blue-900/50 scale-105' :
+                              ($currentStep > $step ? 'bg-[#16A36A] text-white cursor-pointer hover:opacity-90' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700') }}">
                             @if($currentStep > $step)
                                 <span class="material-symbols-outlined" style="font-size:16px">check</span>
                             @else
                                 {{ $step }}
                             @endif
-                        </div>
+                        </button>
                     </div>
                 @endforeach
             </div>
-            <p class="text-center text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                @if($currentStep === 1) Pilih Pelanggan
-                @elseif($currentStep === 2) Paket Layanan
-                @elseif($currentStep === 3) Titik ODP
-                @elseif($currentStep === 4) OLT & Port
-                @elseif($currentStep === 5) Scan ONU & Wi-Fi
-                @elseif($currentStep === 6) Konfirmasi
-                @elseif($currentStep === 7) Selesai & Status Provisioning
-                @endif
-            </p>
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Tahap {{ $currentStep }} / 7</span>
+                <p class="text-right text-xs font-bold text-[#0866F5] dark:text-blue-400 uppercase tracking-wider">
+                    @if($currentStep === 1) 1. SPK & Pelanggan
+                    @elseif($currentStep === 2) 2. Paket Layanan
+                    @elseif($currentStep === 3) 3. Titik ODP
+                    @elseif($currentStep === 4) 4. OLT & Port PON
+                    @elseif($currentStep === 5) 5. Registrasi ONT, WiFi & Material
+                    @elseif($currentStep === 6) 6. Konfirmasi & Review
+                    @elseif($currentStep === 7) 7. Hasil Akhir & Status Provisioning
+                    @endif
+                </p>
+            </div>
         </div>
 
         {{-- Main Wizard Card --}}
@@ -742,75 +747,144 @@
 
         @if($currentStep === 6)
             <div class="text-center mb-5">
-                <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 text-[#0866F5] rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
                     <span class="material-symbols-outlined" style="font-size:30px">fact_check</span>
                 </div>
-                <h3 class="text-lg font-black text-slate-800 dark:text-slate-200">Konfirmasi Akhir</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Periksa data sebelum dieksekusi</p>
+                <h3 class="text-lg font-black text-[#09265E] dark:text-slate-100">Tahap 6: Konfirmasi & Review</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Periksa kembali seluruh parameter instalasi fisik & logis sebelum provisioning dieksekusi.</p>
             </div>
-            <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700 overflow-hidden mb-4">
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tipe</span>
-                    <span class="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 font-bold text-[10px] uppercase rounded-full">{{ $service_type }}</span>
+
+            <div class="space-y-3 mb-5">
+                {{-- Group 1: SPK & Pelanggan --}}
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-[#DCE6F5] dark:border-slate-700">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span class="text-xs font-black text-[#09265E] dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm text-[#0866F5]">assignment</span> 1. SPK & Pelanggan
+                        </span>
+                        <button type="button" wire:click="goToStep(1)" class="text-[11px] font-bold text-[#0866F5] hover:underline flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-xs">edit</span> Ubah
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">Nama Pelanggan</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ $this->selectedCustomer?->name ?? ($new_customer_name ?: 'Pelanggan') }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">No. Telepon / HP</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ $this->selectedCustomer?->phone ?? ($new_customer_phone ?: '-') }}</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">Alamat Pemasangan</span>
+                            <span class="text-slate-700 dark:text-slate-300 text-xs">{{ $this->selectedCustomer?->address ?? ($new_customer_address ?: '-') }}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Pelanggan</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
-                        @if($this->selectedCustomer)
-                            {{ $this->selectedCustomer->name }}
-                            <span class="block text-xs font-normal text-slate-400">
-                                {{ $this->selectedCustomer->phone ?: ($is_new_customer ? 'Pelanggan Baru' : 'ID: '.$customer_id) }}
+
+                {{-- Group 2: Paket Layanan --}}
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-[#DCE6F5] dark:border-slate-700">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span class="text-xs font-black text-[#09265E] dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm text-[#0866F5]">layers</span> 2. Paket Layanan
+                        </span>
+                        <button type="button" wire:click="goToStep(2)" class="text-[11px] font-bold text-[#0866F5] hover:underline flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-xs">edit</span> Ubah
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <div>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ $this->selectedServiceProfile?->name ?? 'Standar' }}</span>
+                            <span class="block text-[11px] text-slate-500 font-mono">Tipe: {{ strtoupper($service_type) }}</span>
+                        </div>
+                        <span class="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/50 text-[#0866F5] font-black text-xs rounded-full">
+                            Rp {{ number_format($this->selectedServiceProfile?->price ?? 0, 0, ',', '.') }}/bln
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Group 3 & 4: Titik ODP & OLT PON --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-[#DCE6F5] dark:border-slate-700">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 dark:border-slate-700">
+                            <span class="text-xs font-black text-[#09265E] dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-[#0866F5]">share_location</span> 3. Titik ODP
                             </span>
-                        @else
-                            -
-                        @endif
-                    </span>
+                            <button type="button" wire:click="goToStep(3)" class="text-[11px] font-bold text-[#0866F5] hover:underline flex items-center gap-0.5">
+                                <span class="material-symbols-outlined text-xs">edit</span> Ubah
+                            </button>
+                        </div>
+                        <div class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ $this->selectedOdp?->name ?? 'Direct Cable' }}</div>
+                        <div class="text-[11px] text-slate-500">Kode: {{ $this->selectedOdp?->code ?? '-' }}</div>
+                    </div>
+
+                    <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-[#DCE6F5] dark:border-slate-700">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 dark:border-slate-700">
+                            <span class="text-xs font-black text-[#09265E] dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-[#0866F5]">router</span> 4. OLT & Port PON
+                            </span>
+                            <button type="button" wire:click="goToStep(4)" class="text-[11px] font-bold text-[#0866F5] hover:underline flex items-center gap-0.5">
+                                <span class="material-symbols-outlined text-xs">edit</span> Ubah
+                            </button>
+                        </div>
+                        <div class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ $this->selectedOlt?->name ?? 'OLT Utama' }}</div>
+                        <div class="text-[11px] text-[#0866F5] font-black">Port PON: {{ $pon_port }}</div>
+                    </div>
                 </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Paket</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
-                        {{ $this->selectedServiceProfile?->name ?? ($service_profile_id ? 'ID: '.$service_profile_id : '-') }}
-                    </span>
+
+                {{-- Group 5 & 6: ONT, Wi-Fi & PPPoE --}}
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-[#DCE6F5] dark:border-slate-700">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span class="text-xs font-black text-[#09265E] dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm text-[#0866F5]">devices</span> 5. ONT, Wi-Fi & PPPoE
+                        </span>
+                        <button type="button" wire:click="goToStep(5)" class="text-[11px] font-bold text-[#0866F5] hover:underline flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-xs">edit</span> Ubah
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">Serial Number (SN)</span>
+                            <span class="font-mono font-black text-[#0866F5]">{{ $onu_sn }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">Wi-Fi SSID</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ !empty(trim($wifi_ssid)) ? $wifi_ssid : ('WINETS-' . substr($onu_sn, -4)) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">PPPoE Username</span>
+                            <span class="font-mono font-bold text-slate-700 dark:text-slate-300">{{ !empty(trim($custom_username)) ? $custom_username : '(Otomatis Sistem)' }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">PPPoE Password</span>
+                            <span class="font-mono text-slate-700 dark:text-slate-300">{{ !empty(trim($custom_password)) ? '••••••' : 'pppoe' }}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ODP</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
-                        {{ $this->selectedOdp?->name ?? 'Tanpa ODP (Langsung)' }}
-                    </span>
-                </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">OLT / PON</span>
-                    <span class="text-sm font-bold text-slate-900 dark:text-white text-right">
-                        {{ $this->selectedOlt?->name ?? ($olt_id ? 'OLT #'.$olt_id : '-') }} / Port {{ $pon_port }}
-                    </span>
-                </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ONU SN</span>
-                    <span class="font-mono text-sm font-black text-indigo-600 dark:text-indigo-400">{{ $onu_sn }}</span>
-                </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Username</span>
-                    <span class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{{ !empty(trim($custom_username)) ? $custom_username : '(Otomatis Sistem)' }}</span>
-                </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Password</span>
-                    <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">{{ !empty(trim($custom_password)) ? '••••••' : ($service_type === 'pppoe' ? 'pppoe' : '(Random)') }}</span>
-                </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Wi-Fi SSID</span>
-                    <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ !empty(trim($wifi_ssid)) ? $wifi_ssid : ('WINETS-' . substr($onu_sn, -4)) }}</span>
-                </div>
-                <div class="flex justify-between items-center px-4 py-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Wi-Fi Password</span>
-                    <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">{{ !empty(trim($wifi_password)) ? '••••••' : '(Bebas / Tanpa Password)' }}</span>
+
+                {{-- Group 7 & 8: Redaman & Material --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-[#DCE6F5] dark:border-slate-700">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase block">7. Redaman RX</span>
+                        <span class="text-sm font-black {{ ((float)$optical_power >= -24 && (float)$optical_power <= -12) ? 'text-[#16A36A]' : 'text-amber-600' }}">
+                            {{ !empty($optical_power) ? $optical_power . ' dBm' : 'Belum diukur' }}
+                        </span>
+                    </div>
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-[#DCE6F5] dark:border-slate-700">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase block">8. Material</span>
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            {{ (int)$dropcore_meters }}m Dropcore • {{ (int)$fast_connector_qty }} Fast Conn
+                        </span>
+                    </div>
                 </div>
             </div>
-            <div class="p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-800/50 flex gap-2">
-                <span class="material-symbols-outlined shrink-0 mt-0.5" style="font-size:18px">warning</span>
-                <p class="text-xs leading-relaxed">Pastikan fiber sudah terpasang sebelum menekan Aktifkan. Sistem akan provisioning otomatis ke OLT & GenieACS NBI.</p>
+
+            <div class="p-3.5 bg-blue-50 dark:bg-blue-950/40 text-[#09265E] dark:text-blue-200 rounded-2xl border border-blue-200 dark:border-blue-800/50 flex gap-2.5 mb-4">
+                <span class="material-symbols-outlined text-[#0866F5] shrink-0 mt-0.5" style="font-size:20px">verified_user</span>
+                <p class="text-xs leading-relaxed">Setelah menekan tombol aktivasi, sistem akan menjalankan registrasi OLT port PON, membuat profil WAN PPPoE di MikroTik, serta mengirimkan provisioning TR-069 ke GenieACS.</p>
             </div>
+
             @if(session('error') || $errors->any())
-                <div class="mt-3 p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded-xl border border-rose-200 dark:border-rose-800/50 flex gap-2" x-data x-init="$el.scrollIntoView({behavior: 'smooth', block: 'center'})">
+                <div class="mb-4 p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded-2xl border border-rose-200 dark:border-rose-800/50 flex gap-2" x-data x-init="$el.scrollIntoView({behavior: 'smooth', block: 'center'})">
                     <span class="material-symbols-outlined shrink-0 mt-0.5" style="font-size:18px">error</span>
                     <div class="text-xs leading-relaxed font-semibold space-y-0.5">
                         @if(session('error'))<p>{{ session('error') }}</p>@endif
@@ -926,18 +1000,19 @@
                 </button>
             @endif
             @if($currentStep < 6)
-                <button wire:click="nextStep" class="{{ $currentStep > 1 ? 'w-2/3' : 'w-full' }} py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 active:scale-95 transition-transform">
-                    Lanjut <span class="material-symbols-outlined shrink-0" style="font-size:18px">arrow_forward</span>
+                <button wire:click="nextStep" class="{{ $currentStep > 1 ? 'w-2/3' : 'w-full' }} py-3.5 bg-[#0866F5] text-white rounded-xl font-bold text-sm hover:bg-blue-600 flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 transition-transform">
+                    <span>Lanjut</span>
+                    <span class="material-symbols-outlined shrink-0" style="font-size:18px">arrow_forward</span>
                 </button>
             @else
-                <button wire:click="submit" wire:loading.attr="disabled" class="w-2/3 py-3.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20">
+                <button wire:click="submit" wire:loading.attr="disabled" class="w-2/3 py-3.5 bg-[#16A36A] text-white rounded-xl font-black text-sm hover:bg-emerald-700 active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20">
                     <span wire:loading.remove wire:target="submit" class="flex items-center gap-2 justify-center">
                         <span class="material-symbols-outlined shrink-0" style="font-size:18px">rocket_launch</span>
-                        AKTIFKAN
+                        AKTIFKAN SEKARANG
                     </span>
                     <span wire:loading wire:target="submit" class="flex items-center gap-2 justify-center">
                         <span class="material-symbols-outlined animate-spin shrink-0" style="font-size:18px">sync</span>
-                        Proses...
+                        Memproses Aktivasi...
                     </span>
                 </button>
             @endif

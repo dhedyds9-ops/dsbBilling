@@ -23,6 +23,9 @@ Route::middleware('guest')->group(function () {
     Route::get('login/customer', [AuthenticatedSessionController::class, 'create'])
         ->name('customer.login');
 
+    Route::get('login-customer', [AuthenticatedSessionController::class, 'create'])
+        ->name('login.customer');
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 

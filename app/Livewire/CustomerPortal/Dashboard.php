@@ -31,7 +31,8 @@ class Dashboard extends Component
                 session()->invalidate();
                 session()->regenerateToken();
                 
-                return redirect()->route('login.customer')->withErrors([
+                $targetRoute = \Illuminate\Support\Facades\Route::has('customer.login') ? 'customer.login' : 'login';
+                return redirect()->route($targetRoute)->withErrors([
                     'login' => 'Profil pelanggan Anda tidak ditemukan atau belum diproses. Silakan hubungi Admin.'
                 ]);
             }
